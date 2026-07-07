@@ -112,6 +112,18 @@ UX de la misma ronda (`c3f6d08`): rename de speaker arreglado (carrera del alert
 
 **Carpeta de grabaciones configurable: HECHA** (`0150611`): Ajustes → Grabaciones (convención Zoom "Store my recordings at"), `RecordingsLocation` en StorageKit — el root elegido persiste en `recordings-root.txt` JUNTO A LA DB (archivo, no UserDefaults → el CLI respeta la misma carpeta); sin bookmark (hay hardened runtime pero NO sandbox — un path plano basta; TCC pide una vez para carpetas protegidas, usage strings añadidos al Info.plist incl. discos externos). Migración resumable por directorio de reunión (copy a temp oculto + rename atómico cross-volume; ya-migrado se salta) y resolución con fallback al root por defecto — una migración interrumpida no rompe nada. La DB sigue guardando solo paths relativos (D4). Sobre "aprender acentos localmente": fine-tuning on-device no es viable con estos modelos; el camino real es vocabulario auto-sugerido (minar términos frecuentes de transcripts refinados) — anotado como idea M8.
 
+## Roadmap 2.1 — ronda 2 de análisis (2026-07-07, verificación adversarial)
+
+Segunda pasada con 3 agentes de verificación (Granola/Jamie/Fathom profundo; SpeechAnalyzer/MLX/WhisperKit técnico; Otter/MacParakeet/pricing/OSS-landscape). Correcciones y hallazgos aplicados a DECISIONS (D25-D27 enmendadas, **D28 nueva**), ROADMAP (fase 2 reordenada) y PRODUCT:
+
+- **Corregido**: el free de Otter NO es ilimitado (300 min/mes, tope 30 min/conversación — el más tacaño); SpeechAnalyzer NO es clase-calidad (WER 14% conversacional ≈ whisper-base/small, sin vocabulario custom, sin diarización) → re-posicionado al rol VIVO y a iOS, jamás default de refine.
+- **Verificado**: WhisperKit cuantizadas existen (`large-v3-v20240930_547MB`/`_626MB`, la 626 recomendada multilingüe); MLX gana a llama.cpp para LLM embebido (mlx-swift-lm, MIT, SPM nativo, 1.4-1.8x, ~2-2.5GB q4); `bluetoothHighQualityRecording` real pero **no soportado en la UE** + latencia extra; one-time pricing validado como patrón del nicho nativo (MacWhisper €59, VoiceInk $25-49); Argmax OSS SDK v1.0 trae SpeakerKit (diarización) en el paquete que ya usamos.
+- **⚠️ Riesgo nuevo a vigilar**: MacParakeet DESCARTÓ process taps porque "no coexisten confiablemente con VPIO in-process" — nuestra combinación exacta D6+D24. 1 reunión OK no es evidencia; vigilar glitches del canal system con AEC activo. Plan B documentado en D27: echo-cancel offline post-grabación.
+- **Hallazgo mayor (D28)**: el loop de coautoría de Granola (notas crudas → IA teje; negro=tuyo/gris=IA con links) es el patrón más validado de la categoría ($1.5B) y nuestro `ContextItem` ya lo modela desde M0 — estaba huérfano y sin fecha. Ahora es M10, antes que el Copiloto.
+- **Copiloto validado con urgencia**: nadie lo tiene en meeting-notes; Cluely falla (5-10s reales); **Teams "Facilitator" llega ~ago-sep 2026**. Nuestro target <5s local gana al estado del arte real.
+- **Fase 2 reordenada**: M9=publicar YA (stars componen: Meetily 20.5K/Anarlog 8.8K/MacParakeet 451 en 5 meses), M10=notas coautoría, M11=audio+crash-safety (CAF/fragmentado — los WAV probablemente no sobreviven kill -9), M12=motores (Ollama primero, MLX después), M13=Copiloto.
+- Storage: MacParakeet guarda AAC 64kbps (~10MB vs nuestros 126MB/canal por 22 min) — transcode post-refine en M11.
+
 ## Roadmap 2.0 (2026-07-07, investigación de mercado)
 
 Sesión de estrategia: 6 fuentes analizadas (riffado, MacParakeet, humla, Otter, artículo Meetily, Granola) + exploración profunda del repo local de Meetily + intel Apple (SpeechAnalyzer macOS 26, más rápido que Whisper). Resultados:
@@ -123,6 +135,7 @@ Sesión de estrategia: 6 fuentes analizadas (riffado, MacParakeet, humla, Otter,
 ## Próximos pasos (en orden)
 
 **Verificaciones que aún necesitan al usuario (próxima reunión real):**
+- **⚠️ Taps + AEC conviviendo**: vigilar el canal system con AEC activo (glitches, dropouts, silencio) — MacParakeet reporta que VPIO y process taps "no coexisten confiablemente" en el mismo proceso. Si aparece, plan B en D27.
 - **AEC**: grabar con parlantes y hablar — tus palabras deben salir como "Yo" y los demás NO deben duplicarse. Si el mic se oye raro, Ajustes → desactivar "Cancelación de eco" y avisar.
 - **Cambio de dispositivo**: conectar/desconectar audífonos a mitad de grabación — el canal mic debe sobrevivir (con hueco de silencio, no muerte).
 - **Resumen en vivo**: debe crecer siempre, nunca encoger.

@@ -23,15 +23,16 @@ Usuario fundador y arquetipo: dev hispanohablante con reuniones en inglés.
 
 | Competidor | Modelo | Qué le robamos |
 |---|---|---|
-| Granola ($14–35/u/mes, free 25 notas) | Cloud, sin bot, Mac+iOS | Recipes (plantillas que reestructuran), UX "notas manuales + IA completa", soporte MCP (validación de demanda) |
-| Fathom (free ilimitado; team $19) | Cloud, bot | El estándar de generosidad FREE; target resumen < 30 s post-llamada |
+| Granola ($1.5B valuación, Serie C $125M mar-2026; free = notas ilimitadas pero historial de ~30 días — **monetiza el ARCHIVO**) | Cloud, sin bot, Mac+iOS+Android | El loop de coautoría (D28): notas crudas → IA teje con transcript, **tus líneas en negro / adiciones IA en gris con link al segmento**; Templates (~29) ≠ Recipes (prompts guardados post-hoc con `/`); Briefs pre-reunión desde calendario; share links públicos sin login con búsqueda en transcript; iOS graba desde Lock Screen. **Sus críticas #1 = nuestro plan**: sin speaker ID, sin playback de audio, consent — D21+D27+D8. Y su palanca de monetización (rehén del archivo) es imposible para nosotros = argumento de venta |
+| Fathom (free: captura ILIMITADA pero IA capada a 5 llamadas/mes desde 2026; $16–25 anual) | Cloud, bot | Regala la captura y cobra la INTELIGENCIA (patrón inverso a Granola); target resumen < 30 s post-llamada |
 | Fireflies ($10–19) | Cloud, bot | Chat RAG sobre historial ("Global Brain") — nuestra versión: 100% local |
 | tl;dv (free ilimitado; $18+) | Cloud, bot | Clips/momentos compartibles con link al instante |
-| Otter ($19.99, free ahora ILIMITADO con resúmenes) | Cloud, bot→agente sin bot | Se autodenomina "Conversational Knowledge Engine" y **lanzó servidor MCP para ChatGPT/Claude** — valida nuestro moat M8; su giro a free ilimitado confirma que el free tacaño mataba el growth |
+| Otter ($100M ARR; free VERIFICADO: 300 min/mes, tope 30 min/conversación, 3 imports de por vida) | Cloud, bot→agente sin bot | **Lanzó servidor MCP para ChatGPT/Claude** — valida nuestro moat M8. Su free sigue siendo el más tacaño de la categoría (corregido en ronda 2: el "unlimited" de su home es solo el plan Business) |
 | Anarlog (ex-Hyprnote/Char; free local + $8/mes) | **OSS local (Tauri)** | Data ownership: cada reunión un .md del usuario; BYOK. Lección: pivotó de OSS puro → el trono "open source local" está vacante |
 | MacWhisper (€59 único) / superwhisper ($249 lifetime) | Nativo Mac | El modelo de negocio completo (D9/D10) |
 | Krisp | Audio bot-free | **Live Interpreter** → nuestros captions traducidos ES↔EN on-device (Translation framework) |
-| Jamie | Nativo bot-free, GDPR | Sidebar de Q&A en vivo sobre la reunión en curso |
+| Jamie (€0–39/mes; alemán, hosting EU) | Nativo bot-free, **cloud** (su "privacy" = soberanía EU, NO local) | **Sidebar ⌘J system-wide** ("Spotlight de reuniones": busca en todo el historial desde cualquier app — idea para nuestro ⌘K global); elección de modelo por tarea (validación de D25); es pull manual — sin detección de preguntas |
+| Cluely ($20–75/mes) + interview copilots + **Teams "Facilitator" (~ago-sep 2026)** | Overlays de respuesta en vivo | El patrón del Copiloto D26 SIN dueño en meeting-notes: Cluely promete 300 ms y entrega 5–10 s reales + estigma "cheating"; Microsoft valida la detección proactiva de preguntas y pone fecha límite competitiva; los interview copilots (~$9/mes) prueban la demanda. Nuestro ángulo: local (latencia real), transparente, y `contexto` responde desde TU historial |
 | Circleback | Action items | Distribución de action items a la persona correcta; automatizaciones post-reunión → App Intents |
 | MeetGeek | Templates/agentes | Auto-detección del tipo de reunión → Recipe automática; reglas de auto-grabación con guardrails |
 | Read.ai | Coaching | "Meeting health" local: talk-time, interrupciones, ratio de preguntas (PRO) |

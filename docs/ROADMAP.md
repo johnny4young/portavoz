@@ -17,15 +17,16 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 ## Fase 2 — Talla mundial en la Mac (0.2–0.4)
 
-La fase donde el usuario siente que **nativo vale la pena**. Orden = dependencia técnica.
+La fase donde el usuario siente que **nativo vale la pena**. Reordenada tras la ronda 2 de análisis: publicar PRIMERO (los stars componen: Meetily 20.5K, Anarlog 8.8K, MacParakeet 451 en 5 meses — cada mes privado es crecimiento regalado), y las notas de coautoría (D28) entran antes que el Copiloto porque son el patrón más validado de la categoría.
 
 | Milestone | Scope | Acceptance criterion |
 |---|---|---|
-| **M9 — Audio first-class (D27)** | AudioPlaybackKit: player sincronizado con transcript (click-para-saltar, highlight en vivo), waveform coloreada por speaker, clips exportables, skip-silencio, velocidad | Reproducir cualquier reunión con highlight sincronizado; exportar un clip de 30 s con atribución en < 2 s |
-| **M10 — Motores plurales (D25)** | SpeechAnalyzer como engine de calidad seleccionable; LLM local embebido (GGUF/MLX 3B) para Macs sin Apple Intelligence; recomendador por hardware; overrides por reunión/idioma; `bench` compara engines | Un Mac sin Apple Intelligence produce resumen 100% local; Ajustes muestra "Recomendado para tu Mac" correcto; benchmark reproducible por engine |
-| **M11 — Copiloto en vivo (D26)** | Detección de preguntas en captions cerradas + tarjeta de respuesta (FM/RAG local; BYOK opt-in con disclosure); detector "te preguntaron" unificado | Pregunta de conocimiento detectada y respondida en tarjeta < 5 s; preguntas logísticas no generan tarjetas |
-| **M12 — Publicación + growth OSS** | Push del repo, release v0.x en GitHub, tap Homebrew, README con benchmarks públicos (patrón MacParakeet), issues templates, SECURITY.md | `brew install --cask portavoz` funciona; benchmarks reproducibles en el README |
-| **M13 — Meeting health + polish PRO** | Talk-time, interrupciones, ratio de preguntas (local); Recipes avanzadas; auto-detección de tipo de reunión → Recipe | Panel de salud por reunión; Recipe sugerida correcta en ≥ 3 tipos de reunión |
+| **M9 — Publicación + growth OSS** | Push del repo, release v0.1 en GitHub, tap Homebrew, README con benchmarks públicos reproducibles (patrón MacParakeet: WER + velocidad + memoria por engine), issue templates, SECURITY.md | `brew install --cask portavoz` funciona; benchmarks reproducibles en el README |
+| **M10 — Notas de coautoría (D28)** | Panel de notas en grabación (ContextFeedKit por fin cableado): timestamps automáticos, resumen guiado por notas, distinción visual tuyo-vs-IA con links al transcript | Una reunión con 5 notas crudas produce un resumen que las expande sin contradecirlas, con marcas de coautoría |
+| **M11 — Audio first-class (D27)** | AudioPlaybackKit: player sincronizado (click-para-saltar, highlight), waveform por speaker, clips, skip-silencio; **crash-safety del contenedor (CAF/fragmentado)**; transcode AAC post-refine; import de audio externo | Reproducir cualquier reunión con highlight sincronizado; un `kill -9` a los 30 min no pierde más de 1 s de audio; clip de 30 s exportado en < 2 s |
+| **M12 — Motores plurales (D25)** | SpeechAnalyzer benchmarkeado en el rol VIVO (no calidad); Whisper 626MB para poco disco; integración Ollama de primera clase → MLX embebido después; recomendador por hardware; overrides por reunión/idioma | Un Mac sin Apple Intelligence produce resumen 100% local (vía Ollama guiado o MLX); "Recomendado para tu Mac" correcto; `bench` compara engines |
+| **M13 — Copiloto en vivo (D26)** | Detección de preguntas en captions cerradas + tarjeta de respuesta (FM/RAG local; BYOK opt-in con disclosure); detector "te preguntaron" unificado. **Ventana competitiva: Teams Facilitator llega ~ago-sep 2026** | Pregunta de conocimiento → tarjeta < 5 s (Cluely real: 5–10 s); preguntas logísticas no generan tarjetas |
+| **M13b — Meeting health + Recipes** | Talk-time, interrupciones, ratio de preguntas (local); Recipes avanzadas; auto-detección de tipo de reunión → Recipe; brief pre-reunión desde calendario (patrón Granola Briefs) | Panel de salud por reunión; Recipe sugerida correcta en ≥ 3 tipos de reunión |
 
 ## Fase 3 — iOS/iPadOS (M14, ex-M7)
 
