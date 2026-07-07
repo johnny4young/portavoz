@@ -87,6 +87,8 @@ La segunda reunión (`8AA7DCCC…`, reproducida por parlantes, audífonos desde 
 
 Nota: el inglés indio se transcribe mal en vivo (Parakeet); el re-pase Whisper large-v3-turbo lo maneja mucho mejor — es la respuesta por ahora.
 
+Además (mientras el usuario estaba en su 3ª reunión): **(7) editor de lista para el vocabulario** (Enter añade, − quita; mismo storage) — `a27f711`; **(8) merge de micro-clusters en diarización** (`d70a9ed`): labels con <15 s de habla total ceden sus turnos al major temporalmente más cercano; "Me" nunca absorbe ni es absorbido (un "Me" fantasma contaminaría owners de action items). **Validado: la reunión real pasó de 11 → 4 speakers y AMI quedó intacto (7.6%, 2 speakers)**. ⚠️ La app instalada se construyó ANTES de (8) — reinstalar (`make-app.sh --release` + copiar) cuando no haya grabación en curso; mientras tanto el merge aplica vía `meetings refine`.
+
 ## Próximos pasos (en orden)
 
 **Verificaciones que aún necesitan al usuario (próxima reunión real):**
