@@ -4,12 +4,12 @@ import Foundation
 /// single-flight priority queue.
 ///
 /// The 3B Foundation Model is ONE shared resource: rolling summaries, the
-/// live copilot (D26), naming, RAG answers and refine re-summaries all want
+/// live companion (D26), naming, RAG answers and refine re-summaries all want
 /// it, and the ANE serializes generation anyway — issuing concurrent
 /// requests just buries the queueing inside the FM daemon where it can't be
 /// managed. Scheduling at the granularity of ONE model call keeps any queue
 /// wait bounded by the single call in flight (~1–4 s), which is what makes
-/// an interactive budget like the copilot's < 5 s attainable while a
+/// an interactive budget like the companion's < 5 s attainable while a
 /// background map-reduce chain runs: chains release the slot BETWEEN calls,
 /// so interactive work interleaves into the gaps.
 ///
@@ -19,9 +19,9 @@ public actor IntelligenceScheduler {
     public enum Priority: Int, Comparable, Sendable {
         /// Rolling-summary notes, refine re-summaries, embedding backfill.
         case background = 0
-        /// Copilot question-detection ticks: frequent, cheap, droppable.
+        /// Companion question-detection ticks: frequent, cheap, droppable.
         case live = 1
-        /// A human is waiting: copilot answers, naming, `ask`.
+        /// A human is waiting: companion answers, naming, `ask`.
         case interactive = 2
 
         public static func < (lhs: Self, rhs: Self) -> Bool {

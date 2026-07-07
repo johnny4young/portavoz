@@ -108,6 +108,10 @@ swift test     # suite XCTest
 - Si los tests fallan con "no such module 'XCTest'": la máquina tiene CommandLineTools seleccionado. Correr con `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` o arreglar permanente: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
 - Targets mínimos: macOS 14.4 (process taps) / iOS 17 (WhisperKit). Features de OS 26 (SpeechAnalyzer, Foundation Models, AirPods studio recording) con degradación elegante.
 - CI: `.github/workflows/ci.yml` (macos-latest, build + test).
+- **Tests con modelos reales** (Foundation Models, Parakeet, Whisper): gated por `PORTAVOZ_MODEL_TESTS=1` (algunos además con `PORTAVOZ_TEST_WAV`/`PORTAVOZ_TEST_CONVERSATION_WAV`). CI **no** los corre — se validan localmente. **Regla de diseño verificada en la práctica**: todo prompt/schema del modelo de 3B se prueba contra el modelo REAL con estos tests; cazaron bugs que los tests puros no ven (el 3B trunca markdown opaco, inventa secciones si le das el resumen entero, ignora reglas abstractas sin ejemplos few-shot, y limpia un nombre de la pregunta si le pides que lo detecte — usar heurística determinística, no la opinión del modelo).
+- **Bench in-app**: SpeechAnalyzer **cuelga en procesos CLI sin bundle** (el daemon de Speech no responde sin contexto TCC/bundle). Su benchmark corre dentro de la app: `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds N] [--language xx]` (launch-arg oculto que imprime a stdout y sale).
+- Toolchain de referencia: Swift 6.3.3, macOS 26, Apple Silicon (M4 Max, 36 GB). Modelos en `~/Library/Application Support/Portavoz/Models/` (override con `--models-dir`).
+- El Python de python.org no trae certificados SSL (`urllib` falla) — usar `curl` en scripts.
 
 ## Contexto de negocio para decisiones técnicas
 

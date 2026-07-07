@@ -57,7 +57,7 @@ public enum QuestionHeuristic {
 /// One answered question, ready for the recording side panel. `source`
 /// names who produced the answer ("on-device" hoy; el proveedor BYOK
 /// cuando exista) — the disclosure D26 demands.
-public struct CopilotCard: Identifiable, Sendable, Equatable {
+public struct CompanionCard: Identifiable, Sendable, Equatable {
     public enum Kind: String, Sendable {
         case knowledge
         case context
@@ -97,16 +97,16 @@ public struct CopilotCard: Identifiable, Sendable, Equatable {
 #if canImport(FoundationModels)
 import FoundationModels
 
-/// The live copilot pipeline (D26): classify a candidate caption row,
+/// The live companion pipeline (D26): classify a candidate caption row,
 /// route by question type, answer on-device — or, for `knowledge`
 /// questions ONLY and with the user's explicit BYOK opt-in, via their
 /// external provider (a 3B model answers "¿var vs let?" fine; it is not
 /// who you want for anything deeper). Never speaks, never posts — it only
 /// produces cards the user may read, copy or dismiss.
 @available(macOS 26.0, iOS 26.0, *)
-public struct LiveCopilot: Sendable {
+public struct LiveCompanion: Sendable {
     /// Non-nil only when the user configured BYOK AND enabled it for the
-    /// copilot (D8/D26). Only the detected question text ever leaves the
+    /// companion (D8/D26). Only the detected question text ever leaves the
     /// device — never audio, never the rest of the meeting.
     private let byok: OpenAICompatibleChatClient?
 
@@ -127,7 +127,7 @@ public struct LiveCopilot: Sendable {
         recentTranscript: [RAGPassage],
         ownerName: String? = nil,
         askedAt: TimeInterval
-    ) async throws -> CopilotCard? {
+    ) async throws -> CompanionCard? {
         let mentioned = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
         guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else { return nil }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
@@ -150,7 +150,7 @@ public struct LiveCopilot: Sendable {
                     user: detected.question,
                     maxTokens: 400)
             {
-                return CopilotCard(
+                return CompanionCard(
                     question: detected.question,
                     answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),
                     kind: .knowledge, source: byok.providerLabel,
@@ -159,7 +159,7 @@ public struct LiveCopilot: Sendable {
             // No BYOK — or the cloud call failed (network, quota, endpoint
             // down): the card falls back on-device and says so in `source`.
             let answer = try await answerKnowledge(detected.question)
-            return CopilotCard(
+            return CompanionCard(
                 question: detected.question, answer: answer,
                 kind: .knowledge, source: "on-device",
                 directed: directed, askedAt: askedAt)
@@ -167,7 +167,7 @@ public struct LiveCopilot: Sendable {
             guard !recentTranscript.isEmpty else { return nil }
             let answer = try await RAGAnswerer().answer(
                 question: detected.question, passages: recentTranscript)
-            return CopilotCard(
+            return CompanionCard(
                 question: detected.question, answer: answer,
                 kind: .context, source: "on-device",
                 directed: directed, askedAt: askedAt)
@@ -177,7 +177,7 @@ public struct LiveCopilot: Sendable {
             // the owner by name ("Johnny, ¿nos acompañas mañana?"). Then
             // the ping IS the value: question only, no invented answer.
             guard directed else { return nil }
-            return CopilotCard(
+            return CompanionCard(
                 question: detected.question, answer: "",
                 kind: .context, source: "on-device",
                 directed: true, askedAt: askedAt)
@@ -218,7 +218,7 @@ public struct LiveCopilot: Sendable {
     ) async throws -> DetectedQuestion? {
         let session = LanguageModelSession(
             instructions: Self.classifierInstructions(ownerName: ownerName))
-        return try await IntelligenceScheduler.shared.run(.live, key: "copilot-detect") {
+        return try await IntelligenceScheduler.shared.run(.live, key: "companion-detect") {
             let response = try await session.respond(
                 to: "Caption: \"\(candidate)\"",
                 generating: DetectedQuestion.self,

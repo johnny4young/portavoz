@@ -4,7 +4,7 @@ import XCTest
 @testable import IntelligenceKit
 
 /// The scheduler is pure concurrency (no FM dependency), so every property
-/// that makes the copilot's latency budget attainable is testable here.
+/// that makes the companion's latency budget attainable is testable here.
 final class IntelligenceSchedulerTests: XCTestCase {
     /// Records completion order across concurrent jobs.
     private actor Log {

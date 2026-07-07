@@ -29,8 +29,8 @@ Documentación **as-built** de Portavoz: describe lo que el código hace HOY, ve
 - [../ROADMAP.md](../ROADMAP.md) — fases y milestones con criterios de aceptación.
 - [../PRODUCT.md](../PRODUCT.md) — visión, mapa competitivo, FREE/PRO.
 - [../IOS.md](../IOS.md) — aterrizaje técnico de la fase iOS.
-- [../GAPS.md](../GAPS.md) — análisis de brechas: qué falta para talla mundial.
-- [../HANDOFF.md](../HANDOFF.md) — SOLO estado de sesión (qué se hizo, qué sigue). El conocimiento técnico durable vive aquí, en specs/.
+- [../GAPS.md](../GAPS.md) — análisis de brechas + verificación de campo pendiente.
+- [../ROADMAP.md](../ROADMAP.md) abre con **"Estado actual y siguiente paso"** — el estado del proyecto se lee ahí (no hay archivo de traspaso de sesión).
 
 ## Reglas del repo (para agentes)
 

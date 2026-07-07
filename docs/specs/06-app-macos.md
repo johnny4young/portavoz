@@ -28,7 +28,7 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 - **Refinar (D7 in-app)**: re-transcribe ambos canales con Whisper (+vocabulario), re-diariza (merge de micro-clusters), y presenta **DRAFT con sheet de comparación** (segmentos/hablantes/habla cubierta/muestra + warning rojo si cubre < 50% del habla actual) — **nada se aplica sin "Aplicar"** (un refine defectuoso reemplazó una reunión real; el draft-flow y los tombstones son la doble defensa). Al aplicar: `replaceCast` + regenerar resumen.
 - Exportar: Markdown / PDF (CoreText puro, compila para iOS) / **Gist secreto** con confirmación off-device explícita.
 
-**SettingsView (⌘,)**: Audio (toggle AEC) · Grabaciones (carpeta configurable con migración y progreso) · Títulos (plantilla con preview) · Vocabulario (editor de lista: Enter añade, − quita) · Mi voz (enrolar 12 s / borrar — destruye archivo+llave) · Modelo externo BYOK (endpoint/modelo en defaults, key en Keychain, toggle de opt-in del Copiloto deshabilitado hasta configurar todo; eliminar la key lo apaga — spec 04) · GitHub (token en Keychain).
+**SettingsView (⌘,)**: Audio (toggle AEC) · Grabaciones (carpeta configurable con migración y progreso) · Títulos (plantilla con help popover de tokens, chips insertables, botón Restablecer y preview en vivo) · Vocabulario (editor de lista: Enter añade, − quita) · Mi voz (enrolar 12 s / borrar — destruye archivo+llave) · Modelo externo BYOK (endpoint/modelo en defaults, key en Keychain, toggle de opt-in del Companion deshabilitado hasta configurar todo; eliminar la key lo apaga — spec 04) · GitHub (token en Keychain).
 
 ## Verificado en el mundo real (jul 2026)
 
@@ -37,8 +37,6 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 ## Límites conocidos
 
 1. **Sin playback de audio** (M11/D27) ni waveform ni clips.
-2. **Sin panel de notas** durante la grabación (M10/D28 — ContextItem existe huérfano).
+2. **Sin panel de notas UI** durante la grabación (M10/D28 — el núcleo del tejido notas→resumen está implementado y `addContextNote()` cableado; solo falta el TextField + lista en `RecordingView` y el render negro/gris en el detalle).
 3. Sin HUD flotante/menu bar: grabar exige la ventana completa (los competidores tienen panel compacto).
 4. UI solo en español — sin localización (GAPS).
-5. Rolling summary, refine y (futuro) Copiloto comparten FM sin política de prioridad.
-6. `RecordingController` guarda el WAV desde el primer chunk pero el header puede quedar inválido en crash (spec 01, M11).

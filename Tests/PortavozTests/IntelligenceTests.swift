@@ -240,7 +240,7 @@ final class FoundationModelIntegrationTests: XCTestCase {
             throw XCTSkip("Apple Intelligence unavailable: \(reason)")
         }
 
-        let copilot = LiveCopilot()
+        let companion = LiveCompanion()
         let meeting = MeetingID()
         let passages = [
             RAGPassage(
@@ -253,19 +253,19 @@ final class FoundationModelIntegrationTests: XCTestCase {
         let ask = "Johnny, ¿nos acompañas mañana a la demo con el cliente?"
 
         // Named → card, marked directed, whatever branch answered it.
-        let ping = try await copilot.process(
+        let ping = try await companion.process(
             candidate: ask, recentTranscript: passages,
             ownerName: "Johnny Young", askedAt: 12)
         XCTAssertNotNil(ping, "a question aimed at the owner by name must never be dropped")
         XCTAssertEqual(ping?.directed, true)
 
         // No owner name → the logistics filter keeps doing its job.
-        let dropped = try await copilot.process(
+        let dropped = try await companion.process(
             candidate: ask, recentTranscript: passages, askedAt: 12)
         XCTAssertNil(dropped, "logistics without a name match must stay silent: \(String(describing: dropped))")
 
         // Directed knowledge still gets a real answer.
-        let knowledge = try await copilot.process(
+        let knowledge = try await companion.process(
             candidate: "Johnny, ¿cuál es la diferencia entre var y let en Swift?",
             recentTranscript: passages, ownerName: "Johnny Young", askedAt: 20)
         XCTAssertEqual(knowledge?.directed, true)
@@ -504,21 +504,21 @@ final class BYOKSettingsTests: XCTestCase {
         XCTAssertNotNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: "k"))
     }
 
-    /// The copilot only ever gets a client behind the explicit opt-in
+    /// The companion only ever gets a client behind the explicit opt-in
     /// (D8/D26) — configuration alone is not consent.
-    func testCopilotClientRequiresTheExplicitOptIn() throws {
+    func testCompanionClientRequiresTheExplicitOptIn() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "byok-tests"))
         defer { defaults.removePersistentDomain(forName: "byok-tests") }
         defaults.set("https://a.com/v1", forKey: BYOKSettings.endpointKey)
         defaults.set("m", forKey: BYOKSettings.modelKey)
 
-        defaults.set(false, forKey: BYOKSettings.copilotEnabledKey)
-        XCTAssertNil(BYOKSettings.copilotClient(defaults: defaults, apiKey: "k"))
+        defaults.set(false, forKey: BYOKSettings.companionEnabledKey)
+        XCTAssertNil(BYOKSettings.companionClient(defaults: defaults, apiKey: "k"))
 
-        defaults.set(true, forKey: BYOKSettings.copilotEnabledKey)
-        XCTAssertNotNil(BYOKSettings.copilotClient(defaults: defaults, apiKey: "k"))
+        defaults.set(true, forKey: BYOKSettings.companionEnabledKey)
+        XCTAssertNotNil(BYOKSettings.companionClient(defaults: defaults, apiKey: "k"))
         // Opt-in without a key degrades to nil (on-device), never an error.
-        XCTAssertNil(BYOKSettings.copilotClient(defaults: defaults, apiKey: nil))
+        XCTAssertNil(BYOKSettings.companionClient(defaults: defaults, apiKey: nil))
     }
 }
 
@@ -728,11 +728,11 @@ final class QuestionHeuristicTests: XCTestCase {
     @available(macOS 26.0, *)
     func testClassifierInstructionsCarryTheOwnerNameOnlyWhenKnown() throws {
         guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
-        let named = LiveCopilot.classifierInstructions(ownerName: "Johnny")
+        let named = LiveCompanion.classifierInstructions(ownerName: "Johnny")
         XCTAssertTrue(named.contains("\"Johnny\""))
         XCTAssertTrue(named.contains("EXCEPTION"))
 
-        let anonymous = LiveCopilot.classifierInstructions(ownerName: nil)
+        let anonymous = LiveCompanion.classifierInstructions(ownerName: nil)
         XCTAssertFalse(anonymous.contains("EXCEPTION"))
         XCTAssertTrue(anonymous.contains("NEVER qualify"))
     }

@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var newTerm = ""
 
     @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
+    @State private var showTitleHelp = false
 
     @State private var recordingsRoot = RecordingsLocation.shared.currentRoot()
     @State private var migrationStatus: String?
@@ -33,12 +34,12 @@ struct SettingsView: View {
 
     @AppStorage(BYOKSettings.endpointKey) private var byokEndpoint = ""
     @AppStorage(BYOKSettings.modelKey) private var byokModel = ""
-    @AppStorage(BYOKSettings.copilotEnabledKey) private var copilotBYOKEnabled = false
+    @AppStorage(BYOKSettings.companionEnabledKey) private var companionBYOKEnabled = false
     @State private var byokKey = ""
     @State private var hasStoredBYOKKey = false
     @State private var byokMessage: String?
 
-    @AppStorage("copilotUserName") private var copilotUserName = ""
+    @AppStorage("companionUserName") private var companionUserName = ""
 
     var body: some View {
         Form {
@@ -47,7 +48,7 @@ struct SettingsView: View {
             titleSection
             vocabularySection
             voiceSection
-            copilotSection
+            companionSection
             byokSection
             gitHubSection
         }
@@ -157,19 +158,85 @@ struct SettingsView: View {
 
     // MARK: - Títulos
 
+    /// The template tokens with a live example each, so the help and the
+    /// insertable chips stay in sync from one source.
+    private var titleTokens: [(token: String, example: String, hint: String)] {
+        [
+            ("{date}", "2026-07-07", "Fecha ISO (ordena sola la biblioteca)"),
+            ("{time}", "10.47", "Hora de inicio"),
+            ("{seq}", "01", "Secuencia del día (01, 02…)"),
+            ("{weekday}", "martes", "Día de la semana"),
+        ]
+    }
+
     private var titleSection: some View {
         Section("Títulos de grabación") {
-            TextField("Plantilla", text: $titleTemplate)
-                .font(.body.monospaced())
+            HStack {
+                TextField("Plantilla", text: $titleTemplate)
+                    .font(.body.monospaced())
+                Button {
+                    showTitleHelp.toggle()
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Ver los tokens disponibles y ejemplos")
+                .popover(isPresented: $showTitleHelp, arrowEdge: .bottom) {
+                    titleHelpPopover
+                }
+            }
+            // Insertable chips: click to append the token to the template.
+            // Discoverability beats a buried caption — you see and use the
+            // tokens without reading anything.
+            HStack(spacing: 6) {
+                ForEach(titleTokens, id: \.token) { item in
+                    Button {
+                        titleTemplate += item.token
+                    } label: {
+                        Text(item.token).font(.caption.monospaced())
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("\(item.hint) — ej. \(item.example)")
+                }
+                Spacer()
+                Button("Restablecer") { titleTemplate = TitleTemplate.defaultTemplate }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .disabled(titleTemplate == TitleTemplate.defaultTemplate)
+            }
             LabeledContent(
                 "Vista previa",
                 value: TitleTemplate.render(titleTemplate, date: .now, sequence: 3))
+        }
+    }
+
+    private var titleHelpPopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Tokens de plantilla").font(.headline)
+            ForEach(titleTokens, id: \.token) { item in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(item.token)
+                        .font(.callout.monospaced())
+                        .frame(width: 90, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.hint)
+                        Text("ej. \(item.example)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Divider()
             Text(
-                "Tokens: {date} → 2026-07-07 · {time} → 10.47 · {seq} → secuencia del día (01, 02…) · {weekday} → día de la semana. La fecha ISO primero hace que la biblioteca ordene sola."
+                "El resto del texto se conserva tal cual. Poner la fecha ISO primero hace que la biblioteca ordene las reuniones sola."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(14)
+        .frame(width: 320)
     }
 
     // MARK: - Vocabulario
@@ -294,14 +361,14 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Copiloto (D26)
+    // MARK: - Companion (D26)
 
-    private var copilotSection: some View {
-        Section("Copiloto") {
-            TextField("Tu nombre en las reuniones", text: $copilotUserName, prompt: Text(NSFullUserName()))
+    private var companionSection: some View {
+        Section("Companion") {
+            TextField("Tu nombre en las reuniones", text: $companionUserName, prompt: Text(NSFullUserName()))
                 .autocorrectionDisabled()
             Text(
-                "Cuando alguien te pregunta por tu nombre (\"\(copilotUserName.isEmpty ? NSFullUserName() : copilotUserName), ¿qué opinas?\"), el Copiloto resalta la tarjeta con \"te preguntaron\" aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
+                "Cuando alguien te pregunta por tu nombre (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), ¿qué opinas?\"), el Companion resalta la tarjeta con \"te preguntaron\" aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -311,7 +378,7 @@ struct SettingsView: View {
     // MARK: - BYOK (D8/D26)
 
     /// The endpoint/model are visible preferences; the key is Keychain-only.
-    /// The copilot toggle is the ONLY thing that lets a question leave the
+    /// The companion toggle is the ONLY thing that lets a question leave the
     /// device, and it stays disabled until everything is configured.
     private var byokReady: Bool {
         hasStoredBYOKKey
@@ -345,18 +412,18 @@ struct SettingsView: View {
                     Button("Eliminar key", role: .destructive) {
                         try? SecretStore.delete(service: SecretStore.byokAPIKeyService)
                         hasStoredBYOKKey = false
-                        copilotBYOKEnabled = false
-                        byokMessage = "Key eliminada. El Copiloto vuelve a responder solo on-device."
+                        companionBYOKEnabled = false
+                        byokMessage = "Key eliminada. El Companion vuelve a responder solo on-device."
                     }
                 }
             }
             Toggle(
-                "Responder las preguntas de conocimiento del Copiloto con este proveedor",
-                isOn: $copilotBYOKEnabled
+                "Responder las preguntas de conocimiento del Companion con este proveedor",
+                isOn: $companionBYOKEnabled
             )
             .disabled(!byokReady)
             Text(
-                "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, el Copiloto envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
+                "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, el Companion envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

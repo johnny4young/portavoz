@@ -31,10 +31,10 @@ final class RecordingController {
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
     private(set) var contextItems: [ContextItem] = []
-    /// Copilot answer cards (D26), newest last. Opt-in per recording.
-    private(set) var copilotCards: [CopilotCard] = []
-    var copilotEnabled = UserDefaults.standard.bool(forKey: "copilotEnabled") {
-        didSet { UserDefaults.standard.set(copilotEnabled, forKey: "copilotEnabled") }
+    /// Companion answer cards (D26), newest last. Opt-in per recording.
+    private(set) var companionCards: [CompanionCard] = []
+    var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
+        didSet { UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled") }
     }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
@@ -53,7 +53,7 @@ final class RecordingController {
     private var meetingID = MeetingID()
     private var audioRelative = ""
     /// id of the newest caption row — when it changes, the PREVIOUS row
-    /// just closed and becomes a copilot candidate.
+    /// just closed and becomes a companion candidate.
     private var lastOpenRowID: UUID?
 
     /// User-defined domain terms (Ajustes → Vocabulario): glossary for the
@@ -130,7 +130,7 @@ final class RecordingController {
         liveSummary = nil
         summarizedCount = 0
         liveNotes = []
-        copilotCards = []
+        companionCards = []
         contextItems = []
         lastOpenRowID = nil
         phase = .recording
@@ -151,21 +151,21 @@ final class RecordingController {
         }
     }
 
-    // MARK: - Copiloto (D26)
+    // MARK: - Companion (D26)
 
     /// The coalescer only ever grows the NEWEST row; when the newest row's
     /// id changes, the previous one closed for good — that's the moment a
-    /// caption becomes a copilot candidate (never re-processed, never
+    /// caption becomes a companion candidate (never re-processed, never
     /// partial).
     private func detectClosedRow() {
         guard captions.last?.id != lastOpenRowID else { return }
         let previousOpen = lastOpenRowID
         lastOpenRowID = captions.last?.id
-        guard copilotEnabled, phase == .recording else { return }
+        guard companionEnabled, phase == .recording else { return }
         guard #available(macOS 26.0, *) else { return }
         // "Te preguntaron" (D26): una mención de tu nombre abre la puerta
         // aunque la frase no parezca pregunta ("Johnny, cuéntanos del deploy").
-        let ownerName = Self.copilotOwnerName()
+        let ownerName = Self.companionOwnerName()
         guard
             let closed = captions.last(where: { $0.id == previousOpen }),
             closed.channel == .system,
@@ -177,18 +177,18 @@ final class RecordingController {
         let candidate = closed.text
         let askedAt = closed.startTime
         // BYOK solo si el usuario lo configuró Y activó el opt-in del
-        // Copiloto (D8/D26); si no, el cliente es nil y todo queda on-device.
-        let copilot = LiveCopilot(byok: BYOKSettings.copilotClient())
+        // Companion (D8/D26); si no, el cliente es nil y todo queda on-device.
+        let companion = LiveCompanion(byok: BYOKSettings.companionClient())
         Task { @MainActor [weak self] in
             guard let self else { return }
             guard
-                let card = try? await copilot.process(
+                let card = try? await companion.process(
                     candidate: candidate, recentTranscript: passages,
                     ownerName: ownerName, askedAt: askedAt),
                 self.phase == .recording,
-                self.copilotCards.last?.question != card.question
+                self.companionCards.last?.question != card.question
             else { return }
-            self.copilotCards.append(card)
+            self.companionCards.append(card)
         }
     }
 
@@ -205,14 +205,14 @@ final class RecordingController {
         }
     }
 
-    func dismissCopilotCard(_ id: UUID) {
-        copilotCards.removeAll { $0.id == id }
+    func dismissCompanionCard(_ id: UUID) {
+        companionCards.removeAll { $0.id == id }
     }
 
     /// El nombre con el que la reunión se dirige a ti: el de Ajustes si lo
     /// configuraste, si no el de tu cuenta de macOS. nil = detector apagado.
-    static func copilotOwnerName() -> String? {
-        let custom = (UserDefaults.standard.string(forKey: "copilotUserName") ?? "")
+    static func companionOwnerName() -> String? {
+        let custom = (UserDefaults.standard.string(forKey: "companionUserName") ?? "")
             .trimmingCharacters(in: .whitespaces)
         let name = custom.isEmpty ? NSFullUserName() : custom
         return name.isEmpty ? nil : name

@@ -9,7 +9,7 @@ extension SecretStore {
 /// Minimal client for any OpenAI-compatible `/chat/completions` endpoint
 /// (OpenAI, Groq, OpenRouter, Ollama, LM Studio…): one system + one user
 /// message in, the assistant's text out. It is the BYOK building block
-/// shared by the summary provider and the copilot — D8 applies to every
+/// shared by the summary provider and the companion — D8 applies to every
 /// caller: using it is an explicit, visibly-labeled user choice, never a
 /// silent default.
 public struct OpenAICompatibleChatClient: Sendable {
@@ -100,7 +100,7 @@ public struct OpenAICompatibleChatClient: Sendable {
 public enum BYOKSettings {
     public static let endpointKey = "byokEndpoint"
     public static let modelKey = "byokModel"
-    public static let copilotEnabledKey = "copilotBYOKEnabled"
+    public static let companionEnabledKey = "companionBYOKEnabled"
 
     /// A usable http(s) URL with a host, or nil. The UI uses this to gate
     /// the opt-in toggle; `client` uses it to refuse half-configured state.
@@ -127,21 +127,21 @@ public enum BYOKSettings {
         return OpenAICompatibleChatClient(endpoint: url, model: trimmedModel, apiKey: apiKey)
     }
 
-    /// The copilot's BYOK client — non-nil ONLY when the user configured
-    /// endpoint+model+key AND flipped the copilot opt-in (D26). Missing
+    /// The companion's BYOK client — non-nil ONLY when the user configured
+    /// endpoint+model+key AND flipped the companion opt-in (D26). Missing
     /// pieces degrade to on-device, never to an error.
-    public static func copilotClient(
+    public static func companionClient(
         defaults: UserDefaults = .standard
     ) -> OpenAICompatibleChatClient? {
-        copilotClient(
+        companionClient(
             defaults: defaults,
             apiKey: (try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil)
     }
 
-    static func copilotClient(
+    static func companionClient(
         defaults: UserDefaults, apiKey: String?
     ) -> OpenAICompatibleChatClient? {
-        guard defaults.bool(forKey: copilotEnabledKey) else { return nil }
+        guard defaults.bool(forKey: companionEnabledKey) else { return nil }
         return client(
             endpoint: defaults.string(forKey: endpointKey) ?? "",
             model: defaults.string(forKey: modelKey) ?? "",

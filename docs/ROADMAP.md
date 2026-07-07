@@ -2,6 +2,16 @@
 
 Each milestone is independently shippable and has a measurable acceptance criterion.
 
+## Estado actual y siguiente paso (jul 2026)
+
+Fuente única del progreso — antes vivía en un HANDOFF de sesión; ahora el estado se lee aquí, las decisiones en [DECISIONS.md](DECISIONS.md), lo as-built en [specs/](specs/README.md) y las brechas + verificación de campo en [GAPS.md](GAPS.md).
+
+- **Fase 1 (M0–M6, M8 núcleo): construida y medida en verde** — todos los criterios de aceptación cumplidos (drift 4 ms, lag p95 0.53 s, DER AMI 7.6%, resumen 3.8 s). 0.1.0 firmada + notarizada, usada en 4 reuniones reales.
+- **Fase 2: el NÚCLEO de M10, M12 y M13 ya está implementado y testeado** (jul 2026, día Fable) — notas de coautoría (tejido notas→resumen), caché por fingerprint + pivote de traducción, BYOK, y el Companion en vivo completo (detección + routing + BYOK + "te preguntaron"), todo sobre el scheduler de prioridad D29. Lo que falta de cada uno está en su fila abajo.
+- **Siguiente paso concreto → M9 (publicación)**, la única brecha de impacto 1 (GAPS #1) y bloqueante de crecimiento: (1) `git push` a `git@github.com:johnny4young/portavoz.git`; (2) `gh release create v0.1.0 dist/release/*`; (3) tap `johnny4young/homebrew-portavoz` con `dist/release/portavoz.rb`; (4) README con benchmarks reproducibles (`bench --suite full` + corpus sintético, cierra T4); (5) String Catalogs (localización EN antes de publicar, GAPS #5); (6) SwiftLint + SECURITY.md + issue templates.
+- **Verificación de campo pendiente** (features hechas, criterio final con el usuario): lista en [GAPS.md](GAPS.md#verificación-de-campo-pendiente).
+- **Deuda menor viva**: FluidAudio pineado a revisión → volver a `.upToNextMinor` cuando salga > 0.15.4 (GAPS T9); política de micro-clusters de diarización a evaluar contra el RTTM corregido; `meetings refine` podría aceptar `--threshold`.
+
 ## Fase 1 — Fundación local-first (M0–M6, M8 núcleo) ✅ construida
 
 | Milestone | Scope | Acceptance criterion | Estado |
@@ -17,7 +27,7 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 ## Fase 2 — Talla mundial en la Mac (0.2–0.4)
 
-La fase donde el usuario siente que **nativo vale la pena**. Reordenada tras la ronda 2 de análisis: publicar PRIMERO (los stars componen: Meetily 20.5K, Anarlog 8.8K, MacParakeet 451 en 5 meses — cada mes privado es crecimiento regalado), y las notas de coautoría (D28) entran antes que el Copiloto porque son el patrón más validado de la categoría.
+La fase donde el usuario siente que **nativo vale la pena**. Reordenada tras la ronda 2 de análisis: publicar PRIMERO (los stars componen: Meetily 20.5K, Anarlog 8.8K, MacParakeet 451 en 5 meses — cada mes privado es crecimiento regalado), y las notas de coautoría (D28) entran antes que el Companion porque son el patrón más validado de la categoría.
 
 | Milestone | Scope | Acceptance criterion |
 |---|---|---|
@@ -25,7 +35,7 @@ La fase donde el usuario siente que **nativo vale la pena**. Reordenada tras la 
 | **M10 — Notas de coautoría (D28)** | **Núcleo implementado (jul 2026)**: ContextItem en Core, tabla v3, tejido notas→prompt con presupuesto del 3B, convención "▸" de coautoría, `addContextNote()` + persistencia + regenerate cableados. **Falta: el panel de UI en grabación** (Opus) y el render negro/gris en el detalle | Una reunión con 5 notas crudas produce un resumen que las expande sin contradecirlas, con marcas de coautoría |
 | **M11 — Audio first-class (D27)** | AudioPlaybackKit: player sincronizado (click-para-saltar, highlight), waveform por speaker, clips, skip-silencio; **crash-safety del contenedor (CAF/fragmentado)**; transcode AAC post-refine; import de audio externo | Reproducir cualquier reunión con highlight sincronizado; un `kill -9` a los 30 min no pierde más de 1 s de audio; clip de 30 s exportado en < 2 s |
 | **M12 — Motores plurales (D25)** | **Implementado (jul 2026): caché de resumen por fingerprint + pivote de traducción (regenerar en otro idioma traduce el snapshot en ~2.4 s en vez de re-resumir) y BYOK con key en Keychain.** Falta: SpeechAnalyzer benchmarkeado en el rol VIVO (no calidad); Whisper 626MB para poco disco; integración Ollama de primera clase → MLX embebido después; recomendador por hardware; overrides por reunión/idioma | Un Mac sin Apple Intelligence produce resumen 100% local (vía Ollama guiado o MLX); "Recomendado para tu Mac" correcto; `bench` compara engines |
-| **M13 — Copiloto en vivo (D26)** | **Núcleo implementado (jul 2026)**: heurística+clasificador FM+routing knowledge/context/logistics, tarjetas con copiar/descartar, toggle por grabación, sobre el scheduler D29. BYOK para knowledge implementado (opt-in D8, disclosure por tarjeta, fallback on-device). Detector "te preguntaron" unificado (gate de nombre determinístico + ping naranja). Falta: verificación de campo del presupuesto <5 s. **Ventana competitiva: Teams Facilitator ~ago-sep 2026** | Pregunta de conocimiento → tarjeta < 5 s (Cluely real: 5–10 s); preguntas logísticas no generan tarjetas |
+| **M13 — Companion en vivo (D26)** | **Núcleo implementado (jul 2026)**: heurística+clasificador FM+routing knowledge/context/logistics, tarjetas con copiar/descartar, toggle por grabación, sobre el scheduler D29. BYOK para knowledge implementado (opt-in D8, disclosure por tarjeta, fallback on-device). Detector "te preguntaron" unificado (gate de nombre determinístico + ping naranja). Falta: verificación de campo del presupuesto <5 s. **Ventana competitiva: Teams Facilitator ~ago-sep 2026** | Pregunta de conocimiento → tarjeta < 5 s (Cluely real: 5–10 s); preguntas logísticas no generan tarjetas |
 | **M13b — Meeting health + Recipes** | Talk-time, interrupciones, ratio de preguntas (local); Recipes avanzadas; auto-detección de tipo de reunión → Recipe; brief pre-reunión desde calendario (patrón Granola Briefs) | Panel de salud por reunión; Recipe sugerida correcta en ≥ 3 tipos de reunión |
 
 ## Fase 3 — iOS/iPadOS (M14, ex-M7)

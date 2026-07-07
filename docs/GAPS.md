@@ -22,7 +22,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | # | Brecha | Riesgo | Plan |
 |---|---|---|---|
 | T1 | ~~Crash-safety del WAV~~ | **RESUELTO**: verificado que WAV+kill -9 = 0 bytes legibles; captura migrada a CAF (kill -9 → 5.23 s de 6 s conservados); lectores con fallback a .wav legado | ✅ jul 2026 |
-| T2 | **Taps + VPIO en el mismo proceso** | MacParakeet los declaró incompatibles "confiablemente"; tenemos 1 muestra OK | Vigilancia activa (HANDOFF) + plan B offline echo-cancel (D27) |
+| T2 | **Taps + VPIO en el mismo proceso** | MacParakeet los declaró incompatibles "confiablemente"; tenemos 1 muestra OK | Vigilancia activa (ver verificación de campo, abajo) + plan B offline echo-cancel (D27) |
 | T3 | ~~FM sin política de prioridad~~ | **RESUELTO (D29)**: `IntelligenceScheduler` single-flight con prioridades, latest-wins por key, 7 tests | ✅ jul 2026 |
 | T4 | **Números de perf sin medir**: cold start, RAM grabando, FTS a 1k reuniones, batería | targets publicados sin evidencia — inaceptable para el README de M9 | `portavoz-cli bench --suite full` + corpus sintético (M9) |
 | T5 | RAG brute-force O(n) | a 1,000+ reuniones el `ask` se degrada | medir primero (T4); sqlite-vec si falla el target |
@@ -35,9 +35,23 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 ## Brechas de posicionamiento (contra el mapa competitivo)
 
 - **Velocidad de publicación**: Meetily 20.5K stars / Anarlog 8.8K / MacParakeet 451 en 5 meses — cada semana privada regala terreno. El nicho "Swift nativo + MIT" está VACÍO (MacParakeet es GPL).
-- **Copiloto con reloj**: Teams "Facilitator" llega ~ago-sep 2026. Ser primeros en meeting-notes local importa (M13).
+- **Companion con reloj**: Teams "Facilitator" llega ~ago-sep 2026. Ser primeros en meeting-notes local importa (M13).
 - **Benchmarks públicos**: MacParakeet publica WER/velocidad/memoria reproducibles en el README — es el estándar de credibilidad del nicho. Tenemos los harnesses; falta la disciplina de publicarlos (M9).
 - **La historia del archivo**: Granola cobra por acceder a tus notas de >30 días. Nuestro pitch inverso — "tu historial jamás es rehén" — no está escrito en ningún README todavía.
+
+## Verificación de campo pendiente (necesita al usuario, no es deuda de código)
+
+Features implementadas y testeadas cuyo criterio final solo se cierra con una reunión real:
+
+- **Companion < 5 s** (D26): en una reunión real, una pregunta de conocimiento debe producir tarjeta en < 5 s; validar también el detector "te preguntaron" (mención de tu nombre → ping) y, si configuraste BYOK, la ruta externa con disclosure.
+- **Taps + VPIO conviviendo** (T2): vigilar el canal system con AEC activo (glitches, dropouts, silencio). 1 reunión OK no es evidencia. Si aparece, plan B en D27.
+- **AEC con parlantes**: grabar por parlantes y hablar — tus palabras salen como "Yo", los demás NO se duplican. Si el mic suena raro, Ajustes → desactivar "Cancelación de eco".
+- **Cambio de dispositivo**: conectar/desconectar audífonos a mitad — el canal mic sobrevive (hueco de silencio, no muerte).
+- **DER formal M3**: corregir la columna Speaker del RTTM borrador en `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → medir con `portavoz-cli der --file system.wav --reference <rttm corregido>`.
+- **Pivote de traducción** (D25): regenerar un resumen en otro idioma debe traducir el snapshot existente (rápido) en vez de re-resumir; verificar que conserva estructura y action items.
+- **Captions traducidos**: grabar con el picker "Traducir → …" (la 1ª vez macOS puede pedir descargar el par de idiomas).
+- **Nombres por calendario**: evento con asistentes alrededor de una grabación → "Sugerir nombres ✦" (pide TCC de calendario).
+- **Export real**: `export --gist` / "Publicar como Gist" con token; `issues --github/--linear` con tokens contra un repo de prueba.
 
 ## Lo que NO son brechas (decisiones deliberadas — no "arreglar")
 

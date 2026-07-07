@@ -28,9 +28,9 @@ struct RecordingView: View {
                 header
                 HStack(alignment: .top, spacing: 12) {
                     captionsList
-                    if !controller.copilotCards.isEmpty || controller.liveSummary != nil {
+                    if !controller.companionCards.isEmpty || controller.liveSummary != nil {
                         VStack(spacing: 10) {
-                            copilotCardsPanel
+                            companionCardsPanel
                             if let live = controller.liveSummary {
                                 liveSummaryPanel(live)
                             }
@@ -108,8 +108,8 @@ struct RecordingView: View {
                     .fixedSize()
                 }
                 if #available(macOS 26.0, *) {
-                    Toggle(isOn: copilotBinding) {
-                        Label("Copiloto", systemImage: "questionmark.bubble")
+                    Toggle(isOn: companionBinding) {
+                        Label("Companion", systemImage: "questionmark.bubble")
                     }
                     .toggleStyle(.checkbox)
                     .help(
@@ -123,10 +123,10 @@ struct RecordingView: View {
         .padding(.top, 24)
     }
 
-    private var copilotBinding: Binding<Bool> {
+    private var companionBinding: Binding<Bool> {
         Binding(
-            get: { controller.copilotEnabled },
-            set: { controller.copilotEnabled = $0 }
+            get: { controller.companionEnabled },
+            set: { controller.companionEnabled = $0 }
         )
     }
 
@@ -151,17 +151,17 @@ struct RecordingView: View {
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    /// The copilot's answer cards (D26): question detected in the
+    /// The companion's answer cards (D26): question detected in the
     /// conversation → suggested answer. Read, copy or dismiss — never acts
     /// on its own.
     @ViewBuilder
-    private var copilotCardsPanel: some View {
-        ForEach(controller.copilotCards.suffix(3)) { card in
-            copilotCardView(card)
+    private var companionCardsPanel: some View {
+        ForEach(controller.companionCards.suffix(3)) { card in
+            companionCardView(card)
         }
     }
 
-    private func copilotCardView(_ card: CopilotCard) -> some View {
+    private func companionCardView(_ card: CompanionCard) -> some View {
         let tint: Color = card.directed ? .orange : .accentColor
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
@@ -169,7 +169,7 @@ struct RecordingView: View {
                     .font(.callout.weight(.semibold))
                 Spacer(minLength: 4)
                 Button {
-                    controller.dismissCopilotCard(card.id)
+                    controller.dismissCompanionCard(card.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                 }
@@ -181,7 +181,7 @@ struct RecordingView: View {
                     .textSelection(.enabled)
             }
             HStack {
-                Text(copilotCardTag(card))
+                Text(companionCardTag(card))
                     .font(.caption2)
                     .foregroundStyle(card.directed ? tint : Color.secondary)
                 Spacer()
@@ -207,7 +207,7 @@ struct RecordingView: View {
         )
     }
 
-    private func copilotCardTag(_ card: CopilotCard) -> String {
+    private func companionCardTag(_ card: CompanionCard) -> String {
         let base = card.kind == .context ? "de esta reunión" : "conocimiento · \(card.source)"
         if card.directed {
             return card.answer.isEmpty ? "te preguntaron" : "te preguntaron · \(base)"
