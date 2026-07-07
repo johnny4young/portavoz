@@ -27,6 +27,10 @@ final class RecordingController {
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
     private(set) var liveSummary: String?
+    /// Live caption translations by segment id (M6, Translation framework).
+    var translations: [UUID: String] = [:]
+    /// BCP-47 target for live translation; nil = off.
+    var translationTarget: String?
 
     private var session: RecordingSession?
     private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]

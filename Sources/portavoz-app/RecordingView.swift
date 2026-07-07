@@ -59,6 +59,7 @@ struct RecordingView: View {
             }
         }
         .navigationTitle("Grabación")
+        .liveTranslation(controller)
         .task { await controller.start(services: services) }
     }
 
@@ -83,11 +84,29 @@ struct RecordingView: View {
                         .font(.system(size: 40, weight: .medium).monospacedDigit())
                 }
             }
-            Label("Grabando mic + audio del sistema — todo queda en tu Mac", systemImage: "waveform")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Label("Grabando mic + audio del sistema — todo queda en tu Mac", systemImage: "waveform")
+                if #available(macOS 15.0, *) {
+                    Picker("Traducir", selection: translationBinding) {
+                        Text("Sin traducción").tag(String?.none)
+                        Text("→ Español").tag(String?.some("es"))
+                        Text("→ English").tag(String?.some("en"))
+                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .padding(.top, 24)
+    }
+
+    private var translationBinding: Binding<String?> {
+        Binding(
+            get: { controller.translationTarget },
+            set: { controller.translationTarget = $0 }
+        )
     }
 
     private func liveSummaryPanel(_ markdown: String) -> some View {
@@ -116,8 +135,15 @@ struct RecordingView: View {
                                 .foregroundStyle(
                                     segment.channel == .microphone ? Color.accentColor : .secondary)
                                 .frame(width: 40, alignment: .trailing)
-                            Text(segment.text)
-                                .foregroundStyle(segment.isFinal ? .primary : .secondary)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(segment.text)
+                                    .foregroundStyle(segment.isFinal ? .primary : .secondary)
+                                if let translated = controller.translations[segment.id] {
+                                    Text(translated)
+                                        .font(.callout)
+                                        .foregroundStyle(Color.accentColor.opacity(0.9))
+                                }
+                            }
                         }
                         .id(segment.id)
                     }
