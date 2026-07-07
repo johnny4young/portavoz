@@ -41,6 +41,54 @@ public enum NameSuggestionFilter {
     }
 }
 
+/// Picks the transcript lines that can actually prove a name — each
+/// speaker's first substantial utterances (self-introductions cluster
+/// there) plus lines that mention an attendee candidate (being addressed)
+/// — and formats them as one compact window. The blind 3000-char prefix it
+/// replaces both overflowed the 4096-token context (instructions + schema
+/// + attendees share it; observed: "Exceeded model context window size")
+/// and missed names dropped later in the meeting.
+public enum NamingExcerpt {
+    public static func build(
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        attendeeCandidates: [String] = [],
+        perSpeaker: Int = 3,
+        minLength: Int = 25,
+        budget: Int = 2000
+    ) -> String {
+        var pickedIDs: Set<UUID> = []
+        var chosen: [TranscriptSegment] = []
+        var perSpeakerCount: [SpeakerID?: Int] = [:]
+        for segment in segments {
+            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard text.count >= minLength else { continue }
+            guard perSpeakerCount[segment.speakerID, default: 0] < perSpeaker else { continue }
+            perSpeakerCount[segment.speakerID, default: 0] += 1
+            pickedIDs.insert(segment.id)
+            chosen.append(segment)
+        }
+
+        if !attendeeCandidates.isEmpty {
+            let nameTokens = attendeeCandidates
+                .flatMap { $0.split(separator: " ") }
+                .map { $0.lowercased() }
+                .filter { $0.count > 2 }
+            for segment in segments where !pickedIDs.contains(segment.id) {
+                let lower = segment.text.lowercased()
+                if nameTokens.contains(where: { lower.contains($0) }) {
+                    pickedIDs.insert(segment.id)
+                    chosen.append(segment)
+                }
+            }
+        }
+
+        chosen.sort { $0.startTime < $1.startTime }
+        let formatted = TranscriptFormatter.format(segments: chosen, speakers: speakers)
+        return String(formatted.prefix(budget))
+    }
+}
+
 #if canImport(FoundationModels)
 import FoundationModels
 
@@ -67,15 +115,14 @@ public struct SpeakerNamer: Sendable {
         guard !unnamed.isEmpty else { return [] }
 
         let transcript = TranscriptFormatter.format(segments: segments, speakers: speakers)
-        // Naming only needs the conversational cues, which cluster around
-        // greetings/handoffs; one window of transcript is plenty.
-        let clipped = String(transcript.prefix(TranscriptFormatter.onDeviceReduceBudget))
+        let excerpt = NamingExcerpt.build(
+            segments: segments, speakers: speakers, attendeeCandidates: attendeeCandidates)
 
-        var prompt = "Transcript:\n\n\(clipped)\n\n"
+        var prompt = "Transcript:\n\n\(excerpt)\n\n"
         if !attendeeCandidates.isEmpty {
             prompt +=
                 "Calendar attendees (candidates — transcript proof is still required): "
-                + attendeeCandidates.joined(separator: ", ") + "\n\n"
+                + attendeeCandidates.prefix(12).joined(separator: ", ") + "\n\n"
         }
         prompt += "Name the speaker labels you can prove."
 

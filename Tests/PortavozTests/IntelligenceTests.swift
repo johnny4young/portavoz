@@ -315,3 +315,89 @@ final class LiveSummaryPolicyTests: XCTestCase {
                 current: current, candidate: String(repeating: "y", count: 1400)))
     }
 }
+
+final class NamingExcerptTests: XCTestCase {
+    private let meetingID = MeetingID()
+
+    private func makeSpeakers() -> (me: Speaker, s1: Speaker, s2: Speaker) {
+        (
+            Speaker(meetingID: meetingID, label: "Me", isMe: true),
+            Speaker(meetingID: meetingID, label: "S1"),
+            Speaker(meetingID: meetingID, label: "S2")
+        )
+    }
+
+    private func segment(
+        _ text: String, speaker: Speaker?, start: TimeInterval
+    ) -> TranscriptSegment {
+        TranscriptSegment(
+            meetingID: meetingID, speakerID: speaker?.id, channel: .system,
+            text: text, startTime: start, endTime: start + 2)
+    }
+
+    func testTakesFirstSubstantialUtterancesPerSpeaker() {
+        let (me, s1, s2) = makeSpeakers()
+        var segments: [TranscriptSegment] = [
+            segment("uh", speaker: s1, start: 0),  // too short — skipped
+            segment("hi everyone, this is Daniel from the platform team", speaker: s1, start: 1),
+        ]
+        for index in 0..<10 {
+            segments.append(
+                segment(
+                    "long filler utterance number \(index) about nothing at all",
+                    speaker: s2, start: 10 + Double(index)))
+        }
+        let excerpt = NamingExcerpt.build(
+            segments: segments, speakers: [me, s1, s2], perSpeaker: 3)
+
+        XCTAssertTrue(excerpt.contains("this is Daniel"))
+        // Only the first 3 of S2's utterances make it.
+        XCTAssertTrue(excerpt.contains("number 0"))
+        XCTAssertTrue(excerpt.contains("number 2"))
+        XCTAssertFalse(excerpt.contains("number 3"))
+    }
+
+    func testIncludesLinesAddressingAttendeeCandidates() {
+        let (me, s1, s2) = makeSpeakers()
+        var segments: [TranscriptSegment] = []
+        for index in 0..<5 {
+            segments.append(
+                segment(
+                    "long filler utterance number \(index) about nothing at all",
+                    speaker: s1, start: Double(index)))
+        }
+        // Short line late in the meeting, would never make the per-speaker cut.
+        segments.append(segment("thanks Vishakha", speaker: s2, start: 300))
+
+        let excerpt = NamingExcerpt.build(
+            segments: segments, speakers: [me, s1, s2],
+            attendeeCandidates: ["Vishakha Rao"])
+        XCTAssertTrue(excerpt.contains("thanks Vishakha"))
+    }
+
+    func testRespectsBudget() {
+        let (me, s1, _) = makeSpeakers()
+        let segments = (0..<50).map {
+            segment(String(repeating: "palabra ", count: 30), speaker: s1, start: Double($0))
+        }
+        let excerpt = NamingExcerpt.build(
+            segments: segments, speakers: [me, s1], perSpeaker: 50, budget: 500)
+        XCTAssertLessThanOrEqual(excerpt.count, 500)
+    }
+
+    func testChronologicalOrder() {
+        let (me, s1, s2) = makeSpeakers()
+        let segments = [
+            segment("second speaker introduces themselves here properly", speaker: s2, start: 50),
+            segment("first speaker introduces themselves here properly", speaker: s1, start: 5),
+        ]
+        let excerpt = NamingExcerpt.build(segments: segments, speakers: [me, s1, s2])
+        let first = excerpt.range(of: "first speaker")
+        let second = excerpt.range(of: "second speaker")
+        XCTAssertNotNil(first)
+        XCTAssertNotNil(second)
+        if let first, let second {
+            XCTAssertLessThan(first.lowerBound, second.lowerBound)
+        }
+    }
+}
