@@ -36,7 +36,10 @@ import wave
 
 COARSE_HOP_MS = 5
 FINE_HOP_MS = 1
-MAX_LAG_MS = 2000
+# ScreenCaptureKit takes ~2.4s to deliver its first system-audio buffer, so
+# the mic file legitimately leads by that much; the search range must cover
+# it or the correlation locks onto a spurious in-range peak.
+MAX_LAG_MS = 5000
 FINE_SPAN_MS = 15
 
 
@@ -98,6 +101,13 @@ def measure_lag(mic, mic_rate, system, system_rate, window_start_s, window_s):
         mic, mic_rate, system, system_rate,
         window_start_s, window_s, COARSE_HOP_MS, 0, MAX_LAG_MS,
     )
+    if abs(coarse) >= MAX_LAG_MS - COARSE_HOP_MS:
+        print(
+            f"warning: lag at t={window_start_s:.0f}s hit the ±{MAX_LAG_MS} ms "
+            "search edge — the real offset is likely outside the range and the "
+            "drift figure is unreliable; raise MAX_LAG_MS",
+            file=sys.stderr,
+        )
     return best_lag_ms(
         mic, mic_rate, system, system_rate,
         window_start_s, window_s, FINE_HOP_MS, coarse, FINE_SPAN_MS,
