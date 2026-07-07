@@ -158,7 +158,32 @@ public actor PyannoteDiarizer: Diarizer {
         let samples = try converter.resampleAudioFile(url)
         let result = try manager.performCompleteDiarization(
             samples, sampleRate: Self.modelSampleRate)
-        return result.segments.map(Self.turn(from:))
+        let duration = Double(samples.count) / Double(Self.modelSampleRate)
+        return Self.sanitizeTurns(result.segments.map(Self.turn(from:)), audioDuration: duration)
+    }
+
+    /// Drops phantom speakers born in the last, zero-padded window: the
+    /// padding dilutes that window's embedding, which routinely spawns a
+    /// brand-new low-quality label for a voice that already has one
+    /// (observed on every TTS fixture as a trailing "S3", q ≈ 0.2). A
+    /// label is phantom only when ALL its turns start inside the final
+    /// window AND its best quality stays low — a real latecomer with a
+    /// clear voice survives, and "Me" (voiceprint) is never touched.
+    /// Their audio becomes unattributed, which is the honest state.
+    static func sanitizeTurns(
+        _ turns: [SpeakerTurn],
+        audioDuration: TimeInterval,
+        qualityFloor: Double = 0.35
+    ) -> [SpeakerTurn] {
+        let tailStart = max(0, audioDuration - windowSeconds)
+        let byLabel = Dictionary(grouping: turns, by: \.voiceLabel)
+        let phantoms = byLabel.filter { label, turns in
+            label != enrolledLabel
+                && turns.allSatisfy { $0.startTime >= tailStart }
+                && (turns.compactMap(\.confidence).max() ?? 0) < qualityFloor
+        }.keys
+        guard !phantoms.isEmpty else { return turns }
+        return turns.filter { !phantoms.contains($0.voiceLabel) }
     }
 
     // MARK: - Internals

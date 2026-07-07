@@ -159,6 +159,49 @@ final class SpeakerAttributorTests: XCTestCase {
     }
 }
 
+// MARK: - Phantom tail speakers
+
+final class SanitizeTurnsTests: XCTestCase {
+    func testDropsLowQualityLabelBornInTheFinalWindow() {
+        let turns = [
+            SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 10, confidence: 0.6),
+            SpeakerTurn(voiceLabel: "S2", startTime: 12, endTime: 20, confidence: 0.5),
+            // Phantom: only exists in the last window, weak embedding.
+            SpeakerTurn(voiceLabel: "S3", startTime: 31, endTime: 34, confidence: 0.2),
+        ]
+        let cleaned = PyannoteDiarizer.sanitizeTurns(turns, audioDuration: 34)
+        XCTAssertEqual(Set(cleaned.map(\.voiceLabel)), ["S1", "S2"])
+    }
+
+    func testKeepsRecurringLabelEvenWithWeakTailTurn() {
+        let turns = [
+            SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 10, confidence: 0.6),
+            SpeakerTurn(voiceLabel: "S1", startTime: 31, endTime: 34, confidence: 0.2),
+        ]
+        let cleaned = PyannoteDiarizer.sanitizeTurns(turns, audioDuration: 34)
+        XCTAssertEqual(cleaned.count, 2)
+    }
+
+    func testKeepsConfidentLatecomer() {
+        let turns = [
+            SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 28, confidence: 0.6),
+            // Joins at the end but with a clear voice: a real person.
+            SpeakerTurn(voiceLabel: "S2", startTime: 30, endTime: 34, confidence: 0.8),
+        ]
+        let cleaned = PyannoteDiarizer.sanitizeTurns(turns, audioDuration: 34)
+        XCTAssertEqual(cleaned.count, 2)
+    }
+
+    func testNeverDropsEnrolledMe() {
+        let turns = [
+            SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 28, confidence: 0.6),
+            SpeakerTurn(voiceLabel: "Me", startTime: 31, endTime: 34, confidence: 0.1),
+        ]
+        let cleaned = PyannoteDiarizer.sanitizeTurns(turns, audioDuration: 34)
+        XCTAssertEqual(cleaned.count, 2)
+    }
+}
+
 // MARK: - DER evaluation
 
 final class DiarizationEvaluationTests: XCTestCase {
