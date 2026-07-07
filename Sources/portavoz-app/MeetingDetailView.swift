@@ -1,4 +1,5 @@
 import AppKit
+import DiarizationKit
 import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
@@ -27,6 +28,8 @@ struct MeetingDetailView: View {
     @State private var gistError: String?
     @State private var nameSuggestions: [NameSuggestion] = []
     @State private var suggestingNames = false
+    @State private var refining: String?
+    @State private var refineError: String?
 
     var body: some View {
         Group {
@@ -45,6 +48,16 @@ struct MeetingDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header(detail)
                 speakersRow(detail)
+
+                if let refining {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(refining).foregroundStyle(.secondary)
+                    }
+                }
+                if let refineError {
+                    Text(refineError).font(.caption).foregroundStyle(.red)
+                }
 
                 if let summary {
                     summarySection(summary)
@@ -76,6 +89,15 @@ struct MeetingDetailView: View {
         }
         .navigationTitle(detail.meeting.title)
         .toolbar {
+            Button {
+                refine(detail)
+            } label: {
+                Label("Refinar", systemImage: "wand.and.stars")
+            }
+            .disabled(refining != nil || detail.meeting.audioDirectory == nil)
+            .help(
+                "Re-transcribe con Whisper (máxima calidad), re-identifica hablantes y regenera el resumen"
+            )
             Menu {
                 Button("Exportar Markdown…") { export(detail, as: .markdown) }
                 Button("Exportar PDF…") { export(detail, as: .pdf) }
@@ -313,6 +335,81 @@ struct MeetingDetailView: View {
             exportType = .pdf
             exportName = "\(detail.meeting.title).pdf"
             exportDocument = ExportDocument(data: data)
+        }
+    }
+
+    /// The D7 quality re-pass, in-app: re-transcribes both channels with
+    /// Whisper (with the user's vocabulary), re-diarizes (micro-cluster
+    /// merge included), atomically replaces the cast, and regenerates the
+    /// summary from the clean transcript.
+    private func refine(_ detail: MeetingDetail) {
+        guard refining == nil else { return }
+        refining = "Preparando…"
+        refineError = nil
+        Task {
+            defer { refining = nil }
+            do {
+                guard let relative = detail.meeting.audioDirectory else {
+                    refineError = "Esta reunión no conserva su audio."
+                    return
+                }
+                let base = AppServices.audioRoot.appendingPathComponent(relative)
+                let system = base.appendingPathComponent("system.wav")
+                let microphone = base.appendingPathComponent("microphone.wav")
+                let systemURL = FileManager.default.fileExists(atPath: system.path) ? system : nil
+                let microphoneURL =
+                    FileManager.default.fileExists(atPath: microphone.path) ? microphone : nil
+                guard systemURL != nil || microphoneURL != nil else {
+                    refineError = "No se encontró el audio de la reunión."
+                    return
+                }
+
+                let whisper = try await services.loadWhisperIfNeeded { status in
+                    refining = status
+                }
+                try await services.loadEnginesIfNeeded()
+
+                let vocabulary = VocabularyPrompt.parse(
+                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+                let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID)
+
+                var segments: [TranscriptSegment] = []
+                if let systemURL {
+                    refining = "Re-transcribiendo a los participantes (Whisper)…"
+                    let result = try await whisper.transcribeFile(
+                        at: systemURL, hints: hints, channel: .system)
+                    segments.append(contentsOf: result.segments)
+                }
+                if let microphoneURL {
+                    refining = "Re-transcribiendo tu canal (Whisper)…"
+                    let result = try await whisper.transcribeFile(
+                        at: microphoneURL, hints: hints, channel: .microphone)
+                    segments.append(contentsOf: result.segments)
+                }
+                segments.sort { $0.startTime < $1.startTime }
+
+                var turns: [SpeakerTurn] = []
+                if let systemURL, let diarizer = services.diarizer {
+                    refining = "Identificando hablantes…"
+                    turns = (try? await diarizer.diarizeFile(at: systemURL)) ?? []
+                }
+                let attribution = SpeakerAttributor.attribute(
+                    segments: segments, turns: turns, meetingID: meetingID)
+
+                refining = "Guardando…"
+                try await services.store.replaceCast(
+                    for: meetingID,
+                    speakers: attribution.speakers,
+                    segments: attribution.segments)
+                await reload()
+                services.libraryVersion += 1
+
+                regenerate(
+                    language: summary?.draft.language
+                        ?? Locale.current.language.languageCode?.identifier ?? "en")
+            } catch {
+                refineError = "El refinado falló: \(error.localizedDescription)"
+            }
         }
     }
 

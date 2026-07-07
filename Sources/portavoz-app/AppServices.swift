@@ -37,6 +37,7 @@ final class AppServices {
     var modelsState: ModelsState = .unknown
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
+    private(set) var whisper: WhisperEngine?
 
     /// Bumped after any write so list/detail views know to reload.
     var libraryVersion = 0
@@ -85,6 +86,23 @@ final class AppServices {
             modelsState = .failed(error.localizedDescription)
             throw error
         }
+    }
+
+    /// The D7 quality re-pass engine (Whisper large-v3-turbo, 1.6 GB,
+    /// sha256-verified) — loaded on the first refine, then shared.
+    func loadWhisperIfNeeded(
+        progress: @escaping @MainActor (String) -> Void
+    ) async throws -> WhisperEngine {
+        if let whisper { return whisper }
+        let engine = try await WhisperEngine.loadRecommended(store: ModelStore()) { update in
+            guard update.totalBytes > 0 else { return }
+            let percent = Int(update.fraction * 100)
+            Task { @MainActor in
+                progress("Descargando Whisper (1.6 GB, solo una vez)… \(percent)%")
+            }
+        }
+        whisper = engine
+        return engine
     }
 
     /// Called after enrolling/deleting the voiceprint so the next load
