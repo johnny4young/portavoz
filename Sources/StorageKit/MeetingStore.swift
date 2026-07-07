@@ -287,6 +287,57 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    /// A pending commitment with the meeting it came from.
+    public struct OpenActionItem: Sendable {
+        public let meetingID: MeetingID
+        public let meetingTitle: String
+        public let item: ActionItem
+    }
+
+    /// Pending action items across all meetings — only from the LATEST
+    /// summary snapshot of each (meeting, recipe), so superseded versions
+    /// never duplicate their items.
+    public func openActionItems(limit: Int = 50) async throws -> [OpenActionItem] {
+        try await database.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT actionItem.id AS id,
+                           actionItem.text AS text,
+                           actionItem.ownerSpeakerID AS ownerSpeakerID,
+                           actionItem.meetingID AS meetingID,
+                           meeting.title AS title
+                    FROM actionItem
+                    JOIN summary ON summary.id = actionItem.summaryID
+                        AND summary.deletedAt IS NULL
+                    JOIN meeting ON meeting.id = actionItem.meetingID
+                        AND meeting.deletedAt IS NULL
+                    WHERE actionItem.deletedAt IS NULL
+                      AND actionItem.isDone = 0
+                      AND summary.version = (
+                          SELECT MAX(version) FROM summary latest
+                          WHERE latest.meetingID = summary.meetingID
+                            AND latest.recipeID = summary.recipeID
+                            AND latest.deletedAt IS NULL)
+                    ORDER BY actionItem.createdAt DESC
+                    LIMIT ?
+                    """,
+                arguments: [limit])
+            return rows.map { row in
+                OpenActionItem(
+                    meetingID: MeetingID(rawValue: UUID(uuidString: row["meetingID"]) ?? UUID()),
+                    meetingTitle: row["title"],
+                    item: ActionItem(
+                        id: UUID(uuidString: row["id"]) ?? UUID(),
+                        text: row["text"],
+                        ownerSpeakerID: (row["ownerSpeakerID"] as String?)
+                            .flatMap { UUID(uuidString: $0) }.map { SpeakerID(rawValue: $0) },
+                        isDone: false)
+                )
+            }
+        }
+    }
+
     public func setActionItem(_ id: UUID, done: Bool) async throws {
         try await database.write { db in
             try db.execute(

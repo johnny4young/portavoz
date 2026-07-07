@@ -145,6 +145,24 @@ final class MeetingStoreTests: XCTestCase {
         }
     }
 
+    func testOpenActionItemsComeFromLatestSnapshotOnly() async throws {
+        _ = try await seedMeetingWithTranscript()
+        try await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                markdown: "# v1", actionItems: [ActionItem(text: "tarea vieja")]))
+        let done = ActionItem(text: "tarea hecha", isDone: true)
+        try await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                markdown: "# v2",
+                actionItems: [ActionItem(text: "tarea vigente"), done]))
+
+        let open = try await store.openActionItems()
+        XCTAssertEqual(open.map(\.item.text), ["tarea vigente"])
+        XCTAssertEqual(open.first?.meetingTitle, "Planning semanal")
+    }
+
     func testActionItemsToggle() async throws {
         _ = try await seedMeetingWithTranscript()
         let item = ActionItem(text: "preparar rollout")
