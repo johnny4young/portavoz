@@ -17,8 +17,11 @@ struct SettingsView: View {
     @State private var enrolling = false
     @State private var voiceMessage: String?
 
+    @AppStorage("aecEnabled") private var aecEnabled = true
+
     var body: some View {
         Form {
+            audioSection
             voiceSection
             gitHubSection
         }
@@ -28,6 +31,19 @@ struct SettingsView: View {
             hasStoredToken =
                 ((try? SecretStore.get(service: SecretStore.gitHubTokenService)) ?? nil) != nil
             voiceprint = (try? VoiceprintStore().load()) ?? nil
+        }
+    }
+
+    // MARK: - Audio
+
+    private var audioSection: some View {
+        Section("Audio") {
+            Toggle("Cancelación de eco (recomendado)", isOn: $aecEnabled)
+            Text(
+                "Elimina del micrófono el audio que sale por tus parlantes, para que los demás participantes no aparezcan como \"Yo\". Aplica desde la próxima grabación. Desactívala solo si notas problemas con tu micrófono."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

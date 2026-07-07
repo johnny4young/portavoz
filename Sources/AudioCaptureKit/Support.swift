@@ -23,6 +23,29 @@ final class HostClock: @unchecked Sendable {
     }
 }
 
+enum Resample {
+    /// Linear-interpolation resampler for mono Float samples. Quality is
+    /// plenty for speech and it keeps the capture path dependency-free; it
+    /// only runs when a replacement input device (mid-recording headphone
+    /// switch) uses a different rate than the one the recording started with.
+    static func linear(_ samples: [Float], from source: Double, to target: Double) -> [Float] {
+        guard source > 0, target > 0, source != target, !samples.isEmpty else { return samples }
+        let ratio = source / target
+        let count = max(1, Int((Double(samples.count) / ratio).rounded(.down)))
+        var out = [Float](repeating: 0, count: count)
+        let last = samples.count - 1
+        for index in 0..<count {
+            let position = Double(index) * ratio
+            let base = min(Int(position), last)
+            let fraction = Float(position - Double(base))
+            let a = samples[base]
+            let b = samples[min(base + 1, last)]
+            out[index] = a + (b - a) * fraction
+        }
+        return out
+    }
+}
+
 enum Downmix {
     /// Averages all channels of a PCM buffer into mono.
     static func mono(from buffer: AVAudioPCMBuffer) -> [Float] {

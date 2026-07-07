@@ -5,7 +5,7 @@ import TranscriptionKit
 
 /// `portavoz-cli record [--seconds N] [--mic <name-or-uid>] [--pid <pid> ...]
 ///                      [--system] [--out <dir>] [--transcribe] [--language es]
-///                      [--models-dir <dir>]`
+///                      [--models-dir <dir>] [--no-aec]`
 ///
 /// With `--transcribe`, every captured channel gets its own live Parakeet
 /// job fed from the recording pipeline; segments print as they stream.
@@ -19,6 +19,7 @@ enum RecordCommand {
         var transcribe = false
         var language: String?
         var modelsDir: String?
+        var voiceProcessing = true
 
         var index = 0
         while index < arguments.count {
@@ -45,6 +46,8 @@ enum RecordCommand {
             case "--models-dir":
                 index += 1
                 if index < arguments.count { modelsDir = arguments[index] }
+            case "--no-aec":
+                voiceProcessing = false
             default:
                 print("Unknown option: \(arguments[index])")
                 return
@@ -52,7 +55,9 @@ enum RecordCommand {
             index += 1
         }
 
-        var sources: [any AudioCaptureSource] = [MicrophoneSource(deviceIdentifier: micIdentifier)]
+        var sources: [any AudioCaptureSource] = [
+            MicrophoneSource(deviceIdentifier: micIdentifier, voiceProcessing: voiceProcessing)
+        ]
         #if os(macOS)
         if #available(macOS 14.4, *) {
             if !pids.isEmpty {

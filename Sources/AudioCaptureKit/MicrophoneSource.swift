@@ -7,50 +7,66 @@ import PortavozCore
 /// native format, downmixed to mono. Recording keeps native quality;
 /// resampling for STT is TranscriptionKit's job.
 ///
-/// `@unchecked Sendable`: the engine is mutated only from `start()`/`stop()`
-/// (single owner) and the tap block runs serialized on the render thread.
+/// Two real-world hazards are handled here:
+/// - **Device changes mid-recording** (plugging in headphones): the engine
+///   stops silently. We listen for `AVAudioEngineConfigurationChange`,
+///   reinstall the tap and restart; if the replacement device runs at a
+///   different rate its audio is resampled to the stream's original rate,
+///   and the capture gap is padded with silence so the file stays aligned
+///   with the system channel.
+/// - **Acoustic echo**: with speakers, the mic hears the meeting audio and
+///   every remote participant becomes a phantom "Me". Voice processing
+///   (Apple's AEC) subtracts the system output from the mic signal.
+///
+/// `@unchecked Sendable`: the engine and continuation are mutated only from
+/// `start()`/`stop()` and the serial `restartQueue`; the tap block runs
+/// serialized on the render thread and closes over its own continuation.
 public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     public let channel: AudioChannel = .microphone
 
     private let engine = AVAudioEngine()
     private let clock = HostClock()
     private let deviceIdentifier: String?
+    private let voiceProcessing: Bool
+    private let restartQueue = DispatchQueue(label: "app.portavoz.mic-restart")
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private var observer: (any NSObjectProtocol)?
+    /// Rate of the first device; the stream promises this rate for its whole
+    /// life, so replacement devices get resampled to it. Written once.
+    private var streamSampleRate: Double = 0
+    /// Total samples yielded so far, for gap accounting after a device
+    /// change. Touched from the render thread and the restart queue.
+    private let deliveredLock = NSLock()
+    private var samplesDelivered = 0
 
-    /// - Parameter deviceIdentifier: UID or name of the input device to use
-    ///   (macOS). Nil uses the system default input.
-    public init(deviceIdentifier: String? = nil) {
+    /// - Parameters:
+    ///   - deviceIdentifier: UID or name of the input device to use (macOS).
+    ///     Nil uses the system default input.
+    ///   - voiceProcessing: enables Apple's echo cancellation so the mic
+    ///     channel carries only the local voice even on speakers. On by
+    ///     default; disable for raw capture.
+    public init(deviceIdentifier: String? = nil, voiceProcessing: Bool = true) {
         self.deviceIdentifier = deviceIdentifier
+        self.voiceProcessing = voiceProcessing
     }
 
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let input = engine.inputNode
+        try applyPinnedDeviceIfNeeded(required: true)
 
-        #if os(macOS)
-        if let deviceIdentifier {
-            guard let device = try AudioDeviceCatalog.inputDevice(matching: deviceIdentifier) else {
-                throw AudioCaptureError.noInputDevice
-            }
-            guard let audioUnit = input.audioUnit else {
-                throw AudioCaptureError.noInputDevice
-            }
-            var deviceID = device.id
-            let status = AudioUnitSetProperty(
-                audioUnit,
-                kAudioOutputUnitProperty_CurrentDevice,
-                kAudioUnitScope_Global,
-                0,
-                &deviceID,
-                UInt32(MemoryLayout<AudioObjectID>.size)
-            )
-            guard status == noErr else {
-                throw AudioCaptureError.coreAudioError(
-                    operation: "select input device '\(device.name)'",
-                    status: status
-                )
+        if voiceProcessing {
+            do {
+                try input.setVoiceProcessingEnabled(true)
+                // Without this, enabling AEC ducks the very meeting audio the
+                // user is listening to.
+                input.voiceProcessingOtherAudioDuckingConfiguration = .init(
+                    enableAdvancedDucking: false, duckingLevel: .min)
+            } catch {
+                // Some devices reject voice processing; raw capture with echo
+                // beats no capture.
             }
         }
-        #endif
+
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
             throw AudioCaptureError.noInputDevice
@@ -58,35 +74,153 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
 
         let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
         self.continuation = continuation
+        streamSampleRate = format.sampleRate
+        installTap()
 
-        let sampleRate = format.sampleRate
-        let clock = clock
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, when in
-            let samples = Downmix.mono(from: buffer)
-            guard !samples.isEmpty else { return }
-            continuation.yield(AudioChunk(
-                channel: .microphone,
-                samples: samples,
-                sampleRate: sampleRate,
-                timestamp: clock.elapsed(hostTime: when.hostTime)
-            ))
+        observer = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: nil
+        ) { [weak self] _ in
+            self?.scheduleRestart()
         }
 
         engine.prepare()
         do {
             try engine.start()
         } catch {
-            input.removeTap(onBus: 0)
-            self.continuation = nil
+            teardown()
             throw error
         }
         return stream
     }
 
     public func stop() async {
+        restartQueue.sync {
+            teardown()
+        }
+    }
+
+    /// Must run on `restartQueue` (or before the stream exists, in `start`).
+    private func teardown() {
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observer = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         continuation?.finish()
         continuation = nil
+    }
+
+    /// Installs the tap at the CURRENT device format, resampling to the
+    /// stream's original rate when they differ, and padding any capture gap
+    /// (device switch downtime) with silence to keep the timeline aligned.
+    private func installTap() {
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        let native = format.sampleRate
+        let target = streamSampleRate
+        guard native > 0, target > 0, let continuation else { return }
+
+        let clock = clock
+        input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, when in
+            guard let self else { return }
+            var samples = Downmix.mono(from: buffer)
+            guard !samples.isEmpty else { return }
+            if native != target {
+                samples = Resample.linear(samples, from: native, to: target)
+            }
+            let elapsed = clock.elapsed(hostTime: when.hostTime)
+            let expected = Int(elapsed * target)
+            let delivered = self.deliveredSnapshot()
+            let gap = expected - delivered
+            if gap > Int(target / 2) {
+                continuation.yield(AudioChunk(
+                    channel: .microphone,
+                    samples: [Float](repeating: 0, count: gap),
+                    sampleRate: target,
+                    timestamp: Double(delivered) / target
+                ))
+                self.addDelivered(gap)
+            }
+            continuation.yield(AudioChunk(
+                channel: .microphone,
+                samples: samples,
+                sampleRate: target,
+                timestamp: elapsed
+            ))
+            self.addDelivered(samples.count)
+        }
+    }
+
+    /// A configuration change means the engine stopped (device switched or
+    /// disappeared). Reinstall and restart; if no usable input exists yet,
+    /// retry shortly — when one returns, the tap's gap padding covers the
+    /// downtime.
+    private func scheduleRestart(delay: TimeInterval = 0) {
+        restartQueue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.continuation != nil else { return }
+            let input = self.engine.inputNode
+            input.removeTap(onBus: 0)
+            try? self.applyPinnedDeviceIfNeeded(required: false)
+            guard input.outputFormat(forBus: 0).sampleRate > 0 else {
+                self.scheduleRestart(delay: 0.5)
+                return
+            }
+            self.installTap()
+            self.engine.prepare()
+            do {
+                try self.engine.start()
+            } catch {
+                self.scheduleRestart(delay: 0.5)
+            }
+        }
+    }
+
+    /// Re-selects the pinned input device. `required` start fails hard on a
+    /// missing device; a mid-recording restart falls back to the default
+    /// input instead (the pinned device may be the one that vanished).
+    private func applyPinnedDeviceIfNeeded(required: Bool) throws {
+        #if os(macOS)
+        guard let deviceIdentifier else { return }
+        guard
+            let device = try? AudioDeviceCatalog.inputDevice(matching: deviceIdentifier),
+            let audioUnit = engine.inputNode.audioUnit
+        else {
+            if required { throw AudioCaptureError.noInputDevice }
+            return
+        }
+        var deviceID = device.id
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceID,
+            UInt32(MemoryLayout<AudioObjectID>.size)
+        )
+        guard status == noErr else {
+            if required {
+                throw AudioCaptureError.coreAudioError(
+                    operation: "select input device '\(device.name)'",
+                    status: status
+                )
+            }
+            return
+        }
+        #endif
+    }
+
+    private func deliveredSnapshot() -> Int {
+        deliveredLock.lock()
+        defer { deliveredLock.unlock() }
+        return samplesDelivered
+    }
+
+    private func addDelivered(_ count: Int) {
+        deliveredLock.lock()
+        defer { deliveredLock.unlock() }
+        samplesDelivered += count
     }
 }

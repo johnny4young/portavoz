@@ -58,7 +58,8 @@ final class RecordingController {
         audioRelative = "Audio/\(meetingID.rawValue.uuidString)"
         let outputDirectory = AppServices.audioRoot.appendingPathComponent(audioRelative)
 
-        var sources: [any AudioCaptureSource] = [MicrophoneSource()]
+        let aec = UserDefaults.standard.object(forKey: "aecEnabled") as? Bool ?? true
+        var sources: [any AudioCaptureSource] = [MicrophoneSource(voiceProcessing: aec)]
         if #available(macOS 14.4, *) {
             sources.append(ProcessTapSource())
         }
