@@ -89,6 +89,15 @@ Nota: el inglés indio se transcribe mal en vivo (Parakeet); el re-pase Whisper 
 
 Además (mientras el usuario estaba en su 3ª reunión): **(7) editor de lista para el vocabulario** (Enter añade, − quita; mismo storage) — `a27f711`; **(8) merge de micro-clusters en diarización** (`d70a9ed`): labels con <15 s de habla total ceden sus turnos al major temporalmente más cercano; "Me" nunca absorbe ni es absorbido (un "Me" fantasma contaminaría owners de action items). **Validado: la reunión real pasó de 11 → 4 speakers y AMI quedó intacto (7.6%, 2 speakers)**. ⚠️ La app instalada se construyó ANTES de (8) — reinstalar (`make-app.sh --release` + copiar) cuando no haya grabación en curso; mientras tanto el merge aplica vía `meetings refine`.
 
+## Ronda 3 (2026-07-07, feedback de la reunión de 10:47 con AEC activo)
+
+La 4ª reunión real (8 min, AEC activo) validó el grueso y destapó 4 puntos; todos resueltos (`1d9c952`…`ddf8524`), 143 tests verdes, app reinstalada:
+
+- **AEC converge en ~2 s** (medido: ratio mic/system 0.38 en 0–2 s → 0.03–0.11 después) → `MicrophoneSource.warmUp()` arranca el engine sin tap apenas el usuario pulsa grabar, y la convergencia ocurre mientras cargan los modelos.
+- **"Sugerir nombres" desbordaba la ventana** (prefix ciego de 3000 chars + instrucciones + schema + asistentes > 4096 tokens) → `NamingExcerpt`: primeras intervenciones sustanciales por speaker + líneas que mencionan candidatos, cap 2000 chars, cronológico. El verificador sigue usando el transcript COMPLETO.
+- **Intervención del usuario garbled en vivo** ("LOCOL TESTIN U Be REASE S…") → VALIDADO con el clip real: el audio del mic está perfecto (AEC no degrada); Whisper lo transcribe limpio a 31x ("doing a local testing before release properly the PR to a staging"). Es la debilidad conocida de Parakeet vivo con acento; la respuesta es el refine.
+- **Refine in-app (D7)**: botón "Refinar" (wand.and.stars) en el detalle — descarga Whisper verificado la primera vez (1.6 GB), re-transcribe ambos canales con vocabulario, re-diariza (merge incluido), replaceCast y regenera el resumen. `AppServices.loadWhisperIfNeeded`.
+
 ## Próximos pasos (en orden)
 
 **Verificaciones que aún necesitan al usuario (próxima reunión real):**
