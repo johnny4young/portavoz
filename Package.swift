@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "StorageKit", targets: ["StorageKit"]),
         .library(name: "SyncKit", targets: ["SyncKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
+        .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -31,6 +32,11 @@ let package = Package(
         .target(name: "StorageKit", dependencies: ["PortavozCore"]),
         .target(name: "SyncKit", dependencies: ["PortavozCore"]),
         .target(name: "IntegrationsKit", dependencies: ["PortavozCore", "IntelligenceKit"]),
+
+        .executableTarget(
+            name: "portavoz-cli",
+            dependencies: ["AudioCaptureKit", "PortavozCore"]
+        ),
 
         .testTarget(
             name: "PortavozTests",
