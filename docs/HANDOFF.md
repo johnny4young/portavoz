@@ -21,10 +21,12 @@
 
 ## Próximos pasos inmediatos (en orden)
 
-1. **Test de aceptación M1**: grabación de 30 min con una reunión real de Zoom/Meet, verificar drift < 50 ms:
+1. **Test de aceptación M1**: 30 min con audio APERIÓDICO sonando (podcast ideal; música con beat repetitivo puede aliasear la correlación) y verificar con el script:
    ```sh
-   swift run portavoz-cli record --seconds 1800 --pid $(pgrep -x zoom.us) --out ~/Desktop
+   swift run portavoz-cli record --seconds 1800 --system --out ~/Desktop
+   python3 scripts/verify_drift.py ~/Desktop/microphone.wav ~/Desktop/system.wav
    ```
+   El script mide el drift real por correlación cruzada (offset inicio vs offset final; los desfases constantes se cancelan). Validado contra sintéticos con verdad conocida: precisión ~1-3 ms. El número "drift" que imprime el CLI es solo un proxy burdo (diferencia de duraciones, incluye el offset de arranque del tap ~1 s) — la verificación real es el script.
 2. **M2 — Transcripción**: añadir FluidAudio como dependencia SPM; `ParakeetEngine: TranscriptionEngine` (streaming); scheduler de slots (vivo vs batch); registry con descarga verificada del modelo Parakeet. Criterio: transcript en vivo < 2 s de latencia con un archivo transcribiendo en batch sin degradarlo.
 3. Nota de alcance: la **aplicación de `AudioRetentionPolicy` se difirió a M5** — borrar audio "N días después" requiere registros de reuniones persistidos (StorageKit), que no existen hasta M5. El tipo ya está definido en AudioCaptureKit.
 
