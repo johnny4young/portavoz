@@ -7,3 +7,4 @@ DerivedData/
 *.profraw
 .env
 dist/
+__pycache__/
