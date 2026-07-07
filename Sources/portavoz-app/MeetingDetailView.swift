@@ -419,7 +419,7 @@ struct MeetingDetailView: View {
                     refineError = "Esta reunión no conserva su audio."
                     return
                 }
-                let base = AppServices.audioRoot.appendingPathComponent(relative)
+                let base = RecordingsLocation.shared.resolve(relative)
                 let system = base.appendingPathComponent("system.wav")
                 let microphone = base.appendingPathComponent("microphone.wav")
                 let systemURL = FileManager.default.fileExists(atPath: system.path) ? system : nil

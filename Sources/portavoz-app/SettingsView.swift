@@ -1,7 +1,9 @@
+import AppKit
 import AudioCaptureKit
 import DiarizationKit
 import IntegrationsKit
 import PortavozCore
+import StorageKit
 import SwiftUI
 import TranscriptionKit
 
@@ -24,9 +26,14 @@ struct SettingsView: View {
 
     @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
 
+    @State private var recordingsRoot = RecordingsLocation.shared.currentRoot()
+    @State private var migrationStatus: String?
+    @State private var migrating = false
+
     var body: some View {
         Form {
             audioSection
+            recordingsSection
             titleSection
             vocabularySection
             voiceSection
@@ -51,6 +58,86 @@ struct SettingsView: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Grabaciones
+
+    private var recordingsSection: some View {
+        Section("Grabaciones") {
+            LabeledContent("Guardar las grabaciones en") {
+                Text(recordingsRoot.path)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundStyle(.secondary)
+                    .help(recordingsRoot.path)
+            }
+            HStack {
+                Button("Cambiar…") { chooseRecordingsFolder() }
+                    .disabled(migrating)
+                if RecordingsLocation.shared.isCustom {
+                    Button("Usar carpeta por defecto") {
+                        moveRecordings(to: RecordingsLocation.shared.defaultRoot, custom: false)
+                    }
+                    .disabled(migrating)
+                }
+                if migrating {
+                    ProgressView().controlSize(.small)
+                }
+            }
+            Text(
+                "El audio de las reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y los transcripts se quedan donde están."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            if let migrationStatus {
+                Text(migrationStatus).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func chooseRecordingsFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = recordingsRoot
+        panel.prompt = "Elegir"
+        panel.message = "Elige la carpeta donde Portavoz guardará tus grabaciones"
+        guard panel.runModal() == .OK, let chosen = panel.url else { return }
+        moveRecordings(to: chosen, custom: true)
+    }
+
+    private func moveRecordings(to destination: URL, custom: Bool) {
+        guard !migrating else { return }
+        migrating = true
+        migrationStatus = "Preparando…"
+        let origin = RecordingsLocation.shared.currentRoot()
+        Task.detached(priority: .userInitiated) {
+            let location = RecordingsLocation.shared
+            do {
+                let moved = try location.migrateAudio(from: origin, to: destination) {
+                    index, total in
+                    Task { @MainActor in
+                        migrationStatus = "Moviendo grabación \(index) de \(total)…"
+                    }
+                }
+                try location.setRoot(custom ? destination : nil)
+                await MainActor.run {
+                    recordingsRoot = location.currentRoot()
+                    migrationStatus =
+                        moved > 0
+                        ? "Listo: \(moved) grabación(es) movidas." : "Listo: carpeta actualizada."
+                    migrating = false
+                }
+            } catch {
+                await MainActor.run {
+                    migrationStatus =
+                        "La migración falló: \(error.localizedDescription). Nada se perdió — las grabaciones sin mover siguen leyéndose de la carpeta anterior; puedes reintentar."
+                    migrating = false
+                }
+            }
         }
     }
 

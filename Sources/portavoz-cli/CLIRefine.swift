@@ -68,8 +68,9 @@ enum RefineCommand {
             if let file {
                 systemFile = URL(fileURLWithPath: file)
             } else if let relative = detail.meeting.audioDirectory {
-                let base = MeetingStore.defaultDatabaseURL.deletingLastPathComponent()
-                    .appendingPathComponent(relative)
+                // Respects the recordings folder chosen in the app (with
+                // fallback to the default root for unmigrated meetings).
+                let base = RecordingsLocation.shared.resolve(relative)
                 let system = base.appendingPathComponent("system.wav")
                 let microphone = base.appendingPathComponent("microphone.wav")
                 systemFile = FileManager.default.fileExists(atPath: system.path) ? system : nil

@@ -30,8 +30,10 @@ final class AppServices {
     }
 
     /// Meeting audio lives under here; the database only ever stores the
-    /// path relative to it (D4).
-    static var audioRoot: URL { supportRoot }
+    /// path relative to it (D4). The user can point it elsewhere in
+    /// Ajustes → Grabaciones; reads should go through
+    /// `RecordingsLocation.shared.resolve(_:)` for the old-root fallback.
+    static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
     var modelsState: ModelsState = .unknown

@@ -70,6 +70,14 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>Portavoz captura el audio del sistema para transcribir a los demás participantes de la reunión. El audio nunca sale de tu Mac.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Portavoz lee los asistentes de tus eventos de calendario solo para sugerir nombres de los hablantes de la reunión. Nada sale de tu Mac.</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas, incluidos discos externos.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
 </dict>
