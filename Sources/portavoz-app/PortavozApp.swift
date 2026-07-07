@@ -6,6 +6,12 @@ import SwiftUI
 struct PortavozApp: App {
     @State private var services = AppServices()
 
+    init() {
+        // Hidden bench mode (M12): "--bench-live <file>" runs the
+        // SpeechAnalyzer harness inside the bundle and exits.
+        BenchMode.runIfRequested()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

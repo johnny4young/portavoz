@@ -93,6 +93,17 @@ public struct SpeechAnalyzerEngine: Sendable {
                     // analyzer's format (typically ≠ the capture rate).
                     let (inputSequence, inputContinuation) =
                         AsyncStream.makeStream(of: AnalyzerInput.self)
+
+                    let analyzer = SpeechAnalyzer(
+                        inputSequence: inputSequence,
+                        modules: [transcriber],
+                        analysisContext: context)
+
+                    // The feeder ALSO finalizes when the input ends: the
+                    // results loop below only terminates when someone
+                    // finalizes the analysis — sequencing the finalize
+                    // after the loop deadlocked the first bench run
+                    // (results parked forever once the audio ran out).
                     let feeder = Task {
                         var converter: AVAudioConverter?
                         for await chunk in audio {
@@ -103,12 +114,8 @@ public struct SpeechAnalyzerEngine: Sendable {
                             inputContinuation.yield(AnalyzerInput(buffer: buffer))
                         }
                         inputContinuation.finish()
+                        try? await analyzer.finalizeAndFinishThroughEndOfInput()
                     }
-
-                    let analyzer = SpeechAnalyzer(
-                        inputSequence: inputSequence,
-                        modules: [transcriber],
-                        analysisContext: context)
 
                     for try await result in transcriber.results {
                         let text = String(result.text.characters)
@@ -127,7 +134,6 @@ public struct SpeechAnalyzerEngine: Sendable {
                             ))
                     }
                     feeder.cancel()
-                    try await analyzer.finalizeAndFinishThroughEndOfInput()
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

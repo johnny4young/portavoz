@@ -124,7 +124,15 @@ Con el criterio "lo más difícil con el mejor modelo", se cerraron (commits `6b
 
 5. **D28 núcleo (la mitad difícil de M10)**: ContextItem movido a PortavozCore (typealias en ContextFeedKit), migración v3 (`contextItem`), `SummaryRequest.contextItems`, tejido en PromptFactory (`notesBlock` presupuestado + `notesBehavior` con convención "▸" para coautoría sin inflar el schema; el reduce se encoge lo que ocupa el bloque), `addContextNote()` en el controller + persistencia al stop + regenerate recarga del store. 7 tests nuevos (175 verdes). **A Opus solo le queda el panel de UI**.
 
-Siguiente para Opus (diseños listos en specs/DECISIONS): M9 publicación (+String Catalogs+lint+bench), mitad UI de M10 (notas — el prompt-weaving de D28 puede necesitar iteración), M11 player/waveform, M12 Ollama+recomendador. Spike SpeechAnalyzer (rol vivo) quedó sin hacer — es el candidato si hay otra ventana de modelo fuerte.
+6. **BYOK del Copiloto (D26/D8, `e137b71`)**: `OpenAICompatibleChatClient` genérico (extraído del summary provider), `BYOKSettings` (endpoint/modelo en defaults, key SOLO Keychain, `copilotClient()` exige el opt-in `copilotBYOKEnabled`), knowledge → BYOK con fallback on-device + disclosure por host en la tarjeta; sección Settings; paridad de notas D28 en el provider cloud.
+
+7. **Caché por fingerprint + pivote de traducción (D25, `c898cc0`)**: `SummaryFingerprint` (material+método SIN idioma), migración v4, `latestSummary(fingerprint:language:)`, regenerar = cached/translate/generate; `translate()` POR PIEZAS tras dos fallos del 3B cazados por el test gated (markdown opaco trunca; schema espejado inventa secciones). Medido: pivote 2.4 s vs 10.9 s re-resumen.
+
+8. **Detector "te preguntaron" (D26, `fd0b92c`)**: gate `mentions()` determinístico (palabra completa, diacritic-insensitive; "John" no dispara en "Johnny"), `directed` JAMÁS es opinión del modelo (falló en el gated), filtro logistics con ejemplos few-shot literales, ping naranja sin respuesta inventada, campo "Tu nombre" en Ajustes (default NSFullUserName).
+
+9. **Bench in-app SpeechAnalyzer (M12)**: harness movido a `LiveTranscriptionBench` (TranscriptionKit), launch-arg oculto `portavoz-app --bench-live <file> [--seconds] [--language]` (imprime a stdout y sale). Fix crítico del engine: `finalizeAndFinishThroughEndOfInput()` debe llamarlo el FEEDER al agotar el input — secuenciado tras el loop de results deadlockeaba. Números (60 s reunión real, es_CL sobre audio EN — latencia válida, texto no comparable): primer resultado 1.04 s, lag p50 0.16 / p95 0.50 / max 0.50 s, 6 finales largos + 209 volátiles (modelo replace, no append — la decisión de coalescer de M12 es real). Corrida EN + baseline Parakeet mismo archivo: ver `docs/specs/02-transcription.md` si se alcanzó a registrar, o correr ambos con los comandos de arriba.
+
+Siguiente para Opus (diseños listos en specs/DECISIONS): M9 publicación (+String Catalogs+lint+bench), mitad UI de M10 (notas), M11 player/waveform, M12 Ollama first-class + recomendador + decisión append-vs-replace del coalescer con los números del bench. Verificación de campo del usuario: Copiloto (<5 s + "te preguntaron" + BYOK), regenerar en otro idioma (pivote), taps+VPIO.
 
 ## Roadmap 2.1 — ronda 2 de análisis (2026-07-07, verificación adversarial)
 
