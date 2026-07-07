@@ -46,6 +46,8 @@ struct PortavozCLI {
             await IssuesCommand.run(arguments)
         case "models":
             await ModelsCommand.run(arguments)
+        case "bench-live":
+            await BenchLiveCommand.run(arguments)
         case "bench-m2":
             await BenchCommand.run(arguments)
         default:

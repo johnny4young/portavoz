@@ -39,6 +39,17 @@ Endurecido contra 3 fallas REALES de WhisperKit (todas reproducidas y verificada
 - Vocabulario (`hints.vocabulary`) → `promptTokens` como frase natural ("In this meeting we discussed …", no lista "Glossary:"); WhisperKit lo prepende con `<|startofprev|>` y filtra especiales.
 - `timings.inputAudioSeconds` under-reporta con VAD → duración desde el archivo.
 
+## Spike SpeechAnalyzer (M12/D25) — estado y hallazgos (jul 2026)
+
+`SpeechAnalyzerEngine` (macOS 26, `#if canImport(Speech)`): implementado contra el `.swiftinterface` REAL del SDK local — misma forma que el live de Parakeet para benchmarks idénticos. Hallazgos del spike:
+
+1. **SpeechAnalyzer SÍ acepta vocabulario custom** — `AnalysisContext.contextualStrings[.general]` existe en el SDK (26.5) y el engine lo cablea desde `hints.vocabulary`. Esto CORRIGE la investigación de la ronda 2 ("perdió contextualStrings") — llegó en una beta posterior a las reviews.
+2. **⚠️ Cuelga en procesos CLI sin bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (primer await) suspende PARA SIEMPRE en `portavoz-cli` — sample muestra el pool cooperativo vacío y el runloop aparcado (el daemon de Speech nunca responde a un proceso sin contexto de bundle/TCC). **El benchmark del rol vivo debe correr DENTRO de la app** — `NSSpeechRecognitionUsageDescription` ya añadido al Info.plist.
+3. **Harness listo y validado**: `portavoz-cli bench-live --file <wav|caf> --engine parakeet|speech --seconds N` — pacea el archivo a ritmo real (chunks de 1 s) y mide lag de finalización por segmento. Baseline Parakeet medido (60 s de reunión real, canal system): **46 finales · primer resultado 1.18 s · lag p50 0.19 s / p95 1.01 s / max 2.68 s**.
+4. **Modelo de emisión distinto**: Parakeet emite DELTAS append-only; SpeechTranscriber emite resultados por rango (volátiles se reemplazan, finales estables) — la integración M12 debe decidir append-vs-replace en el coalescer antes de que el engine sea intercambiable en la app.
+
+Siguiente paso M12: comando debug en la app (o launch-arg) que corra el mismo bench-live in-bundle → números comparables → decisión.
+
 ## Coalescer de captions — `CaptionCoalescer` (usado por la app)
 
 La fila más nueva crece mientras el canal siga hablando: pausas mid-sentence ≤ 6 s se quedan en la fila, continuación < 2 s tras oración cerrada fluye, corte duro a 280 chars. Identidad de fila estable (id/startTime se conservan) → SwiftUI no reconstruye y la traducción solo traduce filas cerradas (solo la última fila global puede crecer). 10 tests.

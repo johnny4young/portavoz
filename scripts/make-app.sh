@@ -78,6 +78,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
     <key>NSRemovableVolumesUsageDescription</key>
     <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas, incluidos discos externos.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Portavoz puede usar el motor de voz de macOS como alternativa de transcripción, siempre on-device.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
 </dict>

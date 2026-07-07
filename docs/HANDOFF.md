@@ -120,6 +120,8 @@ Con el criterio "lo más difícil con el mejor modelo", se cerraron (commits `6b
 2. **D26 — Copiloto en vivo (núcleo de M13)**: heurística pura es/en → clasificador FM @Generable (`.live` + key, latest-wins) → routing knowledge (FM directo)/context (RAGAnswerer con últimas ~13 filas vivas)/logistics (drop). Tarjetas con procedencia + copiar/descartar; toggle por grabación junto al de traducción. Pendiente: verificación de campo <5 s, BYOK knowledge, detector "te preguntaron".
 3. **T1 resuelto — grabación crash-safe**: verificado empíricamente que WAV + kill -9 = 0 bytes legibles; captura migrada a **CAF** (kill -9 a los 6 s conserva 5.23 s); `CaptureFileWriter` (ex WAVWriter), `MeetingAudioLayout` con fallback a .wav legado, `verify_drift.py` convierte CAF vía afconvert.
 
+4. **Spike SpeechAnalyzer (M12)**: engine escrito contra el SDK real + harness `bench-live` validado (baseline Parakeet: p50 0.19 s / p95 1.01 s en 60 s de reunión real). DOS hallazgos: (a) SÍ tiene vocabulario custom (`AnalysisContext.contextualStrings` — corrige la ronda 2); (b) **cuelga para siempre en CLI sin bundle** (daemon de Speech no responde sin contexto TCC) → el lado speech del benchmark debe correr in-app (usage string ya en el Info.plist; falta el launch-arg de debug).
+
 Siguiente para Opus (diseños listos en specs/DECISIONS): M9 publicación (+String Catalogs+lint+bench), mitad UI de M10 (notas — el prompt-weaving de D28 puede necesitar iteración), M11 player/waveform, M12 Ollama+recomendador. Spike SpeechAnalyzer (rol vivo) quedó sin hacer — es el candidato si hay otra ventana de modelo fuerte.
 
 ## Roadmap 2.1 — ronda 2 de análisis (2026-07-07, verificación adversarial)
