@@ -22,9 +22,14 @@ let package = Package(
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
     ],
     dependencies: [
-        // Parakeet TDT ASR on CoreML/ANE (Apache-2.0). Pinned to a minor: the
+        // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
+        // Pinned to the exact commit that fixes a deterministic type-checker
+        // timeout in FluidAudioCLI (upstream #732, not yet in a release);
+        // return to .upToNextMinor when a release > 0.15.4 ships. Their
         // public API renames types across minors (0.12 → 0.15 did).
-        .package(url: "https://github.com/FluidInference/FluidAudio.git", .upToNextMinor(from: "0.15.4")),
+        .package(
+            url: "https://github.com/FluidInference/FluidAudio.git",
+            revision: "c367a18e77f9e07a9d0493f6e6fa713d0f774f13"),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -61,7 +66,7 @@ let package = Package(
             name: "portavoz-cli",
             dependencies: [
                 "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
-                "TranscriptionKit", "DiarizationKit",
+                "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
             ]
         ),
 

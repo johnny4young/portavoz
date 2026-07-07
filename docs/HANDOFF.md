@@ -1,7 +1,7 @@
 # HANDOFF — Estado del proyecto
 
 > Documento de traspaso entre sesiones de trabajo. Actualizar al final de cada sesión significativa.
-> Última actualización: 2026-07-07 (sesión M2+M3).
+> Última actualización: 2026-07-07 (sesión M2+M3+M4).
 
 ## Estado actual
 
@@ -11,6 +11,7 @@
 | **M1 — Captura** | ✅ Funcionalmente completo y verificado. Pendiente solo el test de aceptación largo (30 min, drift < 50 ms con `scripts/verify_drift.py`). |
 | **M2 — Transcripción** | ✅ **Completo, criterio de aceptación medido en verde** (ver abajo). |
 | **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** Pendientes: DER formal en reunión real de 4 personas, y las "speaker pills" (UI — no existe app target todavía; va con el shell de app hacia M5). |
+| **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
 
 **Sin push al remoto todavía** (`origin = git@github.com:johnny4young/portavoz.git`).
 
@@ -41,12 +42,21 @@
 - **CLI**: `diarize --file <wav> [--attribute] [--threshold t]`; `models download|verify|path` ahora cubre el catálogo entero.
 - Resultados: AMI (2 speakers reales) ≈ RTTM de referencia; conversación TTS 2 voces → 7/8 oraciones bien atribuidas (artefacto: speaker espurio en la última ventana zero-padded, q ~0.2). 40 tests en verde (2 de integración con modelos reales, gated).
 
+## M4 — qué se construyó (verificado 2026-07-07)
+
+- **`FoundationModelSummaryProvider`** (on-device, macOS 26+): guided generation (`@Generable`) → `StructuredSummary` neutro (compartido con BYOK) → markdown + action items con owners resueltos contra los `Speaker`. Decodificación greedy. Transcripts largos por **map-reduce recursivo** (chunks 4500 chars → notas cap 250 tokens → converge garantizado).
+- **`OpenAICompatibleSummaryProvider`** (BYOK): cualquier endpoint `/chat/completions`; opt-in explícito y etiquetado (D8); key por `PORTAVOZ_BYOK_API_KEY` en el CLI (Keychain llega con la app).
+- **`PromptFactory` + `TranscriptFormatter`** (puros, testeados): directiva de idioma con nombre humano + repetición al final del prompt; glosario verbatim; secciones del Recipe traducibles; formato `[mm:ss] Label: texto`.
+- **CLI `summarize`**: pipeline completo wav → transcript → diarización → atribución → resumen; `--out-language`, `--glossary`, `--byok`.
+- **Dependencia FluidAudio pineada por revisión** (`c367a18e…`): el tag v0.15.4 tiene un timeout determinístico del type-checker en su target CLI (arreglado upstream en #732, sin release aún) — **volver a `.upToNextMinor` cuando salga > 0.15.4**.
+- Resultados: resumen ES de reunión EN, headings traducidos, `roadmap`/`batch`/`pipeline` intactos, 3.8 s; sin action items inventados (greedy + guías estrictas); path incremental ~11 s para 3 ventanas. **55 tests en verde** (4 de integración con modelos reales, gated).
+
 ## Próximos pasos (en orden)
 
-1. **Test de aceptación M1 pendiente**: 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
-2. **Validación M3 formal**: reunión real de 4 personas → DER < 15% (los turnos salen de `diarize`; falta harness de DER contra referencia — FluidAudio trae `DiarizationDER.swift` que puede reusarse). "Me" 100% ya es estructural por diseño.
-3. **M4 — Inteligencia**: resúmenes incrementales (Foundation Models + BYOK), Recipes v1, salida bilingüe EN/ES. Criterio: resumen estructurado < 30 s tras el fin de la reunión.
-4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; `AudioRetentionPolicy` diferida a M5 (StorageKit); "speaker pills" editables necesitan app target.
+1. **Test de aceptación M1 pendiente** (usuario): 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
+2. **Validación M3 formal** (usuario): reunión real de 4 personas → DER < 15% (los turnos salen de `diarize`; falta harness de DER contra referencia — FluidAudio trae `DiarizationDER.swift` que puede reusarse). "Me" 100% ya es estructural por diseño.
+3. **M5 — Public 0.1**: StorageKit (GRDB + FTS5, contrato D4), export MD/PDF/Gist, y el **app shell SwiftUI** (que desbloquea speaker pills de M3, resumen rodante de M4 y la `AudioRetentionPolicy` de M1). Primer target de UI del proyecto.
+4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4.
 
 ## Quirks del entorno de desarrollo
 
@@ -57,6 +67,15 @@
 - El Python de python.org no tiene certificados SSL (`urllib` falla) — usar `curl` en scripts.
 
 ## Descubrimientos técnicos ya pagados (no re-descubrir)
+
+### M4 (inteligencia)
+
+- **La ventana de 4096 tokens del modelo on-device cuenta TODO**: instrucciones + prompt + schema del guided generation + salida. 6000 chars de material la reventaron (`exceededContextWindowSize`); el material del pase estructurado debe quedar ≤ ~3000 chars.
+- **El map-reduce necesita compresión garantizada**: sin `maximumResponseTokens` en las notas, cada nota puede medir ~2800 chars y la recursión NO converge ("did not converge"). Cap de 250 tokens = ≥4x por nivel.
+- **El modelo de 3B ignora directivas de idioma débiles**: "BCP-47 tag es" en instructions → salida en inglés. Funciona: nombre humano ("Spanish (español)") + repetir la orden AL FINAL del prompt de usuario.
+- **Con sampling, el 3B inventa action items** (le atribuyó compromisos al speaker espurio S3). Greedy + guía "solo compromisos explícitos, array vacío si no hubo" lo corrigió.
+- La API real de FoundationModels se verifica en el `.swiftinterface` del SDK local (`MacOSX26.5.sdk/...FoundationModels.framework/Modules/...swiftinterface`) — mejor fuente que cualquier doc.
+- **FluidAudio v0.15.4 no compila entero en esta máquina** (timeout del type-checker en `NemotronMultilingualFleursBenchmark.swift` de su CLI; a veces pasa, a veces no — depende de la carga). Fix upstream #732 (`c367a18e`) pineado por revisión.
 
 ### M3 (diarización)
 
@@ -98,7 +117,7 @@
 ## Mapa de documentos
 
 - [CLAUDE.md](../CLAUDE.md) — guía operativa mínima para sesiones de Claude Code (apunta aquí).
-- [docs/DECISIONS.md](DECISIONS.md) — **registro de todas las decisiones con su porqué** (D1–D16).
+- [docs/DECISIONS.md](DECISIONS.md) — **registro de todas las decisiones con su porqué** (D1–D18).
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md) — diseño técnico: módulos, pipelines, reglas de ingeniería, entorno.
 - [docs/PRODUCT.md](PRODUCT.md) — visión, mercado, FREE/PRO, targets de performance.
 - [docs/ROADMAP.md](ROADMAP.md) — hitos M0–M8 con criterios de aceptación.

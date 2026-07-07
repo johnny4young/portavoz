@@ -17,7 +17,7 @@ Diferenciadores en orden de prioridad: who-said-what estructural por captura dua
 | `AudioCaptureKit` | Mic (AVAudioEngine) + process taps por app (Core Audio, macOS 14.4+); `RecordingSession` (con tap `onChunk`); `WAVWriter`; políticas de retención |
 | `TranscriptionKit` | Protocolo `TranscriptionEngine`; `ParakeetEngine` (vivo sliding window + batch long-form); `TranscriptionScheduler` (slots D7) |
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker vía FluidAudio) sobre canales system/room; `SpeakerAttributor` (who-said-what estructural); `Voiceprint` (biométrico: solo on-device, cifrado, nunca sync, borrable) |
-| `IntelligenceKit` | `SummaryProvider`: Foundation Models (default), MLX local, BYOK cloud (opt-in explícito, jamás default silencioso); Recipes; `SummaryRequest` con `targetLanguage` + `glossary` (bilingüe) |
+| `IntelligenceKit` | `SummaryProvider`: `FoundationModelSummaryProvider` (on-device, map-reduce convergente, D18) + `OpenAICompatibleSummaryProvider` (BYOK, opt-in explícito, jamás default silencioso); Recipes; bilingüe con `targetLanguage` + `glossary` |
 | `ContextFeedKit` | Links/notas/snippets con timestamp durante la reunión ("las notas llevan la intención, el transcript los hechos") |
 | `StorageKit` | GRDB + FTS5 + sqlite-vec (llega en M1+; M0 sin deps). Contrato de schema congelado — ver D4 en [DECISIONS.md](DECISIONS.md) |
 | `SyncKit` | CloudKit vía CKSyncEngine (M7). Escalera de compartir: export/Gist → CKShare → relay self-hostable (D12) |
