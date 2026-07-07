@@ -10,10 +10,14 @@ public enum PromptFactory {
     public static func summaryInstructions(
         recipe: Recipe,
         targetLanguage: String,
-        glossary: [String]
+        glossary: [String],
+        hasUserNotes: Bool = false
     ) -> String {
         var lines: [String] = []
         lines.append("You are the note-taker of a meeting. \(recipe.instructions)")
+        if hasUserNotes {
+            lines.append(notesBehavior())
+        }
         lines.append(
             "Structure the summary with these sections, in this order: "
                 + recipe.sections.joined(separator: ", ")
@@ -50,10 +54,59 @@ public enum PromptFactory {
     /// ignored the language when it only lived in the instructions
     /// (observed 2026-07-07: "es" request → English summary).
     public static func summaryPrompt(
-        transcriptOrNotes text: String, targetLanguage: String
+        transcriptOrNotes text: String,
+        targetLanguage: String,
+        userNotes: String = ""
     ) -> String {
-        "Here is the meeting material to summarize:\n\n\(text)\n\n"
-            + "Remember: write the ENTIRE summary in \(languageName(for: targetLanguage)), including every heading and bullet."
+        var prompt = ""
+        if !userNotes.isEmpty {
+            prompt += "THE USER'S OWN NOTES (their personal emphasis):\n\(userNotes)\n\n"
+        }
+        prompt += "Here is the meeting material to summarize:\n\n\(text)\n\n"
+        // The language order goes LAST — the 3B forgets directives that
+        // don't close the prompt (D18).
+        prompt +=
+            "Remember: write the ENTIRE summary in \(languageName(for: targetLanguage)), including every heading and bullet."
+        return prompt
+    }
+
+    /// D28: the user's notes are INTENT — the summary must expand each one
+    /// with facts and never contradict them. Bullets born from a note are
+    /// prefixed "▸ " (one cheap token instead of inflating the guided
+    /// schema), so the UI can render coauthorship like Granola's
+    /// black-vs-gray without a schema change.
+    static func notesBehavior() -> String {
+        "The user's own notes mark what mattered to THEM. Treat each note as a "
+            + "topic the summary MUST cover: expand it with facts from the material, "
+            + "never contradict it, and prefix every bullet that grows out of a user "
+            + "note with \"▸ \". Notes are terse fragments — resolve them against the "
+            + "material, don't quote them verbatim."
+    }
+
+    /// Formats context items as a compact, timestamped block. Budgeted for
+    /// the 3B window: each note clipped to `perNoteLimit` chars, the whole
+    /// block to `budget` (oldest first — the block interleaves with the
+    /// transcript's own order).
+    public static func notesBlock(
+        _ items: [ContextItem],
+        perNoteLimit: Int = 120,
+        budget: Int = 800
+    ) -> String {
+        var lines: [String] = []
+        var used = 0
+        for item in items.sorted(by: { $0.timestamp < $1.timestamp }) {
+            let content = item.content
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\n", with: " ")
+            guard !content.isEmpty else { continue }
+            let clipped = String(content.prefix(perNoteLimit))
+            let total = Int(item.timestamp)
+            let line = String(format: "[%02d:%02d] %@", total / 60, total % 60, clipped)
+            guard used + line.count + 1 <= budget else { break }
+            lines.append(line)
+            used += line.count + 1
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// Instructions for speaker naming (M6). Evidence-or-nothing: a small

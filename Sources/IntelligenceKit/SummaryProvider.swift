@@ -20,6 +20,9 @@ public struct SummaryRequest: Sendable {
     public var targetLanguage: String
     /// Terms to keep untranslated in the output (deploy, PR, rollback…).
     public var glossary: [String]
+    /// The user's own notes (D28): intent that the summary must expand and
+    /// never contradict. Empty = summarize the material alone.
+    public var contextItems: [ContextItem]
 
     public init(
         meetingID: MeetingID,
@@ -27,7 +30,8 @@ public struct SummaryRequest: Sendable {
         speakers: [Speaker],
         recipe: Recipe,
         targetLanguage: String = "en",
-        glossary: [String] = []
+        glossary: [String] = [],
+        contextItems: [ContextItem] = []
     ) {
         self.meetingID = meetingID
         self.segments = segments
@@ -35,6 +39,7 @@ public struct SummaryRequest: Sendable {
         self.recipe = recipe
         self.targetLanguage = targetLanguage
         self.glossary = glossary
+        self.contextItems = contextItems
     }
 }
 

@@ -574,6 +574,7 @@ struct MeetingDetailView: View {
                 gistError = reason
                 return
             }
+            let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
             let request = SummaryRequest(
                 meetingID: meetingID,
                 segments: detail.segments,
@@ -581,7 +582,8 @@ struct MeetingDetailView: View {
                 recipe: .general,
                 targetLanguage: language,
                 glossary: VocabularyPrompt.parse(
-                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+                    UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
+                contextItems: notes
             )
             if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
                 try? await services.store.saveSummary(draft)

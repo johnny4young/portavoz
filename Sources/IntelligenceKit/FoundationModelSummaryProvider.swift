@@ -134,22 +134,29 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
+        // D28: the user's notes ride the FINAL pass as intent. They share
+        // the 4096-token window with the condensed material, so the reduce
+        // target shrinks by exactly what the notes block occupies.
+        let notesBlock = PromptFactory.notesBlock(request.contextItems)
         let condensed = try await condense(
             material, targetLanguage: request.targetLanguage, glossary: request.glossary,
-            priority: priority)
+            priority: priority,
+            reduceBudget: TranscriptFormatter.onDeviceReduceBudget - notesBlock.count)
 
         let session = LanguageModelSession(
             instructions: PromptFactory.summaryInstructions(
                 recipe: request.recipe,
                 targetLanguage: request.targetLanguage,
-                glossary: request.glossary))
+                glossary: request.glossary,
+                hasUserNotes: !notesBlock.isEmpty))
         // Greedy decoding: summaries want faithfulness, not creativity —
         // sampled decoding made the 3B model invent action items. The draft
         // is built INSIDE the slot because Response<T> isn't Sendable.
         return try await IntelligenceScheduler.shared.run(priority) {
             let response = try await session.respond(
                 to: PromptFactory.summaryPrompt(
-                    transcriptOrNotes: condensed, targetLanguage: request.targetLanguage),
+                    transcriptOrNotes: condensed, targetLanguage: request.targetLanguage,
+                    userNotes: notesBlock),
                 generating: GeneratedSummary.self,
                 options: GenerationOptions(sampling: .greedy))
             return response.content.structured.draft(for: request)
@@ -162,9 +169,11 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// is long enough that even its notes overflow.
     private func condense(
         _ text: String, targetLanguage: String, glossary: [String],
-        priority: IntelligenceScheduler.Priority, depth: Int = 0
+        priority: IntelligenceScheduler.Priority,
+        reduceBudget: Int = TranscriptFormatter.onDeviceReduceBudget,
+        depth: Int = 0
     ) async throws -> String {
-        guard text.count > TranscriptFormatter.onDeviceReduceBudget else { return text }
+        guard text.count > max(reduceBudget, 600) else { return text }
         guard depth < 4 else {
             throw IntelligenceError.providerFailed("transcript did not converge while condensing")
         }
@@ -192,7 +201,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         return try await condense(
             notes.joined(separator: "\n"),
             targetLanguage: targetLanguage, glossary: glossary,
-            priority: priority, depth: depth + 1)
+            priority: priority, reduceBudget: reduceBudget, depth: depth + 1)
     }
 }
 

@@ -182,3 +182,38 @@ struct ActionItemRecord: Codable, FetchableRecord, PersistableRecord {
         )
     }
 }
+
+struct ContextItemRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "contextItem"
+
+    var id: String
+    var meetingID: String
+    var kind: String
+    var content: String
+    var timestamp: Double
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    init(_ item: ContextItem, createdAt: Date, updatedAt: Date) {
+        self.id = item.id.uuidString
+        self.meetingID = item.meetingID.rawValue.uuidString
+        self.kind = item.kind.rawValue
+        self.content = item.content
+        self.timestamp = item.timestamp
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = nil
+    }
+
+    var item: ContextItem? {
+        guard
+            let uuid = UUID(uuidString: id),
+            let meetingUUID = UUID(uuidString: meetingID),
+            let kind = ContextItem.Kind(rawValue: kind)
+        else { return nil }
+        return ContextItem(
+            id: uuid, meetingID: MeetingID(rawValue: meetingUUID),
+            kind: kind, content: content, timestamp: timestamp)
+    }
+}

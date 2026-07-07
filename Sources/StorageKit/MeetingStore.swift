@@ -211,6 +211,40 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    // MARK: - Context items (D28: the user's notes = intent)
+
+    public func save(_ items: [ContextItem]) async throws {
+        try await database.write { db in
+            let now = Date()
+            for item in items {
+                let existing = try ContextItemRecord.fetchOne(db, key: item.id.uuidString)
+                var record = ContextItemRecord(
+                    item, createdAt: existing?.createdAt ?? now, updatedAt: now)
+                record.deletedAt = existing?.deletedAt
+                try record.save(db)
+            }
+        }
+    }
+
+    public func contextItems(for id: MeetingID) async throws -> [ContextItem] {
+        try await database.read { db in
+            try ContextItemRecord
+                .filter(Column("meetingID") == id.rawValue.uuidString)
+                .filter(Column("deletedAt") == nil)
+                .order(Column("timestamp"))
+                .fetchAll(db)
+                .compactMap(\.item)
+        }
+    }
+
+    public func deleteContextItem(_ id: UUID) async throws {
+        try await database.write { db in
+            try db.execute(
+                sql: "UPDATE contextItem SET deletedAt = ?, updatedAt = ? WHERE id = ?",
+                arguments: [Date(), Date(), id.uuidString])
+        }
+    }
+
     // MARK: - Summaries (immutable versioned snapshots)
 
     /// Persists a new snapshot; the version auto-increments per

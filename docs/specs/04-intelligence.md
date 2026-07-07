@@ -37,6 +37,13 @@ Cualquier endpoint `/chat/completions` (cubre Ollama/LM Studio/Groq/OpenRouter).
 - **Retrieval híbrido**: FTS5 con OR de palabras de contenido ≥ 4 chars (el AND de la pregunta literal nunca matchea) + semántico; fusión RRF (k=60). Multi-query: FM genera paráfrasis bilingües de la pregunta (`expandQuery`).
 - **Respuesta**: FM on-device con citas `[n]` que mapean a segmentos (meetingID + timestamp). Verificado E2E: agente MCP respondió "what did we agree about the transcription budget?" con fuentes correctas.
 
+## Notas de coautoría (D28) — el tejido notas→resumen (núcleo implementado)
+
+- `SummaryRequest.contextItems`: las notas del usuario viajan al pase FINAL como intención. `PromptFactory.notesBlock` las formatea timestampeadas (`[mm:ss] nota`), cronológicas, con presupuesto duro (120 chars/nota, 800 el bloque — testeado).
+- **Presupuesto del 3B respetado**: el bloque comparte la ventana con el material condensado, así que el target del reduce se ENCOGE exactamente lo que ocupa el bloque (`condense(reduceBudget:)`).
+- Instrucciones (`notesBehavior`): cada nota es un tema que el resumen DEBE cubrir, expandido con hechos, jamás contradicho; los bullets nacidos de una nota se prefijan **"▸ "** — un token barato en vez de inflar el schema del guided generation; el renderer puede pintar la coautoría estilo Granola (negro/gris) sin cambiar tipos. La orden de idioma sigue cerrando el prompt (D18).
+- Flujo completo cableado: `RecordingController.addContextNote()` (ancla al momento actual) → resumen rodante y final las ven → se persisten al stop (tabla `contextItem`, migración v3) → regenerar en el detalle las recarga del store. **Falta solo el panel de UI** (M10, mitad Opus).
+
 ## Copiloto en vivo (D26) — `LiveCopilot` + `QuestionHeuristic` + `CopilotCard`
 
 Pipeline de 3 etapas sobre filas cerradas del coalescer (una fila cierra cuando nace la siguiente — nunca parciales, nunca re-proceso):
@@ -59,4 +66,4 @@ Ver spec 03 (SpeakerNamer + NamingExcerpt + filtro never-trust-verify).
 
 ## Planeado (no implementado)
 
-Copiloto: BYOK para `knowledge` con disclosure de proveedor; detector "te preguntaron" (mención de tu nombre) unificado a la etapa 2. Notas de coautoría (D28/M10): `contextItems` en `SummaryRequest` como intención del usuario. Caché de resumen por fingerprint + pivote EN→re-traducción (parámetros de Meetily, D25).
+Copiloto: BYOK para `knowledge` con disclosure de proveedor; detector "te preguntaron" (mención de tu nombre) unificado a la etapa 2. Caché de resumen por fingerprint + pivote EN→re-traducción (parámetros de Meetily, D25). Panel de UI de notas (la mitad Opus de M10).

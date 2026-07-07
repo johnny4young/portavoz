@@ -114,6 +114,24 @@ public enum StorageSchema {
             }
         }
 
+        // v3 (M10/D28): the user's own notes during the meeting — intent
+        // that guides the summary. Timestamped to interleave with the
+        // transcript; tombstoned like everything else (D4).
+        migrator.registerMigration("v3") { db in
+            try db.create(table: "contextItem") { t in
+                t.primaryKey("id", .text)
+                t.column("meetingID", .text).notNull()
+                    .references("meeting", onDelete: .cascade)
+                t.column("kind", .text).notNull()
+                t.column("content", .text).notNull()
+                t.column("timestamp", .double).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+            }
+            try db.create(index: "contextItem_on_meetingID", on: "contextItem", columns: ["meetingID"])
+        }
+
         return migrator
     }
 }

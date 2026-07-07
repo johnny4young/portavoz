@@ -27,6 +27,10 @@ final class RecordingController {
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
     private(set) var liveSummary: String?
+    /// The user's notes during the meeting (D28): intent for the summary.
+    /// The future notes panel calls `addContextNote`; everything downstream
+    /// (rolling summary, final summary, persistence) is already wired.
+    private(set) var contextItems: [ContextItem] = []
     /// Copilot answer cards (D26), newest last. Opt-in per recording.
     private(set) var copilotCards: [CopilotCard] = []
     var copilotEnabled = UserDefaults.standard.bool(forKey: "copilotEnabled") {
@@ -127,6 +131,7 @@ final class RecordingController {
         summarizedCount = 0
         liveNotes = []
         copilotCards = []
+        contextItems = []
         lastOpenRowID = nil
         phase = .recording
 
@@ -196,6 +201,24 @@ final class RecordingController {
         copilotCards.removeAll { $0.id == id }
     }
 
+    // MARK: - Notas (D28)
+
+    /// Adds a typed note anchored to the current moment of the recording.
+    func addContextNote(_ text: String, kind: ContextItem.Kind = .note) {
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty, phase == .recording else { return }
+        contextItems.append(
+            ContextItem(
+                meetingID: meetingID,
+                kind: kind,
+                content: content,
+                timestamp: Date().timeIntervalSince(startedAt)))
+    }
+
+    func removeContextItem(_ id: UUID) {
+        contextItems.removeAll { $0.id == id }
+    }
+
     @available(macOS 26.0, *)
     private func refreshLiveSummary() async {
         // The newest row is still growing (coalescer); note only CLOSED rows,
@@ -238,7 +261,8 @@ final class RecordingController {
                 speakers: [me, them],
                 recipe: .general,
                 targetLanguage: language,
-                glossary: vocabulary
+                glossary: vocabulary,
+                contextItems: contextItems
             )
             let draft = try await provider.summarizeNotes(
                 joined, request: request, priority: .background)
@@ -304,6 +328,7 @@ final class RecordingController {
             try await services.store.save(meeting)
             try await services.store.save(attribution.speakers)
             try await services.store.save(attribution.segments)
+            try await services.store.save(contextItems)
 
             if #available(macOS 26.0, *),
                 FoundationModelSummaryProvider.unavailabilityReason() == nil
@@ -316,7 +341,8 @@ final class RecordingController {
                     speakers: attribution.speakers,
                     recipe: .general,
                     targetLanguage: language,
-                    glossary: vocabulary
+                    glossary: vocabulary,
+                    contextItems: contextItems
                 )
                 if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
                     try await services.store.saveSummary(draft)

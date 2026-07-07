@@ -122,6 +122,8 @@ Con el criterio "lo más difícil con el mejor modelo", se cerraron (commits `6b
 
 4. **Spike SpeechAnalyzer (M12)**: engine escrito contra el SDK real + harness `bench-live` validado (baseline Parakeet: p50 0.19 s / p95 1.01 s en 60 s de reunión real). DOS hallazgos: (a) SÍ tiene vocabulario custom (`AnalysisContext.contextualStrings` — corrige la ronda 2); (b) **cuelga para siempre en CLI sin bundle** (daemon de Speech no responde sin contexto TCC) → el lado speech del benchmark debe correr in-app (usage string ya en el Info.plist; falta el launch-arg de debug).
 
+5. **D28 núcleo (la mitad difícil de M10)**: ContextItem movido a PortavozCore (typealias en ContextFeedKit), migración v3 (`contextItem`), `SummaryRequest.contextItems`, tejido en PromptFactory (`notesBlock` presupuestado + `notesBehavior` con convención "▸" para coautoría sin inflar el schema; el reduce se encoge lo que ocupa el bloque), `addContextNote()` en el controller + persistencia al stop + regenerate recarga del store. 7 tests nuevos (175 verdes). **A Opus solo le queda el panel de UI**.
+
 Siguiente para Opus (diseños listos en specs/DECISIONS): M9 publicación (+String Catalogs+lint+bench), mitad UI de M10 (notas — el prompt-weaving de D28 puede necesitar iteración), M11 player/waveform, M12 Ollama+recomendador. Spike SpeechAnalyzer (rol vivo) quedó sin hacer — es el candidato si hay otra ventana de modelo fuerte.
 
 ## Roadmap 2.1 — ronda 2 de análisis (2026-07-07, verificación adversarial)

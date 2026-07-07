@@ -300,3 +300,23 @@ final class MeetingStoreTests: XCTestCase {
         _ = eager
     }
 }
+
+extension MeetingStoreTests {
+    func testContextItemsRoundTripAndTombstone() async throws {
+        try await store.save(meeting)
+
+        let first = ContextItem(
+            meetingID: meeting.id, kind: .note, content: "pricing", timestamp: 60)
+        let second = ContextItem(
+            meetingID: meeting.id, kind: .link, content: "https://x.test", timestamp: 30)
+        try await store.save([first, second])
+
+        let items = try await store.contextItems(for: meeting.id)
+        XCTAssertEqual(items.map(\.content), ["https://x.test", "pricing"])  // por timestamp
+        XCTAssertEqual(items.map(\.kind), [.link, .note])
+
+        try await store.deleteContextItem(first.id)
+        let remaining = try await store.contextItems(for: meeting.id)
+        XCTAssertEqual(remaining.map(\.content), ["https://x.test"])
+    }
+}

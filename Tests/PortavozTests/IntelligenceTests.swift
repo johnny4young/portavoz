@@ -420,3 +420,65 @@ final class QuestionHeuristicTests: XCTestCase {
         XCTAssertFalse(QuestionHeuristic.looksLikeQuestion(""))
     }
 }
+
+final class NotesWeavingTests: XCTestCase {
+    private let meetingID = MeetingID()
+
+    private func note(_ content: String, at timestamp: TimeInterval) -> ContextItem {
+        ContextItem(meetingID: meetingID, kind: .note, content: content, timestamp: timestamp)
+    }
+
+    func testNotesBlockFormatsTimestampedChronologically() {
+        let block = PromptFactory.notesBlock([
+            note("pricing concerns", at: 192),
+            note("ask about the rollback plan", at: 65),
+        ])
+        XCTAssertEqual(block, "[01:05] ask about the rollback plan\n[03:12] pricing concerns")
+    }
+
+    func testNotesBlockClipsLongNotesAndRespectsBudget() {
+        let long = String(repeating: "x", count: 500)
+        let block = PromptFactory.notesBlock([note(long, at: 0)], perNoteLimit: 50, budget: 800)
+        XCTAssertEqual(block, "[00:00] " + String(repeating: "x", count: 50))
+
+        let many = (0..<100).map { note("nota número \($0) con contenido", at: Double($0)) }
+        let bounded = PromptFactory.notesBlock(many, budget: 200)
+        XCTAssertLessThanOrEqual(bounded.count, 200)
+        XCTAssertTrue(bounded.hasPrefix("[00:00]"))
+    }
+
+    func testNotesBlockSkipsEmptyAndFlattensNewlines() {
+        let block = PromptFactory.notesBlock([
+            note("   ", at: 0),
+            note("línea\ncon salto", at: 5),
+        ])
+        XCTAssertEqual(block, "[00:05] línea con salto")
+    }
+
+    func testSummaryPromptPutsNotesFirstAndLanguageLast() {
+        let prompt = PromptFactory.summaryPrompt(
+            transcriptOrNotes: "MATERIAL", targetLanguage: "es",
+            userNotes: "[00:01] mi nota")
+        let notesIndex = try! XCTUnwrap(prompt.range(of: "mi nota")).lowerBound
+        let materialIndex = try! XCTUnwrap(prompt.range(of: "MATERIAL")).lowerBound
+        XCTAssertLessThan(notesIndex, materialIndex)
+        XCTAssertTrue(prompt.hasSuffix("including every heading and bullet."))
+    }
+
+    func testSummaryPromptWithoutNotesIsUnchanged() {
+        let prompt = PromptFactory.summaryPrompt(
+            transcriptOrNotes: "MATERIAL", targetLanguage: "en")
+        XCTAssertFalse(prompt.contains("USER'S OWN NOTES"))
+        XCTAssertTrue(prompt.hasPrefix("Here is the meeting material"))
+    }
+
+    func testInstructionsGainNotesBehaviorOnlyWithNotes()
+    {
+        let with = PromptFactory.summaryInstructions(
+            recipe: .general, targetLanguage: "en", glossary: [], hasUserNotes: true)
+        let without = PromptFactory.summaryInstructions(
+            recipe: .general, targetLanguage: "en", glossary: [], hasUserNotes: false)
+        XCTAssertTrue(with.contains("▸"))
+        XCTAssertFalse(without.contains("▸"))
+    }
+}
