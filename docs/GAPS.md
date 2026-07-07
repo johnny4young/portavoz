@@ -23,7 +23,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 |---|---|---|---|
 | T1 | **Crash-safety del WAV sin verificar** | kill -9 a los 30 min podría perder la reunión entera (header RIFF) | M11: contenedor CAF o fragmentado; test de crash real |
 | T2 | **Taps + VPIO en el mismo proceso** | MacParakeet los declaró incompatibles "confiablemente"; tenemos 1 muestra OK | Vigilancia activa (HANDOFF) + plan B offline echo-cancel (D27) |
-| T3 | **FM sin política de prioridad** | rolling summary + refine + Copiloto (futuro) compiten por el mismo modelo → latencias impredecibles | Diseñar cola con prioridades al construir M13 (Copiloto) |
+| T3 | ~~FM sin política de prioridad~~ | **RESUELTO (D29)**: `IntelligenceScheduler` single-flight con prioridades, latest-wins por key, 7 tests | ✅ jul 2026 |
 | T4 | **Números de perf sin medir**: cold start, RAM grabando, FTS a 1k reuniones, batería | targets publicados sin evidencia — inaceptable para el README de M9 | `portavoz-cli bench --suite full` + corpus sintético (M9) |
 | T5 | RAG brute-force O(n) | a 1,000+ reuniones el `ask` se degrada | medir primero (T4); sqlite-vec si falla el target |
 | T6 | Storage de audio 126 MB/canal/22 min | disco del usuario | transcode AAC post-refine (M11) |

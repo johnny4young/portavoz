@@ -2,6 +2,10 @@
 
 Estado: implementado y verificado (resumen ES de reunión EN con glosario intacto en 3.8 s; RAG respondiendo con citas vía MCP). Decisiones: D8 (local por defecto, BYOK explícito), D18 (FM map-reduce), D22 (RAG), D26 (Copiloto — planeado).
 
+## Scheduler del modelo — `IntelligenceScheduler` (D29)
+
+Actor single-flight que serializa TODA llamada al FM del proceso con prioridades `interactive > live > background`, FIFO por clase, latest-wins por `key` (para ticks descartables del Copiloto) y cancelación del caller. Granularidad = una llamada: las cadenas map-reduce sueltan el slot entre pasos → la espera de un job interactivo queda acotada por la llamada en vuelo (~1–4 s). Sin dependencia de FM (7 tests puros, corren en cualquier plataforma). Los métodos públicos del provider aceptan `priority:` (default `.interactive`); el resumen rodante de la app pasa `.background`. Swift 6: `Response<T>` no es Sendable → los closures devuelven payloads construidos dentro del slot.
+
 ## Resúmenes on-device — `FoundationModelSummaryProvider`
 
 Requiere macOS 26 + Apple Intelligence activa (`unavailabilityReason()` da el motivo humano: device no elegible / AI apagada / modelo descargando).
@@ -42,7 +46,7 @@ Ver spec 03 (SpeakerNamer + NamingExcerpt + filtro never-trust-verify).
 1. **Sin Apple Intelligence no hay resumen local** — el hueco que D25/M12 cierra (Ollama primera clase → MLX embebido).
 2. Recipes: solo `general` implementada; librería de recipes es M13b.
 3. RAG brute-force: O(n) sobre embeddings — sin medir a 1,000+ reuniones (target < 50 ms probablemente exige sqlite-vec entonces).
-4. El resumen rodante y el refine comparten el modelo FM — sin política de prioridad todavía (relevante para el Copiloto D26, que añade otro consumidor).
+4. ~~Sin política de prioridad del FM~~ — resuelto con `IntelligenceScheduler` (D29).
 
 ## Planeado (no implementado)
 

@@ -67,11 +67,13 @@ public struct RAGAnswerer: Sendable {
                 After each claim, add the marker of the passage that supports it, e.g. "… media hora de latencia [2]."
                 If the context does not contain the answer, say so plainly — never guess.
                 """)
-        let response = try await session.respond(
-            to: "Context:\n\(context)\n\nQuestion: \(question)\n\n"
-                + "Answer with full sentences, in the same language as the question.",
-            options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 500))
-        return response.content
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            try await session.respond(
+                to: "Context:\n\(context)\n\nQuestion: \(question)\n\n"
+                    + "Answer with full sentences, in the same language as the question.",
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 500)
+            ).content
+        }
     }
 
     /// Multi-query expansion for cross-lingual retrieval: the library is
@@ -86,11 +88,16 @@ public struct RAGAnswerer: Sendable {
                 One per line, no numbering, no commentary.
                 """)
         guard
-            let response = try? await session.respond(
-                to: question,
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 60))
+            let content = try? await IntelligenceScheduler.shared.run(
+                .interactive,
+                operation: {
+                    try await session.respond(
+                        to: question,
+                        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 60)
+                    ).content
+                })
         else { return [question] }
-        let variants = response.content
+        let variants = content
             .split(separator: "\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)) }
             .filter { !$0.isEmpty && $0.caseInsensitiveCompare(question) != .orderedSame }

@@ -121,7 +121,7 @@ public struct SpeakerNamer: Sendable {
         // The 4096-token window also holds instructions, schema and output;
         // if a dense excerpt still overflows, halve it and try once more
         // before giving up.
-        let suggestions: [GeneratedNameSuggestion]
+        let suggestions: [NameSuggestion]
         do {
             suggestions = try await propose(excerpt: excerpt, attendees: attendeeCandidates)
         } catch {
@@ -131,9 +131,7 @@ public struct SpeakerNamer: Sendable {
         }
 
         return NameSuggestionFilter.validSuggestions(
-            suggestions.map {
-                NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence)
-            },
+            suggestions,
             transcript: transcript,
             unnamedLabels: unnamed,
             attendeeCandidates: attendeeCandidates)
@@ -141,7 +139,7 @@ public struct SpeakerNamer: Sendable {
 
     private func propose(
         excerpt: String, attendees: [String]
-    ) async throws -> [GeneratedNameSuggestion] {
+    ) async throws -> [NameSuggestion] {
         var prompt = "Transcript:\n\n\(excerpt)\n\n"
         if !attendees.isEmpty {
             prompt +=
@@ -149,13 +147,19 @@ public struct SpeakerNamer: Sendable {
                 + attendees.prefix(12).joined(separator: ", ") + "\n\n"
         }
         prompt += "Name the speaker labels you can prove."
+        let finalPrompt = prompt
 
         let session = LanguageModelSession(instructions: PromptFactory.namingInstructions())
-        let response = try await session.respond(
-            to: prompt,
-            generating: GeneratedNameSuggestions.self,
-            options: GenerationOptions(sampling: .greedy))
-        return response.content.suggestions
+        // Mapped INSIDE the slot: Response<T> isn't Sendable.
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            let response = try await session.respond(
+                to: finalPrompt,
+                generating: GeneratedNameSuggestions.self,
+                options: GenerationOptions(sampling: .greedy))
+            return response.content.suggestions.map {
+                NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence)
+            }
+        }
     }
 }
 

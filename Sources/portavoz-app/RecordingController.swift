@@ -157,7 +157,7 @@ final class RecordingController {
             // Map: one dense note for the new window; the rest is already noted.
             let note = try await provider.condenseWindow(
                 segments: labeled, speakers: [me, them], targetLanguage: language,
-                glossary: vocabulary)
+                glossary: vocabulary, priority: .background)
             liveNotes.append(note)
             summarizedCount = closed  // only once the window is safely noted
 
@@ -165,7 +165,8 @@ final class RecordingController {
             var joined = liveNotes.joined(separator: "\n")
             if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
                 joined = try await provider.condenseNotes(
-                    joined, targetLanguage: language, glossary: vocabulary)
+                    joined, targetLanguage: language, glossary: vocabulary,
+                    priority: .background)
                 liveNotes = [joined]
             }
 
@@ -178,7 +179,8 @@ final class RecordingController {
                 targetLanguage: language,
                 glossary: vocabulary
             )
-            let draft = try await provider.summarizeNotes(joined, request: request)
+            let draft = try await provider.summarizeNotes(
+                joined, request: request, priority: .background)
             if phase == .recording,
                 LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown)
             {

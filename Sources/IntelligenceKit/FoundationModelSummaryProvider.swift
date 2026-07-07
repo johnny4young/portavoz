@@ -50,18 +50,29 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         }
     }
 
+    /// Protocol witness (`SummaryProvider`): a defaulted parameter doesn't
+    /// satisfy the requirement, so the plain overload forwards.
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        try await summarize(request, priority: .interactive)
+    }
+
+    public func summarize(
+        _ request: SummaryRequest,
+        priority: IntelligenceScheduler.Priority
+    ) async throws -> SummaryDraft {
         let transcript = TranscriptFormatter.format(
             segments: request.segments, speakers: request.speakers)
-        return try await summarizeMaterial(transcript, request: request)
+        return try await summarizeMaterial(transcript, request: request, priority: priority)
     }
 
     /// Reduce phase over already-condensed notes (the live rolling summary
     /// accumulates them window by window and re-renders from here).
     public func summarizeNotes(
-        _ notes: String, request: SummaryRequest
+        _ notes: String,
+        request: SummaryRequest,
+        priority: IntelligenceScheduler.Priority = .interactive
     ) async throws -> SummaryDraft {
-        try await summarizeMaterial(notes, request: request)
+        try await summarizeMaterial(notes, request: request, priority: priority)
     }
 
     /// One map-phase pass: condenses a transcript window into dense notes
@@ -72,7 +83,8 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         segments: [TranscriptSegment],
         speakers: [Speaker],
         targetLanguage: String,
-        glossary: [String] = []
+        glossary: [String] = [],
+        priority: IntelligenceScheduler.Priority = .interactive
     ) async throws -> String {
         if let reason = Self.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
@@ -85,10 +97,14 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             let session = LanguageModelSession(
                 instructions: PromptFactory.notesInstructions(
                     targetLanguage: targetLanguage, glossary: glossary))
-            let response = try await session.respond(
-                to: PromptFactory.notesPrompt(chunk: chunk, index: index, total: chunks.count),
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250))
-            notes.append(response.content)
+            let note = try await IntelligenceScheduler.shared.run(priority) {
+                try await session.respond(
+                    to: PromptFactory.notesPrompt(
+                        chunk: chunk, index: index, total: chunks.count),
+                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250)
+                ).content
+            }
+            notes.append(note)
         }
         return notes.joined(separator: "\n")
     }
@@ -97,38 +113,47 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// reduce budget (the live summary calls this occasionally so its notes
     /// never grow unbounded).
     public func condenseNotes(
-        _ notes: String, targetLanguage: String, glossary: [String] = []
+        _ notes: String,
+        targetLanguage: String,
+        glossary: [String] = [],
+        priority: IntelligenceScheduler.Priority = .interactive
     ) async throws -> String {
         if let reason = Self.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
-        return try await condense(notes, targetLanguage: targetLanguage, glossary: glossary)
+        return try await condense(
+            notes, targetLanguage: targetLanguage, glossary: glossary, priority: priority)
     }
 
     private func summarizeMaterial(
-        _ material: String, request: SummaryRequest
+        _ material: String,
+        request: SummaryRequest,
+        priority: IntelligenceScheduler.Priority
     ) async throws -> SummaryDraft {
         if let reason = Self.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
         let condensed = try await condense(
-            material, targetLanguage: request.targetLanguage, glossary: request.glossary)
+            material, targetLanguage: request.targetLanguage, glossary: request.glossary,
+            priority: priority)
 
         let session = LanguageModelSession(
             instructions: PromptFactory.summaryInstructions(
                 recipe: request.recipe,
                 targetLanguage: request.targetLanguage,
                 glossary: request.glossary))
-        let response = try await session.respond(
-            to: PromptFactory.summaryPrompt(
-                transcriptOrNotes: condensed, targetLanguage: request.targetLanguage),
-            generating: GeneratedSummary.self,
-            // Greedy decoding: summaries want faithfulness, not creativity —
-            // sampled decoding made the 3B model invent action items.
-            options: GenerationOptions(sampling: .greedy))
-
-        return response.content.structured.draft(for: request)
+        // Greedy decoding: summaries want faithfulness, not creativity —
+        // sampled decoding made the 3B model invent action items. The draft
+        // is built INSIDE the slot because Response<T> isn't Sendable.
+        return try await IntelligenceScheduler.shared.run(priority) {
+            let response = try await session.respond(
+                to: PromptFactory.summaryPrompt(
+                    transcriptOrNotes: condensed, targetLanguage: request.targetLanguage),
+                generating: GeneratedSummary.self,
+                options: GenerationOptions(sampling: .greedy))
+            return response.content.structured.draft(for: request)
+        }
     }
 
     /// Map phase: collapses the transcript into notes small enough for the
@@ -136,7 +161,8 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// and the output), recursing over the notes themselves when a meeting
     /// is long enough that even its notes overflow.
     private func condense(
-        _ text: String, targetLanguage: String, glossary: [String], depth: Int = 0
+        _ text: String, targetLanguage: String, glossary: [String],
+        priority: IntelligenceScheduler.Priority, depth: Int = 0
     ) async throws -> String {
         guard text.count > TranscriptFormatter.onDeviceReduceBudget else { return text }
         guard depth < 4 else {
@@ -154,14 +180,19 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     targetLanguage: targetLanguage, glossary: glossary))
             // 250 tokens (~1000 chars) per note from a 4500-char chunk ⇒
             // ≥4× compression per level, so the recursion always converges.
-            let response = try await session.respond(
-                to: PromptFactory.notesPrompt(chunk: chunk, index: index, total: chunks.count),
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250))
-            notes.append(response.content)
+            let note = try await IntelligenceScheduler.shared.run(priority) {
+                try await session.respond(
+                    to: PromptFactory.notesPrompt(
+                        chunk: chunk, index: index, total: chunks.count),
+                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250)
+                ).content
+            }
+            notes.append(note)
         }
         return try await condense(
             notes.joined(separator: "\n"),
-            targetLanguage: targetLanguage, glossary: glossary, depth: depth + 1)
+            targetLanguage: targetLanguage, glossary: glossary,
+            priority: priority, depth: depth + 1)
     }
 }
 
