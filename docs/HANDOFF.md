@@ -112,6 +112,16 @@ UX de la misma ronda (`c3f6d08`): rename de speaker arreglado (carrera del alert
 
 **Carpeta de grabaciones configurable: HECHA** (`0150611`): Ajustes → Grabaciones (convención Zoom "Store my recordings at"), `RecordingsLocation` en StorageKit — el root elegido persiste en `recordings-root.txt` JUNTO A LA DB (archivo, no UserDefaults → el CLI respeta la misma carpeta); sin bookmark (hay hardened runtime pero NO sandbox — un path plano basta; TCC pide una vez para carpetas protegidas, usage strings añadidos al Info.plist incl. discos externos). Migración resumable por directorio de reunión (copy a temp oculto + rename atómico cross-volume; ya-migrado se salta) y resolución con fallback al root por defecto — una migración interrumpida no rompe nada. La DB sigue guardando solo paths relativos (D4). Sobre "aprender acentos localmente": fine-tuning on-device no es viable con estos modelos; el camino real es vocabulario auto-sugerido (minar términos frecuentes de transcripts refinados) — anotado como idea M8.
 
+## Sesión Fable final (2026-07-07 tarde) — las 3 tareas de mayor complejidad
+
+Con el criterio "lo más difícil con el mejor modelo", se cerraron (commits `6b087c9`, `4d71344`, `3f532c3`; 168 tests verdes; app reinstalada):
+
+1. **D29 — IntelligenceScheduler** (T3 resuelto): single-flight con prioridades interactive>live>background, latest-wins por key, cancelación; granularidad = una llamada al FM (las cadenas sueltan el slot entre pasos). Los 6 call sites del FM cableados; el resumen rodante pasa `.background`. 7 tests puros.
+2. **D26 — Copiloto en vivo (núcleo de M13)**: heurística pura es/en → clasificador FM @Generable (`.live` + key, latest-wins) → routing knowledge (FM directo)/context (RAGAnswerer con últimas ~13 filas vivas)/logistics (drop). Tarjetas con procedencia + copiar/descartar; toggle por grabación junto al de traducción. Pendiente: verificación de campo <5 s, BYOK knowledge, detector "te preguntaron".
+3. **T1 resuelto — grabación crash-safe**: verificado empíricamente que WAV + kill -9 = 0 bytes legibles; captura migrada a **CAF** (kill -9 a los 6 s conserva 5.23 s); `CaptureFileWriter` (ex WAVWriter), `MeetingAudioLayout` con fallback a .wav legado, `verify_drift.py` convierte CAF vía afconvert.
+
+Siguiente para Opus (diseños listos en specs/DECISIONS): M9 publicación (+String Catalogs+lint+bench), mitad UI de M10 (notas — el prompt-weaving de D28 puede necesitar iteración), M11 player/waveform, M12 Ollama+recomendador. Spike SpeechAnalyzer (rol vivo) quedó sin hacer — es el candidato si hay otra ventana de modelo fuerte.
+
 ## Roadmap 2.1 — ronda 2 de análisis (2026-07-07, verificación adversarial)
 
 Segunda pasada con 3 agentes de verificación (Granola/Jamie/Fathom profundo; SpeechAnalyzer/MLX/WhisperKit técnico; Otter/MacParakeet/pricing/OSS-landscape). Correcciones y hallazgos aplicados a DECISIONS (D25-D27 enmendadas, **D28 nueva**), ROADMAP (fase 2 reordenada) y PRODUCT:
