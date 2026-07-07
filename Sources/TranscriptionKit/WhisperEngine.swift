@@ -45,10 +45,19 @@ public actor WhisperEngine {
         hints: TranscriptionHints = TranscriptionHints(),
         channel: AudioChannel = .system
     ) async throws -> FileTranscription {
+        // Domain vocabulary rides in as conditioning context (biasing, not
+        // forcing); WhisperKit filters special tokens out of the prompt.
+        var promptTokens: [Int]?
+        if let prompt = VocabularyPrompt.text(hints.vocabulary),
+            let tokenizer = pipe.tokenizer
+        {
+            promptTokens = tokenizer.encode(text: " " + prompt)
+        }
         let options = DecodingOptions(
             task: .transcribe,
             language: hints.language,
             temperature: 0,
+            promptTokens: promptTokens,
             chunkingStrategy: .vad
         )
         let started = Date()

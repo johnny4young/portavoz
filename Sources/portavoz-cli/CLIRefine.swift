@@ -6,7 +6,8 @@ import StorageKit
 import TranscriptionKit
 
 /// `portavoz-cli meetings refine <uuid> [--file <wav>] [--language es]
-///                                [--db <path>] [--models-dir <dir>]`
+///                                [--db <path>] [--models-dir <dir>]
+///                                [--vocab "LVGT,Portavoz,..."]`
 ///
 /// The D7 quality re-pass: re-transcribes the meeting's audio with
 /// Whisper large-v3-turbo, re-diarizes, re-attributes, and atomically
@@ -18,6 +19,7 @@ enum RefineCommand {
         var language: String?
         var dbPath: String?
         var modelsDir: String?
+        var vocabulary: [String] = []
 
         var index = 0
         while index < arguments.count {
@@ -28,6 +30,11 @@ enum RefineCommand {
             case "--language":
                 index += 1
                 if index < arguments.count { language = arguments[index] }
+            case "--vocab":
+                index += 1
+                if index < arguments.count {
+                    vocabulary = VocabularyPrompt.parse(arguments[index])
+                }
             case "--db":
                 index += 1
                 if index < arguments.count { dbPath = arguments[index] }
@@ -87,7 +94,8 @@ enum RefineCommand {
             }
             print("")
 
-            let hints = TranscriptionHints(language: language, meetingID: meetingID)
+            let hints = TranscriptionHints(
+                language: language, vocabulary: vocabulary, meetingID: meetingID)
             var segments: [TranscriptSegment] = []
             if let systemFile {
                 print("Re-transcribiendo canal system con Whisper…")

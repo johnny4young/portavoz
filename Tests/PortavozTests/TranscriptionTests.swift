@@ -473,3 +473,23 @@ final class ParakeetSegmentMapperTests: XCTestCase {
         TokenTiming(token: token, tokenId: 0, startTime: start, endTime: end, confidence: 0.9)
     }
 }
+
+final class VocabularyPromptTests: XCTestCase {
+    func testFormatsTermsAsGlossarySentence() {
+        XCTAssertEqual(
+            VocabularyPrompt.text(["LVGT", "Portavoz", "Vishakha"]),
+            "Glossary: LVGT, Portavoz, Vishakha.")
+    }
+
+    func testEmptyAndBlankTermsYieldNoPrompt() {
+        XCTAssertNil(VocabularyPrompt.text([]))
+        XCTAssertNil(VocabularyPrompt.text(["  ", ""]))
+    }
+
+    func testParseSplitsAndTrimsCommaList() {
+        XCTAssertEqual(
+            VocabularyPrompt.parse(" LVGT , Portavoz,,  Vishakha "),
+            ["LVGT", "Portavoz", "Vishakha"])
+        XCTAssertEqual(VocabularyPrompt.parse(""), [])
+    }
+}

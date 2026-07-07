@@ -18,10 +18,12 @@ struct SettingsView: View {
     @State private var voiceMessage: String?
 
     @AppStorage("aecEnabled") private var aecEnabled = true
+    @AppStorage("customVocabulary") private var customVocabulary = ""
 
     var body: some View {
         Form {
             audioSection
+            vocabularySection
             voiceSection
             gitHubSection
         }
@@ -41,6 +43,24 @@ struct SettingsView: View {
             Toggle("Cancelación de eco (recomendado)", isOn: $aecEnabled)
             Text(
                 "Elimina del micrófono el audio que sale por tus parlantes, para que los demás participantes no aparezcan como \"Yo\". Aplica desde la próxima grabación. Desactívala solo si notas problemas con tu micrófono."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Vocabulario
+
+    private var vocabularySection: some View {
+        Section("Vocabulario") {
+            TextField(
+                "Términos separados por coma (LVGT, Portavoz, Vishakha…)",
+                text: $customVocabulary,
+                axis: .vertical
+            )
+            .lineLimit(2...4)
+            Text(
+                "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que \"LVGT\" no se convierta en otra cosa."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

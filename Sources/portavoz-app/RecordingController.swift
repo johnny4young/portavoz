@@ -44,6 +44,12 @@ final class RecordingController {
     private var meetingID = MeetingID()
     private var audioRelative = ""
 
+    /// User-defined domain terms (Ajustes → Vocabulario): glossary for the
+    /// summaries and conditioning vocabulary for transcription hints.
+    private var vocabulary: [String] {
+        VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+    }
+
     func start(services: AppServices) async {
         guard phase == .idle || isFailed else { return }
         phase = .preparing
@@ -75,7 +81,8 @@ final class RecordingController {
             let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
             feeds[source.channel] = continuation
             let segments = engine.transcribe(
-                stream, hints: TranscriptionHints(meetingID: meetingID))
+                stream,
+                hints: TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID))
             consumers.append(Task { @MainActor [weak self] in
                 do {
                     for try await segment in segments {
@@ -143,14 +150,16 @@ final class RecordingController {
         do {
             // Map: one dense note for the new window; the rest is already noted.
             let note = try await provider.condenseWindow(
-                segments: labeled, speakers: [me, them], targetLanguage: language)
+                segments: labeled, speakers: [me, them], targetLanguage: language,
+                glossary: vocabulary)
             liveNotes.append(note)
             summarizedCount = closed  // only once the window is safely noted
 
             // Keep the pile bounded so long meetings don't slow the ticks.
             var joined = liveNotes.joined(separator: "\n")
             if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
-                joined = try await provider.condenseNotes(joined, targetLanguage: language)
+                joined = try await provider.condenseNotes(
+                    joined, targetLanguage: language, glossary: vocabulary)
                 liveNotes = [joined]
             }
 
@@ -160,7 +169,8 @@ final class RecordingController {
                 segments: [],
                 speakers: [me, them],
                 recipe: .general,
-                targetLanguage: language
+                targetLanguage: language,
+                glossary: vocabulary
             )
             let draft = try await provider.summarizeNotes(joined, request: request)
             if phase == .recording,
@@ -227,7 +237,8 @@ final class RecordingController {
                     segments: attribution.segments,
                     speakers: attribution.speakers,
                     recipe: .general,
-                    targetLanguage: language
+                    targetLanguage: language,
+                    glossary: vocabulary
                 )
                 if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
                     try await services.store.saveSummary(draft)

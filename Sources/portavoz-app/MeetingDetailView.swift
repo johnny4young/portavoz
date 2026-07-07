@@ -4,6 +4,7 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 import SwiftUI
+import TranscriptionKit
 import UniformTypeIdentifiers
 
 /// Transcript with editable speaker pills (the M3 leftover), the latest
@@ -333,7 +334,9 @@ struct MeetingDetailView: View {
                 segments: detail.segments,
                 speakers: detail.speakers,
                 recipe: .general,
-                targetLanguage: language
+                targetLanguage: language,
+                glossary: VocabularyPrompt.parse(
+                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
             )
             if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
                 try? await services.store.saveSummary(draft)
