@@ -62,8 +62,12 @@ struct MeetingDetailView: View {
 
                 Text("Transcript")
                     .font(.headline)
-                ForEach(detail.segments) { segment in
-                    segmentRow(segment, speakers: detail.speakers)
+                // Lazy: a long meeting has thousands of rows and eager
+                // layout froze the window on open.
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    ForEach(detail.segments) { segment in
+                        segmentRow(segment, speakers: detail.speakers)
+                    }
                 }
             }
             .padding(20)

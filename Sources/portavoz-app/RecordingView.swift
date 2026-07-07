@@ -127,8 +127,10 @@ struct RecordingView: View {
     private var captionsList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(controller.captions.suffix(200)) { segment in
+                // Lazy + a bounded window: every delta mutates the array and
+                // an eager 200-row layout per second froze long recordings.
+                LazyVStack(alignment: .leading, spacing: 6) {
+                    ForEach(controller.captions.suffix(150)) { segment in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(segment.channel == .microphone ? "Yo" : "Ellos")
                                 .font(.caption.weight(.semibold))
