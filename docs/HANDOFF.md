@@ -98,6 +98,18 @@ La 4ª reunión real (8 min, AEC activo) validó el grueso y destapó 4 puntos; 
 - **Intervención del usuario garbled en vivo** ("LOCOL TESTIN U Be REASE S…") → VALIDADO con el clip real: el audio del mic está perfecto (AEC no degrada); Whisper lo transcribe limpio a 31x ("doing a local testing before release properly the PR to a staging"). Es la debilidad conocida de Parakeet vivo con acento; la respuesta es el refine.
 - **Refine in-app (D7)**: botón "Refinar" (wand.and.stars) en el detalle — descarga Whisper verificado la primera vez (1.6 GB), re-transcribe ambos canales con vocabulario, re-diariza (merge incluido), replaceCast y regenera el resumen. `AppServices.loadWhisperIfNeeded`.
 
+## Ronda 4 (2026-07-07, incidente del refine + UX de biblioteca)
+
+**INCIDENTE**: el primer uso del refine in-app reemplazó la reunión de 10:47 (66 segmentos, 8 speakers) por 3 segmentos/2 speakers. **Datos restaurados** vía tombstones D4 (des-tombstonear originales + tombstonear el cast malo). Causa raíz encontrada con instrumentación (WhisperKit loguea a os_log; hay que setear `Logging.shared.loggingCallback`):
+
+- **`DecodingOptions.concurrentWorkerCount` default = 16** → los workers corren en carrera sobre el estado compartido del decoder y los chunks se pierden EN SILENCIO (el path VAD-chunked de WhisperKit traga los failures por chunk: `case .failure: Logging.debug`, sin rethrow). No-determinístico: una corrida sobreviven 2 chunks del final, otra 3 del medio; con logging verbose (que serializa) salen los 20 chunks completos (109 segmentos). NO era el vocabulario ni el volumen (descartados por A/B).
+- **Fixes en WhisperEngine**: `concurrentWorkerCount: 1` (el ANE serializa igual; 29x real time), peak-normalización previa (`AudioLevel.normalizePeak` — el EnergyVAD de WhisperKit umbral absoluto 0.02 y esta reunión rondaba 0.018-0.055), y retry secuencial sin chunking si la cobertura < 20% del audio (cinturón y tirantes).
+- **Refine ahora es DRAFT** (nunca override): sheet de comparación actual-vs-refinado (segmentos/speakers/habla cubierta/muestra) + warning rojo si cubre <50%; se aplica solo con "Aplicar".
+
+UX de la misma ronda (`c3f6d08`): rename de speaker arreglado (carrera del alert-dismiss — capturar valores al tap), captions con follow-live pausable (scroll manual pausa, reanuda a los 10 s o con el botón "Seguir en vivo"), títulos por plantilla (`TitleTemplate`: {date} {time} {seq} {weekday}, ISO-first estilo Zoom, Ajustes → Títulos), título editable (lápiz en el detalle), context menu Renombrar/Eliminar en el sidebar.
+
+Pendiente de esa lista: **carpeta de grabaciones configurable** (security-scoped bookmark + migración de lo existente — no trivial, diseñar aparte). Sobre "aprender acentos localmente": fine-tuning on-device no es viable con estos modelos; el camino real es vocabulario auto-sugerido (minar términos frecuentes de transcripts refinados) — anotado como idea M8.
+
 ## Próximos pasos (en orden)
 
 **Verificaciones que aún necesitan al usuario (próxima reunión real):**

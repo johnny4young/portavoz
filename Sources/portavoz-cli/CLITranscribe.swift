@@ -11,6 +11,7 @@ enum TranscribeCommand {
         var language: String?
         var modelsDir: String?
         var engineName = "parakeet"
+        var vocabulary: [String] = []
 
         var index = 0
         while index < arguments.count {
@@ -21,6 +22,11 @@ enum TranscribeCommand {
             case "--engine":
                 index += 1
                 if index < arguments.count { engineName = arguments[index] }
+            case "--vocab":
+                index += 1
+                if index < arguments.count {
+                    vocabulary = VocabularyPrompt.parse(arguments[index])
+                }
             case "--language":
                 index += 1
                 if index < arguments.count { language = arguments[index] }
@@ -46,7 +52,7 @@ enum TranscribeCommand {
 
         do {
             let store = CLISupport.modelStore(fromModelsDir: modelsDir)
-            let hints = TranscriptionHints(language: language)
+            let hints = TranscriptionHints(language: language, vocabulary: vocabulary)
 
             print("Transcribing \(url.lastPathComponent) (\(engineName))…")
             let result: FileTranscription

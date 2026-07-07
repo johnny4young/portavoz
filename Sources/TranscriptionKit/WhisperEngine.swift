@@ -58,10 +58,35 @@ public actor WhisperEngine {
             language: hints.language,
             temperature: 0,
             promptTokens: promptTokens,
+            // The default (16!) races the workers over shared decoder state
+            // and chunks vanish SILENTLY: a real 482 s meeting collapsed to
+            // 3 segments, non-deterministically, with zero errors surfaced.
+            // One worker is correct and cheap — the ANE serializes anyway.
+            concurrentWorkerCount: 1,
             chunkingStrategy: .vad
         )
         let started = Date()
-        let results = try await pipe.transcribe(audioPath: url.path, decodeOptions: options)
+        // Load + peak-normalize ourselves: WhisperKit's energy VAD has an
+        // absolute threshold and quiet meetings sit right at it.
+        var samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        AudioLevel.normalizePeak(&samples)
+        var results = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
+
+        // The VAD-chunked path SWALLOWS failed chunks (they only reach the
+        // debug log), so a systematic per-chunk failure looks like a mostly
+        // silent meeting — a real 482 s recording came back as 3 segments.
+        // When the fast path covers suspiciously little audio, redo it
+        // sequentially: that path decodes every window and propagates errors.
+        let fileDuration = Double(samples.count) / Double(WhisperKit.sampleRate)
+        if fileDuration > 60, Self.speechSeconds(in: results) < fileDuration * 0.2 {
+            var sequential = options
+            sequential.chunkingStrategy = nil
+            let retried = try await pipe.transcribe(
+                audioArray: samples, decodeOptions: sequential)
+            if Self.speechSeconds(in: retried) > Self.speechSeconds(in: results) {
+                results = retried
+            }
+        }
         let processingTime = Date().timeIntervalSince(started)
 
         let meetingID = hints.meetingID ?? MeetingID()
@@ -98,6 +123,12 @@ public actor WhisperEngine {
             audioDuration: duration,
             processingTime: processingTime
         )
+    }
+
+    static func speechSeconds(in results: [TranscriptionResult]) -> Double {
+        results.reduce(0.0) { total, result in
+            total + result.segments.reduce(0.0) { $0 + Double($1.end - $1.start) }
+        }
     }
 
     /// Whisper segment text carries special tokens like `<|0.00|>`.

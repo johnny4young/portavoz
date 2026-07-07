@@ -493,3 +493,34 @@ final class VocabularyPromptTests: XCTestCase {
         XCTAssertEqual(VocabularyPrompt.parse(""), [])
     }
 }
+
+final class AudioLevelTests: XCTestCase {
+    func testQuietAudioIsBoostedToTargetPeak() {
+        var samples: [Float] = [0.05, -0.1, 0.075]
+        AudioLevel.normalizePeak(&samples)
+        XCTAssertEqual(abs(samples[1]), 0.9, accuracy: 0.001)
+        XCTAssertEqual(samples[0], 0.45, accuracy: 0.001)
+    }
+
+    func testHealthyAudioIsUntouched() {
+        var samples: [Float] = [0.5, -0.95, 0.3]
+        AudioLevel.normalizePeak(&samples)
+        XCTAssertEqual(samples, [0.5, -0.95, 0.3])
+    }
+
+    func testGainIsCappedForNearSilence() {
+        var samples: [Float] = [0.001, -0.0005]
+        AudioLevel.normalizePeak(&samples)
+        // 20x cap, not the 900x that target/peak would ask for.
+        XCTAssertEqual(samples[0], 0.02, accuracy: 0.0001)
+    }
+
+    func testSilenceAndEmptyAreNoOps() {
+        var empty: [Float] = []
+        AudioLevel.normalizePeak(&empty)
+        XCTAssertTrue(empty.isEmpty)
+        var silence = [Float](repeating: 0, count: 8)
+        AudioLevel.normalizePeak(&silence)
+        XCTAssertEqual(silence, [Float](repeating: 0, count: 8))
+    }
+}
