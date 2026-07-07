@@ -133,17 +133,6 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
 
     // MARK: - Batch files
 
-    public struct FileTranscription: Sendable {
-        public let text: String
-        public let segments: [TranscriptSegment]
-        public let audioDuration: TimeInterval
-        public let processingTime: TimeInterval
-        /// How many times faster than real time (higher is faster).
-        public var speedFactor: Double {
-            processingTime > 0 ? audioDuration / processingTime : 0
-        }
-    }
-
     /// Transcribes a whole file through the long-form batch pipeline.
     /// `parallelChunkConcurrency` stays at 1 on purpose: batch runs in the
     /// scheduler's batch slot and must not saturate the ANE while a live

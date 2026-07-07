@@ -54,8 +54,40 @@ final class ModelCatalogTests: XCTestCase {
 
     func testRecommendedRouting() {
         XCTAssertEqual(ModelCatalog.recommended(for: .liveTranscription)?.id, "parakeet-tdt-0.6b-v3-coreml")
-        XCTAssertEqual(ModelCatalog.recommended(for: .finalTranscription)?.id, "parakeet-tdt-0.6b-v3-coreml")
+        // D7: the final pass routes to Whisper, never one global model.
+        XCTAssertEqual(ModelCatalog.recommended(for: .finalTranscription)?.id, "whisper-large-v3-turbo")
         XCTAssertNil(ModelCatalog.recommended(for: .summarization))
+    }
+
+    func testWhisperDescriptorsAreWellFormed() {
+        let model = ModelCatalog.whisperLargeV3Turbo
+        XCTAssertEqual(model.artifacts.count, 24)
+        XCTAssertTrue(model.resolveBase.absoluteString.contains(model.revision))
+        XCTAssertGreaterThan(model.totalSizeBytes, 1_500_000_000)
+        let bundles = Set(model.artifacts.map { $0.path.components(separatedBy: "/").first! })
+        XCTAssertEqual(
+            bundles,
+            [
+                "AudioEncoder.mlmodelc", "MelSpectrogram.mlmodelc", "TextDecoder.mlmodelc",
+                "TextDecoderContextPrefill.mlmodelc", "config.json", "generation_config.json",
+            ])
+
+        let tokenizer = ModelCatalog.whisperTokenizer
+        // WhisperKit's loader looks for tokenizer.json at the folder top
+        // level — that file missing means silent network fallback.
+        XCTAssertTrue(tokenizer.artifacts.contains { $0.path == "tokenizer.json" })
+        XCTAssertEqual(tokenizer.artifacts.count, 3)
+        for artifact in model.artifacts + tokenizer.artifacts {
+            XCTAssertEqual(artifact.sha256.count, 64)
+        }
+    }
+
+    func testWhisperSegmentTextCleaning() {
+        XCTAssertEqual(
+            WhisperEngine.cleanSegmentText("<|0.00|> Hola a todos.<|4.20|>"),
+            "Hola a todos.")
+        XCTAssertEqual(WhisperEngine.cleanSegmentText("  sin tokens  "), "sin tokens")
+        XCTAssertEqual(WhisperEngine.cleanSegmentText("<|es|><|transcribe|>"), "")
     }
 }
 

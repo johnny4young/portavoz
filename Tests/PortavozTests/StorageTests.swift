@@ -158,6 +158,36 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertEqual(loaded?.draft.actionItems.first?.isDone, true)
     }
 
+    // MARK: - Quality re-pass (D7)
+
+    func testReplaceCastRetiresOldTranscriptAndKeepsSummaries() async throws {
+        _ = try await seedMeetingWithTranscript()
+        try await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                markdown: "# v1", actionItems: []))
+
+        let refined = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
+        let newSegments = [
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: refined.id, channel: .system,
+                text: "transcript refinado con whisper", startTime: 0, endTime: 5, isFinal: true)
+        ]
+        try await store.replaceCast(for: meeting.id, speakers: [refined], segments: newSegments)
+
+        let detail = try await store.detail(meeting.id)
+        XCTAssertEqual(detail?.segments.count, 1)
+        XCTAssertEqual(detail?.segments.first?.text, "transcript refinado con whisper")
+        XCTAssertEqual(detail?.speakers.map(\.label), ["S1"])
+        // Summary snapshots survive the re-pass (immutable history, D4).
+        XCTAssertEqual(detail?.summaries.count, 1)
+        // Old segments are tombstones, not gone: FTS must not find them.
+        let hits = try await store.search("presupuesto")
+        XCTAssertTrue(hits.isEmpty)
+        let refinedHits = try await store.search("whisper")
+        XCTAssertEqual(refinedHits.count, 1)
+    }
+
     // MARK: - FTS5
 
     func testFullTextSearchFindsSegmentsWithSnippets() async throws {

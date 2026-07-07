@@ -26,6 +26,15 @@ enum MeetingsCommand {
             index += 1
         }
 
+        if action == "refine" {
+            guard let raw = positional.first else {
+                print("Usage: portavoz-cli meetings refine <meeting-uuid> [--file <wav>]")
+                return
+            }
+            await RefineCommand.run(meetingRaw: raw, Array(arguments.dropFirst()))
+            return
+        }
+
         do {
             let store = try openStore(dbPath: dbPath)
             switch action {

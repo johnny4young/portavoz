@@ -33,6 +33,9 @@ let package = Package(
             revision: "c367a18e77f9e07a9d0493f6e6fa713d0f774f13"),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
+        // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
+        // exact: the package renamed itself at 1.0 and moves API fast.
+        .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.0.0"),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -49,6 +52,7 @@ let package = Package(
                 "PortavozCore",
                 "ModelStoreKit",
                 .product(name: "FluidAudio", package: "FluidAudio"),
+                .product(name: "WhisperKit", package: "WhisperKit"),
             ]
         ),
         .target(

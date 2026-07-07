@@ -87,14 +87,15 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
 /// The curated registry. Descriptors are code: adding or re-pinning a model
 /// is a reviewed change, never a runtime fetch of "latest".
 public enum ModelCatalog {
-    /// Default engine per task. Live and final transcription both route to
-    /// Parakeet v3 (the final pass moves to Whisper large-v3-turbo when
-    /// WhisperKit lands — docs/DECISIONS.md D7); diarization routes to
-    /// pyannote community-1 + WeSpeaker.
+    /// Default engine per task (D7: routing por tarea, jamás un modelo
+    /// global): live STT = Parakeet v3; final quality pass = Whisper
+    /// large-v3-turbo; diarization = pyannote community-1 + WeSpeaker.
     public static func recommended(for task: ModelTask) -> ModelDescriptor? {
         switch task {
-        case .liveTranscription, .finalTranscription:
+        case .liveTranscription:
             return parakeetTdtV3
+        case .finalTranscription:
+            return whisperLargeV3Turbo
         case .diarization:
             return speakerDiarization
         case .summarization, .embedding:
@@ -271,5 +272,69 @@ public enum ModelCatalog {
         ],
         minimumRAMGB: 2,
         license: "CC-BY-4.0"
+    )
+
+    /// Whisper large-v3-turbo compiled for CoreML by Argmax — the quality
+    /// re-pass engine (D7: final transcription). 1.6 GB; heavy on purpose:
+    /// it replaces the live transcript once the meeting is over.
+    public static let whisperLargeV3Turbo = ModelDescriptor(
+        id: "whisper-large-v3-turbo",
+        tasks: [.finalTranscription],
+        displayName: "Whisper large-v3-turbo (CoreML)",
+        folderName: "whisper-large-v3-turbo",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/argmaxinc/whisperkit-coreml/resolve/97a5bf9bbc74c7d9c12c755d04dea59e672e3808/openai_whisper-large-v3-v20240930_turbo"
+        )!,
+        revision: "97a5bf9bbc74c7d9c12c755d04dea59e672e3808",
+        artifacts: [
+            ModelArtifact(path: "AudioEncoder.mlmodelc/analytics/coremldata.bin", sha256: "b58d36a7f4a729570b46b424ed8d847baefa07580e6cb9d47773ae738f8b845a", sizeBytes: 243),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/coremldata.bin", sha256: "ffa9eb76e8e9d9be75a4d527e5249e61d67fd43081c5aa110fd24efa6c8c5ea3", sizeBytes: 348),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/metadata.json", sha256: "3f8920fecd553c40dfc978e1b2664cefbac80d97937c2c160e079b37cfa95e13", sizeBytes: 1824),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/model.mil", sha256: "9aac7799f12bc5fc414cb0bd6b60536d4fb7723d8bb0d879e3c0ceb220b224aa", sizeBytes: 7175750),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/model.mlmodel", sha256: "c5eb570c19871d7b0c59e0a84718cc9c8cde77a94273886de87e866961262e2c", sizeBytes: 441653),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/weights/weight.bin", sha256: "98daf651a919978e28fe185daf55ce2f70085a8e59fa07fe8a4d08c87d368ae4", sizeBytes: 1273974400),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/analytics/coremldata.bin", sha256: "c5be419f8622083ac7046306400643539f0e7577c843448c36defc090d41e7ce", sizeBytes: 243),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/coremldata.bin", sha256: "98efa1e351b759e078c4044668926d32bee886caf7596ae897e08e21da45565a", sizeBytes: 329),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/metadata.json", sha256: "2bc552e09a6f124d9e6c178dd1a6979e010206acb26308b2224887c9dcbeb35f", sizeBytes: 1850),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/model.mil", sha256: "c270b95b5f81d7f7d0b8a3e8f991d4e5812a37cad29349868a35b91f3a6a4463", sizeBytes: 10143),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/weights/weight.bin", sha256: "009d9fb8f6b589accfa08cebf1c712ef07c3405229ce3cfb3a57ee033c9d8a49", sizeBytes: 373376),
+            ModelArtifact(path: "TextDecoder.mlmodelc/analytics/coremldata.bin", sha256: "47703aed03fbfa5128e118cfe6519024006f953a53e921d66003f1412c27996c", sizeBytes: 243),
+            ModelArtifact(path: "TextDecoder.mlmodelc/coremldata.bin", sha256: "605dad4099a82cf2c7afe93e6d8e322f1c16d4160ab27bd017ec2517b81c1bdd", sizeBytes: 633),
+            ModelArtifact(path: "TextDecoder.mlmodelc/metadata.json", sha256: "de6afb1e8fa1d01568b8d96283ca17af19f6124f151d0fdbdbd5917edc7b4836", sizeBytes: 4756),
+            ModelArtifact(path: "TextDecoder.mlmodelc/model.mil", sha256: "1a1c2ec962fc7c9d2de9e2e4cf2d3827c8671f86a918b5698c00bf62c322ed3f", sizeBytes: 132680),
+            ModelArtifact(path: "TextDecoder.mlmodelc/model.mlmodel", sha256: "03b79e4355e814c56239ea809e5d8f6432d70d74256bc9d70c27184fe9fcec48", sizeBytes: 113164),
+            ModelArtifact(path: "TextDecoder.mlmodelc/weights/weight.bin", sha256: "47b2703aa37448e09cf2f06e45984fabd5ded4c34ba3400cec38a5294af39dc1", sizeBytes: 343933748),
+            ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/analytics/coremldata.bin", sha256: "97639d36c7b137ea51c3c39b175911788f4d4a601ab03cd67a4b14164c3145e1", sizeBytes: 243),
+            ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/coremldata.bin", sha256: "2c159f5c862ec187092ea58e755d8c0b298952e22f3d75da023d7693c1c7389e", sizeBytes: 380),
+            ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/metadata.json", sha256: "eb88dc350fa6748a8bc3fa5fb10958152c138752ebbbac1824d2f99b4c9fc068", sizeBytes: 2240),
+            ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/model.mil", sha256: "990ff5052fd817e28ba7c34d9d06d324c69c7c0630b6eaac9cfdf08329dbcb34", sizeBytes: 4092),
+            ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/weights/weight.bin", sha256: "1310070082639173e9d81508c5f220692d489e85655aa6883cc1c7506da7fcfd", sizeBytes: 12288192),
+            ModelArtifact(path: "config.json", sha256: "f01d83dd891791d6f12421c05d3ed8ebbe70866f10d6c9a7a7e80b558ce5a0f1", sizeBytes: 1149),
+            ModelArtifact(path: "generation_config.json", sha256: "7fbb053a023be11fbeccd8421811610308143daa93d9617c52aab4a0fa1491c6", sizeBytes: 2767),
+        ],
+        minimumRAMGB: 8,
+        license: "MIT"
+    )
+
+    /// Whisper's tokenizer files, staged so WhisperKit never reaches the
+    /// network for them (its loader prefers a local tokenizer.json).
+    public static let whisperTokenizer = ModelDescriptor(
+        id: "whisper-large-v3-tokenizer",
+        tasks: [.finalTranscription],
+        displayName: "Whisper large-v3 tokenizer",
+        folderName: "whisper-large-v3-tokenizer",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/openai/whisper-large-v3/resolve/06f233fe06e710322aca913c1bc4249a0d71fce1"
+        )!,
+        revision: "06f233fe06e710322aca913c1bc4249a0d71fce1",
+        artifacts: [
+            ModelArtifact(path: "special_tokens_map.json", sha256: "1c70773c078cb2ca96e0fcff113102f1d3e2b1504272c3bb63b035d4a6700d87", sizeBytes: 2072),
+            ModelArtifact(path: "tokenizer.json", sha256: "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca", sizeBytes: 2480617),
+            ModelArtifact(path: "tokenizer_config.json", sha256: "844b642c73a91359722f47b35705f7174686df33d252695d8572cf9ac03a6389", sizeBytes: 282843),
+        ],
+        minimumRAMGB: 1,
+        license: "Apache-2.0"
     )
 }

@@ -166,6 +166,38 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    /// Atomically retires a meeting's current transcript (tombstones, D4)
+    /// and installs a new cast of segments + speakers — the quality
+    /// re-pass path (D7): Whisper replaces the live transcript once the
+    /// meeting is over. Summary snapshots are untouched history.
+    public func replaceCast(
+        for id: MeetingID,
+        speakers: [Speaker],
+        segments: [TranscriptSegment]
+    ) async throws {
+        let key = id.rawValue.uuidString
+        try await database.write { db in
+            guard try MeetingRecord.exists(db, key: key) else {
+                throw StorageError.meetingNotFound(id)
+            }
+            let now = Date()
+            try db.execute(
+                sql: "UPDATE segment SET deletedAt = ?, updatedAt = ? WHERE meetingID = ? AND deletedAt IS NULL",
+                arguments: [now, now, key])
+            try db.execute(
+                sql: "UPDATE speaker SET deletedAt = ?, updatedAt = ? WHERE meetingID = ? AND deletedAt IS NULL",
+                arguments: [now, now, key])
+            for speaker in speakers {
+                var record = SpeakerRecord(speaker, createdAt: now, updatedAt: now)
+                try record.save(db)
+            }
+            for segment in segments {
+                var record = SegmentRecord(segment, createdAt: now, updatedAt: now)
+                try record.save(db)
+            }
+        }
+    }
+
     /// Tombstone, never a hard delete (sync needs to see it, D4).
     public func delete(_ id: MeetingID) async throws {
         try await database.write { db in

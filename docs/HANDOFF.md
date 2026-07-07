@@ -9,7 +9,7 @@
 |---|---|
 | **M0 — Scaffold** | ✅ Completo (`1b9aa47`). SPM workspace, CI, docs. |
 | **M1 — Captura** | ✅ Funcionalmente completo y verificado. Pendiente solo el test de aceptación largo (30 min, drift < 50 ms con `scripts/verify_drift.py`). |
-| **M2 — Transcripción** | ✅ **Completo, criterio de aceptación medido en verde** (ver abajo). |
+| **M2 — Transcripción** | ✅ **Completo, criterio medido en verde** (ver abajo). **Re-pase de calidad D7 ejecutado**: Whisper large-v3-turbo pineado (1.6 GB), `transcribe --engine whisper` y `meetings refine <id>` (re-transcribe+re-diariza+reemplaza el cast con tombstones; los snapshots de resumen sobreviven). |
 | **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** **DER medido contra el sample AMI real de pyannote: 7.6%** (< 15% ✓, harness `portavoz-cli der`). Pendiente solo la reunión formal de 4 personas; speaker pills ya en la app (M5). |
 | **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
 | **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist** (L0 de D12) + **polish de UI**: ícono real (`assets/AppIcon.icns`, regenerable con `scripts/make-icon.swift`), `MarkdownText` (bloques + inline), **resumen rodante en vivo** durante la grabación (cada ~40 s con FM), regenerar resumen a demanda (es/en, nueva versión del snapshot), Ajustes (⌘,) con token de GitHub en Keychain y "Publicar como Gist" desde la app con confirmación off-device. Falta solo: **empaquetado** (DMG + Sparkle + Homebrew, D10). |
@@ -70,7 +70,7 @@
 4. **M6 restante**: captions traducidos en vivo ES↔EN (Translation framework, macOS 15+; API SwiftUI `translationTask`) y contexto EventKit (asistentes del calendario como candidatos para `SpeakerNamer` — pide permiso TCC de calendario).
 5. **M5 restante**: (a) empaquetado DMG + Sparkle + Homebrew (D10) — esto probablemente fuerce firma real/notarización (revisar D20; necesita el Developer ID del usuario); (b) probar `export --gist` / "Publicar como Gist" con un token real; (c) probar el resumen rodante en una grabación larga (>1 min hablando).
    Nota TCC (verificado por el usuario): cada rebuild re-firma ad-hoc con identidad distinta → macOS puede volver a pedir los permisos de mic/audio del sistema tras recompilar la app.
-4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4.
+4. Deuda menor: speaker espurio en ventana final zero-padded del diarizer (en curso); volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4. (La deuda de subwords en captions quedó cubierta por el re-pase Whisper.)
 
 ## Quirks del entorno de desarrollo
 
