@@ -116,6 +116,33 @@ enum MeetingToolbox {
             },
 
             MCPTool(
+                name: "ask",
+                description: "Answer a natural-language question about the user's meetings using local RAG (hybrid retrieval + on-device model), with citations. E.g. 'what did I agree to yesterday?'.",
+                inputSchema: """
+                    {"type":"object","properties":{"question":{"type":"string","description":"The question, any language"}},"required":["question"]}
+                    """
+            ) { data in
+                struct Args: Decodable { var question: String }
+                let args = try JSONDecoder().decode(Args.self, from: data)
+                let passages = try await AskPipeline.retrieve(
+                    question: args.question, store: store, limit: 6)
+                guard !passages.isEmpty else {
+                    return "Nothing related found in the meeting library."
+                }
+                let sources = passages.enumerated().map { index, passage in
+                    "[\(index + 1)] \(passage.meetingTitle) · \(timestamp(passage.timestamp)) · \(passage.text)"
+                }.joined(separator: "\n")
+                if #available(macOS 26.0, *),
+                    FoundationModelSummaryProvider.unavailabilityReason() == nil
+                {
+                    let answer = try await RAGAnswerer().answer(
+                        question: args.question, passages: passages)
+                    return "\(answer)\n\nSources:\n\(sources)"
+                }
+                return "Most relevant passages (no on-device model available):\n\(sources)"
+            },
+
+            MCPTool(
                 name: "get_action_items",
                 description: "Pending (unchecked) action items across all meetings, newest first.",
                 inputSchema: """

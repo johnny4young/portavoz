@@ -40,6 +40,8 @@ struct PortavozCLI {
             await DerCommand.run(arguments)
         case "mcp":
             await McpCommand.run(arguments)
+        case "ask":
+            await AskCommand.run(arguments)
         case "models":
             await ModelsCommand.run(arguments)
         case "bench-m2":

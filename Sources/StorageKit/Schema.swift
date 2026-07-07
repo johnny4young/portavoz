@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 1
+    public static let version = 2
 
     static func migrator() -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
@@ -101,6 +101,16 @@ public enum StorageSchema {
                 t.synchronize(withTable: "segment")
                 t.tokenizer = .unicode61()
                 t.column("text")
+            }
+        }
+
+        // v2 (M8): per-segment sentence embedding for local RAG. A plain
+        // BLOB (Float32 LE, L2-normalized) + brute-force cosine — at
+        // meeting scale this beats carrying a C extension; sqlite-vec
+        // arrives when the numbers say so (D19).
+        migrator.registerMigration("v2") { db in
+            try db.alter(table: "segment") { t in
+                t.add(column: "embedding", .blob)
             }
         }
 
