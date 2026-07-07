@@ -27,6 +27,11 @@ final class RecordingController {
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
     private(set) var liveSummary: String?
+    /// Copilot answer cards (D26), newest last. Opt-in per recording.
+    private(set) var copilotCards: [CopilotCard] = []
+    var copilotEnabled = UserDefaults.standard.bool(forKey: "copilotEnabled") {
+        didSet { UserDefaults.standard.set(copilotEnabled, forKey: "copilotEnabled") }
+    }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
     /// BCP-47 target for live translation; nil = off.
@@ -43,6 +48,9 @@ final class RecordingController {
     private var liveNotes: [String] = []
     private var meetingID = MeetingID()
     private var audioRelative = ""
+    /// id of the newest caption row — when it changes, the PREVIOUS row
+    /// just closed and becomes a copilot candidate.
+    private var lastOpenRowID: UUID?
 
     /// User-defined domain terms (Ajustes → Vocabulario): glossary for the
     /// summaries and conditioning vocabulary for transcription hints.
@@ -94,6 +102,7 @@ final class RecordingController {
                     for try await segment in segments {
                         guard let self else { break }
                         self.coalescer.apply(segment, to: &self.captions)
+                        self.detectClosedRow()
                     }
                 } catch {
                     // A dead channel ends its captions; the recording and
@@ -117,6 +126,8 @@ final class RecordingController {
         liveSummary = nil
         summarizedCount = 0
         liveNotes = []
+        copilotCards = []
+        lastOpenRowID = nil
         phase = .recording
 
         // Rolling summary (M4's "incremental" made visible): every ~40 s,
@@ -133,6 +144,56 @@ final class RecordingController {
                 }
             }
         }
+    }
+
+    // MARK: - Copiloto (D26)
+
+    /// The coalescer only ever grows the NEWEST row; when the newest row's
+    /// id changes, the previous one closed for good — that's the moment a
+    /// caption becomes a copilot candidate (never re-processed, never
+    /// partial).
+    private func detectClosedRow() {
+        guard captions.last?.id != lastOpenRowID else { return }
+        let previousOpen = lastOpenRowID
+        lastOpenRowID = captions.last?.id
+        guard copilotEnabled, phase == .recording else { return }
+        guard #available(macOS 26.0, *) else { return }
+        guard
+            let closed = captions.last(where: { $0.id == previousOpen }),
+            closed.channel == .system,
+            QuestionHeuristic.looksLikeQuestion(closed.text)
+        else { return }
+
+        let passages = recentPassages()
+        let candidate = closed.text
+        let askedAt = closed.startTime
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard
+                let card = try? await LiveCopilot().process(
+                    candidate: candidate, recentTranscript: passages, askedAt: askedAt),
+                self.phase == .recording,
+                self.copilotCards.last?.question != card.question
+            else { return }
+            self.copilotCards.append(card)
+        }
+    }
+
+    /// The live meeting's recent closed rows as RAG passages, so a
+    /// "context" question ("what did we say about the budget?") answers
+    /// from what was JUST said.
+    private func recentPassages() -> [RAGPassage] {
+        captions.suffix(14).dropLast().map { row in
+            RAGPassage(
+                meetingID: meetingID,
+                meetingTitle: "Esta reunión",
+                timestamp: row.startTime,
+                text: (row.channel == .microphone ? "Yo: " : "Ellos: ") + row.text)
+        }
+    }
+
+    func dismissCopilotCard(_ id: UUID) {
+        copilotCards.removeAll { $0.id == id }
     }
 
     @available(macOS 26.0, *)

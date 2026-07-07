@@ -401,3 +401,22 @@ final class NamingExcerptTests: XCTestCase {
         }
     }
 }
+
+final class QuestionHeuristicTests: XCTestCase {
+    func testDetectsEnglishAndSpanishQuestions() {
+        XCTAssertTrue(QuestionHeuristic.looksLikeQuestion("What's the difference between var and let?"))
+        XCTAssertTrue(QuestionHeuristic.looksLikeQuestion("¿cuál es la diferencia entre var y let?"))
+        XCTAssertTrue(QuestionHeuristic.looksLikeQuestion("how do we deploy this to staging"))
+        XCTAssertTrue(QuestionHeuristic.looksLikeQuestion("cómo manejamos el rollback en producción"))
+        XCTAssertTrue(
+            QuestionHeuristic.looksLikeQuestion(
+                "so the question is, do we add some logs to check if we are skipping those messages?"))
+    }
+
+    func testRejectsStatementsAndNoise() {
+        XCTAssertFalse(QuestionHeuristic.looksLikeQuestion("yes?"))  // too short
+        XCTAssertFalse(QuestionHeuristic.looksLikeQuestion("we deployed the change yesterday"))
+        XCTAssertFalse(QuestionHeuristic.looksLikeQuestion("gracias a todos, nos vemos mañana"))
+        XCTAssertFalse(QuestionHeuristic.looksLikeQuestion(""))
+    }
+}

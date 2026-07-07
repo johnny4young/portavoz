@@ -27,8 +27,14 @@ struct RecordingView: View {
                 header
                 HStack(alignment: .top, spacing: 12) {
                     captionsList
-                    if let live = controller.liveSummary {
-                        liveSummaryPanel(live)
+                    if !controller.copilotCards.isEmpty || controller.liveSummary != nil {
+                        VStack(spacing: 10) {
+                            copilotCardsPanel
+                            if let live = controller.liveSummary {
+                                liveSummaryPanel(live)
+                            }
+                        }
+                        .frame(width: 300)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -100,11 +106,27 @@ struct RecordingView: View {
                     .pickerStyle(.menu)
                     .fixedSize()
                 }
+                if #available(macOS 26.0, *) {
+                    Toggle(isOn: copilotBinding) {
+                        Label("Copiloto", systemImage: "questionmark.bubble")
+                    }
+                    .toggleStyle(.checkbox)
+                    .help(
+                        "Detecta preguntas en la conversación y sugiere respuestas on-device. Nunca responde por ti."
+                    )
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
         .padding(.top, 24)
+    }
+
+    private var copilotBinding: Binding<Bool> {
+        Binding(
+            get: { controller.copilotEnabled },
+            set: { controller.copilotEnabled = $0 }
+        )
     }
 
     private var translationBinding: Binding<String?> {
@@ -125,8 +147,54 @@ struct RecordingView: View {
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: 300)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// The copilot's answer cards (D26): question detected in the
+    /// conversation → suggested answer. Read, copy or dismiss — never acts
+    /// on its own.
+    @ViewBuilder
+    private var copilotCardsPanel: some View {
+        ForEach(controller.copilotCards.suffix(3)) { card in
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Label(card.question, systemImage: "questionmark.bubble.fill")
+                        .font(.callout.weight(.semibold))
+                    Spacer(minLength: 4)
+                    Button {
+                        controller.dismissCopilotCard(card.id)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text(card.answer)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                HStack {
+                    Text(card.kind == .context ? "de esta reunión" : "conocimiento · \(card.source)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(card.answer, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.plain)
+                    .controlSize(.small)
+                    .help("Copiar la respuesta")
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 1)
+            )
+        }
     }
 
     private var captionsList: some View {
