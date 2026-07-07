@@ -1,18 +1,18 @@
 # HANDOFF — Estado del proyecto
 
 > Documento de traspaso entre sesiones de trabajo. Actualizar al final de cada sesión significativa.
-> Última actualización: 2026-07-07 (sesión M2+M3+M4+M5·storage).
+> Última actualización: 2026-07-07 (release 0.1.0 notarizado + verificación con reunión real de 22 min).
 
 ## Estado actual
 
 | Hito | Estado |
 |---|---|
 | **M0 — Scaffold** | ✅ Completo (`1b9aa47`). SPM workspace, CI, docs. |
-| **M1 — Captura** | ✅ Funcionalmente completo y verificado. Pendiente solo el test de aceptación largo (30 min, drift < 50 ms con `scripts/verify_drift.py`). |
+| **M1 — Captura** | ✅ **Completo — test de aceptación PASADO con reunión real de 22 min: drift 4 ms** (< 50 ms; +4 ppm medido en 5 puntos, lineal → ~7 ms proyectado a 30 min). |
 | **M2 — Transcripción** | ✅ **Completo, criterio medido en verde** (ver abajo). **Re-pase de calidad D7 ejecutado**: Whisper large-v3-turbo pineado (1.6 GB), `transcribe --engine whisper` y `meetings refine <id>` (re-transcribe+re-diariza+reemplaza el cast con tombstones; los snapshots de resumen sobreviven). |
-| **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** **DER medido contra el sample AMI real de pyannote: 7.6%** (< 15% ✓, harness `portavoz-cli der`). Pendiente solo la reunión formal de 4 personas; speaker pills ya en la app (M5). |
+| **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** **DER medido contra el sample AMI real de pyannote: 7.6%** (< 15% ✓, harness `portavoz-cli der`). Reunión real de 22 min procesada: 4 clusters grandes correctos (94.7% del habla) + 6 micro-clusters espurios (~59 s; ver descubrimientos: threshold). DER formal pendiente de que el usuario corrija el RTTM borrador (`~/Desktop/portavoz-verificacion/`). |
 | **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
-| **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist** (L0 de D12) + **polish de UI**: ícono real (`assets/AppIcon.icns`, regenerable con `scripts/make-icon.swift`), `MarkdownText` (bloques + inline), **resumen rodante en vivo** durante la grabación (cada ~40 s con FM), regenerar resumen a demanda (es/en, nueva versión del snapshot), Ajustes (⌘,) con token de GitHub en Keychain y "Publicar como Gist" desde la app con confirmación off-device. **Empaquetado completo (D23)**: Sparkle 2 embebido (menú "Buscar actualizaciones…", llave EdDSA dedicada account `portavoz`, pública en `assets/`), `make-dmg.sh` y `make-release.sh <v>` → DMG 7.9 MB + appcast firmado + cask (`packaging/portavoz.rb`), verificado E2E ad-hoc. **Solo falta del usuario**: Developer ID (firma real + notarización), push del repo y el tap de Homebrew. |
+| **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist** (L0 de D12) + **polish de UI**: ícono real (`assets/AppIcon.icns`, regenerable con `scripts/make-icon.swift`), `MarkdownText` (bloques + inline), **resumen rodante en vivo** durante la grabación (cada ~40 s con FM), regenerar resumen a demanda (es/en, nueva versión del snapshot), Ajustes (⌘,) con token de GitHub en Keychain y "Publicar como Gist" desde la app con confirmación off-device. **Empaquetado completo (D23)**: Sparkle 2 embebido (menú "Buscar actualizaciones…", llave EdDSA dedicada account `portavoz`, pública en `assets/`), `make-dmg.sh` y `make-release.sh <v>` → DMG 7.9 MB + appcast firmado + cask (`packaging/portavoz.rb`), verificado E2E ad-hoc. **Release 0.1.0 real firmado + notarizado (2026-07-07)**: hardened runtime + entitlement de mic (`packaging/portavoz.entitlements`), firma por SHA-1 del cert (`8C8B5B14…`, hay dos Developer ID con el mismo nombre), perfil notarytool `portavoz-notary` (Apple ID `asesordeprogramacion@gmail.com`) → notarización **Accepted**, stapled, `spctl` "Notarized Developer ID"; instalado en /Applications y **usado en reunión real de 22 min**. Falta solo publicar: push del repo, `gh release create v0.1.0 dist/release/*`, tap de Homebrew. |
 | **M6 — Identidad y lenguaje** | 🚧 Voiceprint + nombres (D21, verificado E2E) ✓. **Captions traducidos en vivo** (Translation framework, picker →es/→en en grabación) y **EventKit como candidatos de nombres** (filtro `NameSuggestionFilter` acepta transcript O asistentes): **código listo y testeado, verificación interactiva pendiente** (descarga de idioma / TCC calendario). |
 | **M8 — Dev moat** | 🚧 **MCP local + RAG funcionando (criterio de aceptación cumplido)**: `portavoz-cli mcp` (6 tools incl. `ask`) y `portavoz-cli ask` — retrieval híbrido (FTS OR-keywords + coseno sobre NLContextualEmbedding latino cross-lingüe es/en, fusión RRF, multi-query con FM, micro-segmentos excluidos del índice), respuesta on-device con citas. Verificado E2E: agente MCP respondió "what did we agree about the transcription budget?" con fuentes. **Export GitHub Issues + Linear**: código listo y testeado offline (`portavoz-cli issues --meeting <id> --github o/r | --linear-team id`, tokens en Keychain) — publish real pendiente de tokens. Falta: App Intents. |
 
@@ -63,23 +63,33 @@
 - **CLI**: `summarize --save [--db]` persiste reunión+speakers+segmentos+resumen; `meetings list|show|search`. E2E verificado con la conversación TTS: FTS encuentra "[latency]" con snippet, show imprime transcript atribuido + resumen v1.
 - sqlite-vec diferido a M8 (D19). **67 tests en verde** (12 nuevos de storage).
 
+## Verificación con reunión real (2026-07-07, 22 min, app notarizada)
+
+Reunión "Reunión 7 Jul 2026 at 9:10 AM" (`652CEACF…`), grabada con la 0.1.0 instalada, reproduciendo una reunión grabada por parlantes:
+
+- **M1 drift: PASS 4 ms** (tras corregir `verify_drift.py`, commit `93d6570` — ver descubrimientos).
+- **Refine D7 sobre reunión real ✓**: Whisper a **30x** (1314 s en 43.5 s), 1661 segmentos vivos fragmentados → 444 segmentos-oración con puntuación. Calidad noche y día.
+- **Resumen final se generó solo** (v1, en, coherente). Regenerarlo en la app usaría el transcript refinado.
+- **Diarización**: 4 clusters grandes = 94.7% del habla del canal system (estructura temporal consistente entre pase vivo y refine) + 6 micro-clusters de 3–28 s (fragmentación, ver threshold en descubrimientos).
+- **Borrador para DER formal**: `~/Desktop/portavoz-verificacion/reunion-2026-07-07.{rttm,md}` — el usuario corrige la columna Speaker en el .md, se transcriben las correcciones al .rttm y se mide con `portavoz-cli der --file system.wav --reference <rttm corregido>`.
+- **Hallazgo del setup**: con parlantes (sin audífonos) el mic capta el audio del sistema → el canal "Me" duplica a los demás participantes. No es bug (mic→Me es estructural, D5) pero es limitación real; mitigación futura: AEC con `setVoiceProcessingEnabled` de AVAudioEngine, o gating por voiceprint en el canal mic. Recomendación al usuario mientras: audífonos.
+
 ## Próximos pasos (en orden)
 
-**Verificaciones que necesitan al usuario (cola de la sesión nocturna 2026-07-07):**
+**Verificaciones que aún necesitan al usuario:**
+- Corregir labels del RTTM borrador (`~/Desktop/portavoz-verificacion/reunion-2026-07-07.md`) → DER formal M3 en reunión real.
 - Captions traducidos: grabar con el picker "Traducir → …" activo; la primera vez macOS puede pedir descargar el par de idiomas.
-- Nombres con calendario: crear/tener un evento con asistentes alrededor de una grabación → "Sugerir nombres" (pedirá permiso de calendario para Portavoz).
+- Nombres con calendario: evento con asistentes alrededor de una grabación → "Sugerir nombres" (pide TCC de calendario). La reunión de prueba menciona "Vishakha" — buen caso para el botón ✦ con el transcript refinado.
 - Issues: `secrets set-github-token` / `set-linear-token` + `portavoz-cli issues --meeting <id> --github <owner/repo>` contra un repo de prueba.
-- Whisper re-pase sobre una reunión real: `portavoz-cli meetings refine <id>`.
 - `ask` con tu propia biblioteca: `portavoz-cli ask "¿qué acordé ayer?"` (y vía MCP: `claude mcp add portavoz -- portavoz-cli mcp`).
+- Probar `export --gist` / "Publicar como Gist" con token real.
 
-
-1. **Test de aceptación M1 pendiente** (usuario): 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
-2. **Validación M3 formal** (usuario): reunión real de 4 personas → `portavoz-cli der --file <wav> --reference <rttm>` (harness listo; contra AMI dio 7.6%). "Me" 100% ya es estructural por diseño.
-3. **Enrolar tu voz real** (usuario, 30 s): en la app → Ajustes (⌘,) → "Enrolar mi voz", o `portavoz-cli record --seconds 15` hablando solo + `portavoz-cli voice enroll --file microphone.wav`. Desde ahí tus intervenciones vía sala/system salen como "Me".
-4. **M6 restante**: captions traducidos en vivo ES↔EN (Translation framework, macOS 15+; API SwiftUI `translationTask`) y contexto EventKit (asistentes del calendario como candidatos para `SpeakerNamer` — pide permiso TCC de calendario).
-5. **M5 restante**: (a) empaquetado DMG + Sparkle + Homebrew (D10) — esto probablemente fuerce firma real/notarización (revisar D20; necesita el Developer ID del usuario); (b) probar `export --gist` / "Publicar como Gist" con un token real; (c) probar el resumen rodante en una grabación larga (>1 min hablando).
-   Nota TCC (verificado por el usuario): cada rebuild re-firma ad-hoc con identidad distinta → macOS puede volver a pedir los permisos de mic/audio del sistema tras recompilar la app.
-4. Deuda menor: speaker espurio en ventana final zero-padded del diarizer (en curso); volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4. (La deuda de subwords en captions quedó cubierta por el re-pase Whisper.)
+1. **Publicar 0.1.0**: push del repo (`git@github.com:johnny4young/portavoz.git`), `gh release create v0.1.0 dist/release/*`, crear tap `johnny4young/homebrew-portavoz` con `dist/release/portavoz.rb`.
+2. **Política de micro-clusters** en diarización: mergear/degradar clusters con < ~15 s de habla total hacia el cluster dominante vecino (o marcar sin atribuir) — el threshold NO se puede subir (ver descubrimientos). Evaluar contra el RTTM corregido cuando exista.
+3. **AEC en el canal mic** (`setVoiceProcessingEnabled`) para el caso parlantes-sin-audífonos.
+4. **M6/M8 restante**: App Intents; M7 iOS+PRO (necesita proyecto Xcode).
+5. Deuda menor: volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4; `meetings refine` podría aceptar `--threshold`.
+   Nota TCC: la 0.1.0 notarizada tiene identidad estable — los permisos ya persisten entre updates (el problema de re-pedir permisos era solo de las builds ad-hoc).
 
 ## Quirks del entorno de desarrollo
 
@@ -90,6 +100,13 @@
 - El Python de python.org no tiene certificados SSL (`urllib` falla) — usar `curl` en scripts.
 
 ## Descubrimientos técnicos ya pagados (no re-descubrir)
+
+### Verificación real (M1/M3, 2026-07-07)
+
+- **ScreenCaptureKit entrega su primer buffer ~2.4 s después de que arranca el mic** (microphone.wav 1316.5 s vs system.wav 1314.1 s en la misma grabación). Ese offset constante quedaba FUERA del rango ±2 s de `verify_drift.py` → la correlación se enganchaba a picos espurios y reportó 115 ms de drift falso. Rango ampliado a ±5 s + warning de borde (`93d6570`). Drift real medido: 4 ms / 22 min (+4 ppm, lineal en 5 puntos).
+- **La ventana del clusteringThreshold es finísima y NO se puede subir**: a 0.50 el sample AMI ya fusiona sus 2 speakers (DER 49.8%). Pero en reunión remota real (codecs/mics distintos por participante → más varianza intra-speaker), 0.45 fragmenta: 11 clusters donde hay ~4 reales (distancias al más cercano 0.55–0.64, justo sobre el efectivo 0.45×1.2=0.54). Sweep medido: 0.45→11, 0.50→6, 0.55→5, 0.60→4. Conclusión: mantener 0.45 y atacar la fragmentación con política post-clustering de micro-clusters (los 6 espurios suman solo 59 s de 1119 s ≈ 5% de confusión máxima).
+- **Reproducir una reunión por parlantes duplica el contenido**: el mic capta el audio del sistema por el aire y todo sale también como "Me". Para tests de drift es justo lo que se necesita (canales correlacionados); para uso real, audífonos o AEC futuro.
+- Whisper large-v3-turbo procesa 22 min reales a **30x** en M4 Max.
 
 ### M4 (inteligencia)
 
