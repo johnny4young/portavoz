@@ -53,6 +53,13 @@ final class RecordingController {
     func start(services: AppServices) async {
         guard phase == .idle || isFailed else { return }
         phase = .preparing
+
+        // Warm the mic engine now so the echo canceller converges while the
+        // models load — otherwise the first seconds of captions leak echo.
+        let aec = UserDefaults.standard.object(forKey: "aecEnabled") as? Bool ?? true
+        let microphone = MicrophoneSource(voiceProcessing: aec)
+        Task { await microphone.warmUp() }
+
         do {
             try await services.loadEnginesIfNeeded()
         } catch {
@@ -68,8 +75,7 @@ final class RecordingController {
         audioRelative = "Audio/\(meetingID.rawValue.uuidString)"
         let outputDirectory = AppServices.audioRoot.appendingPathComponent(audioRelative)
 
-        let aec = UserDefaults.standard.object(forKey: "aecEnabled") as? Bool ?? true
-        var sources: [any AudioCaptureSource] = [MicrophoneSource(voiceProcessing: aec)]
+        var sources: [any AudioCaptureSource] = [microphone]
         if #available(macOS 14.4, *) {
             sources.append(ProcessTapSource())
         }

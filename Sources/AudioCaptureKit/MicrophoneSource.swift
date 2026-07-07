@@ -50,21 +50,29 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
         self.voiceProcessing = voiceProcessing
     }
 
+    /// Starts the engine (and the echo canceller) WITHOUT a tap, so the
+    /// AEC's adaptive filter converges while the app is still preparing
+    /// models. Without it, the first seconds of a recording leak echo
+    /// (measured: mic/system RMS ratio 0.38 in the first 2 s, 0.03–0.11
+    /// once converged). Yields no chunks and the session clock still
+    /// anchors at the first real tap callback. Safe to skip — `start()`
+    /// does the full setup itself when the engine isn't warm.
+    public func warmUp() async {
+        restartQueue.sync {
+            guard continuation == nil, !engine.isRunning else { return }
+            try? applyPinnedDeviceIfNeeded(required: false)
+            applyVoiceProcessingIfEnabled()
+            engine.prepare()
+            try? engine.start()
+        }
+    }
+
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let input = engine.inputNode
-        try applyPinnedDeviceIfNeeded(required: true)
-
-        if voiceProcessing {
-            do {
-                try input.setVoiceProcessingEnabled(true)
-                // Without this, enabling AEC ducks the very meeting audio the
-                // user is listening to.
-                input.voiceProcessingOtherAudioDuckingConfiguration = .init(
-                    enableAdvancedDucking: false, duckingLevel: .min)
-            } catch {
-                // Some devices reject voice processing; raw capture with echo
-                // beats no capture.
-            }
+        if !engine.isRunning {
+            // Cold start; a warm engine already has device + AEC applied.
+            try applyPinnedDeviceIfNeeded(required: true)
+            applyVoiceProcessingIfEnabled()
         }
 
         let format = input.outputFormat(forBus: 0)
@@ -85,14 +93,30 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             self?.scheduleRestart()
         }
 
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            teardown()
-            throw error
+        if !engine.isRunning {
+            engine.prepare()
+            do {
+                try engine.start()
+            } catch {
+                teardown()
+                throw error
+            }
         }
         return stream
+    }
+
+    private func applyVoiceProcessingIfEnabled() {
+        guard voiceProcessing else { return }
+        do {
+            try engine.inputNode.setVoiceProcessingEnabled(true)
+            // Without this, enabling AEC ducks the very meeting audio the
+            // user is listening to.
+            engine.inputNode.voiceProcessingOtherAudioDuckingConfiguration = .init(
+                enableAdvancedDucking: false, duckingLevel: .min)
+        } catch {
+            // Some devices reject voice processing; raw capture with echo
+            // beats no capture.
+        }
     }
 
     public func stop() async {
