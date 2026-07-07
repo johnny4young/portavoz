@@ -159,7 +159,8 @@ public actor PyannoteDiarizer: Diarizer {
         let result = try manager.performCompleteDiarization(
             samples, sampleRate: Self.modelSampleRate)
         let duration = Double(samples.count) / Double(Self.modelSampleRate)
-        return Self.sanitizeTurns(result.segments.map(Self.turn(from:)), audioDuration: duration)
+        return Self.mergeMicroClusters(
+            Self.sanitizeTurns(result.segments.map(Self.turn(from:)), audioDuration: duration))
     }
 
     /// Drops phantom speakers born in the last, zero-padded window: the
@@ -184,6 +185,58 @@ public actor PyannoteDiarizer: Diarizer {
         }.keys
         guard !phantoms.isEmpty else { return turns }
         return turns.filter { !phantoms.contains($0.voiceLabel) }
+    }
+
+    /// Real remote meetings fragment: per-participant codecs and mics push
+    /// within-speaker embedding variance just past the assignment threshold,
+    /// spawning micro-clusters (observed: 11 labels where ~4 people spoke,
+    /// 6 of them carrying 3–28 s of a 1119 s meeting). The threshold itself
+    /// can't move — 0.05 higher already merges AMI's two real speakers — so
+    /// tiny labels get re-assigned instead: every turn of a label whose
+    /// total speech stays under `minSpeechSeconds` moves to the temporally
+    /// nearest turn of a major label. "Me" is identity (voiceprint-verified),
+    /// so it is never merged away and never absorbs anyone; with no major
+    /// label to inherit the turns, they stay as they are — a short meeting
+    /// of short speakers is not fragmentation.
+    static func mergeMicroClusters(
+        _ turns: [SpeakerTurn],
+        minSpeechSeconds: TimeInterval = 15
+    ) -> [SpeakerTurn] {
+        func totalSpeech(_ turns: [SpeakerTurn]) -> TimeInterval {
+            turns.reduce(0) { $0 + ($1.endTime - $1.startTime) }
+        }
+        let byLabel = Dictionary(grouping: turns, by: \.voiceLabel)
+        let protected = Set(
+            byLabel.filter {
+                $0.key == enrolledLabel || totalSpeech($0.value) >= minSpeechSeconds
+            }.keys)
+        guard protected.count < byLabel.count else { return turns }
+        let targets = turns.filter {
+            protected.contains($0.voiceLabel) && $0.voiceLabel != enrolledLabel
+        }
+        guard !targets.isEmpty else { return turns }
+
+        return turns.map { turn in
+            guard !protected.contains(turn.voiceLabel) else { return turn }
+            let middle = (turn.startTime + turn.endTime) / 2
+            guard
+                let nearest = targets.min(by: {
+                    Self.distance(from: middle, to: $0) < Self.distance(from: middle, to: $1)
+                })
+            else { return turn }
+            return SpeakerTurn(
+                voiceLabel: nearest.voiceLabel,
+                startTime: turn.startTime,
+                endTime: turn.endTime,
+                confidence: turn.confidence
+            )
+        }
+    }
+
+    private static func distance(from point: TimeInterval, to turn: SpeakerTurn) -> TimeInterval {
+        if point < turn.startTime { return turn.startTime - point }
+        if point > turn.endTime { return point - turn.endTime }
+        return 0
     }
 
     // MARK: - Internals

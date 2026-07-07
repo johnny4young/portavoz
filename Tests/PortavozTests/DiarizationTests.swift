@@ -279,3 +279,69 @@ final class DiarizationIntegrationTests: XCTestCase {
         }
     }
 }
+
+final class MergeMicroClustersTests: XCTestCase {
+    private func turn(
+        _ label: String, _ start: TimeInterval, _ end: TimeInterval, quality: Double = 0.8
+    ) -> SpeakerTurn {
+        SpeakerTurn(voiceLabel: label, startTime: start, endTime: end, confidence: quality)
+    }
+
+    func testMicroClusterMovesToTemporallyNearestMajor() {
+        let turns = [
+            turn("S1", 0, 30),      // major (30 s)
+            turn("S9", 31, 34),     // micro, right after S1
+            turn("S2", 100, 140),   // major (40 s)
+            turn("S8", 139, 143),   // micro, inside/after S2
+        ]
+        let merged = PyannoteDiarizer.mergeMicroClusters(turns)
+        XCTAssertEqual(merged.map(\.voiceLabel), ["S1", "S1", "S2", "S2"])
+        // Times and quality of the reassigned turns are untouched.
+        XCTAssertEqual(merged[1].startTime, 31)
+        XCTAssertEqual(merged[1].endTime, 34)
+    }
+
+    func testShortRealSpeakerSurvivesWhenNothingIsMajor() {
+        // Nobody reaches 15 s: a short meeting, not fragmentation.
+        let turns = [turn("S1", 0, 5), turn("S2", 6, 10)]
+        let merged = PyannoteDiarizer.mergeMicroClusters(turns)
+        XCTAssertEqual(merged.map(\.voiceLabel), ["S1", "S2"])
+    }
+
+    func testMeIsNeverAbsorbedEvenWhenTiny() {
+        let turns = [
+            turn("S1", 0, 60),
+            turn("Me", 61, 63),  // 2 s of enrolled voice
+        ]
+        let merged = PyannoteDiarizer.mergeMicroClusters(turns)
+        XCTAssertEqual(merged.map(\.voiceLabel), ["S1", "Me"])
+    }
+
+    func testMeNeverAbsorbsMicroClusters() {
+        // The only major label is "Me": micro turns must NOT become "Me".
+        let turns = [
+            turn("Me", 0, 60),
+            turn("S7", 61, 64),
+        ]
+        let merged = PyannoteDiarizer.mergeMicroClusters(turns)
+        XCTAssertEqual(merged.map(\.voiceLabel), ["Me", "S7"])
+    }
+
+    func testAllMajorsPassThroughUntouched() {
+        let turns = [turn("S1", 0, 30), turn("S2", 31, 60)]
+        XCTAssertEqual(
+            PyannoteDiarizer.mergeMicroClusters(turns).map(\.voiceLabel), ["S1", "S2"])
+    }
+
+    func testMultiTurnMicroLabelReassignsEachTurnIndependently() {
+        let turns = [
+            turn("S1", 0, 30),       // major
+            turn("S2", 200, 240),    // major
+            turn("S9", 28, 31),      // micro turn near S1
+            turn("S9", 198, 201),    // micro turn near S2 (same label!)
+        ]
+        let merged = PyannoteDiarizer.mergeMicroClusters(turns)
+        XCTAssertEqual(merged[2].voiceLabel, "S1")
+        XCTAssertEqual(merged[3].voiceLabel, "S2")
+    }
+}
