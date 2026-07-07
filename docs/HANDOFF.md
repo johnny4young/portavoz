@@ -162,54 +162,9 @@ Sesión de estrategia: 6 fuentes analizadas (riffado, MacParakeet, humla, Otter,
 - El repo de referencia Meetily vive en `../meetily` (estudiar, jamás portar — GPL en MacParakeet también: mirar sin tocar).
 - El Python de python.org no tiene certificados SSL (`urllib` falla) — usar `curl` en scripts.
 
-## Descubrimientos técnicos ya pagados (no re-descubrir)
+## Descubrimientos técnicos
 
-### Verificación real (M1/M3, 2026-07-07)
-
-- **ScreenCaptureKit entrega su primer buffer ~2.4 s después de que arranca el mic** (microphone.wav 1316.5 s vs system.wav 1314.1 s en la misma grabación). Ese offset constante quedaba FUERA del rango ±2 s de `verify_drift.py` → la correlación se enganchaba a picos espurios y reportó 115 ms de drift falso. Rango ampliado a ±5 s + warning de borde (`93d6570`). Drift real medido: 4 ms / 22 min (+4 ppm, lineal en 5 puntos).
-- **La ventana del clusteringThreshold es finísima y NO se puede subir**: a 0.50 el sample AMI ya fusiona sus 2 speakers (DER 49.8%). Pero en reunión remota real (codecs/mics distintos por participante → más varianza intra-speaker), 0.45 fragmenta: 11 clusters donde hay ~4 reales (distancias al más cercano 0.55–0.64, justo sobre el efectivo 0.45×1.2=0.54). Sweep medido: 0.45→11, 0.50→6, 0.55→5, 0.60→4. Conclusión: mantener 0.45 y atacar la fragmentación con política post-clustering de micro-clusters (los 6 espurios suman solo 59 s de 1119 s ≈ 5% de confusión máxima).
-- **Reproducir una reunión por parlantes duplica el contenido**: el mic capta el audio del sistema por el aire y todo sale también como "Me". Para tests de drift es justo lo que se necesita (canales correlacionados); para uso real, audífonos o AEC futuro.
-- Whisper large-v3-turbo procesa 22 min reales a **30x** en M4 Max.
-
-### M4 (inteligencia)
-
-- **La ventana de 4096 tokens del modelo on-device cuenta TODO**: instrucciones + prompt + schema del guided generation + salida. 6000 chars de material la reventaron (`exceededContextWindowSize`); el material del pase estructurado debe quedar ≤ ~3000 chars.
-- **El map-reduce necesita compresión garantizada**: sin `maximumResponseTokens` en las notas, cada nota puede medir ~2800 chars y la recursión NO converge ("did not converge"). Cap de 250 tokens = ≥4x por nivel.
-- **El modelo de 3B ignora directivas de idioma débiles**: "BCP-47 tag es" en instructions → salida en inglés. Funciona: nombre humano ("Spanish (español)") + repetir la orden AL FINAL del prompt de usuario.
-- **Con sampling, el 3B inventa action items** (le atribuyó compromisos al speaker espurio S3). Greedy + guía "solo compromisos explícitos, array vacío si no hubo" lo corrigió.
-- La API real de FoundationModels se verifica en el `.swiftinterface` del SDK local (`MacOSX26.5.sdk/...FoundationModels.framework/Modules/...swiftinterface`) — mejor fuente que cualquier doc.
-- **FluidAudio v0.15.4 no compila entero en esta máquina** (timeout del type-checker en `NemotronMultilingualFleursBenchmark.swift` de su CLI; a veces pasa, a veces no — depende de la carga). Fix upstream #732 (`c367a18e`) pineado por revisión.
-
-### M3 (diarización)
-
-- **El threshold efectivo de asignación de speakers es `clusteringThreshold × 1.2`** (wiring interno de `DiarizerManager` → `SpeakerManager`). Con el default 0.7 → 0.84 de distancia coseno: fusiona hasta los 2 speakers del sample AMI real. Nuestro default: 0.45.
-- **Fixture de calibración**: `pyannote-audio` publica `src/pyannote/audio/sample/sample.wav` (30 s de reunión AMI real, 2 speakers) **con su `sample.rttm` de referencia** — ground truth público y reproducible para validar diarización sin grabar reuniones.
-- Las voces TTS de `say` comparten vocoder → embeddings casi indistinguibles para WeSpeaker (a 0.45: Samantha vs Rishi separa bien; con default 0.7 se fusiona TODO). No calibrar contra TTS; usar el sample AMI.
-- **La última ventana parcial (zero-padded) del diarizer suele crear un speaker espurio** con quality ~0.2 — ruido de cola conocido, marginal en audio largo.
-- **Los timings TDT de Parakeet no traen gaps** (fin de token = inicio del siguiente, semántica frame-jump): el corte de segmentos por pausa casi nunca dispara en batch — cortar por puntuación de oración.
-- `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` carga por paths explícitos y jamás descarga (a diferencia de `AsrModels.load`).
-- Un `PyannoteDiarizer` = una sesión: `SpeakerManager` acumula la base de voces entre llamadas (así "S1" es estable), o sea que reuniones distintas no comparten instancia.
-
-### M2 (transcripción)
-
-- **FluidAudio resuelve la carpeta del modelo como el repo SIN el sufijo `-coreml`** (`parakeet-tdt-0.6b-v3`). Si `AsrModels.load(from:)` no encuentra los archivos en ESA carpeta, **re-descarga el repo entero él mismo, SIN verificación, a un directorio hermano** — bypassea nuestro registry sha256. El `folderName` del catálogo debe ser exactamente ese; hay test que lo protege.
-- **`SlidingWindowAsrConfig.hypothesisChunkSeconds` está muerto en FluidAudio 0.15.4**: el pipeline solo emite un update por `chunkSeconds` (default 11 s → latencia 13+ s). Para captions < 2 s: ventana custom left 11 / chunk 1.0 / right 0.4 (= 12.4 s ≤ 15 s del modelo). La latencia estructural es chunk + right + inferencia.
-- **El dedup de tokens upstream falla con chunks pequeños**: al deslizarse la ventana, cada update confirmado re-emite ~todo el left context (verificado: texto duplicado masivo). Fix nuestro en `ParakeetSegmentMapper`: los `tokenTimings` de los updates vienen en **tiempo absoluto del stream** — filtrar tokens con `startTime > último borde emitido` y reconstruir el texto del delta con `joinedText` (maneja `▁` de SentencePiece).
-- **`ASRResult.duration` = 0 en el path disk-backed** (archivos > ~30 s) — leer la duración real con `AVAudioFile` para métricas.
-- **`TdtDecoderState()` es `throws`**; se pasa `inout` a métodos del actor `AsrManager` (legal: var local).
-- Primer load del modelo compila para ANE (~14 s el Encoder en M4 Max); después queda cacheado por CoreML (~1 s).
-- El modelo Parakeet v3 es CC-BY-4.0 (el código FluidAudio Apache-2.0) — ambos MIT-compatibles con atribución.
-- Los sha256 pineados salen del **tree API de HF** (`/api/models/<repo>/tree/<rev>?recursive=true`): los LFS traen sha256 directo (`lfs.oid`); los archivos chicos hay que hashearlos uno mismo. Procedimiento documentado en el doc comment de `ModelCatalog.parakeetTdtV3`.
-- `say -o x.aiff` + `afconvert -f WAVE -d LEI16@16000 -c 1` genera fixtures de voz para pruebas; `afplay` por parlantes al mic hace un loop acústico E2E real.
-
-### M1 (captura) — sigue vigente
-
-- `CATapDescription(stereoMixdownOfProcesses:)` recibe **`[AudioObjectID]` directo**, no `[NSNumber]`.
-- El tap requiere aggregate device privado con `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; leer el formato con `kAudioTapPropertyFormat` ANTES del IOProc.
-- PID → objeto Core Audio: `kAudioHardwarePropertyTranslatePIDToProcessObject`.
-- `AVAudioFile` escribe WAV 16-bit directo desde Float32 — sin FFmpeg.
-- **Un tap sin permiso TCC entrega SILENCIO, no error** (peak 0.0% en system.wav → Ajustes → Privacidad → Grabación de pantalla y audio del sistema → activar la terminal → relanzar). El CLI lo detecta e imprime.
-- La enumeración de inputs lista iPhones vía Continuity — base del futuro canal `room`.
+**Migrados a [specs/](specs/README.md) (2026-07-07)** — el conocimiento técnico durable ya no vive en este archivo. Por tema: captura → [specs/01](specs/01-audio-capture.md) · transcripción → [specs/02](specs/02-transcription.md) · diarización/identidad → [specs/03](specs/03-diarization-identity.md) · inteligencia → [specs/04](specs/04-intelligence.md) · storage → [specs/05](specs/05-storage.md) · app/empaquetado → [specs/06](specs/06-app-macos.md) · CLI/MCP → [specs/07](specs/07-interfaces.md) · tests/números/bugs → [specs/08](specs/08-quality.md). Brechas para talla mundial → [GAPS.md](GAPS.md).
 
 ## Cómo continuar en una sesión nueva
 

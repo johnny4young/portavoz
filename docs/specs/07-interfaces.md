@@ -1,0 +1,45 @@
+# Spec 07 — Interfaces: CLI, MCP y exportadores
+
+Estado: implementado; MCP verificado E2E con un agente real. Decisiones: D12 (escalera de compartir), D22 (RAG).
+
+## CLI — `portavoz-cli` (dispatch en `Sources/portavoz-cli/CLI.swift`)
+
+Binario SPM (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`). Comparte DB y modelos con la app (incluida la carpeta de grabaciones configurable, vía `RecordingsLocation`).
+
+| Comando | Usage (del código) |
+|---|---|
+| `devices` | Lista inputs (incluye iPhones vía Continuity) |
+| `record` | `[--seconds N] [--mic <name-or-uid>] [--pid <pid> …] [--system] [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>] [--no-aec]` |
+| `transcribe` | `--file <wav> [--engine parakeet\|whisper] [--vocab "a,b,c"] [--language es] [--models-dir <dir>]` |
+| `diarize` | `--file <wav> [--attribute] [--threshold t] [--language es] [--models-dir <dir>]` |
+| `summarize` | `--file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]` — pipeline completo wav→transcript→diarización→resumen |
+| `meetings` | `list \| show <uuid> \| search <texto> \| refine <uuid> [--file <wav>] [--language es] [--vocab "…"] [--db] [--models-dir]` |
+| `export` | `--meeting <uuid> [--format md\|pdf] [--out <path>] [--gist [--public]]` |
+| `secrets` | `set-github-token <token> \| clear-github-token` (Keychain; equivalentes para Linear) |
+| `voice` | `enroll [--file <wav>] \| status \| delete` |
+| `der` | `--file <wav> --reference <rttm> [--threshold t] [--collar s]` — harness DER |
+| `mcp` | Servidor MCP por stdio (ver abajo) |
+| `ask` | `"<pregunta>" [--db <path>] [--limit n]` — RAG local con citas |
+| `issues` | `--meeting <uuid> (--github <owner/repo> \| --linear-team <id>)` |
+| `models` | `download \| verify \| path` — catálogo completo sha256 |
+| `bench-m2` | Harness de aceptación M2 (lag vivo + batch concurrente) |
+
+## Servidor MCP — `portavoz-cli mcp`
+
+- Transporte: **JSON-RPC 2.0 por stdio, newline-delimited**; protocolVersion `2024-11-05`. Capa de protocolo storage-agnostic en IntegrationsKit (`MCPServer`, `MCPTool` con handlers Data→String, schemas JSON crudos); el toolbox se arma en el CLI (`MeetingToolbox`).
+- Registro con un agente: `claude mcp add portavoz -- portavoz-cli mcp`.
+- **6 tools**: `list_meetings` · `search_meetings` (FTS con snippets+ids+timestamps) · `get_transcript` (atribuido) · `get_summary` (último snapshot + action items) · `get_action_items` (pendientes globales) · `ask` (RAG híbrido on-device con citas).
+- Verificado E2E: un agente MCP respondió "what did we agree about the transcription budget?" con fuentes correctas.
+
+## Exportadores — IntegrationsKit
+
+- `MeetingExporter`: markdown canónico (título/metadata/resumen con headings degradados/pendientes/transcript atribuido) y **PDF por CoreText puro** (sin AppKit — compila para iOS; paginación US Letter verificada con CGPDFDocument).
+- `GistPublisher`: `api.github.com/gists`, secreto por defecto, `--public` explícito; token del Keychain.
+- `GitHubIssuesExporter` (REST) y `LinearExporter` (GraphQL; **el token va pelado en Authorization, SIN prefijo Bearer**): action items → issues. Testeados offline; publish real pendiente de tokens del usuario.
+- Salida al exterior SIEMPRE con confirmación explícita (D8): la UI confirma antes del gist; el CLI es opt-in por naturaleza.
+
+## Límites conocidos
+
+1. MCP sin auth (proceso local por stdio — aceptable; el plan de seguridad exige localhost+token si algún día hay transporte de red).
+2. `issues` y `export --gist` verificados offline, publish real con tokens del usuario pendiente.
+3. Sin App Intents/Shortcuts (M16).

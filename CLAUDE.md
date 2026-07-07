@@ -1,15 +1,16 @@
 # CLAUDE.md
 
-Portavoz: asistente de reuniones privacy-first para plataformas Apple, en Swift 6 + SwiftUI. Este archivo es solo la guía operativa mínima — **el conocimiento del proyecto vive en `docs/`**.
+Portavoz: asistente de reuniones privacy-first para plataformas Apple, en Swift 6 + SwiftUI. Este archivo es solo la guía operativa mínima — **el conocimiento del proyecto vive en `docs/`, no aquí**.
 
 ## Al empezar CUALQUIER sesión
 
-1. **Lee [docs/HANDOFF.md](docs/HANDOFF.md) antes de tocar nada** — tiene el estado actual, lo verificado, los próximos pasos exactos y los quirks del entorno. Es el mecanismo de continuidad entre sesiones.
-2. Consulta según necesites: [docs/DECISIONS.md](docs/DECISIONS.md) (decisiones vinculantes D1–D14), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (diseño técnico y reglas de ingeniería), [docs/PRODUCT.md](docs/PRODUCT.md) (visión, mercado, FREE/PRO), [docs/ROADMAP.md](docs/ROADMAP.md) (hitos M0–M8 con criterios de aceptación).
+1. **Lee [docs/HANDOFF.md](docs/HANDOFF.md)** — estado de sesión: qué se hizo, qué quedó verificado, próximos pasos, quirks del entorno. Es SOLO continuidad, no conocimiento durable.
+2. **El conocimiento técnico as-built vive en [docs/specs/](docs/specs/README.md)** — 8 specs por dominio (captura, transcripción, diarización, inteligencia, storage, app, interfaces, calidad) escritos desde el código real, con lo implementado separado de lo planeado. Lee el spec del área que vayas a tocar ANTES de tocarla.
+3. Según necesites: [docs/DECISIONS.md](docs/DECISIONS.md) (decisiones vinculantes D1–D28), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (reglas de ingeniería), [docs/PRODUCT.md](docs/PRODUCT.md) (visión, mapa competitivo, FREE/PRO), [docs/ROADMAP.md](docs/ROADMAP.md) (fases y milestones), [docs/GAPS.md](docs/GAPS.md) (brechas conocidas), [docs/IOS.md](docs/IOS.md) (fase iOS).
 
 ## Al terminar una sesión significativa
 
-Actualiza [docs/HANDOFF.md](docs/HANDOFF.md): estado, qué quedó verificado, próximos pasos, descubrimientos técnicos nuevos. Si se tomó una decisión de peso, añádela a DECISIONS.md. Nada importante puede quedar solo en la conversación.
+Actualiza [docs/HANDOFF.md](docs/HANDOFF.md) (estado y próximos pasos). El conocimiento técnico nuevo va al **spec correspondiente**, las decisiones de peso a DECISIONS.md. Nada importante puede quedar solo en la conversación ni solo en el HANDOFF.
 
 ## Comandos
 
