@@ -17,11 +17,20 @@ fi
 
 echo "Building portavoz-app ($CONFIG)…"
 swift build --product portavoz-app -c "$CONFIG"
-BIN="$(swift build --show-bin-path -c "$CONFIG")/portavoz-app"
+BIN_DIR="$(swift build --show-bin-path -c "$CONFIG")"
+BIN="$BIN_DIR/portavoz-app"
+
+# Ad-hoc by default; export PORTAVOZ_SIGN_IDENTITY="Developer ID Application: …"
+# for a real distribution signature.
+SIGN_ID="${PORTAVOZ_SIGN_IDENTITY:--}"
 
 APP=dist/Portavoz.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
+
+# Sparkle ships as a dynamic framework; embed it and make sure the
+# binary can find it relative to itself.
+cp -a "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/"
 
 # Icon (regenerate with: swift scripts/make-icon.swift)
 if [[ -f assets/AppIcon.icns ]]; then
@@ -67,8 +76,23 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
-cp "$BIN" "$APP/Contents/MacOS/portavoz-app"
-codesign --force --sign - "$APP"
+# Sparkle update feed + signing key. Without assets/sparkle-public-key
+# the app just never finds updates (fine in dev).
+plutil -insert SUFeedURL -string "https://github.com/johnny4young/portavoz/releases/latest/download/appcast.xml" "$APP/Contents/Info.plist"
+plutil -insert SUEnableAutomaticChecks -bool true "$APP/Contents/Info.plist"
+if [[ -f assets/sparkle-public-key ]]; then
+  plutil -insert SUPublicEDKey -string "$(cat assets/sparkle-public-key)" "$APP/Contents/Info.plist"
+fi
 
-echo "OK → $APP"
+cp "$BIN" "$APP/Contents/MacOS/portavoz-app"
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/portavoz-app" 2>/dev/null || true
+
+codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" 2>/dev/null || true
+codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" 2>/dev/null || true
+codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" 2>/dev/null || true
+codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" 2>/dev/null || true
+codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework"
+codesign --force --sign "$SIGN_ID" "$APP"
+
+echo "OK → $APP (firma: $SIGN_ID)"
 echo "Run it with: open $APP"

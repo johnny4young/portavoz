@@ -13,6 +13,9 @@ struct PortavozApp: App {
                 .frame(minWidth: 900, minHeight: 560)
                 .tint(.indigo)
         }
+        .commands {
+            CheckForUpdatesCommand()
+        }
         Settings {
             SettingsView()
                 .environment(services)

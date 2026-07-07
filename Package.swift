@@ -36,6 +36,8 @@ let package = Package(
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
         // exact: the package renamed itself at 1.0 and moves API fast.
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.0.0"),
+        // Auto-updates for the direct-download channel (D10).
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", .upToNextMajor(from: "2.9.4")),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -84,6 +86,7 @@ let package = Package(
                 "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit",
+                .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
 
