@@ -22,7 +22,10 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
         let prompt = Self.prompt(for: request)
         let content = try await client.complete(system: prompt.system, user: prompt.user)
-        return try Self.parseStructured(content).draft(for: request)
+        var draft = try Self.parseStructured(content).draft(for: request)
+        draft.fingerprint = SummaryFingerprint.compute(
+            request: request, providerID: "\(client.providerLabel)/\(client.model)")
+        return draft
     }
 
     // MARK: - Prompt/response contract (static + pure for tests)

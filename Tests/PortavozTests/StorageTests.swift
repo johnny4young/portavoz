@@ -133,6 +133,41 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertEqual(original?.draft.actionItems.count, 1)
     }
 
+    /// D25: the fingerprint round-trips and `latestSummary(fingerprint:)`
+    /// finds the cache hit (same language) or the translation pivot (any
+    /// language); pre-fingerprint snapshots (NULL) never match.
+    func testSummaryFingerprintMatchesCacheAndPivot() async throws {
+        _ = try await seedMeetingWithTranscript()
+
+        try await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                markdown: "# viejo sin fingerprint", actionItems: []))
+        try await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "en",
+                markdown: "# pivot", actionItems: [ActionItem(text: "ship it")],
+                fingerprint: "f-abc"))
+
+        // Exact hit: same fingerprint + language.
+        let exact = try await store.latestSummary(
+            meeting.id, fingerprint: "f-abc", language: "en")
+        XCTAssertEqual(exact?.draft.markdown, "# pivot")
+        XCTAssertEqual(exact?.draft.fingerprint, "f-abc")
+        XCTAssertEqual(exact?.draft.actionItems.first?.text, "ship it")
+
+        // Pivot: same fingerprint, no language pin.
+        let pivot = try await store.latestSummary(meeting.id, fingerprint: "f-abc")
+        XCTAssertEqual(pivot?.draft.language, "en")
+
+        // No match: other language pin, other fingerprint, and NULL rows.
+        let missES = try await store.latestSummary(
+            meeting.id, fingerprint: "f-abc", language: "es")
+        XCTAssertNil(missES, "the es snapshot has no fingerprint and must not match")
+        let missOther = try await store.latestSummary(meeting.id, fingerprint: "f-zzz")
+        XCTAssertNil(missOther)
+    }
+
     func testSummaryRequiresExistingMeeting() async throws {
         let orphan = SummaryDraft(
             meetingID: MeetingID(), recipeID: "general", language: "en",

@@ -154,6 +154,7 @@ struct SummaryRecord: Codable, FetchableRecord, PersistableRecord {
     var language: String
     var markdown: String
     var version: Int
+    var fingerprint: String?
     var createdAt: Date
     var deletedAt: Date?
 }

@@ -109,6 +109,40 @@ public enum PromptFactory {
         return lines.joined(separator: "\n")
     }
 
+    /// Instructions for translating a FINISHED summary (D25's pivot):
+    /// re-expression only — structure, order and content are frozen.
+    public static func translationInstructions(
+        targetLanguage: String, glossary: [String]
+    ) -> String {
+        [
+            "You translate a finished meeting summary into another language.",
+            "Translate EVERYTHING, headings included, but change nothing else: "
+                + "same markdown structure, same bullets in the same order, "
+                + "no content added, removed or reworded beyond translation.",
+            "Keep any \"▸ \" bullet prefixes exactly where they are.",
+            languageDirective(targetLanguage: targetLanguage, glossary: glossary),
+        ].joined(separator: "\n")
+    }
+
+    /// Structure and action items translate in SEPARATE calls: shown both
+    /// at once, the 3B promoted the item list into an invented extra
+    /// section (caught by the gated test).
+    public static func translationPrompt(
+        markdown: String, actionItems: String, targetLanguage: String
+    ) -> String {
+        var prompt = ""
+        if !markdown.isEmpty {
+            prompt += "Summary to translate:\n\n\(markdown)\n\n"
+        }
+        if !actionItems.isEmpty {
+            prompt +=
+                "Action items to translate, one per line, same order and count:\n\(actionItems)\n\n"
+        }
+        prompt +=
+            "Remember: write the ENTIRE translation in \(languageName(for: targetLanguage))."
+        return prompt
+    }
+
     /// Instructions for speaker naming (M6). Evidence-or-nothing: a small
     /// model happily invents names unless the bar is explicit proof.
     public static func namingInstructions() -> String {

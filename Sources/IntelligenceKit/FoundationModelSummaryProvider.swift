@@ -28,6 +28,10 @@ import FoundationModels
 /// note layers collapse recursively until they fit one window.
 @available(macOS 26.0, iOS 26.0, *)
 public struct FoundationModelSummaryProvider: SummaryProvider {
+    /// Identity for `SummaryFingerprint` (the OS model has no queryable
+    /// version; macOS updates that change it are rare enough to accept).
+    public static let providerID = "foundation-models"
+
     public init() {}
 
     /// nil when ready; otherwise a human-readable reason (Apple
@@ -62,7 +66,129 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     ) async throws -> SummaryDraft {
         let transcript = TranscriptFormatter.format(
             segments: request.segments, speakers: request.speakers)
-        return try await summarizeMaterial(transcript, request: request, priority: priority)
+        var draft = try await summarizeMaterial(transcript, request: request, priority: priority)
+        draft.fingerprint = SummaryFingerprint.compute(
+            request: request, providerID: Self.providerID)
+        return draft
+    }
+
+    /// D25's pivot: translates an existing snapshot to another language for
+    /// a fraction of a full re-summarization (the material is already
+    /// distilled — ~2k chars instead of the whole transcript).
+    ///
+    /// The pivot's markdown is parsed back into its structure and the model
+    /// translates through a MIRRORED schema (overview / sections / items):
+    /// handed one opaque markdown string instead, the 3B truncated to the
+    /// first paragraph (caught by the gated test). Sections and action
+    /// items translate positionally — heading count must survive, owners
+    /// carry over by index — and any shape mismatch throws so the caller
+    /// falls back to a full re-summarization instead of storing a lossy
+    /// translation. The result keeps the pivot's fingerprint: same
+    /// material, new language.
+    public func translate(
+        _ pivot: SummaryDraft,
+        to targetLanguage: String,
+        glossary: [String] = [],
+        priority: IntelligenceScheduler.Priority = .interactive
+    ) async throws -> SummaryDraft {
+        if let reason = Self.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        // The 4096-token window holds input + output; a pivot too big to
+        // fit twice must go the full-summarize route instead.
+        guard pivot.markdown.count <= 3200 else {
+            throw IntelligenceError.providerFailed("pivot summary too large to translate in-window")
+        }
+        guard let structure = StructuredSummary.parse(markdown: pivot.markdown) else {
+            throw IntelligenceError.providerFailed("pivot summary has no recognizable structure")
+        }
+
+        // One call per piece — overview, then each section. Handed the
+        // whole summary at once (even schema-guided), the 3B invented
+        // extra sections; piecewise, the structure survives by
+        // CONSTRUCTION and each call is small. Still a fraction of a full
+        // re-summarization.
+        let instructions = PromptFactory.translationInstructions(
+            targetLanguage: targetLanguage, glossary: glossary)
+
+        let overviewPrompt = PromptFactory.translationPrompt(
+            markdown: structure.overview, actionItems: "", targetLanguage: targetLanguage)
+        let overview = try await IntelligenceScheduler.shared.run(priority) {
+            try await LanguageModelSession(instructions: instructions).respond(
+                to: overviewPrompt,
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 350)
+            ).content
+        }.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !overview.isEmpty else {
+            throw IntelligenceError.providerFailed("translation came back empty")
+        }
+
+        var sections: [StructuredSummary.Section] = []
+        for section in structure.sections {
+            let sectionMarkdown = StructuredSummary(
+                overview: "", sections: [section], actionItems: []
+            ).markdown(recipe: .general)
+            let prompt = PromptFactory.translationPrompt(
+                markdown: sectionMarkdown, actionItems: "", targetLanguage: targetLanguage)
+            let translated = try await IntelligenceScheduler.shared.run(priority) {
+                let response = try await LanguageModelSession(instructions: instructions)
+                    .respond(
+                        to: prompt,
+                        generating: TranslatedSection.self,
+                        options: GenerationOptions(sampling: .greedy))
+                return StructuredSummary.Section(
+                    heading: response.content.heading, bullets: response.content.bullets)
+            }
+            guard translated.bullets.count == section.bullets.count else {
+                throw IntelligenceError.providerFailed(
+                    "translation lost bullets in \"\(section.heading)\" (\(translated.bullets.count)/\(section.bullets.count))"
+                )
+            }
+            sections.append(translated)
+        }
+
+        // Call 2: the action items alone, positionally. Fresh ActionItem
+        // IDs: snapshots never share rows (the PK would collide on save),
+        // and a new version starts unchecked.
+        var items: [ActionItem] = []
+        var renderedItems: [StructuredSummary.Item] = []
+        if !pivot.actionItems.isEmpty {
+            let itemsBlock = pivot.actionItems.enumerated()
+                .map { "\($0.offset + 1). \($0.element.text)" }
+                .joined(separator: "\n")
+            let itemsPrompt = PromptFactory.translationPrompt(
+                markdown: "", actionItems: itemsBlock, targetLanguage: targetLanguage)
+            let texts = try await IntelligenceScheduler.shared.run(priority) {
+                try await LanguageModelSession(instructions: instructions).respond(
+                    to: itemsPrompt,
+                    generating: TranslatedItems.self,
+                    options: GenerationOptions(sampling: .greedy)
+                ).content.items
+            }
+            guard texts.count == pivot.actionItems.count else {
+                throw IntelligenceError.providerFailed(
+                    "translation lost action items (\(texts.count)/\(pivot.actionItems.count))")
+            }
+            items = zip(pivot.actionItems, texts).map { original, text in
+                ActionItem(text: text, ownerSpeakerID: original.ownerSpeakerID)
+            }
+            // Owner labels for the rendered block come from the pivot's own
+            // markdown ("— S1" suffixes), positionally when they line up.
+            let owners = structure.actionItems.count == texts.count
+                ? structure.actionItems.map(\.owner)
+                : Array(repeating: "", count: texts.count)
+            renderedItems = zip(texts, owners).map { StructuredSummary.Item(text: $0, owner: $1) }
+        }
+
+        let complete = StructuredSummary(
+            overview: overview, sections: sections, actionItems: renderedItems)
+        return SummaryDraft(
+            meetingID: pivot.meetingID,
+            recipeID: pivot.recipeID,
+            language: targetLanguage,
+            markdown: complete.markdown(recipe: .general),
+            actionItems: items,
+            fingerprint: pivot.fingerprint)
     }
 
     /// Reduce phase over already-condensed notes (the live rolling summary
@@ -206,6 +332,29 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
 }
 
 // MARK: - Guided generation shapes
+
+@available(macOS 26.0, iOS 26.0, *)
+@Generable(description: "One translated summary section")
+struct TranslatedSection {
+    @Guide(description: "The section heading, translated")
+    var heading: String
+    @Guide(
+        description:
+            "The section's bullets translated, same order and count; when a bullet starts with \"▸ \", keep that prefix"
+    )
+    var bullets: [String]
+}
+
+@available(macOS 26.0, iOS 26.0, *)
+@Generable(description: "A list of action items translated into another language")
+struct TranslatedItems {
+    @Guide(
+        description:
+            "One translated entry per input numbered line, same order and count, without the numbers"
+    )
+    var items: [String]
+}
+
 
 @available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A structured, faithful meeting summary")

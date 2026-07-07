@@ -32,6 +32,12 @@ Requiere macOS 26 + Apple Intelligence activa (`unavailabilityReason()` da el mo
 - **`BYOKSettings`**: endpoint y modelo en UserDefaults (`byokEndpoint`/`byokModel`); la key SOLO en Keychain (`SecretStore.byokAPIKeyService`). `client(...)` devuelve cliente listo o nil — nadie ve estado a medio configurar. `copilotClient()` exige además el opt-in explícito `copilotBYOKEnabled` (D26: configurar no es consentir); piezas faltantes degradan a on-device, jamás a error.
 - **`OpenAICompatibleSummaryProvider`**: ahora solo posee el prompt de resumen y el contrato JSON→`StructuredSummary`; el HTTP vive en el chat client. Teje las notas del usuario (D28) igual que on-device — paridad testeada. Key por `PORTAVOZ_BYOK_API_KEY` en CLI; en la app, Keychain vía Settings.
 
+## Caché por fingerprint + pivote de traducción (D25) — `SummaryFingerprint` + `translate`
+
+- **`SummaryFingerprint.compute(request:providerID:)`**: SHA-256 del MATERIAL y el método — transcript formateado (con nombres de speakers: renombrar S1→José invalida, porque cambia las atribuciones), bloque de notas D28, glosario, recipe, providerID y `promptVersion` (constante a bumpear cuando los prompts cambien de fondo). **Excluye el idioma de salida a propósito** — eso es lo que habilita el pivote. Cada provider estampa el fingerprint en el draft que produce.
+- **Regenerar (detalle)**: mismo fingerprint + mismo idioma ya guardado → aviso "ya está al día" sin llamada al modelo (greedy reproduciría lo mismo); mismo fingerprint en OTRO idioma → `translate(pivot)`; si no → resumen completo.
+- **`translate(_:to:glossary:)`**: parsea el markdown del pivote de vuelta a estructura (`StructuredSummary.parse` — invertible porque TODO snapshot sale de nuestro renderer; round-trip testeado) y traduce **por piezas: una llamada para el overview, una por sección, una para los action items**. Piecewise porque entregado entero — incluso con schema guiado — el 3B inventaba secciones (2 iteraciones falladas del test gated: markdown opaco → truncó al primer párrafo; schema espejado de una llamada → 3 secciones de 1). La estructura sobrevive por construcción; cualquier mismatch de bullets/items lanza y el caller cae a re-resumen completo. Owners de items viajan posicionalmente; el resultado conserva el fingerprint del pivote. **Medido: 2.4 s constante vs 10.9 s el re-resumen del sintético largo** (el ahorro escala con la reunión).
+
 ## RAG local (D22) — `SentenceEmbedder` + `RAGAnswerer` + storage
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — espacio compartido es/en (cross-lingüe real). Mean-pool + L2-normalize. `prepare()` pide los assets al OS.
@@ -68,4 +74,4 @@ Ver spec 03 (SpeakerNamer + NamingExcerpt + filtro never-trust-verify).
 
 ## Planeado (no implementado)
 
-Copiloto: detector "te preguntaron" (mención de tu nombre) unificado a la etapa 2. Caché de resumen por fingerprint + pivote EN→re-traducción (parámetros de Meetily, D25). Panel de UI de notas (la mitad Opus de M10). Resúmenes BYOK desde la app (la plomería Keychain ya existe; falta el selector de provider en el detalle — M12).
+Copiloto: detector "te preguntaron" (mención de tu nombre) unificado a la etapa 2. Panel de UI de notas (la mitad Opus de M10). Resúmenes BYOK desde la app (la plomería Keychain ya existe; falta el selector de provider en el detalle — M12).

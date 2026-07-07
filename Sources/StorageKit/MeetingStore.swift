@@ -271,6 +271,7 @@ public final class MeetingStore: Sendable {
                 language: draft.language,
                 markdown: draft.markdown,
                 version: version,
+                fingerprint: draft.fingerprint,
                 createdAt: now,
                 deletedAt: nil)
             try summary.insert(db)
@@ -320,7 +321,48 @@ public final class MeetingStore: Sendable {
                 recipeID: record.recipeID,
                 language: record.language,
                 markdown: record.markdown,
-                actionItems: items)
+                actionItems: items,
+                fingerprint: record.fingerprint)
+            return (draft, record.version)
+        }
+    }
+
+    /// The latest live snapshot whose material fingerprint matches (D25):
+    /// with `language`, an exact cache hit (regenerating would reproduce
+    /// it); without, any language — a translation pivot. Pre-fingerprint
+    /// snapshots (NULL) never match.
+    public func latestSummary(
+        _ id: MeetingID,
+        recipeID: String = Recipe.general.id,
+        fingerprint: String,
+        language: String? = nil
+    ) async throws -> (draft: SummaryDraft, version: Int)? {
+        let meetingKey = id.rawValue.uuidString
+        return try await database.read { db in
+            var request = SummaryRecord
+                .filter(Column("meetingID") == meetingKey)
+                .filter(Column("recipeID") == recipeID)
+                .filter(Column("fingerprint") == fingerprint)
+                .filter(Column("deletedAt") == nil)
+                .order(Column("version").desc)
+            if let language {
+                request = request.filter(Column("language") == language)
+            }
+            guard let record = try request.fetchOne(db) else { return nil }
+
+            let items = try ActionItemRecord
+                .filter(Column("summaryID") == record.id)
+                .filter(Column("deletedAt") == nil)
+                .order(Column("createdAt"))
+                .fetchAll(db).map(\.actionItem)
+
+            let draft = SummaryDraft(
+                meetingID: id,
+                recipeID: record.recipeID,
+                language: record.language,
+                markdown: record.markdown,
+                actionItems: items,
+                fingerprint: record.fingerprint)
             return (draft, record.version)
         }
     }

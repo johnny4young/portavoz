@@ -64,6 +64,51 @@ extension StructuredSummary {
         return parts.joined(separator: "\n\n")
     }
 
+    /// Inverse of `markdown(recipe:)` for snapshots WE rendered (every
+    /// stored summary goes through that renderer, so the format is ours).
+    /// The "## Action Items" block parses into `actionItems` — text and
+    /// owner label split on the renderer's " — " — never into a section.
+    /// Returns nil only when the text has none of the renderer's shape.
+    public static func parse(markdown: String) -> StructuredSummary? {
+        var overviewLines: [String] = []
+        var sections: [Section] = []
+        var items: [Item] = []
+        var current: Section?
+        var inActionItems = false
+
+        for rawLine in markdown.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("## ") {
+                if let current { sections.append(current) }
+                let heading = String(line.dropFirst(3))
+                inActionItems = heading.caseInsensitiveCompare("Action Items") == .orderedSame
+                current = inActionItems ? nil : Section(heading: heading, bullets: [])
+            } else if inActionItems, line.hasPrefix("- ") {
+                var text = String(line.dropFirst(2))
+                for box in ["[ ] ", "[x] "] where text.hasPrefix(box) {
+                    text = String(text.dropFirst(box.count))
+                }
+                if let range = text.range(of: " — ", options: .backwards) {
+                    items.append(
+                        Item(
+                            text: String(text[..<range.lowerBound]),
+                            owner: String(text[range.upperBound...])))
+                } else {
+                    items.append(Item(text: text))
+                }
+            } else if line.hasPrefix("- "), current != nil {
+                current?.bullets.append(String(line.dropFirst(2)))
+            } else if current == nil, !inActionItems, !line.isEmpty {
+                overviewLines.append(line)
+            }
+        }
+        if let current { sections.append(current) }
+
+        let overview = overviewLines.joined(separator: " ")
+        guard !overview.isEmpty || !sections.isEmpty else { return nil }
+        return StructuredSummary(overview: overview, sections: sections, actionItems: items)
+    }
+
     /// Builds the final draft, resolving action-item owners against the
     /// meeting's speakers by label or display name (case-insensitive).
     public func draft(

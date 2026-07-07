@@ -183,6 +183,51 @@ final class FoundationModelIntegrationTests: XCTestCase {
             "glossary terms must survive: \(draft.markdown)")
     }
 
+    /// D25 pivot: translating a finished snapshot must keep structure, the
+    /// "▸ " coauthorship prefixes, the glossary, and the action-item count
+    /// (owners ride positionally).
+    func testTranslatePivotKeepsStructureAndItems() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
+            "set PORTAVOZ_MODEL_TESTS=1 to run")
+        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw XCTSkip("Apple Intelligence unavailable: \(reason)")
+        }
+
+        let owner = SpeakerID()
+        let pivot = SummaryDraft(
+            meetingID: MeetingID(), recipeID: Recipe.general.id, language: "en",
+            markdown: """
+                The team reviewed the transcription roadmap and agreed to ship the beta next week.
+
+                ## Decisions
+                - ▸ The rollout plan is due Friday, owned by S1.
+                - The beta ships next week if latency stays under budget.
+                """,
+            actionItems: [
+                ActionItem(text: "Prepare the rollout plan by Friday", ownerSpeakerID: owner)
+            ],
+            fingerprint: "f-live")
+
+        let draft = try await FoundationModelSummaryProvider().translate(
+            pivot, to: "es", glossary: ["roadmap", "beta"])
+
+        XCTAssertEqual(draft.language, "es")
+        XCTAssertEqual(draft.fingerprint, "f-live", "the pivot's material identity carries over")
+        XCTAssertTrue(draft.markdown.contains("▸"), "coauthorship prefixes must survive: \(draft.markdown)")
+        XCTAssertTrue(
+            draft.markdown.contains("roadmap") || draft.markdown.contains("beta"),
+            "glossary must survive: \(draft.markdown)")
+        XCTAssertEqual(draft.actionItems.count, 1)
+        XCTAssertEqual(
+            draft.actionItems.first?.ownerSpeakerID, owner,
+            "owners ride positionally through the translation")
+        XCTAssertNotEqual(
+            draft.actionItems.first?.text, "Prepare the rollout plan by Friday",
+            "the item text should actually be translated: \(draft.actionItems.first?.text ?? "")")
+    }
+
     /// A transcript bigger than one model window must go through the
     /// map-reduce (notes) path and still come out structured.
     func testLongTranscriptTakesTheIncrementalPath() async throws {
@@ -232,6 +277,116 @@ final class FoundationModelIntegrationTests: XCTestCase {
 
         XCTAssertFalse(draft.markdown.isEmpty)
         XCTAssertTrue(draft.markdown.contains("##"), "expected structured sections")
+    }
+}
+
+// MARK: - Fingerprint cache + translation pivot (D25)
+
+final class SummaryFingerprintTests: XCTestCase {
+    private let meeting = MeetingID()
+
+    private func request(
+        text: String = "revisemos el presupuesto",
+        speakerName: String? = "Ana",
+        language: String = "es",
+        glossary: [String] = ["deploy"],
+        notes: [ContextItem] = []
+    ) -> SummaryRequest {
+        let speaker = Speaker(meetingID: meeting, label: "S1", displayName: speakerName)
+        return SummaryRequest(
+            meetingID: meeting,
+            segments: [
+                TranscriptSegment(
+                    meetingID: meeting, speakerID: speaker.id, channel: .system,
+                    text: text, startTime: 0, endTime: 3, isFinal: true)
+            ],
+            speakers: [speaker],
+            recipe: .general,
+            targetLanguage: language,
+            glossary: glossary,
+            contextItems: notes
+        )
+    }
+
+    func testStableAndLanguageInsensitive() {
+        let base = SummaryFingerprint.compute(request: request(), providerID: "fm")
+        XCTAssertEqual(
+            base, SummaryFingerprint.compute(request: request(), providerID: "fm"),
+            "same material must fingerprint identically")
+        XCTAssertEqual(
+            base,
+            SummaryFingerprint.compute(request: request(language: "en"), providerID: "fm"),
+            "output language must NOT change the fingerprint — that's what makes the pivot possible"
+        )
+    }
+
+    func testMaterialAndMethodChangesInvalidate() {
+        let base = SummaryFingerprint.compute(request: request(), providerID: "fm")
+        XCTAssertNotEqual(
+            base,
+            SummaryFingerprint.compute(request: request(text: "otro tema"), providerID: "fm"))
+        XCTAssertNotEqual(
+            base,
+            SummaryFingerprint.compute(
+                request: request(speakerName: "José"), providerID: "fm"),
+            "renaming a speaker changes the attributions, so it must invalidate")
+        XCTAssertNotEqual(
+            base,
+            SummaryFingerprint.compute(request: request(glossary: []), providerID: "fm"))
+        XCTAssertNotEqual(
+            base,
+            SummaryFingerprint.compute(
+                request: request(notes: [
+                    ContextItem(meetingID: meeting, kind: .note, content: "clave", timestamp: 5)
+                ]), providerID: "fm"))
+        XCTAssertNotEqual(
+            base, SummaryFingerprint.compute(request: request(), providerID: "api.x.com/gpt"))
+    }
+}
+
+final class StructuredSummaryParseTests: XCTestCase {
+    /// `parse` only ever sees markdown WE rendered, so the round trip
+    /// through `markdown(recipe:)` is the whole contract — action items
+    /// included (text + owner label split on the renderer's " — ").
+    func testParseInvertsOurRenderer() {
+        let original = StructuredSummary(
+            overview: "El equipo acordó el plan.",
+            sections: [
+                .init(heading: "Decisiones", bullets: ["▸ rollout el viernes", "beta la próxima semana"]),
+                .init(heading: "Preguntas abiertas", bullets: ["¿quién revisa el budget?"]),
+            ],
+            actionItems: [
+                .init(text: "preparar rollout", owner: "S1"),
+                .init(text: "avisar al equipo"),
+            ])
+
+        let parsed = StructuredSummary.parse(markdown: original.markdown(recipe: .general))
+        XCTAssertEqual(parsed?.overview, "El equipo acordó el plan.")
+        XCTAssertEqual(parsed?.sections, original.sections)
+        XCTAssertEqual(parsed?.actionItems, original.actionItems)
+    }
+
+    func testParseRejectsShapelessText() {
+        XCTAssertNil(StructuredSummary.parse(markdown: "   \n\n  "))
+    }
+}
+
+final class TranslationPromptTests: XCTestCase {
+    func testInstructionsFreezeStructureAndCarryLanguage() {
+        let instructions = PromptFactory.translationInstructions(
+            targetLanguage: "es", glossary: ["deploy"])
+        XCTAssertTrue(instructions.contains("Spanish (español)"))
+        XCTAssertTrue(instructions.contains("deploy"))
+        XCTAssertTrue(instructions.contains("▸"))
+        XCTAssertTrue(instructions.contains("no content added"))
+    }
+
+    func testPromptClosesWithTheLanguageOrder() {
+        let prompt = PromptFactory.translationPrompt(
+            markdown: "## Overview\n- hi", actionItems: "1. ship it", targetLanguage: "es")
+        XCTAssertTrue(prompt.contains("## Overview"))
+        XCTAssertTrue(prompt.contains("1. ship it"))
+        XCTAssertTrue(prompt.hasSuffix("Spanish (español)."), "the language order closes the prompt (D18)")
     }
 }
 

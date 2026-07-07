@@ -26,6 +26,7 @@ struct MeetingDetailView: View {
     @State private var showGistConfirm = false
     @State private var gistResult: URL?
     @State private var gistError: String?
+    @State private var summaryNotice: String?
     @State private var nameSuggestions: [NameSuggestion] = []
     @State private var suggestingNames = false
     @State private var refining: String?
@@ -185,6 +186,15 @@ struct MeetingDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(gistResult?.absoluteString ?? "")
+        }
+        .alert(
+            "Resumen",
+            isPresented: Binding(
+                get: { summaryNotice != nil }, set: { if !$0 { summaryNotice = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(summaryNotice ?? "")
         }
         .alert(
             "No se pudo completar",
@@ -585,8 +595,32 @@ struct MeetingDetailView: View {
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
                 contextItems: notes
             )
-            if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
-                try? await services.store.saveSummary(draft)
+            let provider = FoundationModelSummaryProvider()
+            let fingerprint = SummaryFingerprint.compute(
+                request: request, providerID: FoundationModelSummaryProvider.providerID)
+
+            // Caché D25: mismo material + mismo idioma ya guardado — con
+            // decodificación greedy el modelo reproduciría lo mismo.
+            if let hit = try? await services.store.latestSummary(
+                meetingID, fingerprint: fingerprint, language: language)
+            {
+                summaryNotice =
+                    "El resumen v\(hit.version) ya corresponde a este material — no hay nada que regenerar. Cambia el transcript, las notas o el vocabulario para producir uno nuevo."
+                return
+            }
+            // Pivote D25: mismo material en otro idioma → traducir ese
+            // snapshot cuesta una fracción de re-resumir el transcript.
+            if let pivot = try? await services.store.latestSummary(
+                meetingID, fingerprint: fingerprint),
+                let translated = try? await provider.translate(
+                    pivot.draft, to: language, glossary: request.glossary)
+            {
+                _ = try? await services.store.saveSummary(translated)
+                services.libraryVersion += 1
+                return
+            }
+            if let draft = try? await provider.summarize(request) {
+                _ = try? await services.store.saveSummary(draft)
                 services.libraryVersion += 1
             }
         }

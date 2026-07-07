@@ -32,13 +32,22 @@ public struct SummaryDraft: Codable, Sendable {
     public let language: String
     public let markdown: String
     public let actionItems: [ActionItem]
+    /// Identity of the summarized MATERIAL + method (D25), language
+    /// EXCLUDED — a snapshot with the same fingerprint in another language
+    /// is a valid translation pivot. nil on pre-jul-2026 snapshots (they
+    /// simply never match).
+    public var fingerprint: String?
 
-    public init(meetingID: MeetingID, recipeID: String, language: String, markdown: String, actionItems: [ActionItem]) {
+    public init(
+        meetingID: MeetingID, recipeID: String, language: String, markdown: String,
+        actionItems: [ActionItem], fingerprint: String? = nil
+    ) {
         self.meetingID = meetingID
         self.recipeID = recipeID
         self.language = language
         self.markdown = markdown
         self.actionItems = actionItems
+        self.fingerprint = fingerprint
     }
 }
 

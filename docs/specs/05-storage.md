@@ -6,7 +6,7 @@ Estado: implementado y en producción (la DB del usuario sobrevivió un incident
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, en `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI acepta `--db`).
 
-### Schema (migraciones `v1` + `v2` + `v3` en `Sources/StorageKit/Schema.swift`)
+### Schema (migraciones `v1`–`v4` en `Sources/StorageKit/Schema.swift`)
 
 Tablas singulares camelCase, 1:1 con records Codable:
 
@@ -15,7 +15,7 @@ Tablas singulares camelCase, 1:1 con records Codable:
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVO), retention, visibility (reservada), createdAt/updatedAt/deletedAt |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), tombstone |
-| `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — snapshots inmutables) |
+| `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — snapshots inmutables), **fingerprint** (v4, D25 — identidad del material sin idioma; NULL en snapshots viejos = jamás matchean) |
 | `actionItem` | id, summaryID (FK CASCADE), meetingID, text, ownerSpeakerID?, isDone (la excepción MUTABLE), tombstone |
 | `contextItem` (v3) | id, meetingID (FK CASCADE), kind (note/link/codeSnippet/file), content, timestamp (segundos desde el inicio), tombstone — las notas del usuario (D28) |
 | `segmentSearch` | FTS5 external-content sobre segment.text, sincronizada por triggers ai/ad/au |
@@ -29,7 +29,7 @@ Tablas singulares camelCase, 1:1 con records Codable:
 
 ## MeetingStore — API
 
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `meetings(includeDeleted:)`, `detail(id)` (meeting+speakers+segments vivos), `delete(id)` (tombstone), `saveSummary(draft)` (versión autoincremental por meeting+recipe; jamás toca snapshots previos), `summary(id)` (último snapshot + versión), `search(text, requireAll:)` (FTS5 con snippets; `ftsQuery` entrecomilla tokens — input hostil sanitizado), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstonea el cast vivo e inserta el nuevo, atómico — el refine D7), `enforceAudioRetention(audioRoot:)` (borra SOLO audio expirado según la policy del meeting, jamás transcript; guard anti path-escape).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `meetings(includeDeleted:)`, `detail(id)` (meeting+speakers+segments vivos), `delete(id)` (tombstone), `saveSummary(draft)` (versión autoincremental por meeting+recipe; jamás toca snapshots previos; persiste el fingerprint D25), `summary(id)` (último snapshot + versión), `latestSummary(id:fingerprint:language:)` (D25 — con `language` es el cache-hit exacto, sin él devuelve el pivote de traducción en cualquier idioma), `search(text, requireAll:)` (FTS5 con snippets; `ftsQuery` entrecomilla tokens — input hostil sanitizado), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstonea el cast vivo e inserta el nuevo, atómico — el refine D7), `enforceAudioRetention(audioRoot:)` (borra SOLO audio expirado según la policy del meeting, jamás transcript; guard anti path-escape).
 
 ## Carpeta de grabaciones — `RecordingsLocation`
 

@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 2
+    public static let version = 4
 
     static func migrator() -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
@@ -130,6 +130,16 @@ public enum StorageSchema {
                 t.column("deletedAt", .datetime)
             }
             try db.create(index: "contextItem_on_meetingID", on: "contextItem", columns: ["meetingID"])
+        }
+
+        // v4 (D25): material fingerprint per summary snapshot — the cache
+        // key that makes regenerating free and turns a snapshot in another
+        // language into a translation pivot. Nullable: old snapshots simply
+        // never match.
+        migrator.registerMigration("v4") { db in
+            try db.alter(table: "summary") { t in
+                t.add(column: "fingerprint", .text)
+            }
         }
 
         return migrator
