@@ -118,11 +118,35 @@ public struct SpeakerNamer: Sendable {
         let excerpt = NamingExcerpt.build(
             segments: segments, speakers: speakers, attendeeCandidates: attendeeCandidates)
 
+        // The 4096-token window also holds instructions, schema and output;
+        // if a dense excerpt still overflows, halve it and try once more
+        // before giving up.
+        let suggestions: [GeneratedNameSuggestion]
+        do {
+            suggestions = try await propose(excerpt: excerpt, attendees: attendeeCandidates)
+        } catch {
+            suggestions = try await propose(
+                excerpt: String(excerpt.prefix(excerpt.count / 2)),
+                attendees: attendeeCandidates)
+        }
+
+        return NameSuggestionFilter.validSuggestions(
+            suggestions.map {
+                NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence)
+            },
+            transcript: transcript,
+            unnamedLabels: unnamed,
+            attendeeCandidates: attendeeCandidates)
+    }
+
+    private func propose(
+        excerpt: String, attendees: [String]
+    ) async throws -> [GeneratedNameSuggestion] {
         var prompt = "Transcript:\n\n\(excerpt)\n\n"
-        if !attendeeCandidates.isEmpty {
+        if !attendees.isEmpty {
             prompt +=
                 "Calendar attendees (candidates — transcript proof is still required): "
-                + attendeeCandidates.prefix(12).joined(separator: ", ") + "\n\n"
+                + attendees.prefix(12).joined(separator: ", ") + "\n\n"
         }
         prompt += "Name the speaker labels you can prove."
 
@@ -131,14 +155,7 @@ public struct SpeakerNamer: Sendable {
             to: prompt,
             generating: GeneratedNameSuggestions.self,
             options: GenerationOptions(sampling: .greedy))
-
-        return NameSuggestionFilter.validSuggestions(
-            response.content.suggestions.map {
-                NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence)
-            },
-            transcript: transcript,
-            unnamedLabels: unnamed,
-            attendeeCandidates: attendeeCandidates)
+        return response.content.suggestions
     }
 }
 

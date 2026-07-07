@@ -187,7 +187,7 @@ struct MeetingDetailView: View {
             Text(gistResult?.absoluteString ?? "")
         }
         .alert(
-            "No se pudo publicar",
+            "No se pudo completar",
             isPresented: Binding(get: { gistError != nil }, set: { if !$0 { gistError = nil } })
         ) {
             Button("OK", role: .cancel) {}

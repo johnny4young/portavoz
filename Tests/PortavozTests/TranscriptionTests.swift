@@ -475,10 +475,10 @@ final class ParakeetSegmentMapperTests: XCTestCase {
 }
 
 final class VocabularyPromptTests: XCTestCase {
-    func testFormatsTermsAsGlossarySentence() {
+    func testFormatsTermsAsNaturalSentence() {
         XCTAssertEqual(
             VocabularyPrompt.text(["LVGT", "Portavoz", "Vishakha"]),
-            "Glossary: LVGT, Portavoz, Vishakha.")
+            "In this meeting we discussed LVGT, Portavoz, Vishakha.")
     }
 
     func testEmptyAndBlankTermsYieldNoPrompt() {

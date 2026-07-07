@@ -70,49 +70,45 @@ public actor WhisperEngine {
         // absolute threshold and quiet meetings sit right at it.
         var samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
         AudioLevel.normalizePeak(&samples)
-        var results = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
+        let meetingID = hints.meetingID ?? MeetingID()
+
+        let results = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
+        var segments = Self.buildSegments(
+            from: results, meetingID: meetingID, channel: channel, language: hints.language)
 
         // The VAD-chunked path SWALLOWS failed chunks (they only reach the
         // debug log), so a systematic per-chunk failure looks like a mostly
         // silent meeting — a real 482 s recording came back as 3 segments.
-        // When the fast path covers suspiciously little audio, redo it
-        // sequentially: that path decodes every window and propagates errors.
+        // Coverage must be measured on the CLEANED segments: poisoned
+        // chunks return valid-looking timespans whose text cleans to
+        // nothing. When the fast path covers suspiciously little audio,
+        // redo it sequentially — that path decodes every window and
+        // propagates errors — and WITHOUT the vocabulary prompt:
+        // conditioning that doesn't match a window derails its decoding
+        // wholesale (observed: with the glossary prompt only the chunk
+        // that actually mentioned its terms survived). A full unbiased
+        // transcript beats a biased sliver.
         let fileDuration = Double(samples.count) / Double(WhisperKit.sampleRate)
-        if fileDuration > 60, Self.speechSeconds(in: results) < fileDuration * 0.2 {
+        if fileDuration > 60, Self.coverage(of: segments) < fileDuration * 0.2 {
             var sequential = options
             sequential.chunkingStrategy = nil
+            sequential.promptTokens = nil
             let retried = try await pipe.transcribe(
                 audioArray: samples, decodeOptions: sequential)
-            if Self.speechSeconds(in: retried) > Self.speechSeconds(in: results) {
-                results = retried
+            let rebuilt = Self.buildSegments(
+                from: retried, meetingID: meetingID, channel: channel,
+                language: hints.language)
+            if Self.coverage(of: rebuilt) > Self.coverage(of: segments) {
+                segments = rebuilt
             }
         }
         let processingTime = Date().timeIntervalSince(started)
 
-        let meetingID = hints.meetingID ?? MeetingID()
-        var segments: [TranscriptSegment] = []
         // timings.inputAudioSeconds under-reports with VAD chunking; the
         // file itself is the truth.
         var duration: TimeInterval = 0
         if let audioFile = try? AVAudioFile(forReading: url) {
             duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
-        }
-        for result in results {
-            for segment in result.segments {
-                let text = Self.cleanSegmentText(segment.text)
-                guard !text.isEmpty else { continue }
-                segments.append(
-                    TranscriptSegment(
-                        meetingID: meetingID,
-                        channel: channel,
-                        text: text,
-                        language: hints.language ?? result.language,
-                        startTime: TimeInterval(segment.start),
-                        endTime: TimeInterval(segment.end),
-                        confidence: min(1, Double(exp(segment.avgLogprob))),
-                        isFinal: true
-                    ))
-            }
         }
         segments.sort { $0.startTime < $1.startTime }
         let text = segments.map(\.text).joined(separator: " ")
@@ -125,10 +121,35 @@ public actor WhisperEngine {
         )
     }
 
-    static func speechSeconds(in results: [TranscriptionResult]) -> Double {
-        results.reduce(0.0) { total, result in
-            total + result.segments.reduce(0.0) { $0 + Double($1.end - $1.start) }
+    static func buildSegments(
+        from results: [TranscriptionResult],
+        meetingID: MeetingID,
+        channel: AudioChannel,
+        language: String?
+    ) -> [TranscriptSegment] {
+        var segments: [TranscriptSegment] = []
+        for result in results {
+            for segment in result.segments {
+                let text = Self.cleanSegmentText(segment.text)
+                guard !text.isEmpty else { continue }
+                segments.append(
+                    TranscriptSegment(
+                        meetingID: meetingID,
+                        channel: channel,
+                        text: text,
+                        language: language ?? result.language,
+                        startTime: TimeInterval(segment.start),
+                        endTime: TimeInterval(segment.end),
+                        confidence: min(1, Double(exp(segment.avgLogprob))),
+                        isFinal: true
+                    ))
+            }
         }
+        return segments
+    }
+
+    static func coverage(of segments: [TranscriptSegment]) -> Double {
+        segments.reduce(0.0) { $0 + ($1.endTime - $1.startTime) }
     }
 
     /// Whisper segment text carries special tokens like `<|0.00|>`.

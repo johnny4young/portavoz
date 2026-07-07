@@ -39,7 +39,10 @@ public enum VocabularyPrompt {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         guard !cleaned.isEmpty else { return nil }
-        return "Glossary: " + cleaned.joined(separator: ", ") + "."
+        // Natural sentence, not a "Glossary:" list: Whisper conditions on
+        // this as if it were prior transcript, and list-shaped context
+        // derailed decoding on windows that didn't mention the terms.
+        return "In this meeting we discussed " + cleaned.joined(separator: ", ") + "."
     }
 
     /// Parses the comma-separated form the Settings field and `--vocab` use.
