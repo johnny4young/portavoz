@@ -111,6 +111,46 @@ final class SpeakerNamerPromptTests: XCTestCase {
     }
 }
 
+// MARK: - Never-trust-verify filter (with calendar candidates)
+
+final class NameSuggestionFilterTests: XCTestCase {
+    private let transcript = "[00:00] S1: hola, soy Carolina y llevo el backend"
+
+    func testAcceptsNameProvenByTranscript() {
+        let kept = NameSuggestionFilter.validSuggestions(
+            [NameSuggestion(label: "S1", name: "Carolina", evidence: "soy Carolina")],
+            transcript: transcript, unnamedLabels: ["S1"])
+        XCTAssertEqual(kept.count, 1)
+    }
+
+    func testAcceptsNameBackedByCalendarAttendees() {
+        // "Pedro" never spoke his name, but the calendar invited him.
+        let kept = NameSuggestionFilter.validSuggestions(
+            [NameSuggestion(label: "S2", name: "Pedro", evidence: "context")],
+            transcript: transcript, unnamedLabels: ["S1", "S2"],
+            attendeeCandidates: ["Pedro Gómez", "Carolina Ruiz"])
+        XCTAssertEqual(kept.count, 1, "first-name match against a full attendee name")
+    }
+
+    func testRejectsFabricatedNames() {
+        let kept = NameSuggestionFilter.validSuggestions(
+            [NameSuggestion(label: "S2", name: "John", evidence: "fabricated")],
+            transcript: transcript, unnamedLabels: ["S1", "S2"],
+            attendeeCandidates: ["Pedro Gómez"])
+        XCTAssertTrue(kept.isEmpty)
+    }
+
+    func testRejectsLabelsAlreadyNamedOrUnknown() {
+        let kept = NameSuggestionFilter.validSuggestions(
+            [
+                NameSuggestion(label: "Me", name: "Carolina", evidence: "x"),
+                NameSuggestion(label: "S9", name: "Carolina", evidence: "x"),
+            ],
+            transcript: transcript, unnamedLabels: ["S1"])
+        XCTAssertTrue(kept.isEmpty)
+    }
+}
+
 // MARK: - Real-model integrations (gated)
 
 final class VoiceIdentityIntegrationTests: XCTestCase {

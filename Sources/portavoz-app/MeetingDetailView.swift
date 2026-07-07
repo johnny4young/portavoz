@@ -208,8 +208,13 @@ struct MeetingDetailView: View {
         suggestingNames = true
         defer { suggestingNames = false }
         do {
+            // Calendar attendees around the meeting widen the candidate
+            // pool (TCC prompt on first use; denial = empty list).
+            let attendees = await CalendarAttendeeSource()
+                .attendees(around: detail.meeting.startedAt)
             nameSuggestions = try await SpeakerNamer().suggestNames(
-                segments: detail.segments, speakers: detail.speakers)
+                segments: detail.segments, speakers: detail.speakers,
+                attendeeCandidates: attendees)
             if nameSuggestions.isEmpty {
                 gistError = "El transcript no prueba ningún nombre — puedes renombrar los pills a mano."
             }

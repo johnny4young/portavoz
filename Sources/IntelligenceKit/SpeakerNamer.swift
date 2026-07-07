@@ -15,6 +15,32 @@ public struct NameSuggestion: Codable, Sendable, Equatable {
     }
 }
 
+/// Never-trust-verify for name suggestions, shared by every entry point
+/// and unit-testable without a model: a proposed name must literally
+/// appear in the transcript OR among the calendar attendee candidates —
+/// the model fabricates names with fabricated evidence otherwise
+/// (observed: "John" out of thin air).
+public enum NameSuggestionFilter {
+    public static func validSuggestions(
+        _ suggestions: [NameSuggestion],
+        transcript: String,
+        unnamedLabels: Set<String>,
+        attendeeCandidates: [String] = []
+    ) -> [NameSuggestion] {
+        let haystack = transcript.lowercased()
+        let candidates = Set(attendeeCandidates.map { $0.lowercased() })
+        return suggestions.filter { suggestion in
+            guard unnamedLabels.contains(suggestion.label), suggestion.name.count > 1 else {
+                return false
+            }
+            let name = suggestion.name.lowercased()
+            return haystack.contains(name)
+                || candidates.contains(name)
+                || candidates.contains { $0.hasPrefix(name + " ") || $0.contains(" " + name) }
+        }
+    }
+}
+
 #if canImport(FoundationModels)
 import FoundationModels
 
@@ -25,38 +51,47 @@ import FoundationModels
 public struct SpeakerNamer: Sendable {
     public init() {}
 
+    /// `attendeeCandidates` (M6/EventKit): names from calendar events
+    /// around the meeting. They widen what the verifier accepts and are
+    /// offered to the model as hints — evidence is still required.
     public func suggestNames(
-        segments: [TranscriptSegment], speakers: [Speaker]
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        attendeeCandidates: [String] = []
     ) async throws -> [NameSuggestion] {
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
-        let candidates = Set(
+        let unnamed = Set(
             speakers.filter { !$0.isMe && $0.displayName == nil }.map(\.label))
-        guard !candidates.isEmpty else { return [] }
+        guard !unnamed.isEmpty else { return [] }
 
         let transcript = TranscriptFormatter.format(segments: segments, speakers: speakers)
         // Naming only needs the conversational cues, which cluster around
         // greetings/handoffs; one window of transcript is plenty.
         let clipped = String(transcript.prefix(TranscriptFormatter.onDeviceReduceBudget))
 
+        var prompt = "Transcript:\n\n\(clipped)\n\n"
+        if !attendeeCandidates.isEmpty {
+            prompt +=
+                "Calendar attendees (candidates — transcript proof is still required): "
+                + attendeeCandidates.joined(separator: ", ") + "\n\n"
+        }
+        prompt += "Name the speaker labels you can prove."
+
         let session = LanguageModelSession(instructions: PromptFactory.namingInstructions())
         let response = try await session.respond(
-            to: "Transcript:\n\n\(clipped)\n\nName the speaker labels you can prove.",
+            to: prompt,
             generating: GeneratedNameSuggestions.self,
             options: GenerationOptions(sampling: .greedy))
 
-        // Never trust, verify: the model happily fabricates names with
-        // fabricated evidence (observed: "John" out of thin air). A valid
-        // suggestion's name must literally appear in the transcript.
-        let haystack = transcript.lowercased()
-        return response.content.suggestions
-            .filter { suggestion in
-                candidates.contains(suggestion.label)
-                    && suggestion.name.count > 1
-                    && haystack.contains(suggestion.name.lowercased())
-            }
-            .map { NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence) }
+        return NameSuggestionFilter.validSuggestions(
+            response.content.suggestions.map {
+                NameSuggestion(label: $0.label, name: $0.name, evidence: $0.evidence)
+            },
+            transcript: transcript,
+            unnamedLabels: unnamed,
+            attendeeCandidates: attendeeCandidates)
     }
 }
 
