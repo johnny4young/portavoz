@@ -38,6 +38,9 @@ final class RecordingController {
     private var consumers: [Task<Void, Never>] = []
     private var rollingTask: Task<Void, Never>?
     private var summarizedCount = 0
+    /// Dense notes accumulated window by window; the live summary re-renders
+    /// from these so each tick only pays for the NEW transcript.
+    private var liveNotes: [String] = []
     private var meetingID = MeetingID()
     private var audioRelative = ""
 
@@ -100,6 +103,7 @@ final class RecordingController {
         startedAt = Date()
         liveSummary = nil
         summarizedCount = 0
+        liveNotes = []
         phase = .recording
 
         // Rolling summary (M4's "incremental" made visible): every ~40 s,
@@ -120,29 +124,53 @@ final class RecordingController {
 
     @available(macOS 26.0, *)
     private func refreshLiveSummary() async {
-        // Skip silence stretches: only re-summarize when there's new text.
-        guard captions.count >= 6, captions.count > summarizedCount else { return }
-        summarizedCount = captions.count
+        // The newest row is still growing (coalescer); note only CLOSED rows,
+        // and only when there are new ones — silence costs nothing.
+        let closed = max(captions.count - 1, 0)
+        guard closed >= 3, closed > summarizedCount else { return }
+        let window = Array(captions[summarizedCount..<closed])
 
         // Attribution runs at stop; live labels are structural: channel.
         let me = Speaker(meetingID: meetingID, label: "Yo", isMe: true)
         let them = Speaker(meetingID: meetingID, label: "Ellos")
-        let labeled = captions.map { segment -> TranscriptSegment in
+        let labeled = window.map { segment -> TranscriptSegment in
             var copy = segment
             copy.speakerID = segment.channel == .microphone ? me.id : them.id
             return copy
         }
-        let request = SummaryRequest(
-            meetingID: meetingID,
-            segments: labeled,
-            speakers: [me, them],
-            recipe: .general,
-            targetLanguage: Locale.current.language.languageCode?.identifier ?? "en"
-        )
-        if let draft = try? await FoundationModelSummaryProvider().summarize(request),
-            phase == .recording
-        {
-            liveSummary = draft.markdown
+        let language = Locale.current.language.languageCode?.identifier ?? "en"
+        let provider = FoundationModelSummaryProvider()
+        do {
+            // Map: one dense note for the new window; the rest is already noted.
+            let note = try await provider.condenseWindow(
+                segments: labeled, speakers: [me, them], targetLanguage: language)
+            liveNotes.append(note)
+            summarizedCount = closed  // only once the window is safely noted
+
+            // Keep the pile bounded so long meetings don't slow the ticks.
+            var joined = liveNotes.joined(separator: "\n")
+            if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
+                joined = try await provider.condenseNotes(joined, targetLanguage: language)
+                liveNotes = [joined]
+            }
+
+            // Reduce: re-render the structured summary from all notes.
+            let request = SummaryRequest(
+                meetingID: meetingID,
+                segments: [],
+                speakers: [me, them],
+                recipe: .general,
+                targetLanguage: language
+            )
+            let draft = try await provider.summarizeNotes(joined, request: request)
+            if phase == .recording,
+                LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown)
+            {
+                liveSummary = draft.markdown
+            }
+        } catch {
+            // A failed tick keeps the previous summary; the notes retry with
+            // more material on the next one.
         }
     }
 

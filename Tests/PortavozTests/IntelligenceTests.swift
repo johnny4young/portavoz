@@ -287,3 +287,31 @@ final class OpenAICompatibleProviderTests: XCTestCase {
             try OpenAICompatibleSummaryProvider.parseResponse(Data(payload.utf8)))
     }
 }
+
+final class LiveSummaryPolicyTests: XCTestCase {
+    func testFirstRenderAlwaysShows() {
+        XCTAssertTrue(LiveSummaryPolicy.shouldReplace(current: nil, candidate: "## Resumen"))
+        XCTAssertTrue(LiveSummaryPolicy.shouldReplace(current: "", candidate: "## Resumen"))
+    }
+
+    func testEmptyCandidateNeverReplaces() {
+        XCTAssertFalse(LiveSummaryPolicy.shouldReplace(current: "algo", candidate: ""))
+        XCTAssertFalse(LiveSummaryPolicy.shouldReplace(current: nil, candidate: ""))
+    }
+
+    func testShrunkenRenderIsHeldBack() {
+        let current = String(repeating: "x", count: 1000)
+        let shrunken = String(repeating: "x", count: 500)
+        XCTAssertFalse(LiveSummaryPolicy.shouldReplace(current: current, candidate: shrunken))
+    }
+
+    func testComparableOrLongerRenderReplaces() {
+        let current = String(repeating: "x", count: 1000)
+        XCTAssertTrue(
+            LiveSummaryPolicy.shouldReplace(
+                current: current, candidate: String(repeating: "y", count: 950)))
+        XCTAssertTrue(
+            LiveSummaryPolicy.shouldReplace(
+                current: current, candidate: String(repeating: "y", count: 1400)))
+    }
+}

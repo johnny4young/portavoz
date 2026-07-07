@@ -51,14 +51,69 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     }
 
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        let transcript = TranscriptFormatter.format(
+            segments: request.segments, speakers: request.speakers)
+        return try await summarizeMaterial(transcript, request: request)
+    }
+
+    /// Reduce phase over already-condensed notes (the live rolling summary
+    /// accumulates them window by window and re-renders from here).
+    public func summarizeNotes(
+        _ notes: String, request: SummaryRequest
+    ) async throws -> SummaryDraft {
+        try await summarizeMaterial(notes, request: request)
+    }
+
+    /// One map-phase pass: condenses a transcript window into dense notes
+    /// (≤250 tokens per chunk). The live summary calls this once per tick
+    /// with only the NEW segments, keeping per-tick cost flat no matter how
+    /// long the meeting gets.
+    public func condenseWindow(
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        targetLanguage: String,
+        glossary: [String] = []
+    ) async throws -> String {
+        if let reason = Self.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let transcript = TranscriptFormatter.format(segments: segments, speakers: speakers)
+        let chunks = TranscriptFormatter.chunk(
+            transcript, budget: TranscriptFormatter.onDeviceChunkBudget)
+        var notes: [String] = []
+        for (index, chunk) in chunks.enumerated() {
+            let session = LanguageModelSession(
+                instructions: PromptFactory.notesInstructions(
+                    targetLanguage: targetLanguage, glossary: glossary))
+            let response = try await session.respond(
+                to: PromptFactory.notesPrompt(chunk: chunk, index: index, total: chunks.count),
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250))
+            notes.append(response.content)
+        }
+        return notes.joined(separator: "\n")
+    }
+
+    /// Collapses an oversized pile of accumulated notes back under the
+    /// reduce budget (the live summary calls this occasionally so its notes
+    /// never grow unbounded).
+    public func condenseNotes(
+        _ notes: String, targetLanguage: String, glossary: [String] = []
+    ) async throws -> String {
+        if let reason = Self.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        return try await condense(notes, targetLanguage: targetLanguage, glossary: glossary)
+    }
+
+    private func summarizeMaterial(
+        _ material: String, request: SummaryRequest
+    ) async throws -> SummaryDraft {
         if let reason = Self.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
-        let transcript = TranscriptFormatter.format(
-            segments: request.segments, speakers: request.speakers)
-        let material = try await condense(
-            transcript, targetLanguage: request.targetLanguage, glossary: request.glossary)
+        let condensed = try await condense(
+            material, targetLanguage: request.targetLanguage, glossary: request.glossary)
 
         let session = LanguageModelSession(
             instructions: PromptFactory.summaryInstructions(
@@ -67,7 +122,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                 glossary: request.glossary))
         let response = try await session.respond(
             to: PromptFactory.summaryPrompt(
-                transcriptOrNotes: material, targetLanguage: request.targetLanguage),
+                transcriptOrNotes: condensed, targetLanguage: request.targetLanguage),
             generating: GeneratedSummary.self,
             // Greedy decoding: summaries want faithfulness, not creativity —
             // sampled decoding made the 3B model invent action items.
