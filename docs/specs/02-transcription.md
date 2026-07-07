@@ -45,10 +45,20 @@ Endurecido contra 3 fallas REALES de WhisperKit (todas reproducidas y verificada
 
 1. **SpeechAnalyzer SÍ acepta vocabulario custom** — `AnalysisContext.contextualStrings[.general]` existe en el SDK (26.5) y el engine lo cablea desde `hints.vocabulary`. Esto CORRIGE la investigación de la ronda 2 ("perdió contextualStrings") — llegó en una beta posterior a las reviews.
 2. **⚠️ Cuelga en procesos CLI sin bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (primer await) suspende PARA SIEMPRE en `portavoz-cli` — sample muestra el pool cooperativo vacío y el runloop aparcado (el daemon de Speech nunca responde a un proceso sin contexto de bundle/TCC). **El benchmark del rol vivo debe correr DENTRO de la app** — `NSSpeechRecognitionUsageDescription` ya añadido al Info.plist.
-3. **Harness listo y validado**: `portavoz-cli bench-live --file <wav|caf> --engine parakeet|speech --seconds N` — pacea el archivo a ritmo real (chunks de 1 s) y mide lag de finalización por segmento. Baseline Parakeet medido (60 s de reunión real, canal system): **46 finales · primer resultado 1.18 s · lag p50 0.19 s / p95 1.01 s / max 2.68 s**.
-4. **Modelo de emisión distinto**: Parakeet emite DELTAS append-only; SpeechTranscriber emite resultados por rango (volátiles se reemplazan, finales estables) — la integración M12 debe decidir append-vs-replace en el coalescer antes de que el engine sea intercambiable en la app.
+3. **Harness compartido**: `LiveTranscriptionBench` (TranscriptionKit) pacea el archivo a ritmo real (chunks de 1 s) y mide lag de finalización. Frentes: `portavoz-cli bench-live --engine parakeet` y, para speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (launch-arg oculto: corre in-bundle, imprime a stdout, sale).
+4. **⚠️ Bug de finalización (arreglado)**: `finalizeAndFinishThroughEndOfInput()` lo llama el FEEDER al agotarse el input — secuenciado después del loop de `transcriber.results` deadlockea (results solo termina cuando alguien finaliza; el primer bench quedó aparcado para siempre).
+5. **Comparación medida (mismos 60 s de reunión real EN, canal system, M4 Max)**:
 
-Siguiente paso M12: comando debug en la app (o launch-arg) que corra el mismo bench-live in-bundle → números comparables → decisión.
+| | Parakeet v3 (CLI) | SpeechAnalyzer en_US (in-app) |
+|---|---|---|
+| primer resultado | 1.13 s | **1.03 s** |
+| lag finalización p50/p95/max | **0.07 / 0.68 / 0.72 s** | 0.47 / 0.82 / 0.82 s |
+| emisión | 36 finales append-only (deltas chicos: "uh", "and") | 9 finales-oración + **150 volátiles** (replace) |
+| chars finales | 461 | 603 |
+| estilo | limpio | verbatim con disfluencias ("uh") |
+| con locale equivocado (es_CL sobre EN) | — | latencia igual (p50 0.16) pero texto basura → detectar idioma ANTES importa |
+
+Lectura M12: ambos viven bajo 1 s de p95 — SpeechAnalyzer ES viable para el rol vivo (cero descarga, volátiles ricos para captions, vocabulario custom), Parakeet conserva la corona de finalización. Lo que falta para intercambiarlos en la app es la decisión append-vs-replace del coalescer (los volátiles de Speech REEMPLAZAN el rango; el coalescer actual asume deltas).
 
 ## Coalescer de captions — `CaptionCoalescer` (usado por la app)
 
