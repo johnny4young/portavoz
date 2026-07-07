@@ -13,8 +13,8 @@
 | **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** **DER medido contra el sample AMI real de pyannote: 7.6%** (< 15% ✓, harness `portavoz-cli der`). Pendiente solo la reunión formal de 4 personas; speaker pills ya en la app (M5). |
 | **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
 | **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist** (L0 de D12) + **polish de UI**: ícono real (`assets/AppIcon.icns`, regenerable con `scripts/make-icon.swift`), `MarkdownText` (bloques + inline), **resumen rodante en vivo** durante la grabación (cada ~40 s con FM), regenerar resumen a demanda (es/en, nueva versión del snapshot), Ajustes (⌘,) con token de GitHub en Keychain y "Publicar como Gist" desde la app con confirmación off-device. Falta solo: **empaquetado** (DMG + Sparkle + Homebrew, D10). |
-| **M6 — Identidad y lenguaje** | 🚧 **Voiceprint + nombres completos (D21)**: enrolamiento cifrado (CLI `voice` + Ajustes de la app, 12 s), "Me" cross-canal verificado E2E con TTS (100% de turnos correctos), `SpeakerNamer` con verificación anti-alucinación y chips 1-tap en el detalle. Faltan: captions traducidos en vivo (Translation framework) y contexto EventKit para nombres. |
-| **M8 — Dev moat** | 🚧 **MCP local + RAG funcionando (criterio de aceptación cumplido)**: `portavoz-cli mcp` (6 tools incl. `ask`) y `portavoz-cli ask` — retrieval híbrido (FTS OR-keywords + coseno sobre NLContextualEmbedding latino cross-lingüe es/en, fusión RRF, multi-query con FM, micro-segmentos excluidos del índice), respuesta on-device con citas. Verificado E2E: agente MCP respondió "what did we agree about the transcription budget?" con fuentes. Faltan: export GitHub/Linear (código listo pendiente verificación), App Intents. |
+| **M6 — Identidad y lenguaje** | 🚧 Voiceprint + nombres (D21, verificado E2E) ✓. **Captions traducidos en vivo** (Translation framework, picker →es/→en en grabación) y **EventKit como candidatos de nombres** (filtro `NameSuggestionFilter` acepta transcript O asistentes): **código listo y testeado, verificación interactiva pendiente** (descarga de idioma / TCC calendario). |
+| **M8 — Dev moat** | 🚧 **MCP local + RAG funcionando (criterio de aceptación cumplido)**: `portavoz-cli mcp` (6 tools incl. `ask`) y `portavoz-cli ask` — retrieval híbrido (FTS OR-keywords + coseno sobre NLContextualEmbedding latino cross-lingüe es/en, fusión RRF, multi-query con FM, micro-segmentos excluidos del índice), respuesta on-device con citas. Verificado E2E: agente MCP respondió "what did we agree about the transcription budget?" con fuentes. **Export GitHub Issues + Linear**: código listo y testeado offline (`portavoz-cli issues --meeting <id> --github o/r | --linear-team id`, tokens en Keychain) — publish real pendiente de tokens. Falta: App Intents. |
 
 **Sin push al remoto todavía** (`origin = git@github.com:johnny4young/portavoz.git`).
 
@@ -64,6 +64,14 @@
 - sqlite-vec diferido a M8 (D19). **67 tests en verde** (12 nuevos de storage).
 
 ## Próximos pasos (en orden)
+
+**Verificaciones que necesitan al usuario (cola de la sesión nocturna 2026-07-07):**
+- Captions traducidos: grabar con el picker "Traducir → …" activo; la primera vez macOS puede pedir descargar el par de idiomas.
+- Nombres con calendario: crear/tener un evento con asistentes alrededor de una grabación → "Sugerir nombres" (pedirá permiso de calendario para Portavoz).
+- Issues: `secrets set-github-token` / `set-linear-token` + `portavoz-cli issues --meeting <id> --github <owner/repo>` contra un repo de prueba.
+- Whisper re-pase sobre una reunión real: `portavoz-cli meetings refine <id>`.
+- `ask` con tu propia biblioteca: `portavoz-cli ask "¿qué acordé ayer?"` (y vía MCP: `claude mcp add portavoz -- portavoz-cli mcp`).
+
 
 1. **Test de aceptación M1 pendiente** (usuario): 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
 2. **Validación M3 formal** (usuario): reunión real de 4 personas → `portavoz-cli der --file <wav> --reference <rttm>` (harness listo; contra AMI dio 7.6%). "Me" 100% ya es estructural por diseño.

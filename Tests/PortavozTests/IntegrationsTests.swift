@@ -113,6 +113,57 @@ final class GistPublisherTests: XCTestCase {
     }
 }
 
+final class IssueExporterTests: XCTestCase {
+    private let item = ActionItem(text: "Preparar el rollback plan")
+
+    func testGitHubRequestShape() throws {
+        let request = try GitHubIssuesExporter.request(
+            item: item, meetingTitle: "Planning Q3", ownerName: "Ana",
+            repository: "johnny4young/portavoz", token: "ghp_x")
+
+        XCTAssertEqual(
+            request.url?.absoluteString,
+            "https://api.github.com/repos/johnny4young/portavoz/issues")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer ghp_x")
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: String]
+        XCTAssertEqual(body["title"], "Preparar el rollback plan")
+        XCTAssertTrue(body["body"]!.contains("Planning Q3"))
+        XCTAssertTrue(body["body"]!.contains("Ana"))
+    }
+
+    func testGitHubParsesIssueURL() throws {
+        let url = try GitHubIssuesExporter.parseResponse(
+            Data(#"{"html_url": "https://github.com/o/r/issues/7", "number": 7}"#.utf8))
+        XCTAssertEqual(url.absoluteString, "https://github.com/o/r/issues/7")
+        XCTAssertThrowsError(try GitHubIssuesExporter.parseResponse(Data("{}".utf8)))
+    }
+
+    func testLinearRequestShape() throws {
+        let request = try LinearExporter.request(
+            item: item, meetingTitle: "Planning Q3", ownerName: nil,
+            teamID: "TEAM-1", token: "lin_x")
+
+        XCTAssertEqual(request.url?.absoluteString, "https://api.linear.app/graphql")
+        // Linear keys go bare, not as Bearer.
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "lin_x")
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        XCTAssertTrue((body["query"] as! String).contains("issueCreate"))
+        let input = ((body["variables"] as! [String: Any])["input"] as! [String: String])
+        XCTAssertEqual(input["teamId"], "TEAM-1")
+        XCTAssertEqual(input["title"], "Preparar el rollback plan")
+    }
+
+    func testLinearParsesIssueURLAndRejectsFailure() throws {
+        let ok = #"{"data":{"issueCreate":{"success":true,"issue":{"url":"https://linear.app/t/issue/T-1"}}}}"#
+        XCTAssertEqual(
+            try LinearExporter.parseResponse(Data(ok.utf8)).absoluteString,
+            "https://linear.app/t/issue/T-1")
+
+        let failed = #"{"data":{"issueCreate":{"success":false,"issue":null}}}"#
+        XCTAssertThrowsError(try LinearExporter.parseResponse(Data(failed.utf8)))
+    }
+}
+
 final class SecretStoreTests: XCTestCase {
     /// Uses a throwaway service name so it never touches real tokens.
     private let service = "app.portavoz.tests.\(UUID().uuidString)"

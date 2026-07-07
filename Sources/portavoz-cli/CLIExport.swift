@@ -139,8 +139,26 @@ enum SecretsCommand {
             } catch {
                 print("error: \(error.localizedDescription)")
             }
+        case "set-linear-token":
+            guard arguments.count > 1 else {
+                print("Usage: portavoz-cli secrets set-linear-token <token>")
+                return
+            }
+            do {
+                try SecretStore.set(arguments[1], service: SecretStore.linearTokenService)
+                print("Token de Linear guardado en el Keychain (solo este dispositivo).")
+            } catch {
+                print("error: \(error.localizedDescription)")
+            }
+        case "clear-linear-token":
+            do {
+                try SecretStore.delete(service: SecretStore.linearTokenService)
+                print("Token de Linear eliminado del Keychain.")
+            } catch {
+                print("error: \(error.localizedDescription)")
+            }
         default:
-            print("Usage: portavoz-cli secrets <set-github-token <token>|clear-github-token>")
+            print("Usage: portavoz-cli secrets <set-github-token|clear-github-token|set-linear-token|clear-linear-token> [token]")
         }
     }
 }
