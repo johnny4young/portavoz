@@ -51,7 +51,8 @@ final class AppServices {
         }
     }
 
-    /// Downloads (verified) + loads both engines on first use.
+    /// Downloads (verified) + loads both engines on first use. The
+    /// diarizer carries the enrolled voiceprint when one exists.
     func loadEnginesIfNeeded() async throws {
         if transcriber != nil, diarizer != nil {
             modelsState = .ready
@@ -60,24 +61,35 @@ final class AppServices {
         let modelStore = ModelStore()
         do {
             modelsState = .downloading("Preparando modelos…")
-            let engine = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading("Descargando modelo de transcripción… \(percent)%")
+            if transcriber == nil {
+                transcriber = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
+                    let percent = Int(progress.fraction * 100)
+                    Task { @MainActor [weak self] in
+                        self?.modelsState = .downloading("Descargando modelo de transcripción… \(percent)%")
+                    }
                 }
             }
-            let diarizer = try await PyannoteDiarizer.loadRecommended(store: modelStore) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading("Descargando modelo de diarización… \(percent)%")
+            if diarizer == nil {
+                let voiceprint = (try? VoiceprintStore().load()) ?? nil
+                diarizer = try await PyannoteDiarizer.loadRecommended(
+                    store: modelStore, voiceprint: voiceprint
+                ) { progress in
+                    let percent = Int(progress.fraction * 100)
+                    Task { @MainActor [weak self] in
+                        self?.modelsState = .downloading("Descargando modelo de diarización… \(percent)%")
+                    }
                 }
             }
-            self.transcriber = engine
-            self.diarizer = diarizer
             modelsState = .ready
         } catch {
             modelsState = .failed(error.localizedDescription)
             throw error
         }
+    }
+
+    /// Called after enrolling/deleting the voiceprint so the next load
+    /// rebuilds the diarizer with the new identity state.
+    func invalidateDiarizer() {
+        diarizer = nil
     }
 }

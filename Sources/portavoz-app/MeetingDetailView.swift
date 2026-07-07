@@ -24,6 +24,8 @@ struct MeetingDetailView: View {
     @State private var showGistConfirm = false
     @State private var gistResult: URL?
     @State private var gistError: String?
+    @State private var nameSuggestions: [NameSuggestion] = []
+    @State private var suggestingNames = false
 
     var body: some View {
         Group {
@@ -41,6 +43,7 @@ struct MeetingDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header(detail)
+                speakersRow(detail)
 
                 if let summary {
                     summarySection(summary)
@@ -153,6 +156,76 @@ struct MeetingDetailView: View {
             .font(.callout)
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// The meeting's cast, with the M6 "1-tap speaker→name" flow: ✦
+    /// proposes names the transcript proves; one click applies them.
+    @ViewBuilder
+    private func speakersRow(_ detail: MeetingDetail) -> some View {
+        let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
+        HStack(spacing: 8) {
+            ForEach(detail.speakers) { speaker in
+                SpeakerPill(speaker: speaker) { speaker in
+                    renamingSpeaker = speaker
+                    newName = speaker.displayName ?? ""
+                }
+            }
+            if !unnamed.isEmpty {
+                if suggestingNames {
+                    ProgressView().controlSize(.small)
+                } else if nameSuggestions.isEmpty {
+                    Button {
+                        Task { await suggestNames(detail) }
+                    } label: {
+                        Label("Sugerir nombres", systemImage: "sparkles")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+                }
+            }
+            ForEach(nameSuggestions, id: \.label) { suggestion in
+                Button {
+                    Task { await apply(suggestion, in: detail) }
+                } label: {
+                    Text("\(suggestion.label) → ¿\(suggestion.name)?")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help("Evidencia: \(suggestion.evidence)")
+            }
+        }
+    }
+
+    private func suggestNames(_ detail: MeetingDetail) async {
+        guard #available(macOS 26.0, *) else {
+            gistError = "Las sugerencias de nombres necesitan macOS 26."
+            return
+        }
+        suggestingNames = true
+        defer { suggestingNames = false }
+        do {
+            nameSuggestions = try await SpeakerNamer().suggestNames(
+                segments: detail.segments, speakers: detail.speakers)
+            if nameSuggestions.isEmpty {
+                gistError = "El transcript no prueba ningún nombre — puedes renombrar los pills a mano."
+            }
+        } catch {
+            gistError = error.localizedDescription
+        }
+    }
+
+    private func apply(_ suggestion: NameSuggestion, in detail: MeetingDetail) async {
+        guard var speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
+            return
+        }
+        speaker.displayName = suggestion.name
+        try? await services.store.save([speaker])
+        nameSuggestions.removeAll { $0.label == suggestion.label }
+        services.libraryVersion += 1
     }
 
     private func summarySection(_ summary: (draft: SummaryDraft, version: Int)) -> some View {

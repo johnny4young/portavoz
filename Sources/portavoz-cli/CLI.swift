@@ -34,6 +34,8 @@ struct PortavozCLI {
             await ExportCommand.run(arguments)
         case "secrets":
             SecretsCommand.run(arguments)
+        case "voice":
+            await VoiceCommand.run(arguments)
         case "models":
             await ModelsCommand.run(arguments)
         case "bench-m2":
@@ -59,6 +61,7 @@ struct PortavozCLI {
               portavoz-cli meetings <list|show <id>|search <query>> [--db <path>]
               portavoz-cli export --meeting <uuid> [--format md|pdf] [--out <path>] [--gist [--public]]
               portavoz-cli secrets <set-github-token <token>|clear-github-token>
+              portavoz-cli voice <enroll --file <wav>|status|delete>
               portavoz-cli models <download|verify|path> [--models-dir <dir>]
               portavoz-cli bench-m2 --batch-file <wav> [--seconds N] [--mic <name>] [--language es]
 

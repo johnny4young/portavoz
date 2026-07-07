@@ -1,0 +1,87 @@
+import DiarizationKit
+import Foundation
+import ModelStoreKit
+
+/// `portavoz-cli voice <enroll --file <wav>|status|delete> [--models-dir <dir>]`
+///
+/// Enrollment stores only a 256-dim voice embedding, AES-GCM-encrypted
+/// with a Keychain key — biometric data per D8: on-device, never synced,
+/// deletable in one action. The source audio is not kept.
+enum VoiceCommand {
+    static func run(_ arguments: [String]) async {
+        var arguments = arguments
+        guard let action = arguments.first else {
+            printUsage()
+            return
+        }
+        arguments.removeFirst()
+
+        var file: String?
+        var modelsDir: String?
+        var index = 0
+        while index < arguments.count {
+            switch arguments[index] {
+            case "--file":
+                index += 1
+                if index < arguments.count { file = arguments[index] }
+            case "--models-dir":
+                index += 1
+                if index < arguments.count { modelsDir = arguments[index] }
+            default:
+                print("Unknown option: \(arguments[index])")
+                return
+            }
+            index += 1
+        }
+
+        let store = VoiceprintStore()
+        do {
+            switch action {
+            case "enroll":
+                guard let file else {
+                    print("Usage: portavoz-cli voice enroll --file <wav-solo-tu-voz>")
+                    print("Tip: grábalo con `portavoz-cli record --seconds 15` hablando tú solo.")
+                    return
+                }
+                let url = URL(fileURLWithPath: file)
+                guard FileManager.default.fileExists(atPath: url.path) else {
+                    print("error: no such file: \(url.path)")
+                    return
+                }
+                let modelStore = CLISupport.modelStore(fromModelsDir: modelsDir)
+                let diarizer = try await PyannoteDiarizer.loadRecommended(store: modelStore)
+                let voiceprint = try await diarizer.extractVoiceprint(fromFile: url)
+                try store.save(voiceprint)
+                print("Voz enrolada ✓ (embedding de \(voiceprint.embedding.count) dims, cifrado en disco, llave en Keychain).")
+                print("Desde ahora tus intervenciones en el canal system se etiquetan como \"Me\".")
+
+            case "status":
+                if let voiceprint = try store.load() {
+                    print("Voz enrolada el \(voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened)) (\(voiceprint.embedding.count) dims).")
+                } else {
+                    print("No hay voz enrolada.")
+                }
+
+            case "delete":
+                try store.delete()
+                print("Voiceprint y llave eliminados.")
+
+            default:
+                printUsage()
+            }
+        } catch {
+            print("error: \(error.localizedDescription)")
+        }
+    }
+
+    static func printUsage() {
+        print(
+            """
+            Usage:
+              portavoz-cli voice enroll --file <wav> [--models-dir <dir>]
+              portavoz-cli voice status
+              portavoz-cli voice delete
+            """
+        )
+    }
+}

@@ -107,7 +107,8 @@ enum SummarizeCommand {
         do {
             let store = CLISupport.modelStore(fromModelsDir: modelsDir)
             let engine = try await CLISupport.loadEngine(store: store)
-            let diarizer = try await PyannoteDiarizer.loadRecommended(store: store)
+            let diarizer = try await PyannoteDiarizer.loadRecommended(
+                store: store, voiceprint: (try? VoiceprintStore().load()) ?? nil)
 
             print("Transcribing \(url.lastPathComponent)…")
             let meetingID = MeetingID()

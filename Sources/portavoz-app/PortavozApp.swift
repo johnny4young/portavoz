@@ -15,6 +15,7 @@ struct PortavozApp: App {
         }
         Settings {
             SettingsView()
+                .environment(services)
                 .tint(.indigo)
         }
     }

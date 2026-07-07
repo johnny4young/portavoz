@@ -6,6 +6,9 @@ import PortavozCore
 ///
 /// - `.microphone` segments are the user by hardware truth (D5): they get
 ///   the "Me" speaker with zero ML involved.
+/// - System-channel turns the diarizer matched against the enrolled
+///   voiceprint arrive labeled "Me" too (M6): same speaker record, so the
+///   user's voice through a room mic still counts as theirs.
 /// - `.system`/`.room` segments take the diarization turn with the largest
 ///   temporal overlap. A segment spanning *several* turns (long batch
 ///   segments) is split at the turn boundaries, distributing its words
@@ -48,7 +51,9 @@ public enum SpeakerAttributor {
             let pieces = slice(segment, across: turns)
             if pieces.count <= 1 {
                 var copy = segment
-                copy.speakerID = pieces.first?.voiceLabel.map { speaker(labeled: $0, isMe: false).id }
+                copy.speakerID = pieces.first?.voiceLabel.map {
+                    speaker(labeled: $0, isMe: $0 == "Me").id
+                }
                 attributed.append(copy)
                 continue
             }
@@ -56,7 +61,9 @@ public enum SpeakerAttributor {
                 attributed.append(
                     TranscriptSegment(
                         meetingID: segment.meetingID,
-                        speakerID: piece.voiceLabel.map { speaker(labeled: $0, isMe: false).id },
+                        speakerID: piece.voiceLabel.map {
+                            speaker(labeled: $0, isMe: $0 == "Me").id
+                        },
                         channel: segment.channel,
                         text: piece.text,
                         language: segment.language,

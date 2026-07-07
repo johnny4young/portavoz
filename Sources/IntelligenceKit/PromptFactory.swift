@@ -56,6 +56,17 @@ public enum PromptFactory {
             + "Remember: write the ENTIRE summary in \(languageName(for: targetLanguage)), including every heading and bullet."
     }
 
+    /// Instructions for speaker naming (M6). Evidence-or-nothing: a small
+    /// model happily invents names unless the bar is explicit proof.
+    public static func namingInstructions() -> String {
+        [
+            "You map meeting speaker labels (S1, S2, …) to real people's names.",
+            "A mapping is valid ONLY with explicit proof in the transcript: the speaker introduces themselves (\"soy Ana\", \"this is John speaking\"), or another speaker addresses them by name immediately around their turn (\"thanks, Ana\" right after S2 spoke).",
+            "Never infer names from topics, roles or guesses. Skip the label \"Me\".",
+            "When nothing is provable, return an empty list — that is the common case.",
+        ].joined(separator: "\n")
+    }
+
     /// The bilingual core: output language + glossary terms kept verbatim.
     /// Acceptance (M4): a Spanish summary of an English meeting must keep
     /// the glossary untranslated.
