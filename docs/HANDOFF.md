@@ -112,6 +112,14 @@ UX de la misma ronda (`c3f6d08`): rename de speaker arreglado (carrera del alert
 
 **Carpeta de grabaciones configurable: HECHA** (`0150611`): Ajustes → Grabaciones (convención Zoom "Store my recordings at"), `RecordingsLocation` en StorageKit — el root elegido persiste en `recordings-root.txt` JUNTO A LA DB (archivo, no UserDefaults → el CLI respeta la misma carpeta); sin bookmark (hay hardened runtime pero NO sandbox — un path plano basta; TCC pide una vez para carpetas protegidas, usage strings añadidos al Info.plist incl. discos externos). Migración resumable por directorio de reunión (copy a temp oculto + rename atómico cross-volume; ya-migrado se salta) y resolución con fallback al root por defecto — una migración interrumpida no rompe nada. La DB sigue guardando solo paths relativos (D4). Sobre "aprender acentos localmente": fine-tuning on-device no es viable con estos modelos; el camino real es vocabulario auto-sugerido (minar términos frecuentes de transcripts refinados) — anotado como idea M8.
 
+## Roadmap 2.0 (2026-07-07, investigación de mercado)
+
+Sesión de estrategia: 6 fuentes analizadas (riffado, MacParakeet, humla, Otter, artículo Meetily, Granola) + exploración profunda del repo local de Meetily + intel Apple (SpeechAnalyzer macOS 26, más rápido que Whisper). Resultados:
+- **DECISIONS nuevas**: D25 (motores plurales por rol + recomendador por hardware; SpeechAnalyzer como engine de calidad; LLM local GGUF/MLX para Macs sin Apple Intelligence; parámetros de referencia de Meetily), D26 (Copiloto en vivo: detección de preguntas en captions cerradas → tarjeta con respuesta; contexto→RAG local, conocimiento→FM/BYOK con disclosure), D27 (audio first-class: AudioPlaybackKit con player sincronizado, waveform por speaker, clips, −23 LUFS, import de audio externo).
+- **ROADMAP reescrito por fases**: Fase 2 = M9 audio / M10 motores / M11 Copiloto / M12 publicación / M13 meeting health; Fase 3 = M14a–d iOS (con presupuestos por dispositivo); Fase 4 = M15 sharing L1 (.portavoz bundle + CKShare) / M16 App Intents / M17 relay L2 / M18 visionOS.
+- **docs/IOS.md nuevo**: aterrizaje técnico honesto de iOS (tabla de capturas imposibles vs posibles, auditoría de Kits portables, presupuestos de modelo por dispositivo — Whisper large NO cabe en iPhone → SpeechAnalyzer/small o diferir a Mac, CKSyncEngine, Live Activity por frase cerrada).
+- **PRODUCT.md actualizado**: fila Meetily (hueco confirmado: cero chat/Q&A/RAG), Otter movió free a ilimitado + lanzó MCP (valida nuestro moat), MacParakeet ahora 100% gratis, humla cloud $7/mes, sección "UX descrestante (momentos firma)", tabla de performance con columna de medidos.
+
 ## Próximos pasos (en orden)
 
 **Verificaciones que aún necesitan al usuario (próxima reunión real):**

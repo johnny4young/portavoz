@@ -79,6 +79,16 @@ TranscriptSegments (batch: 1 por oración; vivo: ~1 s) ──► SpeakerAttribut
 - Los segmentos batch cortan por **puntuación de oración** además de pausas: los timings TDT no traen gaps (fin de token = inicio del siguiente), así que la pausa casi nunca dispara.
 - Harness: `portavoz-cli diarize --file x.wav [--attribute] [--threshold t]`.
 
+## Arquitectura para motores plurales y configuraciones (fase 2, D25)
+
+El objetivo: soportar hardware heterogéneo (8 GB sin Apple Intelligence hasta M4 Max) y condiciones de mercado cambiantes (Apple regalando SpeechAnalyzer) sin que ninguna feature dependa de UN modelo concreto.
+
+- **`EngineRole` explícito** en ModelStoreKit: `liveTranscription`, `qualityTranscription`, `summarization`, `embedding`, `diarization`. `ModelCatalog.recommended(for:)` ya rutea por rol — crece a `candidates(for:) -> [ModelDescriptor]` + `recommended(for:hardware:)` con un `HardwareProfile` (chip, RAM, versión de macOS, Apple Intelligence sí/no) leído una vez al arrancar.
+- **Protocolos por rol, no por modelo**: `SummaryProvider` ya existe (FM y BYOK lo implementan); igual para transcripción de calidad (`FileTranscriber`: Whisper hoy, SpeechAnalyzer y Parakeet-batch después). Las vistas y el CLI dependen del protocolo; la elección vive en Ajustes + overrides por reunión/idioma.
+- **La cadena de fallback es visible**: cada resultado lleva el engine que lo produjo (columna `provenance` en summary/segment cuando toque el schema — aditivo, D4 lo permite); la UI lo muestra en gris ("Resumido on-device" / "Resumido por Ollama·qwen3"). Nada falla en silencio hacia otro proveedor: degradar = informar.
+- **Config por capas**: default por hardware → Ajustes global por rol → override por reunión → override por idioma (patrón humla). Persistencia: los global en el marker/UserDefaults de app; los per-meeting en la DB (aditivo).
+- **El audio como actor de primera clase (D27)** completa el flujo: capture (AudioCaptureKit) → registro inmutable WAV → playback/clips (AudioPlaybackKit) — el mismo asset alimenta transcripción, diarización, waveform y clips; ningún Kit duplica lectura de audio: `AudioAsset` (PortavozCore) encapsula path+formato+duración+waveform cache.
+
 ## Reglas de ingeniería (innegociables)
 
 1. **Privacidad:** ninguna feature envía audio/transcripts fuera del dispositivo sin opt-in explícito y visible. Telemetría opt-in. API keys en Keychain — nunca SQLite ni UserDefaults (anti-patrón heredado de Meetily, que las guarda en SQLite plano).

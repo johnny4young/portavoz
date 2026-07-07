@@ -150,3 +150,36 @@ Formato ADR ligero: cada entrada es una decisión tomada, su contexto y su porqu
 **Decisión:** `MicrophoneSource` activa **voice processing de Apple** (`setVoiceProcessingEnabled(true)`, AEC del sistema contra la salida por defecto) **por defecto**, con `voiceProcessingOtherAudioDuckingConfiguration` en `.min` para no atenuar el audio de la reunión. Opt-out: toggle "Cancelación de eco" en Ajustes (`aecEnabled`) y `record --no-aec`. Si el dispositivo rechaza voice processing, se degrada a captura cruda sin fallar. En la misma capa: resiliencia a `AVAudioEngineConfigurationChange` (cambio de dispositivo mid-recording) con reinstalación del tap, resampleo lineal al rate original del stream y relleno del hueco con silencio — el canal jamás muere en silencio ni desalinea la timeline.
 **Verificado (2026-07-07):** smoke test CLI (engine arranca con VPIO, WAV escrito). Campo pendiente: reunión real con parlantes (el "Yo" no debe duplicar a los demás) y switch de audífonos a mitad de grabación.
 **Porqué:** el fix físico (el mic deja de contener a los demás) arregla a la vez el "Yo" fantasma, la duplicación del transcript, y el sesgo del resumen — sin imponer hardware al usuario.
+
+## D25 — Motores plurales por rol con recomendación por hardware (operacionaliza D7)
+
+**Contexto:** hoy el routing por tarea (D7) tiene un solo motor por rol: Parakeet (vivo), Whisper large-v3-turbo (calidad), Foundation Models (resúmenes, exige macOS 26 + Apple Intelligence) + BYOK. Tres presiones de mercado: (1) Apple liberó `SpeechAnalyzer`/`SpeechTranscriber` (macOS 26) — más rápido que Whisper en benchmarks públicos, cero descarga, y es el motor del sherlocking (Notes); (2) Meetily/humla/MacParakeet ofrecen elección de modelo como feature central (humla incluso rutea por idioma); (3) la crítica #1 a Meetily es la barrera de hardware — un Mac sin Apple Intelligence hoy se queda sin resumen local.
+**Decisión:** cada rol acepta motores plurales con un **recomendador por hardware** (chip/RAM/versión de macOS) y default automático visible ("Recomendado para tu Mac"):
+- **ASR vivo**: Parakeet TDT v3 (único streaming <2 s viable hoy). `SpeechAnalyzer` streaming se evalúa como alternativa cuando midamos su latencia real.
+- **ASR calidad (refine)**: Whisper large-v3-turbo | **SpeechAnalyzer** (macOS 26, sin descarga — el refine "gratis" para Macs con poco disco) | Parakeet batch. Elegible en Ajustes, benchmarkeable con `portavoz-cli bench`.
+- **LLM (resumen/notas/nombres/copiloto)**: cadena con fallback explícito y visible — Foundation Models on-device → **modelo local embebido GGUF/MLX** (3B q4 por defecto; cierra el hueco pre-macOS-26; llama.cpp y MLX son MIT) → BYOK OpenAI-compatible (ya cubre Ollama/LM Studio/Groq/OpenRouter — documentarlo en la UI, es feature escondida).
+- Overrides **por reunión y por idioma** (patrón humla), nunca un modelo global (D7 se mantiene).
+- Todo motor descargable pasa por el registry sha256 (D15); los engines cumplen los protocolos existentes (`SummaryProvider`, transcripción por rol).
+- **Parámetros de referencia (medidos por Meetily, validar en M10)**: LLM local qwen-class 2b (<14 GB RAM) / 4b (≥14 GB); catálogo Whisper con variantes cuantizadas q5 (turbo q5_0 ≈ 547 MB — clave para Macs con poco disco y para iOS); caché de resumen por fingerprint (transcript+recipe+modelo+params) para no regenerar gratis; **resumen pivote en EN cacheado + re-traducción bajo demanda** — nuestro caso bilingüe lo agradece el doble.
+**Porqué:** la elección de modelo es la feature que el usuario percibe como "control"; la recomendación automática es lo que evita que se convierta en fricción. SpeechAnalyzer convierte la amenaza de Apple en proveedor gratuito.
+
+## D26 — Copiloto en vivo: detección de preguntas + respuesta sugerida
+
+**Contexto:** pedido fundador — si en la reunión preguntan algo ("¿cuál es la diferencia entre `var` y `let`?"), el sistema debe ofrecer la respuesta en tiempo real. Jamie valida el patrón (sidebar Q&A en vivo); nadie lo hace on-device.
+**Decisión:** pipeline de 3 etapas sobre las captions cerradas (el coalescer ya define "cerrada"):
+1. **Detección** (cada tick, barato): heurística (¿termina en "?", contiene interrogativos, prosodia del texto?) como pre-filtro → FM greedy con schema `{esPregunta, pregunta, dirigidaAMí, tipo: conocimiento|contexto|logística}` sobre la ventana reciente. El detector de "te preguntaron algo" (mención de tu nombre) comparte esta etapa.
+2. **Respuesta según tipo**: `contexto` (¿qué dijimos del budget?) → RAG local existente (D22) sobre la reunión en curso + historial; `conocimiento` (var vs let) → FM on-device primero; si el usuario configuró BYOK **y activó "Copiloto con BYOK"**, se usa el proveedor externo — con disclosure permanente en la tarjeta ("respondido por <proveedor>"). Solo sale del dispositivo el texto de la pregunta + contexto mínimo, nunca audio (D8).
+3. **UI**: tarjeta discreta en el panel derecho de grabación ("❓ Preguntaron: … → 💡 Respuesta sugerida"), acciones copiar/descartar/fijar. Nunca auto-responde ni auto-habla; opt-in por reunión (toggle junto al de traducción). Presupuesto: detección <1 s por tick, respuesta <5 s.
+**Porqué:** es el momento "wow" en vivo con la arquitectura que ya existe (captions cerradas + FM + RAG); la etapa de tipos evita el fallo clásico (responder trivialidades logísticas).
+
+## D27 — El audio es actor de primera clase
+
+**Contexto:** hoy el audio se captura, se transcribe y queda muerto en disco: la app no lo reproduce. Humla tiene playback con highlight palabra a palabra; Otter/Granola tratan el audio como el registro canónico. Sin playback no hay verificación humana del transcript ("¿de verdad dijo eso?") ni clips.
+**Decisión:** AudioPlaybackKit (nuevo Kit, depende solo de PortavozCore):
+- **Player sincronizado**: AVAudioEngine playerNode sobre los WAV existentes; click en un segmento salta al timestamp (los `startTime` ya existen); durante la reproducción se resalta el segmento actual (y palabra, cuando el engine da word timings). Velocidad 1–2x y skip-silencio (los gaps entre segmentos son conocidos).
+- **Waveform** por reunión: RMS downsampleado a ~2000 buckets, coloreado por speaker (turnos de diarización), cacheado en `Audio/<id>/waveform.bin` — se computa una vez al guardar.
+- **Clips**: marcar rango en la waveform/transcript → exportar `.m4a` (AVAssetExportSession) + snippet MD con atribución; "marcar" FREE, "exportar" PRO (ya en la matriz).
+- **Master + economía**: WAV sigue siendo master (pipeline lo exige); transcode opcional a AAC tras el refine como política de retención adicional (D4 ya modela retención).
+- **Acondicionamiento de señal** (patrón Meetily): normalización a −23 LUFS (estándar broadcast de voz) como target del pipeline — nuestro `normalizePeak` es el primer paso; evaluar RNNoise-style denoise (Apple ya aporta AEC+NS vía voice processing, D24) y high-pass ~80 Hz para voz.
+- **Import de audio externo como reunión** (arrastrar un .m4a/.wav a la biblioteca → transcribe+diariza+resume): el pipeline del refine ya lo hace todo; solo falta la puerta de entrada en la UI.
+**Porqué:** el audio es la fuente de verdad del producto; tratarlo como archivo muerto regala la experiencia diferencial a Otter. Todo es AVFoundation puro — cero dependencias nuevas.
