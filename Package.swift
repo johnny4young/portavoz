@@ -79,7 +79,7 @@ let package = Package(
             dependencies: [
                 "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit",
+                "StorageKit", "IntegrationsKit",
             ]
         ),
 
@@ -88,7 +88,7 @@ let package = Package(
             dependencies: [
                 "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit",
+                "StorageKit", "IntegrationsKit",
             ]
         ),
 

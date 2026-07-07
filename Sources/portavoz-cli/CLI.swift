@@ -30,6 +30,10 @@ struct PortavozCLI {
             await SummarizeCommand.run(arguments)
         case "meetings":
             await MeetingsCommand.run(arguments)
+        case "export":
+            await ExportCommand.run(arguments)
+        case "secrets":
+            SecretsCommand.run(arguments)
         case "models":
             await ModelsCommand.run(arguments)
         case "bench-m2":
@@ -53,6 +57,8 @@ struct PortavozCLI {
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
               portavoz-cli meetings <list|show <id>|search <query>> [--db <path>]
+              portavoz-cli export --meeting <uuid> [--format md|pdf] [--out <path>] [--gist [--public]]
+              portavoz-cli secrets <set-github-token <token>|clear-github-token>
               portavoz-cli models <download|verify|path> [--models-dir <dir>]
               portavoz-cli bench-m2 --batch-file <wav> [--seconds N] [--mic <name>] [--language es]
 

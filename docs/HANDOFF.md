@@ -12,7 +12,7 @@
 | **M2 — Transcripción** | ✅ **Completo, criterio de aceptación medido en verde** (ver abajo). |
 | **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** Pendientes: DER formal en reunión real de 4 personas, y las "speaker pills" (UI — no existe app target todavía; va con el shell de app hacia M5). |
 | **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
-| **M5 — Public 0.1** | 🚧 **StorageKit completo** (D19) + **app shell SwiftUI funcionando** (D20): `scripts/make-app.sh` produce `dist/Portavoz.app` (lanzada y verificada; biblioteca compartida con el CLI). Las speaker pills editables cierran el pendiente de M3. Faltan: probar grabación in-app (TCC), export MD/PDF/Gist, empaquetado (DMG + Sparkle + Homebrew), polish de UI. |
+| **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist completo** (L0 de D12): `MeetingExporter` (markdown canónico + PDF CoreText sin AppKit), `GistPublisher` (opt-in explícito, token en Keychain vía `SecretStore`), botón Exportar en la app y `export`/`secrets` en el CLI. Faltan: empaquetado (DMG + Sparkle + Homebrew) y polish de UI. |
 
 **Sin push al remoto todavía** (`origin = git@github.com:johnny4young/portavoz.git`).
 
@@ -54,7 +54,8 @@
 
 ## M5 — qué hay hasta ahora (StorageKit verificado 2026-07-07)
 
-- **App shell SwiftUI** (`portavoz-app`, D20): target SPM + `scripts/make-app.sh` → `dist/Portavoz.app` (Info.plist con usage descriptions de mic/audio del sistema, firma ad-hoc). Biblioteca con búsqueda FTS, detalle con **speaker pills editables** (pendiente M3 cerrado), resumen + action items chequeables, y grabación con captions vivas + pipeline post-reunión completo (`RecordingController`). Verificado: lanza, renderiza, y comparte SQLite con el CLI.
+- **App shell SwiftUI** (`portavoz-app`, D20): target SPM + `scripts/make-app.sh` → `dist/Portavoz.app` (Info.plist con usage descriptions de mic/audio del sistema, firma ad-hoc). Biblioteca con búsqueda FTS, detalle con **speaker pills editables** (pendiente M3 cerrado), resumen + action items chequeables, y grabación con captions vivas + pipeline post-reunión completo (`RecordingController`). Verificado: lanza, renderiza, comparte SQLite con el CLI, y **la grabación in-app funcionó en prueba real del usuario** (la reunión quedó en la biblioteca).
+- **Export (L0 de la escalera D12)**: `MeetingExporter.markdown` (título + metadata + resumen con headings degradados + pendientes + transcript atribuido) y `.pdf` (CoreText puro, sin AppKit — compila para iOS; paginación US Letter verificada con CGPDFDocument). `GistPublisher` contra `api.github.com/gists` (secreto por defecto, `--public` explícito); `SecretStore` en Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`) — publicar un gist real queda pendiente de probar con token. CLI: `export --meeting <id> [--format md|pdf] [--out] [--gist [--public]]`, `secrets set-github-token`. App: menú Exportar (MD/PDF) con `fileExporter`.
 - **`MeetingStore`** (GRDB 7 + FTS5): contrato D4 completo — UUID PKs, tombstones, summaries como snapshots versionados inmutables (action items = excepción mutable en su tabla), paths relativos con rechazo de absolutos, `visibility` reservado. Búsqueda FTS5 con snippets e input hostil sanitizado. **`enforceAudioRetention` cierra la deuda de M1** (borra audio expirado, jamás el transcript).
 - **Tipos movidos a Core** (evita deps Kit↔Kit): `Meeting` (nuevo), `AudioRetentionPolicy` (typealias de compat en AudioCaptureKit), `Recipe`/`SummaryDraft`/`ActionItem`.
 - **CLI**: `summarize --save [--db]` persiste reunión+speakers+segmentos+resumen; `meetings list|show|search`. E2E verificado con la conversación TTS: FTS encuentra "[latency]" con snippet, show imprime transcript atribuido + resumen v1.
@@ -64,8 +65,8 @@
 
 1. **Test de aceptación M1 pendiente** (usuario): 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
 2. **Validación M3 formal** (usuario): reunión real de 4 personas → DER < 15% (los turnos salen de `diarize`; falta harness de DER contra referencia — FluidAudio trae `DiarizationDER.swift` que puede reusarse). "Me" 100% ya es estructural por diseño.
-3. **Probar la grabación in-app** (usuario): `scripts/make-app.sh && open dist/Portavoz.app` → "Nueva grabación". La primera vez macOS pedirá permiso de micrófono y el de "Grabación de pantalla y audio del sistema" para **Portavoz** (no la terminal); tras concederlos, relanzar la app. OJO: cada rebuild re-firma ad-hoc con identidad distinta → TCC puede volver a pedir permisos tras recompilar.
-4. **M5 restante**: (a) export MD/PDF/Gist (IntegrationsKit); (b) empaquetado DMG + Sparkle + Homebrew (D10) — esto probablemente fuerce firma real/notarización (revisar D20); (c) polish de UI (markdown real, resumen rodante durante la reunión, re-generar resumen a demanda, iconografía).
+3. **M5 restante**: (a) empaquetado DMG + Sparkle + Homebrew (D10) — esto probablemente fuerce firma real/notarización (revisar D20); (b) polish de UI (markdown real, resumen rodante durante la reunión, re-generar resumen a demanda, iconografía, entrada de token de GitHub en la app); (c) probar `export --gist` con un token real.
+   Nota TCC (verificado por el usuario): cada rebuild re-firma ad-hoc con identidad distinta → macOS puede volver a pedir los permisos de mic/audio del sistema tras recompilar la app.
 4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4.
 
 ## Quirks del entorno de desarrollo

@@ -1,6 +1,8 @@
+import IntegrationsKit
 import PortavozCore
 import StorageKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Transcript with editable speaker pills (the M3 leftover), the latest
 /// summary snapshot, and its checkable action items.
@@ -13,6 +15,9 @@ struct MeetingDetailView: View {
     @State private var summary: (draft: SummaryDraft, version: Int)?
     @State private var renamingSpeaker: Speaker?
     @State private var newName = ""
+    @State private var exportDocument: ExportDocument?
+    @State private var exportType: UTType = .plainText
+    @State private var exportName = "reunion"
 
     var body: some View {
         Group {
@@ -46,6 +51,12 @@ struct MeetingDetailView: View {
         }
         .navigationTitle(detail.meeting.title)
         .toolbar {
+            Menu {
+                Button("Exportar Markdown…") { export(detail, as: .markdown) }
+                Button("Exportar PDF…") { export(detail, as: .pdf) }
+            } label: {
+                Label("Exportar", systemImage: "square.and.arrow.up")
+            }
             Button(role: .destructive) {
                 Task {
                     try? await services.store.delete(meetingID)
@@ -55,6 +66,17 @@ struct MeetingDetailView: View {
             } label: {
                 Label("Eliminar", systemImage: "trash")
             }
+        }
+        .fileExporter(
+            isPresented: Binding(
+                get: { exportDocument != nil },
+                set: { if !$0 { exportDocument = nil } }
+            ),
+            document: exportDocument,
+            contentType: exportType,
+            defaultFilename: exportName
+        ) { _ in
+            exportDocument = nil
         }
         .alert("Renombrar hablante", isPresented: renameBinding) {
             TextField("Nombre", text: $newName)
@@ -123,6 +145,29 @@ struct MeetingDetailView: View {
 
     // MARK: - Actions
 
+    private enum ExportFormat { case markdown, pdf }
+
+    private func export(_ detail: MeetingDetail, as format: ExportFormat) {
+        let markdown = MeetingExporter.markdown(
+            meeting: detail.meeting,
+            speakers: detail.speakers,
+            segments: detail.segments,
+            summary: summary?.draft,
+            summaryVersion: summary?.version
+        )
+        switch format {
+        case .markdown:
+            exportType = .plainText
+            exportName = "\(detail.meeting.title).md"
+            exportDocument = ExportDocument(data: Data(markdown.utf8))
+        case .pdf:
+            guard let data = try? MeetingExporter.pdf(fromMarkdown: markdown) else { return }
+            exportType = .pdf
+            exportName = "\(detail.meeting.title).pdf"
+            exportDocument = ExportDocument(data: data)
+        }
+    }
+
     private var renameBinding: Binding<Bool> {
         Binding(
             get: { renamingSpeaker != nil },
@@ -158,6 +203,22 @@ struct MeetingDetailView: View {
     private func timestamp(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Write-only wrapper so `fileExporter` can save bytes we already built.
+struct ExportDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.plainText, .pdf]
+    let data: Data
+
+    init(data: Data) { self.data = data }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 
