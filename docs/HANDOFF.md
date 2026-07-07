@@ -74,9 +74,26 @@ Reunión "Reunión 7 Jul 2026 at 9:10 AM" (`652CEACF…`), grabada con la 0.1.0 
 - **Borrador para DER formal**: `~/Desktop/portavoz-verificacion/reunion-2026-07-07.{rttm,md}` — el usuario corrige la columna Speaker en el .md, se transcriben las correcciones al .rttm y se mide con `portavoz-cli der --file system.wav --reference <rttm corregido>`.
 - **Hallazgo del setup**: con parlantes (sin audífonos) el mic capta el audio del sistema → el canal "Me" duplica a los demás participantes. No es bug (mic→Me es estructural, D5) pero es limitación real; mitigación futura: AEC con `setVoiceProcessingEnabled` de AVAudioEngine, o gating por voiceprint en el canal mic. Recomendación al usuario mientras: audífonos.
 
+## Mejoras tras la 2ª reunión real (2026-07-07, 30 min, feedback del usuario)
+
+La segunda reunión (`8AA7DCCC…`, reproducida por parlantes, audífonos desde ~24:10) destapó 6 problemas; todos corregidos y commiteados (`a972146`…`42d44bc`), 133 tests verdes, app reinstalada en /Applications (firmada, sin notarizar — para pruebas locales basta):
+
+1. **Bug grave: el mic murió al conectar audífonos** — microphone.wav terminó en 1449.9 s de 1806.6 s, sin error. AVAudioEngine se detiene ante `AVAudioEngineConfigurationChange` y el stream quedaba mudo. Fix: reinstalar tap + reiniciar engine (con retries), resampleo lineal si el dispositivo nuevo trae otro rate, y relleno del hueco con silencio para que la timeline siga alineada.
+2. **Eco por parlantes = "Yo" fantasma** — ~100% del canal mic era eco (el usuario habló UNA vez); dedup por texto solo detectaría 57% (el eco degradado se transcribe distinto: ahí nace lo de LVGT→LGBT). Fix de raíz: **AEC (voice processing de Apple) en el input node, ON por defecto** (D24), ducking `.min` para no atenuar la reunión. Toggle en Ajustes + `record --no-aec`. Smoke test OK; verificación de campo pendiente.
+3. **Captions fragmentadas** ("ration of" / "ation overall") — `CaptionCoalescer`: la fila más nueva crece mientras el canal siga hablando (pausas mid-sentence ≤6 s, continuación tras oración <2 s, corte a 280 chars). Identidad de fila estable; la traducción en vivo ahora espera a que la fila cierre; autoscroll sigue endTime.
+4. **Resumen en vivo encogía y su costo crecía** — ahora acumula notas (una pasada map de 250 tokens SOLO sobre filas nuevas cerradas), colapsa la pila a >6000 chars y re-renderiza desde notas: costo por tick plano. `LiveSummaryPolicy` retiene renders <90% del actual (monotonicidad visible).
+5. **Vocabulario custom** (Ajustes → Vocabulario, coma-separado): llega a Whisper como promptTokens (`<|startofprev|>`, sesgo de decodificación), a los resúmenes como glossary, y a `meetings refine --vocab`. Parakeet vivo no tiene hook de bias — el refine corrige el registro.
+6. **UI congelada en reuniones largas** — transcript del detalle y captions en `LazyVStack` (antes eager: 1600+ filas montadas de una), ventana viva a 150 filas coalescidas.
+
+Nota: el inglés indio se transcribe mal en vivo (Parakeet); el re-pase Whisper large-v3-turbo lo maneja mucho mejor — es la respuesta por ahora.
+
 ## Próximos pasos (en orden)
 
-**Verificaciones que aún necesitan al usuario:**
+**Verificaciones que aún necesitan al usuario (próxima reunión real):**
+- **AEC**: grabar con parlantes y hablar — tus palabras deben salir como "Yo" y los demás NO deben duplicarse. Si el mic se oye raro, Ajustes → desactivar "Cancelación de eco" y avisar.
+- **Cambio de dispositivo**: conectar/desconectar audífonos a mitad de grabación — el canal mic debe sobrevivir (con hueco de silencio, no muerte).
+- **Resumen en vivo**: debe crecer siempre, nunca encoger.
+- **Vocabulario**: cargar términos (LVGT…) en Ajustes antes de la reunión; tras `meetings refine`, verificar que se transcriben bien.
 - Corregir labels del RTTM borrador (`~/Desktop/portavoz-verificacion/reunion-2026-07-07.md`) → DER formal M3 en reunión real.
 - Captions traducidos: grabar con el picker "Traducir → …" activo; la primera vez macOS puede pedir descargar el par de idiomas.
 - Nombres con calendario: evento con asistentes alrededor de una grabación → "Sugerir nombres" (pide TCC de calendario). La reunión de prueba menciona "Vishakha" — buen caso para el botón ✦ con el transcript refinado.
