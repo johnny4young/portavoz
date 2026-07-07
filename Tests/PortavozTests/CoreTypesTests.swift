@@ -68,3 +68,37 @@ final class ModelRegistryTests: XCTestCase {
         XCTAssertTrue(ModelTask.allCases.contains(.finalTranscription))
     }
 }
+
+final class TitleTemplateTests: XCTestCase {
+    private let sample: Date = {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 7
+        components.day = 7
+        components.hour = 10
+        components.minute = 47
+        return Calendar(identifier: .gregorian).date(from: components)!
+    }()
+
+    func testRendersAllTokens() {
+        let title = TitleTemplate.render(
+            "{date} {time} ({seq}) reunión", date: sample, sequence: 3)
+        XCTAssertEqual(title, "2026-07-07 10.47 (03) reunión")
+    }
+
+    func testBlankTemplateFallsBackToDefault() {
+        let title = TitleTemplate.render("   ", date: sample, sequence: 1)
+        XCTAssertEqual(title, "2026-07-07 10.47 Reunión")
+    }
+
+    func testUnknownTokensPassThrough() {
+        XCTAssertEqual(
+            TitleTemplate.render("{foo} x", date: sample, sequence: 1), "{foo} x")
+    }
+
+    func testWeekdayUsesLocale() {
+        let title = TitleTemplate.render(
+            "{weekday}", date: sample, sequence: 1, locale: Locale(identifier: "es_CO"))
+        XCTAssertEqual(title.lowercased(), "martes")
+    }
+}

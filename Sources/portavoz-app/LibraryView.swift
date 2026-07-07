@@ -10,6 +10,8 @@ struct LibraryView: View {
     @State private var meetings: [Meeting] = []
     @State private var query = ""
     @State private var hits: [SearchHit] = []
+    @State private var renamingMeeting: Meeting?
+    @State private var newTitle = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,6 +61,19 @@ struct LibraryView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .tag(Route.meeting(meeting.id))
+                            .contextMenu {
+                                Button("Renombrar…") {
+                                    renamingMeeting = meeting
+                                    newTitle = meeting.title
+                                }
+                                Button("Eliminar", role: .destructive) {
+                                    Task {
+                                        try? await services.store.delete(meeting.id)
+                                        if route == .meeting(meeting.id) { route = nil }
+                                        services.libraryVersion += 1
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -66,6 +81,29 @@ struct LibraryView: View {
             .listStyle(.sidebar)
         }
         .navigationTitle("Portavoz")
+        .alert(
+            "Renombrar reunión",
+            isPresented: Binding(
+                get: { renamingMeeting != nil },
+                set: { if !$0 { renamingMeeting = nil } }
+            )
+        ) {
+            TextField("Título", text: $newTitle)
+            Button("Guardar") {
+                // Capture now — dismissing the alert nils renamingMeeting
+                // before the task runs.
+                if var meeting = renamingMeeting {
+                    let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    Task {
+                        guard !title.isEmpty else { return }
+                        meeting.title = title
+                        try? await services.store.save(meeting)
+                        services.libraryVersion += 1
+                    }
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
+        }
         .task(id: services.libraryVersion) { await reload() }
     }
 

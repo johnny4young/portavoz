@@ -7,6 +7,11 @@ struct RecordingView: View {
     @Environment(AppServices.self) private var services
     @Binding var route: Route?
     @State private var controller = RecordingController()
+    /// Log-viewer follow mode: captions auto-scroll while the user is at
+    /// the bottom; scrolling away pauses the follow (so they can read
+    /// back) and it resumes 10 s after the last manual scroll.
+    @State private var followLive = true
+    @State private var resumeFollowTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -156,10 +161,66 @@ struct RecordingView: View {
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
             // endTime moves both when a row grows (coalescer) and on append.
             .onChange(of: controller.captions.last?.endTime) { _, _ in
-                if let last = controller.captions.last {
-                    proxy.scrollTo(last.id, anchor: .bottom)
+                guard followLive, let last = controller.captions.last else { return }
+                proxy.scrollTo(last.id, anchor: .bottom)
+            }
+            .modifier(FollowLiveDetector(followLive: $followLive, schedule: scheduleFollowResume))
+            .overlay(alignment: .bottom) {
+                if !followLive {
+                    Button {
+                        followLive = true
+                        resumeFollowTask?.cancel()
+                        resumeFollowTask = nil
+                        if let last = controller.captions.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    } label: {
+                        Label("Seguir en vivo", systemImage: "arrow.down.to.line")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 10)
                 }
             }
+        }
+    }
+
+    /// Re-enables the live follow 10 s after the user's last manual scroll.
+    private func scheduleFollowResume() {
+        resumeFollowTask?.cancel()
+        resumeFollowTask = Task {
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled else { return }
+            followLive = true
+        }
+    }
+}
+
+/// Flags when the user scrolls away from the captions' bottom edge
+/// (macOS 15+; earlier systems just keep permanent follow). The 150 pt
+/// buffer keeps in-place row growth from reading as a manual scroll.
+private struct FollowLiveDetector: ViewModifier {
+    @Binding var followLive: Bool
+    let schedule: () -> Void
+
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.containerSize.height
+                    >= geometry.contentSize.height - 150
+            } action: { _, nearBottom in
+                if nearBottom {
+                    followLive = true
+                } else {
+                    followLive = false
+                    schedule()
+                }
+            }
+        } else {
+            content
         }
     }
 }

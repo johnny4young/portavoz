@@ -22,9 +22,12 @@ struct SettingsView: View {
     @AppStorage("customVocabulary") private var customVocabulary = ""
     @State private var newTerm = ""
 
+    @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
+
     var body: some View {
         Form {
             audioSection
+            titleSection
             vocabularySection
             voiceSection
             gitHubSection
@@ -45,6 +48,23 @@ struct SettingsView: View {
             Toggle("Cancelación de eco (recomendado)", isOn: $aecEnabled)
             Text(
                 "Elimina del micrófono el audio que sale por tus parlantes, para que los demás participantes no aparezcan como \"Yo\". Aplica desde la próxima grabación. Desactívala solo si notas problemas con tu micrófono."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Títulos
+
+    private var titleSection: some View {
+        Section("Títulos de grabación") {
+            TextField("Plantilla", text: $titleTemplate)
+                .font(.body.monospaced())
+            LabeledContent(
+                "Vista previa",
+                value: TitleTemplate.render(titleTemplate, date: .now, sequence: 3))
+            Text(
+                "Tokens: {date} → 2026-07-07 · {time} → 10.47 · {seq} → secuencia del día (01, 02…) · {weekday} → día de la semana. La fecha ISO primero hace que la biblioteca ordene sola."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

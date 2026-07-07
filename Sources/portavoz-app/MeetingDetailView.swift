@@ -30,6 +30,26 @@ struct MeetingDetailView: View {
     @State private var suggestingNames = false
     @State private var refining: String?
     @State private var refineError: String?
+    @State private var refineDraft: RefineDraft?
+    @State private var editingTitle = false
+    @State private var newTitle = ""
+
+    /// A refine result awaiting the user's decision — never applied on its
+    /// own. The transcript it would replace stays untouched until "Aplicar".
+    struct RefineDraft {
+        let speakers: [Speaker]
+        let segments: [TranscriptSegment]
+        let oldSegmentCount: Int
+        let oldSpeakerCount: Int
+        let oldSpeechSeconds: TimeInterval
+
+        var newSpeechSeconds: TimeInterval {
+            segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
+        }
+        /// A refined pass that covers well under the current transcript's
+        /// speech almost certainly failed — surfaced as a loud warning.
+        var looksLossy: Bool { newSpeechSeconds < oldSpeechSeconds * 0.5 }
+    }
 
     var body: some View {
         Group {
@@ -88,15 +108,29 @@ struct MeetingDetailView: View {
             .frame(maxWidth: 760, alignment: .leading)
         }
         .navigationTitle(detail.meeting.title)
+        .sheet(
+            isPresented: Binding(
+                get: { refineDraft != nil },
+                set: { if !$0 { refineDraft = nil } }
+            )
+        ) {
+            if let draft = refineDraft {
+                refineReviewSheet(draft)
+            }
+        }
         .toolbar {
             Button {
                 refine(detail)
             } label: {
-                Label("Refinar", systemImage: "wand.and.stars")
+                if refining != nil {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Label("Refinar", systemImage: "wand.and.stars")
+                }
             }
             .disabled(refining != nil || detail.meeting.audioDirectory == nil)
             .help(
-                "Re-transcribe con Whisper (máxima calidad), re-identifica hablantes y regenera el resumen"
+                "Re-transcribe con Whisper (máxima calidad) y propone el resultado como borrador — nada se aplica sin tu confirmación"
             )
             Menu {
                 Button("Exportar Markdown…") { export(detail, as: .markdown) }
@@ -160,9 +194,31 @@ struct MeetingDetailView: View {
         } message: {
             Text(gistError ?? "")
         }
+        .alert("Renombrar reunión", isPresented: $editingTitle) {
+            TextField("Título", text: $newTitle)
+            Button("Guardar") {
+                let title = newTitle
+                var meeting = detail.meeting
+                Task {
+                    meeting.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !meeting.title.isEmpty else { return }
+                    try? await services.store.save(meeting)
+                    await reload()
+                    services.libraryVersion += 1
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
+        }
         .alert("Renombrar hablante", isPresented: renameBinding) {
             TextField("Nombre", text: $newName)
-            Button("Guardar") { Task { await rename() } }
+            Button("Guardar") {
+                // Capture NOW: dismissing the alert nils renamingSpeaker
+                // before the task runs, which silently dropped the rename.
+                if let speaker = renamingSpeaker {
+                    let name = newName
+                    Task { await rename(speaker, to: name) }
+                }
+            }
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("Etiqueta actual: \(renamingSpeaker?.label ?? "")")
@@ -171,7 +227,17 @@ struct MeetingDetailView: View {
 
     private func header(_ detail: MeetingDetail) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(detail.meeting.title).font(.title2.bold())
+            HStack(spacing: 8) {
+                Text(detail.meeting.title).font(.title2.bold())
+                Button {
+                    newTitle = detail.meeting.title
+                    editingTitle = true
+                } label: {
+                    Image(systemName: "pencil").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Renombrar la reunión")
+            }
             HStack(spacing: 12) {
                 Text(detail.meeting.startedAt.formatted(date: .long, time: .shortened))
                 if let ended = detail.meeting.endedAt {
@@ -396,21 +462,106 @@ struct MeetingDetailView: View {
                 let attribution = SpeakerAttributor.attribute(
                     segments: segments, turns: turns, meetingID: meetingID)
 
-                refining = "Guardando…"
-                try await services.store.replaceCast(
-                    for: meetingID,
+                // Draft, never override: the user compares and decides.
+                let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
+                refineDraft = RefineDraft(
                     speakers: attribution.speakers,
-                    segments: attribution.segments)
-                await reload()
-                services.libraryVersion += 1
-
-                regenerate(
-                    language: summary?.draft.language
-                        ?? Locale.current.language.languageCode?.identifier ?? "en")
+                    segments: attribution.segments,
+                    oldSegmentCount: detail.segments.count,
+                    oldSpeakerCount: detail.speakers.count,
+                    oldSpeechSeconds: oldSpeech)
             } catch {
                 refineError = "El refinado falló: \(error.localizedDescription)"
             }
         }
+    }
+
+    private func applyRefineDraft(_ draft: RefineDraft) {
+        refineDraft = nil
+        refining = "Aplicando el transcript refinado…"
+        Task {
+            defer { refining = nil }
+            do {
+                try await services.store.replaceCast(
+                    for: meetingID,
+                    speakers: draft.speakers,
+                    segments: draft.segments)
+                await reload()
+                services.libraryVersion += 1
+                regenerate(
+                    language: summary?.draft.language
+                        ?? Locale.current.language.languageCode?.identifier ?? "en")
+            } catch {
+                refineError = "No se pudo aplicar el refinado: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func refineReviewSheet(_ draft: RefineDraft) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Revisar el transcript refinado", systemImage: "wand.and.stars")
+                .font(.title3.weight(.semibold))
+
+            if draft.looksLossy {
+                Label(
+                    "El refinado cubre mucho menos habla que el transcript actual — probablemente falló. No lo apliques.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .foregroundStyle(.red)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
+                GridRow {
+                    Text("").font(.caption)
+                    Text("Actual").font(.caption.weight(.semibold))
+                    Text("Refinado").font(.caption.weight(.semibold))
+                }
+                GridRow {
+                    Text("Segmentos").foregroundStyle(.secondary)
+                    Text("\(draft.oldSegmentCount)")
+                    Text("\(draft.segments.count)")
+                }
+                GridRow {
+                    Text("Hablantes").foregroundStyle(.secondary)
+                    Text("\(draft.oldSpeakerCount)")
+                    Text("\(draft.speakers.count)")
+                }
+                GridRow {
+                    Text("Habla cubierta").foregroundStyle(.secondary)
+                    Text(minutes(draft.oldSpeechSeconds))
+                    Text(minutes(draft.newSpeechSeconds))
+                }
+            }
+
+            Text("Muestra").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(draft.segments.prefix(8)) { segment in
+                        Text(segment.text)
+                            .font(.callout)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .frame(maxHeight: 180)
+            .padding(8)
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+
+            HStack {
+                Spacer()
+                Button("Descartar", role: .cancel) { refineDraft = nil }
+                Button("Aplicar") { applyRefineDraft(draft) }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(draft.segments.isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 480)
+    }
+
+    private func minutes(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%d:%02d min", total / 60, total % 60)
     }
 
     private func regenerate(language: String) {
@@ -476,11 +627,17 @@ struct MeetingDetailView: View {
         )
     }
 
-    private func rename() async {
-        guard var speaker = renamingSpeaker else { return }
-        speaker.displayName = newName.isEmpty ? nil : newName
-        try? await services.store.save([speaker])
+    private func rename(_ speaker: Speaker, to name: String) async {
+        var renamed = speaker
+        renamed.displayName = name.isEmpty ? nil : name
+        do {
+            try await services.store.save([renamed])
+        } catch {
+            refineError = "No se pudo renombrar: \(error.localizedDescription)"
+            return
+        }
         renamingSpeaker = nil
+        await reload()
         services.libraryVersion += 1
     }
 

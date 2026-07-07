@@ -221,9 +221,18 @@ final class RecordingController {
                 segments: captions, turns: turns, meetingID: meetingID)
 
             phase = .processing("Guardando…")
+            // Title from the user's template (Ajustes → Títulos); {seq} is
+            // the 1-based position among today's meetings.
+            let template =
+                UserDefaults.standard.string(forKey: "titleTemplate")
+                ?? TitleTemplate.defaultTemplate
+            let todayCount =
+                ((try? await services.store.meetings()) ?? [])
+                .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: startedAt) }
+                .count
             let meeting = Meeting(
                 id: meetingID,
-                title: "Reunión \(startedAt.formatted(date: .abbreviated, time: .shortened))",
+                title: TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1),
                 startedAt: startedAt,
                 endedAt: Date(),
                 audioDirectory: audioRelative,
