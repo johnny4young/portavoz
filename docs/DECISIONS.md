@@ -1,0 +1,78 @@
+# Registro de decisiones
+
+Formato ADR ligero: cada entrada es una decisión tomada, su contexto y su porqué. Las decisiones aquí son vinculantes hasta que una entrada posterior las reemplace explícitamente.
+
+## D1 — Reescritura 100% Swift, sin reutilizar el core Rust de Meetily
+
+**Contexto:** Meetily (~44K LOC Rust + ~30K TS sobre Tauri) es la referencia conceptual. Su core es mayormente FFI hacia APIs de Apple (crate `cidre` → Core Audio) y modelos que la comunidad ya portó a CoreML.
+**Decisión:** Swift 6 + SwiftUI nativo; nada de FFI Rust.
+**Porqué:** WhisperKit/FluidAudio/GRDB cubren todo lo que el Rust aportaba, mejor y sin capa intermedia; un solo lenguaje maximiza mantenibilidad; el ANE (CoreML) consume ~10x menos energía que GPU. Costo aceptado: se pierde Windows/Linux — Portavoz es Apple-only por diseño.
+
+## D2 — Nombre: Portavoz
+
+**Decisión:** El proyecto se llama **Portavoz** ("el que lleva tu voz"). Dominio `portavoz.app` comprado; repo `johnny4young/portavoz`; considerar org `portavoz-app` (libre a 2026-07-06) antes del lanzamiento público.
+**Porqué:** Nombra el presente (portavoz de lo dicho en la reunión) y el futuro del roadmap (la app que un día hablará por el usuario). Historia: Timbral fue líder tentativo (concepto: firma tímbrica de cada voz; timbral.app/.dev + GitHub estaban libres). Muertos por colisión: Acta (acta.ai), Minuta (minuta.app), Timbre (editor con transcripción), Tertulia (startup de libros), Dixo (≈Dixa), Batuta (cybersecurity $20.5M), Quorum, Relata, Rimay (≈RemyAI), Sonar (SonarQube), Coro (cybersecurity). Colisión conocida y aceptada de Portavoz: rapero chileno homónimo (no-software).
+
+## D3 — Licencia MIT + higiene GPL
+
+**Decisión:** Todo el código MIT. **Prohibido portar código de proyectos GPL** — en particular MacParakeet (GPL-3), que valida nuestro stack pero es mirar-sin-tocar. Humla (MIT) y FluidAudio/WhisperKit (MIT/Apache) sí permiten reutilización con atribución.
+**Porqué:** máxima adopción, compatible con el modelo PRO y con IAP en App Store; precedente directo: Humla.
+
+## D4 — Persistencia: GRDB (SQLite) + contrato de schema congelado desde v1
+
+**Decisión:** GRDB + FTS5 + sqlite-vec (llega en M1/M5; M0 sin dependencias). NO SwiftData.
+**Contrato inmutable:** (1) PKs UUID en todo, jamás autoincrement; (2) `updated_at` + `deleted_at` (tombstones) en tablas sincronizables; (3) summaries como **snapshots inmutables versionados**; (4) cero rutas absolutas en la DB; (5) API keys jamás en SQLite ni UserDefaults → Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`); (6) campo `visibility` reservado desde v1.
+**Porqué:** validado en producción por MacParakeet y Humla; SwiftData no ofrece FTS ni índice vectorial; el contrato hace el schema "sharing-ready" sin migración dolorosa. Anti-patrón de referencia: Meetily guarda API keys en SQLite plano.
+
+## D5 — Captura dual-canal: nunca mezclar antes de diarizar
+
+**Decisión:** Micrófono y audio del sistema se capturan y persisten como **canales separados** (`microphone.wav` / `system.wav`). Todo lo que entra por el mic es del usuario por definición de hardware ("who-said-what estructural"); la diarización ML solo corre sobre el canal remoto/sala.
+**Porqué:** identifica las intervenciones del usuario con precisión ~100% sin ML. Meetily mezcla los canales y destruye esa información. Validado por Humla (dual-stream con sidecars Swift).
+
+## D6 — Audio del sistema: process taps por app (no BlackHole, no tap global por defecto)
+
+**Decisión:** Core Audio process taps (macOS 14.4+) apuntando a PIDs específicos (Zoom/Meet/Teams). El tap global existe solo como opción explícita.
+**Porqué:** sin drivers virtuales ni instalación extra; capturar solo la app de la reunión evita contaminar el transcript con música/notificaciones y es mejor historia de privacidad. Fija el target mínimo: **macOS 14.4** (iOS 17 para WhisperKit).
+
+## D7 — Multi-modelo: routing por tarea, jamás un modelo global
+
+**Decisión:** Protocolos `TranscriptionEngine`/`SummaryProvider` + registry curado (JSON con id, tarea, sha256 pineado, revisión upstream, RAM mínima, licencia) + router por `ModelTask`.
+**Recomendaciones por defecto:** STT vivo = Parakeet v3 (FluidAudio/ANE) o SpeechAnalyzer (macOS 26+); re-pase final = Whisper large-v3-turbo (WhisperKit); diarización = pyannote community-1 (alternativa Sortformer); resumen local = Foundation Models, escalando a Qwen3 4B (MLX); títulos/embeddings = modelos chicos; traducción = Translation framework del OS. Overrides por idioma (patrón Humla) y por hardware.
+**Regla de scheduler:** lo vivo nunca espera a lo batch (slots separados, patrón MacParakeet).
+**Porqué:** cada tarea tiene un óptimo distinto; la verificación sha256 es obligatoria (un modelo es código que ejecutas). Feature pedida en issues de Meetily: modelos custom de HF — soportada por el registry.
+
+## D8 — Privacidad: local por defecto, BYOK explícito, telemetría opt-in
+
+**Decisión:** resumen/transcripción/diarización locales por defecto; enviar transcript a un LLM cloud requiere opt-in visible y etiquetado, jamás default silencioso. Telemetría **opt-in** (Meetily trae PostHog opt-out). Voiceprints = dato biométrico: solo on-device, cifrado, nunca en sync, borrable con una acción. Disclosure de grabación con presets por jurisdicción (consentimiento de dos partes).
+**Porqué:** es el posicionamiento del producto entero; la crítica pública a Meetily ("mandar a Claude/Groq reintroduce la nube") lo confirma.
+
+## D9 — Modelo de negocio: FREE ilimitado local + PRO de pago único
+
+**Decisión:** FREE nunca limita minutos/reuniones/historial (la computación local del usuario es gratis). PRO = licencia de pago único (~US$69, lanzamiento $49; IAP no-consumable en iOS): sync CloudKit multi-dispositivo, integraciones dev (GitHub/Linear/Jira), chat RAG sobre historial, servidor MCP, clips exportables, Recipes avanzadas, enrollment de voz + nombres automáticos, meeting-health. Upgrades pagos solo en versiones mayores (modelo MacWhisper).
+**Estrategia OSS:** todo el código abierto; PRO como "llave de cortesía" — quien compila desde el código lo tiene todo; quien descarga el binario firmado paga.
+**Porqué:** Fathom probó que el free ilimitado es motor de crecimiento; Otter probó que el free tacaño mata; MacWhisper (€59) y superwhisper ($249 lifetime) probaron el pago único en esta categoría exacta en Mac.
+
+## D10 — Distribución
+
+**Decisión:** macOS: DMG notarizado + Sparkle 2 + Homebrew cask + venta directa (Paddle/Lemon Squeezy). iOS/visionOS: App Store con IAP. CLI público como canal de adquisición dev.
+**Porqué:** patrón completo validado por MacParakeet; venta directa evita el 30% en Mac.
+
+## D11 — Estrategia iOS: grabadora presencial + companion (constraint duro)
+
+**Decisión:** iOS/iPadOS **no puede capturar audio del sistema de otras apps** (sandbox; sin process taps; ninguna API graba llamadas de terceros — la grabación de llamadas de iOS 18.1+ es exclusiva de la app Teléfono). El producto iOS es: (1) grabadora presencial de primera clase (AirPods studio-quality vía `bluetoothHighQualityRecording`, iOS 26); (2) llamadas por altavoz (mic captura ambos lados); (3) ReplayKit broadcast solo como importador experimental (límite duro 50 MB en la extensión → escribir a App Group, procesar en la app); (4) importador universal (share extension); (5) companion de la Mac (CKSyncEngine, Live Activities, control remoto); (6) procesamiento nocturno (BGProcessingTask con `requiresExternalPower`).
+**Porqué:** prometer captura de llamadas en iOS sería mentir; el reposicionamiento cubre casos reales que la Mac no cubre.
+
+## D12 — Compartir: escalera de 3 niveles, schema listo desde v1
+
+**Decisión:** L0 (M5): share sheet + export MD/PDF + **GitHub Gist** con un click. L1 (M7, PRO): CKShare nativo entre Apple IDs. L2 (fase 5): relay self-hostable estilo PocketBase (patrón Humla) con visor web de snapshots de solo lectura. No se construye backend propio antes de L2, pero el schema (D4) ya lo soporta.
+**Porqué:** cada nivel es útil solo; cero servidores hasta que haya demanda probada.
+
+## D13 — Testing: XCTest (no Swift Testing) y build sin Xcode completo
+
+**Decisión:** XCTest para toda la suite; CI con `swift build && swift test` en `macos-latest`.
+**Porqué:** la máquina de desarrollo tenía CommandLineTools seleccionado (sin módulos Testing/XCTest); XCTest + `DEVELOPER_DIR` es el mínimo común. Migrar a Swift Testing es aceptable cuando deje de doler.
+
+## D14 — Concurrencia: Swift 6 estricto
+
+**Decisión:** actors + `AsyncStream` end-to-end; `@unchecked Sendable` solo con comentario que justifique el confinamiento; sin locks manuales.
+**Porqué:** elimina por construcción la clase de bugs que en Meetily viven en 83 bloques `unsafe` y 266 `unwrap()`.
