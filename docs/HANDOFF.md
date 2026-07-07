@@ -12,7 +12,7 @@
 | **M2 — Transcripción** | ✅ **Completo, criterio de aceptación medido en verde** (ver abajo). |
 | **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** Pendientes: DER formal en reunión real de 4 personas, y las "speaker pills" (UI — no existe app target todavía; va con el shell de app hacia M5). |
 | **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
-| **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist completo** (L0 de D12): `MeetingExporter` (markdown canónico + PDF CoreText sin AppKit), `GistPublisher` (opt-in explícito, token en Keychain vía `SecretStore`), botón Exportar en la app y `export`/`secrets` en el CLI. Faltan: empaquetado (DMG + Sparkle + Homebrew) y polish de UI. |
+| **M5 — Public 0.1** | 🚧 StorageKit (D19) + app shell (D20, **grabación in-app verificada por el usuario 2026-07-07**) + **export MD/PDF/Gist** (L0 de D12) + **polish de UI**: ícono real (`assets/AppIcon.icns`, regenerable con `scripts/make-icon.swift`), `MarkdownText` (bloques + inline), **resumen rodante en vivo** durante la grabación (cada ~40 s con FM), regenerar resumen a demanda (es/en, nueva versión del snapshot), Ajustes (⌘,) con token de GitHub en Keychain y "Publicar como Gist" desde la app con confirmación off-device. Falta solo: **empaquetado** (DMG + Sparkle + Homebrew, D10). |
 
 **Sin push al remoto todavía** (`origin = git@github.com:johnny4young/portavoz.git`).
 
@@ -65,7 +65,7 @@
 
 1. **Test de aceptación M1 pendiente** (usuario): 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
 2. **Validación M3 formal** (usuario): reunión real de 4 personas → DER < 15% (los turnos salen de `diarize`; falta harness de DER contra referencia — FluidAudio trae `DiarizationDER.swift` que puede reusarse). "Me" 100% ya es estructural por diseño.
-3. **M5 restante**: (a) empaquetado DMG + Sparkle + Homebrew (D10) — esto probablemente fuerce firma real/notarización (revisar D20); (b) polish de UI (markdown real, resumen rodante durante la reunión, re-generar resumen a demanda, iconografía, entrada de token de GitHub en la app); (c) probar `export --gist` con un token real.
+3. **M5 restante**: (a) empaquetado DMG + Sparkle + Homebrew (D10) — esto probablemente fuerce firma real/notarización (revisar D20; necesita el Developer ID del usuario); (b) probar `export --gist` / "Publicar como Gist" con un token real; (c) probar el resumen rodante en una grabación larga (>1 min hablando).
    Nota TCC (verificado por el usuario): cada rebuild re-firma ad-hoc con identidad distinta → macOS puede volver a pedir los permisos de mic/audio del sistema tras recompilar la app.
 4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4.
 

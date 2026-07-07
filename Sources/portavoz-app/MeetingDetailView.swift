@@ -1,4 +1,6 @@
+import AppKit
 import IntegrationsKit
+import IntelligenceKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -18,6 +20,10 @@ struct MeetingDetailView: View {
     @State private var exportDocument: ExportDocument?
     @State private var exportType: UTType = .plainText
     @State private var exportName = "reunion"
+    @State private var regenerating = false
+    @State private var showGistConfirm = false
+    @State private var gistResult: URL?
+    @State private var gistError: String?
 
     var body: some View {
         Group {
@@ -38,6 +44,17 @@ struct MeetingDetailView: View {
 
                 if let summary {
                     summarySection(summary)
+                } else if regenerating {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Generando resumen…").foregroundStyle(.secondary)
+                    }
+                } else if !detail.segments.isEmpty {
+                    Button {
+                        regenerate(language: Locale.current.language.languageCode?.identifier ?? "en")
+                    } label: {
+                        Label("Generar resumen", systemImage: "sparkles")
+                    }
                 }
 
                 Text("Transcript")
@@ -54,6 +71,8 @@ struct MeetingDetailView: View {
             Menu {
                 Button("Exportar Markdown…") { export(detail, as: .markdown) }
                 Button("Exportar PDF…") { export(detail, as: .pdf) }
+                Divider()
+                Button("Publicar como Gist…") { showGistConfirm = true }
             } label: {
                 Label("Exportar", systemImage: "square.and.arrow.up")
             }
@@ -77,6 +96,39 @@ struct MeetingDetailView: View {
             defaultFilename: exportName
         ) { _ in
             exportDocument = nil
+        }
+        .confirmationDialog(
+            "El transcript completo saldrá de tu Mac hacia GitHub como gist SECRETO (no listado).",
+            isPresented: $showGistConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Publicar gist secreto") { Task { await publishGist(detail) } }
+            Button("Cancelar", role: .cancel) {}
+        }
+        .alert(
+            "Gist publicado",
+            isPresented: Binding(get: { gistResult != nil }, set: { if !$0 { gistResult = nil } })
+        ) {
+            Button("Copiar enlace") {
+                if let url = gistResult {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(url.absoluteString, forType: .string)
+                }
+            }
+            Button("Abrir") {
+                if let url = gistResult { NSWorkspace.shared.open(url) }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gistResult?.absoluteString ?? "")
+        }
+        .alert(
+            "No se pudo publicar",
+            isPresented: Binding(get: { gistError != nil }, set: { if !$0 { gistError = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gistError ?? "")
         }
         .alert("Renombrar hablante", isPresented: renameBinding) {
             TextField("Nombre", text: $newName)
@@ -111,8 +163,21 @@ struct MeetingDetailView: View {
                 Text("v\(summary.version) · \(summary.draft.language)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Spacer()
+                if regenerating {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Menu {
+                        Button("Regenerar en español") { regenerate(language: "es") }
+                        Button("Regenerate in English") { regenerate(language: "en") }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
             }
-            MarkdownLite(text: summary.draft.markdown)
+            MarkdownText(text: summary.draft.markdown)
             ForEach(summary.draft.actionItems) { item in
                 Toggle(isOn: actionBinding(item)) {
                     Text(item.text)
@@ -165,6 +230,60 @@ struct MeetingDetailView: View {
             exportType = .pdf
             exportName = "\(detail.meeting.title).pdf"
             exportDocument = ExportDocument(data: data)
+        }
+    }
+
+    private func regenerate(language: String) {
+        guard let detail, !regenerating else { return }
+        regenerating = true
+        Task {
+            defer { regenerating = false }
+            guard #available(macOS 26.0, *) else {
+                gistError = "Los resúmenes on-device necesitan macOS 26."
+                return
+            }
+            if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+                gistError = reason
+                return
+            }
+            let request = SummaryRequest(
+                meetingID: meetingID,
+                segments: detail.segments,
+                speakers: detail.speakers,
+                recipe: .general,
+                targetLanguage: language
+            )
+            if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
+                try? await services.store.saveSummary(draft)
+                services.libraryVersion += 1
+            }
+        }
+    }
+
+    private func publishGist(_ detail: MeetingDetail) async {
+        guard
+            let token = try? SecretStore.get(service: SecretStore.gitHubTokenService),
+            !token.isEmpty
+        else {
+            gistError = "Configura tu token de GitHub en Ajustes (⌘,) primero."
+            return
+        }
+        let markdown = MeetingExporter.markdown(
+            meeting: detail.meeting,
+            speakers: detail.speakers,
+            segments: detail.segments,
+            summary: summary?.draft,
+            summaryVersion: summary?.version
+        )
+        do {
+            gistResult = try await GistPublisher(token: token).publish(
+                markdown: markdown,
+                filename: "\(detail.meeting.title).md",
+                description: detail.meeting.title,
+                isPublic: false
+            )
+        } catch {
+            gistError = error.localizedDescription
         }
     }
 
@@ -245,27 +364,3 @@ struct SpeakerPill: View {
     }
 }
 
-/// Just enough markdown for our own summaries: `##` headings and `-`
-/// bullets. The real renderer arrives with the polish pass.
-struct MarkdownLite: View {
-    let text: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()),
-                    id: \.offset) { _, line in
-                if line.hasPrefix("## ") {
-                    Text(line.dropFirst(3)).font(.subheadline.bold()).padding(.top, 6)
-                } else if line.hasPrefix("- ") {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("•")
-                        Text(line.dropFirst(2))
-                    }
-                } else if !line.isEmpty {
-                    Text(line)
-                }
-            }
-        }
-        .textSelection(.enabled)
-    }
-}

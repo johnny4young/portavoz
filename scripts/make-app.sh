@@ -21,7 +21,12 @@ BIN="$(swift build --show-bin-path -c "$CONFIG")/portavoz-app"
 
 APP=dist/Portavoz.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+# Icon (regenerate with: swift scripts/make-icon.swift)
+if [[ -f assets/AppIcon.icns ]]; then
+  cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+fi
 
 cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -38,6 +43,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>app.portavoz.mac</string>
     <key>CFBundleExecutable</key>
     <string>portavoz-app</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleShortVersionString</key>
     <string>0.1.0</string>
     <key>CFBundleVersion</key>

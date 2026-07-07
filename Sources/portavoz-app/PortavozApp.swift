@@ -11,6 +11,11 @@ struct PortavozApp: App {
             ContentView()
                 .environment(services)
                 .frame(minWidth: 900, minHeight: 560)
+                .tint(.indigo)
+        }
+        Settings {
+            SettingsView()
+                .tint(.indigo)
         }
     }
 }

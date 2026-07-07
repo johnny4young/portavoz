@@ -25,10 +25,14 @@ final class RecordingController {
     private(set) var phase: Phase = .idle
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()
+    /// Rolling on-device summary, refreshed every ~40 s while recording.
+    private(set) var liveSummary: String?
 
     private var session: RecordingSession?
     private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]
     private var consumers: [Task<Void, Never>] = []
+    private var rollingTask: Task<Void, Never>?
+    private var summarizedCount = 0
     private var meetingID = MeetingID()
     private var audioRelative = ""
 
@@ -87,11 +91,57 @@ final class RecordingController {
         }
         self.session = session
         startedAt = Date()
+        liveSummary = nil
+        summarizedCount = 0
         phase = .recording
+
+        // Rolling summary (M4's "incremental" made visible): every ~40 s,
+        // re-summarize the captions so far. Only when Apple Intelligence
+        // is around; the recording never depends on it.
+        if #available(macOS 26.0, *),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        {
+            rollingTask = Task { @MainActor [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(40))
+                    guard let self, self.phase == .recording else { return }
+                    await self.refreshLiveSummary()
+                }
+            }
+        }
+    }
+
+    @available(macOS 26.0, *)
+    private func refreshLiveSummary() async {
+        // Skip silence stretches: only re-summarize when there's new text.
+        guard captions.count >= 6, captions.count > summarizedCount else { return }
+        summarizedCount = captions.count
+
+        // Attribution runs at stop; live labels are structural: channel.
+        let me = Speaker(meetingID: meetingID, label: "Yo", isMe: true)
+        let them = Speaker(meetingID: meetingID, label: "Ellos")
+        let labeled = captions.map { segment -> TranscriptSegment in
+            var copy = segment
+            copy.speakerID = segment.channel == .microphone ? me.id : them.id
+            return copy
+        }
+        let request = SummaryRequest(
+            meetingID: meetingID,
+            segments: labeled,
+            speakers: [me, them],
+            recipe: .general,
+            targetLanguage: Locale.current.language.languageCode?.identifier ?? "en"
+        )
+        if let draft = try? await FoundationModelSummaryProvider().summarize(request),
+            phase == .recording
+        {
+            liveSummary = draft.markdown
+        }
     }
 
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        rollingTask?.cancel()
         phase = .processing("Cerrando la grabación…")
 
         let capture = await session.stop()

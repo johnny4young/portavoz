@@ -20,7 +20,13 @@ struct RecordingView: View {
 
             case .recording:
                 header
-                captionsList
+                HStack(alignment: .top, spacing: 12) {
+                    captionsList
+                    if let live = controller.liveSummary {
+                        liveSummaryPanel(live)
+                    }
+                }
+                .padding(.horizontal, 20)
                 Button {
                     Task { await controller.stop(services: services) }
                 } label: {
@@ -67,14 +73,36 @@ struct RecordingView: View {
         VStack(spacing: 4) {
             TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
                 let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
-                Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
-                    .font(.system(size: 40, weight: .medium).monospacedDigit())
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 12, height: 12)
+                        .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
+                        .animation(.easeInOut(duration: 0.6), value: elapsed)
+                    Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
+                        .font(.system(size: 40, weight: .medium).monospacedDigit())
+                }
             }
             Label("Grabando mic + audio del sistema — todo queda en tu Mac", systemImage: "waveform")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.top, 24)
+    }
+
+    private func liveSummaryPanel(_ markdown: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Resumen en vivo", systemImage: "sparkles")
+                    .font(.headline)
+                MarkdownText(text: markdown)
+                    .font(.callout)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(width: 300)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var captionsList: some View {
@@ -98,7 +126,6 @@ struct RecordingView: View {
                 .padding(16)
             }
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-            .padding(.horizontal, 20)
             .onChange(of: controller.captions.count) { _, _ in
                 if let last = controller.captions.last {
                     proxy.scrollTo(last.id, anchor: .bottom)
