@@ -420,11 +420,8 @@ struct MeetingDetailView: View {
                     return
                 }
                 let base = RecordingsLocation.shared.resolve(relative)
-                let system = base.appendingPathComponent("system.wav")
-                let microphone = base.appendingPathComponent("microphone.wav")
-                let systemURL = FileManager.default.fileExists(atPath: system.path) ? system : nil
-                let microphoneURL =
-                    FileManager.default.fileExists(atPath: microphone.path) ? microphone : nil
+                let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base)
+                let microphoneURL = MeetingAudioLayout.channelFile(named: "microphone", in: base)
                 guard systemURL != nil || microphoneURL != nil else {
                     refineError = "No se encontró el audio de la reunión."
                     return

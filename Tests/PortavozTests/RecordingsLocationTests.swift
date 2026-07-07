@@ -117,3 +117,23 @@ final class RecordingsLocationTests: XCTestCase {
         XCTAssertEqual(try location.migrateAudio(from: defaultRoot, to: custom), 0)
     }
 }
+
+
+final class MeetingAudioLayoutTests: XCTestCase {
+    func testPrefersCAFAndFallsBackToLegacyWAV() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        XCTAssertNil(MeetingAudioLayout.channelFile(named: "system", in: directory))
+
+        try Data("legacy".utf8).write(to: directory.appendingPathComponent("system.wav"))
+        XCTAssertEqual(
+            MeetingAudioLayout.channelFile(named: "system", in: directory)?.pathExtension, "wav")
+
+        try Data("current".utf8).write(to: directory.appendingPathComponent("system.caf"))
+        XCTAssertEqual(
+            MeetingAudioLayout.channelFile(named: "system", in: directory)?.pathExtension, "caf")
+    }
+}

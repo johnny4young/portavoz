@@ -4,18 +4,18 @@ import XCTest
 @testable import AudioCaptureKit
 @testable import PortavozCore
 
-final class WAVWriterTests: XCTestCase {
-    func testWritesMono16BitWAVReadableByAVAudioFile() throws {
+final class CaptureFileWriterTests: XCTestCase {
+    func testWritesMono16BitCAFReadableByAVAudioFile() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("test.wav")
+        let url = directory.appendingPathComponent("test.caf")
 
         var framesWritten: AVAudioFramePosition = 0
         var secondsWritten: TimeInterval = 0
         try autoreleasepool {
-            let writer = try WAVWriter(url: url, sampleRate: 48_000)
+            let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
             try writer.append([Float](repeating: 0.25, count: 4_800))
             try writer.append([Float](repeating: -0.25, count: 4_800))
             framesWritten = writer.framesWritten
@@ -36,7 +36,7 @@ final class WAVWriterTests: XCTestCase {
             .appendingPathComponent("\(UUID().uuidString).wav")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let writer = try WAVWriter(url: url, sampleRate: 48_000)
+        let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
         try writer.append([])
         XCTAssertEqual(writer.framesWritten, 0)
     }

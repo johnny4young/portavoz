@@ -1,9 +1,10 @@
 import Foundation
 import PortavozCore
 
-/// Coordinates capture sources and per-channel WAV writers for one meeting
-/// recording. Channels stay separate on disk (`microphone.wav`,
-/// `system.wav`) — the foundation of structural who-said-what.
+/// Coordinates capture sources and per-channel writers for one meeting
+/// recording. Channels stay separate on disk (`microphone.caf`,
+/// `system.caf` — CAF for crash-safety) — the foundation of structural
+/// who-said-what.
 public actor RecordingSession {
     public struct Summary: Sendable {
         public let files: [AudioChannel: URL]
@@ -41,7 +42,7 @@ public actor RecordingSession {
 
     private let outputDirectory: URL
     private var sources: [AudioChannel: any AudioCaptureSource] = [:]
-    private var writers: [AudioChannel: WAVWriter] = [:]
+    private var writers: [AudioChannel: CaptureFileWriter] = [:]
     private var consumers: [AudioChannel: Task<Void, Never>] = [:]
     private var peaks: [AudioChannel: Float] = [:]
     private var errors: [AudioChannel: String] = [:]
@@ -67,17 +68,17 @@ public actor RecordingSession {
 
         for source in newSources {
             let channel = source.channel
-            let url = outputDirectory.appendingPathComponent("\(channel.rawValue).wav")
+            let url = outputDirectory.appendingPathComponent("\(channel.rawValue).caf")
             let stream = try await source.start()
             sources[channel] = source
 
             consumers[channel] = Task { [weak self] in
-                var writer: WAVWriter?
+                var writer: CaptureFileWriter?
                 var peak: Float = 0
                 do {
                     for try await chunk in stream {
                         if writer == nil {
-                            let created = try WAVWriter(url: url, sampleRate: chunk.sampleRate)
+                            let created = try CaptureFileWriter(url: url, sampleRate: chunk.sampleRate)
                             writer = created
                             await self?.register(writer: created, for: channel)
                         }
@@ -126,7 +127,7 @@ public actor RecordingSession {
         return summary
     }
 
-    private func register(writer: WAVWriter, for channel: AudioChannel) {
+    private func register(writer: CaptureFileWriter, for channel: AudioChannel) {
         writers[channel] = writer
     }
 

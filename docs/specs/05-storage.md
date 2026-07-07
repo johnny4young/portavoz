@@ -36,6 +36,10 @@ Tablas singulares camelCase, 1:1 con records Codable:
 - `currentRoot()` cae al default si el marker apunta a una carpeta desaparecida (disco desconectado). `resolve(relative)` prueba raíz actual → default (una migración interrumpida sigue leyéndose completa).
 - `migrateAudio(from:to:progress:)` resumable: un directorio-reunión (UUID inmutable) a la vez; cross-volume copia a `.partial-<n>` y publica con rename atómico; destino existente = ya migrado (salta y limpia fuente). 7 tests.
 
+## Layout de audio — `MeetingAudioLayout`
+
+`channelFile(named:in:)` localiza el audio por canal dentro de `Audio/<uuid>/`: prefiere `.caf` (captura actual, crash-safe) y cae a `.wav` (reuniones pre-jul-2026). Todos los lectores (refine CLI y app) pasan por aquí.
+
 ## Secretos — `PortavozCore.SecretStore`
 
 Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: token GitHub, token Linear, llave del voiceprint. Nunca en SQLite/UserDefaults.

@@ -2,11 +2,15 @@ import AVFAudio
 import Foundation
 import PortavozCore
 
-/// Writes one audio channel to a 16-bit PCM WAV file, converting from the
-/// pipeline's Float32 mono chunks. Native AVAudioFile — no external encoder.
+/// Writes one audio channel as 16-bit PCM, converting from the pipeline's
+/// Float32 mono chunks. Native AVAudioFile — no external encoder. The
+/// container comes from the URL extension: capture uses **CAF**, whose
+/// data chunk is sized "to EOF" while being written — a crash mid-meeting
+/// leaves a fully readable file (a killed WAV reads as 0 bytes of audio;
+/// verified empirically with kill -9).
 ///
 /// `@unchecked Sendable`: writes are serialized by the owning channel task.
-public final class WAVWriter: @unchecked Sendable {
+public final class CaptureFileWriter: @unchecked Sendable {
     public let url: URL
     private let file: AVAudioFile
     private let bufferFormat: AVAudioFormat

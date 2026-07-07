@@ -8,8 +8,8 @@ Dos streams SEPARADOS, jamás mezclados antes de diarizar:
 
 | Canal | Fuente | Significado | Archivo |
 |---|---|---|---|
-| `microphone` | `MicrophoneSource` (AVAudioEngine) | La voz del usuario — "Me" por verdad de hardware | `Audio/<meeting-uuid>/microphone.wav` |
-| `system` | `ProcessTapSource` (Core Audio process taps, macOS 14.4+) | Los demás participantes (audio de otras apps) | `Audio/<meeting-uuid>/system.wav` |
+| `microphone` | `MicrophoneSource` (AVAudioEngine) | La voz del usuario — "Me" por verdad de hardware | `Audio/<meeting-uuid>/microphone.caf` |
+| `system` | `ProcessTapSource` (Core Audio process taps, macOS 14.4+) | Los demás participantes (audio de otras apps) | `Audio/<meeting-uuid>/system.caf` |
 
 `AudioChunk` (PortavozCore): `channel`, `samples: [Float]` mono, `sampleRate`, `timestamp` (segundos desde el primer callback, vía `HostClock` sobre host time).
 
@@ -29,9 +29,9 @@ Dos streams SEPARADOS, jamás mezclados antes de diarizar:
 
 ## RecordingSession — `Sources/AudioCaptureKit/RecordingSession.swift`
 
-Actor que coordina fuentes y writers WAV por canal (creados lazy con el primer chunk, al rate real de la fuente). `onChunk` es la costura donde cuelga la transcripción viva sin que el writer espere. Un canal caído termina su archivo y NO mata la sesión (errores por canal en el Summary). `Summary`: files, secondsWritten, peaks, errors, `driftSeconds`.
+Actor que coordina fuentes y writers por canal (creados lazy con el primer chunk, al rate real de la fuente). `onChunk` es la costura donde cuelga la transcripción viva sin que el writer espere. Un canal caído termina su archivo y NO mata la sesión (errores por canal en el Summary). `Summary`: files, secondsWritten, peaks, errors, `driftSeconds`.
 
-`WAVWriter`: PCM 16-bit mono vía AVAudioFile desde Float32.
+`CaptureFileWriter`: PCM 16-bit mono vía AVAudioFile desde Float32, contenedor **CAF** — su data chunk queda dimensionado "hasta EOF" mientras se escribe, así que un crash deja el archivo legible. **Verificado empíricamente (jul 2026)**: `kill -9` a los 6 s de grabación → WAV leía 0.00 s / 0 bytes; CAF conserva 5.23 s. Lectores de reuniones viejas (.wav) siguen funcionando vía `MeetingAudioLayout.channelFile` (prefiere .caf, cae a .wav). `verify_drift.py` convierte CAF con afconvert.
 
 ## Sincronía verificada (M1)
 
@@ -45,9 +45,9 @@ Actor que coordina fuentes y writers WAV por canal (creados lazy con el primer c
 ## Límites conocidos y riesgos
 
 1. **⚠️ Taps + VPIO en el mismo proceso**: MacParakeet los descartó por "no coexistir confiablemente". Nuestra evidencia (1 reunión real con ambos) es insuficiente — vigilar glitches/dropouts del canal system con AEC activa. Plan B (D27): cancelación de eco offline post-grabación.
-2. **Crash-safety del WAV no verificada**: un `kill -9` durante la grabación puede dejar el header RIFF incompleto. Plan (M11): contenedor CAF o M4A fragmentado (patrón MacParakeet: fragments de 1 s).
+2. ~~Crash-safety~~ — **RESUELTO**: contenedor CAF verificado contra kill -9 (arriba).
 3. **Sin canal "room"** todavía (iPhone como mic de sala vía Continuity — planeado, PRODUCT).
-4. WAV = ~126 MB por canal por 22 min; transcode AAC post-refine planeado (M11).
+4. PCM = ~126 MB por canal por 22 min (CAF, mismo bitrate que WAV); transcode AAC post-refine planeado (M11).
 
 ## Planeado (no implementado)
 

@@ -31,7 +31,9 @@ stretch): offset measured within 1 ms, drift within 3 ms.
 """
 
 import struct
+import subprocess
 import sys
+import tempfile
 import wave
 
 COARSE_HOP_MS = 5
@@ -44,6 +46,14 @@ FINE_SPAN_MS = 15
 
 
 def read_mono_wav(path):
+    # Capture writes CAF since jul 2026 (crash-safe container); the stdlib
+    # wave module only reads WAV, so convert with the macOS-bundled afconvert.
+    if path.endswith(".caf"):
+        converted = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+        subprocess.run(
+            ["afconvert", "-f", "WAVE", "-d", "LEI16", path, converted],
+            check=True, capture_output=True)
+        path = converted
     with wave.open(path) as w:
         rate = w.getframerate()
         channels = w.getnchannels()

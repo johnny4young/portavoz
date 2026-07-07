@@ -69,13 +69,11 @@ enum RefineCommand {
                 systemFile = URL(fileURLWithPath: file)
             } else if let relative = detail.meeting.audioDirectory {
                 // Respects the recordings folder chosen in the app (with
-                // fallback to the default root for unmigrated meetings).
+                // fallback to the default root for unmigrated meetings) and
+                // both containers (CAF hoy, WAV legado).
                 let base = RecordingsLocation.shared.resolve(relative)
-                let system = base.appendingPathComponent("system.wav")
-                let microphone = base.appendingPathComponent("microphone.wav")
-                systemFile = FileManager.default.fileExists(atPath: system.path) ? system : nil
-                microphoneFile =
-                    FileManager.default.fileExists(atPath: microphone.path) ? microphone : nil
+                systemFile = MeetingAudioLayout.channelFile(named: "system", in: base)
+                microphoneFile = MeetingAudioLayout.channelFile(named: "microphone", in: base)
             }
             guard systemFile != nil || microphoneFile != nil else {
                 print("error: la reunión no tiene audio guardado — usa --file <wav>")
