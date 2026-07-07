@@ -32,6 +32,7 @@ final class RecordingController {
     /// BCP-47 target for live translation; nil = off.
     var translationTarget: String?
 
+    private let coalescer = CaptionCoalescer()
     private var session: RecordingSession?
     private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]
     private var consumers: [Task<Void, Never>] = []
@@ -75,7 +76,8 @@ final class RecordingController {
             consumers.append(Task { @MainActor [weak self] in
                 do {
                     for try await segment in segments {
-                        self?.captions.append(segment)
+                        guard let self else { break }
+                        self.coalescer.apply(segment, to: &self.captions)
                     }
                 } catch {
                     // A dead channel ends its captions; the recording and

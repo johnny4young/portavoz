@@ -152,7 +152,8 @@ struct RecordingView: View {
                 .padding(16)
             }
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-            .onChange(of: controller.captions.count) { _, _ in
+            // endTime moves both when a row grows (coalescer) and on append.
+            .onChange(of: controller.captions.last?.endTime) { _, _ in
                 if let last = controller.captions.last {
                     proxy.scrollTo(last.id, anchor: .bottom)
                 }

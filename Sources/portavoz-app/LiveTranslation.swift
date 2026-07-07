@@ -43,8 +43,14 @@ struct LiveTranslationModifier: ViewModifier {
     ) async {
         while !Task.isCancelled {
             let pending: [(id: UUID, text: String)] = await MainActor.run {
-                controller.captions.suffix(60)
-                    .filter { controller.translations[$0.id] == nil && $0.text.count >= 4 }
+                // The newest row is still growing (the coalescer only ever
+                // extends the last one) — translate rows once they're closed.
+                let openID = controller.captions.last?.id
+                return controller.captions.suffix(60)
+                    .filter {
+                        $0.id != openID && controller.translations[$0.id] == nil
+                            && $0.text.count >= 4
+                    }
                     .map { ($0.id, $0.text) }
             }
             if !pending.isEmpty {
