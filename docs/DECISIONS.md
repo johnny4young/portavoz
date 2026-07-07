@@ -76,3 +76,17 @@ Formato ADR ligero: cada entrada es una decisión tomada, su contexto y su porqu
 
 **Decisión:** actors + `AsyncStream` end-to-end; `@unchecked Sendable` solo con comentario que justifique el confinamiento; sin locks manuales.
 **Porqué:** elimina por construcción la clase de bugs que en Meetily viven en 83 bloques `unsafe` y 266 `unwrap()`.
+
+## D15 — STT M2: FluidAudio pineado por minor + Parakeet v3 pineado por sha256 multi-artefacto
+
+**Contexto:** M2 necesita STT vivo y batch on-device (D7). Los modelos CoreML se distribuyen como bundles `.mlmodelc` (directorios de N archivos) en repos de Hugging Face — un solo `sha256` por modelo no alcanza.
+**Decisión:** (1) FluidAudio como dependencia SPM con `.upToNextMinor(from: "0.15.4")` — renombra API pública entre minors. (2) El registry (`ModelDescriptor`) lista **cada archivo** como `ModelArtifact {path, sha256, sizeBytes}` con `resolveBase` fijado a un commit exacto (`…/resolve/<sha>`); `ModelStore` verifica tamaño + sha256 de cada descarga antes del move atómico, y `verify()` re-hashea todo antes de cargar. (3) Solo se descarga el subset que el loader v3 int8 usa (Preprocessor/Encoder/Decoder/JointDecisionv3 + vocab = 483 MB, no los 3 GB del repo). Los sha256 salen del tree API de HF (LFS trae sha256; los archivos chicos se hashean a mano al pinear).
+**Regla crítica descubierta:** `folderName` del descriptor DEBE ser el nombre que FluidAudio resuelve (repo sin `-coreml`, p. ej. `parakeet-tdt-0.6b-v3`); con cualquier otro nombre FluidAudio **re-descarga el repo sin verificación** a un directorio hermano, bypasseando el registry. Protegido por test.
+**Porqué:** cumple la regla "modelos = código" (verificación obligatoria) sin renunciar al loader de FluidAudio; el pin por commit hace la descarga irreproducible imposible. Licencias: FluidAudio Apache-2.0, modelo CC-BY-4.0 — compatibles con MIT + atribución (D3).
+
+## D16 — Captions vivas: sliding window corta sobre TDT v3 + filtro de deltas propio
+
+**Contexto:** el config `.streaming` de FluidAudio emite un update por chunk de 11 s (su `hypothesisChunkSeconds` no se usa en el pipeline 0.15.4) — inservible para el criterio M2 de < 2 s. Las alternativas de streaming real (Parakeet EOU 120M, Nemotron) usan modelos más chicos/otros repos y duplicarían el trabajo de registry para peor calidad.
+**Decisión:** quedarse en TDT v3 con `SlidingWindowAsrConfig` custom: left 11 s / chunk 1.0 s / right 0.4 s (= 12.4 s, cabe en los 15 s fijos del modelo). El left context largo sostiene la calidad; la latencia estructural queda en chunk + right + inferencia. Como el dedup upstream falla con chunks pequeños (cada update re-emite el left context re-decodificado), `ParakeetSegmentMapper` corta el overlap del lado nuestro: los `tokenTimings` llegan en tiempo absoluto del stream → se conservan solo los tokens con `startTime` posterior al último borde emitido y el texto del delta se reconstruye de esos tokens.
+**Medido (M4 Max, con batch a ~100x en paralelo):** transcript lag p50 0.24 s / p95 0.53 s. Costo aceptado: los deltas pueden cortar subwords en las costuras ("ally, on your device") — el transcript de calidad sale del re-pase final (D7), las captions priorizan frescura.
+**Porqué:** un solo modelo para vivo+batch en M2 (menos RAM, un registry), cumpliendo el criterio con margen 4x.

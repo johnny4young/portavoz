@@ -41,6 +41,25 @@ ProcessTapSource (tap por PID / global, 14.4+)    ──┤──► AsyncThrowi
 - Drift = |segundos escritos mic − system|; criterio M1: < 50 ms en 30 min.
 - Sin FFmpeg: `AVAudioFile` escribe WAV directo desde Float32.
 
+## Pipeline de transcripción (M2)
+
+```
+RecordingSession.start(sources:onChunk:)  ── tap por chunk ──► AsyncStream<AudioChunk> por canal
+                                                                       │
+                     TranscriptionScheduler (D7: slots)                ▼
+   live: inmediato ────────────────────────────────► ParakeetEngine.transcribe (SlidingWindowAsrManager,
+   batch: FIFO serial, Task.detached(.utility) ───► ParakeetEngine.transcribeFile (AsrManager long-form)
+                                                                       │
+                                          ParakeetSegmentMapper (deltas por timings absolutos)
+                                                                       ▼
+                                                     AsyncThrowingStream<TranscriptSegment>
+```
+
+- Modelos: `ModelCatalog` (artefactos pineados por sha256 + commit) → `ModelStore` (descarga verificada, `~/Library/Application Support/Portavoz/Models`) → `AsrModels.load` — nunca se carga nada sin verificar (D15).
+- Un solo `AsrModels` compartido entre jobs (MLModel es thread-safe); cada job crea su manager con estado de decoder propio.
+- Ventana viva custom left 11 / chunk 1.0 / right 0.4 y filtro de overlap propio (D16). Medido: transcript lag p95 0.53 s con batch a ~100x en paralelo.
+- Harness: `portavoz-cli bench-m2` reproduce el criterio de aceptación completo.
+
 ## Reglas de ingeniería (innegociables)
 
 1. **Privacidad:** ninguna feature envía audio/transcripts fuera del dispositivo sin opt-in explícito y visible. Telemetría opt-in. API keys en Keychain — nunca SQLite ni UserDefaults (anti-patrón heredado de Meetily, que las guarda en SQLite plano).

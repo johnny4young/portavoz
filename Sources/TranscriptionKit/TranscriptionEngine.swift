@@ -49,9 +49,13 @@ public struct TranscriptionHints: Codable, Sendable {
     /// Domain vocabulary injected as an initial prompt so "Kubernetes"
     /// never becomes "communities": service names, teammate names, acronyms.
     public var vocabulary: [String]
+    /// Meeting the emitted segments belong to; a fresh ID is generated per
+    /// job when nil (dev CLI, ad-hoc file transcription).
+    public var meetingID: MeetingID?
 
-    public init(language: String? = nil, vocabulary: [String] = []) {
+    public init(language: String? = nil, vocabulary: [String] = [], meetingID: MeetingID? = nil) {
         self.language = language
         self.vocabulary = vocabulary
+        self.meetingID = meetingID
     }
 }

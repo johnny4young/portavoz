@@ -20,12 +20,23 @@ let package = Package(
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
     ],
+    dependencies: [
+        // Parakeet TDT ASR on CoreML/ANE (Apache-2.0). Pinned to a minor: the
+        // public API renames types across minors (0.12 → 0.15 did).
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", .upToNextMinor(from: "0.15.4")),
+    ],
     targets: [
         // Shared domain primitives every Kit builds on.
         .target(name: "PortavozCore"),
 
         .target(name: "AudioCaptureKit", dependencies: ["PortavozCore"]),
-        .target(name: "TranscriptionKit", dependencies: ["PortavozCore"]),
+        .target(
+            name: "TranscriptionKit",
+            dependencies: [
+                "PortavozCore",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
+        ),
         .target(name: "DiarizationKit", dependencies: ["PortavozCore"]),
         .target(name: "IntelligenceKit", dependencies: ["PortavozCore"]),
         .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
@@ -35,7 +46,7 @@ let package = Package(
 
         .executableTarget(
             name: "portavoz-cli",
-            dependencies: ["AudioCaptureKit", "PortavozCore"]
+            dependencies: ["AudioCaptureKit", "PortavozCore", "TranscriptionKit"]
         ),
 
         .testTarget(

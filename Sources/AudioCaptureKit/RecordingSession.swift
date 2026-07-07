@@ -54,7 +54,14 @@ public actor RecordingSession {
     /// Starts every source and streams its chunks into its own WAV file.
     /// Writers are created lazily on the first chunk, at the source's real
     /// sample rate.
-    public func start(sources newSources: [any AudioCaptureSource]) async throws {
+    ///
+    /// `onChunk` observes every chunk *after* it is persisted — the seam
+    /// where live transcription hangs off the recording pipeline without
+    /// the writer ever waiting on it.
+    public func start(
+        sources newSources: [any AudioCaptureSource],
+        onChunk: (@Sendable (AudioChunk) -> Void)? = nil
+    ) async throws {
         guard !isRecording else { return }
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
@@ -79,6 +86,7 @@ public actor RecordingSession {
                             if magnitude > peak { peak = magnitude }
                         }
                         try writer?.append(chunk.samples)
+                        onChunk?(chunk)
                     }
                     await self?.report(peak: peak, error: nil, for: channel)
                 } catch {
