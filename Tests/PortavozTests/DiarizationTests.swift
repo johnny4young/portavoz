@@ -159,6 +159,51 @@ final class SpeakerAttributorTests: XCTestCase {
     }
 }
 
+// MARK: - DER evaluation
+
+final class DiarizationEvaluationTests: XCTestCase {
+    func testParsesRTTMSpeakerRecords() {
+        let rttm = """
+            SPEAKER sample 1 6.690 0.430 <NA> <NA> speaker90 <NA> <NA>
+            SPEAKER sample 1 7.550 0.800 <NA> <NA> speaker91 <NA> <NA>
+            ;; comment line
+            SPKR-INFO sample 1 <NA> <NA> <NA> unknown speaker90 <NA>
+            """
+        let turns = DiarizationEvaluation.parseRTTM(rttm)
+        XCTAssertEqual(turns.count, 2)
+        XCTAssertEqual(turns[0].voiceLabel, "speaker90")
+        XCTAssertEqual(turns[0].startTime, 6.69, accuracy: 0.001)
+        XCTAssertEqual(turns[0].endTime, 7.12, accuracy: 0.001)
+        XCTAssertEqual(turns[1].voiceLabel, "speaker91")
+    }
+
+    func testPerfectHypothesisScoresZeroWithLabelMapping() {
+        let reference = [
+            SpeakerTurn(voiceLabel: "alice", startTime: 0, endTime: 5),
+            SpeakerTurn(voiceLabel: "bob", startTime: 5, endTime: 10),
+        ]
+        // Same timeline, different label names: mapping must absorb it.
+        let hypothesis = [
+            SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 5),
+            SpeakerTurn(voiceLabel: "S2", startTime: 5, endTime: 10),
+        ]
+        let score = DiarizationEvaluation.score(
+            reference: reference, hypothesis: hypothesis, collar: 0)
+        XCTAssertEqual(score.der, 0, accuracy: 0.01)
+        XCTAssertEqual(score.mapping["S1"], "alice")
+        XCTAssertEqual(score.mapping["S2"], "bob")
+    }
+
+    func testMissedSpeechRaisesDER() {
+        let reference = [SpeakerTurn(voiceLabel: "alice", startTime: 0, endTime: 10)]
+        let hypothesis = [SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 5)]
+        let score = DiarizationEvaluation.score(
+            reference: reference, hypothesis: hypothesis, collar: 0)
+        XCTAssertEqual(score.miss, 0.5, accuracy: 0.02)
+        XCTAssertGreaterThan(score.der, 0.4)
+    }
+}
+
 // MARK: - Real-model integration (gated)
 
 final class DiarizationIntegrationTests: XCTestCase {

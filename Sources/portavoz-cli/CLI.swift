@@ -36,6 +36,8 @@ struct PortavozCLI {
             SecretsCommand.run(arguments)
         case "voice":
             await VoiceCommand.run(arguments)
+        case "der":
+            await DerCommand.run(arguments)
         case "models":
             await ModelsCommand.run(arguments)
         case "bench-m2":
