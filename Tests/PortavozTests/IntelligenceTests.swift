@@ -228,6 +228,51 @@ final class FoundationModelIntegrationTests: XCTestCase {
             "the item text should actually be translated: \(draft.actionItems.first?.text ?? "")")
     }
 
+    /// D26 "te preguntaron": a caption that names the owner produces a
+    /// directed card even when it's pure logistics — and the same caption
+    /// without a known owner keeps getting dropped by the logistics filter.
+    func testDirectedQuestionsPingAndLogisticsStillDrops() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
+            "set PORTAVOZ_MODEL_TESTS=1 to run")
+        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw XCTSkip("Apple Intelligence unavailable: \(reason)")
+        }
+
+        let copilot = LiveCopilot()
+        let meeting = MeetingID()
+        let passages = [
+            RAGPassage(
+                meetingID: meeting, meetingTitle: "Esta reunión", timestamp: 5,
+                text: "Ellos: mañana a las 10 es la demo con el cliente"),
+            RAGPassage(
+                meetingID: meeting, meetingTitle: "Esta reunión", timestamp: 9,
+                text: "Yo: el build de la demo quedó listo hoy"),
+        ]
+        let ask = "Johnny, ¿nos acompañas mañana a la demo con el cliente?"
+
+        // Named → card, marked directed, whatever branch answered it.
+        let ping = try await copilot.process(
+            candidate: ask, recentTranscript: passages,
+            ownerName: "Johnny Young", askedAt: 12)
+        XCTAssertNotNil(ping, "a question aimed at the owner by name must never be dropped")
+        XCTAssertEqual(ping?.directed, true)
+
+        // No owner name → the logistics filter keeps doing its job.
+        let dropped = try await copilot.process(
+            candidate: ask, recentTranscript: passages, askedAt: 12)
+        XCTAssertNil(dropped, "logistics without a name match must stay silent: \(String(describing: dropped))")
+
+        // Directed knowledge still gets a real answer.
+        let knowledge = try await copilot.process(
+            candidate: "Johnny, ¿cuál es la diferencia entre var y let en Swift?",
+            recentTranscript: passages, ownerName: "Johnny Young", askedAt: 20)
+        XCTAssertEqual(knowledge?.directed, true)
+        XCTAssertEqual(knowledge?.kind, .knowledge)
+        XCTAssertFalse(knowledge?.answer.isEmpty ?? true)
+    }
+
     /// A transcript bigger than one model window must go through the
     /// map-reduce (notes) path and still come out structured.
     func testLongTranscriptTakesTheIncrementalPath() async throws {
@@ -660,6 +705,36 @@ final class QuestionHeuristicTests: XCTestCase {
         XCTAssertFalse(QuestionHeuristic.looksLikeQuestion("we deployed the change yesterday"))
         XCTAssertFalse(QuestionHeuristic.looksLikeQuestion("gracias a todos, nos vemos mañana"))
         XCTAssertFalse(QuestionHeuristic.looksLikeQuestion(""))
+    }
+
+    // MARK: "Te preguntaron" (D26) — mention gate
+
+    func testMentionsMatchesWholeWordsAcrossCaseAndAccents() {
+        XCTAssertTrue(QuestionHeuristic.mentions("Johnny Young", in: "johnny, ¿qué opinas del rollout?"))
+        XCTAssertTrue(QuestionHeuristic.mentions("José", in: "y tu, Jose, cuentanos del deploy"))
+        XCTAssertTrue(QuestionHeuristic.mentions("Ana María López", in: "eso lo ve ana maría con el equipo"))
+        XCTAssertTrue(QuestionHeuristic.mentions("Johnny Young", in: "Johnny: can you share the numbers"))
+    }
+
+    func testMentionsRejectsSubstringsAndNoise() {
+        XCTAssertFalse(
+            QuestionHeuristic.mentions("John Smith", in: "Johnny will take that one"),
+            "\"John\" must not fire inside \"Johnny\"")
+        XCTAssertFalse(QuestionHeuristic.mentions("Johnny Young", in: "the young engineers agreed"))
+        XCTAssertFalse(QuestionHeuristic.mentions("", in: "anything at all"))
+        XCTAssertFalse(QuestionHeuristic.mentions("Ana", in: ""))
+    }
+
+    @available(macOS 26.0, *)
+    func testClassifierInstructionsCarryTheOwnerNameOnlyWhenKnown() throws {
+        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
+        let named = LiveCopilot.classifierInstructions(ownerName: "Johnny")
+        XCTAssertTrue(named.contains("\"Johnny\""))
+        XCTAssertTrue(named.contains("EXCEPTION"))
+
+        let anonymous = LiveCopilot.classifierInstructions(ownerName: nil)
+        XCTAssertFalse(anonymous.contains("EXCEPTION"))
+        XCTAssertTrue(anonymous.contains("NEVER qualify"))
     }
 }
 

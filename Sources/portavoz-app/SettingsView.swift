@@ -38,6 +38,8 @@ struct SettingsView: View {
     @State private var hasStoredBYOKKey = false
     @State private var byokMessage: String?
 
+    @AppStorage("copilotUserName") private var copilotUserName = ""
+
     var body: some View {
         Form {
             audioSection
@@ -45,6 +47,7 @@ struct SettingsView: View {
             titleSection
             vocabularySection
             voiceSection
+            copilotSection
             byokSection
             gitHubSection
         }
@@ -288,6 +291,20 @@ struct SettingsView: View {
             voiceMessage = "Listo: tus intervenciones se etiquetarán como \"Me\" en cualquier canal."
         } catch {
             voiceMessage = "No se pudo enrolar: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Copiloto (D26)
+
+    private var copilotSection: some View {
+        Section("Copiloto") {
+            TextField("Tu nombre en las reuniones", text: $copilotUserName, prompt: Text(NSFullUserName()))
+                .autocorrectionDisabled()
+            Text(
+                "Cuando alguien te pregunta por tu nombre (\"\(copilotUserName.isEmpty ? NSFullUserName() : copilotUserName), ¿qué opinas?\"), el Copiloto resalta la tarjeta con \"te preguntaron\" aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

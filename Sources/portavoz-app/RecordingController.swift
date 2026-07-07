@@ -163,10 +163,14 @@ final class RecordingController {
         lastOpenRowID = captions.last?.id
         guard copilotEnabled, phase == .recording else { return }
         guard #available(macOS 26.0, *) else { return }
+        // "Te preguntaron" (D26): una mención de tu nombre abre la puerta
+        // aunque la frase no parezca pregunta ("Johnny, cuéntanos del deploy").
+        let ownerName = Self.copilotOwnerName()
         guard
             let closed = captions.last(where: { $0.id == previousOpen }),
             closed.channel == .system,
             QuestionHeuristic.looksLikeQuestion(closed.text)
+                || ownerName.map({ QuestionHeuristic.mentions($0, in: closed.text) }) == true
         else { return }
 
         let passages = recentPassages()
@@ -179,7 +183,8 @@ final class RecordingController {
             guard let self else { return }
             guard
                 let card = try? await copilot.process(
-                    candidate: candidate, recentTranscript: passages, askedAt: askedAt),
+                    candidate: candidate, recentTranscript: passages,
+                    ownerName: ownerName, askedAt: askedAt),
                 self.phase == .recording,
                 self.copilotCards.last?.question != card.question
             else { return }
@@ -202,6 +207,15 @@ final class RecordingController {
 
     func dismissCopilotCard(_ id: UUID) {
         copilotCards.removeAll { $0.id == id }
+    }
+
+    /// El nombre con el que la reunión se dirige a ti: el de Ajustes si lo
+    /// configuraste, si no el de tu cuenta de macOS. nil = detector apagado.
+    static func copilotOwnerName() -> String? {
+        let custom = (UserDefaults.standard.string(forKey: "copilotUserName") ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let name = custom.isEmpty ? NSFullUserName() : custom
+        return name.isEmpty ? nil : name
     }
 
     // MARK: - Notas (D28)

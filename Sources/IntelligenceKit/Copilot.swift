@@ -29,6 +29,29 @@ public enum QuestionHeuristic {
         else { return false }
         return interrogatives.contains(String(firstWord))
     }
+
+    /// The "te preguntaron" gate (D26): whole-word, case- and
+    /// diacritic-insensitive match of the owner's first name or full name.
+    /// Token equality on purpose — "John" must not fire inside "Johnny".
+    public static func mentions(_ name: String, in text: String) -> Bool {
+        func fold(_ value: String) -> String {
+            value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                .lowercased()
+        }
+        func tokens(_ value: String) -> [String] {
+            fold(value).components(separatedBy: CharacterSet.letters.inverted)
+                .filter { !$0.isEmpty }
+        }
+        let nameTokens = tokens(name)
+        guard let first = nameTokens.first else { return false }
+        let textTokens = tokens(text)
+        if textTokens.contains(first) { return true }
+        // Full name as a consecutive token run ("ana maría" in "…ana maría, ¿…?").
+        guard nameTokens.count > 1, textTokens.count >= nameTokens.count else { return false }
+        return (0...(textTokens.count - nameTokens.count)).contains { start in
+            Array(textTokens[start..<(start + nameTokens.count)]) == nameTokens
+        }
+    }
 }
 
 /// One answered question, ready for the recording side panel. `source`
@@ -42,9 +65,14 @@ public struct CopilotCard: Identifiable, Sendable, Equatable {
 
     public let id: UUID
     public let question: String
+    /// Empty on a pure "te preguntaron" ping — the question itself is the
+    /// whole value; the UI hides the answer block.
     public let answer: String
     public let kind: Kind
     public let source: String
+    /// True when the caption addressed the device owner BY NAME (D26's
+    /// "te preguntaron"): the card doubles as an attention ping.
+    public let directed: Bool
     public let askedAt: TimeInterval
 
     public init(
@@ -53,6 +81,7 @@ public struct CopilotCard: Identifiable, Sendable, Equatable {
         answer: String,
         kind: Kind,
         source: String,
+        directed: Bool = false,
         askedAt: TimeInterval
     ) {
         self.id = id
@@ -60,6 +89,7 @@ public struct CopilotCard: Identifiable, Sendable, Equatable {
         self.answer = answer
         self.kind = kind
         self.source = source
+        self.directed = directed
         self.askedAt = askedAt
     }
 }
@@ -85,7 +115,8 @@ public struct LiveCopilot: Sendable {
     }
 
     /// Full pipeline for one candidate row. Returns nil when there is no
-    /// question worth a card (not a question, or logistics chatter).
+    /// question worth a card (not a question, or logistics chatter that
+    /// wasn't aimed at the owner by name).
     ///
     /// Detection runs at `.live` priority with a latest-wins key: while
     /// the model is busy, a newer candidate replaces a queued older one —
@@ -94,16 +125,22 @@ public struct LiveCopilot: Sendable {
     public func process(
         candidate: String,
         recentTranscript: [RAGPassage],
+        ownerName: String? = nil,
         askedAt: TimeInterval
     ) async throws -> CopilotCard? {
-        guard QuestionHeuristic.looksLikeQuestion(candidate) else { return nil }
+        let mentioned = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
+        guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else { return nil }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
-        guard let detected = try await classify(candidate), detected.isQuestion,
-            !detected.question.isEmpty
+        guard let detected = try await classify(candidate, ownerName: ownerName),
+            detected.isQuestion, !detected.question.isEmpty
         else { return nil }
+        // Directed = the DETERMINISTIC name gate, never the model's
+        // opinion: asked to flag it, the 3B cleaned "Johnny," out of the
+        // question and reported false (caught by the gated test).
+        let directed = mentioned
 
         switch detected.kind.lowercased() {
         case "knowledge":
@@ -116,39 +153,71 @@ public struct LiveCopilot: Sendable {
                 return CopilotCard(
                     question: detected.question,
                     answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),
-                    kind: .knowledge, source: byok.providerLabel, askedAt: askedAt)
+                    kind: .knowledge, source: byok.providerLabel,
+                    directed: directed, askedAt: askedAt)
             }
             // No BYOK — or the cloud call failed (network, quota, endpoint
             // down): the card falls back on-device and says so in `source`.
             let answer = try await answerKnowledge(detected.question)
             return CopilotCard(
                 question: detected.question, answer: answer,
-                kind: .knowledge, source: "on-device", askedAt: askedAt)
+                kind: .knowledge, source: "on-device",
+                directed: directed, askedAt: askedAt)
         case "context":
             guard !recentTranscript.isEmpty else { return nil }
             let answer = try await RAGAnswerer().answer(
                 question: detected.question, passages: recentTranscript)
             return CopilotCard(
                 question: detected.question, answer: answer,
-                kind: .context, source: "on-device", askedAt: askedAt)
+                kind: .context, source: "on-device",
+                directed: directed, askedAt: askedAt)
         default:
             // Logistics/small talk: a card here is noise, the classic
-            // failure mode of this feature class.
-            return nil
+            // failure mode of this feature class — UNLESS it was aimed at
+            // the owner by name ("Johnny, ¿nos acompañas mañana?"). Then
+            // the ping IS the value: question only, no invented answer.
+            guard directed else { return nil }
+            return CopilotCard(
+                question: detected.question, answer: "",
+                kind: .context, source: "on-device",
+                directed: true, askedAt: askedAt)
         }
     }
 
-    private func classify(_ candidate: String) async throws -> DetectedQuestion? {
+    /// Pure so the prompt shape is pinned by tests. The owner block only
+    /// exists when a name is known — an unnamed owner must not soften the
+    /// logistics filter.
+    static func classifierInstructions(ownerName: String?) -> String {
+        var text = """
+            You screen live meeting captions for questions that deserve an answer card.
+            A question qualifies ONLY if answering it would genuinely help: technical or \
+            factual knowledge ("what's the difference between var and let"), or something \
+            about this meeting's own discussion ("what did we say about the budget").
+            Scheduling, greetings, rhetorical questions and small talk NEVER qualify. \
+            Asking a person to do, join or attend something is logistics, even when it \
+            mentions the meeting's topics: "can you join the demo tomorrow?" and \
+            "¿nos acompañas mañana a la reunión con el cliente?" are logistics, \
+            NOT context.
+            """
+        if let ownerName, !ownerName.isEmpty {
+            text += """
+                \nEXCEPTION: the device owner is named "\(ownerName)". When the caption \
+                addresses \(ownerName) by name with a question or request, it ALWAYS \
+                qualifies, whatever the topic — but still classify kind honestly.
+                """
+        }
+        text += """
+            \nClassify kind as exactly one of: knowledge, context, logistics.
+            Keep the question in its original language, cleaned of filler words.
+            """
+        return text
+    }
+
+    private func classify(
+        _ candidate: String, ownerName: String?
+    ) async throws -> DetectedQuestion? {
         let session = LanguageModelSession(
-            instructions: """
-                You screen live meeting captions for questions that deserve an answer card.
-                A question qualifies ONLY if answering it would genuinely help: technical or \
-                factual knowledge ("what's the difference between var and let"), or something \
-                about this meeting's own discussion ("what did we say about the budget").
-                Scheduling, greetings, rhetorical questions and small talk NEVER qualify.
-                Classify kind as exactly one of: knowledge, context, logistics.
-                Keep the question in its original language, cleaned of filler words.
-                """)
+            instructions: Self.classifierInstructions(ownerName: ownerName))
         return try await IntelligenceScheduler.shared.run(.live, key: "copilot-detect") {
             let response = try await session.respond(
                 to: "Caption: \"\(candidate)\"",

@@ -1,3 +1,4 @@
+import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
@@ -156,26 +157,35 @@ struct RecordingView: View {
     @ViewBuilder
     private var copilotCardsPanel: some View {
         ForEach(controller.copilotCards.suffix(3)) { card in
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Label(card.question, systemImage: "questionmark.bubble.fill")
-                        .font(.callout.weight(.semibold))
-                    Spacer(minLength: 4)
-                    Button {
-                        controller.dismissCopilotCard(card.id)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
+            copilotCardView(card)
+        }
+    }
+
+    private func copilotCardView(_ card: CopilotCard) -> some View {
+        let tint: Color = card.directed ? .orange : .accentColor
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(card.question, systemImage: "questionmark.bubble.fill")
+                    .font(.callout.weight(.semibold))
+                Spacer(minLength: 4)
+                Button {
+                    controller.dismissCopilotCard(card.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                 }
+                .buttonStyle(.plain)
+            }
+            if !card.answer.isEmpty {
                 Text(card.answer)
                     .font(.callout)
                     .textSelection(.enabled)
-                HStack {
-                    Text(card.kind == .context ? "de esta reunión" : "conocimiento · \(card.source)")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                    Spacer()
+            }
+            HStack {
+                Text(copilotCardTag(card))
+                    .font(.caption2)
+                    .foregroundStyle(card.directed ? tint : Color.secondary)
+                Spacer()
+                if !card.answer.isEmpty {
                     Button {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(card.answer, forType: .string)
@@ -187,14 +197,22 @@ struct RecordingView: View {
                     .help("Copiar la respuesta")
                 }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 1)
-            )
         }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(tint.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private func copilotCardTag(_ card: CopilotCard) -> String {
+        let base = card.kind == .context ? "de esta reunión" : "conocimiento · \(card.source)"
+        if card.directed {
+            return card.answer.isEmpty ? "te preguntaron" : "te preguntaron · \(base)"
+        }
+        return base
     }
 
     private var captionsList: some View {
