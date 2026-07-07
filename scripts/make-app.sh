@@ -87,12 +87,20 @@ fi
 cp "$BIN" "$APP/Contents/MacOS/portavoz-app"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/portavoz-app" 2>/dev/null || true
 
-codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" 2>/dev/null || true
-codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" 2>/dev/null || true
-codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" 2>/dev/null || true
-codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" 2>/dev/null || true
-codesign --force --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework"
-codesign --force --sign "$SIGN_ID" "$APP"
+# Notarization demands the hardened runtime + secure timestamp; the
+# timestamp needs a real certificate, so it's skipped when ad-hoc.
+SIGN_FLAGS=(--force --options runtime)
+if [[ "$SIGN_ID" != "-" ]]; then
+  SIGN_FLAGS+=(--timestamp)
+fi
+
+codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" 2>/dev/null || true
+codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" 2>/dev/null || true
+codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" 2>/dev/null || true
+codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" 2>/dev/null || true
+codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework"
+codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" \
+  --entitlements packaging/portavoz.entitlements "$APP"
 
 echo "OK → $APP (firma: $SIGN_ID)"
 echo "Run it with: open $APP"
