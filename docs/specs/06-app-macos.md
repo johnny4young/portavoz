@@ -28,7 +28,7 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 - **Refinar (D7 in-app)**: re-transcribe ambos canales con Whisper (+vocabulario), re-diariza (merge de micro-clusters), y presenta **DRAFT con sheet de comparación** (segmentos/hablantes/habla cubierta/muestra + warning rojo si cubre < 50% del habla actual) — **nada se aplica sin "Aplicar"** (un refine defectuoso reemplazó una reunión real; el draft-flow y los tombstones son la doble defensa). Al aplicar: `replaceCast` + regenerar resumen.
 - Exportar: Markdown / PDF (CoreText puro, compila para iOS) / **Gist secreto** con confirmación off-device explícita.
 
-**SettingsView (⌘,)**: Audio (toggle AEC) · Grabaciones (carpeta configurable con migración y progreso) · Títulos (plantilla con preview) · Vocabulario (editor de lista: Enter añade, − quita) · Mi voz (enrolar 12 s / borrar — destruye archivo+llave) · GitHub (token en Keychain).
+**SettingsView (⌘,)**: Audio (toggle AEC) · Grabaciones (carpeta configurable con migración y progreso) · Títulos (plantilla con preview) · Vocabulario (editor de lista: Enter añade, − quita) · Mi voz (enrolar 12 s / borrar — destruye archivo+llave) · Modelo externo BYOK (endpoint/modelo en defaults, key en Keychain, toggle de opt-in del Copiloto deshabilitado hasta configurar todo; eliminar la key lo apaga — spec 04) · GitHub (token en Keychain).
 
 ## Verificado en el mundo real (jul 2026)
 

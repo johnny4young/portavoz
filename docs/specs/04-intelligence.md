@@ -26,9 +26,11 @@ Requiere macOS 26 + Apple Intelligence activa (`unavailabilityReason()` da el mo
 - Glosario verbatim (términos que jamás se traducen) — llega del vocabulario del usuario y/o `--glossary`.
 - La API real de FoundationModels se verifica en el `.swiftinterface` del SDK local — mejor fuente que cualquier doc.
 
-## BYOK — `OpenAICompatibleSummaryProvider` (D8)
+## BYOK (D8) — `OpenAICompatibleChatClient` + `BYOKSettings` + `OpenAICompatibleSummaryProvider`
 
-Cualquier endpoint `/chat/completions` (cubre Ollama/LM Studio/Groq/OpenRouter). Opt-in explícito y etiquetado; key por `PORTAVOZ_BYOK_API_KEY` en CLI. Produce el mismo `StructuredSummary` neutro.
+- **`OpenAICompatibleChatClient`**: cliente mínimo contra cualquier `/chat/completions` (OpenAI/OpenRouter/Groq/Ollama/LM Studio) — un system + un user entran, texto sale. `providerLabel` = host del endpoint (el nombre honesto para la disclosure: "api.openai.com" dice nube, "localhost" dice que nada salió). Request/parse estáticos y puros (testeados offline). Las llamadas cloud NO pasan por el `IntelligenceScheduler` — el single-flight existe por contención del ANE, no aplica a la red.
+- **`BYOKSettings`**: endpoint y modelo en UserDefaults (`byokEndpoint`/`byokModel`); la key SOLO en Keychain (`SecretStore.byokAPIKeyService`). `client(...)` devuelve cliente listo o nil — nadie ve estado a medio configurar. `copilotClient()` exige además el opt-in explícito `copilotBYOKEnabled` (D26: configurar no es consentir); piezas faltantes degradan a on-device, jamás a error.
+- **`OpenAICompatibleSummaryProvider`**: ahora solo posee el prompt de resumen y el contrato JSON→`StructuredSummary`; el HTTP vive en el chat client. Teje las notas del usuario (D28) igual que on-device — paridad testeada. Key por `PORTAVOZ_BYOK_API_KEY` en CLI; en la app, Keychain vía Settings.
 
 ## RAG local (D22) — `SentenceEmbedder` + `RAGAnswerer` + storage
 
@@ -49,9 +51,9 @@ Cualquier endpoint `/chat/completions` (cubre Ollama/LM Studio/Groq/OpenRouter).
 Pipeline de 3 etapas sobre filas cerradas del coalescer (una fila cierra cuando nace la siguiente — nunca parciales, nunca re-proceso):
 1. **`QuestionHeuristic.looksLikeQuestion`** (puro, testeado, es/en): gate gratis — `?`/`¿`, interrogativos iniciales, mínimo 12 chars. El caso común (nadie preguntó) cuesta cero.
 2. **Clasificador FM** (`DetectedQuestion` @Generable: isQuestion/question/kind) al scheduler con `.live` + key `copilot-detect` (latest-wins: los ticks jamás se apilan). `logistics` → sin tarjeta (el modo de fallo clásico de esta clase de features).
-3. **Respuesta**: `knowledge` → FM directo (1–3 frases, mismo idioma, greedy, 220 tokens máx, `.interactive`); `context` → `RAGAnswerer` con las últimas ~13 filas vivas como pasajes ("¿qué dijimos del budget?" responde de lo RECIÉN dicho).
+3. **Respuesta**: `knowledge` → BYOK si el usuario lo configuró Y activó el opt-in (`BYOKSettings.copilotClient()`, mismas instrucciones que on-device, 400 tokens máx, `source` = host del proveedor; si la llamada cloud falla, cae a FM on-device y lo dice en `source`); sin BYOK → FM directo (1–3 frases, mismo idioma, greedy, 220 tokens máx, `.interactive`). `context` → `RAGAnswerer` con las últimas ~13 filas vivas como pasajes ("¿qué dijimos del budget?" responde de lo RECIÉN dicho) — el contexto de la reunión JAMÁS va al BYOK, solo el texto de la pregunta `knowledge` (D8).
 
-App: opt-in por grabación (toggle "Copiloto" junto al de traducción, persiste en `copilotEnabled`); tarjetas en el panel derecho (pregunta + respuesta + procedencia "on-device" + copiar/descartar, máx 3 visibles). Nunca responde por ti (D26). BYOK para `knowledge`: **planeado**, hoy solo on-device. Presupuesto de latencia: acotado por D29 (detección `.live` reemplazable + respuesta `.interactive` con espera ≤ llamada en vuelo).
+App: opt-in por grabación (toggle "Copiloto" junto al de traducción, persiste en `copilotEnabled`); tarjetas en el panel derecho (pregunta + respuesta + procedencia — host del proveedor u "on-device" — + copiar/descartar, máx 3 visibles). Nunca responde por ti (D26). Settings: sección "Modelo externo (BYOK)" con endpoint/modelo/key + el toggle del Copiloto deshabilitado hasta que todo esté configurado; eliminar la key apaga el toggle. Presupuesto de latencia: acotado por D29 (detección `.live` reemplazable + respuesta `.interactive` con espera ≤ llamada en vuelo).
 
 ## Naming
 
@@ -66,4 +68,4 @@ Ver spec 03 (SpeakerNamer + NamingExcerpt + filtro never-trust-verify).
 
 ## Planeado (no implementado)
 
-Copiloto: BYOK para `knowledge` con disclosure de proveedor; detector "te preguntaron" (mención de tu nombre) unificado a la etapa 2. Caché de resumen por fingerprint + pivote EN→re-traducción (parámetros de Meetily, D25). Panel de UI de notas (la mitad Opus de M10).
+Copiloto: detector "te preguntaron" (mención de tu nombre) unificado a la etapa 2. Caché de resumen por fingerprint + pivote EN→re-traducción (parámetros de Meetily, D25). Panel de UI de notas (la mitad Opus de M10). Resúmenes BYOK desde la app (la plomería Keychain ya existe; falta el selector de provider en el detalle — M12).

@@ -172,10 +172,13 @@ final class RecordingController {
         let passages = recentPassages()
         let candidate = closed.text
         let askedAt = closed.startTime
+        // BYOK solo si el usuario lo configuró Y activó el opt-in del
+        // Copiloto (D8/D26); si no, el cliente es nil y todo queda on-device.
+        let copilot = LiveCopilot(byok: BYOKSettings.copilotClient())
         Task { @MainActor [weak self] in
             guard let self else { return }
             guard
-                let card = try? await LiveCopilot().process(
+                let card = try? await copilot.process(
                     candidate: candidate, recentTranscript: passages, askedAt: askedAt),
                 self.phase == .recording,
                 self.copilotCards.last?.question != card.question

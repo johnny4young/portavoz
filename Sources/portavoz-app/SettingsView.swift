@@ -2,6 +2,7 @@ import AppKit
 import AudioCaptureKit
 import DiarizationKit
 import IntegrationsKit
+import IntelligenceKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -30,6 +31,13 @@ struct SettingsView: View {
     @State private var migrationStatus: String?
     @State private var migrating = false
 
+    @AppStorage(BYOKSettings.endpointKey) private var byokEndpoint = ""
+    @AppStorage(BYOKSettings.modelKey) private var byokModel = ""
+    @AppStorage(BYOKSettings.copilotEnabledKey) private var copilotBYOKEnabled = false
+    @State private var byokKey = ""
+    @State private var hasStoredBYOKKey = false
+    @State private var byokMessage: String?
+
     var body: some View {
         Form {
             audioSection
@@ -37,6 +45,7 @@ struct SettingsView: View {
             titleSection
             vocabularySection
             voiceSection
+            byokSection
             gitHubSection
         }
         .formStyle(.grouped)
@@ -44,6 +53,8 @@ struct SettingsView: View {
         .onAppear {
             hasStoredToken =
                 ((try? SecretStore.get(service: SecretStore.gitHubTokenService)) ?? nil) != nil
+            hasStoredBYOKKey =
+                ((try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil) != nil
             voiceprint = (try? VoiceprintStore().load()) ?? nil
         }
     }
@@ -277,6 +288,64 @@ struct SettingsView: View {
             voiceMessage = "Listo: tus intervenciones se etiquetarán como \"Me\" en cualquier canal."
         } catch {
             voiceMessage = "No se pudo enrolar: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - BYOK (D8/D26)
+
+    /// The endpoint/model are visible preferences; the key is Keychain-only.
+    /// The copilot toggle is the ONLY thing that lets a question leave the
+    /// device, and it stays disabled until everything is configured.
+    private var byokReady: Bool {
+        hasStoredBYOKKey
+            && BYOKSettings.endpointURL(from: byokEndpoint) != nil
+            && !byokModel.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var byokSection: some View {
+        Section("Modelo externo (BYOK)") {
+            TextField(
+                "Endpoint OpenAI-compatible", text: $byokEndpoint,
+                prompt: Text("https://api.openai.com/v1")
+            )
+            .autocorrectionDisabled()
+            TextField("Modelo", text: $byokModel, prompt: Text("gpt-4o-mini"))
+                .autocorrectionDisabled()
+            SecureField("API key", text: $byokKey)
+            HStack {
+                Button("Guardar key en el Keychain") {
+                    do {
+                        try SecretStore.set(byokKey, service: SecretStore.byokAPIKeyService)
+                        byokKey = ""
+                        hasStoredBYOKKey = true
+                        byokMessage = "Key guardada."
+                    } catch {
+                        byokMessage = error.localizedDescription
+                    }
+                }
+                .disabled(byokKey.isEmpty)
+                if hasStoredBYOKKey {
+                    Button("Eliminar key", role: .destructive) {
+                        try? SecretStore.delete(service: SecretStore.byokAPIKeyService)
+                        hasStoredBYOKKey = false
+                        copilotBYOKEnabled = false
+                        byokMessage = "Key eliminada. El Copiloto vuelve a responder solo on-device."
+                    }
+                }
+            }
+            Toggle(
+                "Responder las preguntas de conocimiento del Copiloto con este proveedor",
+                isOn: $copilotBYOKEnabled
+            )
+            .disabled(!byokReady)
+            Text(
+                "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, el Copiloto envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            if let byokMessage {
+                Text(byokMessage).font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 

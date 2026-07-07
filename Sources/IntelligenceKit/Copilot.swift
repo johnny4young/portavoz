@@ -68,11 +68,21 @@ public struct CopilotCard: Identifiable, Sendable, Equatable {
 import FoundationModels
 
 /// The live copilot pipeline (D26): classify a candidate caption row,
-/// route by question type, answer on-device. Never speaks, never posts —
-/// it only produces cards the user may read, copy or dismiss.
+/// route by question type, answer on-device — or, for `knowledge`
+/// questions ONLY and with the user's explicit BYOK opt-in, via their
+/// external provider (a 3B model answers "¿var vs let?" fine; it is not
+/// who you want for anything deeper). Never speaks, never posts — it only
+/// produces cards the user may read, copy or dismiss.
 @available(macOS 26.0, iOS 26.0, *)
 public struct LiveCopilot: Sendable {
-    public init() {}
+    /// Non-nil only when the user configured BYOK AND enabled it for the
+    /// copilot (D8/D26). Only the detected question text ever leaves the
+    /// device — never audio, never the rest of the meeting.
+    private let byok: OpenAICompatibleChatClient?
+
+    public init(byok: OpenAICompatibleChatClient? = nil) {
+        self.byok = byok
+    }
 
     /// Full pipeline for one candidate row. Returns nil when there is no
     /// question worth a card (not a question, or logistics chatter).
@@ -97,6 +107,19 @@ public struct LiveCopilot: Sendable {
 
         switch detected.kind.lowercased() {
         case "knowledge":
+            if let byok,
+                let answer = try? await byok.complete(
+                    system: Self.knowledgeInstructions,
+                    user: detected.question,
+                    maxTokens: 400)
+            {
+                return CopilotCard(
+                    question: detected.question,
+                    answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),
+                    kind: .knowledge, source: byok.providerLabel, askedAt: askedAt)
+            }
+            // No BYOK — or the cloud call failed (network, quota, endpoint
+            // down): the card falls back on-device and says so in `source`.
             let answer = try await answerKnowledge(detected.question)
             return CopilotCard(
                 question: detected.question, answer: answer,
@@ -135,13 +158,16 @@ public struct LiveCopilot: Sendable {
         }
     }
 
+    /// Shared by the on-device and BYOK paths, so switching provider never
+    /// changes the card's voice.
+    private static let knowledgeInstructions = """
+        Answer the question directly and correctly in one to three short sentences, \
+        in the same language as the question. No preamble, no hedging. \
+        If you are not confident in the answer, say so in one sentence.
+        """
+
     private func answerKnowledge(_ question: String) async throws -> String {
-        let session = LanguageModelSession(
-            instructions: """
-                Answer the question directly and correctly in one to three short sentences, \
-                in the same language as the question. No preamble, no hedging. \
-                If you are not confident in the answer, say so in one sentence.
-                """)
+        let session = LanguageModelSession(instructions: Self.knowledgeInstructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: question,

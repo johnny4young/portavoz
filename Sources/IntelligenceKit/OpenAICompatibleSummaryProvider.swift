@@ -8,89 +8,51 @@ import PortavozCore
 /// choice — never a silent default — and the API key comes from the
 /// caller (the app stores it in the Keychain; the dev CLI reads an env
 /// var and says so out loud). Cloud contexts are large, so the transcript
-/// goes in one pass, no map-reduce.
+/// goes in one pass, no map-reduce. HTTP lives in
+/// `OpenAICompatibleChatClient`; this type owns only the summary prompt
+/// and the JSON → `StructuredSummary` contract.
 public struct OpenAICompatibleSummaryProvider: SummaryProvider {
-    public let endpoint: URL
-    public let model: String
-    private let apiKey: String
-    private let session: URLSession
+    private let client: OpenAICompatibleChatClient
 
     public init(endpoint: URL, model: String, apiKey: String, session: URLSession = .shared) {
-        self.endpoint = endpoint
-        self.model = model
-        self.apiKey = apiKey
-        self.session = session
+        client = OpenAICompatibleChatClient(
+            endpoint: endpoint, model: model, apiKey: apiKey, session: session)
     }
 
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
-        let urlRequest = try Self.urlRequest(
-            for: request, endpoint: endpoint, model: model, apiKey: apiKey)
-        let (data, response) = try await session.data(for: urlRequest)
-
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let body = String(data: data.prefix(300), encoding: .utf8) ?? ""
-            throw IntelligenceError.providerFailed("HTTP \(status): \(body)")
-        }
-
-        let structured = try Self.parseResponse(data)
-        return structured.draft(for: request)
+        let prompt = Self.prompt(for: request)
+        let content = try await client.complete(system: prompt.system, user: prompt.user)
+        return try Self.parseStructured(content).draft(for: request)
     }
 
-    // MARK: - Request/response shapes (static + pure for tests)
+    // MARK: - Prompt/response contract (static + pure for tests)
 
-    static func urlRequest(
-        for request: SummaryRequest, endpoint: URL, model: String, apiKey: String
-    ) throws -> URLRequest {
+    static func prompt(for request: SummaryRequest) -> (system: String, user: String) {
         let transcript = TranscriptFormatter.format(
             segments: request.segments, speakers: request.speakers)
+        // The user's notes weave in exactly like on-device (D28); the cloud
+        // window is roomy, but the same budgets keep both paths comparable.
+        let notes = PromptFactory.notesBlock(request.contextItems)
         let schemaNote = """
             Respond with ONLY a JSON object shaped exactly like:
             {"overview": "…", "sections": [{"heading": "…", "bullets": ["…"]}], \
             "actionItems": [{"text": "…", "owner": "…"}]}
             Use "" for an unknown action-item owner. No markdown fences, no commentary.
             """
-        let body: [String: Any] = [
-            "model": model,
-            "temperature": 0.3,
-            "messages": [
-                [
-                    "role": "system",
-                    "content": PromptFactory.summaryInstructions(
-                        recipe: request.recipe,
-                        targetLanguage: request.targetLanguage,
-                        glossary: request.glossary) + "\n" + schemaNote,
-                ],
-                [
-                    "role": "user",
-                    "content": PromptFactory.summaryPrompt(
-                        transcriptOrNotes: transcript, targetLanguage: request.targetLanguage),
-                ],
-            ],
-        ]
-
-        var urlRequest = URLRequest(url: endpoint.appendingPathComponent("chat/completions"))
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
-        return urlRequest
+        return (
+            system: PromptFactory.summaryInstructions(
+                recipe: request.recipe,
+                targetLanguage: request.targetLanguage,
+                glossary: request.glossary,
+                hasUserNotes: !notes.isEmpty) + "\n" + schemaNote,
+            user: PromptFactory.summaryPrompt(
+                transcriptOrNotes: transcript,
+                targetLanguage: request.targetLanguage,
+                userNotes: notes)
+        )
     }
 
-    static func parseResponse(_ data: Data) throws -> StructuredSummary {
-        struct ChatResponse: Decodable {
-            struct Choice: Decodable {
-                struct Message: Decodable { let content: String }
-                let message: Message
-            }
-            let choices: [Choice]
-        }
-        guard let content = try? JSONDecoder().decode(ChatResponse.self, from: data)
-            .choices.first?.message.content
-        else {
-            throw IntelligenceError.providerFailed("response is not a chat completion")
-        }
-
+    static func parseStructured(_ content: String) throws -> StructuredSummary {
         // Models love fencing JSON in ```json blocks despite instructions.
         let stripped = content
             .replacingOccurrences(of: "```json", with: "")

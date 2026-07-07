@@ -235,13 +235,100 @@ final class FoundationModelIntegrationTests: XCTestCase {
     }
 }
 
-// MARK: - BYOK provider (offline)
+// MARK: - BYOK chat client (offline)
+
+final class OpenAICompatibleChatClientTests: XCTestCase {
+    func testRequestBodyIsOpenAICompatible() throws {
+        let urlRequest = try OpenAICompatibleChatClient.urlRequest(
+            endpoint: URL(string: "https://api.example.com/v1")!,
+            model: "test-model", apiKey: "sk-123",
+            system: "be terse", user: "¿var vs let?",
+            temperature: 0.3, maxTokens: 400)
+
+        XCTAssertEqual(urlRequest.url?.absoluteString, "https://api.example.com/v1/chat/completions")
+        XCTAssertEqual(urlRequest.value(forHTTPHeaderField: "Authorization"), "Bearer sk-123")
+
+        let body = try JSONSerialization.jsonObject(with: urlRequest.httpBody!) as! [String: Any]
+        XCTAssertEqual(body["model"] as? String, "test-model")
+        XCTAssertEqual(body["max_tokens"] as? Int, 400)
+        let messages = body["messages"] as! [[String: String]]
+        XCTAssertEqual(messages.count, 2)
+        XCTAssertEqual(messages[0]["role"], "system")
+        XCTAssertEqual(messages[0]["content"], "be terse")
+        XCTAssertEqual(messages[1]["role"], "user")
+        XCTAssertEqual(messages[1]["content"], "¿var vs let?")
+    }
+
+    func testMaxTokensIsOmittedWhenNil() throws {
+        let urlRequest = try OpenAICompatibleChatClient.urlRequest(
+            endpoint: URL(string: "https://api.example.com/v1")!,
+            model: "m", apiKey: "k",
+            system: "s", user: "u", temperature: 0.3, maxTokens: nil)
+        let body = try JSONSerialization.jsonObject(with: urlRequest.httpBody!) as! [String: Any]
+        XCTAssertNil(body["max_tokens"])
+    }
+
+    func testParsesChatContentAndRejectsOtherShapes() throws {
+        let payload = """
+            {"choices": [{"message": {"content": "Hola."}}]}
+            """
+        XCTAssertEqual(
+            try OpenAICompatibleChatClient.parseContent(Data(payload.utf8)), "Hola.")
+        XCTAssertThrowsError(
+            try OpenAICompatibleChatClient.parseContent(Data("{\"error\": \"nope\"}".utf8)))
+    }
+
+    func testProviderLabelIsTheHost() {
+        let client = OpenAICompatibleChatClient(
+            endpoint: URL(string: "http://localhost:11434/v1")!, model: "m", apiKey: "k")
+        XCTAssertEqual(client.providerLabel, "localhost")
+    }
+}
+
+// MARK: - BYOK settings (offline)
+
+final class BYOKSettingsTests: XCTestCase {
+    func testEndpointURLRejectsNonHTTPOrHostless() {
+        XCTAssertNotNil(BYOKSettings.endpointURL(from: " https://api.openai.com/v1 "))
+        XCTAssertNotNil(BYOKSettings.endpointURL(from: "http://localhost:11434/v1"))
+        XCTAssertNil(BYOKSettings.endpointURL(from: "ftp://files.example.com"))
+        XCTAssertNil(BYOKSettings.endpointURL(from: "api.openai.com/v1"))
+        XCTAssertNil(BYOKSettings.endpointURL(from: ""))
+    }
+
+    func testClientRequiresEveryPiece() {
+        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: nil))
+        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: ""))
+        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "  ", apiKey: "k"))
+        XCTAssertNil(BYOKSettings.client(endpoint: "nope", model: "m", apiKey: "k"))
+        XCTAssertNotNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: "k"))
+    }
+
+    /// The copilot only ever gets a client behind the explicit opt-in
+    /// (D8/D26) — configuration alone is not consent.
+    func testCopilotClientRequiresTheExplicitOptIn() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "byok-tests"))
+        defer { defaults.removePersistentDomain(forName: "byok-tests") }
+        defaults.set("https://a.com/v1", forKey: BYOKSettings.endpointKey)
+        defaults.set("m", forKey: BYOKSettings.modelKey)
+
+        defaults.set(false, forKey: BYOKSettings.copilotEnabledKey)
+        XCTAssertNil(BYOKSettings.copilotClient(defaults: defaults, apiKey: "k"))
+
+        defaults.set(true, forKey: BYOKSettings.copilotEnabledKey)
+        XCTAssertNotNil(BYOKSettings.copilotClient(defaults: defaults, apiKey: "k"))
+        // Opt-in without a key degrades to nil (on-device), never an error.
+        XCTAssertNil(BYOKSettings.copilotClient(defaults: defaults, apiKey: nil))
+    }
+}
+
+// MARK: - BYOK summary provider (offline)
 
 final class OpenAICompatibleProviderTests: XCTestCase {
     private let meeting = MeetingID()
 
-    func testRequestBodyIsOpenAICompatibleAndLabeled() throws {
-        let request = SummaryRequest(
+    private func request(contextItems: [ContextItem] = []) -> SummaryRequest {
+        SummaryRequest(
             meetingID: meeting,
             segments: [
                 TranscriptSegment(
@@ -251,40 +338,40 @@ final class OpenAICompatibleProviderTests: XCTestCase {
             speakers: [],
             recipe: .general,
             targetLanguage: "es",
-            glossary: ["deploy"]
+            glossary: ["deploy"],
+            contextItems: contextItems
         )
-        let urlRequest = try OpenAICompatibleSummaryProvider.urlRequest(
-            for: request,
-            endpoint: URL(string: "https://api.example.com/v1")!,
-            model: "test-model",
-            apiKey: "sk-123")
+    }
 
-        XCTAssertEqual(urlRequest.url?.absoluteString, "https://api.example.com/v1/chat/completions")
-        XCTAssertEqual(urlRequest.value(forHTTPHeaderField: "Authorization"), "Bearer sk-123")
+    func testPromptCarriesGlossarySchemaAndTranscript() {
+        let prompt = OpenAICompatibleSummaryProvider.prompt(for: request())
+        XCTAssertTrue(prompt.system.contains("deploy"))
+        XCTAssertTrue(prompt.system.contains("JSON"))
+        XCTAssertTrue(prompt.user.contains("hola"))
+        XCTAssertFalse(prompt.user.contains("THE USER'S OWN NOTES"))
+    }
 
-        let body = try JSONSerialization.jsonObject(with: urlRequest.httpBody!) as! [String: Any]
-        XCTAssertEqual(body["model"] as? String, "test-model")
-        let messages = body["messages"] as! [[String: String]]
-        XCTAssertEqual(messages.count, 2)
-        XCTAssertTrue(messages[0]["content"]!.contains("deploy"))
-        XCTAssertTrue(messages[0]["content"]!.contains("JSON"))
-        XCTAssertTrue(messages[1]["content"]!.contains("hola"))
+    /// D28 parity: the cloud path weaves the user's notes exactly like
+    /// on-device — a BYOK summary must never silently drop them.
+    func testPromptWeavesUserNotes() {
+        let prompt = OpenAICompatibleSummaryProvider.prompt(
+            for: request(contextItems: [
+                ContextItem(meetingID: meeting, kind: .note, content: "revisar budget Q3", timestamp: 65)
+            ]))
+        XCTAssertTrue(prompt.system.contains("▸"))
+        XCTAssertTrue(prompt.user.contains("THE USER'S OWN NOTES"))
+        XCTAssertTrue(prompt.user.contains("[01:05] revisar budget Q3"))
     }
 
     func testParsesFencedJSONResponses() throws {
-        let payload = """
-            {"choices": [{"message": {"content": "```json\\n{\\"overview\\": \\"ok\\", \\"sections\\": [], \\"actionItems\\": []}\\n```"}}]}
-            """
-        let summary = try OpenAICompatibleSummaryProvider.parseResponse(Data(payload.utf8))
+        let content = "```json\n{\"overview\": \"ok\", \"sections\": [], \"actionItems\": []}\n```"
+        let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
         XCTAssertEqual(summary.overview, "ok")
     }
 
     func testRejectsNonJSONContent() {
-        let payload = """
-            {"choices": [{"message": {"content": "I cannot help with that."}}]}
-            """
         XCTAssertThrowsError(
-            try OpenAICompatibleSummaryProvider.parseResponse(Data(payload.utf8)))
+            try OpenAICompatibleSummaryProvider.parseStructured("I cannot help with that."))
     }
 }
 
