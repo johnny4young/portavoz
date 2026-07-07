@@ -3,6 +3,7 @@ import DiarizationKit
 import IntegrationsKit
 import PortavozCore
 import SwiftUI
+import TranscriptionKit
 
 /// App settings (⌘,): voice enrollment and the GitHub token. Both secrets
 /// live in the Keychain / encrypted files — never in the database.
@@ -19,6 +20,7 @@ struct SettingsView: View {
 
     @AppStorage("aecEnabled") private var aecEnabled = true
     @AppStorage("customVocabulary") private var customVocabulary = ""
+    @State private var newTerm = ""
 
     var body: some View {
         Form {
@@ -51,20 +53,55 @@ struct SettingsView: View {
 
     // MARK: - Vocabulario
 
+    /// Stored as the same comma-separated string the pipeline parses; the
+    /// UI just gives it list ergonomics (Enter to add, − to remove).
+    private var vocabularyTerms: [String] {
+        var seen = Set<String>()
+        return VocabularyPrompt.parse(customVocabulary).filter {
+            seen.insert($0.lowercased()).inserted
+        }
+    }
+
     private var vocabularySection: some View {
         Section("Vocabulario") {
-            TextField(
-                "Términos separados por coma (LVGT, Portavoz, Vishakha…)",
-                text: $customVocabulary,
-                axis: .vertical
-            )
-            .lineLimit(2...4)
+            ForEach(vocabularyTerms, id: \.self) { term in
+                HStack {
+                    Text(term)
+                    Spacer()
+                    Button {
+                        customVocabulary = vocabularyTerms.filter { $0 != term }
+                            .joined(separator: ", ")
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Quitar \"\(term)\"")
+                }
+            }
+            HStack {
+                TextField("Añadir término (LVGT, Vishakha…)", text: $newTerm)
+                    .onSubmit(addTerm)
+                Button("Añadir", action: addTerm)
+                    .disabled(newTerm.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
             Text(
                 "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que \"LVGT\" no se convierta en otra cosa."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+
+    private func addTerm() {
+        let term = newTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else { return }
+        var terms = vocabularyTerms
+        if !terms.contains(where: { $0.caseInsensitiveCompare(term) == .orderedSame }) {
+            terms.append(term)
+        }
+        customVocabulary = terms.joined(separator: ", ")
+        newTerm = ""
     }
 
     // MARK: - Mi voz (M6)
