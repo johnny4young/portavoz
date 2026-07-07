@@ -1,8 +1,15 @@
+import DiarizationKit
 import Foundation
+import ModelStoreKit
 import TranscriptionKit
 
 /// `portavoz-cli models <download|verify|path> [--models-dir <dir>]`
+/// Operates on every model in the curated catalog.
 enum ModelsCommand {
+    static var catalog: [ModelDescriptor] {
+        [ModelCatalog.parakeetTdtV3, ModelCatalog.speakerDiarization]
+    }
+
     static func run(_ arguments: [String]) async {
         var arguments = arguments
         guard let action = arguments.first else {
@@ -22,29 +29,41 @@ enum ModelsCommand {
         }
 
         let store = CLISupport.modelStore(fromModelsDir: modelsDir)
-        guard let descriptor = ModelCatalog.recommended(for: .liveTranscription) else { return }
 
         switch action {
         case "path":
-            let directory = await store.directory(for: descriptor)
-            let report = await store.verify(descriptor)
-            print("\(descriptor.displayName)")
-            print("  revision:  \(descriptor.revision)")
-            print("  directory: \(directory.path)")
-            print("  status:    \(report.isComplete ? "installed & verified" : "not installed")")
+            for descriptor in catalog {
+                let directory = await store.directory(for: descriptor)
+                let report = await store.verify(descriptor)
+                print("\(descriptor.displayName)")
+                print("  revision:  \(descriptor.revision)")
+                print("  directory: \(directory.path)")
+                print("  status:    \(report.isComplete ? "installed & verified" : "not installed")")
+            }
 
         case "verify":
-            let report = await store.verify(descriptor)
-            let ok = descriptor.artifacts.count - report.missing.count - report.corrupted.count
-            print("\(descriptor.displayName): \(ok)/\(descriptor.artifacts.count) artifacts verified")
-            for path in report.missing { print("  missing:   \(path)") }
-            for path in report.corrupted { print("  CORRUPTED: \(path)") }
-            if report.isComplete { print("  all sha256 hashes match the pinned registry ✓") }
+            for descriptor in catalog {
+                let report = await store.verify(descriptor)
+                let ok = descriptor.artifacts.count - report.missing.count - report.corrupted.count
+                print("\(descriptor.displayName): \(ok)/\(descriptor.artifacts.count) artifacts verified")
+                for path in report.missing { print("  missing:   \(path)") }
+                for path in report.corrupted { print("  CORRUPTED: \(path)") }
+                if report.isComplete { print("  all sha256 hashes match the pinned registry ✓") }
+            }
 
         case "download":
             do {
+                // Download + verify + prove loadable, per model.
                 _ = try await CLISupport.loadEngine(store: store)
-                print("Model installed, verified and loadable ✓")
+                print("\(ModelCatalog.parakeetTdtV3.displayName): installed, verified and loadable ✓")
+
+                let diarizer = ModelCatalog.speakerDiarization
+                let report = await store.verify(diarizer)
+                if !report.isComplete {
+                    print("Downloading \(diarizer.displayName) (\(diarizer.totalSizeBytes / 1_000_000) MB, sha256-verified)…")
+                }
+                _ = try await PyannoteDiarizer.loadRecommended(store: store)
+                print("\(diarizer.displayName): installed, verified and loadable ✓")
             } catch {
                 print("error: \(error.localizedDescription)")
             }

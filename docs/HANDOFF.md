@@ -1,15 +1,16 @@
 # HANDOFF — Estado del proyecto
 
 > Documento de traspaso entre sesiones de trabajo. Actualizar al final de cada sesión significativa.
-> Última actualización: 2026-07-06 (sesión M2).
+> Última actualización: 2026-07-07 (sesión M2+M3).
 
 ## Estado actual
 
 | Hito | Estado |
 |---|---|
-| **M0 — Scaffold** | ✅ Completo (`1b9aa47`). SPM workspace, 9 targets, CI, docs. |
+| **M0 — Scaffold** | ✅ Completo (`1b9aa47`). SPM workspace, CI, docs. |
 | **M1 — Captura** | ✅ Funcionalmente completo y verificado. Pendiente solo el test de aceptación largo (30 min, drift < 50 ms con `scripts/verify_drift.py`). |
-| **M2 — Transcripción** | ✅ **Completo y verificado con el criterio de aceptación en verde** (ver abajo). |
+| **M2 — Transcripción** | ✅ **Completo, criterio de aceptación medido en verde** (ver abajo). |
+| **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** Pendientes: DER formal en reunión real de 4 personas, y las "speaker pills" (UI — no existe app target todavía; va con el shell de app hacia M5). |
 
 **Sin push al remoto todavía** (`origin = git@github.com:johnny4young/portavoz.git`).
 
@@ -30,12 +31,22 @@
 - **Batch: 18 pasadas a ~100x tiempo real, sin degradar lo vivo** ✓
 - 29 tests en verde (26 unit + integración con modelo real gated por `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV`).
 
+## M3 — qué se construyó (verificado 2026-07-07)
+
+- **`ModelStoreKit`** (target nuevo): `ModelRegistry` + `ModelStore` salieron de TranscriptionKit para compartirse entre Kits sin violar la regla "los Kits no dependen entre sí". Catálogo ahora con 2 modelos pineados.
+- **`PyannoteDiarizer`** (actor, DiarizationKit): pyannote community-1 + WeSpeaker v2 (10 artefactos sha256, ~14 MB, commit `1ed7a662…`). Streaming por ventanas de 10 s con `atTime` (SpeakerManager mantiene S1/S2… entre ventanas) + `diarizeFile` batch. Carga por paths explícitos — sin riesgo de descarga no verificada.
+- **`clusteringThreshold = 0.45`** (D17) — calibrado contra el sample AMI de pyannote con RTTM de referencia; el default 0.7 de FluidAudio fusiona speakers reales (wiring interno ×1.2 → 0.84 coseno).
+- **`SpeakerAttributor`** (pure functions): mic → "Me" (hardware, D5); system → turno con mayor overlap; segmentos multi-turno se parten en límites de turnos con reparto proporcional de palabras; sin turno → sin atribuir.
+- **Corte por puntuación** en segmentos batch (`ParakeetSegmentMapper`): los timings TDT no traen gaps → el corte por pausa casi nunca dispara; la puntuación de Parakeet v3 da segmentos-oración, que es lo que hace funcionar la atribución.
+- **CLI**: `diarize --file <wav> [--attribute] [--threshold t]`; `models download|verify|path` ahora cubre el catálogo entero.
+- Resultados: AMI (2 speakers reales) ≈ RTTM de referencia; conversación TTS 2 voces → 7/8 oraciones bien atribuidas (artefacto: speaker espurio en la última ventana zero-padded, q ~0.2). 40 tests en verde (2 de integración con modelos reales, gated).
+
 ## Próximos pasos (en orden)
 
 1. **Test de aceptación M1 pendiente**: 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
-2. **M3 — Diarización**: pyannote community-1 vía FluidAudio (`DiarizerManager`) sobre el canal system; "Me" estructural por canal mic; DER < 15% en reunión de 4. La misma FluidAudio ya trae los modelos de diarización — reusar `ModelStore` (añadir descriptor pineado al catálogo).
-3. Calidad de captions vivo (opcional, no bloquea M3): los deltas cortan subwords en las costuras de ventana ("ally, on your device"). Opciones: merge de subwords al borde, o esperar el re-pase final (Whisper, M4/M5) que es quien produce el transcript de calidad.
-4. `AudioRetentionPolicy` sigue diferida a M5 (necesita StorageKit).
+2. **Validación M3 formal**: reunión real de 4 personas → DER < 15% (los turnos salen de `diarize`; falta harness de DER contra referencia — FluidAudio trae `DiarizationDER.swift` que puede reusarse). "Me" 100% ya es estructural por diseño.
+3. **M4 — Inteligencia**: resúmenes incrementales (Foundation Models + BYOK), Recipes v1, salida bilingüe EN/ES. Criterio: resumen estructurado < 30 s tras el fin de la reunión.
+4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; `AudioRetentionPolicy` diferida a M5 (StorageKit); "speaker pills" editables necesitan app target.
 
 ## Quirks del entorno de desarrollo
 
@@ -46,6 +57,16 @@
 - El Python de python.org no tiene certificados SSL (`urllib` falla) — usar `curl` en scripts.
 
 ## Descubrimientos técnicos ya pagados (no re-descubrir)
+
+### M3 (diarización)
+
+- **El threshold efectivo de asignación de speakers es `clusteringThreshold × 1.2`** (wiring interno de `DiarizerManager` → `SpeakerManager`). Con el default 0.7 → 0.84 de distancia coseno: fusiona hasta los 2 speakers del sample AMI real. Nuestro default: 0.45.
+- **Fixture de calibración**: `pyannote-audio` publica `src/pyannote/audio/sample/sample.wav` (30 s de reunión AMI real, 2 speakers) **con su `sample.rttm` de referencia** — ground truth público y reproducible para validar diarización sin grabar reuniones.
+- Las voces TTS de `say` comparten vocoder → embeddings casi indistinguibles para WeSpeaker (a 0.45: Samantha vs Rishi separa bien; con default 0.7 se fusiona TODO). No calibrar contra TTS; usar el sample AMI.
+- **La última ventana parcial (zero-padded) del diarizer suele crear un speaker espurio** con quality ~0.2 — ruido de cola conocido, marginal en audio largo.
+- **Los timings TDT de Parakeet no traen gaps** (fin de token = inicio del siguiente, semántica frame-jump): el corte de segmentos por pausa casi nunca dispara en batch — cortar por puntuación de oración.
+- `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` carga por paths explícitos y jamás descarga (a diferencia de `AsrModels.load`).
+- Un `PyannoteDiarizer` = una sesión: `SpeakerManager` acumula la base de voces entre llamadas (así "S1" es estable), o sea que reuniones distintas no comparten instancia.
 
 ### M2 (transcripción)
 

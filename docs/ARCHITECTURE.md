@@ -13,9 +13,10 @@ Diferenciadores en orden de prioridad: who-said-what estructural por captura dua
 | Módulo | Responsabilidad |
 |---|---|
 | `PortavozCore` | Tipos de dominio: IDs tipados (UUID), `AudioChannel`, `AudioChunk`, `TranscriptSegment`, `Speaker` |
-| `AudioCaptureKit` | Mic (AVAudioEngine) + process taps por app (Core Audio, macOS 14.4+); `RecordingSession`; `WAVWriter`; políticas de retención |
-| `TranscriptionKit` | Protocolo `TranscriptionEngine`; routing de modelos **por tarea** (`ModelTask`), nunca un modelo global; registry con sha256 + revisión pineados |
-| `DiarizationKit` | pyannote community-1 vía FluidAudio (alternativa Sortformer) sobre canales system/room; `Voiceprint` (biométrico: solo on-device, cifrado, nunca sync, borrable) |
+| `ModelStoreKit` | Registry curado (`ModelCatalog`, routing **por tarea** `ModelTask`) + `ModelStore`: descargas verificadas por sha256/commit pineado. Compartido por todos los Kits que cargan modelos |
+| `AudioCaptureKit` | Mic (AVAudioEngine) + process taps por app (Core Audio, macOS 14.4+); `RecordingSession` (con tap `onChunk`); `WAVWriter`; políticas de retención |
+| `TranscriptionKit` | Protocolo `TranscriptionEngine`; `ParakeetEngine` (vivo sliding window + batch long-form); `TranscriptionScheduler` (slots D7) |
+| `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker vía FluidAudio) sobre canales system/room; `SpeakerAttributor` (who-said-what estructural); `Voiceprint` (biométrico: solo on-device, cifrado, nunca sync, borrable) |
 | `IntelligenceKit` | `SummaryProvider`: Foundation Models (default), MLX local, BYOK cloud (opt-in explícito, jamás default silencioso); Recipes; `SummaryRequest` con `targetLanguage` + `glossary` (bilingüe) |
 | `ContextFeedKit` | Links/notas/snippets con timestamp durante la reunión ("las notas llevan la intención, el transcript los hechos") |
 | `StorageKit` | GRDB + FTS5 + sqlite-vec (llega en M1+; M0 sin deps). Contrato de schema congelado — ver D4 en [DECISIONS.md](DECISIONS.md) |
@@ -59,6 +60,24 @@ RecordingSession.start(sources:onChunk:)  ── tap por chunk ──► AsyncSt
 - Un solo `AsrModels` compartido entre jobs (MLModel es thread-safe); cada job crea su manager con estado de decoder propio.
 - Ventana viva custom left 11 / chunk 1.0 / right 0.4 y filtro de overlap propio (D16). Medido: transcript lag p95 0.53 s con batch a ~100x en paralelo.
 - Harness: `portavoz-cli bench-m2` reproduce el criterio de aceptación completo.
+
+## Pipeline de diarización y atribución (M3)
+
+```
+system.wav / AsyncStream<AudioChunk> ──► PyannoteDiarizer (ventanas 10 s, atTime continuo,
+                                          SpeakerManager mantiene S1/S2… entre ventanas)
+                                                    │  [SpeakerTurn]
+TranscriptSegments (batch: 1 por oración; vivo: ~1 s) ──► SpeakerAttributor
+                                                    │
+                    mic → "Me" (hardware, D5) · system → turno solapado; multi-turno se parte
+                    en los límites de turnos (palabras proporcionales al tiempo) · sin turno → nil
+                                                    ▼
+                                    transcript atribuido + [Speaker] ("Me" primero)
+```
+
+- Threshold de clustering **0.45** (D17) — el default 0.7 de FluidAudio fusiona speakers reales; calibrado contra el sample AMI de pyannote con su RTTM de referencia.
+- Los segmentos batch cortan por **puntuación de oración** además de pausas: los timings TDT no traen gaps (fin de token = inicio del siguiente), así que la pausa casi nunca dispara.
+- Harness: `portavoz-cli diarize --file x.wav [--attribute] [--threshold t]`.
 
 ## Reglas de ingeniería (innegociables)
 

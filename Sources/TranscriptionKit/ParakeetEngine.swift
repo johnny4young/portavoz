@@ -1,6 +1,7 @@
 import AVFoundation
 import FluidAudio
 import Foundation
+import ModelStoreKit
 import PortavozCore
 
 /// Parakeet TDT 0.6B v3 (FluidAudio, CoreML/ANE): the default engine for

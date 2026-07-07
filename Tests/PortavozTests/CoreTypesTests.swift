@@ -2,6 +2,7 @@ import Foundation
 import XCTest
 @testable import DiarizationKit
 @testable import IntelligenceKit
+@testable import ModelStoreKit
 @testable import PortavozCore
 @testable import TranscriptionKit
 

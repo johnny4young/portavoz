@@ -6,10 +6,16 @@ import PortavozCore
 /// Kept side-effect free so the shapes (timing fallbacks, pause splitting)
 /// are unit-testable without models.
 enum ParakeetSegmentMapper {
-    /// A new segment starts after this much silence between tokens.
-    static let pauseSplitSeconds: TimeInterval = 0.8
+    /// A new segment starts after this much silence between tokens. Note:
+    /// TDT timings rarely show real gaps (a token's end extends to the next
+    /// token's start), so in practice punctuation does most of the cutting.
+    static let pauseSplitSeconds: TimeInterval = 0.5
     /// …or when the current segment grows past this duration.
-    static let maxSegmentSeconds: TimeInterval = 30
+    static let maxSegmentSeconds: TimeInterval = 15
+    /// …or right after sentence-final punctuation (Parakeet v3 emits it).
+    /// Sentence-sized segments are what makes speaker attribution work:
+    /// a multi-sentence segment usually spans several diarization turns.
+    static let sentenceTerminators: Set<Character> = [".", "?", "!", "…"]
 
     /// One live sliding-window update → one segment holding only the *new*
     /// audio's tokens. Once the window slides, FluidAudio re-decodes the
@@ -96,6 +102,7 @@ enum ParakeetSegmentMapper {
                 let first = current.first,
                 timing.startTime - last.endTime > pauseSplitSeconds
                     || timing.endTime - first.startTime > maxSegmentSeconds
+                    || endsSentence(last)
             {
                 groups.append(current)
                 current = []
@@ -121,6 +128,13 @@ enum ParakeetSegmentMapper {
                 isFinal: true
             )
         }
+    }
+
+    static func endsSentence(_ timing: TokenTiming) -> Bool {
+        guard let last = timing.token.trimmingCharacters(in: .whitespaces).last else {
+            return false
+        }
+        return sentenceTerminators.contains(last)
     }
 
     /// SentencePiece pieces use "▁" as the word boundary; some FluidAudio

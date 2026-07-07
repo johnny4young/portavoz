@@ -3,6 +3,7 @@ import Foundation
 import PortavozCore
 import XCTest
 
+@testable import ModelStoreKit
 @testable import TranscriptionKit
 
 // MARK: - Catalog
@@ -374,6 +375,30 @@ final class ParakeetSegmentMapperTests: XCTestCase {
         XCTAssertEqual(segments[0].endTime, 1.0)
         XCTAssertEqual(segments[1].startTime, 3.5)
         XCTAssertTrue(segments.allSatisfy(\.isFinal))
+    }
+
+    /// TDT timings carry no real gaps (token end = next token start), so
+    /// sentence punctuation must cut even with zero pause between tokens.
+    func testBatchSplitsAfterSentencePunctuation() {
+        let timings = [
+            timing("▁hola", 0.0, 0.5),
+            timing("▁mundo.", 0.5, 1.0),
+            timing("▁sigo", 1.0, 1.5),
+            timing("▁hablando", 1.5, 2.0),
+        ]
+        let segments = ParakeetSegmentMapper.segments(
+            fromBatchText: "hola mundo. sigo hablando",
+            tokenTimings: timings,
+            audioDuration: 2.0,
+            confidence: 0.9,
+            meetingID: meeting,
+            channel: .system,
+            language: nil
+        )
+        XCTAssertEqual(segments.count, 2)
+        XCTAssertEqual(segments[0].text, "hola mundo.")
+        XCTAssertEqual(segments[1].text, "sigo hablando")
+        XCTAssertEqual(segments[1].startTime, 1.0)
     }
 
     func testBatchWithoutTimingsYieldsSingleSegment() {

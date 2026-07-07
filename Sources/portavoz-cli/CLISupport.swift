@@ -1,4 +1,5 @@
 import Foundation
+import ModelStoreKit
 import TranscriptionKit
 
 /// Shared bits for the hand-rolled argument parsing: no dependency on

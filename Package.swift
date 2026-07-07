@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PortavozCore", targets: ["PortavozCore"]),
+        .library(name: "ModelStoreKit", targets: ["ModelStoreKit"]),
         .library(name: "AudioCaptureKit", targets: ["AudioCaptureKit"]),
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
         .library(name: "DiarizationKit", targets: ["DiarizationKit"]),
@@ -29,15 +30,27 @@ let package = Package(
         // Shared domain primitives every Kit builds on.
         .target(name: "PortavozCore"),
 
+        // Curated model registry + sha256-verified downloads, shared by every
+        // Kit that loads ML models (transcription, diarization, summaries).
+        .target(name: "ModelStoreKit", dependencies: ["PortavozCore"]),
+
         .target(name: "AudioCaptureKit", dependencies: ["PortavozCore"]),
         .target(
             name: "TranscriptionKit",
             dependencies: [
                 "PortavozCore",
+                "ModelStoreKit",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
         ),
-        .target(name: "DiarizationKit", dependencies: ["PortavozCore"]),
+        .target(
+            name: "DiarizationKit",
+            dependencies: [
+                "PortavozCore",
+                "ModelStoreKit",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
+        ),
         .target(name: "IntelligenceKit", dependencies: ["PortavozCore"]),
         .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
         .target(name: "StorageKit", dependencies: ["PortavozCore"]),
@@ -46,13 +59,17 @@ let package = Package(
 
         .executableTarget(
             name: "portavoz-cli",
-            dependencies: ["AudioCaptureKit", "PortavozCore", "TranscriptionKit"]
+            dependencies: [
+                "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "TranscriptionKit", "DiarizationKit",
+            ]
         ),
 
         .testTarget(
             name: "PortavozTests",
             dependencies: [
                 "PortavozCore",
+                "ModelStoreKit",
                 "AudioCaptureKit",
                 "TranscriptionKit",
                 "DiarizationKit",

@@ -87,14 +87,17 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
 /// The curated registry. Descriptors are code: adding or re-pinning a model
 /// is a reviewed change, never a runtime fetch of "latest".
 public enum ModelCatalog {
-    /// Default engine per task for M2. Live and final both route to
-    /// Parakeet v3; the final pass moves to Whisper large-v3-turbo when
-    /// WhisperKit lands (see docs/DECISIONS.md D7).
+    /// Default engine per task. Live and final transcription both route to
+    /// Parakeet v3 (the final pass moves to Whisper large-v3-turbo when
+    /// WhisperKit lands — docs/DECISIONS.md D7); diarization routes to
+    /// pyannote community-1 + WeSpeaker.
     public static func recommended(for task: ModelTask) -> ModelDescriptor? {
         switch task {
         case .liveTranscription, .finalTranscription:
             return parakeetTdtV3
-        case .diarization, .summarization, .embedding:
+        case .diarization:
+            return speakerDiarization
+        case .summarization, .embedding:
             return nil
         }
     }
@@ -207,6 +210,66 @@ public enum ModelCatalog {
                 sizeBytes: 151_122),
         ],
         minimumRAMGB: 4,
+        license: "CC-BY-4.0"
+    )
+
+    /// pyannote community-1 segmentation + WeSpeaker v2 embeddings compiled
+    /// for CoreML by FluidInference — the M3 diarization pair (~14 MB).
+    /// Loaded via `DiarizerModels.load(localSegmentationModel:local…)`, which
+    /// never downloads, so the folder name carries no resolver magic here.
+    public static let speakerDiarization = ModelDescriptor(
+        id: "speaker-diarization-coreml",
+        tasks: [.diarization],
+        displayName: "pyannote + WeSpeaker (CoreML)",
+        folderName: "speaker-diarization-coreml",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/FluidInference/speaker-diarization-coreml/resolve/1ed7a662fdc7109e36d822db793ee6eebdaf8594"
+        )!,
+        revision: "1ed7a662fdc7109e36d822db793ee6eebdaf8594",
+        artifacts: [
+            ModelArtifact(
+                path: "pyannote_segmentation.mlmodelc/analytics/coremldata.bin",
+                sha256: "b379db0541b35344a34bb7540783ae704c11599bbed5aa8bbbda11c20ad215ee",
+                sizeBytes: 243),
+            ModelArtifact(
+                path: "pyannote_segmentation.mlmodelc/coremldata.bin",
+                sha256: "4a450ea1b053b9eb7eef0cab6971018076600840c7e246d064e7c5387f456c98",
+                sizeBytes: 316),
+            ModelArtifact(
+                path: "pyannote_segmentation.mlmodelc/metadata.json",
+                sha256: "44e1fa36d6abafacf688beccad99f7569394248d8bb41545829997c67668c08c",
+                sizeBytes: 1763),
+            ModelArtifact(
+                path: "pyannote_segmentation.mlmodelc/model.mil",
+                sha256: "97f2dec6f83e80bf4247b98e13c2dde19f92c05820ef08068bbf554488d70bdd",
+                sizeBytes: 29_490),
+            ModelArtifact(
+                path: "pyannote_segmentation.mlmodelc/weights/weight.bin",
+                sha256: "0266f4ad4d843ecf31ef9220ad6b80616b3ec64a4404b64f3ea0371554e236ec",
+                sizeBytes: 5_734_720),
+            ModelArtifact(
+                path: "wespeaker_v2.mlmodelc/analytics/coremldata.bin",
+                sha256: "d2b1fcde6121aea3ff0e14c1dc50d09dacb0314a2e89156353c31804230a422f",
+                sizeBytes: 243),
+            ModelArtifact(
+                path: "wespeaker_v2.mlmodelc/coremldata.bin",
+                sha256: "6feb2472a71fa9d8a84020c85206138a4f6261c565c9884bf518d59dd5838da7",
+                sizeBytes: 359),
+            ModelArtifact(
+                path: "wespeaker_v2.mlmodelc/metadata.json",
+                sha256: "ddc4858b4051254098015cd0b97080149839d697faf7b036f933190e70b26758",
+                sizeBytes: 2738),
+            ModelArtifact(
+                path: "wespeaker_v2.mlmodelc/model.mil",
+                sha256: "2850f775d6ba659f01f616fed77ce6a45a25de3eb7e4bf3a4b07b658be4e13dd",
+                sizeBytes: 706_900),
+            ModelArtifact(
+                path: "wespeaker_v2.mlmodelc/weights/weight.bin",
+                sha256: "34004f6798d35cad7071e2fdc67e63faaa782f53697e1cb49bcb452cf81ae151",
+                sizeBytes: 7_243_904),
+        ],
+        minimumRAMGB: 2,
         license: "CC-BY-4.0"
     )
 }

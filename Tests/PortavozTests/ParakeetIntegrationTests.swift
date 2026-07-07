@@ -3,6 +3,7 @@ import Foundation
 import PortavozCore
 import XCTest
 
+@testable import ModelStoreKit
 @testable import TranscriptionKit
 
 /// Real-model integration tests. Skipped unless PORTAVOZ_MODEL_TESTS=1 and
