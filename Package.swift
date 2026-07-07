@@ -20,6 +20,7 @@ let package = Package(
         .library(name: "SyncKit", targets: ["SyncKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
+        .executable(name: "portavoz-app", targets: ["portavoz-app"]),
     ],
     dependencies: [
         // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
@@ -69,6 +70,18 @@ let package = Package(
         ),
         .target(name: "SyncKit", dependencies: ["PortavozCore"]),
         .target(name: "IntegrationsKit", dependencies: ["PortavozCore", "IntelligenceKit"]),
+
+        // The macOS app shell (M5). Built as a plain SPM executable and
+        // wrapped into Portavoz.app by scripts/make-app.sh (D20) — no
+        // Xcode project until iOS (M7) or notarization forces one.
+        .executableTarget(
+            name: "portavoz-app",
+            dependencies: [
+                "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
+                "StorageKit",
+            ]
+        ),
 
         .executableTarget(
             name: "portavoz-cli",

@@ -1,0 +1,163 @@
+import AudioCaptureKit
+import DiarizationKit
+import Foundation
+import IntelligenceKit
+import Observation
+import PortavozCore
+import SwiftUI
+import TranscriptionKit
+
+/// Drives one recording end to end: capture (mic + system tap) → live
+/// captions → on stop, diarization + attribution + persistence + summary.
+/// The whole meeting pipeline, in the order the Kits were built.
+@MainActor
+@Observable
+final class RecordingController {
+    enum Phase: Equatable {
+        case idle
+        case preparing
+        case recording
+        case processing(String)
+        case done(MeetingID)
+        case failed(String)
+    }
+
+    private(set) var phase: Phase = .idle
+    private(set) var captions: [TranscriptSegment] = []
+    private(set) var startedAt = Date()
+
+    private var session: RecordingSession?
+    private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]
+    private var consumers: [Task<Void, Never>] = []
+    private var meetingID = MeetingID()
+    private var audioRelative = ""
+
+    func start(services: AppServices) async {
+        guard phase == .idle || isFailed else { return }
+        phase = .preparing
+        do {
+            try await services.loadEnginesIfNeeded()
+        } catch {
+            phase = .failed("No se pudieron preparar los modelos: \(error.localizedDescription)")
+            return
+        }
+        guard let engine = services.transcriber else {
+            phase = .failed("El motor de transcripción no está disponible.")
+            return
+        }
+
+        meetingID = MeetingID()
+        audioRelative = "Audio/\(meetingID.rawValue.uuidString)"
+        let outputDirectory = AppServices.audioRoot.appendingPathComponent(audioRelative)
+
+        var sources: [any AudioCaptureSource] = [MicrophoneSource()]
+        if #available(macOS 14.4, *) {
+            sources.append(ProcessTapSource())
+        }
+
+        captions = []
+        feeds = [:]
+        consumers = []
+        for source in sources {
+            let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
+            feeds[source.channel] = continuation
+            let segments = engine.transcribe(
+                stream, hints: TranscriptionHints(meetingID: meetingID))
+            consumers.append(Task { @MainActor [weak self] in
+                do {
+                    for try await segment in segments {
+                        self?.captions.append(segment)
+                    }
+                } catch {
+                    // A dead channel ends its captions; the recording and
+                    // the other channel keep going.
+                }
+            })
+        }
+
+        let session = RecordingSession(outputDirectory: outputDirectory)
+        let channelFeeds = feeds
+        do {
+            try await session.start(sources: sources) { chunk in
+                channelFeeds[chunk.channel]?.yield(chunk)
+            }
+        } catch {
+            phase = .failed("No se pudo iniciar la captura: \(error.localizedDescription)")
+            return
+        }
+        self.session = session
+        startedAt = Date()
+        phase = .recording
+    }
+
+    func stop(services: AppServices) async {
+        guard phase == .recording, let session else { return }
+        phase = .processing("Cerrando la grabación…")
+
+        let capture = await session.stop()
+        for continuation in feeds.values { continuation.finish() }
+        for consumer in consumers { await consumer.value }
+        self.session = nil
+
+        guard !capture.files.isEmpty, !captions.isEmpty else {
+            phase = .failed(
+                "No se capturó audio. Revisa los permisos de micrófono y de grabación de audio del sistema para Portavoz."
+            )
+            return
+        }
+
+        do {
+            // Diarize the remote channel; the mic channel is "Me" by
+            // hardware truth and never goes through ML (D5).
+            var turns: [SpeakerTurn] = []
+            if let systemFile = capture.files[.system], let diarizer = services.diarizer,
+                (capture.secondsWritten[.system] ?? 0) > 1
+            {
+                phase = .processing("Identificando hablantes…")
+                turns = (try? await diarizer.diarizeFile(at: systemFile)) ?? []
+            }
+            let attribution = SpeakerAttributor.attribute(
+                segments: captions, turns: turns, meetingID: meetingID)
+
+            phase = .processing("Guardando…")
+            let meeting = Meeting(
+                id: meetingID,
+                title: "Reunión \(startedAt.formatted(date: .abbreviated, time: .shortened))",
+                startedAt: startedAt,
+                endedAt: Date(),
+                audioDirectory: audioRelative,
+                retention: .keep
+            )
+            try await services.store.save(meeting)
+            try await services.store.save(attribution.speakers)
+            try await services.store.save(attribution.segments)
+
+            if #available(macOS 26.0, *),
+                FoundationModelSummaryProvider.unavailabilityReason() == nil
+            {
+                phase = .processing("Generando resumen…")
+                let language = Locale.current.language.languageCode?.identifier ?? "en"
+                let request = SummaryRequest(
+                    meetingID: meetingID,
+                    segments: attribution.segments,
+                    speakers: attribution.speakers,
+                    recipe: .general,
+                    targetLanguage: language
+                )
+                if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
+                    try await services.store.saveSummary(draft)
+                }
+            }
+
+            services.libraryVersion += 1
+            phase = .done(meetingID)
+        } catch {
+            phase = .failed("El procesamiento falló: \(error.localizedDescription)")
+        }
+    }
+
+    private var isFailed: Bool {
+        if case .failed = phase { return true }
+        return false
+    }
+}
