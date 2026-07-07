@@ -11,13 +11,6 @@ public protocol AudioCaptureSource: Sendable {
     func stop() async
 }
 
-/// What happens to raw audio files after a meeting — a first-class privacy
-/// and disk-space control, configurable per meeting or globally.
-public enum AudioRetentionPolicy: Codable, Sendable, Equatable {
-    /// Keep the recording indefinitely.
-    case keep
-    /// Delete the audio N days after the meeting ends (transcript is kept).
-    case deleteAfter(days: Int)
-    /// Delete the audio as soon as transcription completes.
-    case deleteAfterTranscription
-}
+/// Moved to PortavozCore in M5 so StorageKit can persist it per meeting;
+/// the alias keeps existing `import AudioCaptureKit` call sites compiling.
+public typealias AudioRetentionPolicy = PortavozCore.AudioRetentionPolicy

@@ -30,6 +30,8 @@ let package = Package(
         .package(
             url: "https://github.com/FluidInference/FluidAudio.git",
             revision: "c367a18e77f9e07a9d0493f6e6fa713d0f774f13"),
+        // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
+        .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -58,7 +60,13 @@ let package = Package(
         ),
         .target(name: "IntelligenceKit", dependencies: ["PortavozCore"]),
         .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
-        .target(name: "StorageKit", dependencies: ["PortavozCore"]),
+        .target(
+            name: "StorageKit",
+            dependencies: [
+                "PortavozCore",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ]
+        ),
         .target(name: "SyncKit", dependencies: ["PortavozCore"]),
         .target(name: "IntegrationsKit", dependencies: ["PortavozCore", "IntelligenceKit"]),
 
@@ -67,6 +75,7 @@ let package = Package(
             dependencies: [
                 "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
+                "StorageKit",
             ]
         ),
 

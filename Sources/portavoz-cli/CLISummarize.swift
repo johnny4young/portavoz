@@ -3,6 +3,7 @@ import Foundation
 import IntelligenceKit
 import ModelStoreKit
 import PortavozCore
+import StorageKit
 import TranscriptionKit
 
 /// `portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
@@ -22,6 +23,8 @@ enum SummarizeCommand {
         var modelsDir: String?
         var byokEndpoint: String?
         var byokModel = "gpt-4o-mini"
+        var save = false
+        var dbPath: String?
 
         var index = 0
         while index < arguments.count {
@@ -51,6 +54,11 @@ enum SummarizeCommand {
             case "--byok-model":
                 index += 1
                 if index < arguments.count { byokModel = arguments[index] }
+            case "--save":
+                save = true
+            case "--db":
+                index += 1
+                if index < arguments.count { dbPath = arguments[index] }
             default:
                 print("Unknown option: \(arguments[index])")
                 return
@@ -140,6 +148,24 @@ enum SummarizeCommand {
                 format: "summary generated in %.1fs (M4 target: < 30 s) — language %@, %d segment(s)",
                 elapsed, draft.language, attribution.segments.count
             ))
+
+            if save {
+                let storeDB = try MeetingsCommand.openStore(dbPath: dbPath)
+                let now = Date()
+                let record = Meeting(
+                    id: meetingID,
+                    title: url.deletingPathExtension().lastPathComponent,
+                    startedAt: now.addingTimeInterval(-transcription.audioDuration),
+                    endedAt: now,
+                    language: language
+                )
+                try await storeDB.save(record)
+                try await storeDB.save(attribution.speakers)
+                try await storeDB.save(attribution.segments)
+                let version = try await storeDB.saveSummary(draft)
+                print("saved meeting \(meetingID.rawValue.uuidString) (summary v\(version))")
+                print("browse it with: portavoz-cli meetings show \(meetingID.rawValue.uuidString)")
+            }
         } catch {
             print("error: \(error.localizedDescription)")
         }

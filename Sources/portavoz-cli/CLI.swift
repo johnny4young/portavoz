@@ -28,6 +28,8 @@ struct PortavozCLI {
             await DiarizeCommand.run(arguments)
         case "summarize":
             await SummarizeCommand.run(arguments)
+        case "meetings":
+            await MeetingsCommand.run(arguments)
         case "models":
             await ModelsCommand.run(arguments)
         case "bench-m2":
@@ -49,7 +51,8 @@ struct PortavozCLI {
               portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
-                                     [--byok <endpoint> --byok-model <model>]
+                                     [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
+              portavoz-cli meetings <list|show <id>|search <query>> [--db <path>]
               portavoz-cli models <download|verify|path> [--models-dir <dir>]
               portavoz-cli bench-m2 --batch-file <wav> [--seconds N] [--mic <name>] [--language es]
 

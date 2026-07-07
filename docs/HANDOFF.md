@@ -1,7 +1,7 @@
 # HANDOFF — Estado del proyecto
 
 > Documento de traspaso entre sesiones de trabajo. Actualizar al final de cada sesión significativa.
-> Última actualización: 2026-07-07 (sesión M2+M3+M4).
+> Última actualización: 2026-07-07 (sesión M2+M3+M4+M5·storage).
 
 ## Estado actual
 
@@ -12,6 +12,7 @@
 | **M2 — Transcripción** | ✅ **Completo, criterio de aceptación medido en verde** (ver abajo). |
 | **M3 — Diarización** | ✅ **Núcleo completo y verificado con audio real (AMI) y sintético.** Pendientes: DER formal en reunión real de 4 personas, y las "speaker pills" (UI — no existe app target todavía; va con el shell de app hacia M5). |
 | **M4 — Inteligencia** | ✅ **Núcleo completo, criterio medido en verde**: resumen estructurado ES de reunión EN con glosario intacto en 3.8 s (< 30 s); path incremental (map-reduce) verificado. Falta la parte "durante la reunión" (resumen rodante) — va con la app. |
+| **M5 — Public 0.1** | 🚧 **StorageKit completo** (GRDB 7 + FTS5, contrato D4 ejecutado, D19): persistencia E2E verificada vía `summarize --save` + `meetings list/show/search`; retención de audio de M1 cerrada. Faltan: app shell SwiftUI, export MD/PDF/Gist, empaquetado (DMG + Sparkle + Homebrew). |
 
 **Sin push al remoto todavía** (`origin = git@github.com:johnny4young/portavoz.git`).
 
@@ -51,11 +52,18 @@
 - **Dependencia FluidAudio pineada por revisión** (`c367a18e…`): el tag v0.15.4 tiene un timeout determinístico del type-checker en su target CLI (arreglado upstream en #732, sin release aún) — **volver a `.upToNextMinor` cuando salga > 0.15.4**.
 - Resultados: resumen ES de reunión EN, headings traducidos, `roadmap`/`batch`/`pipeline` intactos, 3.8 s; sin action items inventados (greedy + guías estrictas); path incremental ~11 s para 3 ventanas. **55 tests en verde** (4 de integración con modelos reales, gated).
 
+## M5 — qué hay hasta ahora (StorageKit verificado 2026-07-07)
+
+- **`MeetingStore`** (GRDB 7 + FTS5): contrato D4 completo — UUID PKs, tombstones, summaries como snapshots versionados inmutables (action items = excepción mutable en su tabla), paths relativos con rechazo de absolutos, `visibility` reservado. Búsqueda FTS5 con snippets e input hostil sanitizado. **`enforceAudioRetention` cierra la deuda de M1** (borra audio expirado, jamás el transcript).
+- **Tipos movidos a Core** (evita deps Kit↔Kit): `Meeting` (nuevo), `AudioRetentionPolicy` (typealias de compat en AudioCaptureKit), `Recipe`/`SummaryDraft`/`ActionItem`.
+- **CLI**: `summarize --save [--db]` persiste reunión+speakers+segmentos+resumen; `meetings list|show|search`. E2E verificado con la conversación TTS: FTS encuentra "[latency]" con snippet, show imprime transcript atribuido + resumen v1.
+- sqlite-vec diferido a M8 (D19). **67 tests en verde** (12 nuevos de storage).
+
 ## Próximos pasos (en orden)
 
 1. **Test de aceptación M1 pendiente** (usuario): 30 min con audio APERIÓDICO (podcast) → `scripts/verify_drift.py` (drift real por correlación; el "drift" del CLI es proxy burdo).
 2. **Validación M3 formal** (usuario): reunión real de 4 personas → DER < 15% (los turnos salen de `diarize`; falta harness de DER contra referencia — FluidAudio trae `DiarizationDER.swift` que puede reusarse). "Me" 100% ya es estructural por diseño.
-3. **M5 — Public 0.1**: StorageKit (GRDB + FTS5, contrato D4), export MD/PDF/Gist, y el **app shell SwiftUI** (que desbloquea speaker pills de M3, resumen rodante de M4 y la `AudioRetentionPolicy` de M1). Primer target de UI del proyecto.
+3. **M5 restante**: (a) **app shell SwiftUI** (primer target de UI; desbloquea speaker pills M3 y resumen rodante M4) — decidir estructura: target SPM ejecutable vs proyecto Xcode (TCC/entitlements/firma pesan hacia Xcode o XcodeGen); (b) export MD/PDF/Gist (IntegrationsKit); (c) empaquetado DMG + Sparkle + Homebrew (D10).
 4. Deuda menor: captions vivos cortan subwords en costuras (espera al re-pase Whisper); speaker espurio en ventana final zero-padded del diarizer; volver FluidAudio a `.upToNextMinor` cuando haya release > 0.15.4.
 
 ## Quirks del entorno de desarrollo
@@ -117,7 +125,7 @@
 ## Mapa de documentos
 
 - [CLAUDE.md](../CLAUDE.md) — guía operativa mínima para sesiones de Claude Code (apunta aquí).
-- [docs/DECISIONS.md](DECISIONS.md) — **registro de todas las decisiones con su porqué** (D1–D18).
+- [docs/DECISIONS.md](DECISIONS.md) — **registro de todas las decisiones con su porqué** (D1–D19).
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md) — diseño técnico: módulos, pipelines, reglas de ingeniería, entorno.
 - [docs/PRODUCT.md](PRODUCT.md) — visión, mercado, FREE/PRO, targets de performance.
 - [docs/ROADMAP.md](ROADMAP.md) — hitos M0–M8 con criterios de aceptación.

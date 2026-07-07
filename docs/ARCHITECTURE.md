@@ -19,7 +19,7 @@ Diferenciadores en orden de prioridad: who-said-what estructural por captura dua
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker vía FluidAudio) sobre canales system/room; `SpeakerAttributor` (who-said-what estructural); `Voiceprint` (biométrico: solo on-device, cifrado, nunca sync, borrable) |
 | `IntelligenceKit` | `SummaryProvider`: `FoundationModelSummaryProvider` (on-device, map-reduce convergente, D18) + `OpenAICompatibleSummaryProvider` (BYOK, opt-in explícito, jamás default silencioso); Recipes; bilingüe con `targetLanguage` + `glossary` |
 | `ContextFeedKit` | Links/notas/snippets con timestamp durante la reunión ("las notas llevan la intención, el transcript los hechos") |
-| `StorageKit` | GRDB + FTS5 + sqlite-vec (llega en M1+; M0 sin deps). Contrato de schema congelado — ver D4 en [DECISIONS.md](DECISIONS.md) |
+| `StorageKit` | `MeetingStore` sobre GRDB 7 + FTS5 (contrato D4 ejecutado — ver D19): reuniones, transcript, snapshots de resumen versionados, búsqueda full-text, retención de audio. sqlite-vec llega con el RAG (M8) |
 | `SyncKit` | CloudKit vía CKSyncEngine (M7). Escalera de compartir: export/Gist → CKShare → relay self-hostable (D12) |
 | `IntegrationsKit` | Exporters + Gist + servidor MCP local (solo localhost + token de sesión) |
 | `portavoz-cli` | Harness de desarrollo ejecutable (`record --seconds N --pid X --system --out dir`) |

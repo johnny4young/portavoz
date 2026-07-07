@@ -1,16 +1,109 @@
 import Foundation
+import GRDB
 
-/// Storage lands in M1 on GRDB (SQLite) with FTS5 for search and sqlite-vec
-/// for the local RAG index. The schema contract, fixed from v1 so sync and
-/// sharing never require a painful migration:
+/// The v1 schema, executing the D4 contract frozen since M0:
 ///
 /// - UUID primary keys everywhere (never auto-increment).
-/// - `updated_at` + `deleted_at` tombstones on every syncable table.
-/// - Summaries are immutable versioned snapshots.
-/// - No absolute file paths in the database — assets resolve relative to
-///   the app container.
+/// - `updatedAt` + `deletedAt` tombstones on every syncable table.
+/// - Summaries are immutable versioned snapshots (action items are the
+///   deliberate mutable exception: users check them off, so they live in
+///   their own table keyed to a snapshot).
+/// - No absolute file paths in the database — audio resolves relative to
+///   the app's audio root.
 /// - API keys and voiceprints never live in SQLite (Keychain / encrypted
 ///   files respectively).
+/// - `visibility` reserved since v1 for the sharing ladder (D12).
+///
+/// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
+/// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
     public static let version = 1
+
+    static func migrator() -> DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+
+        migrator.registerMigration("v1") { db in
+            try db.create(table: "meeting") { t in
+                t.primaryKey("id", .text)
+                t.column("title", .text).notNull()
+                t.column("startedAt", .datetime).notNull()
+                t.column("endedAt", .datetime)
+                t.column("language", .text)
+                t.column("audioDirectory", .text)
+                t.column("retention", .text).notNull()
+                t.column("visibility", .text).notNull().defaults(to: "private")
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+            }
+
+            try db.create(table: "speaker") { t in
+                t.primaryKey("id", .text)
+                t.column("meetingID", .text).notNull().indexed()
+                    .references("meeting", onDelete: .cascade)
+                t.column("label", .text).notNull()
+                t.column("displayName", .text)
+                t.column("isMe", .boolean).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+            }
+
+            try db.create(table: "segment") { t in
+                t.primaryKey("id", .text)
+                t.column("meetingID", .text).notNull().indexed()
+                    .references("meeting", onDelete: .cascade)
+                t.column("speakerID", .text).indexed()
+                t.column("channel", .text).notNull()
+                t.column("text", .text).notNull()
+                t.column("language", .text)
+                t.column("startTime", .double).notNull()
+                t.column("endTime", .double).notNull()
+                t.column("confidence", .double)
+                t.column("isFinal", .boolean).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+            }
+
+            // Immutable snapshot: rows are only ever inserted (or
+            // tombstoned for sync); a (meeting, recipe) pair grows a new
+            // version per pass.
+            try db.create(table: "summary") { t in
+                t.primaryKey("id", .text)
+                t.column("meetingID", .text).notNull().indexed()
+                    .references("meeting", onDelete: .cascade)
+                t.column("recipeID", .text).notNull()
+                t.column("language", .text).notNull()
+                t.column("markdown", .text).notNull()
+                t.column("version", .integer).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+                t.uniqueKey(["meetingID", "recipeID", "version"])
+            }
+
+            try db.create(table: "actionItem") { t in
+                t.primaryKey("id", .text)
+                t.column("summaryID", .text).notNull().indexed()
+                    .references("summary", onDelete: .cascade)
+                t.column("meetingID", .text).notNull().indexed()
+                t.column("text", .text).notNull()
+                t.column("ownerSpeakerID", .text)
+                t.column("isDone", .boolean).notNull().defaults(to: false)
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+            }
+
+            // Full-text search over segment text, kept in sync with the
+            // content table by GRDB-generated triggers.
+            try db.create(virtualTable: "segmentSearch", using: FTS5()) { t in
+                t.synchronize(withTable: "segment")
+                t.tokenizer = .unicode61()
+                t.column("text")
+            }
+        }
+
+        return migrator
+    }
 }

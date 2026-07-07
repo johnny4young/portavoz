@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Builds the prompts every summary provider shares. Pure functions, so
 /// the load-bearing details — glossary preservation, output language,
