@@ -8,11 +8,13 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
-// Vista SwiftUI grande (varias secciones de settings); split en subvistas
-// pendiente como deuda técnica.
 /// App settings (⌘,): voice enrollment and the GitHub token. Both secrets
 /// live in the Keychain / encrypted files — never in the database.
-struct SettingsView: View { // swiftlint:disable:this type_body_length
+///
+/// The individual `Section`s live in `extension SettingsView` blocks below
+/// (same file, so they keep access to the private `@State`); the struct body
+/// itself is just the stored state and the `Form` that composes them.
+struct SettingsView: View {
     @Environment(AppServices.self) private var services
 
     @State private var token = ""
@@ -77,7 +79,11 @@ struct SettingsView: View { // swiftlint:disable:this type_body_length
             Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
         }
     }
+}
 
+// MARK: - Audio & Recordings
+
+extension SettingsView {
     // MARK: - Audio
 
     private var audioSection: some View {
@@ -173,7 +179,11 @@ struct SettingsView: View { // swiftlint:disable:this type_body_length
             }
         }
     }
+}
 
+// MARK: - Títulos & Vocabulario
+
+extension SettingsView {
     // MARK: - Títulos
 
     /// The template tokens with a live example each, so the help and the
@@ -313,7 +323,11 @@ struct SettingsView: View { // swiftlint:disable:this type_body_length
         customVocabulary = terms.joined(separator: ", ")
         newTerm = ""
     }
+}
 
+// MARK: - Mi voz & Motor de resúmenes
+
+extension SettingsView {
     // MARK: - Mi voz (M6)
 
     private var voiceSection: some View {
@@ -531,7 +545,11 @@ struct SettingsView: View { // swiftlint:disable:this type_body_length
         // Low disk → the compact Whisper for the refine, too.
         if advice.whisperLowDisk { whisperCompact = true }
     }
+}
 
+// MARK: - Companion, BYOK & GitHub
+
+extension SettingsView {
     // MARK: - Companion (D26)
 
     private var companionSection: some View {
