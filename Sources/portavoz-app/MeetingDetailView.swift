@@ -19,6 +19,7 @@ struct MeetingDetailView: View {
     @State private var detail: MeetingDetail?
     @State private var summary: (draft: SummaryDraft, version: Int)?
     @State private var player: MeetingPlayer?
+    @State private var waveform: [Waveform.Bucket] = []
     @State private var renamingSpeaker: Speaker?
     @State private var newName = ""
     @State private var exportDocument: ExportDocument?
@@ -108,7 +109,7 @@ struct MeetingDetailView: View {
                     }
                 }
                 if let player {
-                    MeetingPlayerBar(player: player)
+                    MeetingPlayerBar(player: player, waveform: waveform)
                 }
                 // Own View structs so only they re-render as the playhead
                 // moves — the header and summary above stay put.
@@ -691,16 +692,20 @@ struct MeetingDetailView: View {
         await loadPlayerIfNeeded()
     }
 
-    /// Builds the synchronized player once (M11). Audio survives refine, so
-    /// there's no reason to rebuild it when the library version bumps.
+    /// Builds the synchronized player + waveform once (M11). Audio survives
+    /// refine, so there's no reason to rebuild when the library version bumps.
     private func loadPlayerIfNeeded() async {
         guard player == nil, let relative = detail?.meeting.audioDirectory else { return }
         let base = RecordingsLocation.shared.resolve(relative)
-        let files = ["system", "microphone"].compactMap {
-            MeetingAudioLayout.channelFile(named: $0, in: base)
-        }
+        let system = MeetingAudioLayout.channelFile(named: "system", in: base)
+        let mic = MeetingAudioLayout.channelFile(named: "microphone", in: base)
+        let files = [system, mic].compactMap { $0 }
         guard !files.isEmpty else { return }
         player = await MeetingPlayer.make(channelFiles: files)
+        // Off the main actor: a long meeting reads a lot of frames.
+        waveform = await Task.detached {
+            Waveform.generate(micFile: mic, systemFile: system, buckets: 600)
+        }.value
     }
 
     private func timestamp(_ seconds: TimeInterval) -> String {
@@ -748,33 +753,45 @@ struct SpeakerPill: View {
     }
 }
 
-/// The transport bar (M11): play/pause + a scrubber over the mixed
+/// The transport bar (M11): play/pause + a waveform scrubber over the mixed
 /// timeline. Its own View so the scrubber's 5 fps updates don't re-render
-/// the whole detail.
+/// the whole detail. Falls back to a plain slider until the waveform is
+/// generated (or if the audio was unreadable).
 struct MeetingPlayerBar: View {
     let player: MeetingPlayer
+    let waveform: [Waveform.Bucket]
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                player.togglePlayPause()
-            } label: {
-                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.title)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.tint)
-            .help(player.isPlaying ? "Pausar" : "Reproducir")
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                Button {
+                    player.togglePlayPause()
+                } label: {
+                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .help(player.isPlaying ? "Pausar" : "Reproducir")
 
-            Text(clock(player.currentTime))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-            Slider(
-                value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),
-                in: 0...max(player.duration, 0.1))
-            Text(clock(player.duration))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+                Text(clock(player.currentTime))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(clock(player.duration))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            if waveform.isEmpty {
+                Slider(
+                    value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),
+                    in: 0...max(player.duration, 0.1))
+            } else {
+                WaveformView(
+                    buckets: waveform,
+                    progress: player.duration > 0 ? player.currentTime / player.duration : 0,
+                    onSeek: { player.seek(to: $0 * player.duration) })
+            }
         }
         .padding(10)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
@@ -783,6 +800,46 @@ struct MeetingPlayerBar: View {
     private func clock(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// The scrubber waveform (M11): peak-amplitude columns tinted by who was
+/// talking (accent = you, gray = them) and dimmed past the playhead. Click
+/// or drag anywhere to seek.
+struct WaveformView: View {
+    let buckets: [Waveform.Bucket]
+    /// Playback position as a 0…1 fraction of the duration.
+    let progress: Double
+    /// Called with the seeked fraction (0…1) on click/drag.
+    let onSeek: (Double) -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            Canvas { context, size in
+                guard !buckets.isEmpty else { return }
+                let barWidth = size.width / CGFloat(buckets.count)
+                let mid = size.height / 2
+                for (index, bucket) in buckets.enumerated() {
+                    let height = max(2, CGFloat(bucket.amplitude) * (size.height - 2))
+                    let rect = CGRect(
+                        x: CGFloat(index) * barWidth + barWidth * 0.2,
+                        y: mid - height / 2,
+                        width: max(1, barWidth * 0.6),
+                        height: height)
+                    let played = (Double(index) + 0.5) / Double(buckets.count) <= progress
+                    let base: Color = bucket.micDominant ? .accentColor : .gray
+                    context.fill(
+                        Path(roundedRect: rect, cornerRadius: 1),
+                        with: .color(base.opacity(played ? 0.9 : 0.3)))
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0).onChanged { value in
+                    onSeek(min(1, max(0, value.location.x / max(1, geo.size.width))))
+                })
+        }
+        .frame(height: 44)
     }
 }
 
