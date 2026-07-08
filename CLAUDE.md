@@ -25,4 +25,5 @@ swift test    # si falla con "no such module": DEVELOPER_DIR=/Applications/Xcode
 
 - Respeta las reglas de ingeniería de [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (privacidad local-first, MIT/no-GPL, Swift 6 estricto, scheduler vivo≠batch, sha256 en modelos).
 - `swift test` en verde antes de cerrar cualquier tarea.
+- **Tras cualquier cambio de UI, deja la app reinstalada con `make install`** — el usuario prueba localmente los últimos cambios; que lo instalado siempre coincida con el trabajo reciente.
 - Conventional Commits.

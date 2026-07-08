@@ -6,7 +6,13 @@
 
 XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
-.PHONY: build test test-ui project app
+# The local signing identity — a REAL Developer ID (not ad-hoc) so macOS
+# keeps the app's TCC permissions across reinstalls instead of re-prompting.
+# There are two Developer ID certs with the same name on this machine; this
+# SHA-1 disambiguates the Portavoz one. Override with the env var.
+PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
+
+.PHONY: build test test-ui project app install
 
 ## Unit tests (the package suite).
 test:
@@ -27,6 +33,17 @@ test-ui: project
 		-project Portavoz.xcodeproj -scheme Portavoz \
 		-destination 'platform=macOS' -configuration Debug
 
-## Build + install the release app bundle (see scripts/make-app.sh).
+## Build the release app bundle only (see scripts/make-app.sh).
 app:
-	scripts/make-app.sh --release
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
+
+## Build the release app, install it to /Applications, and relaunch it.
+## Run this after any change you want to try in the real app so what's
+## installed always matches the latest work.
+install:
+	-osascript -e 'tell application "Portavoz" to quit' 2>/dev/null; sleep 1
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
+	rm -rf /Applications/Portavoz.app
+	cp -R dist/Portavoz.app /Applications/
+	open /Applications/Portavoz.app
+	@echo "✅ Portavoz reinstalada en /Applications con los últimos cambios."
