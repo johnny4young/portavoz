@@ -69,7 +69,6 @@ struct MeetingDetailView: View {
 
     @ViewBuilder
     private func loaded(_ detail: MeetingDetail) -> some View {
-        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header(detail)
@@ -118,7 +117,6 @@ struct MeetingDetailView: View {
                     segments: detail.segments,
                     speakers: detail.speakers,
                     player: player,
-                    scrollProxy: proxy,
                     onSeek: { player?.seek(to: $0); player?.play() },
                     onRenameTap: { speaker in
                         renamingSpeaker = speaker
@@ -127,7 +125,6 @@ struct MeetingDetailView: View {
             }
             .padding(20)
             .frame(maxWidth: 760, alignment: .leading)
-        }
         }
         .navigationTitle(detail.meeting.title)
         .sheet(
@@ -955,7 +952,6 @@ struct TranscriptSegmentsView: View {
     let segments: [TranscriptSegment]
     let speakers: [Speaker]
     let player: MeetingPlayer?
-    let scrollProxy: ScrollViewProxy
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
 
@@ -970,22 +966,21 @@ struct TranscriptSegmentsView: View {
     }
 
     var body: some View {
-        let active = activeSegmentID
-        // Lazy: a long meeting has thousands of rows and eager layout froze
-        // the window on open.
-        LazyVStack(alignment: .leading, spacing: 8) {
-            ForEach(segments) { segment in
-                row(segment, isActive: segment.id == active)
-                    .id(segment.id)
+        if player != nil {
+            // With audio, the transcript is a Spotify-lyrics carousel: the
+            // spoken line stays centered inside its own viewport, so seeking
+            // moves the transcript, never the whole page.
+            FocusedTranscriptView(segments: segments, activeID: activeSegmentID) {
+                segment, isActive in
+                row(segment, isActive: isActive)
             }
-        }
-        // Follow the playhead while playing — keep the spoken line on
-        // screen. Paused, the reader is free to browse without the view
-        // yanking them back.
-        .onChange(of: active) { _, newActive in
-            guard player?.isPlaying == true, let newActive else { return }
-            withAnimation(.easeInOut(duration: 0.25)) {
-                scrollProxy.scrollTo(newActive, anchor: .center)
+        } else {
+            // No audio to follow — a plain readable list scrolling with the
+            // page. Lazy: a long meeting has thousands of rows.
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(segments) { segment in
+                    row(segment, isActive: false)
+                }
             }
         }
     }

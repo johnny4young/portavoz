@@ -54,16 +54,18 @@ final class MeetingDetailUITests: XCTestCase {
         play.click()  // smoke: play doesn't crash
     }
 
-    /// Marking in/out reveals the clip export button (M11). The seed's audio
-    /// is 6 s, and the transcript's second line seeks to 3 s.
+    /// Marking in/out reveals the clip export button (M11). Advances the
+    /// playhead by playing, so it doesn't depend on clicking a transcript
+    /// line (dimmed/clipped in the focus carousel).
     @MainActor
     func testClipMarkingRevealsExport() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
-        XCTAssertTrue(app.buttons["clip-mark-start"].waitForExistence(timeout: 15))
-        app.buttons["clip-mark-start"].click()  // start at 0
-        app.buttons["00:03"].firstMatch.click()  // seek the playhead forward
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistence(timeout: 15))
+        app.buttons["player-play-pause"].click()  // play → the playhead moves
+        app.buttons["clip-mark-start"].click()
+        Thread.sleep(forTimeInterval: 1.5)  // let the playhead advance
         app.buttons["clip-mark-end"].click()  // end after start → valid range
 
         XCTAssertTrue(
