@@ -46,7 +46,15 @@ final class AppServices {
 
     init() {
         do {
-            store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
+            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+                // UI testing (`make test-ui`): a throwaway DB so a test run
+                // never touches the real library.
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
+                store = try MeetingStore(databaseURL: url)
+            } else {
+                store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
+            }
         } catch {
             // No database, no app — surfacing a broken half-UI would be
             // worse than failing loudly at launch.
@@ -111,5 +119,49 @@ final class AppServices {
     /// rebuilds the diarizer with the new identity state.
     func invalidateDiarizer() {
         diarizer = nil
+    }
+
+    /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),
+    /// including a summary with a coauthoring bullet ("▸") so the D28 render
+    /// is verifiable without a real recording. No-op outside UI testing.
+    func seedDemoIfRequested() async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-demo") else { return }
+        guard ((try? await store.meetings()) ?? []).isEmpty else { return }
+
+        let meeting = Meeting(
+            title: "Reunión de prueba",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            endedAt: Date(timeIntervalSince1970: 1_700_001_800),
+            language: "es")
+        try? await store.save(meeting)
+
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
+        try? await store.save([me, ana])
+        try? await store.save([
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
+                text: "Revisemos el presupuesto de transcripción.",
+                startTime: 0, endTime: 4, isFinal: true),
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: ana.id, channel: .system,
+                text: "El rollout del modelo queda para el viernes.",
+                startTime: 5, endTime: 9, isFinal: true),
+        ])
+        try? await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                markdown: """
+                    El equipo revisó el presupuesto y fijó el rollout.
+
+                    ## Decisiones
+                    - ▸ El rollout del modelo queda para el viernes.
+                    - Se revisará el presupuesto de transcripción.
+                    """,
+                actionItems: [ActionItem(text: "Preparar el rollout", ownerSpeakerID: ana.id)]))
+        try? await store.save([
+            ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
+        ])
+        libraryVersion += 1
     }
 }

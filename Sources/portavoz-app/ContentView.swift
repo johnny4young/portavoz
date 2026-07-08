@@ -29,5 +29,6 @@ struct ContentView: View {
                 )
             }
         }
+        .task { await services.seedDemoIfRequested() }
     }
 }

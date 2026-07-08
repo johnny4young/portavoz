@@ -1,0 +1,93 @@
+# XcodeGen spec — the source of truth for Portavoz.xcodeproj.
+# Regenerate with `xcodegen generate` (or `make project`). Do not hand-edit
+# the generated .xcodeproj; it is git-ignored.
+#
+# Why an Xcode project when D20 says "SPM + make-app.sh, no Xcode project":
+# XCUITest needs one. This project exists ONLY for automated UI verification
+# (`make test-ui`) so we don't drive the screen by hand. The release/notarized
+# build still comes from scripts/make-app.sh — this is not the shipping path.
+name: Portavoz
+
+options:
+  bundleIdPrefix: app.portavoz
+  deploymentTarget:
+    macOS: "14.4"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Ad-hoc local signing — this project is for UI testing, not distribution.
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+
+packages:
+  # The whole Portavoz SPM package (all Kits + Sparkle transitively).
+  Portavoz:
+    path: "."
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.0.0
+
+targets:
+  Portavoz:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.4"
+    sources:
+      - path: Sources/portavoz-app
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Portavoz graba tu micrófono para transcribir tus intervenciones. El audio nunca sale de tu Mac."
+        INFOPLIST_KEY_NSAudioCaptureUsageDescription: "Portavoz captura el audio del sistema para transcribir a los demás participantes. El audio nunca sale de tu Mac."
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: Portavoz
+        products:
+          - AudioCaptureKit
+          - PortavozCore
+          - ModelStoreKit
+          - TranscriptionKit
+          - DiarizationKit
+          - IntelligenceKit
+          - StorageKit
+          - IntegrationsKit
+          - AudioPlaybackKit
+      - package: Sparkle
+
+  # UI smoke harness. XCTest lives here; the package unit tests stay XCTest
+  # too (D13) but run via `swift test` — this target is macOS UI automation.
+  PortavozUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    deploymentTarget: "14.4"
+    settings:
+      base:
+        # A UI-test bundle isn't MainActor-isolated like the app.
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        # macOS Gatekeeper blocks an unsigned XCUITest runner; let Xcode sign it.
+        GENERATE_INFOPLIST_FILE: YES
+    sources:
+      - path: Tests/PortavozUITests
+    dependencies:
+      - target: Portavoz
+
+schemes:
+  Portavoz:
+    build:
+      targets:
+        Portavoz: all
+        PortavozUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PortavozUITests

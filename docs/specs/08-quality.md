@@ -1,6 +1,6 @@
 # Spec 08 — Calidad: tests, harnesses y números medidos
 
-Estado: 158 tests en verde (7 gated). CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test).
+Estado: 199 tests de paquete en verde (9 gated) + 2 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test).
 
 ## Suite de tests — `Tests/PortavozTests/`
 
@@ -18,6 +18,10 @@ Estado: 158 tests en verde (7 gated). CI en GitHub Actions (`.github/workflows/c
 | ParakeetIntegrationTests + gated | Modelos reales — requieren `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
 Local: `swift test` (si falla con "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select apunta a CommandLineTools). XCTest, no Swift Testing (D13).
+
+## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
+
+XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-use-temp-store` (DB desechable) + `-seed-demo` (reunión determinística con transcript, resumen y bullet "▸" de coautoría). Cubre: `LibraryUITests` (la biblioteca renderiza) y `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28).
 
 ## Harnesses de medición
 

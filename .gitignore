@@ -8,3 +8,6 @@ DerivedData/
 .env
 dist/
 __pycache__/
+
+# XcodeGen-generated (source of truth is project.yml)
+Portavoz.xcodeproj/
