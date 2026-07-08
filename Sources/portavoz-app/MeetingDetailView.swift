@@ -69,6 +69,7 @@ struct MeetingDetailView: View {
 
     @ViewBuilder
     private func loaded(_ detail: MeetingDetail) -> some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header(detail)
@@ -117,6 +118,7 @@ struct MeetingDetailView: View {
                     segments: detail.segments,
                     speakers: detail.speakers,
                     player: player,
+                    scrollProxy: proxy,
                     onSeek: { player?.seek(to: $0); player?.play() },
                     onRenameTap: { speaker in
                         renamingSpeaker = speaker
@@ -125,6 +127,7 @@ struct MeetingDetailView: View {
             }
             .padding(20)
             .frame(maxWidth: 760, alignment: .leading)
+        }
         }
         .navigationTitle(detail.meeting.title)
         .sheet(
@@ -850,6 +853,7 @@ struct TranscriptSegmentsView: View {
     let segments: [TranscriptSegment]
     let speakers: [Speaker]
     let player: MeetingPlayer?
+    let scrollProxy: ScrollViewProxy
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
 
@@ -870,6 +874,16 @@ struct TranscriptSegmentsView: View {
         LazyVStack(alignment: .leading, spacing: 8) {
             ForEach(segments) { segment in
                 row(segment, isActive: segment.id == active)
+                    .id(segment.id)
+            }
+        }
+        // Follow the playhead while playing — keep the spoken line on
+        // screen. Paused, the reader is free to browse without the view
+        // yanking them back.
+        .onChange(of: active) { _, newActive in
+            guard player?.isPlaying == true, let newActive else { return }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                scrollProxy.scrollTo(newActive, anchor: .center)
             }
         }
     }
