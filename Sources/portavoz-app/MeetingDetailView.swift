@@ -395,6 +395,13 @@ struct MeetingDetailView: View {
                     Menu {
                         Button("Regenerar en español") { regenerate(language: "es") }
                         Button("Regenerate in English") { regenerate(language: "en") }
+                        if let alt = alternateEngine {
+                            Divider()
+                            Menu(alt.label) {
+                                Button("Español") { regenerate(language: "es", engine: alt.engine) }
+                                Button("English") { regenerate(language: "en", engine: alt.engine) }
+                            }
+                        }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -597,7 +604,24 @@ struct MeetingDetailView: View {
         return String(format: "%d:%02d min", total / 60, total % 60)
     }
 
-    private func regenerate(language: String) {
+    /// The engine that is NOT the global default, offered as a per-meeting
+    /// override in the regenerate menu — only when it can actually run here (M12).
+    private var alternateEngine: (engine: AppServices.SummaryEngine, label: String)? {
+        switch services.summaryEngine {
+        case .appleOnDevice:
+            if let model = services.ollamaModel {
+                return (.ollama, "Regenerar con Ollama · \(model)")
+            }
+            return nil
+        case .ollama:
+            if services.appleSummaryAvailable {
+                return (.appleOnDevice, "Regenerar con Apple (on-device)")
+            }
+            return nil
+        }
+    }
+
+    private func regenerate(language: String, engine: AppServices.SummaryEngine? = nil) {
         guard let detail, !regenerating else { return }
         regenerating = true
         Task {
@@ -615,9 +639,10 @@ struct MeetingDetailView: View {
             )
 
             // A configured non-Apple engine (Ollama) summarizes directly —
-            // the fingerprint cache + translation pivot are FM-only.
-            if let engine = services.configuredSummaryProvider() {
-                if let draft = try? await engine.summarize(request) {
+            // the fingerprint cache + translation pivot are FM-only. `engine`
+            // overrides the global default for this one meeting (M12).
+            if let provider = services.configuredSummaryProvider(override: engine) {
+                if let draft = try? await provider.summarize(request) {
                     _ = try? await services.store.saveSummary(draft)
                     services.libraryVersion += 1
                 } else {

@@ -144,18 +144,37 @@ final class AppServices {
             ?? .appleOnDevice
     }
 
+    /// The Ollama model chosen in Settings, or nil if none is configured.
+    var ollamaModel: String? {
+        let model = (UserDefaults.standard.string(forKey: "ollamaModel") ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        return model.isEmpty ? nil : model
+    }
+
+    /// Whether the Apple on-device summary engine can run here (macOS 26 +
+    /// Apple Intelligence enabled). Used to only offer it as a per-meeting
+    /// override when it would actually work.
+    var appleSummaryAvailable: Bool {
+        if #available(macOS 26.0, *) {
+            return FoundationModelSummaryProvider.unavailabilityReason() == nil
+        }
+        return false
+    }
+
     /// The configured provider, or nil to use Apple Foundation Models (the
     /// map-reduce + priority-scheduled + fingerprint-cache path). Ollama
     /// gives a 100% local summary on Macs without Apple Intelligence
     /// (GAPS #7); a chosen model that's gone falls back to Apple.
-    func configuredSummaryProvider() -> (any SummaryProvider)? {
-        switch summaryEngine {
+    ///
+    /// `override` forces a specific engine for one meeting (M12 per-meeting
+    /// override) instead of the global default; nil keeps the default.
+    func configuredSummaryProvider(override: SummaryEngine? = nil) -> (any SummaryProvider)? {
+        switch override ?? summaryEngine {
         case .appleOnDevice:
             return nil
         case .ollama:
-            let model = (UserDefaults.standard.string(forKey: "ollamaModel") ?? "")
-                .trimmingCharacters(in: .whitespaces)
-            return model.isEmpty ? nil : OllamaService.summaryProvider(model: model)
+            guard let model = ollamaModel else { return nil }
+            return OllamaService.summaryProvider(model: model)
         }
     }
 
