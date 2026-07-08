@@ -1,6 +1,8 @@
+import AppKit
 import PortavozCore
 import StorageKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Sidebar: record button, full-text search, and the meeting library.
 struct LibraryView: View {
@@ -12,6 +14,11 @@ struct LibraryView: View {
     @State private var hits: [SearchHit] = []
     @State private var renamingMeeting: Meeting?
     @State private var newTitle = ""
+    @State private var importStatus: String?
+    @State private var importError: String?
+
+    /// Audio the importer accepts (drag-drop or the Import button).
+    private static let importTypes: [UTType] = [.audio, .mpeg4Audio, .wav, .mp3]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +30,28 @@ struct LibraryView: View {
             }
             .controlSize(.large)
             .keyboardShortcut("n")
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+
+            if let importStatus {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(importStatus).font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+            } else {
+                Button {
+                    chooseAudioToImport()
+                } label: {
+                    Label("Importar audio…", systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.small)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .help("Transcribe un archivo de audio (.m4a, .wav, .mp3) como una reunión nueva")
+            }
 
             TextField("Buscar en todas las reuniones…", text: $query)
                 .textFieldStyle(.roundedBorder)
@@ -104,11 +132,59 @@ struct LibraryView: View {
             }
             Button("Cancelar", role: .cancel) {}
         }
+        .alert(
+            "No se pudo importar",
+            isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importError ?? "")
+        }
+        // Drop an audio file anywhere on the sidebar to import it.
+        .dropDestination(for: URL.self) { urls, _ in
+            guard importStatus == nil, let url = urls.first(where: isAudio) else { return false }
+            importAudio(from: url)
+            return true
+        }
         .task(id: services.libraryVersion) { await reload() }
     }
 
     private func reload() async {
         meetings = (try? await services.store.meetings()) ?? []
+    }
+
+    private func isAudio(_ url: URL) -> Bool {
+        ["m4a", "wav", "mp3", "aac", "aiff", "aif", "caf", "m4b"]
+            .contains(url.pathExtension.lowercased())
+    }
+
+    private func chooseAudioToImport() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = Self.importTypes
+        panel.prompt = "Importar"
+        panel.message = "Elige un archivo de audio para transcribir como una reunión"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        importAudio(from: url)
+    }
+
+    private func importAudio(from url: URL) {
+        guard importStatus == nil else { return }
+        importStatus = "Preparando…"
+        Task {
+            do {
+                let id = try await services.importMeeting(from: url) { status in
+                    importStatus = status
+                }
+                importStatus = nil
+                route = .meeting(id)
+            } catch {
+                importStatus = nil
+                importError = error.localizedDescription
+            }
+        }
     }
 
     private func search(_ text: String) async {

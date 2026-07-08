@@ -13,7 +13,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | 5 | **UI solo en español** | strings hardcodeados | localización (mínimo EN — "talla mundial" implica bilingüe también en la UI, no solo en los resúmenes) | NO PLANEADO — añadir a M9 (String Catalogs antes de publicar; después duele más) |
 | 6 | **Onboarding inexistente** | primer arranque descarga modelos con progreso, sin explicación de permisos/valor | flujo primera-vez: permisos guiados (mic/system/TCC), descarga con recomendación por hardware, enrolar voz opcional (patrón Meetily) | Parcial en M12 (recomendador); el flujo NO está planeado |
 | 7 | **Macs sin Apple Intelligence = sin resumen local** | FM o BYOK manual | Ollama primera clase → MLX embebido | M12 / D25 |
-| 8 | **Import de audio externo sin UI** | `meetings refine --file` (CLI) | arrastrar .m4a/.wav a la biblioteca | M11 / D27 |
+| 8 | ~~**Import de audio externo sin UI**~~ | **RESUELTO (jul 2026)**: botón "Importar audio…" + drag-drop en la biblioteca → transcribe (Whisper) + diariza + resume como reunión nueva (M11) | — | ✅ |
 | 9 | Sin brief pre-reunión ni recap email | EventKit ya lee asistentes | Briefs (Granola) + borrador de recap (Gemini) | M13b / M16 |
 | 10 | Sin App Intents/Shortcuts/Spotlight | — | automatizaciones post-reunión | M16 |
 
@@ -26,7 +26,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | T3 | ~~FM sin política de prioridad~~ | **RESUELTO (D29)**: `IntelligenceScheduler` single-flight con prioridades, latest-wins por key, 7 tests | ✅ jul 2026 |
 | T4 | **Números de perf sin medir**: cold start, RAM grabando, FTS a 1k reuniones, batería | targets publicados sin evidencia — inaceptable para el README de M9 | `portavoz-cli bench --suite full` + corpus sintético (M9) |
 | T5 | RAG brute-force O(n) | a 1,000+ reuniones el `ask` se degrada | medir primero (T4); sqlite-vec si falla el target |
-| T6 | Storage de audio 126 MB/canal/22 min | disco del usuario | transcode AAC post-refine (M11) |
+| T6 | ~~Storage de audio 126 MB/canal/22 min~~ | **RESUELTO (jul 2026)**: botón "Comprimir audio (AAC)" en el detalle → transcode a m4a (`AudioTranscoder`), borra el original solo tras escritura verificada; `MeetingAudioLayout` prefiere m4a | ✅ |
 | T7 | CI no corre los tests gated de modelos | regresiones de integración invisibles en CI | runner self-hosted o job manual mensual — NO PLANEADO |
 | T8 | Sin SwiftLint/format en CI | estilo a mano | añadir en M9 (barato antes de contribuidores) |
 | T9 | FluidAudio pineado a revisión | fix upstream sin release | volver a upToNextMinor cuando salga > 0.15.4 |

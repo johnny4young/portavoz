@@ -21,6 +21,11 @@ public final class MeetingPlayer {
     public private(set) var clipStart: TimeInterval?
     public private(set) var clipEnd: TimeInterval?
 
+    /// Skip silent gaps during playback (M11). The silent ranges come from
+    /// the waveform.
+    public var skipSilence = false
+    private var silentRanges: [ClosedRange<TimeInterval>] = []
+
     /// The channel files this player mixed — the clip exporter trims these.
     public let channelFiles: [URL]
 
@@ -39,7 +44,17 @@ public final class MeetingPlayer {
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
             [weak self] time in
             MainActor.assumeIsolated {
-                self?.currentTime = min(time.seconds, self?.duration ?? time.seconds)
+                guard let self else { return }
+                self.currentTime = min(time.seconds, self.duration)
+                // Jump over a silent gap when asked (M11), leaving a small
+                // margin at its end so speech isn't clipped.
+                if self.skipSilence, self.isPlaying,
+                    let gap = self.silentRanges.first(where: {
+                        $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
+                    })
+                {
+                    self.seek(to: gap.upperBound - 0.2)
+                }
             }
         }
         // Playing to the end stops and rewinds, so the transport button
@@ -102,6 +117,10 @@ public final class MeetingPlayer {
     public func clearClip() {
         clipStart = nil
         clipEnd = nil
+    }
+
+    public func setSilentRanges(_ ranges: [ClosedRange<TimeInterval>]) {
+        silentRanges = ranges
     }
 
     public func play() {

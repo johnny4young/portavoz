@@ -20,6 +20,9 @@ struct MeetingDetailView: View {
     @State private var summary: (draft: SummaryDraft, version: Int)?
     @State private var player: MeetingPlayer?
     @State private var waveform: [Waveform.Bucket] = []
+    @State private var channelURLs: [URL] = []
+    @State private var compressing = false
+    @State private var compressMessage: String?
     @State private var renamingSpeaker: Speaker?
     @State private var newName = ""
     @State private var exportDocument: ExportDocument?
@@ -110,6 +113,29 @@ struct MeetingDetailView: View {
                 }
                 if let player {
                     MeetingPlayerBar(player: player, waveform: waveform)
+                    if canCompressAudio || compressing || compressMessage != nil {
+                        HStack(spacing: 8) {
+                            Button(action: compressAudio) {
+                                if compressing {
+                                    HStack(spacing: 6) {
+                                        ProgressView().controlSize(.small)
+                                        Text("Comprimiendo…")
+                                    }
+                                } else {
+                                    Label("Comprimir audio (AAC)", systemImage: "arrow.down.circle")
+                                }
+                            }
+                            .controlSize(.small)
+                            .disabled(!canCompressAudio)
+                            .help("Convierte el audio a AAC para ahorrar disco, sin pérdida audible para voz")
+                            if let compressMessage {
+                                Text(compressMessage)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
                 }
                 // Own View structs so only they re-render as the playhead
                 // moves — the header and summary above stay put.
@@ -701,11 +727,48 @@ struct MeetingDetailView: View {
         let mic = MeetingAudioLayout.channelFile(named: "microphone", in: base)
         let files = [system, mic].compactMap { $0 }
         guard !files.isEmpty else { return }
+        channelURLs = files
         player = await MeetingPlayer.make(channelFiles: files)
         // Off the main actor: a long meeting reads a lot of frames.
         waveform = await Task.detached {
             Waveform.generate(micFile: mic, systemFile: system, buckets: 600)
         }.value
+        player?.setSilentRanges(
+            Waveform.silentRanges(waveform, duration: player?.duration ?? 0))
+    }
+
+    /// True when there's lossless audio (CAF/WAV) still worth compressing.
+    private var canCompressAudio: Bool {
+        !compressing && channelURLs.contains { $0.pathExtension.lowercased() != "m4a" }
+    }
+
+    /// Transcodes the channels to AAC and rebuilds the player from them.
+    /// Originals are removed only after a verified write (M11/D27, T6).
+    private func compressAudio() {
+        let originals = channelURLs.filter { $0.pathExtension.lowercased() != "m4a" }
+        guard !originals.isEmpty else { return }
+        compressing = true
+        compressMessage = nil
+        Task {
+            defer { compressing = false }
+            let before = AudioTranscoder.totalBytes(of: channelURLs)
+            do {
+                for url in originals {
+                    _ = try await AudioTranscoder.toAAC(source: url, deleteSource: true)
+                }
+            } catch {
+                compressMessage = error.localizedDescription
+                return
+            }
+            player?.invalidate()
+            player = nil
+            waveform = []
+            channelURLs = []
+            await loadPlayerIfNeeded()
+            let saved = max(0, before - AudioTranscoder.totalBytes(of: channelURLs))
+            compressMessage =
+                "Audio comprimido — \(ByteCountFormatter.string(fromByteCount: saved, countStyle: .file)) liberados."
+        }
     }
 
     private func timestamp(_ seconds: TimeInterval) -> String {
@@ -782,6 +845,12 @@ struct MeetingPlayerBar: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Spacer()
+                Toggle(isOn: Binding(get: { player.skipSilence }, set: { player.skipSilence = $0 })) {
+                    Label("Saltar silencios", systemImage: "forward.fill")
+                }
+                .toggleStyle(.button)
+                .controlSize(.small)
+                .help("Salta automáticamente los silencios al reproducir")
                 Text(clock(player.duration))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)

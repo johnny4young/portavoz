@@ -1,6 +1,7 @@
 import AVFoundation
 import DiarizationKit
 import Foundation
+import IntelligenceKit
 import ModelStoreKit
 import Observation
 import PortavozCore
@@ -120,6 +121,65 @@ final class AppServices {
     /// rebuilds the diarizer with the new identity state.
     func invalidateDiarizer() {
         diarizer = nil
+    }
+
+    /// Imports an external audio file as a new meeting (M11/D27): copies it
+    /// in as the system channel (all speakers diarized — no "Me"), runs the
+    /// quality Whisper pass + diarization + summary, and returns the new id.
+    func importMeeting(
+        from source: URL,
+        progress: @escaping @MainActor (String) -> Void
+    ) async throws -> MeetingID {
+        let meetingID = MeetingID()
+        let relative = "Audio/\(meetingID.rawValue.uuidString)"
+        let audioDir = Self.audioRoot.appendingPathComponent(relative, isDirectory: true)
+        try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
+        let ext = source.pathExtension.isEmpty ? "m4a" : source.pathExtension.lowercased()
+        let dest = audioDir.appendingPathComponent("system.\(ext)")
+        try FileManager.default.copyItem(at: source, to: dest)
+
+        progress("Preparando modelos…")
+        let whisper = try await loadWhisperIfNeeded { progress($0) }
+        try await loadEnginesIfNeeded()
+
+        let vocabulary = VocabularyPrompt.parse(
+            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+        let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID)
+
+        progress("Transcribiendo el audio (Whisper)…")
+        let result = try await whisper.transcribeFile(at: dest, hints: hints, channel: .system)
+
+        progress("Identificando hablantes…")
+        let turns = (try? await diarizer?.diarizeFile(at: dest)) ?? []
+        let attribution = SpeakerAttributor.attribute(
+            segments: result.segments.sorted { $0.startTime < $1.startTime },
+            turns: turns, meetingID: meetingID)
+
+        let meeting = Meeting(
+            id: meetingID,
+            title: "Importado · " + source.deletingPathExtension().lastPathComponent,
+            startedAt: Date(),
+            endedAt: Date().addingTimeInterval(result.audioDuration),
+            audioDirectory: relative)
+        try await store.save(meeting)
+        try await store.save(attribution.speakers)
+        try await store.save(attribution.segments)
+
+        progress("Generando resumen…")
+        if #available(macOS 26.0, *),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        {
+            let request = SummaryRequest(
+                meetingID: meetingID, segments: attribution.segments,
+                speakers: attribution.speakers, recipe: .general,
+                targetLanguage: Locale.current.language.languageCode?.identifier ?? "en",
+                glossary: vocabulary)
+            if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
+                try? await store.saveSummary(draft)
+            }
+        }
+        libraryVersion += 1
+        return meetingID
     }
 
     /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),

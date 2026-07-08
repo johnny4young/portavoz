@@ -40,6 +40,36 @@ public enum Waveform {
         return raw.map { Bucket(amplitude: min(1, $0.amplitude * scale), micDominant: $0.micDominant) }
     }
 
+    /// Silent stretches (M11 skip-silence): runs of buckets under
+    /// `threshold` lasting at least `minLength`, as second ranges over the
+    /// meeting `duration`. Pure, so it's unit-tested.
+    public static func silentRanges(
+        _ buckets: [Bucket],
+        duration: TimeInterval,
+        threshold: Float = 0.06,
+        minLength: TimeInterval = 1.2
+    ) -> [ClosedRange<TimeInterval>] {
+        guard !buckets.isEmpty, duration > 0 else { return [] }
+        let per = duration / Double(buckets.count)
+        var ranges: [ClosedRange<TimeInterval>] = []
+        var runStart: Int?
+        func close(_ endIndex: Int, _ endTime: TimeInterval) {
+            guard let start = runStart else { return }
+            let startTime = Double(start) * per
+            if endTime - startTime >= minLength { ranges.append(startTime...endTime) }
+            runStart = nil
+        }
+        for (index, bucket) in buckets.enumerated() {
+            if bucket.amplitude < threshold {
+                if runStart == nil { runStart = index }
+            } else {
+                close(index, Double(index) * per)
+            }
+        }
+        close(buckets.count, duration)
+        return ranges
+    }
+
     /// Per-bucket peak amplitude of one file (empty when unreadable).
     private static func envelope(of url: URL?, buckets: Int) -> [Float] {
         guard let url, let file = try? AVAudioFile(forReading: url) else { return [] }
