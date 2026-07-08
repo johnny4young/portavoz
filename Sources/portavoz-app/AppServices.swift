@@ -159,6 +159,60 @@ final class AppServices {
         }
     }
 
+    // MARK: - Whisper variants on disk (M12)
+
+    struct WhisperVariant: Identifiable {
+        let id: String
+        let compact: Bool
+        let downloaded: Bool
+        /// On-disk bytes if downloaded, else the catalog's expected size.
+        let bytes: Int64
+    }
+
+    /// The model directory is deterministic (root + folderName), so this
+    /// stays off the ModelStore actor.
+    private static func modelDir(_ descriptor: ModelDescriptor) -> URL {
+        ModelStore.defaultRootDirectory.appendingPathComponent(
+            descriptor.folderName, isDirectory: true)
+    }
+
+    func whisperVariants() -> [WhisperVariant] {
+        func make(_ descriptor: ModelDescriptor, compact: Bool) -> WhisperVariant {
+            let dir = Self.modelDir(descriptor)
+            let downloaded = FileManager.default.fileExists(atPath: dir.path)
+            return WhisperVariant(
+                id: descriptor.id, compact: compact, downloaded: downloaded,
+                bytes: downloaded ? Self.directorySize(dir) : Int64(descriptor.totalSizeBytes))
+        }
+        return [
+            make(ModelCatalog.whisperLargeV3Turbo, compact: false),
+            make(ModelCatalog.whisperLargeV3_626MB, compact: true),
+        ]
+    }
+
+    func deleteWhisperVariant(_ id: String) {
+        let descriptor =
+            id == ModelCatalog.whisperLargeV3_626MB.id
+            ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
+        try? FileManager.default.removeItem(at: Self.modelDir(descriptor))
+        if whisperVariantID == id {
+            whisper = nil
+            whisperVariantID = nil
+        }
+    }
+
+    private static func directorySize(_ url: URL) -> Int64 {
+        guard
+            let enumerator = FileManager.default.enumerator(
+                at: url, includingPropertiesForKeys: [.fileSizeKey])
+        else { return 0 }
+        var total: Int64 = 0
+        for case let file as URL in enumerator {
+            total += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+        return total
+    }
+
     /// The machine's facts for "Recomendado para tu Mac" (M12).
     func currentHardwareProfile() async -> HardwareProfile {
         let memoryGB = Int((ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)

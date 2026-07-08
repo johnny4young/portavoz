@@ -48,6 +48,7 @@ struct SettingsView: View {
     @State private var ollamaStatus: String?
     @State private var detectingOllama = false
     @State private var advice: EngineAdvice?
+    @State private var whisperVariants: [AppServices.WhisperVariant] = []
 
     var body: some View {
         Form {
@@ -70,6 +71,7 @@ struct SettingsView: View {
                 ((try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil) != nil
             voiceprint = (try? VoiceprintStore().load()) ?? nil
             if summaryEngine == "ollama" { detectOllama() }
+            whisperVariants = services.whisperVariants()
             Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
         }
     }
@@ -434,9 +436,42 @@ struct SettingsView: View {
             .foregroundStyle(.secondary)
 
             Divider()
-            Toggle("Whisper compacto para el refine (626 MB)", isOn: $whisperCompact)
+            Text("Modelo de refine (Whisper large-v3)")
+                .font(.callout.weight(.medium))
+            ForEach(whisperVariants) { variant in
+                let active = variant.compact == whisperCompact
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: active ? "largecircle.fill.circle" : "circle")
+                        .foregroundStyle(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(
+                            variant.compact
+                                ? "Compacto — poco disco" : "Turbo — mejor calidad"
+                        )
+                        .font(.callout)
+                        Text(
+                            (variant.downloaded ? "Descargado · " : "Se descarga al refinar · ")
+                                + ByteCountFormatter.string(
+                                    fromByteCount: variant.bytes, countStyle: .file)
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if variant.downloaded && !active {
+                        Button("Eliminar") {
+                            services.deleteWhisperVariant(variant.id)
+                            whisperVariants = services.whisperVariants()
+                        }
+                        .controlSize(.small)
+                        .help("Libera el disco de la variante que no usas")
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { whisperCompact = variant.compact }
+            }
             Text(
-                "El re-pase de calidad (Refinar) usa Whisper large-v3: 626 MB en vez de 1.6 GB, ideal si tienes poco disco. Se descarga la primera vez que refinas."
+                "El re-pase de calidad (Refinar) usa Whisper. Turbo es el default; la variante compacta ahorra ~1 GB de disco. Elige tocando una fila."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
