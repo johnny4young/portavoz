@@ -317,6 +317,43 @@ public enum ModelCatalog {
         license: "MIT"
     )
 
+    /// Whisper large-v3 compact (626 MB, Argmax CoreML) — the low-disk
+    /// alternative to turbo for the D7 quality re-pass (M12). Mixed-bit
+    /// quantized; recommended multilingual small-footprint variant. Same
+    /// tokenizer as turbo. Artifacts sha256-pinned like every model (D7).
+    public static let whisperLargeV3_626MB = ModelDescriptor(
+        id: "whisper-large-v3-626mb",
+        tasks: [.finalTranscription],
+        displayName: "Whisper large-v3 compacto (626 MB)",
+        folderName: "whisper-large-v3-626mb",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/argmaxinc/whisperkit-coreml/resolve/97a5bf9bbc74c7d9c12c755d04dea59e672e3808/openai_whisper-large-v3-v20240930_626MB"
+        )!,
+        revision: "97a5bf9bbc74c7d9c12c755d04dea59e672e3808",
+        artifacts: [
+            ModelArtifact(path: "AudioEncoder.mlmodelc/analytics/coremldata.bin", sha256: "56793886ab1adb9ca8a4e335efbe8af6640f40d958ab2d29c3ad2d7d6f712e95", sizeBytes: 243),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/coremldata.bin", sha256: "ffa9eb76e8e9d9be75a4d527e5249e61d67fd43081c5aa110fd24efa6c8c5ea3", sizeBytes: 348),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/metadata.json", sha256: "a87a3375afe79e88e27af30247e234e706b98679dedfd1b021a74f7ee108c669", sizeBytes: 1922),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/model.mil", sha256: "3cec2580fb07b12a88087f0e1586c6ba2982980eb36499561e1ffca2b0950442", sizeBytes: 934263),
+            ModelArtifact(path: "AudioEncoder.mlmodelc/weights/weight.bin", sha256: "e4740fa28ed65907af754af893dfce98473fafb84dd8d718ad346985fe7678c1", sizeBytes: 421968768),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/analytics/coremldata.bin", sha256: "c5be419f8622083ac7046306400643539f0e7577c843448c36defc090d41e7ce", sizeBytes: 243),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/coremldata.bin", sha256: "2bfc12cffc2e45e039c7a18f384f09adffb72c182fcd93f9413d405d1a6c1130", sizeBytes: 329),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/metadata.json", sha256: "2bc552e09a6f124d9e6c178dd1a6979e010206acb26308b2224887c9dcbeb35f", sizeBytes: 1850),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/model.mil", sha256: "c270b95b5f81d7f7d0b8a3e8f991d4e5812a37cad29349868a35b91f3a6a4463", sizeBytes: 10143),
+            ModelArtifact(path: "MelSpectrogram.mlmodelc/weights/weight.bin", sha256: "009d9fb8f6b589accfa08cebf1c712ef07c3405229ce3cfb3a57ee033c9d8a49", sizeBytes: 373376),
+            ModelArtifact(path: "TextDecoder.mlmodelc/analytics/coremldata.bin", sha256: "3913b8c9716b284a917cf3744f4d415f2a05e2b910594a14c6cc10092284d3f8", sizeBytes: 243),
+            ModelArtifact(path: "TextDecoder.mlmodelc/coremldata.bin", sha256: "3faabaf66930e66956d8291d0ff485fb382496e30a91a7185548b9b898ce90a9", sizeBytes: 633),
+            ModelArtifact(path: "TextDecoder.mlmodelc/metadata.json", sha256: "994f6030d7b1a8be999940444c3cf5d6a57d40ddd4423cf1d1fc93520aa1b052", sizeBytes: 4924),
+            ModelArtifact(path: "TextDecoder.mlmodelc/model.mil", sha256: "dbe833be9e64348c95b7fa598d0ae4309a91aedce4e82fa500a714b0e4b5d754", sizeBytes: 217177),
+            ModelArtifact(path: "TextDecoder.mlmodelc/weights/weight.bin", sha256: "d69700903d518ada33170ab77faaaf464496fb9ff65752c6d5a6109aa2fb02db", sizeBytes: 203199860),
+            ModelArtifact(path: "config.json", sha256: "f01d83dd891791d6f12421c05d3ed8ebbe70866f10d6c9a7a7e80b558ce5a0f1", sizeBytes: 1149),
+            ModelArtifact(path: "generation_config.json", sha256: "7fbb053a023be11fbeccd8421811610308143daa93d9617c52aab4a0fa1491c6", sizeBytes: 2767),
+        ],
+        minimumRAMGB: 6,
+        license: "MIT"
+    )
+
     /// Whisper's tokenizer files, staged so WhisperKit never reaches the
     /// network for them (its loader prefers a local tokenizer.json).
     public static let whisperTokenizer = ModelDescriptor(

@@ -43,6 +43,7 @@ struct SettingsView: View {
 
     @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
     @AppStorage("ollamaModel") private var ollamaModel = ""
+    @AppStorage("whisperCompact") private var whisperCompact = false
     @State private var ollamaModels: [OllamaService.Model] = []
     @State private var ollamaStatus: String?
     @State private var detectingOllama = false
@@ -431,6 +432,14 @@ struct SettingsView: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+
+            Divider()
+            Toggle("Whisper compacto para el refine (626 MB)", isOn: $whisperCompact)
+            Text(
+                "El re-pase de calidad (Refinar) usa Whisper large-v3: 626 MB en vez de 1.6 GB, ideal si tienes poco disco. Se descarga la primera vez que refinas."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -470,6 +479,8 @@ struct SettingsView: View {
         case .none:
             break
         }
+        // Low disk → the compact Whisper for the refine, too.
+        if advice.whisperLowDisk { whisperCompact = true }
     }
 
     // MARK: - Companion (D26)

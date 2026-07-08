@@ -42,6 +42,7 @@ final class AppServices {
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
     private(set) var whisper: WhisperEngine?
+    private var whisperVariantID: String?
 
     /// Bumped after any write so list/detail views know to reload.
     var libraryVersion = 0
@@ -100,20 +101,28 @@ final class AppServices {
         }
     }
 
-    /// The D7 quality re-pass engine (Whisper large-v3-turbo, 1.6 GB,
-    /// sha256-verified) — loaded on the first refine, then shared.
+    /// The D7 quality re-pass engine — loaded on the first refine, then
+    /// shared. The variant follows the "Whisper compacto" preference (turbo
+    /// 1.6 GB vs. 626 MB for low disk, M12); switching it reloads.
     func loadWhisperIfNeeded(
         progress: @escaping @MainActor (String) -> Void
     ) async throws -> WhisperEngine {
-        if let whisper { return whisper }
-        let engine = try await WhisperEngine.loadRecommended(store: ModelStore()) { update in
+        let compact = UserDefaults.standard.bool(forKey: "whisperCompact")
+        let descriptor =
+            compact ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
+        if let whisper, whisperVariantID == descriptor.id { return whisper }
+        let size = compact ? "626 MB" : "1.6 GB"
+        let engine = try await WhisperEngine.loadRecommended(
+            store: ModelStore(), descriptor: descriptor
+        ) { update in
             guard update.totalBytes > 0 else { return }
             let percent = Int(update.fraction * 100)
             Task { @MainActor in
-                progress("Descargando Whisper (1.6 GB, solo una vez)… \(percent)%")
+                progress("Descargando Whisper (\(size), solo una vez)… \(percent)%")
             }
         }
         whisper = engine
+        whisperVariantID = descriptor.id
         return engine
     }
 

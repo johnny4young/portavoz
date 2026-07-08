@@ -72,5 +72,5 @@ La fila más nueva crece mientras el canal siga hablando: pausas mid-sentence �
 
 1. Parakeet vivo degrada con acentos no nativos (verificado: intervención EN con acento salió garbled en vivo; el mismo audio por Whisper salió limpio) — respuesta actual: refine.
 2. Sin modo dictado system-wide (idea futura, ROADMAP "Later").
-3. Cuantizadas de Whisper (`large-v3-v20240930_547MB/_626MB`, verificadas en el repo de argmax) aún no están en el catálogo — M12.
+3. ~~Cuantizadas de Whisper aún no en el catálogo~~ — **HECHO (M12)**: variante **626 MB** (`whisper-large-v3-626mb`, 17 artefactos sha256-pineados al mismo commit de argmax que turbo) para poco disco. `WhisperEngine.loadRecommended(descriptor:)` la selecciona; `AppServices.loadWhisperIfNeeded` la elige según el toggle "Whisper compacto" (Ajustes) y recarga si cambia; el recomendador la activa si detecta poco disco. Default sigue siendo turbo.
 4. FluidAudio pineado por revisión `c367a18e` (timeout del type-checker en su CLI target en v0.15.4; fix upstream #732 sin release) — volver a `.upToNextMinor` cuando salga > 0.15.4.

@@ -82,6 +82,41 @@ final class ModelCatalogTests: XCTestCase {
         }
     }
 
+    func testWhisper626DescriptorIsWellFormed() {
+        let model = ModelCatalog.whisperLargeV3_626MB
+        XCTAssertEqual(model.artifacts.count, 17)
+        XCTAssertTrue(model.resolveBase.absoluteString.contains(model.revision))
+        XCTAssertGreaterThan(model.totalSizeBytes, 600_000_000)
+        XCTAssertLessThan(model.totalSizeBytes, 700_000_000, "the compact variant is ~626 MB")
+        for artifact in model.artifacts { XCTAssertEqual(artifact.sha256.count, 64) }
+        let bundles = Set(model.artifacts.map { $0.path.components(separatedBy: "/").first! })
+        XCTAssertEqual(
+            bundles,
+            [
+                "AudioEncoder.mlmodelc", "MelSpectrogram.mlmodelc", "TextDecoder.mlmodelc",
+                "config.json", "generation_config.json",
+            ])
+        // The default routing stays turbo; the compact one is opt-in (M12).
+        XCTAssertEqual(ModelCatalog.recommended(for: .finalTranscription)?.id, "whisper-large-v3-turbo")
+    }
+
+    /// Downloads + sha256-verifies the 626 MB model and transcribes a real
+    /// file. Needs PORTAVOZ_MODEL_TESTS=1 + PORTAVOZ_TEST_WAV.
+    func testWhisper626DownloadsVerifiesAndTranscribes() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
+            "set PORTAVOZ_MODEL_TESTS=1 to run")
+        guard let wav = ProcessInfo.processInfo.environment["PORTAVOZ_TEST_WAV"] else {
+            throw XCTSkip("set PORTAVOZ_TEST_WAV to a speech file")
+        }
+        let engine = try await WhisperEngine.loadRecommended(
+            store: ModelStore(), descriptor: ModelCatalog.whisperLargeV3_626MB)
+        let result = try await engine.transcribeFile(at: URL(fileURLWithPath: wav))
+        XCTAssertFalse(
+            result.text.trimmingCharacters(in: .whitespaces).isEmpty,
+            "the 626 MB model must produce a transcript")
+    }
+
     func testWhisperSegmentTextCleaning() {
         XCTAssertEqual(
             WhisperEngine.cleanSegmentText("<|0.00|> Hola a todos.<|4.20|>"),

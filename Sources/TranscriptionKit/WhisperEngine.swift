@@ -17,13 +17,16 @@ public actor WhisperEngine {
         self.pipe = pipe
     }
 
-    /// Ensures model + tokenizer are downloaded/verified, then loads.
+    /// Ensures model + tokenizer are downloaded/verified, then loads. The
+    /// descriptor selects the quality vs. disk trade-off (turbo 1.6 GB vs.
+    /// the 626 MB compact variant, M12).
     public static func loadRecommended(
         store: ModelStore,
+        descriptor: ModelDescriptor = ModelCatalog.whisperLargeV3Turbo,
         progress: (@Sendable (ModelStore.DownloadProgress) -> Void)? = nil
     ) async throws -> WhisperEngine {
         let modelDirectory = try await store.ensureAvailable(
-            ModelCatalog.whisperLargeV3Turbo, progress: progress)
+            descriptor, progress: progress)
         let tokenizerDirectory = try await store.ensureAvailable(
             ModelCatalog.whisperTokenizer, progress: progress)
 
