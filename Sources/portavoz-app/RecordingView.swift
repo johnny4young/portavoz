@@ -119,8 +119,44 @@ struct RecordingView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
+            micMeter
         }
         .padding(.top, 24)
+    }
+
+    /// Live mic-input meter (field bug jul 2026: the built-in far-field mic
+    /// captured the user at ≤ -45 dBFS and sounded distant to the call). The
+    /// bar is on a dB scale so speech levels are visible; a sustained-low
+    /// reading nudges the user to move closer or use a headset mic.
+    private var micMeter: some View {
+        HStack(spacing: 8) {
+            Image(systemName: controller.micLevelLow ? "mic.fill" : "mic")
+                .foregroundStyle(controller.micLevelLow ? .orange : .secondary)
+            ZStack(alignment: .leading) {
+                Capsule().fill(.quaternary)
+                GeometryReader { geometry in
+                    Capsule()
+                        .fill(controller.micLevelLow ? Color.orange : Color.green)
+                        .frame(width: geometry.size.width * meterFraction)
+                }
+            }
+            .frame(width: 120, height: 6)
+            .animation(.easeOut(duration: 0.15), value: controller.micLevel)
+            if controller.micLevelLow {
+                Text("Se te oye bajo — acércate o usa audífonos con micrófono")
+                    .foregroundStyle(.orange)
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+    }
+
+    /// Maps the linear mic level onto a −60…0 dBFS bar (0…1).
+    private var meterFraction: CGFloat {
+        let level = controller.micLevel
+        guard level > 0.0001 else { return 0 }
+        let decibels = 20 * log10(level)
+        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
     }
 
     private var companionBinding: Binding<Bool> {

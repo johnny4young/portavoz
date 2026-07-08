@@ -41,6 +41,15 @@ final class RecordingController {
     /// BCP-47 target for live translation; nil = off.
     var translationTarget: String?
 
+    /// Live mic input level (0…1, smoothed peak) for the on-screen meter, and
+    /// a "your voice is coming in low/far" flag — once enough VOICED audio
+    /// shows the level is weak (the far-field built-in mic), not just silence.
+    /// Field finding jul 2026: the built-in mic captured the user at ≤ -45 dBFS.
+    private(set) var micLevel: Float = 0
+    private var voicedLevel: Float = 0
+    private var voicedChunks = 0
+    var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
+
     private let coalescer = CaptionCoalescer()
     private var session: RecordingSession?
     private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]
@@ -64,7 +73,7 @@ final class RecordingController {
 
     // Orquesta el arranque de captura + transcripción + scheduler; secuencia
     // legítimamente larga. Split pendiente como deuda técnica.
-    // swiftlint:disable:next function_body_length
+    // swiftlint:disable:next function_body_length cyclomatic_complexity
     func start(services: AppServices) async {
         guard phase == .idle || isFailed else { return }
         phase = .preparing
@@ -98,6 +107,9 @@ final class RecordingController {
         captions = []
         feeds = [:]
         consumers = []
+        micLevel = 0
+        voicedLevel = 0
+        voicedChunks = 0
         for source in sources {
             let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
             feeds[source.channel] = continuation
@@ -121,8 +133,15 @@ final class RecordingController {
         let session = RecordingSession(outputDirectory: outputDirectory)
         let channelFeeds = feeds
         do {
-            try await session.start(sources: sources) { chunk in
+            try await session.start(sources: sources) { [weak self] chunk in
                 channelFeeds[chunk.channel]?.yield(chunk)
+                guard chunk.channel == .microphone else { return }
+                var peak: Float = 0
+                for sample in chunk.samples {
+                    let magnitude = abs(sample)
+                    if magnitude > peak { peak = magnitude }
+                }
+                Task { @MainActor in self?.updateMicLevel(peak) }
             }
         } catch {
             phase = .failed("No se pudo iniciar la captura: \(error.localizedDescription)")
@@ -150,6 +169,18 @@ final class RecordingController {
                     await self.refreshLiveSummary()
                 }
             }
+        }
+    }
+
+    /// Feeds the on-screen meter from each mic chunk's peak: fast attack, slow
+    /// decay for a VU feel. `voicedLevel` is an EMA over only the VOICED chunks
+    /// (above a low gate) so the "low mic" flag reflects weak SPEECH, not
+    /// silence — the far-field built-in mic sits well below a close mic.
+    private func updateMicLevel(_ peak: Float) {
+        micLevel = max(peak, micLevel * 0.8)
+        if peak > 0.004 {
+            voicedLevel = voicedLevel * 0.97 + peak * 0.03
+            voicedChunks += 1
         }
     }
 
