@@ -28,7 +28,7 @@ struct FocusedTranscriptView<Row: View>: View {
         let reach = max(focusY, height - focusY, 1)
         return ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: 6) {
                     ForEach(segments) { segment in
                         row(segment, segment.id == activeID)
                             .id(segment.id)

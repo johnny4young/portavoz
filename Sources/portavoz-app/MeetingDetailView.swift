@@ -73,7 +73,7 @@ struct MeetingDetailView: View {
     @ViewBuilder
     private func loaded(_ detail: MeetingDetail) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 header(detail)
                 speakersRow(detail)
 
@@ -149,8 +149,8 @@ struct MeetingDetailView: View {
                         newName = speaker.displayName ?? ""
                     })
             }
-            .padding(20)
-            .frame(maxWidth: 760, alignment: .leading)
+            .padding(16)
+            .frame(maxWidth: 860, alignment: .leading)
         }
         .navigationTitle(detail.meeting.title)
         .sheet(
@@ -1101,7 +1101,7 @@ struct TranscriptSegmentsView: View {
         } else {
             // No audio to follow — a plain readable list scrolling with the
             // page. Lazy: a long meeting has thousands of rows.
-            LazyVStack(alignment: .leading, spacing: 8) {
+            LazyVStack(alignment: .leading, spacing: 3) {
                 ForEach(segments) { segment in
                     row(segment, isActive: false)
                 }
@@ -1124,10 +1124,11 @@ struct TranscriptSegmentsView: View {
             .help("Saltar a este momento")
             SpeakerPill(speaker: speakers.first { $0.id == segment.speakerID }, onRename: onRenameTap)
             Text(segment.text)
+                .font(.callout)
                 .textSelection(.enabled)
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .padding(.horizontal, 8)
         .background(
             isActive ? Color.accentColor.opacity(0.12) : Color.clear,
