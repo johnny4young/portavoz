@@ -117,11 +117,10 @@ enum AskPipeline {
         var bestRank: [UUID: Int] = [:]
         var hitsByID: [UUID: SearchHit] = [:]
         for vector in vectors {
-            for (rank, hit) in try await store.searchSemantic(vector, limit: 12).enumerated() {
-                if bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
-                    bestRank[hit.segmentID] = rank
-                    hitsByID[hit.segmentID] = hit
-                }
+            for (rank, hit) in try await store.searchSemantic(vector, limit: 12).enumerated()
+            where bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
+                bestRank[hit.segmentID] = rank
+                hitsByID[hit.segmentID] = hit
             }
         }
         let semantic = bestRank.sorted { $0.value < $1.value }.map(\.key)

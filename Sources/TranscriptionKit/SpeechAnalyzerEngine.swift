@@ -55,9 +55,11 @@ public struct SpeechAnalyzerEngine: Sendable {
         return locale
     }
 
+    // Bucle de transcripción en vivo (setup del analyzer + consumo del
+    // stream + mapeo de resultados); cuerpo legítimamente largo.
     /// Live transcription with the same shape as `ParakeetEngine.transcribe`
     /// so both engines can be driven (and benchmarked) identically.
-    public func transcribe(
+    public func transcribe( // swiftlint:disable:this function_body_length
         _ audio: AsyncStream<AudioChunk>,
         hints: TranscriptionHints,
         locale: Locale

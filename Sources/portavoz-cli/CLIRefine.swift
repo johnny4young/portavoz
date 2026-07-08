@@ -14,6 +14,8 @@ import TranscriptionKit
 /// replaces the live transcript (old segments become tombstones).
 /// Uses the stored audio directory, or `--file` for imported meetings.
 enum RefineCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(meetingRaw: String, _ arguments: [String]) async {
         var file: String?
         var language: String?

@@ -12,6 +12,8 @@ import TranscriptionKit
 /// answer an unbundled process — spike finding); use
 /// `Portavoz.app/Contents/MacOS/portavoz-app --bench-live …` for that.
 enum BenchLiveCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
         var engineName = "parakeet"
@@ -52,6 +54,8 @@ enum BenchLiveCommand {
 
         guard let file else {
             print(
+                // Texto de uso (usage) de una línea.
+                // swiftlint:disable:next line_length
                 "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech] [--seconds N] [--language es] [--vocab \"a,b\"]"
             )
             return

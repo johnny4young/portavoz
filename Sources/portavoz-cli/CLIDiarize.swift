@@ -10,6 +10,8 @@ import TranscriptionKit
 /// file and prints the speaker-attributed transcript — the M3 "who said
 /// what" pipeline end to end (file plays the role of the system channel).
 enum DiarizeCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
         var attribute = false

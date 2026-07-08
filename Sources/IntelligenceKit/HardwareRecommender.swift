@@ -58,6 +58,8 @@ public enum HardwareRecommender {
             engine = .none
             headline = "Sin motor local de resúmenes."
             reasons.append(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Sin Apple Intelligence ni Ollama. Instala Ollama (ollama.com) para resúmenes locales, o configura BYOK en Ajustes.")
         }
 

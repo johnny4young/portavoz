@@ -47,7 +47,13 @@ enum McpCommand {
 /// IntegrationsKit) so the protocol layer stays free of Kit-to-Kit
 /// dependencies; the app can assemble the same toolbox later.
 enum MeetingToolbox {
+    // Catálogo de herramientas MCP: un array literal largo de definiciones,
+    // una por herramienta; partirlo no aportaría claridad.
+    // swiftlint:disable:next function_body_length
     static func tools(store: MeetingStore) -> [MCPTool] {
+        // Esquemas JSON y descripciones de herramientas de una línea (algunas
+        // dentro de strings multilínea): partirlos rompería el contenido.
+        // swiftlint:disable line_length
         [
             MCPTool(
                 name: "list_meetings",
@@ -155,6 +161,7 @@ enum MeetingToolbox {
                 return items.map { "- \($0.item.text) (\($0.meetingTitle))" }.joined(separator: "\n")
             }
         ]
+        // swiftlint:enable line_length
     }
 
     enum ToolboxError: Error, LocalizedError {

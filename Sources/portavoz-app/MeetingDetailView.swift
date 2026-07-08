@@ -9,9 +9,14 @@ import SwiftUI
 import TranscriptionKit
 import UniformTypeIdentifiers
 
+// Vista SwiftUI grande (transcript + resumen + action items). El split en
+// subvistas es deuda técnica pendiente; evita un refactor riesgoso de una
+// vista con mucho estado.
+// swiftlint:disable file_length
+
 /// Transcript with editable speaker pills (the M3 leftover), the latest
 /// summary snapshot, and its checkable action items.
-struct MeetingDetailView: View {
+struct MeetingDetailView: View { // swiftlint:disable:this type_body_length
     @Environment(AppServices.self) private var services
     let meetingID: MeetingID
     @Binding var route: Route?
@@ -71,6 +76,9 @@ struct MeetingDetailView: View {
     }
 
     @ViewBuilder
+    // Builder de la vista cargada: un árbol SwiftUI largo; split pendiente
+    // como deuda técnica.
+    // swiftlint:disable:next function_body_length cyclomatic_complexity
     private func loaded(_ detail: MeetingDetail) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -175,6 +183,8 @@ struct MeetingDetailView: View {
             }
             .disabled(refining != nil || detail.meeting.audioDirectory == nil)
             .help(
+                // Texto de ayuda de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Re-transcribe con Whisper (máxima calidad) y propone el resultado como borrador — nada se aplica sin tu confirmación"
             )
             Menu {
@@ -554,6 +564,8 @@ struct MeetingDetailView: View {
 
             if draft.looksLossy {
                 Label(
+                    // Texto de UI de una línea.
+                    // swiftlint:disable:next line_length
                     "El refinado cubre mucho menos habla que el transcript actual — probablemente falló. No lo apliques.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
@@ -1092,8 +1104,7 @@ struct TranscriptSegmentsView: View {
             // With audio, the transcript is a Spotify-lyrics carousel: the
             // spoken line stays centered inside its own viewport, so seeking
             // moves the transcript, never the whole page.
-            FocusedTranscriptView(segments: segments, activeID: activeSegmentID) {
-                segment, isActive in
+            FocusedTranscriptView(segments: segments, activeID: activeSegmentID) { segment, isActive in
                 row(segment, isActive: isActive)
             }
         } else {

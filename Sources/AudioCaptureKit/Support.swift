@@ -65,8 +65,10 @@ enum Downmix {
         return out
     }
 
+    // Downmix a mono cubriendo cada layout de Core Audio (planar/interleaved,
+    // distinto número de canales); las ramas son inherentes al formato.
     /// Averages a Float32 Core Audio buffer list (planar or interleaved) into mono.
-    static func mono(
+    static func mono( // swiftlint:disable:this cyclomatic_complexity
         fromBufferList list: UnsafePointer<AudioBufferList>,
         format: AudioStreamBasicDescription
     ) -> [Float] {

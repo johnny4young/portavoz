@@ -153,7 +153,9 @@ struct RecordingView: View {
                     Image(systemName: "arrow.up.circle.fill").imageScale(.large)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
+                .foregroundStyle(
+                    noteDraft.trimmingCharacters(in: .whitespaces).isEmpty
+                        ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
                 .disabled(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty)
                 .help("Añadir la nota (⏎)")
             }

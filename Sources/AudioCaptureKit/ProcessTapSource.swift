@@ -67,10 +67,12 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
         return stream
     }
 
+    // Construye tap + aggregate device + IOProc de Core Audio; secuencia
+    // imperativa larga contra la API C. Split pendiente como deuda técnica.
     /// Creates the tap + aggregate + IOProc against the CURRENT default
     /// output and starts it, yielding into `self.continuation`. On the first
     /// build it pins `streamSampleRate`; later builds resample to it.
-    private func buildGraph() throws {
+    private func buildGraph() throws { // swiftlint:disable:this function_body_length
         guard let continuation else { return }
 
         let description: CATapDescription
@@ -114,8 +116,9 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
         let targetRate = streamSampleRate
         let clock = clock
         var procID: AudioDeviceIOProcID?
-        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregate, ioQueue) {
-            [weak self] _, inputData, inputTime, _, _ in
+        let status = AudioDeviceCreateIOProcIDWithBlock(
+            &procID, aggregate, ioQueue
+        ) { [weak self] _, inputData, inputTime, _, _ in
             guard let self else { return }
             var samples = Downmix.mono(fromBufferList: inputData, format: format)
             guard !samples.isEmpty else { return }

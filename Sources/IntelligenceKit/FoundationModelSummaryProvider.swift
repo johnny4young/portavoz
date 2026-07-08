@@ -72,6 +72,8 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         return draft
     }
 
+    // Traducción posicional con validación de forma sección a sección;
+    // cuerpo legítimamente largo. Split pendiente como deuda técnica.
     /// D25's pivot: translates an existing snapshot to another language for
     /// a fraction of a full re-summarization (the material is already
     /// distilled — ~2k chars instead of the whole transcript).
@@ -85,7 +87,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// falls back to a full re-summarization instead of storing a lossy
     /// translation. The result keeps the pivot's fingerprint: same
     /// material, new language.
-    public func translate(
+    public func translate( // swiftlint:disable:this function_body_length
         _ pivot: SummaryDraft,
         to targetLanguage: String,
         glossary: [String] = [],
@@ -361,6 +363,9 @@ struct GeneratedSummary {
     @Guide(description: "One-paragraph overview of what the meeting was about and its outcome")
     var overview: String
 
+    // Descripciones de guía del schema (@Guide): prompts de una línea;
+    // partir el string no aporta y complica el prompt.
+    // swiftlint:disable line_length
     @Guide(
         description:
             "One entry per instructed section heading, in the instructed order. Do NOT add a section for action items — they go in the actionItems field only"
@@ -371,6 +376,7 @@ struct GeneratedSummary {
         description:
             "ONLY commitments someone explicitly stated in the material, quoted with its owner's speaker label. Empty array when nobody committed to anything"
     )
+    // swiftlint:enable line_length
     var actionItems: [GeneratedActionItem]
 }
 

@@ -142,18 +142,22 @@ public struct LinearExporter: Sendable {
         return request
     }
 
+    // DTOs de la respuesta GraphQL, aplanados a nivel de tipo (nesting ≤ 1).
+    // El anidamiento Decodable no necesita reflejar la forma del JSON: cada
+    // struct solo declara sus propias claves.
+    private struct GraphQLResponse: Decodable {
+        let data: DataBox?
+    }
+    private struct DataBox: Decodable {
+        let issueCreate: IssueCreate
+    }
+    private struct IssueCreate: Decodable {
+        let success: Bool
+        let issue: Issue?
+    }
+    private struct Issue: Decodable { let url: String }
+
     static func parseResponse(_ data: Data) throws -> URL {
-        struct GraphQLResponse: Decodable {
-            struct DataBox: Decodable {
-                struct IssueCreate: Decodable {
-                    struct Issue: Decodable { let url: String }
-                    let success: Bool
-                    let issue: Issue?
-                }
-                let issueCreate: IssueCreate
-            }
-            let data: DataBox?
-        }
         guard
             let parsed = try? JSONDecoder().decode(GraphQLResponse.self, from: data),
             let issueCreate = parsed.data?.issueCreate,

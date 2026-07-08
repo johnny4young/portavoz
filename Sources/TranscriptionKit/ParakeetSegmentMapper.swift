@@ -17,6 +17,7 @@ enum ParakeetSegmentMapper {
     /// a multi-sentence segment usually spans several diarization turns.
     static let sentenceTerminators: Set<Character> = [".", "?", "!", "…"]
 
+    // Firma interna estable: cada parámetro es un dato distinto del update.
     /// One live sliding-window update → one segment holding only the *new*
     /// audio's tokens. Once the window slides, FluidAudio re-decodes the
     /// whole left context per update and its token dedup misses most of it
@@ -25,7 +26,7 @@ enum ParakeetSegmentMapper {
     /// stream-absolute token timings: keep tokens starting strictly after
     /// the last emitted edge, rebuild the text from what's left. Returns
     /// nil for silence windows and pure re-decodes.
-    static func segment(
+    static func segment( // swiftlint:disable:this function_parameter_count
         text: String,
         isConfirmed: Bool,
         confidence: Float,
@@ -65,10 +66,11 @@ enum ParakeetSegmentMapper {
         )
     }
 
+    // Firma interna estable: cada parámetro es un dato distinto del batch.
     /// Splits a batch result into segments at pauses (or a max duration),
     /// rebuilding each segment's text from its SentencePiece tokens. With no
     /// timings available the whole file becomes a single segment.
-    static func segments(
+    static func segments( // swiftlint:disable:this function_parameter_count
         fromBatchText text: String,
         tokenTimings: [TokenTiming],
         audioDuration: TimeInterval,

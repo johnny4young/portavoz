@@ -11,6 +11,8 @@ import StorageKit
 /// Keychain (`secrets set-github-token` / `set-linear-token`) or the
 /// PORTAVOZ_GITHUB_TOKEN / PORTAVOZ_LINEAR_TOKEN environment variables.
 enum IssuesCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var meetingRaw: String?
         var githubRepo: String?

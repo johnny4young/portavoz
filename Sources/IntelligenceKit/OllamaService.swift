@@ -43,17 +43,19 @@ public enum OllamaService {
         return parseModels(data)
     }
 
+    // DTOs de `/api/tags`, aplanados a nivel de tipo (nesting ≤ 1).
+    private struct Tags: Decodable {
+        let models: [Entry]
+    }
+    private struct Entry: Decodable {
+        let name: String
+        let size: Int64?
+        let details: Details?
+    }
+    private struct Details: Decodable { let parameter_size: String? }
+
     /// Pure parse of `/api/tags` (static so it's unit-tested offline).
     static func parseModels(_ data: Data) -> [Model] {
-        struct Tags: Decodable {
-            struct Entry: Decodable {
-                let name: String
-                let size: Int64?
-                struct Details: Decodable { let parameter_size: String? }
-                let details: Details?
-            }
-            let models: [Entry]
-        }
         guard let tags = try? JSONDecoder().decode(Tags.self, from: data) else { return [] }
         return tags.models.map {
             Model(

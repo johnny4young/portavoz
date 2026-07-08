@@ -84,6 +84,10 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
     }
 }
 
+// swiftlint:disable line_length
+// Datos sha256 pineados del catálogo de modelos: envolver el hex de cada
+// artefacto en varias líneas no aporta legibilidad y dificulta el diff al
+// re-pinnear. Se silencia line_length solo para este bloque de datos.
 /// The curated registry. Descriptors are code: adding or re-pinning a model
 /// is a reviewed change, never a runtime fetch of "latest".
 public enum ModelCatalog {
@@ -375,3 +379,4 @@ public enum ModelCatalog {
         license: "Apache-2.0"
     )
 }
+// swiftlint:enable line_length

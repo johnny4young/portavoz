@@ -7,6 +7,8 @@
 # inherentes (líneas de datos sha256 del catálogo de modelos) se silencian
 # in-line con justificación, no relajando la regla para todos.
 
+strict: true
+
 included:
   - Sources
 

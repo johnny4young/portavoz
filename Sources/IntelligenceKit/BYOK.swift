@@ -53,6 +53,8 @@ public struct OpenAICompatibleChatClient: Sendable {
 
     // MARK: - Request/response shapes (static + pure for tests)
 
+    // Firma interna estable que refleja el cuerpo de chat/completions.
+    // swiftlint:disable:next function_parameter_count
     static func urlRequest(
         endpoint: URL, model: String, apiKey: String,
         system: String, user: String,
@@ -76,14 +78,17 @@ public struct OpenAICompatibleChatClient: Sendable {
         return urlRequest
     }
 
+    // DTOs de la respuesta chat/completions, aplanados a nivel de tipo
+    // (nesting ≤ 1). El anidamiento Decodable no necesita reflejar el JSON.
+    private struct ChatResponse: Decodable {
+        let choices: [Choice]
+    }
+    private struct Choice: Decodable {
+        let message: Message
+    }
+    private struct Message: Decodable { let content: String }
+
     static func parseContent(_ data: Data) throws -> String {
-        struct ChatResponse: Decodable {
-            struct Choice: Decodable {
-                struct Message: Decodable { let content: String }
-                let message: Message
-            }
-            let choices: [Choice]
-        }
         guard
             let content = try? JSONDecoder().decode(ChatResponse.self, from: data)
                 .choices.first?.message.content

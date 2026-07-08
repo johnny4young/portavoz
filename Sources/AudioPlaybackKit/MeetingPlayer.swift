@@ -41,8 +41,7 @@ public final class MeetingPlayer {
         // 5 fps: smooth enough for a highlight + scrubber, cheap enough not
         // to churn a long transcript's rows.
         let interval = CMTime(seconds: 0.2, preferredTimescale: 600)
-        timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
-            [weak self] time in
+        timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.currentTime = min(time.seconds, self.duration)
@@ -135,7 +134,7 @@ public final class MeetingPlayer {
     }
 
     public func togglePlayPause() {
-        isPlaying ? pause() : play()
+        if isPlaying { pause() } else { play() }
     }
 
     public func seek(to seconds: TimeInterval) {

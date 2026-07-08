@@ -20,6 +20,8 @@ public struct Recipe: Codable, Sendable, Identifiable {
         id: "general",
         displayName: "General meeting",
         sections: ["Overview", "Decisions", "Action Items", "Open Questions"],
+        // Prompt de instrucciones de una línea.
+        // swiftlint:disable:next line_length
         instructions: "Summarize the meeting faithfully. Attribute decisions and commitments to named speakers. Never invent content."
     )
 }

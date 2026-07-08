@@ -51,6 +51,9 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     }
 
     static func encode(_ policy: AudioRetentionPolicy) throws -> String {
+        // JSONEncoder siempre emite UTF-8 válido: la conversión total (nunca
+        // nil) es intencional; la variante failable cambiaría el contrato.
+        // swiftlint:disable:next optional_data_string_conversion
         String(decoding: try JSONEncoder().encode(policy), as: UTF8.self)
     }
 

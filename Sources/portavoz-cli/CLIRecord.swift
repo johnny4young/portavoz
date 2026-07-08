@@ -10,6 +10,8 @@ import TranscriptionKit
 /// With `--transcribe`, every captured channel gets its own live Parakeet
 /// job fed from the recording pipeline; segments print as they stream.
 enum RecordCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var seconds = 8
         var pids: [pid_t] = []

@@ -8,9 +8,11 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
+// Vista SwiftUI grande (varias secciones de settings); split en subvistas
+// pendiente como deuda técnica.
 /// App settings (⌘,): voice enrollment and the GitHub token. Both secrets
 /// live in the Keychain / encrypted files — never in the database.
-struct SettingsView: View {
+struct SettingsView: View { // swiftlint:disable:this type_body_length
     @Environment(AppServices.self) private var services
 
     @State private var token = ""
@@ -82,6 +84,8 @@ struct SettingsView: View {
         Section("Audio") {
             Toggle("Cancelación de eco (recomendado con parlantes)", isOn: $aecEnabled)
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Resta del micrófono el audio que sale por tus PARLANTES, para que los demás participantes no aparezcan como \"Yo\". Con AUDÍFONOS no hay eco acústico: ahí puedes desactivarla — el procesado (AEC + control de ganancia) a veces aleja o apaga tu voz, sobre todo en audífonos Bluetooth. Aplica desde la próxima grabación."
             )
             .font(.caption)
@@ -114,6 +118,8 @@ struct SettingsView: View {
                 }
             }
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "El audio de las reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y los transcripts se quedan donde están."
             )
             .font(.caption)
@@ -145,8 +151,7 @@ struct SettingsView: View {
         Task.detached(priority: .userInitiated) {
             let location = RecordingsLocation.shared
             do {
-                let moved = try location.migrateAudio(from: origin, to: destination) {
-                    index, total in
+                let moved = try location.migrateAudio(from: origin, to: destination) { index, total in
                     Task { @MainActor in
                         migrationStatus = "Moviendo grabación \(index) de \(total)…"
                     }
@@ -242,6 +247,8 @@ struct SettingsView: View {
             }
             Divider()
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "El resto del texto se conserva tal cual. Poner la fecha ISO primero hace que la biblioteca ordene las reuniones sola."
             )
             .font(.caption)
@@ -287,6 +294,8 @@ struct SettingsView: View {
                     .disabled(newTerm.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que \"LVGT\" no se convierta en otra cosa."
             )
             .font(.caption)
@@ -332,6 +341,8 @@ struct SettingsView: View {
                 }
             }
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Con tu voz enrolada, Portavoz te reconoce también cuando llegas por el audio del sistema (reuniones híbridas). Solo se guarda una huella numérica cifrada en este equipo — nunca el audio, nunca en la nube; se borra con un clic."
             )
             .font(.caption)
@@ -430,6 +441,8 @@ struct SettingsView: View {
                 }
             }
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Apple usa Foundation Models (macOS 26 + Apple Intelligence). Ollama corre un modelo 100% local en tu Mac — ideal si no tienes Apple Intelligence. Con cualquiera, nada sale del equipo. (El resumen EN VIVO durante la grabación siempre usa Apple.)"
             )
             .font(.caption)
@@ -471,6 +484,8 @@ struct SettingsView: View {
                 .onTapGesture { whisperCompact = variant.compact }
             }
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "El re-pase de calidad (Refinar) usa Whisper. Turbo es el default; la variante compacta ahorra ~1 GB de disco. Elige tocando una fila."
             )
             .font(.caption)
@@ -579,6 +594,8 @@ struct SettingsView: View {
             )
             .disabled(!byokReady)
             Text(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, el Companion envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
             )
             .font(.caption)
@@ -617,6 +634,7 @@ struct SettingsView: View {
             Text(
                 hasStoredToken
                     ? "Hay un token guardado en el Keychain de este equipo. Se usa solo cuando publicas un gist."
+                    // swiftlint:disable:next line_length
                     : "Necesario solo para publicar gists. Se guarda en el Keychain — nunca en la base de datos ni en la nube."
             )
             .font(.caption)

@@ -62,6 +62,9 @@ final class RecordingController {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
+    // Orquesta el arranque de captura + transcripción + scheduler; secuencia
+    // legítimamente larga. Split pendiente como deuda técnica.
+    // swiftlint:disable:next function_body_length
     func start(services: AppServices) async {
         guard phase == .idle || isFailed else { return }
         phase = .preparing
@@ -292,6 +295,9 @@ final class RecordingController {
         }
     }
 
+    // Cierre ordenado de la sesión (flush, persistencia, teardown);
+    // secuencia legítimamente larga. Split pendiente como deuda técnica.
+    // swiftlint:disable:next function_body_length
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
         rollingTask?.cancel()
@@ -304,6 +310,8 @@ final class RecordingController {
 
         guard !capture.files.isEmpty, !captions.isEmpty else {
             phase = .failed(
+                // Texto de UI de una línea.
+                // swiftlint:disable:next line_length
                 "No se capturó audio. Revisa los permisos de micrófono y de grabación de audio del sistema para Portavoz."
             )
             return

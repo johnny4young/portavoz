@@ -8,6 +8,8 @@ import ModelStoreKit
 /// Diarizes the file and scores it against an RTTM reference — the M3
 /// acceptance metric (DER < 15%) as a number instead of a hope.
 enum DerCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity
     static func run(_ arguments: [String]) async {
         var file: String?
         var reference: String?

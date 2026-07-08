@@ -10,6 +10,8 @@ import StorageKit
 /// --gist publishes OFF-device (explicit opt-in, D8) using the token from
 /// the Keychain (`secrets set-github-token`) or PORTAVOZ_GITHUB_TOKEN.
 enum ExportCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var meetingRaw: String?
         var format = "md"
@@ -70,6 +72,8 @@ enum ExportCommand {
                     let token = (try? SecretStore.get(service: SecretStore.gitHubTokenService))
                         ?? ProcessInfo.processInfo.environment["PORTAVOZ_GITHUB_TOKEN"]
                 else {
+                    // Mensaje de error de una línea.
+                    // swiftlint:disable:next line_length
                     print("error: no GitHub token — run `portavoz-cli secrets set-github-token <token>` (or set PORTAVOZ_GITHUB_TOKEN)")
                     return
                 }
@@ -158,6 +162,8 @@ enum SecretsCommand {
                 print("error: \(error.localizedDescription)")
             }
         default:
+            // Texto de uso (usage) de una línea.
+            // swiftlint:disable:next line_length
             print("Usage: portavoz-cli secrets <set-github-token|clear-github-token|set-linear-token|clear-linear-token> [token]")
         }
     }

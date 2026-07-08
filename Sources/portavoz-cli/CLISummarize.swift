@@ -15,6 +15,8 @@ import TranscriptionKit
 /// `--byok` opts into an OpenAI-compatible cloud endpoint, key read from
 /// the PORTAVOZ_BYOK_API_KEY environment variable.
 enum SummarizeCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
         var outLanguage = "en"
@@ -68,6 +70,8 @@ enum SummarizeCommand {
 
         guard let file else {
             print(
+                // Texto de uso (usage) de una línea.
+                // swiftlint:disable:next line_length
                 "Usage: portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>]"
             )
             return

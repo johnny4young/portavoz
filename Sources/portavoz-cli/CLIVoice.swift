@@ -8,6 +8,8 @@ import ModelStoreKit
 /// with a Keychain key — biometric data per D8: on-device, never synced,
 /// deletable in one action. The source audio is not kept.
 enum VoiceCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity
     static func run(_ arguments: [String]) async {
         var arguments = arguments
         guard let action = arguments.first else {

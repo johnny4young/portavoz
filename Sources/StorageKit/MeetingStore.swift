@@ -43,9 +43,11 @@ public struct SearchHit: Sendable {
     public let startTime: TimeInterval
 }
 
+// Store con la superficie CRUD completa de la app; partirlo en extensiones
+// queda como deuda técnica.
 /// The SQLite-backed store (GRDB + FTS5, D4 contract in `StorageSchema`).
 /// All writes stamp `updatedAt`; deletion is always a tombstone.
-public final class MeetingStore: Sendable {
+public final class MeetingStore: Sendable { // swiftlint:disable:this type_body_length
     private let database: DatabaseQueue
 
     /// `~/Library/Application Support/Portavoz/portavoz.sqlite`
@@ -557,13 +559,23 @@ public final class MeetingStore: Sendable {
 
     // MARK: - Audio retention (closes the M1 deferral)
 
+    /// One meeting eligible for audio-retention enforcement (named to avoid a
+    /// large tuple; carries only what the sweep below needs).
+    private struct RetentionCandidate {
+        let meetingID: MeetingID
+        let relativePath: String
+        let policy: AudioRetentionPolicy
+        let endedAt: Date?
+        let hasTranscript: Bool
+    }
+
     /// Applies each meeting's retention policy: deletes expired audio
     /// directories under `audioRoot` and clears their reference. Returns
     /// the URLs it removed. Transcripts are never touched — the policies
     /// only ever cover raw audio.
     @discardableResult
     public func enforceAudioRetention(audioRoot: URL, now: Date = Date()) async throws -> [URL] {
-        let candidates: [(MeetingID, String, AudioRetentionPolicy, Date?, Bool)] =
+        let candidates: [RetentionCandidate] =
             try await database.read { db in
                 let records = try MeetingRecord
                     .filter(Column("deletedAt") == nil)
@@ -576,33 +588,33 @@ public final class MeetingStore: Sendable {
                         .filter(Column("deletedAt") == nil)
                         .filter(Column("isFinal") == true)
                         .fetchCount(db) > 0
-                    return (
-                        MeetingID(rawValue: UUID(uuidString: record.id) ?? UUID()),
-                        record.audioDirectory ?? "",
-                        try MeetingRecord.decode(record.retention),
-                        record.endedAt,
-                        hasTranscript
+                    return RetentionCandidate(
+                        meetingID: MeetingID(rawValue: UUID(uuidString: record.id) ?? UUID()),
+                        relativePath: record.audioDirectory ?? "",
+                        policy: try MeetingRecord.decode(record.retention),
+                        endedAt: record.endedAt,
+                        hasTranscript: hasTranscript
                     )
                 }
             }
 
         var removed: [URL] = []
-        for (meetingID, relative, policy, endedAt, hasTranscript) in candidates {
+        for candidate in candidates {
             let expired: Bool
-            switch policy {
+            switch candidate.policy {
             case .keep:
                 expired = false
             case .deleteAfter(let days):
-                guard let endedAt else { continue }
+                guard let endedAt = candidate.endedAt else { continue }
                 expired = now >= endedAt.addingTimeInterval(TimeInterval(days) * 86_400)
             case .deleteAfterTranscription:
-                expired = hasTranscript
+                expired = candidate.hasTranscript
             }
             guard expired else { continue }
 
             // Path-traversal guard: the resolved directory must stay under
             // the audio root.
-            let directory = audioRoot.appendingPathComponent(relative).standardizedFileURL
+            let directory = audioRoot.appendingPathComponent(candidate.relativePath).standardizedFileURL
             guard directory.path.hasPrefix(audioRoot.standardizedFileURL.path) else { continue }
 
             if FileManager.default.fileExists(atPath: directory.path) {
@@ -611,7 +623,7 @@ public final class MeetingStore: Sendable {
             try await database.write { db in
                 try db.execute(
                     sql: "UPDATE meeting SET audioDirectory = NULL, updatedAt = ? WHERE id = ?",
-                    arguments: [Date(), meetingID.rawValue.uuidString])
+                    arguments: [Date(), candidate.meetingID.rawValue.uuidString])
             }
             removed.append(directory)
         }

@@ -86,8 +86,7 @@ public actor IntelligenceScheduler {
         sequence += 1
         let ticket = sequence
         try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation {
-                (continuation: CheckedContinuation<Void, Error>) in
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 if earlyCancellations.remove(id) != nil {
                     continuation.resume(throwing: CancellationError())
                     return

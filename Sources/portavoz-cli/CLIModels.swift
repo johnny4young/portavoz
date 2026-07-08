@@ -10,6 +10,8 @@ enum ModelsCommand {
         [ModelCatalog.parakeetTdtV3, ModelCatalog.speakerDiarization]
     }
 
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity
     static func run(_ arguments: [String]) async {
         var arguments = arguments
         guard let action = arguments.first else {

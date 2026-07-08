@@ -12,6 +12,8 @@ import TranscriptionKit
 /// batch slot busy the whole time. Run it with continuous speech playing
 /// (podcast) — silence gaps inflate the measured lag.
 enum BenchCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var batchFile: String?
         var seconds = 60
@@ -46,6 +48,8 @@ enum BenchCommand {
 
         guard let batchFile else {
             print(
+                // Texto de uso (usage) de una línea.
+                // swiftlint:disable:next line_length
                 "Usage: portavoz-cli bench-m2 --batch-file <wav> [--seconds N] [--mic <name>] [--language es] [--models-dir <dir>]"
             )
             return

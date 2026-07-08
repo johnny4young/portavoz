@@ -19,6 +19,9 @@ import GRDB
 public enum StorageSchema {
     public static let version = 4
 
+    // Registro secuencial de migraciones (una por versión de esquema);
+    // cuerpo inherentemente largo que crece con cada migración.
+    // swiftlint:disable:next function_body_length
     static func migrator() -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
 

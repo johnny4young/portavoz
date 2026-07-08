@@ -6,6 +6,8 @@ import TranscriptionKit
 /// `portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]`
 /// Batch transcription through the same pipeline the app will use.
 enum TranscribeCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
         var language: String?

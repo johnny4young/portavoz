@@ -5,6 +5,8 @@ import StorageKit
 /// `portavoz-cli meetings <list|show <id>|search <query>> [--db <path>]`
 /// Browses the local library (SQLite + FTS5).
 enum MeetingsCommand {
+    // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var arguments = arguments
         guard let action = arguments.first else {

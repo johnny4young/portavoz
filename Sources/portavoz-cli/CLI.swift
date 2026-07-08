@@ -9,6 +9,9 @@ import Foundation
 /// behalf of the terminal.
 @main
 struct PortavozCLI {
+    // CLI de desarrollo: el dispatcher de subcomandos es un switch
+    // inherentemente largo (una rama por comando).
+    // swiftlint:disable:next cyclomatic_complexity
     static func main() async {
         var arguments = Array(CommandLine.arguments.dropFirst())
         guard let command = arguments.first else {
