@@ -77,6 +77,90 @@ public enum MeetingExporter {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
+    // MARK: - Summary copy (plain text / Markdown / Slack mrkdwn)
+
+    public enum SummaryFormat: String, CaseIterable, Sendable {
+        case plainText
+        case markdown
+        case slack
+    }
+
+    /// The summary (overview + sections + pending items) rendered for the
+    /// clipboard. Markdown is canonical; plain text strips syntax; Slack uses
+    /// mrkdwn (`*bold*`, `•` bullets, no `#` headings — what Slack renders).
+    public static func summary(
+        _ summary: SummaryDraft,
+        speakers: [Speaker] = [],
+        format: SummaryFormat
+    ) -> String {
+        var markdown = summary.markdown
+        if !summary.actionItems.isEmpty {
+            let labelsByID = Dictionary(
+                uniqueKeysWithValues: speakers.map { ($0.id, displayName($0)) })
+            markdown += "\n\n## Pendientes\n"
+            for item in summary.actionItems {
+                let mark = item.isDone ? "x" : " "
+                let owner = item.ownerSpeakerID.flatMap { labelsByID[$0] }.map { " — \($0)" } ?? ""
+                markdown += "- [\(mark)] \(item.text)\(owner)\n"
+            }
+        }
+        markdown = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch format {
+        case .markdown: return markdown + "\n"
+        case .plainText: return renderLines(markdown, slack: false)
+        case .slack: return renderLines(markdown, slack: true)
+        }
+    }
+
+    /// Line-by-line rewrite of the summary markdown. Plain text drops every
+    /// marker; Slack keeps emphasis as mrkdwn. Both turn `#` headings and
+    /// `-`/`▸` bullets into readable lines (Slack renders neither `#` nor `[ ]`).
+    private static func renderLines(_ markdown: String, slack: Bool) -> String {
+        var out: [String] = []
+        for rawLine in markdown.split(separator: "\n", omittingEmptySubsequences: false) {
+            var line = String(rawLine)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Headings: `## Text` → bold (Slack) or bare text (plain).
+            if let hashes = trimmed.firstIndex(where: { $0 != "#" }), trimmed.hasPrefix("#") {
+                let text = trimmed[hashes...].trimmingCharacters(in: .whitespaces)
+                out.append(slack ? "*\(inlines(text, slack: true))*" : inlines(text, slack: false))
+                continue
+            }
+
+            // Checkbox list items: `- [ ] Text` / `- [x] Text`.
+            if let range = trimmed.range(of: #"^[-*] \[( |x)\] "#, options: .regularExpression) {
+                let done = trimmed[range].contains("x")
+                let text = String(trimmed[range.upperBound...])
+                let box = done ? "✓" : "☐"
+                out.append("• \(box) \(inlines(text, slack: slack))")
+                continue
+            }
+
+            // Plain bullets: `- Text`, `* Text`, or the coauthoring `▸ Text`.
+            if let range = trimmed.range(of: #"^([-*] |▸ )"#, options: .regularExpression) {
+                let text = String(trimmed[range.upperBound...])
+                out.append("• \(inlines(text, slack: slack))")
+                continue
+            }
+
+            line = inlines(line, slack: slack)
+            out.append(line)
+        }
+        return out.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
+    }
+
+    /// Rewrites inline emphasis: plain text strips `**`/`*`/`_`; Slack folds
+    /// `**bold**` into its single-star bold.
+    private static func inlines(_ text: String, slack: Bool) -> String {
+        if slack {
+            return text.replacingOccurrences(of: "**", with: "*")
+        }
+        return text
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "`", with: "")
+    }
+
     // MARK: - PDF (CoreText, US Letter)
 
     public enum ExportError: Error, LocalizedError {

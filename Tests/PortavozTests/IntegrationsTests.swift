@@ -54,6 +54,35 @@ final class MeetingExporterTests: XCTestCase {
         XCTAssertTrue(markdown.contains("- **[01:05] Ana:** el deploy queda para el viernes"))
     }
 
+    func testSummaryCopyFormats() {
+        let (_, speakers, _, _) = fixture()
+        let ana = speakers[1]
+        let summary = SummaryDraft(
+            meetingID: meeting, recipeID: "general", language: "es",
+            markdown: "Resumen **corto**.\n\n## Decisiones\n- Deploy el viernes\n▸ Nota del usuario",
+            actionItems: [ActionItem(text: "preparar el deploy", ownerSpeakerID: ana.id)])
+
+        let markdown = MeetingExporter.summary(summary, speakers: speakers, format: .markdown)
+        XCTAssertTrue(markdown.contains("## Decisiones"))
+        XCTAssertTrue(markdown.contains("- Deploy el viernes"))
+        XCTAssertTrue(markdown.contains("- [ ] preparar el deploy — Ana"))
+
+        let slack = MeetingExporter.summary(summary, speakers: speakers, format: .slack)
+        XCTAssertFalse(slack.contains("#"), "Slack mrkdwn no renderiza headings")
+        XCTAssertTrue(slack.contains("*Decisiones*"), "heading → bold")
+        XCTAssertTrue(slack.contains("Resumen *corto*."), "**bold** → *bold*")
+        XCTAssertTrue(slack.contains("• Deploy el viernes"))
+        XCTAssertTrue(slack.contains("• Nota del usuario"), "coauthoring ▸ → bullet")
+        XCTAssertTrue(slack.contains("• ☐ preparar el deploy — Ana"))
+
+        let plain = MeetingExporter.summary(summary, speakers: speakers, format: .plainText)
+        XCTAssertFalse(plain.contains("#"))
+        XCTAssertFalse(plain.contains("*"))
+        XCTAssertTrue(plain.contains("Resumen corto."))
+        XCTAssertTrue(plain.contains("Decisiones"))
+        XCTAssertTrue(plain.contains("• Deploy el viernes"))
+    }
+
     func testMarkdownWithoutSummarySkipsThatSection() {
         let (record, speakers, segments, _) = fixture()
         let markdown = MeetingExporter.markdown(

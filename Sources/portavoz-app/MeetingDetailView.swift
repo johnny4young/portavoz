@@ -389,6 +389,16 @@ struct MeetingDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                Menu {
+                    Button("Copiar como texto") { copySummary(summary.draft, as: .plainText) }
+                    Button("Copiar como Markdown") { copySummary(summary.draft, as: .markdown) }
+                    Button("Copiar para Slack") { copySummary(summary.draft, as: .slack) }
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Copia el resumen al portapapeles")
                 if regenerating {
                     ProgressView().controlSize(.small)
                 } else {
@@ -602,6 +612,13 @@ struct MeetingDetailView: View {
     private func minutes(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         return String(format: "%d:%02d min", total / 60, total % 60)
+    }
+
+    private func copySummary(_ draft: SummaryDraft, as format: MeetingExporter.SummaryFormat) {
+        let text = MeetingExporter.summary(
+            draft, speakers: detail?.speakers ?? [], format: format)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     /// The engine that is NOT the global default, offered as a per-meeting
