@@ -80,9 +80,9 @@ struct SettingsView: View {
 
     private var audioSection: some View {
         Section("Audio") {
-            Toggle("Cancelación de eco (recomendado)", isOn: $aecEnabled)
+            Toggle("Cancelación de eco (recomendado con parlantes)", isOn: $aecEnabled)
             Text(
-                "Elimina del micrófono el audio que sale por tus parlantes, para que los demás participantes no aparezcan como \"Yo\". Aplica desde la próxima grabación. Desactívala solo si notas problemas con tu micrófono."
+                "Resta del micrófono el audio que sale por tus PARLANTES, para que los demás participantes no aparezcan como \"Yo\". Con AUDÍFONOS no hay eco acústico: ahí puedes desactivarla — el procesado (AEC + control de ganancia) a veces aleja o apaga tu voz, sobre todo en audífonos Bluetooth. Aplica desde la próxima grabación."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

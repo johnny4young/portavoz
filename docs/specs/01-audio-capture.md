@@ -46,6 +46,7 @@ Actor que coordina fuentes y writers por canal (creados lazy con el primer chunk
 ## Límites conocidos y riesgos
 
 1. **⚠️ Taps + VPIO en el mismo proceso**: MacParakeet los descartó por "no coexistir confiablemente". Nuestra evidencia (1 reunión real con ambos) es insuficiente — vigilar glitches/dropouts del canal system con AEC activa. Plan B (D27): cancelación de eco offline post-grabación.
+   - **Hallazgo de campo (jul 2026): la voz del usuario se oía LEJOS a los demás.** El VPIO aplica AEC **+ control automático de ganancia (AGC)**; con audífonos no hay eco acústico, así que el AGC solo puede alejar/apagar la voz. Peor en **Bluetooth**: abrir el mic del audífono fuerza el perfil HFP/SCO (telefónico, 8–16 kHz) — degrada la voz para TODOS, incluida la app de la llamada, y es comportamiento de macOS, no un bug nuestro. Mitigación disponible: el toggle **"Cancelación de eco"** de Ajustes (default on) ahora guía a apagarlo con audífonos; para evitar el HFP, fijar el mic integrado como input. Auto-desactivar el AEC según el transporte del output = mejora futura.
 2. ~~Crash-safety~~ — **RESUELTO**: contenedor CAF verificado contra kill -9 (arriba).
 3. **Sin canal "room"** todavía (iPhone como mic de sala vía Continuity — planeado, PRODUCT).
 4. PCM = ~126 MB por canal por 22 min (CAF, mismo bitrate que WAV); **transcode AAC resuelto en M11** mediante `AudioTranscoder` y la acción "Comprimir audio".
