@@ -5,7 +5,7 @@ let package = Package(
     name: "Portavoz",
     defaultLocalization: "en",
     platforms: [
-        .macOS(.v14),
+        .macOS("14.4"),
         .iOS(.v17),
     ],
     products: [
@@ -83,8 +83,8 @@ let package = Package(
         .target(name: "IntegrationsKit", dependencies: ["PortavozCore", "IntelligenceKit"]),
 
         // The macOS app shell (M5). Built as a plain SPM executable and
-        // wrapped into Portavoz.app by scripts/make-app.sh (D20) — no
-        // Xcode project until iOS (M7) or notarization forces one.
+        // wrapped into Portavoz.app by scripts/make-app.sh (D20); shipping
+        // remains script-built, while project.yml exists only for XCUITest (D30).
         .executableTarget(
             name: "portavoz-app",
             dependencies: [

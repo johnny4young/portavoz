@@ -1,21 +1,52 @@
 #!/bin/bash
 # Wraps the portavoz-app SPM executable into a proper macOS app bundle
 # (dist/Portavoz.app) with the Info.plist TCC needs (microphone + system
-# audio) and an ad-hoc signature. D20: no Xcode project until iOS (M7) or
-# notarization forces one.
+# audio) and a local/distribution signature. D20 keeps shipping script-built;
+# D30 adds project.yml only for XCUITest verification.
 #
-#   scripts/make-app.sh            # debug build
-#   scripts/make-app.sh --release  # release build
+#   scripts/make-app.sh                              # debug build
+#   scripts/make-app.sh --release                    # release build
+#   scripts/make-app.sh --version 0.1.0 --build 123  # stamp Info.plist
 #   open dist/Portavoz.app
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG=debug
-if [[ "${1:-}" == "--release" ]]; then
-  CONFIG=release
-fi
+VERSION="${PORTAVOZ_VERSION:-0.1.0}"
+BUILD="${PORTAVOZ_BUILD:-1}"
 
-echo "Building portavoz-app ($CONFIG)…"
+usage() {
+  echo "uso: scripts/make-app.sh [--release] [--version <version>] [--build <build>]" >&2
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --release)
+      CONFIG=release
+      shift
+      ;;
+    --version)
+      if [[ $# -lt 2 || -z "$2" ]]; then usage; exit 64; fi
+      VERSION="$2"
+      shift 2
+      ;;
+    --build)
+      if [[ $# -lt 2 || -z "$2" ]]; then usage; exit 64; fi
+      BUILD="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 64
+      ;;
+  esac
+done
+
+echo "Building portavoz-app ($CONFIG, version $VERSION build $BUILD)…"
 swift build --product portavoz-app -c "$CONFIG"
 BIN_DIR="$(swift build --show-bin-path -c "$CONFIG")"
 BIN="$BIN_DIR/portavoz-app"
@@ -85,6 +116,9 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 </dict>
 </plist>
 PLIST
+
+plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
 
 # Sparkle update feed + signing key. Without assets/sparkle-public-key
 # the app just never finds updates (fine in dev).

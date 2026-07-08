@@ -17,15 +17,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VERSION="${1:?uso: scripts/make-release.sh <version>}"
+BUILD="${PORTAVOZ_BUILD:-$(date +%Y%m%d%H%M)}"
 GENERATE_APPCAST="${GENERATE_APPCAST:-$HOME/.local/bin/generate_appcast}"
 
-scripts/make-app.sh --release
-plutil -replace CFBundleShortVersionString -string "$VERSION" dist/Portavoz.app/Contents/Info.plist
-plutil -replace CFBundleVersion -string "$(date +%Y%m%d%H%M)" dist/Portavoz.app/Contents/Info.plist
-# Re-sign after editing the plist.
-codesign --force --sign "${PORTAVOZ_SIGN_IDENTITY:--}" dist/Portavoz.app
-
-scripts/make-dmg.sh
+scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
+scripts/make-dmg.sh --skip-build
 
 RELEASE_DIR=dist/release
 rm -rf "$RELEASE_DIR"

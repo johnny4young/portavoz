@@ -66,36 +66,44 @@ public actor RecordingSession {
         guard !isRecording else { return }
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
-        for source in newSources {
-            let channel = source.channel
-            let url = outputDirectory.appendingPathComponent("\(channel.rawValue).caf")
-            let stream = try await source.start()
-            sources[channel] = source
+        do {
+            for source in newSources {
+                let channel = source.channel
+                let url = outputDirectory.appendingPathComponent("\(channel.rawValue).caf")
+                let stream = try await source.start()
+                sources[channel] = source
 
-            consumers[channel] = Task { [weak self] in
-                var writer: CaptureFileWriter?
-                var peak: Float = 0
-                do {
-                    for try await chunk in stream {
-                        if writer == nil {
-                            let created = try CaptureFileWriter(url: url, sampleRate: chunk.sampleRate)
-                            writer = created
-                            await self?.register(writer: created, for: channel)
+                consumers[channel] = Task { [weak self] in
+                    var writer: CaptureFileWriter?
+                    var peak: Float = 0
+                    do {
+                        for try await chunk in stream {
+                            if writer == nil {
+                                let created = try CaptureFileWriter(url: url, sampleRate: chunk.sampleRate)
+                                writer = created
+                                await self?.register(writer: created, for: channel)
+                            }
+                            for sample in chunk.samples {
+                                let magnitude = abs(sample)
+                                if magnitude > peak { peak = magnitude }
+                            }
+                            try writer?.append(chunk.samples)
+                            onChunk?(chunk)
                         }
-                        for sample in chunk.samples {
-                            let magnitude = abs(sample)
-                            if magnitude > peak { peak = magnitude }
-                        }
-                        try writer?.append(chunk.samples)
-                        onChunk?(chunk)
+                        await self?.report(peak: peak, error: nil, for: channel)
+                    } catch {
+                        // A failed channel ends its own file; the session keeps
+                        // the other channels alive.
+                        await self?.report(peak: peak, error: String(describing: error), for: channel)
                     }
-                    await self?.report(peak: peak, error: nil, for: channel)
-                } catch {
-                    // A failed channel ends its own file; the session keeps
-                    // the other channels alive.
-                    await self?.report(peak: peak, error: String(describing: error), for: channel)
                 }
             }
+        } catch {
+            // Startup is all-or-nothing: if mic starts but the system tap fails
+            // (or any later source fails), release the sources that are already
+            // live so we never leave privacy-sensitive capture running.
+            _ = await stop()
+            throw error
         }
         isRecording = true
     }

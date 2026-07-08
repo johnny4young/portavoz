@@ -1,5 +1,4 @@
 import Foundation
-import PortavozCore
 
 /// Anything the user drops into a meeting while it happens — a link, a
 /// typed note, a pasted stack trace, a handwritten note (iPad). Items are

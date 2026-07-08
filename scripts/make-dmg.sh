@@ -2,7 +2,8 @@
 # Builds the distributable DMG (D10): release app bundle → Portavoz-<v>.dmg
 # with an /Applications symlink.
 #
-#   scripts/make-dmg.sh                # ad-hoc signed (local testing)
+#   scripts/make-dmg.sh                         # ad-hoc signed (local testing)
+#   scripts/make-dmg.sh --skip-build            # package existing dist/Portavoz.app
 #   PORTAVOZ_SIGN_IDENTITY="Developer ID Application: …" scripts/make-dmg.sh
 #
 # Notarization (needs the Developer ID + a notarytool keychain profile):
@@ -10,9 +11,44 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/Portavoz.app/Contents/Info.plist 2>/dev/null || echo 0.1.0)"
+SKIP_BUILD=false
 
-scripts/make-app.sh --release
+usage() {
+  echo "uso: scripts/make-dmg.sh [--skip-build]" >&2
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-build)
+      SKIP_BUILD=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 64
+      ;;
+  esac
+done
+
+if [[ "$SKIP_BUILD" == false ]]; then
+  args=(--release)
+  if [[ -n "${PORTAVOZ_VERSION:-}" ]]; then
+    args+=(--version "$PORTAVOZ_VERSION")
+  fi
+  if [[ -n "${PORTAVOZ_BUILD:-}" ]]; then
+    args+=(--build "$PORTAVOZ_BUILD")
+  fi
+  scripts/make-app.sh "${args[@]}"
+elif [[ ! -d dist/Portavoz.app ]]; then
+  echo "dist/Portavoz.app no existe; omite --skip-build o ejecuta scripts/make-app.sh primero." >&2
+  exit 66
+fi
+
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/Portavoz.app/Contents/Info.plist)"
 
 DMG="dist/Portavoz-$VERSION.dmg"
 STAGE="$(mktemp -d)"

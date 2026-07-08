@@ -58,6 +58,74 @@ final class RecordingSummaryTests: XCTestCase {
         )
         XCTAssertEqual(summary.driftSeconds ?? 0, 0.03, accuracy: 0.0001)
     }
+
+    func testStartStopsAlreadyStartedSourcesWhenLaterSourceFails() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let started = FakeCaptureSource(channel: .microphone)
+        let failing = FakeCaptureSource(channel: .system, startError: FakeCaptureError.startFailed)
+        let session = RecordingSession(outputDirectory: directory)
+
+        do {
+            try await session.start(sources: [started, failing])
+            XCTFail("Expected the second source to fail startup")
+        } catch FakeCaptureError.startFailed {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertEqual(started.stopCount, 1)
+        XCTAssertEqual(failing.stopCount, 0)
+        let isRecording = await session.isRecording
+        XCTAssertFalse(isRecording)
+
+        let summary = await session.stop()
+        XCTAssertTrue(summary.files.isEmpty)
+    }
+}
+
+private enum FakeCaptureError: Error {
+    case startFailed
+}
+
+private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
+    let channel: AudioChannel
+    private let startError: Error?
+    private let lock = NSLock()
+    private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private var stops = 0
+
+    init(channel: AudioChannel, startError: Error? = nil) {
+        self.channel = channel
+        self.startError = startError
+    }
+
+    var stopCount: Int {
+        lock.withLock { stops }
+    }
+
+    func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
+        if let startError { throw startError }
+        let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+        lock.withLock {
+            self.continuation = continuation
+        }
+        return stream
+    }
+
+    func stop() async {
+        let continuation = lock.withLock {
+            stops += 1
+            let current = self.continuation
+            self.continuation = nil
+            return current
+        }
+        continuation?.finish()
+    }
 }
 
 final class DownmixTests: XCTestCase {

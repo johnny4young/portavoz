@@ -14,7 +14,7 @@ Diferenciadores en orden de prioridad: who-said-what estructural por captura dua
 |---|---|
 | `PortavozCore` | Tipos de dominio: IDs tipados (UUID), `AudioChannel`, `AudioChunk`, `TranscriptSegment`, `Speaker` |
 | `ModelStoreKit` | Registry curado (`ModelCatalog`, routing **por tarea** `ModelTask`) + `ModelStore`: descargas verificadas por sha256/commit pineado. Compartido por todos los Kits que cargan modelos |
-| `AudioCaptureKit` | Mic (AVAudioEngine) + process taps por app (Core Audio, macOS 14.4+); `RecordingSession` (con tap `onChunk`); `WAVWriter`; políticas de retención |
+| `AudioCaptureKit` | Mic (AVAudioEngine) + process taps por app (Core Audio, macOS 14.4+); `RecordingSession` (con tap `onChunk`); `CaptureFileWriter` CAF crash-safe; políticas de retención |
 | `TranscriptionKit` | Protocolo `TranscriptionEngine`; `ParakeetEngine` (vivo sliding window + batch long-form); `TranscriptionScheduler` (slots D7) |
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker vía FluidAudio) sobre canales system/room; `SpeakerAttributor` (who-said-what estructural); `Voiceprint` (biométrico: solo on-device, cifrado, nunca sync, borrable) |
 | `IntelligenceKit` | `SummaryProvider`: `FoundationModelSummaryProvider` (on-device, map-reduce convergente, D18) + `OpenAICompatibleSummaryProvider` (BYOK, opt-in explícito, jamás default silencioso); Recipes; bilingüe con `targetLanguage` + `glossary` |
@@ -34,13 +34,13 @@ ProcessTapSource (tap por PID / global, 14.4+)    ──┤──► AsyncThrowi
                                         RecordingSession (actor, un consumer por canal)
                                              │ writer perezoso al primer chunk (sample rate real)
                                              ▼
-                              microphone.wav / system.wav (WAVWriter → AVAudioFile 16-bit)
+                              microphone.caf / system.caf (CaptureFileWriter → AVAudioFile 16-bit CAF)
 ```
 
 - Los canales **jamás se mezclan antes de diarizar** (D5): todo lo del mic es del usuario por hardware.
 - El chunk lleva `timestamp` en segundos desde el inicio de sesión (`HostClock` sobre host time).
 - Drift = |segundos escritos mic − system|; criterio M1: < 50 ms en 30 min.
-- Sin FFmpeg: `AVAudioFile` escribe WAV directo desde Float32.
+- Sin FFmpeg: `AVAudioFile` escribe CAF directo desde Float32; CAF queda legible tras crash mientras se escribe.
 
 ## Pipeline de transcripción (M2)
 
@@ -64,7 +64,7 @@ RecordingSession.start(sources:onChunk:)  ── tap por chunk ──► AsyncSt
 ## Pipeline de diarización y atribución (M3)
 
 ```
-system.wav / AsyncStream<AudioChunk> ──► PyannoteDiarizer (ventanas 10 s, atTime continuo,
+system.caf / AsyncStream<AudioChunk> ──► PyannoteDiarizer (ventanas 10 s, atTime continuo,
                                           SpeakerManager mantiene S1/S2… entre ventanas)
                                                     │  [SpeakerTurn]
 TranscriptSegments (batch: 1 por oración; vivo: ~1 s) ──► SpeakerAttributor
@@ -110,7 +110,7 @@ swift test     # suite XCTest
 - CI: `.github/workflows/ci.yml` (macos-latest, build + test).
 - **Tests con modelos reales** (Foundation Models, Parakeet, Whisper): gated por `PORTAVOZ_MODEL_TESTS=1` (algunos además con `PORTAVOZ_TEST_WAV`/`PORTAVOZ_TEST_CONVERSATION_WAV`). CI **no** los corre — se validan localmente. **Regla de diseño verificada en la práctica**: todo prompt/schema del modelo de 3B se prueba contra el modelo REAL con estos tests; cazaron bugs que los tests puros no ven (el 3B trunca markdown opaco, inventa secciones si le das el resumen entero, ignora reglas abstractas sin ejemplos few-shot, y limpia un nombre de la pregunta si le pides que lo detecte — usar heurística determinística, no la opinión del modelo).
 - **Bench in-app**: SpeechAnalyzer **cuelga en procesos CLI sin bundle** (el daemon de Speech no responde sin contexto TCC/bundle). Su benchmark corre dentro de la app: `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds N] [--language xx]` (launch-arg oculto que imprime a stdout y sale).
-- **UI tests** (`make test-ui`, D30): XcodeGen (`project.yml`, fuente de verdad) genera `Portavoz.xcodeproj` (gitignored) con un target `PortavozUITests` (`bundle.ui-testing`). La app honra `-use-temp-store` (DB desechable) y `-seed-demo` (reunión determinística) para tests reproducibles sin tocar la biblioteca real ni conducir la pantalla. El shipping sigue por `scripts/make-app.sh` (esto es solo verificación).
+- **UI tests** (`make test-ui`, D30): XcodeGen (`project.yml`, fuente de verdad) genera `Portavoz.xcodeproj` (gitignored) con un target `PortavozUITests` (`bundle.ui-testing`). La app honra `-use-temp-store` (DB desechable) y `-seed-demo` (reunión determinística) para tests reproducibles sin tocar la biblioteca real ni conducir la pantalla. Cubre biblioteca, detalle con player/clip y settings; el preflight cierra Portavoz antes del runner para evitar fallos de automation mode por instancias stale. El shipping sigue por `scripts/make-app.sh` (esto es solo verificación).
 - Toolchain de referencia: Swift 6.3.3, macOS 26, Apple Silicon (M4 Max, 36 GB). Modelos en `~/Library/Application Support/Portavoz/Models/` (override con `--models-dir`).
 - El Python de python.org no trae certificados SSL (`urllib` falla) — usar `curl` en scripts.
 

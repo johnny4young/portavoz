@@ -1,12 +1,12 @@
 # Spec 08 — Calidad: tests, harnesses y números medidos
 
-Estado: 199 tests de paquete en verde (9 gated) + 2 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test).
+Estado: 213 tests de paquete en verde (11 gated) + 4 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test).
 
 ## Suite de tests — `Tests/PortavozTests/`
 
 | Archivo | Cubre |
 |---|---|
-| AudioCaptureTests | WAVWriter, drift summary, Downmix, **Resample.linear** |
+| AudioCaptureTests | CaptureFileWriter CAF, drift summary, Downmix, **Resample.linear**, startup cleanup |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
 | CaptionCoalescerTests | 10 casos del coalescer (merge, identidad, canales, pausas, límites) |
 | DiarizationTests | Catálogo, SpeakerAttributor (multi-turno), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (unidades) |
@@ -21,7 +21,7 @@ Local: `swift test` (si falla con "no such module": `DEVELOPER_DIR=/Applications
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
-XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-use-temp-store` (DB desechable) + `-seed-demo` (reunión determinística con transcript, resumen, bullet "▸" de coautoría y **audio**). El audio se aísla con la env `PORTAVOZ_AUDIO_ROOT`; el seed sintetiza un clip de dos tonos (mic/system) o adopta una grabación real dejada en la raíz — apunta `PORTAVOZ_TEST_AUDIO_ROOT` a una copia real para ejercitar el player sobre audio de verdad. Cubre: `LibraryUITests` (la biblioteca renderiza), `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28 + **el player renderiza y reproduce** + **marcar in/out revela el botón de exportar clip**) y `SettingsUITests` (la sección "Motor de resúmenes" renderiza — M12). El export en sí (`AudioClipExporter`) se prueba como unit test — un clip de 15 s de un fuente de 30 s exporta a m4a en fracción de segundo (holgado bajo el criterio < 2 s de M11).
+XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). `make test-ui` hace preflight: cierra una instancia previa de Portavoz y advierte si Gancho está corriendo, porque XCUITest de macOS puede fallar antes de ejecutar tests con `Timed out while enabling automation mode` o ventanas interruptoras. Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-use-temp-store` (DB desechable) + `-seed-demo` (reunión determinística con transcript, resumen, bullet "▸" de coautoría y **audio**). El audio se aísla con la env `PORTAVOZ_AUDIO_ROOT`; el seed sintetiza un clip de dos tonos (mic/system) o adopta una grabación real dejada en la raíz — apunta `PORTAVOZ_TEST_AUDIO_ROOT` a una copia real para ejercitar el player sobre audio de verdad. Cubre 4 casos: `LibraryUITests` (la biblioteca renderiza), `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28 + **el player renderiza y reproduce** + **marcar in/out revela el botón de exportar clip**) y `SettingsUITests` (la sección "Motor de resúmenes" renderiza — M12). El export en sí (`AudioClipExporter`) se prueba como unit test — un clip de 15 s de un fuente de 30 s exporta a m4a en fracción de segundo (holgado bajo el criterio < 2 s de M11).
 
 ## Harnesses de medición
 

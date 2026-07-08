@@ -1,6 +1,6 @@
 # Spec 01 — Captura de audio (AudioCaptureKit)
 
-Estado: implementado y verificado en reuniones reales (jul 2026). Decisiones: D5 (dual-canal), D6 (process taps), D24 (AEC), D27 (audio first-class, parcialmente planeado).
+Estado: implementado y verificado en reuniones reales (jul 2026). Decisiones: D5 (dual-canal), D6 (process taps), D24 (AEC), D27 (audio first-class).
 
 ## Modelo de canales (D5)
 
@@ -24,7 +24,7 @@ Dos streams SEPARADOS, jamás mezclados antes de diarizar:
 
 - `CATapDescription(stereoMixdownOfProcesses:)` recibe `[AudioObjectID]` directo (no `[NSNumber]`); PID→objeto vía `kAudioHardwarePropertyTranslatePIDToProcessObject`. Sin PIDs = tap global del sistema.
 - Requiere aggregate device privado con `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; el formato se lee con `kAudioTapPropertyFormat` ANTES del IOProc.
-- **Un tap sin permiso TCC entrega SILENCIO, no error** (peak 0.0 en system.wav = falta "Grabación de pantalla y audio del sistema" → activar y relanzar). `RecordingSession.Summary.peaks` lo detecta.
+- **Un tap sin permiso TCC entrega SILENCIO, no error** (peak 0.0 en `system.caf` = falta "Grabación de pantalla y audio del sistema" → activar y relanzar). `RecordingSession.Summary.peaks` lo detecta.
 - El primer buffer llega **~2.4 s después** de que arranca el mic (latencia de arranque de ScreenCaptureKit) — offset constante, no drift; el harness de drift lo cubre con rango ±5 s.
 
 ## RecordingSession — `Sources/AudioCaptureKit/RecordingSession.swift`
@@ -47,8 +47,8 @@ Actor que coordina fuentes y writers por canal (creados lazy con el primer chunk
 1. **⚠️ Taps + VPIO en el mismo proceso**: MacParakeet los descartó por "no coexistir confiablemente". Nuestra evidencia (1 reunión real con ambos) es insuficiente — vigilar glitches/dropouts del canal system con AEC activa. Plan B (D27): cancelación de eco offline post-grabación.
 2. ~~Crash-safety~~ — **RESUELTO**: contenedor CAF verificado contra kill -9 (arriba).
 3. **Sin canal "room"** todavía (iPhone como mic de sala vía Continuity — planeado, PRODUCT).
-4. PCM = ~126 MB por canal por 22 min (CAF, mismo bitrate que WAV); transcode AAC post-refine planeado (M11).
+4. PCM = ~126 MB por canal por 22 min (CAF, mismo bitrate que WAV); **transcode AAC resuelto en M11** mediante `AudioTranscoder` y la acción "Comprimir audio".
 
 ## Planeado (no implementado)
 
-Playback/waveform/clips (D27, M11); canal room; normalización −23 LUFS del pipeline de captura (hoy solo peak-normalize antes de Whisper, spec 02).
+Canal room; normalización −23 LUFS del pipeline de captura (hoy solo peak-normalize antes de Whisper, spec 02). Playback/waveform/clips, skip-silencio, transcode AAC e import ya están implementados en M11 (spec 06 + AudioPlaybackKit).

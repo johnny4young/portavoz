@@ -4,7 +4,7 @@ Documentación **as-built** de Portavoz: describe lo que el código hace HOY, ve
 
 ## Convenciones (sin ambigüedad)
 
-- Todo lo descrito en las secciones normales **está implementado y testeado** (`swift test`, 158 tests, 7 gated por `PORTAVOZ_MODEL_TESTS=1`).
+- Todo lo descrito en las secciones normales **está implementado y testeado** (`swift test`, 213 tests, 11 gated por `PORTAVOZ_MODEL_TESTS=1` u otras variables de integración).
 - Lo NO implementado vive solo en subsecciones tituladas **"Planeado (no implementado)"**, con referencia a la decisión (Dxx) o milestone (Mxx) que lo define.
 - Cada número de performance citado fue **medido** en la máquina de referencia (MacBook Pro M4 Max, 36 GB, macOS 26) — la fecha y condición acompañan al número.
 - Los "límites conocidos" son fallas o riesgos reales observados, no hipótesis.
@@ -24,7 +24,7 @@ Documentación **as-built** de Portavoz: describe lo que el código hace HOY, ve
 
 ## Documentos hermanos (fuera de specs/)
 
-- [../DECISIONS.md](../DECISIONS.md) — decisiones vinculantes D1–D28 con su porqué. Los specs las citan por número.
+- [../DECISIONS.md](../DECISIONS.md) — decisiones vinculantes D1–D30 con su porqué. Los specs las citan por número.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) — reglas de ingeniería y diseño de alto nivel.
 - [../ROADMAP.md](../ROADMAP.md) — fases y milestones con criterios de aceptación.
 - [../PRODUCT.md](../PRODUCT.md) — visión, mapa competitivo, FREE/PRO.

@@ -56,9 +56,7 @@ struct LibraryView: View {
             TextField("Buscar en todas las reuniones…", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)
-                .onChange(of: query) { _, newValue in
-                    Task { await search(newValue) }
-                }
+                .task(id: query) { await search(query) }
 
             List(selection: $route) {
                 if !query.isEmpty {
@@ -188,11 +186,22 @@ struct LibraryView: View {
     }
 
     private func search(_ text: String) async {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
             hits = []
             return
         }
-        hits = (try? await services.store.search(text)) ?? []
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+            try Task.checkCancellation()
+            let results = try await services.store.search(text)
+            try Task.checkCancellation()
+            hits = results
+        } catch is CancellationError {
+            // `.task(id:)` cancels stale searches as the user keeps typing.
+        } catch {
+            hits = []
+        }
     }
 
     private func timestamp(_ seconds: TimeInterval) -> String {

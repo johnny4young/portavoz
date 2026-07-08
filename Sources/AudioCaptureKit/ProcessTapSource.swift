@@ -35,63 +35,71 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
     }
 
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
-        let description: CATapDescription
-        if processIDs.isEmpty {
-            description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
-        } else {
-            let objects = try processIDs.map(Self.processObject(for:))
-            description = CATapDescription(stereoMixdownOfProcesses: objects)
+        do {
+            let description: CATapDescription
+            if processIDs.isEmpty {
+                description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+            } else {
+                let objects = try processIDs.map(Self.processObject(for:))
+                description = CATapDescription(stereoMixdownOfProcesses: objects)
+            }
+            description.isPrivate = true
+            description.muteBehavior = .unmuted
+
+            var tap = AudioObjectID(kAudioObjectUnknown)
+            try check(AudioHardwareCreateProcessTap(description, &tap), "AudioHardwareCreateProcessTap")
+            tapID = tap
+
+            let format = try Self.tapStreamFormat(tapID: tap)
+
+            let aggregateDescription: [String: Any] = [
+                kAudioAggregateDeviceNameKey: "Portavoz Tap",
+                kAudioAggregateDeviceUIDKey: UUID().uuidString,
+                kAudioAggregateDeviceIsPrivateKey: true,
+                kAudioAggregateDeviceIsStackedKey: false,
+                kAudioAggregateDeviceTapAutoStartKey: true,
+                kAudioAggregateDeviceTapListKey: [
+                    [
+                        kAudioSubTapUIDKey: description.uuid.uuidString,
+                        kAudioSubTapDriftCompensationKey: true,
+                    ]
+                ],
+            ]
+            var aggregate = AudioObjectID(kAudioObjectUnknown)
+            try check(
+                AudioHardwareCreateAggregateDevice(aggregateDescription as CFDictionary, &aggregate),
+                "AudioHardwareCreateAggregateDevice"
+            )
+            aggregateID = aggregate
+
+            let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+            self.continuation = continuation
+
+            let sampleRate = format.mSampleRate
+            let clock = clock
+            var procID: AudioDeviceIOProcID?
+            let status = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregate, ioQueue) { _, inputData, inputTime, _, _ in
+                let samples = Downmix.mono(fromBufferList: inputData, format: format)
+                guard !samples.isEmpty else { return }
+                continuation.yield(AudioChunk(
+                    channel: .system,
+                    samples: samples,
+                    sampleRate: sampleRate,
+                    timestamp: clock.elapsed(hostTime: inputTime.pointee.mHostTime)
+                ))
+            }
+            try check(status, "AudioDeviceCreateIOProcIDWithBlock")
+            ioProcID = procID
+            try check(AudioDeviceStart(aggregate, procID), "AudioDeviceStart")
+
+            return stream
+        } catch {
+            // Core Audio setup is multi-step; any throw after creating a tap,
+            // aggregate device, continuation, or IOProc must release the
+            // partial graph before the caller retries.
+            await stop()
+            throw error
         }
-        description.isPrivate = true
-        description.muteBehavior = .unmuted
-
-        var tap = AudioObjectID(kAudioObjectUnknown)
-        try check(AudioHardwareCreateProcessTap(description, &tap), "AudioHardwareCreateProcessTap")
-        tapID = tap
-
-        let format = try Self.tapStreamFormat(tapID: tap)
-
-        let aggregateDescription: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "Portavoz Tap",
-            kAudioAggregateDeviceUIDKey: UUID().uuidString,
-            kAudioAggregateDeviceIsPrivateKey: true,
-            kAudioAggregateDeviceIsStackedKey: false,
-            kAudioAggregateDeviceTapAutoStartKey: true,
-            kAudioAggregateDeviceTapListKey: [
-                [
-                    kAudioSubTapUIDKey: description.uuid.uuidString,
-                    kAudioSubTapDriftCompensationKey: true,
-                ]
-            ],
-        ]
-        var aggregate = AudioObjectID(kAudioObjectUnknown)
-        try check(
-            AudioHardwareCreateAggregateDevice(aggregateDescription as CFDictionary, &aggregate),
-            "AudioHardwareCreateAggregateDevice"
-        )
-        aggregateID = aggregate
-
-        let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
-        self.continuation = continuation
-
-        let sampleRate = format.mSampleRate
-        let clock = clock
-        var procID: AudioDeviceIOProcID?
-        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregate, ioQueue) { _, inputData, inputTime, _, _ in
-            let samples = Downmix.mono(fromBufferList: inputData, format: format)
-            guard !samples.isEmpty else { return }
-            continuation.yield(AudioChunk(
-                channel: .system,
-                samples: samples,
-                sampleRate: sampleRate,
-                timestamp: clock.elapsed(hostTime: inputTime.pointee.mHostTime)
-            ))
-        }
-        try check(status, "AudioDeviceCreateIOProcIDWithBlock")
-        ioProcID = procID
-        try check(AudioDeviceStart(aggregate, procID), "AudioDeviceStart")
-
-        return stream
     }
 
     public func stop() async {
