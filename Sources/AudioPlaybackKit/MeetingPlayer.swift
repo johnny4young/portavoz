@@ -16,13 +16,22 @@ public final class MeetingPlayer {
     public private(set) var duration: TimeInterval = 0
     public private(set) var isPlaying = false
 
+    /// Clip in/out marks (M11). Set from the current playhead; a clip is
+    /// valid once both exist and start < end.
+    public private(set) var clipStart: TimeInterval?
+    public private(set) var clipEnd: TimeInterval?
+
+    /// The channel files this player mixed — the clip exporter trims these.
+    public let channelFiles: [URL]
+
     private let player: AVPlayer
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
 
-    private init(item: AVPlayerItem, duration: TimeInterval) {
+    private init(item: AVPlayerItem, duration: TimeInterval, channelFiles: [URL]) {
         self.player = AVPlayer(playerItem: item)
         self.duration = duration
+        self.channelFiles = channelFiles
 
         // 5 fps: smooth enough for a highlight + scrubber, cheap enough not
         // to churn a long transcript's rows.
@@ -68,7 +77,31 @@ public final class MeetingPlayer {
         guard maxDuration > .zero else { return nil }
 
         return MeetingPlayer(
-            item: AVPlayerItem(asset: composition), duration: maxDuration.seconds)
+            item: AVPlayerItem(asset: composition), duration: maxDuration.seconds,
+            channelFiles: existing)
+    }
+
+    // MARK: - Clip marks (M11)
+
+    /// The valid clip range, or nil until both marks exist with start < end.
+    public var clipRange: ClosedRange<TimeInterval>? {
+        guard let start = clipStart, let end = clipEnd, end > start else { return nil }
+        return start...end
+    }
+
+    public func markClipStart() {
+        clipStart = currentTime
+        if let end = clipEnd, end <= currentTime { clipEnd = nil }
+    }
+
+    public func markClipEnd() {
+        clipEnd = currentTime
+        if let start = clipStart, start >= currentTime { clipStart = nil }
+    }
+
+    public func clearClip() {
+        clipStart = nil
+        clipEnd = nil
     }
 
     public func play() {

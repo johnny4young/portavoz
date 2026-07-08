@@ -7,7 +7,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | # | Brecha | Hoy | Falta | Plan |
 |---|---|---|---|---|
 | 1 | **Distribución cero** | DMG notarizado + cask + appcast listos, repo privado, 0 usuarios | push, release, tap, README con benchmarks | M9 — es un día de trabajo |
-| 2 | **El audio no se puede escuchar** | WAVs en disco; ninguna vista los reproduce | player sincronizado, waveform, clips (lo que le critican a Granola) | M11 / D27 |
+| 2 | ~~**El audio no se puede escuchar**~~ | **RESUELTO (jul 2026)**: player sincronizado + highlight/auto-scroll + waveform coloreado + clips m4a (`AudioPlaybackKit`, M11) | falta skip-silencio (menor) | ✅ |
 | 3 | **No se puede escribir durante la reunión** | `ContextItem` modelado, cero UI/storage/prompt | el loop de coautoría completo (el patrón de $1.5B de Granola) | M10 / D28 |
 | 4 | **Grabar exige la ventana completa** | RecordingView a pantalla | HUD flotante compacto (NSPanel non-activating) con captions + stop; menu bar | NO PLANEADO — proponer con M10 (misma vista) |
 | 5 | **UI solo en español** | strings hardcodeados | localización (mínimo EN — "talla mundial" implica bilingüe también en la UI, no solo en los resúmenes) | NO PLANEADO — añadir a M9 (String Catalogs antes de publicar; después duele más) |

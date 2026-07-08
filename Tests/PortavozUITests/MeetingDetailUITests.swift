@@ -5,25 +5,28 @@ import XCTest
 /// library has one deterministic meeting with a transcript, a summary, and
 /// a coauthoring bullet (D28).
 final class MeetingDetailUITests: XCTestCase {
+    /// Launches the app on the seeded meeting with isolated audio. Point
+    /// PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
+    /// (Audio/<uuid>/…) to exercise the player on real audio instead.
     @MainActor
-    func testSeededMeetingShowsTranscriptAndCoauthoringBullet() {
+    private func launchOnSeededMeeting() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-use-temp-store", "-seed-demo"]
-        // Isolate audio in a throwaway folder — the seed writes a synthetic
-        // clip there so the player renders, and the real library is untouched.
-        // Point PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
-        // (Audio/<uuid>/…) to exercise the player on real audio instead.
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
         app.launch()
-        defer { app.terminate() }
-
-        // The seeded meeting appears in the sidebar; open it.
         let meeting = app.staticTexts["Reunión de prueba"]
         XCTAssertTrue(
             meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
         meeting.click()
+        return app
+    }
+
+    @MainActor
+    func testSeededMeetingShowsTranscriptAndCoauthoringBullet() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
 
         // The transcript rendered (this line is unique to the transcript).
         XCTAssertTrue(
@@ -49,5 +52,22 @@ final class MeetingDetailUITests: XCTestCase {
             play.waitForExistence(timeout: 5),
             "the player transport must render for a meeting that has audio")
         play.click()  // smoke: play doesn't crash
+    }
+
+    /// Marking in/out reveals the clip export button (M11). The seed's audio
+    /// is 6 s, and the transcript's second line seeks to 3 s.
+    @MainActor
+    func testClipMarkingRevealsExport() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.buttons["clip-mark-start"].waitForExistence(timeout: 15))
+        app.buttons["clip-mark-start"].click()  // start at 0
+        app.buttons["00:03"].firstMatch.click()  // seek the playhead forward
+        app.buttons["clip-mark-end"].click()  // end after start → valid range
+
+        XCTAssertTrue(
+            app.buttons["clip-export"].waitForExistence(timeout: 5),
+            "marking a valid in/out range must reveal the export button")
     }
 }

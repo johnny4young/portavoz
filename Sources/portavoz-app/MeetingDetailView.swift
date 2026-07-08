@@ -764,6 +764,9 @@ struct MeetingPlayerBar: View {
     let player: MeetingPlayer
     let waveform: [Waveform.Bucket]
 
+    @State private var exporting = false
+    @State private var exportError: String?
+
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
@@ -794,11 +797,97 @@ struct MeetingPlayerBar: View {
                 WaveformView(
                     buckets: waveform,
                     progress: player.duration > 0 ? player.currentTime / player.duration : 0,
+                    clipRange: clipFractions,
                     onSeek: { player.seek(to: $0 * player.duration) })
             }
+            clipRow
         }
         .padding(10)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .alert(
+            "No se pudo exportar",
+            isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
+        }
+    }
+
+    /// Mark in/out at the playhead and export the range to an m4a clip.
+    private var clipRow: some View {
+        HStack(spacing: 8) {
+            Button {
+                player.markClipStart()
+            } label: {
+                Label("Inicio", systemImage: "arrow.down.right.and.arrow.up.left")
+            }
+            .controlSize(.small)
+            .help("Marcar el inicio del clip en el punto actual")
+            .accessibilityIdentifier("clip-mark-start")
+
+            Button {
+                player.markClipEnd()
+            } label: {
+                Label("Fin", systemImage: "arrow.up.left.and.arrow.down.right")
+            }
+            .controlSize(.small)
+            .help("Marcar el fin del clip en el punto actual")
+            .accessibilityIdentifier("clip-mark-end")
+
+            if let range = player.clipRange {
+                Text("Clip \(clock(range.upperBound - range.lowerBound))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Button {
+                    exportClip(range)
+                } label: {
+                    if exporting {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Exportar", systemImage: "square.and.arrow.up")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(exporting)
+                .accessibilityIdentifier("clip-export")
+                Button {
+                    player.clearClip()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .controlSize(.small)
+                .help("Descartar el clip")
+            }
+            Spacer()
+        }
+        .font(.caption)
+    }
+
+    /// The clip marks as 0…1 fractions for the waveform overlay.
+    private var clipFractions: ClosedRange<Double>? {
+        guard let range = player.clipRange, player.duration > 0 else { return nil }
+        return (range.lowerBound / player.duration)...(range.upperBound / player.duration)
+    }
+
+    private func exportClip(_ range: ClosedRange<TimeInterval>) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "clip.m4a"
+        panel.allowedContentTypes = [.mpeg4Audio]
+        panel.prompt = "Exportar"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        exporting = true
+        Task {
+            defer { exporting = false }
+            do {
+                try await AudioClipExporter.export(
+                    channelFiles: player.channelFiles, range: range, to: url)
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            } catch {
+                exportError = error.localizedDescription
+            }
+        }
     }
 
     private func clock(_ seconds: TimeInterval) -> String {
@@ -814,6 +903,8 @@ struct WaveformView: View {
     let buckets: [Waveform.Bucket]
     /// Playback position as a 0…1 fraction of the duration.
     let progress: Double
+    /// The selected clip as 0…1 fractions, shaded on the waveform.
+    let clipRange: ClosedRange<Double>?
     /// Called with the seeked fraction (0…1) on click/drag.
     let onSeek: (Double) -> Void
 
@@ -821,6 +912,16 @@ struct WaveformView: View {
         GeometryReader { geo in
             Canvas { context, size in
                 guard !buckets.isEmpty else { return }
+                // Shade the selected clip range behind the bars.
+                if let clipRange {
+                    let rect = CGRect(
+                        x: clipRange.lowerBound * size.width, y: 0,
+                        width: (clipRange.upperBound - clipRange.lowerBound) * size.width,
+                        height: size.height)
+                    context.fill(
+                        Path(roundedRect: rect, cornerRadius: 3),
+                        with: .color(.accentColor.opacity(0.15)))
+                }
                 let barWidth = size.width / CGFloat(buckets.count)
                 let mid = size.height / 2
                 for (index, bucket) in buckets.enumerated() {

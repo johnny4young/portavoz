@@ -36,6 +36,6 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 
 ## Límites conocidos
 
-1. **Playback (M11/D27) parcial**: player sincronizado con highlight del transcript, click-para-saltar y **waveform-scrubber** (coloreado por canal: acento=tú, gris=ellos; atenuado tras el playhead) ya implementados (`AudioPlaybackKit`). Falta: clips, skip-silencio, transcode AAC, import UI.
+1. **Playback (M11/D27) parcial**: player sincronizado con highlight del transcript (auto-scroll mientras reproduce), click-para-saltar, **waveform-scrubber** (coloreado por canal: acento=tú, gris=ellos; atenuado tras el playhead; región del clip sombreada) y **clips** (marcar in/out en el playhead → `AudioClipExporter` exporta el rango mezclado a m4a/AAC vía `AVAssetExportSession`, medido muy por debajo de 2 s) — todo en `AudioPlaybackKit`. Falta: skip-silencio, transcode AAC del original, import UI.
 2. Sin HUD flotante/menu bar: grabar exige la ventana completa (los competidores tienen panel compacto).
 3. UI solo en español — sin localización (GAPS).
