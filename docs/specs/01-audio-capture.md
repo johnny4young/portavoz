@@ -25,6 +25,7 @@ Dos streams SEPARADOS, jamás mezclados antes de diarizar:
 - `CATapDescription(stereoMixdownOfProcesses:)` recibe `[AudioObjectID]` directo (no `[NSNumber]`); PID→objeto vía `kAudioHardwarePropertyTranslatePIDToProcessObject`. Sin PIDs = tap global del sistema.
 - Requiere aggregate device privado con `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; el formato se lee con `kAudioTapPropertyFormat` ANTES del IOProc.
 - **Un tap sin permiso TCC entrega SILENCIO, no error** (peak 0.0 en `system.caf` = falta "Grabación de pantalla y audio del sistema" → activar y relanzar). `RecordingSession.Summary.peaks` lo detecta.
+- **Resiliencia a cambio de OUTPUT** (bug real de campo jul 2026: al pasar de altavoz Mac → audífonos el canal system quedó MUDO): el tap/aggregate se ata al output por defecto al crearse y no lo sigue solo. `ProcessTapSource` escucha `kAudioHardwarePropertyDefaultOutputDevice` (listener block en cola de rebuild serial) y **reconstruye el grafo** (tap+aggregate+IOProc) en el nuevo output manteniendo el MISMO stream/continuation; resamplea al rate original y rellena el hueco de la conmutación con silencio (espeja la resiliencia de input del mic). No es unit-testeable sin Core Audio real → verificación de campo pendiente.
 - El primer buffer llega **~2.4 s después** de que arranca el mic (latencia de arranque de ScreenCaptureKit) — offset constante, no drift; el harness de drift lo cubre con rango ±5 s.
 
 ## RecordingSession — `Sources/AudioCaptureKit/RecordingSession.swift`
