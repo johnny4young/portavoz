@@ -86,7 +86,7 @@ struct SettingsView: View { // swiftlint:disable:this type_body_length
             Text(
                 // Texto de UI de una línea.
                 // swiftlint:disable:next line_length
-                "Resta del micrófono el audio que sale por tus PARLANTES, para que los demás participantes no aparezcan como \"Yo\". Con AUDÍFONOS no hay eco acústico: ahí puedes desactivarla — el procesado (AEC + control de ganancia) a veces aleja o apaga tu voz, sobre todo en audífonos Bluetooth. Aplica desde la próxima grabación."
+                "Resta del micrófono el audio que sale por tus PARLANTES, para que los demás participantes no aparezcan como \"Yo\". Con AUDÍFONOS no hay eco, así que puedes desactivarla sin problema. Aplica desde la próxima grabación. (Si te oyes lejano en la llamada: suele ser el micrófono INTEGRADO del Mac captando de lejos — unos audífonos con mic cercano, como AirPods, suenan mucho mejor.)"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
