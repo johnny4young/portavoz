@@ -9,6 +9,13 @@ final class MeetingDetailUITests: XCTestCase {
     func testSeededMeetingShowsTranscriptAndCoauthoringBullet() {
         let app = XCUIApplication()
         app.launchArguments = ["-use-temp-store", "-seed-demo"]
+        // Isolate audio in a throwaway folder — the seed writes a synthetic
+        // clip there so the player renders, and the real library is untouched.
+        // Point PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
+        // (Audio/<uuid>/…) to exercise the player on real audio instead.
+        app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
+            ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
+            ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
         app.launch()
         defer { app.terminate() }
 
@@ -34,5 +41,13 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["▸"].waitForExistence(timeout: 5),
             "a bullet born from a user note must render its ▸ coauthoring marker")
+
+        // The player rendered — the seed wrote audio, so the transport bar
+        // (M11) exists and can be played.
+        let play = app.buttons["player-play-pause"]
+        XCTAssertTrue(
+            play.waitForExistence(timeout: 5),
+            "the player transport must render for a meeting that has audio")
+        play.click()  // smoke: play doesn't crash
     }
 }

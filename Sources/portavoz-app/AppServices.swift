@@ -1,3 +1,4 @@
+import AVFoundation
 import DiarizationKit
 import Foundation
 import ModelStoreKit
@@ -122,17 +123,26 @@ final class AppServices {
     }
 
     /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),
-    /// including a summary with a coauthoring bullet ("▸") so the D28 render
-    /// is verifiable without a real recording. No-op outside UI testing.
+    /// including audio (so the player + waveform are testable) and a summary
+    /// with a coauthoring bullet ("▸") so the D28 render is verifiable
+    /// without a real recording. No-op outside UI testing.
+    ///
+    /// Audio: if the (isolated) audio root already holds a recording — a real
+    /// one dropped there for realistic testing — the seed adopts it;
+    /// otherwise it synthesizes a short two-tone clip (mic tone then system
+    /// tone, so the waveform shows both channel colors).
     func seedDemoIfRequested() async {
         guard ProcessInfo.processInfo.arguments.contains("-seed-demo") else { return }
         guard ((try? await store.meetings()) ?? []).isEmpty else { return }
+
+        let audioDirectory = Self.prepareSeedAudio()
 
         let meeting = Meeting(
             title: "Reunión de prueba",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_001_800),
-            language: "es")
+            language: "es",
+            audioDirectory: audioDirectory)
         try? await store.save(meeting)
 
         let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
@@ -142,11 +152,11 @@ final class AppServices {
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
                 text: "Revisemos el presupuesto de transcripción.",
-                startTime: 0, endTime: 4, isFinal: true),
+                startTime: 0, endTime: 3, isFinal: true),
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: ana.id, channel: .system,
                 text: "El rollout del modelo queda para el viernes.",
-                startTime: 5, endTime: 9, isFinal: true),
+                startTime: 3, endTime: 6, isFinal: true),
         ])
         try? await store.saveSummary(
             SummaryDraft(
@@ -163,5 +173,57 @@ final class AppServices {
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
         libraryVersion += 1
+    }
+
+    /// Ensures the seeded meeting has audio, returning its DB-relative
+    /// directory ("Audio/<uuid>") or nil if none could be prepared.
+    private static func prepareSeedAudio() -> String? {
+        let manager = FileManager.default
+        let audioBase = audioRoot.appendingPathComponent("Audio", isDirectory: true)
+
+        // Adopt a real recording already sitting in the (isolated) root.
+        if let existing = try? manager.contentsOfDirectory(
+            at: audioBase, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]),
+            let dir = existing.first(where: { url in
+                ["microphone.caf", "microphone.wav", "system.caf", "system.wav"]
+                    .contains { manager.fileExists(atPath: url.appendingPathComponent($0).path) }
+            })
+        {
+            return "Audio/\(dir.lastPathComponent)"
+        }
+
+        // Otherwise synthesize a two-tone clip.
+        let uuid = UUID().uuidString
+        let dir = audioBase.appendingPathComponent(uuid, isDirectory: true)
+        guard (try? manager.createDirectory(at: dir, withIntermediateDirectories: true)) != nil
+        else { return nil }
+        let ok =
+            writeTone(dir.appendingPathComponent("microphone.wav"), frequency: 220, activeHalf: .first)
+            && writeTone(dir.appendingPathComponent("system.wav"), frequency: 440, activeHalf: .second)
+        return ok ? "Audio/\(uuid)" : nil
+    }
+
+    private enum ActiveHalf { case first, second }
+
+    /// Writes a 6-second mono WAV: a tone in one half, silence in the other,
+    /// so the two channels take turns leading the waveform.
+    private static func writeTone(_ url: URL, frequency: Double, activeHalf: ActiveHalf) -> Bool {
+        let rate = 16_000.0
+        guard
+            let format = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false),
+            let file = try? AVAudioFile(forWriting: url, settings: format.settings),
+            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(rate * 6))
+        else { return false }
+        let frames = Int(rate * 6)
+        buffer.frameLength = AVAudioFrameCount(frames)
+        let samples = buffer.floatChannelData![0]
+        let half = frames / 2
+        for i in 0..<frames {
+            let inActiveHalf = activeHalf == .first ? i < half : i >= half
+            samples[i] =
+                inActiveHalf ? 0.5 * Float(sin(2 * Double.pi * frequency * Double(i) / rate)) : 0
+        }
+        return (try? file.write(from: buffer)) != nil
     }
 }

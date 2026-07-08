@@ -21,7 +21,7 @@ Local: `swift test` (si falla con "no such module": `DEVELOPER_DIR=/Applications
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
-XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-use-temp-store` (DB desechable) + `-seed-demo` (reunión determinística con transcript, resumen y bullet "▸" de coautoría). Cubre: `LibraryUITests` (la biblioteca renderiza) y `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28).
+XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-use-temp-store` (DB desechable) + `-seed-demo` (reunión determinística con transcript, resumen, bullet "▸" de coautoría y **audio**). El audio se aísla con la env `PORTAVOZ_AUDIO_ROOT`; el seed sintetiza un clip de dos tonos (mic/system) o adopta una grabación real dejada en la raíz — apunta `PORTAVOZ_TEST_AUDIO_ROOT` a una copia real para ejercitar el player sobre audio de verdad. Cubre: `LibraryUITests` (la biblioteca renderiza) y `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28 + **el player renderiza y reproduce**).
 
 ## Harnesses de medición
 

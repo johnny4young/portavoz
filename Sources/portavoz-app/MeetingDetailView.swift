@@ -776,6 +776,7 @@ struct MeetingPlayerBar: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.tint)
                 .help(player.isPlaying ? "Pausar" : "Reproducir")
+                .accessibilityIdentifier("player-play-pause")
 
                 Text(clock(player.currentTime))
                     .font(.caption.monospacedDigit())

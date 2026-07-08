@@ -19,8 +19,18 @@ public struct RecordingsLocation: Sendable {
     }
 
     /// The location shared by app and CLI: the default root is the folder
-    /// that holds the database.
+    /// that holds the database. `PORTAVOZ_AUDIO_ROOT` overrides it — used by
+    /// `make test-ui` to point audio at a throwaway folder so a test run
+    /// never writes into the real library.
     public static var shared: RecordingsLocation {
+        if let override = ProcessInfo.processInfo.environment["PORTAVOZ_AUDIO_ROOT"],
+            !override.isEmpty
+        {
+            let root = URL(fileURLWithPath: override)
+            return RecordingsLocation(
+                defaultRoot: root,
+                markerURL: root.appendingPathComponent("recordings-root.txt"))
+        }
         let support = MeetingStore.defaultDatabaseURL.deletingLastPathComponent()
         return RecordingsLocation(
             defaultRoot: support,
