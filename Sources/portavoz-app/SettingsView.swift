@@ -46,6 +46,7 @@ struct SettingsView: View {
     @State private var ollamaModels: [OllamaService.Model] = []
     @State private var ollamaStatus: String?
     @State private var detectingOllama = false
+    @State private var advice: EngineAdvice?
 
     var body: some View {
         Form {
@@ -68,6 +69,7 @@ struct SettingsView: View {
                 ((try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil) != nil
             voiceprint = (try? VoiceprintStore().load()) ?? nil
             if summaryEngine == "ollama" { detectOllama() }
+            Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
         }
     }
 
@@ -373,6 +375,20 @@ struct SettingsView: View {
 
     private var summaryEngineSection: some View {
         Section("Motor de resúmenes") {
+            if let advice {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(advice.headline, systemImage: "wand.and.stars.inverse")
+                        .font(.callout.weight(.medium))
+                    ForEach(advice.reasons, id: \.self) { reason in
+                        Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if advice.engine != .none {
+                        Button("Aplicar recomendación") { applyRecommendation(advice) }
+                            .controlSize(.small)
+                            .padding(.top, 2)
+                    }
+                }
+            }
             Picker("Generar resúmenes con", selection: $summaryEngine) {
                 Text("Apple (on-device)").tag("appleOnDevice")
                 Text("Ollama (local)").tag("ollama")
@@ -418,7 +434,7 @@ struct SettingsView: View {
         }
     }
 
-    private func detectOllama() {
+    private func detectOllama(autoSelect: Bool = false) {
         detectingOllama = true
         ollamaStatus = nil
         Task {
@@ -430,10 +446,29 @@ struct SettingsView: View {
                 return
             }
             ollamaModels = await OllamaService.models()
+            // When applying the recommendation, pick a sensible default
+            // (skip OCR-only models, which can't chat).
+            if autoSelect, ollamaModel.isEmpty,
+                let first = ollamaModels.first(where: { !$0.name.contains("ocr") })
+            {
+                ollamaModel = first.name
+            }
             ollamaStatus =
                 ollamaModels.isEmpty
                 ? "Ollama corre pero no hay modelos. Descarga uno con «ollama pull llama3.2»."
                 : "\(ollamaModels.count) modelo(s) disponibles."
+        }
+    }
+
+    private func applyRecommendation(_ advice: EngineAdvice) {
+        switch advice.engine {
+        case .apple:
+            summaryEngine = "appleOnDevice"
+        case .ollama:
+            summaryEngine = "ollama"
+            detectOllama(autoSelect: true)
+        case .none:
+            break
         }
     }
 

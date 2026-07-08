@@ -150,6 +150,27 @@ final class AppServices {
         }
     }
 
+    /// The machine's facts for "Recomendado para tu Mac" (M12).
+    func currentHardwareProfile() async -> HardwareProfile {
+        let memoryGB = Int((ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)
+        let appleIntelligence: Bool
+        if #available(macOS 26.0, *) {
+            appleIntelligence = FoundationModelSummaryProvider.unavailabilityReason() == nil
+        } else {
+            appleIntelligence = false
+        }
+        let ollama = await OllamaService.isRunning()
+        let free =
+            (try? URL(fileURLWithPath: NSHomeDirectory())
+                .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+                .volumeAvailableCapacityForImportantUsage) ?? nil
+        return HardwareProfile(
+            memoryGB: memoryGB,
+            appleIntelligence: appleIntelligence,
+            ollamaAvailable: ollama,
+            freeDiskGB: Int((free ?? 0) / 1_000_000_000))
+    }
+
     /// Summarizes with the configured engine, falling back to Apple FM.
     /// Throws when neither is usable (14.x + Apple engine).
     func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
