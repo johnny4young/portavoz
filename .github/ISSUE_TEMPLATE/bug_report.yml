@@ -1,0 +1,84 @@
+name: Bug report
+description: Something misbehaves — a crash, wrong output, or broken UI.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Portavoz is local-first: **please don't paste audio,
+        transcripts, or summaries** unless you're sure they contain nothing private.
+        Redact names before sharing logs.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what did you expect instead?
+      placeholder: The system channel recorded silence even though the meeting had audio…
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of Portavoz?
+      options:
+        - Capture (mic / system audio)
+        - Transcription (live / refine)
+        - Diarization (who-said-what)
+        - Summaries / Intelligence
+        - Companion (live questions)
+        - App UI
+        - CLI
+        - Models / downloads
+        - Other / not sure
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: e.g. 15.5 (24F74)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Portavoz version
+      description: About → version, or the git commit if built from source.
+      placeholder: e.g. 0.1.0 (build 202607081100) or commit 6e79f07
+    validations:
+      required: true
+  - type: input
+    id: mac-model
+    attributes:
+      label: Mac model / chip
+      placeholder: e.g. MacBook Pro M4 Max, 36 GB
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: Console output or the peak/error summary if capture is involved. Redact anything private.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go to the process in SECURITY.md, not a public issue).
+          required: true
