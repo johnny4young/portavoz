@@ -11,8 +11,6 @@ struct RecordingView: View {
     /// Log-viewer follow mode: captions auto-scroll while the user is at
     /// the bottom; scrolling away pauses the follow (so they can read
     /// back) and it resumes 10 s after the last manual scroll.
-    @State private var followLive = true
-    @State private var resumeFollowTask: Task<Void, Never>?
     @State private var noteDraft = ""
 
     var body: some View {
@@ -286,98 +284,42 @@ struct RecordingView: View {
         return base
     }
 
+    /// Live captions as a Spotify-lyrics carousel (M11): the newest line
+    /// sits low in the viewport (the frontier), older ones rise and fade
+    /// above it. A bounded window keeps long recordings responsive.
     private var captionsList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                // Lazy + a bounded window: every delta mutates the array and
-                // an eager 200-row layout per second froze long recordings.
-                LazyVStack(alignment: .leading, spacing: 6) {
-                    ForEach(controller.captions.suffix(150)) { segment in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(segment.channel == .microphone ? "Yo" : "Ellos")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(
-                                    segment.channel == .microphone ? Color.accentColor : .secondary)
-                                .frame(width: 40, alignment: .trailing)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(segment.text)
-                                    .foregroundStyle(segment.isFinal ? .primary : .secondary)
-                                if let translated = controller.translations[segment.id] {
-                                    Text(translated)
-                                        .font(.callout)
-                                        .foregroundStyle(Color.accentColor.opacity(0.9))
-                                }
-                            }
-                        }
-                        .id(segment.id)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-            }
-            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-            // endTime moves both when a row grows (coalescer) and on append.
-            .onChange(of: controller.captions.last?.endTime) { _, _ in
-                guard followLive, let last = controller.captions.last else { return }
-                proxy.scrollTo(last.id, anchor: .bottom)
-            }
-            .modifier(FollowLiveDetector(followLive: $followLive, schedule: scheduleFollowResume))
-            .overlay(alignment: .bottom) {
-                if !followLive {
-                    Button {
-                        followLive = true
-                        resumeFollowTask?.cancel()
-                        resumeFollowTask = nil
-                        if let last = controller.captions.last {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
-                    } label: {
-                        Label("Seguir en vivo", systemImage: "arrow.down.to.line")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.thinMaterial, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.bottom, 10)
-                }
+        GeometryReader { geo in
+            FocusedTranscriptView(
+                segments: Array(controller.captions.suffix(150)),
+                activeID: controller.captions.last?.id,
+                height: geo.size.height,
+                anchor: UnitPoint(x: 0.5, y: 0.82),
+                followSignal: controller.captions.last?.endTime ?? 0
+            ) { segment, _ in
+                captionRow(segment)
             }
         }
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    /// Re-enables the live follow 10 s after the user's last manual scroll.
-    private func scheduleFollowResume() {
-        resumeFollowTask?.cancel()
-        resumeFollowTask = Task {
-            try? await Task.sleep(for: .seconds(10))
-            guard !Task.isCancelled else { return }
-            followLive = true
-        }
-    }
-}
-
-/// Flags when the user scrolls away from the captions' bottom edge
-/// (macOS 15+; earlier systems just keep permanent follow). The 150 pt
-/// buffer keeps in-place row growth from reading as a manual scroll.
-private struct FollowLiveDetector: ViewModifier {
-    @Binding var followLive: Bool
-    let schedule: () -> Void
-
-    func body(content: Content) -> some View {
-        if #available(macOS 15.0, *) {
-            content.onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.containerSize.height
-                    >= geometry.contentSize.height - 150
-            } action: { _, nearBottom in
-                if nearBottom {
-                    followLive = true
-                } else {
-                    followLive = false
-                    schedule()
+    private func captionRow(_ segment: TranscriptSegment) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(segment.channel == .microphone ? "Yo" : "Ellos")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(
+                    segment.channel == .microphone ? Color.accentColor : .secondary)
+                .frame(width: 40, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(segment.text)
+                    .foregroundStyle(segment.isFinal ? .primary : .secondary)
+                if let translated = controller.translations[segment.id] {
+                    Text(translated)
+                        .font(.callout)
+                        .foregroundStyle(Color.accentColor.opacity(0.9))
                 }
             }
-        } else {
-            content
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
     }
 }
