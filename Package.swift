@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "IntelligenceKit", targets: ["IntelligenceKit"]),
         .library(name: "ContextFeedKit", targets: ["ContextFeedKit"]),
         .library(name: "StorageKit", targets: ["StorageKit"]),
+        .library(name: "AudioPlaybackKit", targets: ["AudioPlaybackKit"]),
         .library(name: "SyncKit", targets: ["SyncKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
@@ -74,6 +75,10 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
+        // Synchronized meeting playback (M11/D27): mixes the per-channel
+        // audio into one timeline, generates waveforms, exports clips.
+        .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
+
         .target(name: "SyncKit", dependencies: ["PortavozCore"]),
         .target(name: "IntegrationsKit", dependencies: ["PortavozCore", "IntelligenceKit"]),
 
@@ -85,7 +90,7 @@ let package = Package(
             dependencies: [
                 "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit", "IntegrationsKit",
+                "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
@@ -110,6 +115,7 @@ let package = Package(
                 "IntelligenceKit",
                 "ContextFeedKit",
                 "StorageKit",
+                "AudioPlaybackKit",
                 "SyncKit",
                 "IntegrationsKit",
             ]

@@ -1,4 +1,5 @@
 import AppKit
+import AudioPlaybackKit
 import DiarizationKit
 import IntegrationsKit
 import IntelligenceKit
@@ -17,6 +18,7 @@ struct MeetingDetailView: View {
 
     @State private var detail: MeetingDetail?
     @State private var summary: (draft: SummaryDraft, version: Int)?
+    @State private var player: MeetingPlayer?
     @State private var renamingSpeaker: Speaker?
     @State private var newName = ""
     @State private var exportDocument: ExportDocument?
@@ -61,6 +63,7 @@ struct MeetingDetailView: View {
             }
         }
         .task(id: services.libraryVersion) { await reload() }
+        .onDisappear { player?.invalidate() }
     }
 
     @ViewBuilder
@@ -95,15 +98,29 @@ struct MeetingDetailView: View {
                     }
                 }
 
-                Text("Transcript")
-                    .font(.headline)
-                // Lazy: a long meeting has thousands of rows and eager
-                // layout froze the window on open.
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(detail.segments) { segment in
-                        segmentRow(segment, speakers: detail.speakers)
+                HStack {
+                    Text("Transcript").font(.headline)
+                    if player != nil {
+                        Spacer()
+                        Text("Toca una línea para saltar ahí")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
                 }
+                if let player {
+                    MeetingPlayerBar(player: player)
+                }
+                // Own View structs so only they re-render as the playhead
+                // moves — the header and summary above stay put.
+                TranscriptSegmentsView(
+                    segments: detail.segments,
+                    speakers: detail.speakers,
+                    player: player,
+                    onSeek: { player?.seek(to: $0); player?.play() },
+                    onRenameTap: { speaker in
+                        renamingSpeaker = speaker
+                        newName = speaker.displayName ?? ""
+                    })
             }
             .padding(20)
             .frame(maxWidth: 760, alignment: .leading)
@@ -369,24 +386,6 @@ struct MeetingDetailView: View {
         }
         .padding(14)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func segmentRow(_ segment: TranscriptSegment, speakers: [Speaker]) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(timestamp(segment.startTime))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.tertiary)
-                .frame(width: 44, alignment: .trailing)
-            SpeakerPill(
-                speaker: speakers.first { $0.id == segment.speakerID }
-            ) { speaker in
-                renamingSpeaker = speaker
-                newName = speaker.displayName ?? ""
-            }
-            Text(segment.text)
-                .textSelection(.enabled)
-            Spacer(minLength: 0)
-        }
     }
 
     // MARK: - Actions
@@ -689,6 +688,19 @@ struct MeetingDetailView: View {
     private func reload() async {
         detail = try? await services.store.detail(meetingID)
         summary = try? await services.store.summary(meetingID)
+        await loadPlayerIfNeeded()
+    }
+
+    /// Builds the synchronized player once (M11). Audio survives refine, so
+    /// there's no reason to rebuild it when the library version bumps.
+    private func loadPlayerIfNeeded() async {
+        guard player == nil, let relative = detail?.meeting.audioDirectory else { return }
+        let base = RecordingsLocation.shared.resolve(relative)
+        let files = ["system", "microphone"].compactMap {
+            MeetingAudioLayout.channelFile(named: $0, in: base)
+        }
+        guard !files.isEmpty else { return }
+        player = await MeetingPlayer.make(channelFiles: files)
     }
 
     private func timestamp(_ seconds: TimeInterval) -> String {
@@ -733,6 +745,106 @@ struct SpeakerPill: View {
         }
         .buttonStyle(.plain)
         .disabled(speaker == nil)
+    }
+}
+
+/// The transport bar (M11): play/pause + a scrubber over the mixed
+/// timeline. Its own View so the scrubber's 5 fps updates don't re-render
+/// the whole detail.
+struct MeetingPlayerBar: View {
+    let player: MeetingPlayer
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button {
+                player.togglePlayPause()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.title)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .help(player.isPlaying ? "Pausar" : "Reproducir")
+
+            Text(clock(player.currentTime))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Slider(
+                value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),
+                in: 0...max(player.duration, 0.1))
+            Text(clock(player.duration))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func clock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// The transcript with a synchronized highlight (M11). Its own View so the
+/// playhead moving only re-renders here, not the summary/header above. The
+/// timestamp doubles as a "jump here" button, leaving the text selectable.
+struct TranscriptSegmentsView: View {
+    let segments: [TranscriptSegment]
+    let speakers: [Speaker]
+    let player: MeetingPlayer?
+    let onSeek: (TimeInterval) -> Void
+    let onRenameTap: (Speaker) -> Void
+
+    /// The segment under the playhead: the one whose range contains the
+    /// current time, or the last one that already started (so a gap between
+    /// segments keeps the previous line lit).
+    private var activeSegmentID: TranscriptSegment.ID? {
+        guard let player else { return nil }
+        let now = player.currentTime
+        return segments.last(where: { $0.startTime <= now && now < $0.endTime })?.id
+            ?? segments.last(where: { $0.startTime <= now })?.id
+    }
+
+    var body: some View {
+        let active = activeSegmentID
+        // Lazy: a long meeting has thousands of rows and eager layout froze
+        // the window on open.
+        LazyVStack(alignment: .leading, spacing: 8) {
+            ForEach(segments) { segment in
+                row(segment, isActive: segment.id == active)
+            }
+        }
+    }
+
+    private func row(_ segment: TranscriptSegment, isActive: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Button {
+                onSeek(segment.startTime)
+            } label: {
+                Text(clock(segment.startTime))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                    .frame(width: 44, alignment: .trailing)
+            }
+            .buttonStyle(.plain)
+            .disabled(player == nil)
+            .help("Saltar a este momento")
+            SpeakerPill(speaker: speakers.first { $0.id == segment.speakerID }, onRename: onRenameTap)
+            Text(segment.text)
+                .textSelection(.enabled)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(
+            isActive ? Color.accentColor.opacity(0.12) : Color.clear,
+            in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func clock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }
 

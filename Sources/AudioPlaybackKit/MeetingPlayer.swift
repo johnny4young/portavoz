@@ -1,0 +1,107 @@
+import AVFoundation
+import Foundation
+import Observation
+
+/// Synchronized playback of a meeting (M11/D27). A meeting is stored as
+/// separate per-channel files (microphone + system); this mixes them into
+/// ONE timeline via an `AVMutableComposition`, so there is a single
+/// current-time to drive the transcript highlight and a single scrubber.
+///
+/// `@MainActor` + `@Observable`: the periodic time observer publishes
+/// `currentTime` on the main actor, which SwiftUI reads directly.
+@MainActor
+@Observable
+public final class MeetingPlayer {
+    public private(set) var currentTime: TimeInterval = 0
+    public private(set) var duration: TimeInterval = 0
+    public private(set) var isPlaying = false
+
+    private let player: AVPlayer
+    private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
+
+    private init(item: AVPlayerItem, duration: TimeInterval) {
+        self.player = AVPlayer(playerItem: item)
+        self.duration = duration
+
+        // 5 fps: smooth enough for a highlight + scrubber, cheap enough not
+        // to churn a long transcript's rows.
+        let interval = CMTime(seconds: 0.2, preferredTimescale: 600)
+        timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
+            [weak self] time in
+            MainActor.assumeIsolated {
+                self?.currentTime = min(time.seconds, self?.duration ?? time.seconds)
+            }
+        }
+        // Playing to the end stops and rewinds, so the transport button
+        // flips back to "play" instead of pretending it's still going.
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isPlaying = false
+                self?.seek(to: 0)
+            }
+        }
+    }
+
+    /// Builds a player mixing every existing channel file. Returns nil when
+    /// none is readable (e.g. audio deleted by the retention policy).
+    public static func make(channelFiles: [URL]) async -> MeetingPlayer? {
+        let existing = channelFiles.filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !existing.isEmpty else { return nil }
+
+        let composition = AVMutableComposition()
+        var maxDuration = CMTime.zero
+        for url in existing {
+            let asset = AVURLAsset(url: url)
+            guard
+                let assetTrack = try? await asset.loadTracks(withMediaType: .audio).first,
+                let assetDuration = try? await asset.load(.duration),
+                let track = composition.addMutableTrack(
+                    withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+            else { continue }
+            try? track.insertTimeRange(
+                CMTimeRange(start: .zero, duration: assetDuration), of: assetTrack, at: .zero)
+            maxDuration = CMTimeMaximum(maxDuration, assetDuration)
+        }
+        guard maxDuration > .zero else { return nil }
+
+        return MeetingPlayer(
+            item: AVPlayerItem(asset: composition), duration: maxDuration.seconds)
+    }
+
+    public func play() {
+        // Restart from the top if we're parked at the end.
+        if currentTime >= duration - 0.05 { seek(to: 0) }
+        player.play()
+        isPlaying = true
+    }
+
+    public func pause() {
+        player.pause()
+        isPlaying = false
+    }
+
+    public func togglePlayPause() {
+        isPlaying ? pause() : play()
+    }
+
+    public func seek(to seconds: TimeInterval) {
+        let clamped = max(0, min(seconds, duration))
+        currentTime = clamped
+        player.seek(
+            to: CMTime(seconds: clamped, preferredTimescale: 600),
+            toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    /// Releases the AVFoundation observers. Call from the view's
+    /// `onDisappear`; AVPlayer leaks its periodic observer otherwise.
+    public func invalidate() {
+        pause()
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
+    }
+}

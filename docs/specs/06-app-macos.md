@@ -36,6 +36,6 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 
 ## Límites conocidos
 
-1. **Sin playback de audio** (M11/D27) ni waveform ni clips.
+1. **Playback (M11/D27) parcial**: player sincronizado con highlight del transcript y click-para-saltar ya implementado (`AudioPlaybackKit.MeetingPlayer`); falta waveform, clips y skip-silencio.
 2. Sin HUD flotante/menu bar: grabar exige la ventana completa (los competidores tienen panel compacto).
 3. UI solo en español — sin localización (GAPS).
