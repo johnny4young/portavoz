@@ -123,6 +123,46 @@ final class AppServices {
         diarizer = nil
     }
 
+    // MARK: - Summary engine (D25/M12)
+
+    enum SummaryEngine: String, CaseIterable {
+        case appleOnDevice
+        case ollama
+    }
+
+    var summaryEngine: SummaryEngine {
+        SummaryEngine(rawValue: UserDefaults.standard.string(forKey: "summaryEngine") ?? "")
+            ?? .appleOnDevice
+    }
+
+    /// The configured provider, or nil to use Apple Foundation Models (the
+    /// map-reduce + priority-scheduled + fingerprint-cache path). Ollama
+    /// gives a 100% local summary on Macs without Apple Intelligence
+    /// (GAPS #7); a chosen model that's gone falls back to Apple.
+    func configuredSummaryProvider() -> (any SummaryProvider)? {
+        switch summaryEngine {
+        case .appleOnDevice:
+            return nil
+        case .ollama:
+            let model = (UserDefaults.standard.string(forKey: "ollamaModel") ?? "")
+                .trimmingCharacters(in: .whitespaces)
+            return model.isEmpty ? nil : OllamaService.summaryProvider(model: model)
+        }
+    }
+
+    /// Summarizes with the configured engine, falling back to Apple FM.
+    /// Throws when neither is usable (14.x + Apple engine).
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        if let provider = configuredSummaryProvider() {
+            return try await provider.summarize(request)
+        }
+        guard #available(macOS 26.0, *) else {
+            throw IntelligenceError.modelUnavailable(
+                "Apple Intelligence requiere macOS 26 — elige Ollama en Ajustes.")
+        }
+        return try await FoundationModelSummaryProvider().summarize(request)
+    }
+
     /// Imports an external audio file as a new meeting (M11/D27): copies it
     /// in as the system channel (all speakers diarized — no "Me"), runs the
     /// quality Whisper pass + diarization + summary, and returns the new id.
@@ -166,17 +206,13 @@ final class AppServices {
         try await store.save(attribution.segments)
 
         progress("Generando resumen…")
-        if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        {
-            let request = SummaryRequest(
-                meetingID: meetingID, segments: attribution.segments,
-                speakers: attribution.speakers, recipe: .general,
-                targetLanguage: Locale.current.language.languageCode?.identifier ?? "en",
-                glossary: vocabulary)
-            if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
-                try? await store.saveSummary(draft)
-            }
+        let request = SummaryRequest(
+            meetingID: meetingID, segments: attribution.segments,
+            speakers: attribution.speakers, recipe: .general,
+            targetLanguage: Locale.current.language.languageCode?.identifier ?? "en",
+            glossary: vocabulary)
+        if let draft = try? await summarize(request) {
+            try? await store.saveSummary(draft)
         }
         libraryVersion += 1
         return meetingID

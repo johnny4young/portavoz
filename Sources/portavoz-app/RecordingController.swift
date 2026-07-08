@@ -347,9 +347,7 @@ final class RecordingController {
             try await services.store.save(attribution.segments)
             try await services.store.save(contextItems)
 
-            if #available(macOS 26.0, *),
-                FoundationModelSummaryProvider.unavailabilityReason() == nil
-            {
+            do {
                 phase = .processing("Generando resumen…")
                 let language = Locale.current.language.languageCode?.identifier ?? "en"
                 let request = SummaryRequest(
@@ -361,7 +359,9 @@ final class RecordingController {
                     glossary: vocabulary,
                     contextItems: contextItems
                 )
-                if let draft = try? await FoundationModelSummaryProvider().summarize(request) {
+                // Configured engine (Apple FM or local Ollama). No summary is
+                // fine — the transcript is already saved.
+                if let draft = try? await services.summarize(request) {
                     try await services.store.saveSummary(draft)
                 }
             }

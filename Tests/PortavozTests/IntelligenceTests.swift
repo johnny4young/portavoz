@@ -522,6 +522,70 @@ final class BYOKSettingsTests: XCTestCase {
     }
 }
 
+// MARK: - Ollama first-class (M12)
+
+final class OllamaServiceTests: XCTestCase {
+    func testParsesTagsResponse() {
+        let json = """
+            {"models":[
+              {"name":"gpt-oss:20b","size":13793000000,"details":{"parameter_size":"20.9B"}},
+              {"name":"bare","size":1,"details":{}}
+            ]}
+            """
+        let models = OllamaService.parseModels(Data(json.utf8))
+        XCTAssertEqual(models.count, 2)
+        XCTAssertEqual(models.first?.name, "gpt-oss:20b")
+        XCTAssertEqual(models.first?.parameterSize, "20.9B")
+        XCTAssertEqual(models.first?.bytes, 13_793_000_000)
+        XCTAssertEqual(models.last?.parameterSize, "", "missing details degrade to empty")
+    }
+
+    func testEmptyOnGarbage() {
+        XCTAssertTrue(OllamaService.parseModels(Data("not json".utf8)).isEmpty)
+    }
+
+    /// Real end-to-end against a running Ollama (`PORTAVOZ_OLLAMA_TESTS=1`,
+    /// `ollama serve`, at least one non-OCR model). Verifies a 100% local
+    /// summary comes back through the OpenAI-compatible path.
+    func testRealOllamaSummarizes() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["PORTAVOZ_OLLAMA_TESTS"] == "1",
+            "set PORTAVOZ_OLLAMA_TESTS=1 to run")
+        guard await OllamaService.isRunning() else { throw XCTSkip("Ollama not running") }
+        let model: String
+        if let env = ProcessInfo.processInfo.environment["PORTAVOZ_OLLAMA_MODEL"] {
+            model = env
+        } else if let first = (await OllamaService.models()).map(\.name)
+            .first(where: { !$0.contains("ocr") })
+        {
+            model = first
+        } else {
+            throw XCTSkip("no usable Ollama model")
+        }
+
+        let meeting = MeetingID()
+        let me = Speaker(meetingID: meeting, label: "Me", isMe: true)
+        let ana = Speaker(meetingID: meeting, label: "S1", displayName: "Ana")
+        func line(_ speaker: Speaker, _ text: String, _ at: TimeInterval) -> TranscriptSegment {
+            TranscriptSegment(
+                meetingID: meeting, speakerID: speaker.id,
+                channel: speaker.isMe ? .microphone : .system,
+                text: text, startTime: at, endTime: at + 4, isFinal: true)
+        }
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [
+                line(me, "Let's review the roadmap for the transcription milestone.", 0),
+                line(ana, "I will prepare the rollout plan by Friday.", 5),
+            ],
+            speakers: [me, ana], recipe: .general, targetLanguage: "es", glossary: ["roadmap"])
+
+        let draft = try await OllamaService.summaryProvider(model: model).summarize(request)
+        XCTAssertFalse(draft.markdown.isEmpty, "a local Ollama summary must come back")
+        XCTAssertEqual(draft.language, "es")
+    }
+}
+
 // MARK: - BYOK summary provider (offline)
 
 final class OpenAICompatibleProviderTests: XCTestCase {

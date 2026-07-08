@@ -12,7 +12,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | 4 | **Grabar exige la ventana completa** | RecordingView a pantalla | HUD flotante compacto (NSPanel non-activating) con captions + stop; menu bar | NO PLANEADO — proponer con M10 (misma vista) |
 | 5 | **UI solo en español** | strings hardcodeados | localización (mínimo EN — "talla mundial" implica bilingüe también en la UI, no solo en los resúmenes) | NO PLANEADO — añadir a M9 (String Catalogs antes de publicar; después duele más) |
 | 6 | **Onboarding inexistente** | primer arranque descarga modelos con progreso, sin explicación de permisos/valor | flujo primera-vez: permisos guiados (mic/system/TCC), descarga con recomendación por hardware, enrolar voz opcional (patrón Meetily) | Parcial en M12 (recomendador); el flujo NO está planeado |
-| 7 | **Macs sin Apple Intelligence = sin resumen local** | FM o BYOK manual | Ollama primera clase → MLX embebido | M12 / D25 |
+| 7 | ~~**Macs sin Apple Intelligence = sin resumen local**~~ | **RESUELTO (jul 2026)**: Ollama de primera clase — Ajustes → Motor de resúmenes detecta Ollama, lista modelos, resume 100% local sin key (`OllamaService` + `OpenAICompatibleSummaryProvider`). Verificado E2E con gpt-oss:20b (resumen ES en 24 s). Falta MLX embebido (cero-dependencias, fase posterior) | ✅ |
 | 8 | ~~**Import de audio externo sin UI**~~ | **RESUELTO (jul 2026)**: botón "Importar audio…" + drag-drop en la biblioteca → transcribe (Whisper) + diariza + resume como reunión nueva (M11) | — | ✅ |
 | 9 | Sin brief pre-reunión ni recap email | EventKit ya lee asistentes | Briefs (Granola) + borrador de recap (Gemini) | M13b / M16 |
 | 10 | Sin App Intents/Shortcuts/Spotlight | — | automatizaciones post-reunión | M16 |

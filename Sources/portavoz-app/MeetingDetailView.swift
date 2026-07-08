@@ -602,14 +602,6 @@ struct MeetingDetailView: View {
         regenerating = true
         Task {
             defer { regenerating = false }
-            guard #available(macOS 26.0, *) else {
-                gistError = "Los resúmenes on-device necesitan macOS 26."
-                return
-            }
-            if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
-                gistError = reason
-                return
-            }
             let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
             let request = SummaryRequest(
                 meetingID: meetingID,
@@ -621,6 +613,27 @@ struct MeetingDetailView: View {
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
                 contextItems: notes
             )
+
+            // A configured non-Apple engine (Ollama) summarizes directly —
+            // the fingerprint cache + translation pivot are FM-only.
+            if let engine = services.configuredSummaryProvider() {
+                if let draft = try? await engine.summarize(request) {
+                    _ = try? await services.store.saveSummary(draft)
+                    services.libraryVersion += 1
+                } else {
+                    gistError = "El modelo local no pudo generar el resumen."
+                }
+                return
+            }
+
+            guard #available(macOS 26.0, *) else {
+                gistError = "Los resúmenes on-device necesitan macOS 26 (o elige Ollama en Ajustes)."
+                return
+            }
+            if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+                gistError = reason
+                return
+            }
             let provider = FoundationModelSummaryProvider()
             let fingerprint = SummaryFingerprint.compute(
                 request: request, providerID: FoundationModelSummaryProvider.providerID)

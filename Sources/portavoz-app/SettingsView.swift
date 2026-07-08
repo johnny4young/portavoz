@@ -41,12 +41,19 @@ struct SettingsView: View {
 
     @AppStorage("companionUserName") private var companionUserName = ""
 
+    @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
+    @AppStorage("ollamaModel") private var ollamaModel = ""
+    @State private var ollamaModels: [OllamaService.Model] = []
+    @State private var ollamaStatus: String?
+    @State private var detectingOllama = false
+
     var body: some View {
         Form {
             audioSection
             recordingsSection
             titleSection
             vocabularySection
+            summaryEngineSection
             voiceSection
             companionSection
             byokSection
@@ -60,6 +67,7 @@ struct SettingsView: View {
             hasStoredBYOKKey =
                 ((try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil) != nil
             voiceprint = (try? VoiceprintStore().load()) ?? nil
+            if summaryEngine == "ollama" { detectOllama() }
         }
     }
 
@@ -358,6 +366,74 @@ struct SettingsView: View {
             voiceMessage = "Listo: tus intervenciones se etiquetarán como \"Me\" en cualquier canal."
         } catch {
             voiceMessage = "No se pudo enrolar: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Motor de resúmenes (D25/M12)
+
+    private var summaryEngineSection: some View {
+        Section("Motor de resúmenes") {
+            Picker("Generar resúmenes con", selection: $summaryEngine) {
+                Text("Apple (on-device)").tag("appleOnDevice")
+                Text("Ollama (local)").tag("ollama")
+            }
+            .pickerStyle(.radioGroup)
+            .onChange(of: summaryEngine) { _, engine in
+                if engine == "ollama" { detectOllama() }
+            }
+            if summaryEngine == "ollama" {
+                HStack {
+                    Button {
+                        detectOllama()
+                    } label: {
+                        if detectingOllama {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("Detectar modelos", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .controlSize(.small)
+                    .disabled(detectingOllama)
+                    if let ollamaStatus {
+                        Text(ollamaStatus).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if !ollamaModels.isEmpty {
+                    Picker("Modelo", selection: $ollamaModel) {
+                        Text("Elige un modelo").tag("")
+                        ForEach(ollamaModels) { model in
+                            Text(
+                                model.parameterSize.isEmpty
+                                    ? model.name : "\(model.name) · \(model.parameterSize)"
+                            ).tag(model.name)
+                        }
+                    }
+                }
+            }
+            Text(
+                "Apple usa Foundation Models (macOS 26 + Apple Intelligence). Ollama corre un modelo 100% local en tu Mac — ideal si no tienes Apple Intelligence. Con cualquiera, nada sale del equipo. (El resumen EN VIVO durante la grabación siempre usa Apple.)"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private func detectOllama() {
+        detectingOllama = true
+        ollamaStatus = nil
+        Task {
+            defer { detectingOllama = false }
+            guard await OllamaService.isRunning() else {
+                ollamaModels = []
+                ollamaStatus =
+                    "Ollama no responde en localhost:11434. Instálalo y corre «ollama serve»."
+                return
+            }
+            ollamaModels = await OllamaService.models()
+            ollamaStatus =
+                ollamaModels.isEmpty
+                ? "Ollama corre pero no hay modelos. Descarga uno con «ollama pull llama3.2»."
+                : "\(ollamaModels.count) modelo(s) disponibles."
         }
     }
 
