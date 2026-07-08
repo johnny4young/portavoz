@@ -37,6 +37,5 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 ## Límites conocidos
 
 1. **Sin playback de audio** (M11/D27) ni waveform ni clips.
-2. **Sin panel de notas UI** durante la grabación (M10/D28 — el núcleo del tejido notas→resumen está implementado y `addContextNote()` cableado; solo falta el TextField + lista en `RecordingView` y el render negro/gris en el detalle).
-3. Sin HUD flotante/menu bar: grabar exige la ventana completa (los competidores tienen panel compacto).
-4. UI solo en español — sin localización (GAPS).
+2. Sin HUD flotante/menu bar: grabar exige la ventana completa (los competidores tienen panel compacto).
+3. UI solo en español — sin localización (GAPS).

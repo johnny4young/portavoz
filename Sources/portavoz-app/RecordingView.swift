@@ -13,6 +13,7 @@ struct RecordingView: View {
     /// back) and it resumes 10 s after the last manual scroll.
     @State private var followLive = true
     @State private var resumeFollowTask: Task<Void, Never>?
+    @State private var noteDraft = ""
 
     var body: some View {
         VStack(spacing: 16) {
@@ -28,15 +29,16 @@ struct RecordingView: View {
                 header
                 HStack(alignment: .top, spacing: 12) {
                     captionsList
-                    if !controller.companionCards.isEmpty || controller.liveSummary != nil {
-                        VStack(spacing: 10) {
-                            companionCardsPanel
-                            if let live = controller.liveSummary {
-                                liveSummaryPanel(live)
-                            }
+                    // La columna derecha siempre está: las notas son un input
+                    // primario (D28), no algo que aparece solo si hay tarjetas.
+                    VStack(spacing: 10) {
+                        notesPanel
+                        companionCardsPanel
+                        if let live = controller.liveSummary {
+                            liveSummaryPanel(live)
                         }
-                        .frame(width: 300)
                     }
+                    .frame(width: 300)
                 }
                 .padding(.horizontal, 20)
                 Button {
@@ -135,6 +137,75 @@ struct RecordingView: View {
             get: { controller.translationTarget },
             set: { controller.translationTarget = $0 }
         )
+    }
+
+    /// The coauthoring input (D28): jot notes while the meeting happens.
+    /// Each note is anchored to the current moment and woven into the final
+    /// summary as intent — expanded with facts and marked as yours (▸).
+    private var notesPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Tus notas", systemImage: "square.and.pencil")
+                .font(.headline)
+            HStack(alignment: .bottom, spacing: 6) {
+                TextField("Anota algo…", text: $noteDraft, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...3)
+                    .onSubmit(addNote)
+                Button(action: addNote) {
+                    Image(systemName: "arrow.up.circle.fill").imageScale(.large)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
+                .disabled(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                .help("Añadir la nota (⏎)")
+            }
+            if !controller.contextItems.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Newest first — the note you just took is right there.
+                        ForEach(controller.contextItems.reversed()) { item in
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text("▸").foregroundStyle(.tint)
+                                Text(stamp(item.timestamp))
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.tertiary)
+                                Text(item.content)
+                                    .font(.callout)
+                                    .textSelection(.enabled)
+                                Spacer(minLength: 2)
+                                Button {
+                                    controller.removeContextItem(item.id)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Quitar la nota")
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 160)
+            }
+            Text("Guían el resumen final: se expanden con datos y se marcan como tuyas (▸).")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func addNote() {
+        let text = noteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        controller.addContextNote(text)
+        noteDraft = ""
+    }
+
+    private func stamp(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
     private func liveSummaryPanel(_ markdown: String) -> some View {

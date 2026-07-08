@@ -45,12 +45,12 @@ Requiere macOS 26 + Apple Intelligence activa (`unavailabilityReason()` da el mo
 - **Retrieval híbrido**: FTS5 con OR de palabras de contenido ≥ 4 chars (el AND de la pregunta literal nunca matchea) + semántico; fusión RRF (k=60). Multi-query: FM genera paráfrasis bilingües de la pregunta (`expandQuery`).
 - **Respuesta**: FM on-device con citas `[n]` que mapean a segmentos (meetingID + timestamp). Verificado E2E: agente MCP respondió "what did we agree about the transcription budget?" con fuentes correctas.
 
-## Notas de coautoría (D28) — el tejido notas→resumen (núcleo implementado)
+## Notas de coautoría (D28) — el tejido notas→resumen (implementado)
 
 - `SummaryRequest.contextItems`: las notas del usuario viajan al pase FINAL como intención. `PromptFactory.notesBlock` las formatea timestampeadas (`[mm:ss] nota`), cronológicas, con presupuesto duro (120 chars/nota, 800 el bloque — testeado).
 - **Presupuesto del 3B respetado**: el bloque comparte la ventana con el material condensado, así que el target del reduce se ENCOGE exactamente lo que ocupa el bloque (`condense(reduceBudget:)`).
 - Instrucciones (`notesBehavior`): cada nota es un tema que el resumen DEBE cubrir, expandido con hechos, jamás contradicho; los bullets nacidos de una nota se prefijan **"▸ "** — un token barato en vez de inflar el schema del guided generation; el renderer puede pintar la coautoría estilo Granola (negro/gris) sin cambiar tipos. La orden de idioma sigue cerrando el prompt (D18).
-- Flujo completo cableado: `RecordingController.addContextNote()` (ancla al momento actual) → resumen rodante y final las ven → se persisten al stop (tabla `contextItem`, migración v3) → regenerar en el detalle las recarga del store. **Falta solo el panel de UI** (M10, mitad Opus).
+- Flujo completo cableado: **panel de notas en `RecordingView`** (TextField + lista timestampeada con quitar, columna derecha, siempre visible durante la grabación) → `RecordingController.addContextNote()` (ancla al momento actual) → resumen rodante y final las ven → se persisten al stop (tabla `contextItem`, migración v3) → regenerar en el detalle las recarga del store. **Render de coautoría** en `MarkdownText`: los bullets con prefijo "▸ " se pintan con marca de acento (estilo Granola — lo que nació de tu nota se distingue del resumen puro de la IA). M10 completo salvo verificación de campo (5 notas reales → resumen que las expande).
 
 ## Companion en vivo (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
 
@@ -74,4 +74,4 @@ Ver spec 03 (SpeakerNamer + NamingExcerpt + filtro never-trust-verify).
 
 ## Planeado (no implementado)
 
-Panel de UI de notas (la mitad Opus de M10). Resúmenes BYOK desde la app (la plomería Keychain ya existe; falta el selector de provider en el detalle — M12).
+Resúmenes BYOK desde la app (la plomería Keychain ya existe; falta el selector de provider en el detalle — M12).

@@ -34,6 +34,15 @@ struct MarkdownText: View {
                         Text(inline(String(line.dropFirst(6))))
                             .strikethrough(line.hasPrefix("- [x] "))
                     }
+                } else if line.hasPrefix("- ▸ ") {
+                    // Coautoría (D28): un bullet que nació de una nota tuya.
+                    // Estilo Granola — el acento lo distingue del resumen puro
+                    // de la IA ("esto salió de lo que TÚ marcaste").
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("▸").foregroundStyle(.tint)
+                        Text(inline(String(line.dropFirst(4))))
+                            .fontWeight(.medium)
+                    }
                 } else if line.hasPrefix("- ") {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("•").foregroundStyle(.secondary)
