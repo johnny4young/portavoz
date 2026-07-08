@@ -139,8 +139,7 @@ final class RecordingController {
         // re-summarize the captions so far. Only when Apple Intelligence
         // is around; the recording never depends on it.
         if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        {
+            FoundationModelSummaryProvider.unavailabilityReason() == nil {
             rollingTask = Task { @MainActor [weak self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(40))
@@ -284,8 +283,7 @@ final class RecordingController {
             let draft = try await provider.summarizeNotes(
                 joined, request: request, priority: .background)
             if phase == .recording,
-                LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown)
-            {
+                LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown) {
                 liveSummary = draft.markdown
             }
         } catch {
@@ -316,8 +314,7 @@ final class RecordingController {
             // hardware truth and never goes through ML (D5).
             var turns: [SpeakerTurn] = []
             if let systemFile = capture.files[.system], let diarizer = services.diarizer,
-                (capture.secondsWritten[.system] ?? 0) > 1
-            {
+                (capture.secondsWritten[.system] ?? 0) > 1 {
                 phase = .processing("Identificando hablantes…")
                 turns = (try? await diarizer.diarizeFile(at: systemFile)) ?? []
             }

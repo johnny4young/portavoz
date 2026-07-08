@@ -99,9 +99,9 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
             kAudioAggregateDeviceTapListKey: [
                 [
                     kAudioSubTapUIDKey: description.uuid.uuidString,
-                    kAudioSubTapDriftCompensationKey: true,
+                    kAudioSubTapDriftCompensationKey: true
                 ]
-            ],
+            ]
         ]
         var aggregate = AudioObjectID(kAudioObjectUnknown)
         try check(

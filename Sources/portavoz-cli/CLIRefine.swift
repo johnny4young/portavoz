@@ -116,7 +116,7 @@ enum RefineCommand {
             if let systemFile {
                 print("Re-diarizando…")
                 let diarizer = try await PyannoteDiarizer.loadRecommended(
-                    store: modelStore, voiceprint: (try? VoiceprintStore().load()) ?? nil)
+                    store: modelStore, voiceprint: (try? VoiceprintStore().load()))
                 turns = try await diarizer.diarizeFile(at: systemFile)
             }
             let attribution = SpeakerAttributor.attribute(

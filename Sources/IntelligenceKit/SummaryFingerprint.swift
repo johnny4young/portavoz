@@ -27,7 +27,7 @@ public enum SummaryFingerprint {
             request.recipe.id,
             request.glossary.joined(separator: ","),
             notes,
-            transcript,
+            transcript
         ].joined(separator: "\u{1F}")  // unit separator: fields can't bleed
         let digest = SHA256.hash(data: Data(canonical.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()

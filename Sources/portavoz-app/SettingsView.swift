@@ -66,10 +66,10 @@ struct SettingsView: View {
         .frame(width: 480)
         .onAppear {
             hasStoredToken =
-                ((try? SecretStore.get(service: SecretStore.gitHubTokenService)) ?? nil) != nil
+                ((try? SecretStore.get(service: SecretStore.gitHubTokenService))) != nil
             hasStoredBYOKKey =
-                ((try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil) != nil
-            voiceprint = (try? VoiceprintStore().load()) ?? nil
+                ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
+            voiceprint = (try? VoiceprintStore().load())
             if summaryEngine == "ollama" { detectOllama() }
             whisperVariants = services.whisperVariants()
             Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
@@ -178,7 +178,7 @@ struct SettingsView: View {
             ("{date}", "2026-07-07", "Fecha ISO (ordena sola la biblioteca)"),
             ("{time}", "10.47", "Hora de inicio"),
             ("{seq}", "01", "Secuencia del día (01, 02…)"),
-            ("{weekday}", "martes", "Día de la semana"),
+            ("{weekday}", "martes", "Día de la semana")
         ]
     }
 
@@ -493,8 +493,7 @@ struct SettingsView: View {
             // When applying the recommendation, pick a sensible default
             // (skip OCR-only models, which can't chat).
             if autoSelect, ollamaModel.isEmpty,
-                let first = ollamaModels.first(where: { !$0.name.contains("ocr") })
-            {
+                let first = ollamaModels.first(where: { !$0.name.contains("ocr") }) {
                 ollamaModel = first.name
             }
             ollamaStatus =

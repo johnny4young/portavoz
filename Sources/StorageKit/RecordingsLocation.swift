@@ -24,8 +24,7 @@ public struct RecordingsLocation: Sendable {
     /// never writes into the real library.
     public static var shared: RecordingsLocation {
         if let override = ProcessInfo.processInfo.environment["PORTAVOZ_AUDIO_ROOT"],
-            !override.isEmpty
-        {
+            !override.isEmpty {
             let root = URL(fileURLWithPath: override)
             return RecordingsLocation(
                 defaultRoot: root,

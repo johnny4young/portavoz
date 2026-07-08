@@ -45,8 +45,7 @@ enum AskCommand {
             }
 
             if #available(macOS 26.0, *),
-                FoundationModelSummaryProvider.unavailabilityReason() == nil
-            {
+                FoundationModelSummaryProvider.unavailabilityReason() == nil {
                 let answer = try await RAGAnswerer().answer(question: question, passages: passages)
                 print(answer)
             } else {
@@ -92,8 +91,7 @@ enum AskPipeline {
         // both library languages (falls back to the question alone).
         var queries = [question]
         if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        {
+            FoundationModelSummaryProvider.unavailabilityReason() == nil {
             queries = await RAGAnswerer().expandQuery(question)
         }
 

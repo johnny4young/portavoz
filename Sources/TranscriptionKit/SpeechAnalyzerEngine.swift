@@ -48,8 +48,7 @@ public struct SpeechAnalyzerEngine: Sendable {
         }
         let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         if let request = try await AssetInventory.assetInstallationRequest(
-            supporting: [transcriber])
-        {
+            supporting: [transcriber]) {
             progress?("Descargando modelo de voz de macOS para \(locale.identifier)…")
             try await request.downloadAndInstall()
         }
@@ -169,8 +168,7 @@ public struct SpeechAnalyzerEngine: Sendable {
         if sourceFormat == format { return source }
 
         if converter == nil || converter?.inputFormat != sourceFormat
-            || converter?.outputFormat != format
-        {
+            || converter?.outputFormat != format {
             converter = AVAudioConverter(from: sourceFormat, to: format)
         }
         guard let converter else { return nil }

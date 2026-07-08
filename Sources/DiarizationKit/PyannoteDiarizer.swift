@@ -6,17 +6,6 @@ import PortavozCore
 // A type named `FluidAudio` inside the module shadows module
 // qualification; the scoped import wins name resolution for `Speaker`
 // in this file (our domain Speaker is not used here).
-import struct FluidAudio.Speaker
-
-/// pyannote community-1 segmentation + WeSpeaker v2 embeddings via
-/// FluidAudio (CoreML/ANE) — the M3 diarizer for the `.system`/`.room`
-/// channels. The `.microphone` channel never goes through this: it is the
-/// user by hardware truth (D5).
-///
-/// One instance = one session: FluidAudio's `SpeakerManager` accumulates
-/// the voice database across calls, which is exactly what keeps "S1" stable
-/// from the first window to the last — but it means turns from different
-/// meetings must not share an instance.
 public actor PyannoteDiarizer: Diarizer {
     /// Streaming window fed to the model. Matches FluidAudio's internal
     /// chunk duration; speaker continuity across windows comes from the
@@ -115,7 +104,7 @@ public actor PyannoteDiarizer: Diarizer {
 
     // MARK: - Diarizer
 
-    public nonisolated func diarize(
+    nonisolated public func diarize(
         _ audio: AsyncStream<AudioChunk>
     ) -> AsyncThrowingStream<SpeakerTurn, Error> {
         AsyncThrowingStream { continuation in

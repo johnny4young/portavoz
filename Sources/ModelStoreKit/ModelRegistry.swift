@@ -208,7 +208,7 @@ public enum ModelCatalog {
             ModelArtifact(
                 path: "parakeet_vocab.json",
                 sha256: "7ec60e05f1b24480736ec0eed40900f4626bce1fa9a60fd700ec7e2a59198735",
-                sizeBytes: 151_122),
+                sizeBytes: 151_122)
         ],
         minimumRAMGB: 4,
         license: "CC-BY-4.0"
@@ -268,7 +268,7 @@ public enum ModelCatalog {
             ModelArtifact(
                 path: "wespeaker_v2.mlmodelc/weights/weight.bin",
                 sha256: "34004f6798d35cad7071e2fdc67e63faaa782f53697e1cb49bcb452cf81ae151",
-                sizeBytes: 7_243_904),
+                sizeBytes: 7_243_904)
         ],
         minimumRAMGB: 2,
         license: "CC-BY-4.0"
@@ -311,7 +311,7 @@ public enum ModelCatalog {
             ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/model.mil", sha256: "990ff5052fd817e28ba7c34d9d06d324c69c7c0630b6eaac9cfdf08329dbcb34", sizeBytes: 4092),
             ModelArtifact(path: "TextDecoderContextPrefill.mlmodelc/weights/weight.bin", sha256: "1310070082639173e9d81508c5f220692d489e85655aa6883cc1c7506da7fcfd", sizeBytes: 12288192),
             ModelArtifact(path: "config.json", sha256: "f01d83dd891791d6f12421c05d3ed8ebbe70866f10d6c9a7a7e80b558ce5a0f1", sizeBytes: 1149),
-            ModelArtifact(path: "generation_config.json", sha256: "7fbb053a023be11fbeccd8421811610308143daa93d9617c52aab4a0fa1491c6", sizeBytes: 2767),
+            ModelArtifact(path: "generation_config.json", sha256: "7fbb053a023be11fbeccd8421811610308143daa93d9617c52aab4a0fa1491c6", sizeBytes: 2767)
         ],
         minimumRAMGB: 8,
         license: "MIT"
@@ -348,7 +348,7 @@ public enum ModelCatalog {
             ModelArtifact(path: "TextDecoder.mlmodelc/model.mil", sha256: "dbe833be9e64348c95b7fa598d0ae4309a91aedce4e82fa500a714b0e4b5d754", sizeBytes: 217177),
             ModelArtifact(path: "TextDecoder.mlmodelc/weights/weight.bin", sha256: "d69700903d518ada33170ab77faaaf464496fb9ff65752c6d5a6109aa2fb02db", sizeBytes: 203199860),
             ModelArtifact(path: "config.json", sha256: "f01d83dd891791d6f12421c05d3ed8ebbe70866f10d6c9a7a7e80b558ce5a0f1", sizeBytes: 1149),
-            ModelArtifact(path: "generation_config.json", sha256: "7fbb053a023be11fbeccd8421811610308143daa93d9617c52aab4a0fa1491c6", sizeBytes: 2767),
+            ModelArtifact(path: "generation_config.json", sha256: "7fbb053a023be11fbeccd8421811610308143daa93d9617c52aab4a0fa1491c6", sizeBytes: 2767)
         ],
         minimumRAMGB: 6,
         license: "MIT"
@@ -369,7 +369,7 @@ public enum ModelCatalog {
         artifacts: [
             ModelArtifact(path: "special_tokens_map.json", sha256: "1c70773c078cb2ca96e0fcff113102f1d3e2b1504272c3bb63b035d4a6700d87", sizeBytes: 2072),
             ModelArtifact(path: "tokenizer.json", sha256: "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca", sizeBytes: 2480617),
-            ModelArtifact(path: "tokenizer_config.json", sha256: "844b642c73a91359722f47b35705f7174686df33d252695d8572cf9ac03a6389", sizeBytes: 282843),
+            ModelArtifact(path: "tokenizer_config.json", sha256: "844b642c73a91359722f47b35705f7174686df33d252695d8572cf9ac03a6389", sizeBytes: 282843)
         ],
         minimumRAMGB: 1,
         license: "Apache-2.0"

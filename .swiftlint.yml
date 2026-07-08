@@ -1,11 +1,11 @@
-# SwiftLint para Portavoz — introducido en M9 (higiene OSS).
+# SwiftLint para Portavoz — config estricta recomendada de industria.
 #
-# Calibrado para que el código actual pase con CERO violaciones de nivel
-# *error*: el CI corre `swiftlint lint` en modo no-strict, así que solo los
-# errores rompen el build. Los *warnings* son guía que apretamos con el tiempo
-# (bajar umbrales, habilitar reglas). No es un formateador — el estilo del
-# repo (comas colgantes en literales multilínea) se respeta desactivando las
-# reglas que lo contradicen.
+# El CI corre `swiftlint lint --strict`: CUALQUIER violación (warning o
+# error) rompe el build. El objetivo es cero violaciones sobre `Sources`.
+# Reglas por defecto de SwiftLint + un set opt-in ampliamente recomendado
+# (correctness/claridad), con umbrales de industria. Las pocas excepciones
+# inherentes (líneas de datos sha256 del catálogo de modelos) se silencian
+# in-line con justificación, no relajando la regla para todos.
 
 included:
   - Sources
@@ -15,65 +15,81 @@ excluded:
   - Portavoz.xcodeproj
   - dist
 
-disabled_rules:
-  # El repo usa comas colgantes en literales multilínea por convención
-  # (p.ej. las descripciones de Core Audio). No pelear con ello.
-  - trailing_comma
-  - todo # los TODO/FIXME se rastrean en issues, no en el linter
-
 opt_in_rules:
-  - empty_count
-  - first_where
-  - last_where
-  - contains_over_first_not_nil
-  - toggle_bool
+  - array_init
   - closure_end_indentation
+  - closure_spacing
+  - collection_alignment
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - contains_over_range_nil_comparison
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - explicit_init
+  - fatal_error_message
+  - first_where
+  - flatmap_over_map_reduce
+  - identical_operands
+  - joined_default_parameter
+  - last_where
+  - legacy_multiple
+  - lower_acl_than_parent
+  - modifier_order
+  - operator_usage_whitespace
+  - overridden_super_call
+  - prefer_self_type_over_type_of_self
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - sorted_first_last
+  - toggle_bool
   - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - yoda_condition
 
-# Realidad del dominio: el código de audio/ML/matemáticas tiene líneas,
-# funciones y archivos más largos que un CRUD típico. Los umbrales de *error*
-# quedan por encima de los máximos actuales; los *warning* siguen cazando
-# bloat genuino.
+# Umbrales de industria. SwiftUI y el código de audio/DSP producen cuerpos
+# largos legítimos; los archivos de vistas grandes se parten en extensiones.
 line_length:
-  warning: 140
-  error: 400
+  warning: 120
+  error: 200
   ignores_urls: true
   ignores_comments: true
+  ignores_interpolated_strings: true
 
 function_body_length:
-  warning: 80
-  error: 220
+  warning: 60
+  error: 100
 
 type_body_length:
-  warning: 350
-  error: 750
+  warning: 400
+  error: 600
 
 file_length:
-  warning: 600
-  error: 1600
+  warning: 700
+  error: 1000
   ignore_comment_only_lines: true
 
 cyclomatic_complexity:
-  warning: 14
-  error: 40
-
-large_tuple:
-  warning: 3
-  error: 5
+  warning: 12
+  error: 20
 
 function_parameter_count:
   warning: 6
-  error: 9
+  error: 8
+
+large_tuple:
+  warning: 3
+  error: 4
 
 identifier_name:
   min_length:
     warning: 2
-    error: 0 # nunca error por nombre corto
+    error: 0
   max_length:
-    warning: 60
-    error: 90
+    warning: 50
+    error: 80
   excluded:
-    # Nombres cortos de matemáticas/DSP y bucles.
     - id
     - db
     - t
@@ -103,12 +119,9 @@ identifier_name:
     - h1
     - h2
     - h3
-    # Campos de DTOs de APIs externas (GitHub, Ollama…): conservar el nombre
-    # del wire tal cual llega en el JSON.
     - html_url
     - meeting_id
     - parameter_size
-    # Identificador del catálogo de modelos (variante Whisper de 626 MB).
     - whisperLargeV3_626MB
 
 reporter: "xcode"

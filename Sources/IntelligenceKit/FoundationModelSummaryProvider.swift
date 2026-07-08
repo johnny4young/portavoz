@@ -355,7 +355,6 @@ struct TranslatedItems {
     var items: [String]
 }
 
-
 @available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A structured, faithful meeting summary")
 struct GeneratedSummary {

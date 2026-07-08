@@ -63,8 +63,8 @@ public struct OpenAICompatibleChatClient: Sendable {
             "temperature": temperature,
             "messages": [
                 ["role": "system", "content": system],
-                ["role": "user", "content": user],
-            ],
+                ["role": "user", "content": user]
+            ]
         ]
         if let maxTokens { body["max_tokens"] = maxTokens }
 
@@ -135,7 +135,7 @@ public enum BYOKSettings {
     ) -> OpenAICompatibleChatClient? {
         companionClient(
             defaults: defaults,
-            apiKey: (try? SecretStore.get(service: SecretStore.byokAPIKeyService)) ?? nil)
+            apiKey: (try? SecretStore.get(service: SecretStore.byokAPIKeyService)))
     }
 
     static func companionClient(

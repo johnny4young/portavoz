@@ -38,7 +38,7 @@ struct LiveTranslationModifier: ViewModifier {
         }
     }
 
-    private nonisolated static func translationLoop(
+    nonisolated private static func translationLoop(
         box: SessionBox, controller: RecordingController
     ) async {
         while !Task.isCancelled {

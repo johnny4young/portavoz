@@ -13,7 +13,7 @@ public enum QuestionHeuristic {
         // ES
         "qué", "que", "cómo", "como", "por", "cuándo", "cuando", "dónde",
         "donde", "quién", "quien", "cuál", "cual", "cuánto", "cuanto",
-        "puedes", "puede", "podría", "podrías", "sabes", "sabe",
+        "puedes", "puede", "podría", "podrías", "sabes", "sabe"
     ]
 
     public static func looksLikeQuestion(_ text: String) -> Bool {
@@ -148,8 +148,7 @@ public struct LiveCompanion: Sendable {
                 let answer = try? await byok.complete(
                     system: Self.knowledgeInstructions,
                     user: detected.question,
-                    maxTokens: 400)
-            {
+                    maxTokens: 400) {
                 return CompanionCard(
                     question: detected.question,
                     answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),

@@ -133,8 +133,7 @@ enum MeetingToolbox {
                     "[\(index + 1)] \(passage.meetingTitle) · \(timestamp(passage.timestamp)) · \(passage.text)"
                 }.joined(separator: "\n")
                 if #available(macOS 26.0, *),
-                    FoundationModelSummaryProvider.unavailabilityReason() == nil
-                {
+                    FoundationModelSummaryProvider.unavailabilityReason() == nil {
                     let answer = try await RAGAnswerer().answer(
                         question: args.question, passages: passages)
                     return "\(answer)\n\nSources:\n\(sources)"
@@ -154,7 +153,7 @@ enum MeetingToolbox {
                 let items = try await store.openActionItems(limit: limit)
                 guard !items.isEmpty else { return "No pending action items." }
                 return items.map { "- \($0.item.text) (\($0.meetingTitle))" }.joined(separator: "\n")
-            },
+            }
         ]
     }
 

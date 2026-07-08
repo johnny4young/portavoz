@@ -84,7 +84,7 @@ final class AppServices {
                 }
             }
             if diarizer == nil {
-                let voiceprint = (try? VoiceprintStore().load()) ?? nil
+                let voiceprint = (try? VoiceprintStore().load())
                 diarizer = try await PyannoteDiarizer.loadRecommended(
                     store: modelStore, voiceprint: voiceprint
                 ) { progress in
@@ -205,7 +205,7 @@ final class AppServices {
         }
         return [
             make(ModelCatalog.whisperLargeV3Turbo, compact: false),
-            make(ModelCatalog.whisperLargeV3_626MB, compact: true),
+            make(ModelCatalog.whisperLargeV3_626MB, compact: true)
         ]
     }
 
@@ -245,7 +245,7 @@ final class AppServices {
         let free =
             (try? URL(fileURLWithPath: NSHomeDirectory())
                 .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                .volumeAvailableCapacityForImportantUsage) ?? nil
+                .volumeAvailableCapacityForImportantUsage)
         return HardwareProfile(
             memoryGB: memoryGB,
             appleIntelligence: appleIntelligence,
@@ -355,7 +355,7 @@ final class AppServices {
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: ana.id, channel: .system,
                 text: "El rollout del modelo queda para el viernes.",
-                startTime: 3, endTime: 6, isFinal: true),
+                startTime: 3, endTime: 6, isFinal: true)
         ])
         try? await store.saveSummary(
             SummaryDraft(
@@ -386,8 +386,7 @@ final class AppServices {
             let dir = existing.first(where: { url in
                 ["microphone.caf", "microphone.wav", "system.caf", "system.wav"]
                     .contains { manager.fileExists(atPath: url.appendingPathComponent($0).path) }
-            })
-        {
+            }) {
             return "Audio/\(dir.lastPathComponent)"
         }
 

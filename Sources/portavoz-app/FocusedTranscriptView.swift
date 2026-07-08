@@ -60,8 +60,7 @@ struct FocusedTranscriptView<Row: View>: View {
         }
     }
 
-    private func recenter(_ proxy: ScrollViewProxy, _ id: TranscriptSegment.ID?, animated: Bool = true)
-    {
+    private func recenter(_ proxy: ScrollViewProxy, _ id: TranscriptSegment.ID?, animated: Bool = true) {
         guard let id else { return }
         if animated {
             withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(id, anchor: anchor) }

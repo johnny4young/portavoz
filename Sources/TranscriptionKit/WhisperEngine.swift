@@ -52,8 +52,7 @@ public actor WhisperEngine {
         // forcing); WhisperKit filters special tokens out of the prompt.
         var promptTokens: [Int]?
         if let prompt = VocabularyPrompt.text(hints.vocabulary),
-            let tokenizer = pipe.tokenizer
-        {
+            let tokenizer = pipe.tokenizer {
             promptTokens = tokenizer.encode(text: " " + prompt)
         }
         let options = DecodingOptions(

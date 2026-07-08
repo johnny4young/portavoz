@@ -63,7 +63,7 @@ public struct GitHubIssuesExporter: Sendable {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "title": item.text,
-            "body": Self.body(item: item, meetingTitle: meetingTitle, ownerName: ownerName),
+            "body": Self.body(item: item, meetingTitle: meetingTitle, ownerName: ownerName)
         ])
         return request
     }
@@ -135,9 +135,9 @@ public struct LinearExporter: Sendable {
                     "teamId": teamID,
                     "title": item.text,
                     "description": GitHubIssuesExporter.body(
-                        item: item, meetingTitle: meetingTitle, ownerName: ownerName),
+                        item: item, meetingTitle: meetingTitle, ownerName: ownerName)
                 ]
-            ],
+            ]
         ])
         return request
     }

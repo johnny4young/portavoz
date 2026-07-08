@@ -25,7 +25,7 @@ public final class CaptureFileWriter: @unchecked Sendable {
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false,
+            AVLinearPCMIsNonInterleaved: false
         ]
         guard let format = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,

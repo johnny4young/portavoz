@@ -67,7 +67,7 @@ public struct MCPServer: Sendable {
             return encode(result: [
                 "protocolVersion": Self.protocolVersion,
                 "capabilities": ["tools": [String: Any]()],
-                "serverInfo": ["name": serverName, "version": serverVersion],
+                "serverInfo": ["name": serverName, "version": serverVersion]
             ], id: id)
 
         case "ping":
@@ -81,7 +81,7 @@ public struct MCPServer: Sendable {
                 return [
                     "name": tool.name,
                     "description": tool.description,
-                    "inputSchema": schema,
+                    "inputSchema": schema
                 ]
             }
             return encode(result: ["tools": list], id: id)
@@ -101,12 +101,12 @@ public struct MCPServer: Sendable {
                 let text = try await tool.handler(argumentsData)
                 return encode(result: [
                     "content": [["type": "text", "text": text]],
-                    "isError": false,
+                    "isError": false
                 ], id: id)
             } catch {
                 return encode(result: [
                     "content": [["type": "text", "text": "error: \(error.localizedDescription)"]],
-                    "isError": true,
+                    "isError": true
                 ], id: id)
             }
 

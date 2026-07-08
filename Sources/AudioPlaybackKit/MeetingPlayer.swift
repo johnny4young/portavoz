@@ -51,8 +51,7 @@ public final class MeetingPlayer {
                 if self.skipSilence, self.isPlaying,
                     let gap = self.silentRanges.first(where: {
                         $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
-                    })
-                {
+                    }) {
                     self.seek(to: gap.upperBound - 0.2)
                 }
             }

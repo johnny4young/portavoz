@@ -59,7 +59,7 @@ enum DiarizeCommand {
                 print("Downloading \(descriptor.displayName) (\(descriptor.totalSizeBytes / 1_000_000) MB, sha256-verified)…")
             }
             // Enrolled voiceprint (if any) marks the user's turns as "Me".
-            let voiceprint = (try? VoiceprintStore().load()) ?? nil
+            let voiceprint = (try? VoiceprintStore().load())
             let diarizer = try await PyannoteDiarizer.loadRecommended(
                 store: store, clusteringThreshold: threshold, voiceprint: voiceprint)
 

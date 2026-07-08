@@ -683,8 +683,7 @@ struct MeetingDetailView: View {
             // Caché D25: mismo material + mismo idioma ya guardado — con
             // decodificación greedy el modelo reproduciría lo mismo.
             if let hit = try? await services.store.latestSummary(
-                meetingID, fingerprint: fingerprint, language: language)
-            {
+                meetingID, fingerprint: fingerprint, language: language) {
                 summaryNotice =
                     "El resumen v\(hit.version) ya corresponde a este material — no hay nada que regenerar. Cambia el transcript, las notas o el vocabulario para producir uno nuevo."
                 return
@@ -694,8 +693,7 @@ struct MeetingDetailView: View {
             if let pivot = try? await services.store.latestSummary(
                 meetingID, fingerprint: fingerprint),
                 let translated = try? await provider.translate(
-                    pivot.draft, to: language, glossary: request.glossary)
-            {
+                    pivot.draft, to: language, glossary: request.glossary) {
                 _ = try? await services.store.saveSummary(translated)
                 services.libraryVersion += 1
                 return
@@ -1140,4 +1138,3 @@ struct TranscriptSegmentsView: View {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }
-

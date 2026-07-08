@@ -79,8 +79,7 @@ public final class MeetingStore: Sendable {
     /// Insert-or-update; `createdAt` survives updates, `updatedAt` bumps.
     public func save(_ meeting: Meeting) async throws {
         if let path = meeting.audioDirectory,
-            path.hasPrefix("/") || path.contains("..")
-        {
+            path.hasPrefix("/") || path.contains("..") {
             throw StorageError.absolutePathRejected(path)
         }
         try await database.write { db in

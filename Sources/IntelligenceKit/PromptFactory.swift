@@ -41,7 +41,7 @@ public enum PromptFactory {
             "You compress meeting transcript excerpts into dense factual notes.",
             "Keep every decision, commitment, number, date, and open question, each attributed to its speaker label.",
             "Write at most 10 terse bullet points, no preamble.",
-            languageDirective(targetLanguage: targetLanguage, glossary: glossary),
+            languageDirective(targetLanguage: targetLanguage, glossary: glossary)
         ].joined(separator: "\n")
     }
 
@@ -120,7 +120,7 @@ public enum PromptFactory {
                 + "same markdown structure, same bullets in the same order, "
                 + "no content added, removed or reworded beyond translation.",
             "Keep any \"▸ \" bullet prefixes exactly where they are.",
-            languageDirective(targetLanguage: targetLanguage, glossary: glossary),
+            languageDirective(targetLanguage: targetLanguage, glossary: glossary)
         ].joined(separator: "\n")
     }
 
@@ -150,7 +150,7 @@ public enum PromptFactory {
             "You map meeting speaker labels (S1, S2, …) to real people's names.",
             "A mapping is valid ONLY with explicit proof in the transcript: the speaker introduces themselves (\"soy Ana\", \"this is John speaking\"), or another speaker addresses them by name immediately around their turn (\"thanks, Ana\" right after S2 spoke).",
             "Never infer names from topics, roles or guesses. Skip the label \"Me\".",
-            "When nothing is provable, return an empty list — that is the common case.",
+            "When nothing is provable, return an empty list — that is the common case."
         ].joined(separator: "\n")
     }
 

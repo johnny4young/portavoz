@@ -59,7 +59,7 @@ public struct GistPublisher: Sendable {
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "description": description,
             "public": isPublic,
-            "files": [filename: ["content": markdown]],
+            "files": [filename: ["content": markdown]]
         ])
         return request
     }

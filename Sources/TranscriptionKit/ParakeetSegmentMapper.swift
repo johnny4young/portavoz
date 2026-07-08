@@ -102,8 +102,7 @@ enum ParakeetSegmentMapper {
                 let first = current.first,
                 timing.startTime - last.endTime > pauseSplitSeconds
                     || timing.endTime - first.startTime > maxSegmentSeconds
-                    || endsSentence(last)
-            {
+                    || endsSentence(last) {
                 groups.append(current)
                 current = []
             }
