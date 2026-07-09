@@ -68,7 +68,7 @@ La fila más nueva crece mientras el canal siga hablando: pausas mid-sentence �
 
 ## Vocabulario — `VocabularyPrompt`
 
-`parse()` (coma-separado, trim, dedup) y `text()` (frase natural EN/ES según idioma hablado homogéneo). Fuentes: Ajustes de la app (UserDefaults `customVocabulary`, editor de lista), CLI `--vocab`. Consumidores: WhisperEngine (promptTokens solo cuando hay idioma homogéneo), resúmenes (glossary, spec 04). **Parakeet vivo no tiene hook de bias** — el refine corrige el registro.
+`parse()` (coma-separado, trim, dedup) y `text()` (frase natural EN/ES según idioma hablado homogéneo). Fuentes: Ajustes de la app (UserDefaults `customVocabulary`, editor de lista), CLI `--vocab`. **VocabularyMiner** (puro, 6 tests): mina términos con forma de dominio (acrónimos, códigos letra+dígito, CamelCase — nunca palabras capitalizadas normales) que recurren ≥3 veces en los últimos 12 transcripts y los sugiere como chips en Ajustes → Vocabulario (un click adopta; no corre bajo XCUITest para no mover el layout async). Consumidores: WhisperEngine (promptTokens solo cuando hay idioma homogéneo), resúmenes (glossary, spec 04). **Parakeet vivo no tiene hook de bias** — el refine corrige el registro.
 
 ## Límites conocidos
 

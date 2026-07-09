@@ -30,6 +30,9 @@ struct SettingsView: View {
     @AppStorage("aecEnabled") private var aecEnabled = true
     @AppStorage("customVocabulary") private var customVocabulary = ""
     @State private var newTerm = ""
+    /// Domain terms mined from past transcripts (VocabularyMiner) — one
+    /// click adopts them into the vocabulary.
+    @State private var suggestedTerms: [String] = []
 
     @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
     @State private var showTitleHelp = false
@@ -83,6 +86,10 @@ struct SettingsView: View {
                 hasStoredBYOKKey =
                     ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
                 voiceprint = (try? VoiceprintStore().load())
+                // Mined chips arrive async and shift the Form's layout —
+                // skipped under XCUITest (like the Keychain reads above) so
+                // coordinate clicks in tests don't land on moved controls.
+                Task { suggestedTerms = await services.mineVocabularySuggestions() }
             }
             if summaryEngine == "ollama" { detectOllama() }
             whisperVariants = services.whisperVariants()
@@ -354,6 +361,26 @@ extension SettingsView {
                 Button("Add", action: addTerm)
                     .disabled(newTerm.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            if !suggestedTerms.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Suggested from your meetings")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        ForEach(suggestedTerms, id: \.self) { term in
+                            Button {
+                                adopt(term)
+                            } label: {
+                                Label(term, systemImage: "plus")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .help("Add \"\(term)\" to the vocabulary")
+                        }
+                    }
+                }
+            }
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
@@ -362,6 +389,12 @@ extension SettingsView {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// Adopts a mined suggestion into the vocabulary and drops the chip.
+    private func adopt(_ term: String) {
+        customVocabulary = (vocabularyTerms + [term]).joined(separator: ", ")
+        suggestedTerms.removeAll { $0 == term }
     }
 
     private func addTerm() {

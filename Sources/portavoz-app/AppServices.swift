@@ -234,6 +234,20 @@ final class AppServices {
         return total
     }
 
+    /// Mines domain terms from recent transcripts to suggest for the custom
+    /// vocabulary (Settings). Bounded: the last 12 meetings' segments.
+    func mineVocabularySuggestions() async -> [String] {
+        let existing = VocabularyPrompt.parse(
+            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+        let recent = ((try? await store.meetings()) ?? []).prefix(12)
+        var texts: [String] = []
+        for meeting in recent {
+            guard let detail = try? await store.detail(meeting.id) else { continue }
+            texts.append(contentsOf: detail.segments.map(\.text))
+        }
+        return VocabularyMiner.suggest(from: texts, existing: existing)
+    }
+
     /// The machine's facts for "Recomendado para tu Mac" (M12).
     func currentHardwareProfile() async -> HardwareProfile {
         let memoryGB = Int((ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)
