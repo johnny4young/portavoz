@@ -26,11 +26,18 @@ final class Updater {
 }
 
 struct CheckForUpdatesCommand: Commands {
+    @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
+
     var body: some Commands {
         CommandGroup(after: .appInfo) {
-            Button("Check for updates…") {
+            Button(checkForUpdatesTitle) {
                 Updater.shared.checkForUpdates()
             }
         }
+    }
+
+    private var checkForUpdatesTitle: String {
+        _ = appLanguageRaw  // Re-render commands when the app language changes.
+        return L10n.text("Check for updates…")
     }
 }

@@ -22,12 +22,13 @@ final class EnglishSourceTests: XCTestCase {
     }
 
     private static func filesToScan() throws -> [String] {
-        var files = ["README.md", "Makefile", "project.yml"]
-        for root in ["scripts", "Sources", ".github/workflows"] {
+        var files = ["README.md", "CLAUDE.md", "Makefile", "Package.swift", "project.yml", ".swiftlint.yml"]
+        let scannedSuffixes = [".swift", ".sh", ".py", ".yml", ".yaml", ".md", ".rb", ".entitlements"]
+        for root in ["scripts", "Sources", ".github", "packaging"] {
             let rootURL = repoRoot.appendingPathComponent(root)
             guard let enumerator = FileManager.default.enumerator(atPath: rootURL.path) else { continue }
             for case let item as String in enumerator {
-                guard item.hasSuffix(".swift") || item.hasSuffix(".sh") || item.hasSuffix(".yml") else { continue }
+                guard scannedSuffixes.contains(where: item.hasSuffix) else { continue }
                 let relative = root + "/" + item
                 guard !relative.contains("Resources/Localization/") else { continue }
                 files.append(relative)
@@ -43,7 +44,7 @@ final class EnglishSourceTests: XCTestCase {
         let needles = [
             " Ajustes", " grabación", " reunión", " hablante", " resumen", " transcripción",
             " micrófono", " carpeta", " presupuesto", " Listo", " Elige", " modelo(s)",
-            " te preguntaron", " Texto de UI", " línea"
+            " te preguntaron", " Texto de UI", " línea", "Pausar", "Reproducir"
         ]
         return needles.contains { line.contains($0) }
     }

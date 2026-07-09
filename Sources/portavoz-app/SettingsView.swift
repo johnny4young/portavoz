@@ -191,7 +191,7 @@ extension SettingsView {
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = recordingsRoot
-        panel.prompt = "Choose"
+        panel.prompt = L10n.text("Choose")
         panel.message = L10n.text("Choose the folder where Portavoz will store your recordings")
         guard panel.runModal() == .OK, let chosen = panel.url else { return }
         moveRecordings(to: chosen, custom: true)

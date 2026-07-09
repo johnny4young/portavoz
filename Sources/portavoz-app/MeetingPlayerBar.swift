@@ -25,7 +25,7 @@ struct MeetingPlayerBar: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.tint)
-                .help(player.isPlaying ? "Pausar" : "Reproducir")
+                .help(player.isPlaying ? "Pause" : "Play")
                 .accessibilityIdentifier("player-play-pause")
 
                 Text(clock(player.currentTime))
@@ -128,7 +128,7 @@ struct MeetingPlayerBar: View {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "clip.m4a"
         panel.allowedContentTypes = [.mpeg4Audio]
-        panel.prompt = "Export"
+        panel.prompt = L10n.text("Export")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         exporting = true
         Task {

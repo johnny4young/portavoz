@@ -1,6 +1,6 @@
 # Spec 08 — Calidad: tests, harnesses y números medidos
 
-Estado: 219 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Estado: 220 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: config recomendada de industria (reglas por defecto + opt-in de correctness/claridad, umbrales de industria: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` pasa con **cero violaciones** sobre `Sources`; en CI cualquier violación rompe el build. Excepciones inherentes silenciadas in-line con justificación (datos sha256 del catálogo, dispatchers arg-parser del CLI, vistas SwiftUI grandes) — partir esas vistas queda como deuda técnica.
 
@@ -16,7 +16,7 @@ Estado: 219 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en Gi
 | StorageTests | Contrato D4 completo (tombstones, versionado, FTS hostil, retención, paths) |
 | RecordingsLocationTests | 7: marker, fallback, resolve, migración resumable |
 | CoreTypesTests | Tipos + **TitleTemplate** |
-| LocalizationTests / EnglishSourceTests | String Catalogs EN/ES, placeholders, export `.lproj`, higiene de source público en inglés |
+| LocalizationTests / EnglishSourceTests | String Catalogs EN/ES, placeholders, export `.lproj`, higiene de source público en inglés (README/top-level tooling, scripts, `.github`, packaging, app source) |
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | RAG fusion, protocolo MCP, voiceprint cifrado, exporters offline |
 | ParakeetIntegrationTests + gated | Modelos reales — requieren `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 

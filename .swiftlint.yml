@@ -1,11 +1,11 @@
-# SwiftLint para Portavoz — config estricta recomendada de industria.
+# SwiftLint for Portavoz — strict, industry-style configuration.
 #
-# El CI corre `swiftlint lint --strict`: CUALQUIER violación (warning o
-# error) rompe el build. El objetivo es cero violaciones sobre `Sources`.
-# Reglas por defecto de SwiftLint + un set opt-in ampliamente recomendado
-# (correctness/claridad), con umbrales de industria. Las pocas excepciones
-# inherentes (líneas de datos sha256 del catálogo de modelos) se silencian
-# in-line con justificación, no relajando la regla para todos.
+# CI runs `swiftlint lint --strict`: ANY violation (warning or error) breaks
+# the build. The target is zero violations over `Sources`.
+# SwiftLint defaults plus a broadly recommended opt-in set for correctness and
+# clarity, with industry-style thresholds. The few inherent exceptions (model
+# catalog sha256 data lines) are silenced in-line with justification instead of
+# relaxing the rule for everyone.
 
 strict: true
 
@@ -50,8 +50,8 @@ opt_in_rules:
   - vertical_parameter_alignment_on_call
   - yoda_condition
 
-# Umbrales de industria. SwiftUI y el código de audio/DSP producen cuerpos
-# largos legítimos; los archivos de vistas grandes se parten en extensiones.
+# Industry-style thresholds. SwiftUI and audio/DSP code produce legitimately
+# long bodies; large view files are split into extensions.
 line_length:
   warning: 120
   error: 200

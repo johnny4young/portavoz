@@ -164,7 +164,7 @@ struct LibraryView: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = Self.importTypes
-        panel.prompt = "Import"
+        panel.prompt = L10n.text("Import")
         panel.message = L10n.text("Choose an audio file to transcribe as a meeting")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         importAudio(from: url)

@@ -20,8 +20,8 @@ cask "portavoz" do
   ]
 
   caveats <<~EOS
-    Todo el procesamiento (transcripción, diarización, resúmenes) ocurre
-    en tu Mac. La primera grabación pedirá permisos de micrófono y de
-    "Grabación de pantalla y audio del sistema".
+    All processing (transcription, diarization, summaries) happens on your Mac.
+    The first recording will ask for microphone permission and for
+    "Screen & System Audio Recording" permission.
   EOS
 end

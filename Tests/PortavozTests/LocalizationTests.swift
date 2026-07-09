@@ -76,6 +76,25 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testAppKitPanelChromeUsesExplicitLocalization() throws {
+        let appDir = Self.repoRoot.appendingPathComponent("Sources/portavoz-app")
+        let files = try FileManager.default.subpathsOfDirectory(atPath: appDir.path)
+            .filter { $0.hasSuffix(".swift") }
+        let regex = try NSRegularExpression(
+            pattern: #"\.(?:prompt|message|title|nameFieldLabel)\s*=\s*\"([^\"\\]+)\""#)
+        var failures: [String] = []
+        for file in files {
+            let source = try String(contentsOf: appDir.appendingPathComponent(file), encoding: .utf8)
+            let matches = regex.matches(in: source, range: NSRange(source.startIndex..., in: source))
+            for match in matches {
+                guard let range = Range(match.range(at: 1), in: source) else { continue }
+                let literal = String(source[range])
+                failures.append("Sources/portavoz-app/\(file): AppKit panel chrome '\(literal)' must use L10n.text/format")
+            }
+        }
+        XCTAssertTrue(failures.isEmpty, failures.joined(separator: "\n"))
+    }
+
     func testExporterProducesRuntimeStrings() throws {
         let destination = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-l10n-\(UUID().uuidString)", isDirectory: true)
