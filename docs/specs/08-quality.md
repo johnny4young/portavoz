@@ -1,6 +1,6 @@
 # Spec 08 — Calidad: tests, harnesses y números medidos
 
-Estado: 254 tests de paquete en verde (12 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Estado: 257 tests de paquete en verde (13 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: config recomendada de industria (reglas por defecto + opt-in de correctness/claridad, umbrales de industria: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` pasa con **cero violaciones** sobre `Sources`; en CI cualquier violación rompe el build. Excepciones inherentes silenciadas in-line con justificación (datos sha256 del catálogo, dispatchers arg-parser del CLI, vistas SwiftUI grandes) — partir esas vistas queda como deuda técnica.
 
@@ -16,6 +16,7 @@ Estado: 254 tests de paquete en verde (12 gated) + 5 UI tests XCUITest. CI en Gi
 | IntelligenceTests | PromptFactory, filtros de naming, **NamingExcerpt**, **LiveSummaryPolicy** |
 | MeetingHealthTests | 6 casos: talk-time/share, preguntas ES/EN, interrupciones con umbral, monólogos encadenados, sin atribuir excluidos |
 | VocabularyMinerTests | 6 casos: formas de dominio, umbral de recurrencia, exclusión de vocabulario existente/stoplist, heurísticas de forma |
+| MeetingTypeDetectorTests | catálogo de Recipes + excerpt capado; gated: clasifica standup/planning/interview y deja general en paz (criterio M13b) |
 | StorageTests | Contrato D4 completo (tombstones, versionado, FTS hostil, retención, paths) |
 | RecordingsLocationTests | 7: marker, fallback, resolve, migración resumable |
 | CoreTypesTests | Tipos + **TitleTemplate** |
