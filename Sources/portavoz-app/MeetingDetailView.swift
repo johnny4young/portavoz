@@ -49,6 +49,10 @@ struct MeetingDetailView: View {
     @State private var refineDraft: RefineDraft?
     @State private var editingTitle = false
     @State private var newTitle = ""
+    /// Typed-recipe suggestion (M13b): detected once per visit, offered as
+    /// a chip — never applied on its own.
+    @State private var suggestedRecipe: Recipe?
+    @State private var detectedRecipeOnce = false
 
     /// A refine result awaiting the user's decision — never applied on its
     /// own. The transcript it would replace stays untouched until "Apply".
@@ -480,10 +484,11 @@ extension MeetingDetailView {
             HStack {
                 Text("Summary")
                     .font(.headline)
-                Text("v\(summary.version) · \(summary.draft.language)")
+                Text(summaryBadge(summary))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                recipeSuggestionChip(summary)
                 Menu {
                     Button("Copy as plain text") { copySummary(summary.draft, as: .plainText) }
                     Button("Copy as Markdown") { copySummary(summary.draft, as: .markdown) }
@@ -500,6 +505,13 @@ extension MeetingDetailView {
                     Menu {
                         Button("Regenerate in Spanish") { regenerate(language: "es") }
                         Button("Regenerate in English") { regenerate(language: "en") }
+                        Menu("Structure") {
+                            ForEach(Recipe.all) { recipe in
+                                Button(recipe.displayName) {
+                                    regenerate(language: summary.draft.language, recipe: recipe)
+                                }
+                            }
+                        }
                         if let alt = alternateEngine {
                             Divider()
                             Menu(alt.label) {
@@ -574,9 +586,17 @@ extension MeetingDetailView {
         }
     }
 
-    private func regenerate(language: String, engine: AppServices.SummaryEngine? = nil) {
+    private func regenerate(
+        language: String,
+        engine: AppServices.SummaryEngine? = nil,
+        recipe: Recipe? = nil
+    ) {
         guard let detail, !regenerating else { return }
         regenerating = true
+        // No explicit recipe keeps whatever structure the summary already
+        // has — regenerating in another language must not lose a Standup.
+        let activeRecipe =
+            recipe ?? summary.flatMap { Recipe.byID($0.draft.recipeID) } ?? .general
         Task {
             defer { regenerating = false }
             let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
@@ -584,7 +604,7 @@ extension MeetingDetailView {
                 meetingID: meetingID,
                 segments: detail.segments,
                 speakers: detail.speakers,
-                recipe: .general,
+                recipe: activeRecipe,
                 targetLanguage: language,
                 glossary: VocabularyPrompt.parse(
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
@@ -885,6 +905,54 @@ extension MeetingDetailView {
         detail = try? await services.store.detail(meetingID)
         summary = try? await services.store.summary(meetingID)
         await loadPlayerIfNeeded()
+        await suggestRecipeIfUseful()
+    }
+
+    /// "Summarize as Standup?" chip source (M13b): classify the meeting
+    /// type once per visit, only while the summary still has the general
+    /// structure, on the scheduler's background lane.
+    private func suggestRecipeIfUseful() async {
+        guard !detectedRecipeOnce,
+            let detail, !detail.segments.isEmpty,
+            let summary, summary.draft.recipeID == Recipe.general.id
+        else { return }
+        detectedRecipeOnce = true
+        guard #available(macOS 26.0, *),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        else { return }
+        suggestedRecipe = await MeetingTypeDetector.detect(
+            segments: detail.segments, speakerCount: detail.speakers.count)
+    }
+
+    /// "Summarize as Standup?" — the typed-recipe suggestion (M13b). One
+    /// click regenerates with that structure; dismissable by regenerating
+    /// any other way. Never applied on its own.
+    @ViewBuilder
+    private func recipeSuggestionChip(
+        _ summary: (draft: SummaryDraft, version: Int)
+    ) -> some View {
+        if let suggested = suggestedRecipe, !regenerating {
+            Button {
+                suggestedRecipe = nil
+                regenerate(language: summary.draft.language, recipe: suggested)
+            } label: {
+                Label(
+                    L10n.format("Summarize as %@?", suggested.displayName),
+                    systemImage: "sparkles")
+            }
+            .controlSize(.small)
+            .help("This meeting looks like a \(suggested.displayName) — restructure the summary with one click. Nothing changes unless you accept.")
+        }
+    }
+
+    /// "v3 · en" plus the structure when it is not the default one.
+    private func summaryBadge(_ summary: (draft: SummaryDraft, version: Int)) -> String {
+        var badge = "v\(summary.version) · \(summary.draft.language)"
+        if summary.draft.recipeID != Recipe.general.id,
+            let recipe = Recipe.byID(summary.draft.recipeID) {
+            badge += " · \(recipe.displayName)"
+        }
+        return badge
     }
 
     /// Builds the synchronized player + waveform once (M11). Audio survives

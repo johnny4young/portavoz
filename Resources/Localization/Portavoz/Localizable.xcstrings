@@ -1711,6 +1711,16 @@
         }
       }
     },
+    "Structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estructura"
+          }
+        }
+      }
+    },
     "Subtracts speaker output from the microphone so other participants do not appear as “Me”. With HEADPHONES there is no echo, so you can turn it off safely. Applies from the next recording. (If you sound distant on the call, it is usually the Mac built-in microphone picking you up from far away — nearby headset microphones such as AirPods usually sound much better.)": {
       "localizations": {
         "es": {
@@ -1737,6 +1747,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sugeridos de tus reuniones — haz clic para revisar antes de agregar"
+          }
+        }
+      }
+    },
+    "Summarize as %@?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Resumir como %@?"
           }
         }
       }
