@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 9, 2026
 
+- **✨ Smart titles** — Meetings still named by timestamp get a content-based title suggestion ("LVGT device-ID bug") — one click renames, and titles you wrote are never second-guessed.
 - **📅 Pre-meeting brief** — Before your next calendar event: who's coming, the related past meetings, what's still open with them, and an on-device "what to know". One click from the sidebar.
 - **💬 Ask your meetings** — A chat over everything you've recorded: "what did we agree about the budget?" answered on your Mac, with citations that jump straight to the meeting and moment.
 - **🍳 Summaries that fit the meeting** — Standups, 1:1s, planning sessions and interviews each get their own summary structure. Portavoz detects the meeting type and offers it as a one-click chip — or pick any structure from the regenerate menu.

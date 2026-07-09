@@ -53,6 +53,9 @@ struct MeetingDetailView: View {
     /// a chip — never applied on its own.
     @State private var suggestedRecipe: Recipe?
     @State private var detectedRecipeOnce = false
+    /// Content-based title suggestion — same contract: chip, click, never solo.
+    @State private var suggestedTitle: String?
+    @State private var suggestedTitleOnce = false
 
     /// A refine result awaiting the user's decision — never applied on its
     /// own. The transcript it would replace stays untouched until "Apply".
@@ -385,6 +388,22 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .help("Rename the meeting")
+                if let suggestion = suggestedTitle {
+                    Button {
+                        suggestedTitle = nil
+                        Task {
+                            var meeting = detail.meeting
+                            meeting.title = suggestion
+                            try? await services.store.save(meeting)
+                            services.libraryVersion += 1
+                        }
+                    } label: {
+                        Label("“\(suggestion)”?", systemImage: "sparkles")
+                            .font(.caption)
+                    }
+                    .controlSize(.small)
+                    .help("Suggested title from the summary — one click renames, nothing changes on its own")
+                }
             }
             HStack(spacing: 12) {
                 Text(detail.meeting.startedAt.formatted(date: .long, time: .shortened))
@@ -906,6 +925,24 @@ extension MeetingDetailView {
         summary = try? await services.store.summary(meetingID)
         await loadPlayerIfNeeded()
         await suggestRecipeIfUseful()
+        await suggestTitleIfUseful()
+    }
+
+    /// Content-based title chip: only while the title still looks like the
+    /// template output (starts with a digit — "2026-07-09 09.33 Meeting");
+    /// a title the user already wrote is never second-guessed.
+    private func suggestTitleIfUseful() async {
+        guard !suggestedTitleOnce,
+            let detail, let summary,
+            detail.meeting.title.first?.isNumber == true
+        else { return }
+        suggestedTitleOnce = true
+        guard #available(macOS 26.0, *),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        else { return }
+        suggestedTitle = await TitleSuggester.suggest(
+            summaryMarkdown: summary.draft.markdown,
+            currentTitle: detail.meeting.title)
     }
 
     /// "Summarize as Standup?" chip source (M13b): classify the meeting

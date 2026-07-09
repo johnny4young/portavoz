@@ -1891,6 +1891,16 @@
         }
       }
     },
+    "Suggested title from the summary — one click renames, nothing changes on its own": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Título sugerido desde el resumen — un click renombra, nada cambia solo"
+          }
+        }
+      }
+    },
     "Summarize as %@?": {
       "localizations": {
         "es": {

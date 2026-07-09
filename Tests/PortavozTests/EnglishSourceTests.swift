@@ -76,6 +76,12 @@ final class EnglishSourceTests: XCTestCase {
             line.contains("En esta reunión hablamos de ") {
             return true
         }
+        if relative == "Sources/IntelligenceKit/TitleSuggester.swift",
+            line.contains("resumen sobre el presupuesto") {
+            // Intentional Spanish few-shot example: titles must come out in
+            // the summary's language, so the prompt shows both languages.
+            return true
+        }
         if relative == "Sources/portavoz-cli/CLIAsk.swift", line.contains("qué") {
             return true
         }
