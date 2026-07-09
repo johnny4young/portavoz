@@ -14,6 +14,10 @@ struct LibraryView: View {
     @State private var hits: [SearchHit] = []
     /// Open action items across ALL meetings — the cross-meeting to-do list.
     @State private var openItems: [MeetingStore.OpenActionItem] = []
+    /// Pre-meeting brief for the next calendar event (M13b). Loads only
+    /// when calendar access was already granted — never prompts here.
+    @State private var brief: MeetingBrief?
+    @State private var showBrief = false
     @State private var renamingMeeting: Meeting?
     @State private var newTitle = ""
     @State private var importStatus: String?
@@ -68,6 +72,26 @@ struct LibraryView: View {
             .padding(.top, 8)
             .help("Natural-language questions over every meeting, answered on your Mac")
             .accessibilityIdentifier("library-ask-button")
+
+            if let brief {
+                Button {
+                    showBrief = true
+                } label: {
+                    Label {
+                        Text("Next: \(brief.event.title)")
+                            .lineLimit(1)
+                        Text(brief.event.startDate.formatted(date: .omitted, time: .shortened))
+                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "calendar.badge.clock")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .controlSize(.small)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .help("Brief for your next meeting: who's coming, related meetings, open to-dos")
+            }
 
             TextField("Search all meetings…", text: $query)
                 .textFieldStyle(.roundedBorder)
@@ -161,6 +185,11 @@ struct LibraryView: View {
         } message: {
             Text(importError ?? "")
         }
+        .sheet(isPresented: $showBrief) {
+            if let brief {
+                MeetingBriefView(brief: brief, route: $route)
+            }
+        }
         // Drop an audio file anywhere on the sidebar to import it.
         .dropDestination(for: URL.self) { urls, _ in
             guard importStatus == nil, let url = urls.first(where: isAudio) else { return false }
@@ -173,6 +202,9 @@ struct LibraryView: View {
     private func reload() async {
         meetings = (try? await services.store.meetings()) ?? []
         openItems = (try? await services.store.openActionItems(limit: 20)) ?? []
+        if brief == nil, !ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+            brief = await MeetingBrief.build(store: services.store)
+        }
     }
 
     /// One open action item: check it off right here, or click through to

@@ -231,6 +231,16 @@
         }
       }
     },
+    "Brief for your next meeting: who's coming, related meetings, open to-dos": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief de tu próxima reunión: quiénes vienen, reuniones relacionadas y pendientes abiertos"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "es": {
@@ -307,6 +317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Haz clic en una línea para saltar allí"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
           }
         }
       }
@@ -1161,6 +1181,16 @@
         }
       }
     },
+    "Next: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima: %@"
+          }
+        }
+      }
+    },
     "No audio was captured. Check Portavoz microphone and system audio recording permissions.": {
       "localizations": {
         "es": {
@@ -1531,6 +1561,16 @@
         }
       }
     },
+    "Related meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reuniones relacionadas"
+          }
+        }
+      }
+    },
     "Remove note": {
       "localizations": {
         "es": {
@@ -1777,6 +1817,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hora de inicio"
+          }
+        }
+      }
+    },
+    "Still open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue pendiente"
           }
         }
       }
@@ -2167,6 +2217,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Día de la semana"
+          }
+        }
+      }
+    },
+    "What to know": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo que debes saber"
           }
         }
       }

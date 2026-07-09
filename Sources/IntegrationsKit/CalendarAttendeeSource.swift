@@ -21,6 +21,46 @@ public struct CalendarAttendeeSource: Sendable {
         }
     }
 
+    /// True only when access is ALREADY granted — never prompts. The brief
+    /// loads silently for users who granted calendar access (naming flow);
+    /// nobody gets an unsolicited TCC dialog on app launch.
+    public static var hasAccess: Bool {
+        EKEventStore.authorizationStatus(for: .event) == .fullAccess
+    }
+
+    /// The next non-all-day event starting within `window` (events that
+    /// began in the last 15 minutes still count). nil when none or no access.
+    public func nextEvent(within window: TimeInterval = 12 * 3600) -> UpcomingEvent? {
+        guard Self.hasAccess else { return nil }
+        let store = EKEventStore()
+        let now = Date()
+        let predicate = store.predicateForEvents(
+            withStart: now.addingTimeInterval(-15 * 60),
+            end: now.addingTimeInterval(window),
+            calendars: nil)
+        let event = store.events(matching: predicate)
+            .filter { !$0.isAllDay && $0.endDate > now }
+            .min { $0.startDate < $1.startDate }
+        guard let event else { return nil }
+
+        var names: [String] = []
+        var seen = Set<String>()
+        for participant in event.attendees ?? [] {
+            guard
+                !participant.isCurrentUser,
+                participant.participantType == .person,
+                let name = participant.name,
+                !name.contains("@"),
+                seen.insert(name.lowercased()).inserted
+            else { continue }
+            names.append(name)
+        }
+        return UpcomingEvent(
+            title: event.title ?? "Meeting",
+            startDate: event.startDate,
+            attendees: names)
+    }
+
     /// Names of attendees (and organizers) of events overlapping
     /// `date ± window`, deduplicated, current user excluded when the
     /// calendar marks them.
@@ -50,5 +90,18 @@ public struct CalendarAttendeeSource: Sendable {
             }
         }
         return names
+    }
+}
+
+/// The next calendar event, reduced to what a pre-meeting brief needs.
+public struct UpcomingEvent: Sendable, Equatable {
+    public let title: String
+    public let startDate: Date
+    public let attendees: [String]
+
+    public init(title: String, startDate: Date, attendees: [String]) {
+        self.title = title
+        self.startDate = startDate
+        self.attendees = attendees
     }
 }
