@@ -30,9 +30,19 @@ struct SettingsView: View {
     @AppStorage("aecEnabled") private var aecEnabled = true
     @AppStorage("customVocabulary") private var customVocabulary = ""
     @State private var newTerm = ""
-    /// Domain terms mined from past transcripts (VocabularyMiner) — one
-    /// click adopts them into the vocabulary.
+    /// Domain terms mined from past transcripts (VocabularyMiner). A chip
+    /// PRE-FILLS the add field for review — the miner surfaces what the
+    /// transcriber HEARD, which can be misheard (field case: "Cots2M" for
+    /// the real "Cox2m") — so the user confirms or fixes before adding.
     @State private var suggestedTerms: [String] = []
+    /// The suggestion currently under review in the add field; adding it
+    /// (edited or not) retires it, and a corrected spelling also rejects
+    /// the raw misheard form so it never comes back.
+    @State private var pendingSuggestion: String?
+    /// Dismissed suggestions ("don't suggest again"), comma-separated like
+    /// the vocabulary itself; the miner excludes them.
+    @AppStorage("vocabularyRejectedSuggestions") private var rejectedSuggestions = ""
+    @FocusState private var termFieldFocused: Bool
 
     @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
     @State private var showTitleHelp = false
@@ -358,25 +368,18 @@ extension SettingsView {
             HStack {
                 TextField("Add term (LVGT, Vishakha…)", text: $newTerm)
                     .onSubmit(addTerm)
+                    .focused($termFieldFocused)
                 Button("Add", action: addTerm)
                     .disabled(newTerm.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if !suggestedTerms.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Suggested from your meetings")
+                    Text("Suggested from your meetings — click to review before adding")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     HStack(spacing: 6) {
                         ForEach(suggestedTerms, id: \.self) { term in
-                            Button {
-                                adopt(term)
-                            } label: {
-                                Label(term, systemImage: "plus")
-                                    .font(.caption)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .help("Add \"\(term)\" to the vocabulary")
+                            suggestionChip(term)
                         }
                     }
                 }
@@ -391,10 +394,43 @@ extension SettingsView {
         }
     }
 
-    /// Adopts a mined suggestion into the vocabulary and drops the chip.
-    private func adopt(_ term: String) {
-        customVocabulary = (vocabularyTerms + [term]).joined(separator: ", ")
+    private func suggestionChip(_ term: String) -> some View {
+        HStack(spacing: 2) {
+            Button {
+                review(term)
+            } label: {
+                Label(term, systemImage: "square.and.pencil")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Put \"\(term)\" in the field to review — fix the spelling if it was misheard, then Add")
+            Button {
+                reject(term)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.plain)
+            .help("Don't suggest \"\(term)\" again")
+        }
+    }
+
+    /// Pre-fills the add field with the mined term so the user can fix the
+    /// spelling before confirming — the miner only knows what was HEARD.
+    private func review(_ term: String) {
+        newTerm = term
+        pendingSuggestion = term
+        termFieldFocused = true
+    }
+
+    /// "Don't suggest again": persists so the next mining pass skips it.
+    private func reject(_ term: String) {
+        rejectedSuggestions = (VocabularyPrompt.parse(rejectedSuggestions) + [term])
+            .joined(separator: ", ")
         suggestedTerms.removeAll { $0 == term }
+        if pendingSuggestion == term { pendingSuggestion = nil }
     }
 
     private func addTerm() {
@@ -406,6 +442,18 @@ extension SettingsView {
         }
         customVocabulary = terms.joined(separator: ", ")
         newTerm = ""
+
+        if let pending = pendingSuggestion {
+            // The suggestion under review was handled. If the user CORRECTED
+            // the spelling (field case: mined "Cots2M" → real "Cox2m"), also
+            // reject the raw misheard form so mining never re-suggests it.
+            if pending.caseInsensitiveCompare(term) != .orderedSame {
+                rejectedSuggestions = (VocabularyPrompt.parse(rejectedSuggestions) + [pending])
+                    .joined(separator: ", ")
+            }
+            suggestedTerms.removeAll { $0 == pending }
+            pendingSuggestion = nil
+        }
     }
 }
 

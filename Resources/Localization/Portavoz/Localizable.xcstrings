@@ -1731,12 +1731,12 @@
         }
       }
     },
-    "Suggested from your meetings": {
+    "Suggested from your meetings — click to review before adding": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sugeridos de tus reuniones"
+            "value": "Sugeridos de tus reuniones — haz clic para revisar antes de agregar"
           }
         }
       }
