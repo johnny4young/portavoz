@@ -12,6 +12,8 @@ struct RecordingView: View {
     /// the bottom; scrolling away pauses the follow (so they can read
     /// back) and it resumes 10 s after the last manual scroll.
     @State private var noteDraft = ""
+    /// Compact floating HUD (GAPS #4): recording without the full window.
+    @State private var hud = RecordingHUDController()
 
     var body: some View {
         VStack(spacing: 16) {
@@ -73,6 +75,7 @@ struct RecordingView: View {
         .navigationTitle("Recording")
         .liveTranslation(controller)
         .task { await controller.start(services: services) }
+        .onDisappear { hud.close() }
     }
 
     private var preparingText: String {
@@ -118,6 +121,11 @@ struct RecordingView: View {
                         "Detects questions in the conversation and suggests on-device answers. It never answers for you."
                     )
                 }
+                Button(action: enterCompactMode) {
+                    Label("Compact view", systemImage: "arrow.down.right.and.arrow.up.left")
+                }
+                .buttonStyle(.plain)
+                .help("Floating mini panel with the timer and captions — records without covering your meeting")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -159,6 +167,26 @@ struct RecordingView: View {
         guard level > 0.0001 else { return 0 }
         let decibels = 20 * log10(level)
         return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+    }
+
+    /// Shrinks the recording to the floating HUD and miniaturizes the main
+    /// window (Dock keeps it reachable). The HUD auto-expands back when the
+    /// recording leaves the `.recording` phase.
+    private func enterCompactMode() {
+        guard !hud.isVisible else { return }
+        hud.show(content: RecordingHUDView(
+            controller: controller,
+            onExpand: { exitCompactMode() },
+            onStop: { Task { await controller.stop(services: services) } }))
+        NSApp.keyWindow?.miniaturize(nil)
+    }
+
+    private func exitCompactMode() {
+        hud.close()
+        for window in NSApp.windows where window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private var companionBinding: Binding<Bool> {

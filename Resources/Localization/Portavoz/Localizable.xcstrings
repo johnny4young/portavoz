@@ -201,6 +201,16 @@
         }
       }
     },
+    "Back to the full window": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la ventana completa"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "es": {
@@ -287,6 +297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cerrando la grabación…"
+          }
+        }
+      }
+    },
+    "Compact view": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista compacta"
           }
         }
       }
@@ -787,6 +807,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modelo externo (BYOK)"
+          }
+        }
+      }
+    },
+    "Floating mini panel with the timer and captions — records without covering your meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panel mini flotante con el timer y las captions — graba sin tapar tu reunión"
           }
         }
       }
@@ -1667,6 +1697,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detener"
+          }
+        }
+      }
+    },
+    "Stop recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener la grabación"
           }
         }
       }
