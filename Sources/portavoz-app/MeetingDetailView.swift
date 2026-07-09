@@ -53,6 +53,7 @@ struct MeetingDetailView: View {
     /// A refine result awaiting the user's decision — never applied on its
     /// own. The transcript it would replace stays untouched until "Apply".
     struct RefineDraft {
+        let language: String?
         let speakers: [Speaker]
         let segments: [TranscriptSegment]
         let oldSegmentCount: Int
@@ -675,7 +676,7 @@ extension MeetingDetailView {
 
                 let vocabulary = VocabularyPrompt.parse(
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-                let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID)
+                let hints = refineTranscriptionHints(for: detail, vocabulary: vocabulary)
 
                 var segments: [TranscriptSegment] = []
                 if let systemURL {
@@ -703,6 +704,7 @@ extension MeetingDetailView {
                 // Draft, never override: the user compares and decides.
                 let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
                 refineDraft = RefineDraft(
+                    language: hints.language,
                     speakers: attribution.speakers,
                     segments: attribution.segments,
                     oldSegmentCount: detail.segments.count,
@@ -714,12 +716,29 @@ extension MeetingDetailView {
         }
     }
 
+    private func refineTranscriptionHints(
+        for detail: MeetingDetail,
+        vocabulary: [String]
+    ) -> TranscriptionHints {
+        let spokenLanguage = SpokenLanguageDetector.transcriptionLanguageHint(
+            for: detail.meeting,
+            segments: detail.segments)
+        return TranscriptionHints(
+            language: spokenLanguage,
+            vocabulary: vocabulary,
+            meetingID: meetingID)
+    }
+
     private func applyRefineDraft(_ draft: RefineDraft) {
         refineDraft = nil
         refining = L10n.text("Applying the refined transcript…")
         Task {
             defer { refining = nil }
             do {
+                if let language = draft.language, var meeting = detail?.meeting {
+                    meeting.language = language
+                    try await services.store.save(meeting)
+                }
                 try await services.store.replaceCast(
                     for: meetingID,
                     speakers: draft.speakers,

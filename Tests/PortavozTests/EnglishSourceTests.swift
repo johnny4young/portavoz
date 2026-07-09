@@ -72,6 +72,10 @@ final class EnglishSourceTests: XCTestCase {
         if relative == "Sources/IntelligenceKit/SummaryFingerprint.swift", line.contains("José") {
             return true
         }
+        if relative == "Sources/TranscriptionKit/VocabularyPrompt.swift",
+            line.contains("En esta reunión hablamos de ") {
+            return true
+        }
         if relative == "Sources/portavoz-cli/CLIAsk.swift", line.contains("qué") {
             return true
         }

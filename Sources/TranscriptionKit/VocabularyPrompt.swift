@@ -34,7 +34,7 @@ public enum AudioLevel {
 /// summary stops hallucinating around the mishearing. Parakeet (live) has no
 /// equivalent hook; the refine pass is where the vocabulary lands.
 public enum VocabularyPrompt {
-    public static func text(_ terms: [String]) -> String? {
+    public static func text(_ terms: [String], language: String? = nil) -> String? {
         let cleaned = terms
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -42,7 +42,12 @@ public enum VocabularyPrompt {
         // Natural sentence, not a "Glossary:" list: Whisper conditions on
         // this as if it were prior transcript, and list-shaped context
         // derailed decoding on windows that didn't mention the terms.
-        return "In this meeting we discussed " + cleaned.joined(separator: ", ") + "."
+        switch SpokenLanguageDetector.canonicalLanguageCode(language) {
+        case "es":
+            return "En esta reunión hablamos de " + cleaned.joined(separator: ", ") + "."
+        default:
+            return "In this meeting we discussed " + cleaned.joined(separator: ", ") + "."
+        }
     }
 
     /// Parses the comma-separated form the Settings field and `--vocab` use.

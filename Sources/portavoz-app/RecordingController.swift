@@ -357,6 +357,8 @@ final class RecordingController {
             }
             let attribution = SpeakerAttributor.attribute(
                 segments: captions, turns: turns, meetingID: meetingID)
+            let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
+                in: attribution.segments)
 
             phase = .processing(L10n.text("Saving…"))
             // Title from the user's template (Settings → Titles); {seq} is
@@ -373,6 +375,7 @@ final class RecordingController {
                 title: TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1),
                 startedAt: startedAt,
                 endedAt: Date(),
+                language: spokenLanguage,
                 audioDirectory: audioRelative,
                 retention: .keep
             )

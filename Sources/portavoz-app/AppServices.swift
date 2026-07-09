@@ -299,12 +299,15 @@ final class AppServices {
         let attribution = SpeakerAttributor.attribute(
             segments: result.segments.sorted { $0.startTime < $1.startTime },
             turns: turns, meetingID: meetingID)
+        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
+            in: attribution.segments)
 
         let meeting = Meeting(
             id: meetingID,
             title: "Imported · " + source.deletingPathExtension().lastPathComponent,
             startedAt: Date(),
             endedAt: Date().addingTimeInterval(result.audioDuration),
+            language: spokenLanguage,
             audioDirectory: relative)
         try await store.save(meeting)
         try await store.save(attribution.speakers)

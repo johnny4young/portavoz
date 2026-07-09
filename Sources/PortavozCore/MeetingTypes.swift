@@ -7,7 +7,8 @@ public struct Meeting: Codable, Sendable, Identifiable {
     public var title: String
     public var startedAt: Date
     public var endedAt: Date?
-    /// Dominant language if known ("en", "es"); nil = mixed/unknown.
+    /// Meeting-wide language when homogeneous/known ("en", "es");
+    /// nil = mixed/unknown.
     public var language: String?
     /// Directory holding the meeting's audio, RELATIVE to the app's audio
     /// root — the database never stores absolute paths (D4).

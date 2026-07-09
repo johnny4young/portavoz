@@ -51,7 +51,8 @@ public actor WhisperEngine {
         // Domain vocabulary rides in as conditioning context (biasing, not
         // forcing); WhisperKit filters special tokens out of the prompt.
         var promptTokens: [Int]?
-        if let prompt = VocabularyPrompt.text(hints.vocabulary),
+        if let language = hints.language,
+            let prompt = VocabularyPrompt.text(hints.vocabulary, language: language),
             let tokenizer = pipe.tokenizer {
             promptTokens = tokenizer.encode(text: " " + prompt)
         }

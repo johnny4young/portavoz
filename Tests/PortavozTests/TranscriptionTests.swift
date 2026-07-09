@@ -542,6 +542,12 @@ final class VocabularyPromptTests: XCTestCase {
             "In this meeting we discussed LVGT, Portavoz, Vishakha.")
     }
 
+    func testFormatsSpanishTermsAsSpanishNaturalSentence() {
+        XCTAssertEqual(
+            VocabularyPrompt.text(["Cots2M", "Trinity"], language: "es-CO"),
+            "En esta reunión hablamos de Cots2M, Trinity.")
+    }
+
     func testEmptyAndBlankTermsYieldNoPrompt() {
         XCTAssertNil(VocabularyPrompt.text([]))
         XCTAssertNil(VocabularyPrompt.text(["  ", ""]))
@@ -552,6 +558,98 @@ final class VocabularyPromptTests: XCTestCase {
             VocabularyPrompt.parse(" LVGT , Portavoz,,  Vishakha "),
             ["LVGT", "Portavoz", "Vishakha"])
         XCTAssertEqual(VocabularyPrompt.parse(""), [])
+    }
+}
+
+final class SpokenLanguageDetectorTests: XCTestCase {
+    func testUsesMeetingLanguageOnlyWhenThereAreNoSegments() {
+        let meeting = Meeting(
+            title: "Customer call",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            language: "es-CO")
+
+        XCTAssertEqual(
+            SpokenLanguageDetector.transcriptionLanguageHint(
+                for: meeting,
+                segments: []),
+            "es")
+    }
+
+    func testSegmentEvidenceOverridesMeetingLanguageForRefineHint() {
+        let meeting = Meeting(
+            title: "Customer call",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            language: "es")
+        let segments = [languageSegment("This meeting was actually in English.", language: "en")]
+
+        XCTAssertEqual(
+            SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments),
+            "en")
+    }
+
+    func testHomogeneousSegmentLanguageTagsBecomeRefineHint() {
+        let segments = [
+            languageSegment("This text was already refined in English.", language: "es-CO"),
+            languageSegment("Another contaminated line after a refine pass.", language: "es"),
+        ]
+
+        XCTAssertEqual(SpokenLanguageDetector.homogeneousLanguage(in: segments), "es")
+    }
+
+    func testMixedSegmentLanguageTagsDoNotForceRefineHint() {
+        let meeting = Meeting(
+            title: "Mixed call",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            language: "es")
+        let segments = [
+            languageSegment("uno dos tres", language: "es"),
+            languageSegment("one two three", language: "en"),
+        ]
+
+        XCTAssertNil(SpokenLanguageDetector.homogeneousLanguage(in: segments))
+        XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments))
+    }
+
+    func testDetectsHomogeneousSpanishTextLocally() {
+        let segments = [
+            languageSegment(
+                """
+                La reunión se centró en la integración de mensajes y en aclarar \
+                el contexto del proyecto con el equipo. También revisamos ingresos, \
+                dependencias y próximos pasos para continuar el trabajo.
+                """,
+                language: nil),
+        ]
+
+        XCTAssertEqual(SpokenLanguageDetector.homogeneousLanguage(in: segments), "es")
+    }
+
+    func testMixedDetectedTextDoesNotForceOneMeetingLanguage() {
+        let segments = [
+            languageSegment(
+                "Revisamos el presupuesto, los próximos pasos y la integración del proyecto.",
+                language: nil),
+            languageSegment(
+                "We also discussed the launch plan, customer feedback, and support risks.",
+                language: nil),
+        ]
+
+        XCTAssertNil(SpokenLanguageDetector.homogeneousLanguage(in: segments))
+    }
+
+    func testShortUnknownTranscriptFallsBackOnlyWhenProvided() {
+        let segments = [languageSegment("ok", language: nil)]
+
+        XCTAssertNil(SpokenLanguageDetector.homogeneousLanguage(in: segments))
+        XCTAssertEqual(
+            SpokenLanguageDetector.homogeneousLanguage(in: segments, fallback: "es-MX"),
+            "es")
+    }
+
+    func testCanonicalLanguageCodeNormalizesBCP47Prefixes() {
+        XCTAssertEqual(SpokenLanguageDetector.canonicalLanguageCode(" ES_CO "), "es")
+        XCTAssertNil(SpokenLanguageDetector.canonicalLanguageCode("und"))
+        XCTAssertNil(SpokenLanguageDetector.canonicalLanguageCode(""))
     }
 }
 
@@ -599,5 +697,16 @@ private func segment(
         text: text,
         startTime: start,
         endTime: end,
+        isFinal: true)
+}
+
+private func languageSegment(_ text: String, language: String?) -> TranscriptSegment {
+    TranscriptSegment(
+        meetingID: MeetingID(),
+        channel: .system,
+        text: text,
+        language: language,
+        startTime: 0,
+        endTime: 1,
         isFinal: true)
 }

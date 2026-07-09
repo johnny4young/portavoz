@@ -48,6 +48,7 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertNotNil(detail)
         XCTAssertEqual(detail?.meeting.id, meeting.id)
         XCTAssertEqual(detail?.meeting.title, "Planning semanal")
+        XCTAssertEqual(detail?.meeting.language, "es")
         XCTAssertEqual(detail?.meeting.retention, .deleteAfter(days: 7))
         XCTAssertEqual(detail?.meeting.visibility, "private")
         XCTAssertEqual(detail?.speakers.count, 2)
