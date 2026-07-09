@@ -15,7 +15,9 @@ final class MeetingDetailUITests: XCTestCase {
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
         app.launchPortavoz()
-        let meeting = app.staticTexts["Test meeting"]
+        // firstMatch: the title also shows as the caption of the sidebar's
+        // To-dos rows; both rows route to the same meeting.
+        let meeting = app.staticTexts["Test meeting"].firstMatch
         XCTAssertTrue(
             meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
         meeting.click()

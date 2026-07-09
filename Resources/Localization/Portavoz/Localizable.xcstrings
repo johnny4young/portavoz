@@ -1731,6 +1731,16 @@
         }
       }
     },
+    "Suggested from your meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugeridos de tus reuniones"
+          }
+        }
+      }
+    },
     "Summary": {
       "localizations": {
         "es": {
@@ -1917,6 +1927,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Título"
+          }
+        }
+      }
+    },
+    "To-dos": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes"
           }
         }
       }

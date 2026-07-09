@@ -17,7 +17,7 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 
 ## Vistas y flujos
 
-**LibraryView**: Nueva grabación (⌘N), búsqueda FTS con snippets, lista con context menu Renombrar/Eliminar.
+**LibraryView**: Nueva grabación (⌘N), búsqueda FTS con snippets, **sección "To-dos"** (action items abiertos de TODAS las reuniones vía `openActionItems` — checkbox completa in-place y bumpa `libraryVersion`; click navega a su reunión; los UITests usan `firstMatch` porque el título de la reunión aparece también como caption de estas filas), lista con context menu Renombrar/Eliminar.
 
 **RecordingView + RecordingController** (el pipeline vivo completo):
 1. `start`: warm-up del mic (AEC converge durante "Preparando…"), engines, `RecordingSession` con mic (+tap del sistema en 14.4+), feeds por canal → Parakeet vivo → **CaptionCoalescer** (una fila por intervención).

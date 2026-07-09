@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 9, 2026
 
+- **✅ To-dos across meetings** — Your open action items from every meeting, right in the sidebar: check them off or click through to their meeting.
+- **🧲 Vocabulary that learns** — Portavoz spots recurring names, acronyms and codes in your meetings and suggests them for your vocabulary — one click, sharper transcription.
 - **🎈 Compact recording HUD** — Record without the app covering your call: a tiny floating panel with the timer, live captions, mic meter and Stop. Clicks never steal focus from your meeting.
 - **📊 Meeting health** — Who talked how much, questions asked, interruptions made, longest monologue — computed entirely on your Mac, right under the summary.
 - **🎙️ Live voices, told apart** — Live captions label each remote voice (S1, S2…) as people speak. Two people talking back-to-back are no longer one blurred "Them".

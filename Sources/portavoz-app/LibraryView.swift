@@ -12,6 +12,8 @@ struct LibraryView: View {
     @State private var meetings: [Meeting] = []
     @State private var query = ""
     @State private var hits: [SearchHit] = []
+    /// Open action items across ALL meetings — the cross-meeting to-do list.
+    @State private var openItems: [MeetingStore.OpenActionItem] = []
     @State private var renamingMeeting: Meeting?
     @State private var newTitle = ""
     @State private var importStatus: String?
@@ -77,6 +79,13 @@ struct LibraryView: View {
                         }
                     }
                 } else {
+                    if !openItems.isEmpty {
+                        Section("To-dos") {
+                            ForEach(openItems, id: \.item.id) { open in
+                                todoRow(open)
+                            }
+                        }
+                    }
                     Section("Meetings") {
                         if meetings.isEmpty {
                             Text("No meetings yet").foregroundStyle(.secondary)
@@ -151,6 +160,38 @@ struct LibraryView: View {
 
     private func reload() async {
         meetings = (try? await services.store.meetings()) ?? []
+        openItems = (try? await services.store.openActionItems(limit: 20)) ?? []
+    }
+
+    /// One open action item: check it off right here, or click through to
+    /// its meeting. Checking bumps `libraryVersion`, which reloads the list
+    /// (and the detail view, which shares the same items).
+    private func todoRow(_ open: MeetingStore.OpenActionItem) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Toggle(isOn: todoBinding(open)) { EmptyView() }
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+            VStack(alignment: .leading, spacing: 2) {
+                Text(open.item.text).lineLimit(2)
+                Text(open.meetingTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .tag(Route.meeting(open.meetingID))
+    }
+
+    private func todoBinding(_ open: MeetingStore.OpenActionItem) -> Binding<Bool> {
+        Binding(
+            get: { open.item.isDone },
+            set: { done in
+                Task {
+                    try? await services.store.setActionItem(open.item.id, done: done)
+                    services.libraryVersion += 1
+                }
+            }
+        )
     }
 
     private func isAudio(_ url: URL) -> Bool {
