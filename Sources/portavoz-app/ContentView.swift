@@ -4,6 +4,7 @@ import SwiftUI
 enum Route: Hashable {
     case recording
     case meeting(MeetingID)
+    case ask
 }
 
 struct ContentView: View {
@@ -21,6 +22,8 @@ struct ContentView: View {
             case .meeting(let id):
                 MeetingDetailView(meetingID: id, route: $route)
                     .id(id)  // reload state when switching meetings
+            case .ask:
+                AskView(route: $route)
             case nil:
                 ContentUnavailableView(
                     "Portavoz",

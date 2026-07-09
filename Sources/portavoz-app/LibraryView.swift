@@ -57,6 +57,18 @@ struct LibraryView: View {
                 .accessibilityIdentifier("library-import-audio-button")
             }
 
+            Button {
+                route = .ask
+            } label: {
+                Label("Ask your meetings", systemImage: "bubble.left.and.text.bubble.right")
+                    .frame(maxWidth: .infinity)
+            }
+            .controlSize(.small)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .help("Natural-language questions over every meeting, answered on your Mac")
+            .accessibilityIdentifier("library-ask-button")
+
             TextField("Search all meetings…", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)

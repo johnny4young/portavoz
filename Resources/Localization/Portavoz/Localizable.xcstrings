@@ -161,6 +161,26 @@
         }
       }
     },
+    "Ask about your meetings…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta sobre tus reuniones…"
+          }
+        }
+      }
+    },
+    "Ask your meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregúntale a tus reuniones"
+          }
+        }
+      }
+    },
     "Audio": {
       "localizations": {
         "es": {
@@ -287,6 +307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Haz clic en una línea para saltar allí"
+          }
+        }
+      }
+    },
+    "Closest passages from your meetings:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los pasajes más cercanos de tus reuniones:"
           }
         }
       }
@@ -1111,6 +1141,16 @@
         }
       }
     },
+    "Natural-language questions over every meeting, answered on your Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas en lenguaje natural sobre todas tus reuniones, respondidas en tu Mac"
+          }
+        }
+      }
+    },
     "New recording": {
       "localizations": {
         "es": {
@@ -1157,6 +1197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sin traducción"
+          }
+        }
+      }
+    },
+    "Nothing related in your meetings yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no hay nada relacionado en tus reuniones."
           }
         }
       }
@@ -1327,6 +1377,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preguntas hechas en la reunión"
+          }
+        }
+      }
+    },
+    "Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas como \"¿qué acordamos del presupuesto?\" — respondidas en tu Mac, citando reunión y momento."
           }
         }
       }
@@ -1621,6 +1681,26 @@
         }
       }
     },
+    "Search failed: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La búsqueda falló: %@"
+          }
+        }
+      }
+    },
+    "Searching your meetings…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando en tus reuniones…"
+          }
+        }
+      }
+    },
     "Segments": {
       "localizations": {
         "es": {
@@ -1657,6 +1737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Algo salió mal"
+          }
+        }
+      }
+    },
+    "Sources": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes"
           }
         }
       }

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 9, 2026
 
+- **💬 Ask your meetings** — A chat over everything you've recorded: "what did we agree about the budget?" answered on your Mac, with citations that jump straight to the meeting and moment.
 - **🍳 Summaries that fit the meeting** — Standups, 1:1s, planning sessions and interviews each get their own summary structure. Portavoz detects the meeting type and offers it as a one-click chip — or pick any structure from the regenerate menu.
 - **✅ To-dos across meetings** — Your open action items from every meeting, right in the sidebar: check them off or click through to their meeting.
 - **🧲 Vocabulary that learns** — Portavoz spots recurring names, acronyms and codes in your meetings and suggests them for your vocabulary. Review each one before it lands: fix the spelling if the transcript misheard it, or dismiss it for good.
