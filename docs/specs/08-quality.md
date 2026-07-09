@@ -1,6 +1,6 @@
 # Spec 08 — Calidad: tests, harnesses y números medidos
 
-Estado: 220 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Estado: 225 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: config recomendada de industria (reglas por defecto + opt-in de correctness/claridad, umbrales de industria: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` pasa con **cero violaciones** sobre `Sources`; en CI cualquier violación rompe el build. Excepciones inherentes silenciadas in-line con justificación (datos sha256 del catálogo, dispatchers arg-parser del CLI, vistas SwiftUI grandes) — partir esas vistas queda como deuda técnica.
 
@@ -9,8 +9,8 @@ Estado: 220 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en Gi
 | Archivo | Cubre |
 |---|---|
 | AudioCaptureTests | CaptureFileWriter CAF, drift summary, Downmix, **Resample.linear**, startup cleanup |
-| TranscriptionTests | Mapper/deltas, WhisperEngine helpers, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
-| CaptionCoalescerTests | 10 casos del coalescer (merge, identidad, canales, pausas, límites) |
+| TranscriptionTests | Mapper/deltas, WhisperEngine helpers, higiene anti-silencio, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
+| CaptionCoalescerTests | 13 casos del coalescer (merge, identidad, canales, pausas, límites, puntuación suelta, split temprano de `system` tras oración) |
 | DiarizationTests | Catálogo, SpeakerAttributor (multi-turno), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (unidades) |
 | IntelligenceTests | PromptFactory, filtros de naming, **NamingExcerpt**, **LiveSummaryPolicy** |
 | StorageTests | Contrato D4 completo (tombstones, versionado, FTS hostil, retención, paths) |
@@ -52,6 +52,7 @@ XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). `make 
 | Reunión colapsó 66→3 segmentos en refine | WhisperKit `concurrentWorkerCount` default 16 → carrera sobre decoder compartido; su chunker TRAGA errores por chunk | `concurrentWorkerCount: 1` + retry de cobertura |
 | Colapso determinístico con vocabulario | promptTokens descarrilan ventanas que no mencionan los términos; cobertura cruda engañaba (spans válidos, texto vacío) | cobertura sobre segmentos LIMPIOS + retry sin prompt + frase natural |
 | Reunión silenciosa "sin voz" | EnergyVAD de WhisperKit umbral absoluto 0.02 | peak-normalize previo |
+| `Yo: .` y `Me: Thank you.` repetido sin hablar | Deltas de puntuación suelta y boilerplate de silencio de Whisper en cadencia VAD | higiene léxica + filtro de boilerplate repetido en mic |
 | Mic murió al conectar audífonos (min 24/30) | AVAudioEngine se detiene en config-change, stream mudo | restart + resample + gap de silencio |
 | "Yo" fantasma con parlantes | mic captaba el system audio (100% eco; dedup por texto solo cubría 57%) | AEC VPIO por defecto (D24) |
 | Drift falso 115 ms | offset real 2.4 s fuera del rango ±2 s del script | rango ±5 s + warning de borde |

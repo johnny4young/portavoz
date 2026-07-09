@@ -17,6 +17,10 @@ public struct CaptionCoalescer: Sendable {
     /// After a closed sentence, a pause this long starts a new row; quicker
     /// follow-ups keep flowing speech together.
     public var sentencePauseSeconds: TimeInterval
+    /// Remote/system audio contains every non-user speaker. Without live
+    /// diarization, a shorter post-sentence pause keeps back-to-back people
+    /// visible as separate "Ellos" rows before the refine pass.
+    public var systemSentencePauseSeconds: TimeInterval
     /// A row longer than this closes at the next delta regardless, keeping
     /// rows scannable.
     public var maxRowCharacters: Int
@@ -24,10 +28,12 @@ public struct CaptionCoalescer: Sendable {
     public init(
         maxGapSeconds: TimeInterval = 6.0,
         sentencePauseSeconds: TimeInterval = 2.0,
+        systemSentencePauseSeconds: TimeInterval = 0.6,
         maxRowCharacters: Int = 280
     ) {
         self.maxGapSeconds = maxGapSeconds
         self.sentencePauseSeconds = sentencePauseSeconds
+        self.systemSentencePauseSeconds = systemSentencePauseSeconds
         self.maxRowCharacters = maxRowCharacters
     }
 
@@ -38,6 +44,11 @@ public struct CaptionCoalescer: Sendable {
     public func apply(_ segment: TranscriptSegment, to captions: inout [TranscriptSegment]) {
         let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        let hasLexicalContent = TranscriptionTextFilter.hasLexicalContent(text)
+        if !hasLexicalContent {
+            appendPunctuationOnlyDelta(text, from: segment, to: &captions)
+            return
+        }
 
         guard let last = captions.last, last.channel == segment.channel,
             shouldExtend(last, with: segment)
@@ -67,9 +78,44 @@ public struct CaptionCoalescer: Sendable {
         guard gap < maxGapSeconds else { return false }
         guard last.text.count < maxRowCharacters else { return false }
         if Self.endsSentence(last.text) {
-            return gap < sentencePauseSeconds
+            return gap < sentencePauseSeconds(for: last.channel)
         }
         return true
+    }
+
+    private func sentencePauseSeconds(for channel: AudioChannel) -> TimeInterval {
+        switch channel {
+        case .system, .room:
+            systemSentencePauseSeconds
+        case .microphone:
+            sentencePauseSeconds
+        }
+    }
+
+    private func appendPunctuationOnlyDelta(
+        _ text: String,
+        from segment: TranscriptSegment,
+        to captions: inout [TranscriptSegment]
+    ) {
+        guard
+            let last = captions.last,
+            last.channel == segment.channel,
+            shouldExtend(last, with: segment),
+            text.contains(where: { ".!?…".contains($0) })
+        else { return }
+
+        captions[captions.count - 1] = TranscriptSegment(
+            id: last.id,
+            meetingID: last.meetingID,
+            speakerID: last.speakerID,
+            channel: last.channel,
+            text: Self.join(last.text, text),
+            language: last.language ?? segment.language,
+            startTime: last.startTime,
+            endTime: max(last.endTime, segment.endTime),
+            confidence: last.confidence,
+            isFinal: segment.isFinal
+        )
     }
 
     static func endsSentence(_ text: String) -> Bool {

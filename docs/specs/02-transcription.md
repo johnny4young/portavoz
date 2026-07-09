@@ -34,6 +34,7 @@ Endurecido contra 3 fallas REALES de WhisperKit (todas reproducidas y verificada
 1. **`concurrentWorkerCount: 1`** — el default es 16 y los workers corren en carrera sobre el estado compartido del decoder: chunks enteros desaparecen EN SILENCIO y no-determinísticamente (reunión real de 482 s colapsó a 3 segmentos; el path VAD-chunked de WhisperKit traga los fallos por chunk con `Logging.debug`, sin rethrow). Con 1 worker: correcto y 23x (el ANE serializa igual).
 2. **Peak-normalize antes de transcribir** (`AudioLevel.normalizePeak`, target 0.9, gain cap 20x): el EnergyVAD de WhisperKit gatea por energía ABSOLUTA (umbral 0.02) y una reunión con volumen bajo queda por debajo → "no hay voz".
 3. **Retry de cobertura sobre segmentos LIMPIOS**: si el habla transcrita < 20% de la duración del archivo (audio > 60 s), re-decodifica secuencial (`chunkingStrategy: nil` — ese path SÍ propaga errores) y SIN promptTokens. Dos trampas cubiertas: los chunks envenenados devuelven timespans válidos con texto que `cleanSegmentText` deja vacío (la cobertura cruda engaña), y el prompt de vocabulario descarrila las ventanas que no mencionan los términos (verificado: con 12 términos solo sobrevivía el chunk que los decía). Verificado: 3 → 82 segmentos con vocabulario.
+4. **Higiene anti-silencio**: segmentos sin contenido léxico (p. ej. `.` solo) no entran al resultado final; además, si el canal mic produce el mismo boilerplate corto de Whisper en cadencia de VAD (caso real: `Me: Thank you.` cada ~30 s sin que el usuario hablara), el post-proceso lo elimina. Una ocurrencia aislada de "Thank you" se conserva.
 
 - Carga con model+tokenizer de directorios verificados, `download: false` (jamás descarga sin verificar). Tokenizer local evita red.
 - Vocabulario (`hints.vocabulary`) → `promptTokens` como frase natural ("In this meeting we discussed …", no lista "Glossary:"); WhisperKit lo prepende con `<|startofprev|>` y filtra especiales.
@@ -62,7 +63,7 @@ Lectura M12: ambos viven bajo 1 s de p95 — SpeechAnalyzer ES viable para el ro
 
 ## Coalescer de captions — `CaptionCoalescer` (usado por la app)
 
-La fila más nueva crece mientras el canal siga hablando: pausas mid-sentence ≤ 6 s se quedan en la fila, continuación < 2 s tras oración cerrada fluye, corte duro a 280 chars. Identidad de fila estable (id/startTime se conservan) → SwiftUI no reconstruye y la traducción solo traduce filas cerradas (solo la última fila global puede crecer). 10 tests.
+La fila más nueva crece mientras el canal siga hablando: pausas mid-sentence ≤ 6 s se quedan en la fila, continuación < 2 s tras oración cerrada fluye en micrófono, pero en `system`/`room` la pausa tras oración se corta antes (0.6 s) para que dos participantes remotos consecutivos se vean como dos filas `Ellos` aun antes del refine. Corte duro a 280 chars. Deltas sin contenido léxico se descartan salvo puntuación final que complete una fila existente (`"."` aislado no crea `Yo: .`). Identidad de fila estable (id/startTime se conservan) → SwiftUI no reconstruye y la traducción solo traduce filas cerradas (solo la última fila global puede crecer). 13 tests.
 
 ## Vocabulario — `VocabularyPrompt`
 

@@ -63,12 +63,25 @@ final class CaptionCoalescerTests: XCTestCase {
         XCTAssertEqual(captions.count, 2)
     }
 
-    func testQuickFollowUpAfterSentenceKeepsFlowing() {
+    func testQuickMicrophoneFollowUpAfterSentenceKeepsFlowing() {
         var captions: [TranscriptSegment] = []
-        coalescer.apply(segment("it's around.", start: 0, end: 1), to: &captions)
-        coalescer.apply(segment("10:40 PM.", start: 1.4, end: 2.2), to: &captions)
+        coalescer.apply(
+            segment("it's around.", channel: .microphone, start: 0, end: 1),
+            to: &captions)
+        coalescer.apply(
+            segment("10:40 PM.", channel: .microphone, start: 1.4, end: 2.2),
+            to: &captions)
         XCTAssertEqual(captions.count, 1)
         XCTAssertEqual(captions[0].text, "it's around. 10:40 PM.")
+    }
+
+    func testSystemSentencePauseStartsNewOthersRow() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment("That answered the question.", start: 0, end: 1), to: &captions)
+        coalescer.apply(segment("Another point from the next speaker.", start: 1.8, end: 2.8), to: &captions)
+
+        XCTAssertEqual(captions.count, 2)
+        XCTAssertEqual(captions.map(\.channel), [.system, .system])
     }
 
     func testLongSilenceStartsNewRowEvenMidSentence() {
@@ -97,6 +110,21 @@ final class CaptionCoalescerTests: XCTestCase {
         var captions: [TranscriptSegment] = []
         coalescer.apply(segment("   ", start: 0, end: 0.5), to: &captions)
         XCTAssertTrue(captions.isEmpty)
+    }
+
+    func testStandalonePunctuationDeltasAreDropped() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment(".", channel: .microphone, start: 0, end: 0.2), to: &captions)
+        XCTAssertTrue(captions.isEmpty)
+    }
+
+    func testPunctuationOnlyDeltaCompletesCurrentRow() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment("the number looks normal", start: 0, end: 1), to: &captions)
+        coalescer.apply(segment(".", start: 1.1, end: 1.2), to: &captions)
+
+        XCTAssertEqual(captions.count, 1)
+        XCTAssertEqual(captions[0].text, "the number looks normal.")
     }
 
     func testIsFinalTracksNewestDelta() {

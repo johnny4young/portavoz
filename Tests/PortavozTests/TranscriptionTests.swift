@@ -124,6 +124,32 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(WhisperEngine.cleanSegmentText("  sin tokens  "), "sin tokens")
         XCTAssertEqual(WhisperEngine.cleanSegmentText("<|es|><|transcribe|>"), "")
     }
+
+    func testWhisperPostprocessDropsRepeatedMicrophoneThankYouHallucinations() {
+        let meeting = MeetingID()
+        let segments = [
+            segment("Thank you.", channel: .microphone, meeting: meeting, start: 15, end: 16),
+            segment("Thank you.", channel: .microphone, meeting: meeting, start: 45, end: 46),
+            segment("Thank you.", channel: .microphone, meeting: meeting, start: 75, end: 76),
+            segment("The manufacturer will ship the device.", channel: .system, meeting: meeting, start: 80, end: 84),
+        ]
+
+        let cleaned = WhisperEngine.postprocessSegments(segments)
+
+        XCTAssertEqual(cleaned.map(\.text), ["The manufacturer will ship the device."])
+    }
+
+    func testWhisperPostprocessKeepsSingleMicrophoneThankYou() {
+        let meeting = MeetingID()
+        let segments = [
+            segment("Thank you.", channel: .microphone, meeting: meeting, start: 15, end: 16),
+            segment("I have one follow-up question.", channel: .microphone, meeting: meeting, start: 18, end: 21),
+        ]
+
+        let cleaned = WhisperEngine.postprocessSegments(segments)
+
+        XCTAssertEqual(cleaned.map(\.text), ["Thank you.", "I have one follow-up question."])
+    }
 }
 
 // MARK: - Store
@@ -558,4 +584,20 @@ final class AudioLevelTests: XCTestCase {
         AudioLevel.normalizePeak(&silence)
         XCTAssertEqual(silence, [Float](repeating: 0, count: 8))
     }
+}
+
+private func segment(
+    _ text: String,
+    channel: AudioChannel,
+    meeting: MeetingID,
+    start: TimeInterval,
+    end: TimeInterval
+) -> TranscriptSegment {
+    TranscriptSegment(
+        meetingID: meeting,
+        channel: channel,
+        text: text,
+        startTime: start,
+        endTime: end,
+        isFinal: true)
 }

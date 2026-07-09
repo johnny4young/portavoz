@@ -75,8 +75,8 @@ public actor WhisperEngine {
         let meetingID = hints.meetingID ?? MeetingID()
 
         let results = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
-        var segments = Self.buildSegments(
-            from: results, meetingID: meetingID, channel: channel, language: hints.language)
+        var segments = Self.postprocessSegments(Self.buildSegments(
+            from: results, meetingID: meetingID, channel: channel, language: hints.language))
 
         // The VAD-chunked path SWALLOWS failed chunks (they only reach the
         // debug log), so a systematic per-chunk failure looks like a mostly
@@ -97,9 +97,9 @@ public actor WhisperEngine {
             sequential.promptTokens = nil
             let retried = try await pipe.transcribe(
                 audioArray: samples, decodeOptions: sequential)
-            let rebuilt = Self.buildSegments(
+            let rebuilt = Self.postprocessSegments(Self.buildSegments(
                 from: retried, meetingID: meetingID, channel: channel,
-                language: hints.language)
+                language: hints.language))
             if Self.coverage(of: rebuilt) > Self.coverage(of: segments) {
                 segments = rebuilt
             }
@@ -133,7 +133,7 @@ public actor WhisperEngine {
         for result in results {
             for segment in result.segments {
                 let text = Self.cleanSegmentText(segment.text)
-                guard !text.isEmpty else { continue }
+                guard TranscriptionTextFilter.hasLexicalContent(text) else { continue }
                 segments.append(
                     TranscriptSegment(
                         meetingID: meetingID,
@@ -148,6 +148,17 @@ public actor WhisperEngine {
             }
         }
         return segments
+    }
+
+    static func postprocessSegments(_ segments: [TranscriptSegment]) -> [TranscriptSegment] {
+        let repeatedHallucinations = TranscriptionTextFilter.repeatedSilenceHallucinationPhrases(
+            in: segments)
+        guard !repeatedHallucinations.isEmpty else { return segments }
+        return segments.filter { segment in
+            !(segment.channel == .microphone
+                && repeatedHallucinations.contains(
+                    TranscriptionTextFilter.normalizedPhrase(segment.text)))
+        }
     }
 
     static func coverage(of segments: [TranscriptSegment]) -> Double {
