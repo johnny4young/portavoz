@@ -144,6 +144,7 @@ extension MeetingDetailView {
                 speakersRow(detail)
                 refineStatus
                 summaryOrGenerate(detail)
+                MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
                 transcriptSection(detail)
             }
             .padding(16)

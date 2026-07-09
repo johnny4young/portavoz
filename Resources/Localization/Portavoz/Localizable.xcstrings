@@ -901,6 +901,16 @@
         }
       }
     },
+    "Interruptions made by this speaker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrupciones hechas por este hablante"
+          }
+        }
+      }
+    },
     "Jump to this moment": {
       "localizations": {
         "es": {
@@ -987,6 +997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El audio de reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y los transcripts se quedan donde están."
+          }
+        }
+      }
+    },
+    "Meeting health": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salud de la reunión"
           }
         }
       }
@@ -1267,6 +1287,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Publicar gist secreto"
+          }
+        }
+      }
+    },
+    "Questions asked in the meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas hechas en la reunión"
           }
         }
       }
@@ -1827,6 +1857,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta reunión no conserva su audio."
+          }
+        }
+      }
+    },
+    "Times someone started talking over someone else": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veces que alguien empezó a hablar encima de otro"
           }
         }
       }
