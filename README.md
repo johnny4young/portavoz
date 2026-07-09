@@ -23,7 +23,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Private beta — used in real meetings, not yet publicly released.** Capture, live + refine transcription, diarization, bilingual summaries, audio playback, co-authoring notes, and the live companion are all built and measured (see below). The next milestone is the public 0.1 release — Homebrew cask + notarized DMG are built and waiting on publication ([docs/ROADMAP.md](docs/ROADMAP.md), M9).
+**Private beta — used in real meetings, not yet publicly released.** Capture, live + refine transcription, diarization, bilingual summaries, audio playback, co-authoring notes, and the live companion are all built and measured (see below). The next milestone is the public 0.1 release — Homebrew cask + notarized DMG are built and waiting on publication ([docs/ROADMAP.md](docs/ROADMAP.md), M9). Every feature that ships lands in the [changelog](CHANGELOG.md).
 
 ## Benchmarks
 

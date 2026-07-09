@@ -26,4 +26,5 @@ swift test    # si falla con "no such module": DEVELOPER_DIR=/Applications/Xcode
 - Respeta las reglas de ingeniería de [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (privacidad local-first, MIT/no-GPL, Swift 6 estricto, scheduler vivo≠batch, sha256 en modelos).
 - `swift test` en verde antes de cerrar cualquier tarea.
 - **Tras cualquier cambio de UI, deja la app reinstalada con `make install`** — el usuario prueba localmente los últimos cambios; que lo instalado siempre coincida con el trabajo reciente.
+- **Toda feature o fix visible para el usuario añade UNA entrada a [CHANGELOG.md](CHANGELOG.md)** — en inglés, corta y llamativa para usuario final (**emoji + nombre de la feature** — qué te da), la más nueva arriba bajo la fecha de hoy. La plomería interna (refactors, CI, docs) NO lleva entrada.
 - Conventional Commits.

@@ -19,6 +19,7 @@
 - [ ] No audio/transcripts/summaries leave the device without an explicit, visible opt-in.
 - [ ] No code ported from GPL projects (patterns are fine, code is not).
 - [ ] Docs updated where behavior changed (`docs/` — spec, ROADMAP, GAPS, or DECISIONS as applicable).
+- [ ] `CHANGELOG.md` entry added if this is user-visible (short, catchy, end-user language).
 - [ ] `make install` run if this changes the app UI (so local install matches the change).
 
 ## Notes for reviewers
