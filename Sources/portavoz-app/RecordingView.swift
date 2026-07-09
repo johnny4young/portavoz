@@ -343,11 +343,11 @@ struct RecordingView: View {
     }
 
     private func captionRow(_ segment: TranscriptSegment) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(segment.channel == .microphone ? "Yo" : "Ellos")
+        let voice = liveVoice(for: segment)
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(voice.label)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(
-                    segment.channel == .microphone ? Color.accentColor : .secondary)
+                .foregroundStyle(voice.isMe ? Color.accentColor : .secondary)
                 .frame(width: 40, alignment: .trailing)
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.text)
@@ -361,5 +361,17 @@ struct RecordingView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
+    }
+
+    /// The live speaker pill for a caption row. Mic rows are the user by
+    /// hardware truth; system rows show the live diarizer's voice hint
+    /// (S1/S2, or the user through the voiceprint) once a window covers
+    /// them, and the generic "Them" until then.
+    private func liveVoice(for segment: TranscriptSegment) -> (label: String, isMe: Bool) {
+        if segment.channel == .microphone { return (L10n.text("Me"), true) }
+        if let voice = controller.liveSpeakerLabels[segment.id] {
+            return voice == "Me" ? (L10n.text("Me"), true) : (voice, false)
+        }
+        return (L10n.text("Them"), false)
     }
 }

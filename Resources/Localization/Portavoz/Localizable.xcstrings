@@ -231,6 +231,16 @@
         }
       }
     },
+    "Choose": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir"
+          }
+        }
+      }
+    },
     "Choose a model": {
       "localizations": {
         "es": {
@@ -861,6 +871,16 @@
         }
       }
     },
+    "Import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar"
+          }
+        }
+      }
+    },
     "Import audio…": {
       "localizations": {
         "es": {
@@ -947,6 +967,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marcar el inicio del clip en la posición actual"
+          }
+        }
+      }
+    },
+    "Me": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yo"
           }
         }
       }
@@ -1141,12 +1171,32 @@
         }
       }
     },
+    "Pause": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar"
+          }
+        }
+      }
+    },
     "Personal token (scope: gist)": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Token personal (scope: gist)"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir"
           }
         }
       }
@@ -1741,6 +1791,16 @@
         }
       }
     },
+    "Them": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ellos"
+          }
+        }
+      }
+    },
     "They guide the final summary: they are expanded with facts and marked as yours (▸).": {
       "localizations": {
         "es": {
@@ -1977,46 +2037,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "→ Español"
-          }
-        }
-      }
-    },
-    "Pause": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pausar"
-          }
-        }
-      }
-    },
-    "Play": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reproducir"
-          }
-        }
-      }
-    },
-    "Import": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importar"
-          }
-        }
-      }
-    },
-    "Choose": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elegir"
           }
         }
       }

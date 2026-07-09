@@ -18,6 +18,16 @@ Estado: implementado; DER verificado contra AMI real; reunión real procesada. D
 - Segmentos multi-turno se parten en los límites de turnos con reparto proporcional de palabras. Sin turno → sin atribuir (honesto, editable en UI).
 - Turnos etiquetados "Me" (voiceprint en canal system) se fusionan con la identidad del usuario.
 
+## Diarización EN VIVO — `LiveSpeakerLabeler` (jul 2026)
+
+Pedido de campo: dos voces remotas hablando seguido se fundían en una sola fila "Ellos" en vivo — no se veía que eran dos personas. Pipeline:
+
+- `RecordingController` alimenta el canal system a una **instancia DEDICADA** de `PyannoteDiarizer` (SpeakerManager fresco por sesión — el pase batch al stop queda sin contaminar) vía `diarize(AsyncStream)`, ventanas de 10 s; la inferencia corre en el actor del diarizer (~14 MB, ms por ventana — nunca compite con el lane vivo de Parakeet).
+- Con cada turno, `LiveSpeakerLabeler.relabel` (puro, idempotente, 7 tests) re-etiqueta las filas CERRADAS del system: una fila que cruza dos voces se **parte** en los límites de turnos (reusa `SpeakerAttributor`, reparto proporcional de palabras) y cada pieza muestra su pill **S1/S2** (o "Me"→"Yo" vía voiceprint). La última fila (aún creciendo, invariante del coalescer) jamás se toca; las filas sin ventana que las cubra siguen "Ellos". Las filas partidas obtienen ids nuevos → la traducción en vivo las recoge sola (traduce filas cerradas sin traducción).
+- Las etiquetas vivas son **pistas efímeras**: al stop, el pase batch (`diarizeFile` + merge de micro-clusters + atribución) sigue siendo la verdad y re-atribuye todo desde el archivo; los S-números vivos no tienen por qué coincidir con los finales.
+- Best-effort: si los modelos no cargan, el feed se cierra (no se acumula una reunión entera en memoria) y las captions quedan "Ellos" como antes.
+- **Verificado con reunión real** (jul 2026): el path streaming encontró ≥2 voces en los primeros 4 min del canal system y los procesó en 2.4 s (~100× tiempo real) — test gated `testLiveStreamingPathFindsMultipleVoices`.
+
 ## Voiceprint — `VoiceprintStore` (D8/D21)
 
 - Embedding WeSpeaker 256-dim de ~12 s de voz sola (el audio fuente NO se conserva). Cifrado AES-GCM; la llave SOLO en Keychain (service `app.portavoz.voiceprint-key`, inyectable para tests). `delete()` destruye archivo + llave en una acción. Jamás se sincroniza (se re-enrola por dispositivo).

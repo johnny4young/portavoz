@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import PortavozCore
 import XCTest
@@ -274,6 +275,57 @@ final class DiarizationIntegrationTests: XCTestCase {
         let voices = Set(turns.map(\.voiceLabel))
         XCTAssertGreaterThanOrEqual(voices.count, 2, "expected ≥2 voices, got \(voices)")
 
+        for turn in turns {
+            XCTAssertLessThan(turn.startTime, turn.endTime)
+        }
+    }
+
+    /// Streams a real meeting through the LIVE path — `diarize(AsyncStream)`,
+    /// the exact pipeline the recording UI feeds chunk by chunk — and expects
+    /// ≥2 distinct voices (spec 03 live hints). Same gating as above; caps at
+    /// 4 minutes to stay quick.
+    func testLiveStreamingPathFindsMultipleVoices() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
+            "set PORTAVOZ_MODEL_TESTS=1 to run")
+        guard let wavPath = ProcessInfo.processInfo.environment["PORTAVOZ_TEST_CONVERSATION_WAV"]
+        else {
+            throw XCTSkip("set PORTAVOZ_TEST_CONVERSATION_WAV to a two-voice recording")
+        }
+
+        let store = ModelStore()
+        let directory = try await store.ensureAvailable(ModelCatalog.speakerDiarization)
+        let diarizer = try PyannoteDiarizer.load(fromVerifiedDirectory: directory)
+
+        // Feed the file the way a recording session does: ~0.5 s chunks at
+        // the file's native rate.
+        let file = try AVAudioFile(forReading: URL(fileURLWithPath: wavPath))
+        let format = file.processingFormat
+        let chunkFrames = AVAudioFrameCount(format.sampleRate / 2)
+        let maxFrames = AVAudioFramePosition(format.sampleRate * 240)
+        let (stream, feed) = AsyncStream.makeStream(of: AudioChunk.self)
+        var elapsed: TimeInterval = 0
+        while file.framePosition < min(file.length, maxFrames) {
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunkFrames)
+            else { break }
+            try file.read(into: buffer, frameCount: chunkFrames)
+            guard buffer.frameLength > 0, let channel = buffer.floatChannelData?[0] else { break }
+            let samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
+            feed.yield(AudioChunk(
+                channel: .system, samples: samples,
+                sampleRate: format.sampleRate, timestamp: elapsed))
+            elapsed += Double(buffer.frameLength) / format.sampleRate
+        }
+        feed.finish()
+
+        var turns: [SpeakerTurn] = []
+        for try await turn in diarizer.diarize(stream) {
+            turns.append(turn)
+        }
+
+        XCTAssertFalse(turns.isEmpty)
+        let voices = Set(turns.map(\.voiceLabel))
+        XCTAssertGreaterThanOrEqual(voices.count, 2, "expected ≥2 live voices, got \(voices)")
         for turn in turns {
             XCTAssertLessThan(turn.startTime, turn.endTime)
         }

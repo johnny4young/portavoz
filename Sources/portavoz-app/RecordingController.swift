@@ -2,6 +2,7 @@ import AudioCaptureKit
 import DiarizationKit
 import Foundation
 import IntelligenceKit
+import ModelStoreKit
 import Observation
 import PortavozCore
 import SwiftUI
@@ -49,6 +50,18 @@ final class RecordingController {
     private var voicedLevel: Float = 0
     private var voicedChunks = 0
     var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
+
+    /// Live speaker hints (field ask jul 2026: two remote voices back to back
+    /// merged into one "Them" row). A DEDICATED diarizer instance — the
+    /// SpeakerManager is per session (spec 03), so the batch pass at stop
+    /// stays uncontaminated — consumes the system channel in 10 s windows;
+    /// as turns arrive, closed rows get split per voice and labeled S1/S2
+    /// (or "Me" through the voiceprint). Best-effort: if the models fail to
+    /// load, captions simply stay "Them" as before.
+    private(set) var liveSpeakerLabels: [UUID: String] = [:]
+    private var liveTurns: [SpeakerTurn] = []
+    private var liveDiarizerTask: Task<Void, Never>?
+    private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
 
     private let coalescer = CaptionCoalescer()
     private var session: RecordingSession?
@@ -110,6 +123,8 @@ final class RecordingController {
         micLevel = 0
         voicedLevel = 0
         voicedChunks = 0
+        liveTurns = []
+        liveSpeakerLabels = [:]
         for source in sources {
             let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
             feeds[source.channel] = continuation
@@ -130,11 +145,18 @@ final class RecordingController {
             })
         }
 
+        let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(of: AudioChunk.self)
+        liveDiarizerFeed = diarizerFeed
+        startLiveDiarization(consuming: diarizerStream)
+
         let session = RecordingSession(outputDirectory: outputDirectory)
         let channelFeeds = feeds
         do {
             try await session.start(sources: sources) { [weak self] chunk in
                 channelFeeds[chunk.channel]?.yield(chunk)
+                if chunk.channel == .system {
+                    diarizerFeed.yield(chunk)
+                }
                 guard chunk.channel == .microphone else { return }
                 var peak: Float = 0
                 for sample in chunk.samples {
@@ -170,6 +192,43 @@ final class RecordingController {
                 }
             }
         }
+    }
+
+    /// Loads a session-dedicated diarizer and consumes system-channel audio in
+    /// 10 s windows. Inference runs on the diarizer's own actor (~14 MB models,
+    /// milliseconds per window — never competes with Parakeet's live lane); the
+    /// loop body only mutates state on the MainActor. On load failure the feed
+    /// is finished so a meeting's worth of chunks never buffers for nothing.
+    private func startLiveDiarization(consuming stream: AsyncStream<AudioChunk>) {
+        liveDiarizerTask = Task { [weak self] in
+            guard
+                let diarizer = try? await PyannoteDiarizer.loadRecommended(
+                    store: ModelStore(),
+                    voiceprint: (try? VoiceprintStore().load()))
+            else {
+                self?.liveDiarizerFeed?.finish()
+                return
+            }
+            do {
+                for try await turn in diarizer.diarize(stream) {
+                    guard let self else { break }
+                    self.liveTurns.append(turn)
+                    self.applyLiveSpeakerHints()
+                }
+            } catch {
+                // Live hints are best-effort; the batch pass at stop is the truth.
+            }
+        }
+    }
+
+    /// Re-labels (and splits, when a closed row spans two voices) the closed
+    /// caption rows against everything the live diarizer has seen so far.
+    private func applyLiveSpeakerHints() {
+        guard phase == .recording, !liveTurns.isEmpty else { return }
+        let result = LiveSpeakerLabeler.relabel(
+            captions: captions, turns: liveTurns, meetingID: meetingID)
+        captions = result.captions
+        liveSpeakerLabels = result.labels
     }
 
     /// Feeds the on-screen meter from each mic chunk's peak: fast attack, slow
@@ -337,6 +396,11 @@ final class RecordingController {
         let capture = await session.stop()
         for continuation in feeds.values { continuation.finish() }
         for consumer in consumers { await consumer.value }
+        // Live hints end here — the batch pass below re-attributes everything.
+        liveDiarizerFeed?.finish()
+        liveDiarizerFeed = nil
+        liveDiarizerTask?.cancel()
+        liveDiarizerTask = nil
         self.session = nil
 
         guard !capture.files.isEmpty, !captions.isEmpty else {
