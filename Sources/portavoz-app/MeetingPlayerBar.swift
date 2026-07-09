@@ -33,11 +33,11 @@ struct MeetingPlayerBar: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Toggle(isOn: Binding(get: { player.skipSilence }, set: { player.skipSilence = $0 })) {
-                    Label("Saltar silencios", systemImage: "forward.fill")
+                    Label("Skip silence", systemImage: "forward.fill")
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
-                .help("Salta automáticamente los silencios al reproducir")
+                .help("Automatically skip silence during playback")
                 Text(clock(player.duration))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
@@ -58,7 +58,7 @@ struct MeetingPlayerBar: View {
         .padding(10)
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
         .alert(
-            "No se pudo exportar",
+            "Could not export",
             isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
         ) {
             Button("OK", role: .cancel) {}
@@ -73,19 +73,19 @@ struct MeetingPlayerBar: View {
             Button {
                 player.markClipStart()
             } label: {
-                Label("Inicio", systemImage: "arrow.down.right.and.arrow.up.left")
+                Label("Start", systemImage: "arrow.down.right.and.arrow.up.left")
             }
             .controlSize(.small)
-            .help("Marcar el inicio del clip en el punto actual")
+            .help("Mark clip start at the current playhead")
             .accessibilityIdentifier("clip-mark-start")
 
             Button {
                 player.markClipEnd()
             } label: {
-                Label("Fin", systemImage: "arrow.up.left.and.arrow.down.right")
+                Label("End", systemImage: "arrow.up.left.and.arrow.down.right")
             }
             .controlSize(.small)
-            .help("Marcar el fin del clip en el punto actual")
+            .help("Mark clip end at the current playhead")
             .accessibilityIdentifier("clip-mark-end")
 
             if let range = player.clipRange {
@@ -98,7 +98,7 @@ struct MeetingPlayerBar: View {
                     if exporting {
                         ProgressView().controlSize(.small)
                     } else {
-                        Label("Exportar", systemImage: "square.and.arrow.up")
+                        Label("Export", systemImage: "square.and.arrow.up")
                     }
                 }
                 .controlSize(.small)
@@ -111,7 +111,7 @@ struct MeetingPlayerBar: View {
                 }
                 .buttonStyle(.plain)
                 .controlSize(.small)
-                .help("Descartar el clip")
+                .help("Discard the clip")
             }
             Spacer()
         }
@@ -128,7 +128,7 @@ struct MeetingPlayerBar: View {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "clip.m4a"
         panel.allowedContentTypes = [.mpeg4Audio]
-        panel.prompt = "Exportar"
+        panel.prompt = "Export"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         exporting = true
         Task {

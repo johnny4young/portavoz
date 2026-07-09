@@ -17,7 +17,7 @@ enum ParakeetSegmentMapper {
     /// a multi-sentence segment usually spans several diarization turns.
     static let sentenceTerminators: Set<Character> = [".", "?", "!", "…"]
 
-    // Firma interna estable: cada parámetro es un dato distinto del update.
+    // Stable internal signature: every parameter is a distinct update datum.
     /// One live sliding-window update → one segment holding only the *new*
     /// audio's tokens. Once the window slides, FluidAudio re-decodes the
     /// whole left context per update and its token dedup misses most of it
@@ -66,7 +66,7 @@ enum ParakeetSegmentMapper {
         )
     }
 
-    // Firma interna estable: cada parámetro es un dato distinto del batch.
+    // Stable internal signature: every parameter is a distinct batch datum.
     /// Splits a batch result into segments at pauses (or a max duration),
     /// rebuilding each segment's text from its SentencePiece tokens. With no
     /// timings available the whole file becomes a single segment.

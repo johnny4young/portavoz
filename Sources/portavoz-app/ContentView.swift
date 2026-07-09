@@ -25,7 +25,9 @@ struct ContentView: View {
                 ContentUnavailableView(
                     "Portavoz",
                     systemImage: "waveform.badge.mic",
-                    description: Text("Graba una reunión o elige una de la biblioteca. Todo se procesa en tu Mac.")
+                    // One-line UI copy.
+                    // swiftlint:disable:next line_length
+                    description: Text("Record a meeting or choose one from the library. Everything is processed on your Mac.")
                 )
             }
         }

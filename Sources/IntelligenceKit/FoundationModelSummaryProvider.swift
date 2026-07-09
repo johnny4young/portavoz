@@ -72,8 +72,8 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         return draft
     }
 
-    // Traducción posicional con validación de forma sección a sección;
-    // cuerpo legítimamente largo. Split pendiente como deuda técnica.
+    // Positional translation with section-by-section shape validation;
+    // the body is legitimately long. Splitting remains technical debt.
     /// D25's pivot: translates an existing snapshot to another language for
     /// a fraction of a full re-summarization (the material is already
     /// distilled — ~2k chars instead of the whole transcript).
@@ -363,7 +363,7 @@ struct GeneratedSummary {
     @Guide(description: "One-paragraph overview of what the meeting was about and its outcome")
     var overview: String
 
-    // Descripciones de guía del schema (@Guide): prompts de una línea;
+    // Schema guide descriptions (@Guide): one-line prompts;
     // partir el string no aporta y complica el prompt.
     // swiftlint:disable line_length
     @Guide(

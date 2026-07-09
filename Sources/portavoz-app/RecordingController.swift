@@ -65,14 +65,14 @@ final class RecordingController {
     /// just closed and becomes a companion candidate.
     private var lastOpenRowID: UUID?
 
-    /// User-defined domain terms (Ajustes → Vocabulario): glossary for the
+    /// User-defined domain terms (Settings → Vocabulary): glossary for the
     /// summaries and conditioning vocabulary for transcription hints.
     private var vocabulary: [String] {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
-    // Orquesta el arranque de captura + transcripción + scheduler; secuencia
-    // legítimamente larga. Split pendiente como deuda técnica.
+    // Orchestrates capture + transcription + scheduler startup; the sequence
+    // is legitimately long. Splitting remains technical debt.
     // swiftlint:disable:next function_body_length cyclomatic_complexity
     func start(services: AppServices) async {
         guard phase == .idle || isFailed else { return }
@@ -87,11 +87,11 @@ final class RecordingController {
         do {
             try await services.loadEnginesIfNeeded()
         } catch {
-            phase = .failed("No se pudieron preparar los modelos: \(error.localizedDescription)")
+            phase = .failed(L10n.format("Could not prepare the models: %@", error.localizedDescription))
             return
         }
         guard let engine = services.transcriber else {
-            phase = .failed("El motor de transcripción no está disponible.")
+            phase = .failed(L10n.text("The transcription engine is not available."))
             return
         }
 
@@ -144,7 +144,7 @@ final class RecordingController {
                 Task { @MainActor in self?.updateMicLevel(peak) }
             }
         } catch {
-            phase = .failed("No se pudo iniciar la captura: \(error.localizedDescription)")
+            phase = .failed(L10n.format("Could not start capture: %@", error.localizedDescription))
             return
         }
         self.session = session
@@ -196,8 +196,8 @@ final class RecordingController {
         lastOpenRowID = captions.last?.id
         guard companionEnabled, phase == .recording else { return }
         guard #available(macOS 26.0, *) else { return }
-        // "Te preguntaron" (D26): una mención de tu nombre abre la puerta
-        // aunque la frase no parezca pregunta ("Johnny, cuéntanos del deploy").
+        // "Asked you" (D26): a mention of your name opens the gate
+        // even when the sentence does not look like a question ("Johnny, tell us about the deploy").
         let ownerName = Self.companionOwnerName()
         guard
             let closed = captions.last(where: { $0.id == previousOpen }),
@@ -209,7 +209,7 @@ final class RecordingController {
         let passages = recentPassages()
         let candidate = closed.text
         let askedAt = closed.startTime
-        // BYOK solo si el usuario lo configuró Y activó el opt-in del
+        // BYOK only if the user configured it AND enabled the opt-in for the
         // Companion (D8/D26); si no, el cliente es nil y todo queda on-device.
         let companion = LiveCompanion(byok: BYOKSettings.companionClient())
         Task { @MainActor [weak self] in
@@ -232,9 +232,9 @@ final class RecordingController {
         captions.suffix(14).dropLast().map { row in
             RAGPassage(
                 meetingID: meetingID,
-                meetingTitle: "Esta reunión",
+                meetingTitle: "This meeting",
                 timestamp: row.startTime,
-                text: (row.channel == .microphone ? "Yo: " : "Ellos: ") + row.text)
+                text: (row.channel == .microphone ? "Me: " : "Them: ") + row.text)
         }
     }
 
@@ -242,8 +242,8 @@ final class RecordingController {
         companionCards.removeAll { $0.id == id }
     }
 
-    /// El nombre con el que la reunión se dirige a ti: el de Ajustes si lo
-    /// configuraste, si no el de tu cuenta de macOS. nil = detector apagado.
+    /// The name the meeting uses to address you: Settings if it
+    /// was configured, otherwise your macOS account name. nil = detector off.
     static func companionOwnerName() -> String? {
         let custom = (UserDefaults.standard.string(forKey: "companionUserName") ?? "")
             .trimmingCharacters(in: .whitespaces)
@@ -251,7 +251,7 @@ final class RecordingController {
         return name.isEmpty ? nil : name
     }
 
-    // MARK: - Notas (D28)
+    // MARK: - Notes (D28)
 
     /// Adds a typed note anchored to the current moment of the recording.
     func addContextNote(_ text: String, kind: ContextItem.Kind = .note) {
@@ -278,8 +278,8 @@ final class RecordingController {
         let window = Array(captions[summarizedCount..<closed])
 
         // Attribution runs at stop; live labels are structural: channel.
-        let me = Speaker(meetingID: meetingID, label: "Yo", isMe: true)
-        let them = Speaker(meetingID: meetingID, label: "Ellos")
+        let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
+        let them = Speaker(meetingID: meetingID, label: "Them")
         let labeled = window.map { segment -> TranscriptSegment in
             var copy = segment
             copy.speakerID = segment.channel == .microphone ? me.id : them.id
@@ -326,13 +326,13 @@ final class RecordingController {
         }
     }
 
-    // Cierre ordenado de la sesión (flush, persistencia, teardown);
-    // secuencia legítimamente larga. Split pendiente como deuda técnica.
+    // Orderly session close (flush, persistence, teardown);
+    // the sequence is legitimately long. Splitting remains technical debt.
     // swiftlint:disable:next function_body_length
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
         rollingTask?.cancel()
-        phase = .processing("Cerrando la grabación…")
+        phase = .processing(L10n.text("Closing the recording…"))
 
         let capture = await session.stop()
         for continuation in feeds.values { continuation.finish() }
@@ -341,9 +341,7 @@ final class RecordingController {
 
         guard !capture.files.isEmpty, !captions.isEmpty else {
             phase = .failed(
-                // Texto de UI de una línea.
-                // swiftlint:disable:next line_length
-                "No se capturó audio. Revisa los permisos de micrófono y de grabación de audio del sistema para Portavoz."
+                L10n.text("No audio was captured. Check Portavoz microphone and system audio recording permissions.")
             )
             return
         }
@@ -354,14 +352,14 @@ final class RecordingController {
             var turns: [SpeakerTurn] = []
             if let systemFile = capture.files[.system], let diarizer = services.diarizer,
                 (capture.secondsWritten[.system] ?? 0) > 1 {
-                phase = .processing("Identificando hablantes…")
+                phase = .processing(L10n.text("Identifying speakers…"))
                 turns = (try? await diarizer.diarizeFile(at: systemFile)) ?? []
             }
             let attribution = SpeakerAttributor.attribute(
                 segments: captions, turns: turns, meetingID: meetingID)
 
-            phase = .processing("Guardando…")
-            // Title from the user's template (Ajustes → Títulos); {seq} is
+            phase = .processing(L10n.text("Saving…"))
+            // Title from the user's template (Settings → Titles); {seq} is
             // the 1-based position among today's meetings.
             let template =
                 UserDefaults.standard.string(forKey: "titleTemplate")
@@ -384,7 +382,7 @@ final class RecordingController {
             try await services.store.save(contextItems)
 
             do {
-                phase = .processing("Generando resumen…")
+                phase = .processing(L10n.text("Generating summary…"))
                 let language = Locale.current.language.languageCode?.identifier ?? "en"
                 let request = SummaryRequest(
                     meetingID: meetingID,
@@ -405,7 +403,7 @@ final class RecordingController {
             services.libraryVersion += 1
             phase = .done(meetingID)
         } catch {
-            phase = .failed("El procesamiento falló: \(error.localizedDescription)")
+            phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
         }
     }
 

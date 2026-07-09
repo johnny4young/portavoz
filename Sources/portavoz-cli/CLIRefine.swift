@@ -78,7 +78,7 @@ enum RefineCommand {
                 microphoneFile = MeetingAudioLayout.channelFile(named: "microphone", in: base)
             }
             guard systemFile != nil || microphoneFile != nil else {
-                print("error: la reunión no tiene audio guardado — usa --file <wav>")
+                print("error: the meeting has no stored audio — use --file <wav>")
                 return
             }
 
@@ -129,8 +129,8 @@ enum RefineCommand {
                 speakers: attribution.speakers,
                 segments: attribution.segments)
 
-            print("Transcript refinado ✓ — \(attribution.segments.count) segmentos, \(attribution.speakers.count) hablante(s).")
-            print("Tip: regenera el resumen para que use el transcript nuevo.")
+            print("Refined transcript ✓ — \(attribution.segments.count) segments, \(attribution.speakers.count) speaker(s).")
+            print("Tip: regenerate the summary so it uses the new transcript.")
         } catch {
             print("error: \(error.localizedDescription)")
         }

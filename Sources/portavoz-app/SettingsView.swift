@@ -17,6 +17,8 @@ import TranscriptionKit
 struct SettingsView: View {
     @Environment(AppServices.self) private var services
 
+    @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
+
     @State private var token = ""
     @State private var hasStoredToken = false
     @State private var tokenMessage: String?
@@ -56,6 +58,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            languageSection
             audioSection
             recordingsSection
             titleSection
@@ -68,12 +71,19 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 480)
+        .frame(minHeight: 620)
         .onAppear {
-            hasStoredToken =
-                ((try? SecretStore.get(service: SecretStore.gitHubTokenService))) != nil
-            hasStoredBYOKKey =
-                ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
-            voiceprint = (try? VoiceprintStore().load())
+            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+                hasStoredToken = false
+                hasStoredBYOKKey = false
+                voiceprint = nil
+            } else {
+                hasStoredToken =
+                    ((try? SecretStore.get(service: SecretStore.gitHubTokenService))) != nil
+                hasStoredBYOKKey =
+                    ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
+                voiceprint = (try? VoiceprintStore().load())
+            }
             if summaryEngine == "ollama" { detectOllama() }
             whisperVariants = services.whisperVariants()
             Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
@@ -81,29 +91,67 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Audio & Recordings
+// MARK: - Language, Audio & Recordings
 
 extension SettingsView {
+    // MARK: - Language
+
+    private var languageSection: some View {
+        Section("Language") {
+            Toggle("Use system language", isOn: systemLanguageBinding)
+                .accessibilityIdentifier("settings-language-system-toggle")
+            Picker("Language", selection: manualLanguageBinding) {
+                Text("English").tag(AppLanguage.english)
+                Text("Español").tag(AppLanguage.spanish)
+            }
+            .pickerStyle(.segmented)
+            .disabled(AppLanguage.fromStorage(appLanguageRaw) == .system)
+            .accessibilityIdentifier("settings-language-picker")
+            // One-line UI copy.
+            // swiftlint:disable:next line_length
+            Text("This changes the Portavoz interface only. Meeting transcription and summary languages stay controlled by each meeting.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var systemLanguageBinding: Binding<Bool> {
+        Binding(
+            get: { AppLanguage.fromStorage(appLanguageRaw) == .system },
+            set: { useSystem in
+                appLanguageRaw = useSystem ? AppLanguage.system.rawValue : AppLanguage.english.rawValue
+            })
+    }
+
+    private var manualLanguageBinding: Binding<AppLanguage> {
+        Binding(
+            get: {
+                let language = AppLanguage.fromStorage(appLanguageRaw)
+                return language == .spanish ? .spanish : .english
+            },
+            set: { appLanguageRaw = $0.rawValue })
+    }
+
     // MARK: - Audio
 
     private var audioSection: some View {
         Section("Audio") {
-            Toggle("Cancelación de eco (recomendado con parlantes)", isOn: $aecEnabled)
+            Toggle("Echo cancellation (recommended with speakers)", isOn: $aecEnabled)
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Resta del micrófono el audio que sale por tus PARLANTES, para que los demás participantes no aparezcan como \"Yo\". Con AUDÍFONOS no hay eco, así que puedes desactivarla sin problema. Aplica desde la próxima grabación. (Si te oyes lejano en la llamada: suele ser el micrófono INTEGRADO del Mac captando de lejos — unos audífonos con mic cercano, como AirPods, suenan mucho mejor.)"
+                "Subtracts speaker output from the microphone so other participants do not appear as “Me”. With HEADPHONES there is no echo, so you can turn it off safely. Applies from the next recording. (If you sound distant on the call, it is usually the Mac built-in microphone picking you up from far away — nearby headset microphones such as AirPods usually sound much better.)"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
         }
     }
 
-    // MARK: - Grabaciones
+    // MARK: - Recordings
 
     private var recordingsSection: some View {
-        Section("Grabaciones") {
-            LabeledContent("Guardar las grabaciones en") {
+        Section("Recordings") {
+            LabeledContent("Save recordings in") {
                 Text(recordingsRoot.path)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -111,10 +159,10 @@ extension SettingsView {
                     .help(recordingsRoot.path)
             }
             HStack {
-                Button("Cambiar…") { chooseRecordingsFolder() }
+                Button("Change…") { chooseRecordingsFolder() }
                     .disabled(migrating)
                 if RecordingsLocation.shared.isCustom {
-                    Button("Usar carpeta por defecto") {
+                    Button("Use default folder") {
                         moveRecordings(to: RecordingsLocation.shared.defaultRoot, custom: false)
                     }
                     .disabled(migrating)
@@ -124,9 +172,9 @@ extension SettingsView {
                 }
             }
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "El audio de las reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y los transcripts se quedan donde están."
+                "Meeting audio lives in Audio/ inside this folder. When you change it, existing recordings move to the new location; the database and transcripts stay where they are."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -143,8 +191,8 @@ extension SettingsView {
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = recordingsRoot
-        panel.prompt = "Elegir"
-        panel.message = "Elige la carpeta donde Portavoz guardará tus grabaciones"
+        panel.prompt = "Choose"
+        panel.message = L10n.text("Choose the folder where Portavoz will store your recordings")
         guard panel.runModal() == .OK, let chosen = panel.url else { return }
         moveRecordings(to: chosen, custom: true)
     }
@@ -152,14 +200,14 @@ extension SettingsView {
     private func moveRecordings(to destination: URL, custom: Bool) {
         guard !migrating else { return }
         migrating = true
-        migrationStatus = "Preparando…"
+        migrationStatus = L10n.text("Preparing…")
         let origin = RecordingsLocation.shared.currentRoot()
         Task.detached(priority: .userInitiated) {
             let location = RecordingsLocation.shared
             do {
                 let moved = try location.migrateAudio(from: origin, to: destination) { index, total in
                     Task { @MainActor in
-                        migrationStatus = "Moviendo grabación \(index) de \(total)…"
+                        migrationStatus = L10n.format("Moving recording %d of %d…", index, total)
                     }
                 }
                 try location.setRoot(custom ? destination : nil)
@@ -167,13 +215,16 @@ extension SettingsView {
                     recordingsRoot = location.currentRoot()
                     migrationStatus =
                         moved > 0
-                        ? "Listo: \(moved) grabación(es) movidas." : "Listo: carpeta actualizada."
+                        ? L10n.format("Done: moved %d recording(s).", moved)
+                        : L10n.text("Done: folder updated.")
                     migrating = false
                 }
             } catch {
                 await MainActor.run {
                     migrationStatus =
-                        "La migración falló: \(error.localizedDescription). Nada se perdió — las grabaciones sin mover siguen leyéndose de la carpeta anterior; puedes reintentar."
+                        // One-line UI error.
+                        // swiftlint:disable:next line_length
+                        L10n.format("Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.", error.localizedDescription)
                     migrating = false
                 }
             }
@@ -181,26 +232,26 @@ extension SettingsView {
     }
 }
 
-// MARK: - Títulos & Vocabulario
+// MARK: - Titles & Vocabulary
 
 extension SettingsView {
-    // MARK: - Títulos
+    // MARK: - Titles
 
     /// The template tokens with a live example each, so the help and the
     /// insertable chips stay in sync from one source.
     private var titleTokens: [(token: String, example: String, hint: String)] {
         [
-            ("{date}", "2026-07-07", "Fecha ISO (ordena sola la biblioteca)"),
-            ("{time}", "10.47", "Hora de inicio"),
-            ("{seq}", "01", "Secuencia del día (01, 02…)"),
-            ("{weekday}", "martes", "Día de la semana")
+            ("{date}", "2026-07-07", "ISO date (sorts the library automatically)"),
+            ("{time}", "10.47", "Start time"),
+            ("{seq}", "01", "Daily sequence (01, 02…)"),
+            ("{weekday}", "martes", "Weekday")
         ]
     }
 
     private var titleSection: some View {
-        Section("Títulos de grabación") {
+        Section("Recording titles") {
             HStack {
-                TextField("Plantilla", text: $titleTemplate)
+                TextField("Template", text: $titleTemplate)
                     .font(.body.monospaced())
                 Button {
                     showTitleHelp.toggle()
@@ -208,7 +259,7 @@ extension SettingsView {
                     Image(systemName: "questionmark.circle")
                 }
                 .buttonStyle(.borderless)
-                .help("Ver los tokens disponibles y ejemplos")
+                .help("Show available tokens and examples")
                 .popover(isPresented: $showTitleHelp, arrowEdge: .bottom) {
                     titleHelpPopover
                 }
@@ -225,23 +276,23 @@ extension SettingsView {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("\(item.hint) — ej. \(item.example)")
+                    .help("\(item.hint) — e.g. \(item.example)")
                 }
                 Spacer()
-                Button("Restablecer") { titleTemplate = TitleTemplate.defaultTemplate }
+                Button("Reset") { titleTemplate = TitleTemplate.defaultTemplate }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
                     .disabled(titleTemplate == TitleTemplate.defaultTemplate)
             }
             LabeledContent(
-                "Vista previa",
+                "Preview",
                 value: TitleTemplate.render(titleTemplate, date: .now, sequence: 3))
         }
     }
 
     private var titleHelpPopover: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Tokens de plantilla").font(.headline)
+            Text("Template tokens").font(.headline)
             ForEach(titleTokens, id: \.token) { item in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.token)
@@ -249,7 +300,7 @@ extension SettingsView {
                         .frame(width: 90, alignment: .leading)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(item.hint)
-                        Text("ej. \(item.example)")
+                        Text("e.g. \(item.example)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -257,9 +308,9 @@ extension SettingsView {
             }
             Divider()
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "El resto del texto se conserva tal cual. Poner la fecha ISO primero hace que la biblioteca ordene las reuniones sola."
+                "The rest of the text is preserved as written. Putting the ISO date first makes the library sort meetings automatically."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -269,7 +320,7 @@ extension SettingsView {
         .frame(width: 320)
     }
 
-    // MARK: - Vocabulario
+    // MARK: - Vocabulary
 
     /// Stored as the same comma-separated string the pipeline parses; the
     /// UI just gives it list ergonomics (Enter to add, − to remove).
@@ -281,7 +332,7 @@ extension SettingsView {
     }
 
     private var vocabularySection: some View {
-        Section("Vocabulario") {
+        Section("Vocabulary") {
             ForEach(vocabularyTerms, id: \.self) { term in
                 HStack {
                     Text(term)
@@ -294,19 +345,19 @@ extension SettingsView {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("Quitar \"\(term)\"")
+                    .help("Remove \"\(term)\"")
                 }
             }
             HStack {
-                TextField("Añadir término (LVGT, Vishakha…)", text: $newTerm)
+                TextField("Add term (LVGT, Vishakha…)", text: $newTerm)
                     .onSubmit(addTerm)
-                Button("Añadir", action: addTerm)
+                Button("Add", action: addTerm)
                     .disabled(newTerm.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que \"LVGT\" no se convierta en otra cosa."
+                "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “LVGT” does not become something else."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -325,39 +376,39 @@ extension SettingsView {
     }
 }
 
-// MARK: - Mi voz & Motor de resúmenes
+// MARK: - My voice & Summary engine
 
 extension SettingsView {
-    // MARK: - Mi voz (M6)
+    // MARK: - My voice (M6)
 
     private var voiceSection: some View {
-        Section("Mi voz") {
+        Section("My voice") {
             if let voiceprint {
                 LabeledContent(
-                    "Voz enrolada",
+                    "Enrolled voice",
                     value: voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened))
-                Button("Eliminar mi voz", role: .destructive) {
+                Button("Delete my voice", role: .destructive) {
                     try? VoiceprintStore().delete()
                     self.voiceprint = nil
                     services.invalidateDiarizer()
-                    voiceMessage = "Voiceprint y llave eliminados."
+                    voiceMessage = L10n.text("Voiceprint and key deleted.")
                 }
             } else if enrolling {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Grabando 12 segundos — habla con naturalidad…")
+                    Text("Recording 12 seconds — speak naturally…")
                 }
             } else {
                 Button {
                     Task { await enroll() }
                 } label: {
-                    Label("Enrolar mi voz (12 s)", systemImage: "person.wave.2")
+                    Label("Enroll my voice (12 s)", systemImage: "person.wave.2")
                 }
             }
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Con tu voz enrolada, Portavoz te reconoce también cuando llegas por el audio del sistema (reuniones híbridas). Solo se guarda una huella numérica cifrada en este equipo — nunca el audio, nunca en la nube; se borra con un clic."
+                "With your voice enrolled, Portavoz also recognizes you when you arrive through system audio (hybrid meetings). Only an encrypted numeric fingerprint is stored on this device — never audio, never cloud data; delete it with one click."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -373,7 +424,7 @@ extension SettingsView {
         do {
             try await services.loadEnginesIfNeeded()
             guard let diarizer = services.diarizer else {
-                voiceMessage = "El diarizador no está disponible."
+                voiceMessage = L10n.text("The diarizer is not available.")
                 return
             }
             let microphone = MicrophoneSource()
@@ -393,16 +444,16 @@ extension SettingsView {
             try VoiceprintStore().save(print)
             voiceprint = print
             services.invalidateDiarizer()
-            voiceMessage = "Listo: tus intervenciones se etiquetarán como \"Me\" en cualquier canal."
+            voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
         } catch {
-            voiceMessage = "No se pudo enrolar: \(error.localizedDescription)"
+            voiceMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
         }
     }
 
-    // MARK: - Motor de resúmenes (D25/M12)
+    // MARK: - Summary engine (D25/M12)
 
     private var summaryEngineSection: some View {
-        Section("Motor de resúmenes") {
+        Section("Summary engine") {
             if let advice {
                 VStack(alignment: .leading, spacing: 4) {
                     Label(advice.headline, systemImage: "wand.and.stars.inverse")
@@ -411,17 +462,18 @@ extension SettingsView {
                         Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
                     }
                     if advice.engine != .none {
-                        Button("Aplicar recomendación") { applyRecommendation(advice) }
+                        Button("Apply recommendation") { applyRecommendation(advice) }
                             .controlSize(.small)
                             .padding(.top, 2)
                     }
                 }
             }
-            Picker("Generar resúmenes con", selection: $summaryEngine) {
+            Picker("Generate summaries with", selection: $summaryEngine) {
                 Text("Apple (on-device)").tag("appleOnDevice")
                 Text("Ollama (local)").tag("ollama")
             }
             .pickerStyle(.radioGroup)
+            .accessibilityIdentifier("settings-summary-engine-picker")
             .onChange(of: summaryEngine) { _, engine in
                 if engine == "ollama" { detectOllama() }
             }
@@ -433,7 +485,7 @@ extension SettingsView {
                         if detectingOllama {
                             ProgressView().controlSize(.small)
                         } else {
-                            Label("Detectar modelos", systemImage: "arrow.clockwise")
+                            Label("Detect models", systemImage: "arrow.clockwise")
                         }
                     }
                     .controlSize(.small)
@@ -443,8 +495,8 @@ extension SettingsView {
                     }
                 }
                 if !ollamaModels.isEmpty {
-                    Picker("Modelo", selection: $ollamaModel) {
-                        Text("Elige un modelo").tag("")
+                    Picker("Model", selection: $ollamaModel) {
+                        Text("Choose a model").tag("")
                         ForEach(ollamaModels) { model in
                             Text(
                                 model.parameterSize.isEmpty
@@ -455,15 +507,15 @@ extension SettingsView {
                 }
             }
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Apple usa Foundation Models (macOS 26 + Apple Intelligence). Ollama corre un modelo 100% local en tu Mac — ideal si no tienes Apple Intelligence. Con cualquiera, nada sale del equipo. (El resumen EN VIVO durante la grabación siempre usa Apple.)"
+                "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac — ideal if you do not have Apple Intelligence. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
 
             Divider()
-            Text("Modelo de refine (Whisper large-v3)")
+            Text("Refine model (Whisper large-v3)")
                 .font(.callout.weight(.medium))
             ForEach(whisperVariants) { variant in
                 let active = variant.compact == whisperCompact
@@ -473,11 +525,11 @@ extension SettingsView {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(
                             variant.compact
-                                ? "Compacto — poco disco" : "Turbo — mejor calidad"
+                                ? "Compact — less disk" : "Turbo — best quality"
                         )
                         .font(.callout)
                         Text(
-                            (variant.downloaded ? "Descargado · " : "Se descarga al refinar · ")
+                            (variant.downloaded ? "Downloaded · " : "Downloads on refine · ")
                                 + ByteCountFormatter.string(
                                     fromByteCount: variant.bytes, countStyle: .file)
                         )
@@ -486,21 +538,21 @@ extension SettingsView {
                     }
                     Spacer()
                     if variant.downloaded && !active {
-                        Button("Eliminar") {
+                        Button("Delete") {
                             services.deleteWhisperVariant(variant.id)
                             whisperVariants = services.whisperVariants()
                         }
                         .controlSize(.small)
-                        .help("Libera el disco de la variante que no usas")
+                        .help("Free disk used by the variant you do not use")
                     }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { whisperCompact = variant.compact }
             }
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "El re-pase de calidad (Refinar) usa Whisper. Turbo es el default; la variante compacta ahorra ~1 GB de disco. Elige tocando una fila."
+                "The quality re-pass (Refine) uses Whisper. Turbo is the default; the compact variant saves about 1 GB of disk. Choose by selecting a row."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -515,7 +567,7 @@ extension SettingsView {
             guard await OllamaService.isRunning() else {
                 ollamaModels = []
                 ollamaStatus =
-                    "Ollama no responde en localhost:11434. Instálalo y corre «ollama serve»."
+                    L10n.text("Ollama is not responding on localhost:11434. Install it and run “ollama serve”.")
                 return
             }
             ollamaModels = await OllamaService.models()
@@ -527,8 +579,8 @@ extension SettingsView {
             }
             ollamaStatus =
                 ollamaModels.isEmpty
-                ? "Ollama corre pero no hay modelos. Descarga uno con «ollama pull llama3.2»."
-                : "\(ollamaModels.count) modelo(s) disponibles."
+                ? L10n.text("Ollama is running but has no models. Download one with “ollama pull llama3.2”.")
+                : L10n.format("%d model(s) available.", ollamaModels.count)
         }
     }
 
@@ -554,10 +606,10 @@ extension SettingsView {
 
     private var companionSection: some View {
         Section("Companion") {
-            TextField("Tu nombre en las reuniones", text: $companionUserName, prompt: Text(NSFullUserName()))
+            TextField("Your name in meetings", text: $companionUserName, prompt: Text(NSFullUserName()))
                 .autocorrectionDisabled()
             Text(
-                "Cuando alguien te pregunta por tu nombre (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), ¿qué opinas?\"), el Companion resalta la tarjeta con \"te preguntaron\" aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
+                "When someone asks for you by name (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), what do you think?\"), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -576,45 +628,45 @@ extension SettingsView {
     }
 
     private var byokSection: some View {
-        Section("Modelo externo (BYOK)") {
+        Section("External model (BYOK)") {
             TextField(
                 "Endpoint OpenAI-compatible", text: $byokEndpoint,
                 prompt: Text("https://api.openai.com/v1")
             )
             .autocorrectionDisabled()
-            TextField("Modelo", text: $byokModel, prompt: Text("gpt-4o-mini"))
+            TextField("Model", text: $byokModel, prompt: Text("gpt-4o-mini"))
                 .autocorrectionDisabled()
             SecureField("API key", text: $byokKey)
             HStack {
-                Button("Guardar key en el Keychain") {
+                Button("Save key in Keychain") {
                     do {
                         try SecretStore.set(byokKey, service: SecretStore.byokAPIKeyService)
                         byokKey = ""
                         hasStoredBYOKKey = true
-                        byokMessage = "Key guardada."
+                        byokMessage = L10n.text("Key saved.")
                     } catch {
                         byokMessage = error.localizedDescription
                     }
                 }
                 .disabled(byokKey.isEmpty)
                 if hasStoredBYOKKey {
-                    Button("Eliminar key", role: .destructive) {
+                    Button("Delete key", role: .destructive) {
                         try? SecretStore.delete(service: SecretStore.byokAPIKeyService)
                         hasStoredBYOKKey = false
                         companionBYOKEnabled = false
-                        byokMessage = "Key eliminada. El Companion vuelve a responder solo on-device."
+                        byokMessage = L10n.text("Key deleted. Companion goes back to answering only on-device.")
                     }
                 }
             }
             Toggle(
-                "Responder las preguntas de conocimiento del Companion con este proveedor",
+                "Answer Companion knowledge questions with this provider",
                 isOn: $companionBYOKEnabled
             )
             .disabled(!byokReady)
             Text(
-                // Texto de UI de una línea.
+                // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, el Companion envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
+                "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -628,32 +680,31 @@ extension SettingsView {
 
     private var gitHubSection: some View {
         Section("GitHub") {
-            SecureField("Token personal (scope: gist)", text: $token)
+            SecureField("Personal token (scope: gist)", text: $token)
             HStack {
-                Button("Guardar en el Keychain") {
+                Button("Save in Keychain") {
                     do {
                         try SecretStore.set(token, service: SecretStore.gitHubTokenService)
                         token = ""
                         hasStoredToken = true
-                        tokenMessage = "Token guardado."
+                        tokenMessage = L10n.text("Token saved.")
                     } catch {
                         tokenMessage = error.localizedDescription
                     }
                 }
                 .disabled(token.isEmpty)
                 if hasStoredToken {
-                    Button("Eliminar token", role: .destructive) {
+                    Button("Delete token", role: .destructive) {
                         try? SecretStore.delete(service: SecretStore.gitHubTokenService)
                         hasStoredToken = false
-                        tokenMessage = "Token eliminado."
+                        tokenMessage = L10n.text("Token deleted.")
                     }
                 }
             }
             Text(
                 hasStoredToken
-                    ? "Hay un token guardado en el Keychain de este equipo. Se usa solo cuando publicas un gist."
-                    // swiftlint:disable:next line_length
-                    : "Necesario solo para publicar gists. Se guarda en el Keychain — nunca en la base de datos ni en la nube."
+                    ? "A token is stored in this device’s Keychain. It is used only when you publish a gist."
+                    : "Required only to publish gists. It is stored in Keychain — never in the database or cloud."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

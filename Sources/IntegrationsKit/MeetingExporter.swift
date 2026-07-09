@@ -23,14 +23,14 @@ public enum MeetingExporter {
             facts.append("\(max(1, Int(ended.timeIntervalSince(meeting.startedAt) / 60))) min")
         }
         if !speakers.isEmpty {
-            facts.append("\(speakers.count) hablante(s)")
+            facts.append("\(speakers.count) speaker(s)")
         }
         facts.append("transcrito localmente por Portavoz")
         parts.append("> " + facts.joined(separator: " · "))
 
         if let summary {
             let versionTag = summaryVersion.map { " (v\($0) · \(summary.language))" } ?? " (\(summary.language))"
-            var block = "## Resumen\(versionTag)\n\n"
+            var block = "## Summary\(versionTag)\n\n"
             block += demoteHeadings(in: summary.markdown)
             if !summary.actionItems.isEmpty {
                 block += "\n\n### Pendientes\n"
@@ -50,7 +50,7 @@ public enum MeetingExporter {
                 uniqueKeysWithValues: speakers.map { ($0.id, displayName($0)) })
             var block = "## Transcript\n"
             for segment in segments {
-                let label = segment.speakerID.flatMap { labelsByID[$0] } ?? "¿?"
+                let label = segment.speakerID.flatMap { labelsByID[$0] } ?? "?"
                 block += "\n- **[\(timestamp(segment.startTime))] \(label):** \(segment.text)"
             }
             parts.append(block)
@@ -60,7 +60,7 @@ public enum MeetingExporter {
     }
 
     /// The summary's own `##` headings become `###` so they nest under
-    /// the document's "## Resumen" section instead of colliding with it.
+    /// the document's "## Summary" section instead of colliding with it.
     static func demoteHeadings(in markdown: String) -> String {
         markdown
             .split(separator: "\n", omittingEmptySubsequences: false)

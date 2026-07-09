@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${1:?uso: scripts/make-release.sh <version>}"
+VERSION="${1:?usage: scripts/make-release.sh <version>}"
 BUILD="${PORTAVOZ_BUILD:-$(date +%Y%m%d%H%M)}"
 GENERATE_APPCAST="${GENERATE_APPCAST:-$HOME/.local/bin/generate_appcast}"
 
@@ -32,8 +32,8 @@ mv "dist/Portavoz-$VERSION.dmg" "$RELEASE_DIR/"
 if [[ -x "$GENERATE_APPCAST" ]]; then
   "$GENERATE_APPCAST" --account portavoz "$RELEASE_DIR"
 else
-  echo "⚠️  generate_appcast no encontrado ($GENERATE_APPCAST)."
-  echo "   Descárgalo del release de Sparkle y expórtalo en GENERATE_APPCAST."
+  echo "⚠️  generate_appcast not found ($GENERATE_APPCAST)."
+  echo "   Download it from the Sparkle release and export it in GENERATE_APPCAST."
 fi
 
 # Homebrew cask with real version + sha256.
@@ -42,5 +42,5 @@ sed -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$SHA256/" \
   packaging/portavoz.rb > "$RELEASE_DIR/portavoz.rb"
 
 echo ""
-echo "Release $VERSION listo en $RELEASE_DIR/:"
+echo "Release $VERSION ready in $RELEASE_DIR/:"
 ls -la "$RELEASE_DIR"

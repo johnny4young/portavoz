@@ -6,15 +6,18 @@ import XCTest
 /// touches the real library.
 final class LibraryUITests: XCTestCase {
     @MainActor
-    func testLibraryWindowRenders() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-use-temp-store"]
-        app.launch()
+    func testLibraryWindowRendersByIdentifier() {
+        let app = XCUIApplication.portavoz()
+        app.launchPortavoz()
         defer { app.terminate() }
 
-        // The library's primary action is always present on a clean launch.
+        let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(
-            app.buttons["Nueva grabación"].waitForExistence(timeout: 15),
-            "the library window must render its 'Nueva grabación' button on launch")
+            record.waitForExistence(timeout: 15),
+            "the library window must render its primary action on launch")
+
+        if let locale = UITestLocale.environmentLocale {
+            XCTAssertEqual(record.label, locale == "es" ? "Nueva grabación" : "New recording")
+        }
     }
 }

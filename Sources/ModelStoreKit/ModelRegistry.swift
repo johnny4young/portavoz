@@ -85,13 +85,13 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
 }
 
 // swiftlint:disable line_length
-// Datos sha256 pineados del catálogo de modelos: envolver el hex de cada
-// artefacto en varias líneas no aporta legibilidad y dificulta el diff al
-// re-pinnear. Se silencia line_length solo para este bloque de datos.
+// Pinned sha256 data for the model catalog: wrapping each artifact hex
+// across several lines does not improve readability and makes re-pin diffs
+// harder to review. line_length is silenced only for this data block.
 /// The curated registry. Descriptors are code: adding or re-pinning a model
 /// is a reviewed change, never a runtime fetch of "latest".
 public enum ModelCatalog {
-    /// Default engine per task (D7: routing por tarea, jamás un modelo
+    /// Default engine per task (D7: route by task, never one model
     /// global): live STT = Parakeet v3; final quality pass = Whisper
     /// large-v3-turbo; diarization = pyannote community-1 + WeSpeaker.
     public static func recommended(for task: ModelTask) -> ModelDescriptor? {

@@ -39,9 +39,9 @@ public struct GistPublisher: Sendable {
         public var errorDescription: String? {
             switch self {
             case .requestFailed(let status, let body):
-                return "GitHub respondió \(status): \(body)"
+                return "GitHub responded \(status): \(body)"
             case .malformedResponse:
-                return "GitHub devolvió una respuesta sin html_url"
+                return "GitHub returned a response without html_url"
             }
         }
     }

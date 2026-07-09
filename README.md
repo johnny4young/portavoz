@@ -106,6 +106,6 @@ Issues are the most valuable contribution right now — use cases, platform quir
 
 ---
 
-### ¿Hablas español?
+### Spanish-speaking users
 
-Portavoz nace de una necesidad real: desarrolladores hispanohablantes viviendo reuniones en inglés. Resúmenes bilingües, glosario técnico que respeta el spanglish de verdad (`deploy`, `PR`, `rollback`), y subtítulos traducidos en vivo están en el corazón del roadmap, no en la periferia.
+Portavoz started from a real need: Spanish-speaking developers living in English-language meetings. Bilingual summaries, a technical glossary that respects real-world Spanglish (`deploy`, `PR`, `rollback`), and live translated captions are core roadmap items, not side quests.

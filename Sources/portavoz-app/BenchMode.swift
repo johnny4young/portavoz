@@ -36,7 +36,7 @@ enum BenchMode {
                     exit(1)
                 }
                 guard SpeechAnalyzerEngine.isAvailable else {
-                    print("error: SpeechTranscriber no está disponible en este equipo")
+                    print("error: SpeechTranscriber is not available on this device")
                     exit(1)
                 }
                 let hints = TranscriptionHints(language: language, vocabulary: vocabulary)

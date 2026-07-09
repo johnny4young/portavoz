@@ -88,7 +88,7 @@ final class TitleTemplateTests: XCTestCase {
 
     func testBlankTemplateFallsBackToDefault() {
         let title = TitleTemplate.render("   ", date: sample, sequence: 1)
-        XCTAssertEqual(title, "2026-07-07 10.47 Reunión")
+        XCTAssertEqual(title, "2026-07-07 10.47 Meeting")
     }
 
     func testUnknownTokensPassThrough() {

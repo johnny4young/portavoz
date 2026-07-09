@@ -42,25 +42,25 @@ public enum HardwareRecommender {
 
         if profile.appleIntelligence {
             engine = .apple
-            headline = "Apple Intelligence: resúmenes on-device, gratis y rápidos."
+            headline = "Apple Intelligence: on-device summaries, free and fast."
             reasons.append(
-                "Tu Mac tiene Apple Intelligence — el resumen corre en el Neural Engine sin descargar nada.")
+                "Your Mac has Apple Intelligence — the summary runs on the Neural Engine without downloading anything.")
         } else if profile.ollamaAvailable {
             engine = .ollama
-            headline = "Ollama local: resúmenes 100% en tu Mac, sin Apple Intelligence."
+            headline = "Local Ollama: summaries 100% on your Mac, without Apple Intelligence."
             reasons.append(
-                "No hay Apple Intelligence, pero Ollama está corriendo — resúmenes locales sin nube.")
+                "Apple Intelligence is unavailable, but Ollama is running — local summaries with no cloud.")
             if profile.memoryGB > 0 && profile.memoryGB < 16 {
                 reasons.append(
                     "Con \(profile.memoryGB) GB de RAM, prefiere modelos Ollama ≤ 8B para que no se ralentice.")
             }
         } else {
             engine = .none
-            headline = "Sin motor local de resúmenes."
+            headline = "No local summary engine."
             reasons.append(
-                // Texto de UI de una línea.
+                // One-line UI text.
                 // swiftlint:disable:next line_length
-                "Sin Apple Intelligence ni Ollama. Instala Ollama (ollama.com) para resúmenes locales, o configura BYOK en Ajustes.")
+                "No Apple Intelligence or Ollama. Install Ollama (ollama.com) for local summaries, or configure BYOK in Settings.")
         }
 
         let lowDisk = profile.freeDiskGB > 0 && profile.freeDiskGB < 8

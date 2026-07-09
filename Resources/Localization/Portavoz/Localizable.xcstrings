@@ -1,0 +1,1986 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%d model(s) available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d modelo(s) disponible(s)."
+          }
+        }
+      }
+    },
+    "A token is stored in this device’s Keychain. It is used only when you publish a gist.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay un token guardado en el Keychain de este equipo. Se usa solo cuando publicas un gist."
+          }
+        }
+      }
+    },
+    "API key": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave API"
+          }
+        }
+      }
+    },
+    "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “LVGT” does not become something else.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que “LVGT” no se convierta en otra cosa."
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar"
+          }
+        }
+      }
+    },
+    "Add a note…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar una nota…"
+          }
+        }
+      }
+    },
+    "Add note (⏎)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar nota (⏎)"
+          }
+        }
+      }
+    },
+    "Add term (LVGT, Vishakha…)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar término (LVGT, Vishakha…)"
+          }
+        }
+      }
+    },
+    "Answer Companion knowledge questions with this provider": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Responder preguntas de conocimiento del Companion con este proveedor"
+          }
+        }
+      }
+    },
+    "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, Companion envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
+          }
+        }
+      }
+    },
+    "Apple (on-device)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple (en el dispositivo)"
+          }
+        }
+      }
+    },
+    "Apple Intelligence requires macOS 26 — choose Ollama in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence requiere macOS 26 — elige Ollama en Ajustes."
+          }
+        }
+      }
+    },
+    "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac — ideal if you do not have Apple Intelligence. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple usa Foundation Models (macOS 26 + Apple Intelligence). Ollama corre un modelo 100% local en tu Mac — ideal si no tienes Apple Intelligence. Con cualquiera, nada sale del equipo. (El resumen EN VIVO durante la grabación siempre usa Apple.)"
+          }
+        }
+      }
+    },
+    "Apply": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicar"
+          }
+        }
+      }
+    },
+    "Apply recommendation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicar recomendación"
+          }
+        }
+      }
+    },
+    "Applying the refined transcript…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicando la transcripción refinada…"
+          }
+        }
+      }
+    },
+    "Audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio"
+          }
+        }
+      }
+    },
+    "Audio compressed — %@ freed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio comprimido — %@ liberados."
+          }
+        }
+      }
+    },
+    "Automatically skip silence during playback": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir automáticamente los silencios al reproducir"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atrás"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
+    "Change…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar…"
+          }
+        }
+      }
+    },
+    "Check for updates…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar actualizaciones…"
+          }
+        }
+      }
+    },
+    "Choose a model": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un modelo"
+          }
+        }
+      }
+    },
+    "Choose an audio file to transcribe as a meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un archivo de audio para transcribirlo como reunión"
+          }
+        }
+      }
+    },
+    "Choose the folder where Portavoz will store your recordings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige la carpeta donde Portavoz guardará tus grabaciones"
+          }
+        }
+      }
+    },
+    "Click a line to jump there": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic en una línea para saltar allí"
+          }
+        }
+      }
+    },
+    "Closing the recording…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrando la grabación…"
+          }
+        }
+      }
+    },
+    "Compact — less disk": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compacto — menos disco"
+          }
+        }
+      }
+    },
+    "Companion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Companion"
+          }
+        }
+      }
+    },
+    "Compress audio (AAC)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprimir audio (AAC)"
+          }
+        }
+      }
+    },
+    "Compressing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprimiendo…"
+          }
+        }
+      }
+    },
+    "Configure your GitHub token in Settings (⌘,) first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configura primero tu token de GitHub en Ajustes (⌘,)."
+          }
+        }
+      }
+    },
+    "Converts audio to AAC to save disk space, with no audible loss for speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte el audio a AAC para ahorrar espacio, sin pérdida audible en voz"
+          }
+        }
+      }
+    },
+    "Copy as Markdown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar como Markdown"
+          }
+        }
+      }
+    },
+    "Copy as plain text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar como texto plano"
+          }
+        }
+      }
+    },
+    "Copy for Slack": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar para Slack"
+          }
+        }
+      }
+    },
+    "Copy link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar enlace"
+          }
+        }
+      }
+    },
+    "Copy response": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar respuesta"
+          }
+        }
+      }
+    },
+    "Copy the summary to the clipboard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar el resumen al portapapeles"
+          }
+        }
+      }
+    },
+    "Could not apply refine: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo aplicar el refine: %@"
+          }
+        }
+      }
+    },
+    "Could not enroll: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo enrolar: %@"
+          }
+        }
+      }
+    },
+    "Could not export": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo exportar"
+          }
+        }
+      }
+    },
+    "Could not find the meeting audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró el audio de la reunión."
+          }
+        }
+      }
+    },
+    "Could not prepare the models: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron preparar los modelos: %@"
+          }
+        }
+      }
+    },
+    "Could not rename: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo renombrar: %@"
+          }
+        }
+      }
+    },
+    "Could not start capture: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo iniciar la captura: %@"
+          }
+        }
+      }
+    },
+    "Couldn’t complete": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo completar"
+          }
+        }
+      }
+    },
+    "Covered speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz cubierta"
+          }
+        }
+      }
+    },
+    "Current": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual"
+          }
+        }
+      }
+    },
+    "Daily sequence (01, 02…)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secuencia del día (01, 02…)"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        }
+      }
+    },
+    "Delete key": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar clave"
+          }
+        }
+      }
+    },
+    "Delete my voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar mi voz"
+          }
+        }
+      }
+    },
+    "Delete token": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar token"
+          }
+        }
+      }
+    },
+    "Detect models": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectar modelos"
+          }
+        }
+      }
+    },
+    "Detects questions in the conversation and suggests on-device answers. It never answers for you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detecta preguntas en la conversación y sugiere respuestas en el dispositivo. Nunca responde por ti."
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar"
+          }
+        }
+      }
+    },
+    "Discard the clip": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar el clip"
+          }
+        }
+      }
+    },
+    "Done: folder updated.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo: carpeta actualizada."
+          }
+        }
+      }
+    },
+    "Done: moved %d recording(s).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo: %d grabación(es) movida(s)."
+          }
+        }
+      }
+    },
+    "Done: your interventions will be tagged as “Me” on any channel.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo: tus intervenciones se etiquetarán como “Yo” en cualquier canal."
+          }
+        }
+      }
+    },
+    "Downloaded · ": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargado · "
+          }
+        }
+      }
+    },
+    "Downloading Whisper (%@, one time only)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper (%@, solo una vez)… %d%%"
+          }
+        }
+      }
+    },
+    "Downloading diarization model… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando modelo de diarización… %d%%"
+          }
+        }
+      }
+    },
+    "Downloading transcription model… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando modelo de transcripción… %d%%"
+          }
+        }
+      }
+    },
+    "Downloads on refine · ": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se descarga al refinar · "
+          }
+        }
+      }
+    },
+    "Echo cancellation (recommended with speakers)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelación de eco (recomendada con parlantes)"
+          }
+        }
+      }
+    },
+    "End": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin"
+          }
+        }
+      }
+    },
+    "Endpoint OpenAI-compatible": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint compatible con OpenAI"
+          }
+        }
+      }
+    },
+    "English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "English"
+          }
+        }
+      }
+    },
+    "Enroll my voice (12 s)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enrolar mi voz (12 s)"
+          }
+        }
+      }
+    },
+    "Enrolled voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz enrolada"
+          }
+        }
+      }
+    },
+    "Español": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Español"
+          }
+        }
+      }
+    },
+    "Export": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar"
+          }
+        }
+      }
+    },
+    "Export Markdown…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar Markdown…"
+          }
+        }
+      }
+    },
+    "Export PDF…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar PDF…"
+          }
+        }
+      }
+    },
+    "External model (BYOK)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo externo (BYOK)"
+          }
+        }
+      }
+    },
+    "Free disk used by the variant you do not use": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Libera el espacio usado por la variante que no usas"
+          }
+        }
+      }
+    },
+    "Generate summaries with": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generar resúmenes con"
+          }
+        }
+      }
+    },
+    "Generate summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generar resumen"
+          }
+        }
+      }
+    },
+    "Generating summary…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generando resumen…"
+          }
+        }
+      }
+    },
+    "Gist published": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gist publicado"
+          }
+        }
+      }
+    },
+    "GitHub": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub"
+          }
+        }
+      }
+    },
+    "ISO date (sorts the library automatically)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha ISO (ordena la biblioteca automáticamente)"
+          }
+        }
+      }
+    },
+    "Identifying speakers…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identificando hablantes…"
+          }
+        }
+      }
+    },
+    "Import audio…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar audio…"
+          }
+        }
+      }
+    },
+    "Import failed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló la importación"
+          }
+        }
+      }
+    },
+    "Jump to this moment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saltar a este momento"
+          }
+        }
+      }
+    },
+    "Key deleted. Companion goes back to answering only on-device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave eliminada. Companion vuelve a responder solo en el dispositivo."
+          }
+        }
+      }
+    },
+    "Key saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave guardada."
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma"
+          }
+        }
+      }
+    },
+    "Live summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumen en vivo"
+          }
+        }
+      }
+    },
+    "Mark clip end at the current playhead": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar el final del clip en la posición actual"
+          }
+        }
+      }
+    },
+    "Mark clip start at the current playhead": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar el inicio del clip en la posición actual"
+          }
+        }
+      }
+    },
+    "Meeting audio lives in Audio/ inside this folder. When you change it, existing recordings move to the new location; the database and transcripts stay where they are.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio de reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y los transcripts se quedan donde están."
+          }
+        }
+      }
+    },
+    "Meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reuniones"
+          }
+        }
+      }
+    },
+    "Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La migración falló: %@. Nada se perdió — las grabaciones que no se movieron aún se leen desde la carpeta anterior; puedes reintentar."
+          }
+        }
+      }
+    },
+    "Model": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo"
+          }
+        }
+      }
+    },
+    "Moving recording %d of %d…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moviendo grabación %d de %d…"
+          }
+        }
+      }
+    },
+    "My voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi voz"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre"
+          }
+        }
+      }
+    },
+    "Name suggestions require macOS 26.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las sugerencias de nombres requieren macOS 26."
+          }
+        }
+      }
+    },
+    "New recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva grabación"
+          }
+        }
+      }
+    },
+    "No audio was captured. Check Portavoz microphone and system audio recording permissions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se capturó audio. Revisa los permisos de micrófono y grabación de audio del sistema de Portavoz."
+          }
+        }
+      }
+    },
+    "No matches": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin resultados"
+          }
+        }
+      }
+    },
+    "No meetings yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay reuniones"
+          }
+        }
+      }
+    },
+    "No translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin traducción"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Ollama (local)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama (local)"
+          }
+        }
+      }
+    },
+    "Ollama is not responding on localhost:11434. Install it and run “ollama serve”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama no responde en localhost:11434. Instálalo y ejecuta “ollama serve”."
+          }
+        }
+      }
+    },
+    "Ollama is running but has no models. Download one with “ollama pull llama3.2”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama está corriendo pero no tiene modelos. Descarga uno con “ollama pull llama3.2”."
+          }
+        }
+      }
+    },
+    "On-device summaries require macOS 26 (or choose Ollama in Settings).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los resúmenes en el dispositivo requieren macOS 26 (o elige Ollama en Ajustes)."
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir"
+          }
+        }
+      }
+    },
+    "Personal token (scope: gist)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token personal (scope: gist)"
+          }
+        }
+      }
+    },
+    "Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz"
+          }
+        }
+      }
+    },
+    "Preparing models…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando modelos…"
+          }
+        }
+      }
+    },
+    "Preparing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando…"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa"
+          }
+        }
+      }
+    },
+    "Processing failed: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El procesamiento falló: %@"
+          }
+        }
+      }
+    },
+    "Publish as Gist…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicar como Gist…"
+          }
+        }
+      }
+    },
+    "Publish secret gist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicar gist secreto"
+          }
+        }
+      }
+    },
+    "Re-transcribing participants (Whisper)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-transcribiendo participantes (Whisper)…"
+          }
+        }
+      }
+    },
+    "Re-transcribing your channel (Whisper)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-transcribiendo tu canal (Whisper)…"
+          }
+        }
+      }
+    },
+    "Record a meeting or choose one from the library. Everything is processed on your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Graba una reunión o elige una de la biblioteca. Todo se procesa en tu Mac."
+          }
+        }
+      }
+    },
+    "Recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabación"
+          }
+        }
+      }
+    },
+    "Recording 12 seconds — speak naturally…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabando 12 segundos — habla naturalmente…"
+          }
+        }
+      }
+    },
+    "Recording mic + system audio — everything stays on your Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabando micrófono + audio del sistema — todo se queda en tu Mac"
+          }
+        }
+      }
+    },
+    "Recording titles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Títulos de grabación"
+          }
+        }
+      }
+    },
+    "Recordings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabaciones"
+          }
+        }
+      }
+    },
+    "Refine": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refinar"
+          }
+        }
+      }
+    },
+    "Refine failed: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El refine falló: %@"
+          }
+        }
+      }
+    },
+    "Refine model (Whisper large-v3)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo de refine (Whisper large-v3)"
+          }
+        }
+      }
+    },
+    "Refined": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refinado"
+          }
+        }
+      }
+    },
+    "Regenerate in English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regenerar en inglés"
+          }
+        }
+      }
+    },
+    "Regenerate in Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regenerar en español"
+          }
+        }
+      }
+    },
+    "Remove note": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar nota"
+          }
+        }
+      }
+    },
+    "Rename meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar reunión"
+          }
+        }
+      }
+    },
+    "Rename speaker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar hablante"
+          }
+        }
+      }
+    },
+    "Rename the meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar la reunión"
+          }
+        }
+      }
+    },
+    "Rename…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar…"
+          }
+        }
+      }
+    },
+    "Required only to publish gists. It is stored in Keychain — never in the database or cloud.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesario solo para publicar gists. Se guarda en Keychain — nunca en la base de datos ni en la nube."
+          }
+        }
+      }
+    },
+    "Reset": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer"
+          }
+        }
+      }
+    },
+    "Results": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resultados"
+          }
+        }
+      }
+    },
+    "Review the refined transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar la transcripción refinada"
+          }
+        }
+      }
+    },
+    "Sample": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar"
+          }
+        }
+      }
+    },
+    "Save in Keychain": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en Keychain"
+          }
+        }
+      }
+    },
+    "Save key in Keychain": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar clave en Keychain"
+          }
+        }
+      }
+    },
+    "Save recordings in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar grabaciones en"
+          }
+        }
+      }
+    },
+    "Search all meetings…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar en todas las reuniones…"
+          }
+        }
+      }
+    },
+    "Segments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segmentos"
+          }
+        }
+      }
+    },
+    "Show available tokens and examples": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar tokens y ejemplos disponibles"
+          }
+        }
+      }
+    },
+    "Skip silence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir silencios"
+          }
+        }
+      }
+    },
+    "Something went wrong": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algo salió mal"
+          }
+        }
+      }
+    },
+    "Speakers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablantes"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicio"
+          }
+        }
+      }
+    },
+    "Start time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hora de inicio"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener"
+          }
+        }
+      }
+    },
+    "Subtracts speaker output from the microphone so other participants do not appear as “Me”. With HEADPHONES there is no echo, so you can turn it off safely. Applies from the next recording. (If you sound distant on the call, it is usually the Mac built-in microphone picking you up from far away — nearby headset microphones such as AirPods usually sound much better.)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resta del micrófono el audio que sale por tus PARLANTES, para que los demás participantes no aparezcan como “Yo”. Con AUDÍFONOS no hay eco, así que puedes desactivarla sin problema. Aplica desde la próxima grabación. (Si te oyes lejano en la llamada, suele ser el micrófono integrado del Mac captando desde lejos; unos audífonos con micrófono cercano, como AirPods, suelen sonar mucho mejor.)"
+          }
+        }
+      }
+    },
+    "Suggest names": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerir nombres"
+          }
+        }
+      }
+    },
+    "Summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumen"
+          }
+        }
+      }
+    },
+    "Summary engine": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de resúmenes"
+          }
+        }
+      }
+    },
+    "Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen v%d ya coincide con este material — no hay nada que regenerar. Cambia el transcript, las notas o el vocabulario para producir uno nuevo."
+          }
+        }
+      }
+    },
+    "Template": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plantilla"
+          }
+        }
+      }
+    },
+    "Template tokens": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens de plantilla"
+          }
+        }
+      }
+    },
+    "The diarizer is not available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El diarizador no está disponible."
+          }
+        }
+      }
+    },
+    "The full transcript will leave your Mac for GitHub as a SECRET (unlisted) gist.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El transcript completo saldrá de tu Mac hacia GitHub como un gist SECRETO (no listado)."
+          }
+        }
+      }
+    },
+    "The local model could not generate the summary.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo local no pudo generar el resumen."
+          }
+        }
+      }
+    },
+    "The quality re-pass (Refine) uses Whisper. Turbo is the default; the compact variant saves about 1 GB of disk. Choose by selecting a row.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El re-pase de calidad (Refine) usa Whisper. Turbo es el predeterminado; la variante compacta ahorra alrededor de 1 GB de disco. Elige seleccionando una fila."
+          }
+        }
+      }
+    },
+    "The refine covers much less speech than the current transcript — it probably failed. Do not apply it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El refine cubre mucha menos voz que el transcript actual — probablemente falló. No lo apliques."
+          }
+        }
+      }
+    },
+    "The rest of the text is preserved as written. Putting the ISO date first makes the library sort meetings automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resto del texto se conserva tal cual. Poner la fecha ISO primero hace que la biblioteca ordene las reuniones automáticamente."
+          }
+        }
+      }
+    },
+    "The transcript does not prove any names — you can rename the pills manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El transcript no prueba ningún nombre — puedes renombrar las etiquetas manualmente."
+          }
+        }
+      }
+    },
+    "The transcription engine is not available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor de transcripción no está disponible."
+          }
+        }
+      }
+    },
+    "They guide the final summary: they are expanded with facts and marked as yours (▸).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guían el resumen final: se expanden con hechos y quedan marcadas como tuyas (▸)."
+          }
+        }
+      }
+    },
+    "This changes the Portavoz interface only. Meeting transcription and summary languages stay controlled by each meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto cambia solo la interfaz de Portavoz. Los idiomas de transcripción y resumen siguen controlados por cada reunión."
+          }
+        }
+      }
+    },
+    "This meeting does not keep its audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta reunión no conserva su audio."
+          }
+        }
+      }
+    },
+    "Title": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Título"
+          }
+        }
+      }
+    },
+    "Token deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token eliminado."
+          }
+        }
+      }
+    },
+    "Token saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token guardado."
+          }
+        }
+      }
+    },
+    "Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcribe un archivo de audio (.m4a, .wav, .mp3) como una nueva reunión"
+          }
+        }
+      }
+    },
+    "Transcribing audio (Whisper)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcribiendo audio (Whisper)…"
+          }
+        }
+      }
+    },
+    "Transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcript"
+          }
+        }
+      }
+    },
+    "Translate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir"
+          }
+        }
+      }
+    },
+    "Turbo — best quality": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turbo — mejor calidad"
+          }
+        }
+      }
+    },
+    "Use default folder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar carpeta predeterminada"
+          }
+        }
+      }
+    },
+    "Use system language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar idioma del sistema"
+          }
+        }
+      }
+    },
+    "Vocabulary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vocabulario"
+          }
+        }
+      }
+    },
+    "Voiceprint and key deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huella de voz y clave eliminadas."
+          }
+        }
+      }
+    },
+    "Weekday": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Día de la semana"
+          }
+        }
+      }
+    },
+    "When someone asks for you by name (\"%@\", what do you think?), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuando alguien te pregunta por tu nombre (\"%@\", ¿qué opinas?), Companion resalta la tarjeta como “te preguntaron” aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
+          }
+        }
+      }
+    },
+    "With your voice enrolled, Portavoz also recognizes you when you arrive through system audio (hybrid meetings). Only an encrypted numeric fingerprint is stored on this device — never audio, never cloud data; delete it with one click.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con tu voz enrolada, Portavoz también te reconoce cuando llegas por el audio del sistema (reuniones híbridas). Solo se guarda una huella numérica cifrada en este equipo — nunca audio, nunca datos en la nube; se borra con un clic."
+          }
+        }
+      }
+    },
+    "Your name in meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu nombre en reuniones"
+          }
+        }
+      }
+    },
+    "Your notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus notas"
+          }
+        }
+      }
+    },
+    "Your voice sounds low — move closer or use headphones with a microphone": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu voz suena baja — acércate o usa audífonos con micrófono"
+          }
+        }
+      }
+    },
+    "e.g. %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "p. ej. %@"
+          }
+        }
+      }
+    },
+    "→ English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "→ Inglés"
+          }
+        }
+      }
+    },
+    "→ Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "→ Español"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

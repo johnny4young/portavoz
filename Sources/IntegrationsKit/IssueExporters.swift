@@ -11,7 +11,7 @@ public enum IssueExporterError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .requestFailed(let status, let body):
-            return "el tracker respondió \(status): \(body)"
+            return "the tracker responded \(status): \(body)"
         case .malformedResponse:
             return "respuesta sin URL de issue"
         }
@@ -78,11 +78,11 @@ public struct GitHubIssuesExporter: Sendable {
     }
 
     static func body(item: ActionItem, meetingTitle: String, ownerName: String?) -> String {
-        var lines = ["Action item de la reunión **\(meetingTitle)**."]
+        var lines = ["Meeting action item **\(meetingTitle)**."]
         if let ownerName {
-            lines.append("Responsable acordado: \(ownerName).")
+            lines.append("Agreed owner: \(ownerName).")
         }
-        lines.append("_Creado por Portavoz._")
+        lines.append("_Created by Portavoz._")
         return lines.joined(separator: "\n\n")
     }
 }

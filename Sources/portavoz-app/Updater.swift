@@ -28,7 +28,7 @@ final class Updater {
 struct CheckForUpdatesCommand: Commands {
     var body: some Commands {
         CommandGroup(after: .appInfo) {
-            Button("Buscar actualizaciones…") {
+            Button("Check for updates…") {
                 Updater.shared.checkForUpdates()
             }
         }

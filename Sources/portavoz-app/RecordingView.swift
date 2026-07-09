@@ -27,7 +27,7 @@ struct RecordingView: View {
                 header
                 HStack(alignment: .top, spacing: 12) {
                     captionsList
-                    // La columna derecha siempre está: las notas son un input
+                    // The right column is always present: notes are an input
                     // primario (D28), no algo que aparece solo si hay tarjetas.
                     VStack(spacing: 10) {
                         notesPanel
@@ -42,7 +42,7 @@ struct RecordingView: View {
                 Button {
                     Task { await controller.stop(services: services) }
                 } label: {
-                    Label("Detener", systemImage: "stop.circle.fill")
+                    Label("Stop", systemImage: "stop.circle.fill")
                         .frame(minWidth: 160)
                 }
                 .controlSize(.large)
@@ -61,16 +61,16 @@ struct RecordingView: View {
             case .failed(let message):
                 Spacer()
                 ContentUnavailableView {
-                    Label("Algo falló", systemImage: "exclamationmark.triangle")
+                    Label("Something went wrong", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(message)
                 } actions: {
-                    Button("Volver") { route = nil }
+                    Button("Back") { route = nil }
                 }
                 Spacer()
             }
         }
-        .navigationTitle("Grabación")
+        .navigationTitle("Recording")
         .liveTranslation(controller)
         .task { await controller.start(services: services) }
     }
@@ -79,7 +79,7 @@ struct RecordingView: View {
         if case .downloading(let status) = services.modelsState {
             return status
         }
-        return "Preparando…"
+        return "Preparing…"
     }
 
     private var header: some View {
@@ -97,11 +97,11 @@ struct RecordingView: View {
                 }
             }
             HStack(spacing: 12) {
-                Label("Grabando mic + audio del sistema — todo queda en tu Mac", systemImage: "waveform")
+                Label("Recording mic + system audio — everything stays on your Mac", systemImage: "waveform")
                 if #available(macOS 15.0, *) {
-                    Picker("Traducir", selection: translationBinding) {
-                        Text("Sin traducción").tag(String?.none)
-                        Text("→ Español").tag(String?.some("es"))
+                    Picker("Translate", selection: translationBinding) {
+                        Text("No translation").tag(String?.none)
+                        Text("→ Spanish").tag(String?.some("es"))
                         Text("→ English").tag(String?.some("en"))
                     }
                     .pickerStyle(.menu)
@@ -113,7 +113,9 @@ struct RecordingView: View {
                     }
                     .toggleStyle(.checkbox)
                     .help(
-                        "Detecta preguntas en la conversación y sugiere respuestas on-device. Nunca responde por ti."
+                        // One-line UI help.
+                        // swiftlint:disable:next line_length
+                        "Detects questions in the conversation and suggests on-device answers. It never answers for you."
                     )
                 }
             }
@@ -143,7 +145,7 @@ struct RecordingView: View {
             .frame(width: 120, height: 6)
             .animation(.easeOut(duration: 0.15), value: controller.micLevel)
             if controller.micLevelLow {
-                Text("Se te oye bajo — acércate o usa audífonos con micrófono")
+                Text("Your voice sounds low — move closer or use headphones with a microphone")
                     .foregroundStyle(.orange)
             }
         }
@@ -178,10 +180,10 @@ struct RecordingView: View {
     /// summary as intent — expanded with facts and marked as yours (▸).
     private var notesPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Tus notas", systemImage: "square.and.pencil")
+            Label("Your notes", systemImage: "square.and.pencil")
                 .font(.headline)
             HStack(alignment: .bottom, spacing: 6) {
-                TextField("Anota algo…", text: $noteDraft, axis: .vertical)
+                TextField("Add a note…", text: $noteDraft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...3)
                     .onSubmit(addNote)
@@ -193,7 +195,7 @@ struct RecordingView: View {
                     noteDraft.trimmingCharacters(in: .whitespaces).isEmpty
                         ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
                 .disabled(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty)
-                .help("Añadir la nota (⏎)")
+                .help("Add note (⏎)")
             }
             if !controller.contextItems.isEmpty {
                 ScrollView {
@@ -216,14 +218,14 @@ struct RecordingView: View {
                                         .foregroundStyle(.tertiary)
                                 }
                                 .buttonStyle(.plain)
-                                .help("Quitar la nota")
+                                .help("Remove note")
                             }
                         }
                     }
                 }
                 .frame(maxHeight: 160)
             }
-            Text("Guían el resumen final: se expanden con datos y se marcan como tuyas (▸).")
+            Text("They guide the final summary: they are expanded with facts and marked as yours (▸).")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -247,7 +249,7 @@ struct RecordingView: View {
     private func liveSummaryPanel(_ markdown: String) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Resumen en vivo", systemImage: "sparkles")
+                Label("Live summary", systemImage: "sparkles")
                     .font(.headline)
                 MarkdownText(text: markdown)
                     .font(.callout)
@@ -301,7 +303,7 @@ struct RecordingView: View {
                     }
                     .buttonStyle(.plain)
                     .controlSize(.small)
-                    .help("Copiar la respuesta")
+                    .help("Copy response")
                 }
             }
         }
@@ -315,9 +317,9 @@ struct RecordingView: View {
     }
 
     private func companionCardTag(_ card: CompanionCard) -> String {
-        let base = card.kind == .context ? "de esta reunión" : "conocimiento · \(card.source)"
+        let base = card.kind == .context ? "from this meeting" : "knowledge · \(card.source)"
         if card.directed {
-            return card.answer.isEmpty ? "te preguntaron" : "te preguntaron · \(base)"
+            return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
         }
         return base
     }

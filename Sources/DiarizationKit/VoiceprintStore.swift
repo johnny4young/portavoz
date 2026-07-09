@@ -67,7 +67,7 @@ public struct VoiceprintStore: Sendable {
         return try JSONDecoder().decode(Voiceprint.self, from: plaintext)
     }
 
-    /// One action, both halves gone (D8: "borrable con una acción").
+    /// One action, both halves gone (D8: "deletable with one action").
     public func delete() throws {
         if exists {
             try FileManager.default.removeItem(at: fileURL)

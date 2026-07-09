@@ -42,7 +42,7 @@ enum VoiceCommand {
             case "enroll":
                 guard let file else {
                     print("Usage: portavoz-cli voice enroll --file <wav-solo-tu-voz>")
-                    print("Tip: grábalo con `portavoz-cli record --seconds 15` hablando tú solo.")
+                    print("Tip: record it with `portavoz-cli record --seconds 15` while speaking alone.")
                     return
                 }
                 let url = URL(fileURLWithPath: file)
@@ -54,12 +54,12 @@ enum VoiceCommand {
                 let diarizer = try await PyannoteDiarizer.loadRecommended(store: modelStore)
                 let voiceprint = try await diarizer.extractVoiceprint(fromFile: url)
                 try store.save(voiceprint)
-                print("Voz enrolada ✓ (embedding de \(voiceprint.embedding.count) dims, cifrado en disco, llave en Keychain).")
+                print("Voice enrolled ✓ (embedding de \(voiceprint.embedding.count) dims, encrypted on disk, key in Keychain).")
                 print("Desde ahora tus intervenciones en el canal system se etiquetan como \"Me\".")
 
             case "status":
                 if let voiceprint = try store.load() {
-                    print("Voz enrolada el \(voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened)) (\(voiceprint.embedding.count) dims).")
+                    print("Voice enrolled on \(voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened)) (\(voiceprint.embedding.count) dims).")
                 } else {
                     print("No hay voz enrolada.")
                 }

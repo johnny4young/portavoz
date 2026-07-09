@@ -72,12 +72,12 @@ enum ExportCommand {
                     let token = (try? SecretStore.get(service: SecretStore.gitHubTokenService))
                         ?? ProcessInfo.processInfo.environment["PORTAVOZ_GITHUB_TOKEN"]
                 else {
-                    // Mensaje de error de una línea.
+                    // One-line error message.
                     // swiftlint:disable:next line_length
                     print("error: no GitHub token — run `portavoz-cli secrets set-github-token <token>` (or set PORTAVOZ_GITHUB_TOKEN)")
                     return
                 }
-                print("⚠️ Publicando el transcript FUERA del dispositivo como gist \(isPublic ? "PÚBLICO" : "secreto")…")
+                print("⚠️ Publishing the transcript OUTSIDE the device as a \(isPublic ? "PUBLIC" : "secret") gist…")
                 let publisher = GistPublisher(token: token)
                 let url = try await publisher.publish(
                     markdown: markdown,
@@ -162,7 +162,7 @@ enum SecretsCommand {
                 print("error: \(error.localizedDescription)")
             }
         default:
-            // Texto de uso (usage) de una línea.
+            // One-line usage text.
             // swiftlint:disable:next line_length
             print("Usage: portavoz-cli secrets <set-github-token|clear-github-token|set-linear-token|clear-linear-token> [token]")
         }

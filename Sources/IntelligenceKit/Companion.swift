@@ -30,7 +30,7 @@ public enum QuestionHeuristic {
         return interrogatives.contains(String(firstWord))
     }
 
-    /// The "te preguntaron" gate (D26): whole-word, case- and
+    /// The "asked you" gate (D26): whole-word, case- and
     /// diacritic-insensitive match of the owner's first name or full name.
     /// Token equality on purpose — "John" must not fire inside "Johnny".
     public static func mentions(_ name: String, in text: String) -> Bool {
@@ -55,8 +55,8 @@ public enum QuestionHeuristic {
 }
 
 /// One answered question, ready for the recording side panel. `source`
-/// names who produced the answer ("on-device" hoy; el proveedor BYOK
-/// cuando exista) — the disclosure D26 demands.
+/// names who produced the answer ("on-device" today; the BYOK provider
+/// when it exists) — the disclosure D26 demands.
 public struct CompanionCard: Identifiable, Sendable, Equatable {
     public enum Kind: String, Sendable {
         case knowledge
@@ -65,13 +65,13 @@ public struct CompanionCard: Identifiable, Sendable, Equatable {
 
     public let id: UUID
     public let question: String
-    /// Empty on a pure "te preguntaron" ping — the question itself is the
+    /// Empty on a pure "asked you" ping — the question itself is the
     /// whole value; the UI hides the answer block.
     public let answer: String
     public let kind: Kind
     public let source: String
     /// True when the caption addressed the device owner BY NAME (D26's
-    /// "te preguntaron"): the card doubles as an attention ping.
+    /// "asked you"): the card doubles as an attention ping.
     public let directed: Bool
     public let askedAt: TimeInterval
 

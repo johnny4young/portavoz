@@ -25,9 +25,10 @@ struct LibraryView: View {
             Button {
                 route = .recording
             } label: {
-                Label("Nueva grabación", systemImage: "record.circle")
+                Label("New recording", systemImage: "record.circle")
                     .frame(maxWidth: .infinity)
             }
+            .accessibilityIdentifier("library-new-recording-button")
             .controlSize(.large)
             .keyboardShortcut("n")
             .padding(.horizontal, 12)
@@ -44,25 +45,26 @@ struct LibraryView: View {
                 Button {
                     chooseAudioToImport()
                 } label: {
-                    Label("Importar audio…", systemImage: "square.and.arrow.down")
+                    Label("Import audio…", systemImage: "square.and.arrow.down")
                         .frame(maxWidth: .infinity)
                 }
                 .controlSize(.small)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-                .help("Transcribe un archivo de audio (.m4a, .wav, .mp3) como una reunión nueva")
+                .help("Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting")
+                .accessibilityIdentifier("library-import-audio-button")
             }
 
-            TextField("Buscar en todas las reuniones…", text: $query)
+            TextField("Search all meetings…", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)
                 .task(id: query) { await search(query) }
 
             List(selection: $route) {
                 if !query.isEmpty {
-                    Section("Resultados") {
+                    Section("Results") {
                         if hits.isEmpty {
-                            Text("Sin coincidencias").foregroundStyle(.secondary)
+                            Text("No matches").foregroundStyle(.secondary)
                         }
                         ForEach(hits, id: \.segmentID) { hit in
                             VStack(alignment: .leading, spacing: 2) {
@@ -75,9 +77,9 @@ struct LibraryView: View {
                         }
                     }
                 } else {
-                    Section("Reuniones") {
+                    Section("Meetings") {
                         if meetings.isEmpty {
-                            Text("Todavía no hay reuniones").foregroundStyle(.secondary)
+                            Text("No meetings yet").foregroundStyle(.secondary)
                         }
                         ForEach(meetings) { meeting in
                             VStack(alignment: .leading, spacing: 2) {
@@ -88,11 +90,11 @@ struct LibraryView: View {
                             }
                             .tag(Route.meeting(meeting.id))
                             .contextMenu {
-                                Button("Renombrar…") {
+                                Button("Rename…") {
                                     renamingMeeting = meeting
                                     newTitle = meeting.title
                                 }
-                                Button("Eliminar", role: .destructive) {
+                                Button("Delete", role: .destructive) {
                                     Task {
                                         try? await services.store.delete(meeting.id)
                                         if route == .meeting(meeting.id) { route = nil }
@@ -108,14 +110,14 @@ struct LibraryView: View {
         }
         .navigationTitle("Portavoz")
         .alert(
-            "Renombrar reunión",
+            "Rename meeting",
             isPresented: Binding(
                 get: { renamingMeeting != nil },
                 set: { if !$0 { renamingMeeting = nil } }
             )
         ) {
-            TextField("Título", text: $newTitle)
-            Button("Guardar") {
+            TextField("Title", text: $newTitle)
+            Button("Save") {
                 // Capture now — dismissing the alert nils renamingMeeting
                 // before the task runs.
                 if var meeting = renamingMeeting {
@@ -128,10 +130,10 @@ struct LibraryView: View {
                     }
                 }
             }
-            Button("Cancelar", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         }
         .alert(
-            "No se pudo importar",
+            "Import failed",
             isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })
         ) {
             Button("OK", role: .cancel) {}
@@ -162,15 +164,15 @@ struct LibraryView: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = Self.importTypes
-        panel.prompt = "Importar"
-        panel.message = "Elige un archivo de audio para transcribir como una reunión"
+        panel.prompt = "Import"
+        panel.message = L10n.text("Choose an audio file to transcribe as a meeting")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         importAudio(from: url)
     }
 
     private func importAudio(from url: URL) {
         guard importStatus == nil else { return }
-        importStatus = "Preparando…"
+        importStatus = L10n.text("Preparing…")
         Task {
             do {
                 let id = try await services.importMeeting(from: url) { status in

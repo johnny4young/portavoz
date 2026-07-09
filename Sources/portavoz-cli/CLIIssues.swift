@@ -54,12 +54,12 @@ enum IssuesCommand {
             guard let detail = try await store.detail(meetingID),
                 let (summary, _) = try await store.summary(meetingID)
             else {
-                print("error: la reunión no existe o no tiene resumen")
+                print("error: the meeting does not exist or has no summary")
                 return
             }
             let pending = summary.actionItems.filter { !$0.isDone }
             guard !pending.isEmpty else {
-                print("No hay action items pendientes en el último resumen.")
+                print("There are no pending action items in the latest summary.")
                 return
             }
             let namesByID = Dictionary(
@@ -67,7 +67,7 @@ enum IssuesCommand {
                     ($0.id, $0.displayName ?? $0.label)
                 })
 
-            print("⚠️ Se publicarán \(pending.count) action item(s) FUERA del dispositivo.")
+            print("⚠️ Publishing \(pending.count) action item(s) OUTSIDE the device.")
             for item in pending {
                 let owner = item.ownerSpeakerID.flatMap { namesByID[$0] }
                 let url: URL

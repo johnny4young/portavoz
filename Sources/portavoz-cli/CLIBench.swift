@@ -48,7 +48,7 @@ enum BenchCommand {
 
         guard let batchFile else {
             print(
-                // Texto de uso (usage) de una línea.
+                // One-line usage text.
                 // swiftlint:disable:next line_length
                 "Usage: portavoz-cli bench-m2 --batch-file <wav> [--seconds N] [--mic <name>] [--language es] [--models-dir <dir>]"
             )

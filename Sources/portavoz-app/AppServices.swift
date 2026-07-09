@@ -33,7 +33,7 @@ final class AppServices {
 
     /// Meeting audio lives under here; the database only ever stores the
     /// path relative to it (D4). The user can point it elsewhere in
-    /// Ajustes → Grabaciones; reads should go through
+    /// Settings → Recordings; reads should go through
     /// `RecordingsLocation.shared.resolve(_:)` for the old-root fallback.
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
@@ -74,12 +74,13 @@ final class AppServices {
         }
         let modelStore = ModelStore()
         do {
-            modelsState = .downloading("Preparando modelos…")
+            modelsState = .downloading(L10n.text("Preparing models…"))
             if transcriber == nil {
                 transcriber = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
                     let percent = Int(progress.fraction * 100)
                     Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading("Descargando modelo de transcripción… \(percent)%")
+                        self?.modelsState = .downloading(
+                            L10n.format("Downloading transcription model… %d%%", percent))
                     }
                 }
             }
@@ -90,7 +91,8 @@ final class AppServices {
                 ) { progress in
                     let percent = Int(progress.fraction * 100)
                     Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading("Descargando modelo de diarización… \(percent)%")
+                        self?.modelsState = .downloading(
+                            L10n.format("Downloading diarization model… %d%%", percent))
                     }
                 }
             }
@@ -118,7 +120,7 @@ final class AppServices {
             guard update.totalBytes > 0 else { return }
             let percent = Int(update.fraction * 100)
             Task { @MainActor in
-                progress("Descargando Whisper (\(size), solo una vez)… \(percent)%")
+                progress(L10n.format("Downloading Whisper (%@, one time only)… %d%%", size, percent))
             }
         }
         whisper = engine
@@ -261,7 +263,7 @@ final class AppServices {
         }
         guard #available(macOS 26.0, *) else {
             throw IntelligenceError.modelUnavailable(
-                "Apple Intelligence requiere macOS 26 — elige Ollama en Ajustes.")
+                L10n.text("Apple Intelligence requires macOS 26 — choose Ollama in Settings."))
         }
         return try await FoundationModelSummaryProvider().summarize(request)
     }
@@ -281,7 +283,7 @@ final class AppServices {
         let dest = audioDir.appendingPathComponent("system.\(ext)")
         try FileManager.default.copyItem(at: source, to: dest)
 
-        progress("Preparando modelos…")
+        progress(L10n.text("Preparing models…"))
         let whisper = try await loadWhisperIfNeeded { progress($0) }
         try await loadEnginesIfNeeded()
 
@@ -289,10 +291,10 @@ final class AppServices {
             UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
         let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID)
 
-        progress("Transcribiendo el audio (Whisper)…")
+        progress(L10n.text("Transcribing audio (Whisper)…"))
         let result = try await whisper.transcribeFile(at: dest, hints: hints, channel: .system)
 
-        progress("Identificando hablantes…")
+        progress(L10n.text("Identifying speakers…"))
         let turns = (try? await diarizer?.diarizeFile(at: dest)) ?? []
         let attribution = SpeakerAttributor.attribute(
             segments: result.segments.sorted { $0.startTime < $1.startTime },
@@ -300,7 +302,7 @@ final class AppServices {
 
         let meeting = Meeting(
             id: meetingID,
-            title: "Importado · " + source.deletingPathExtension().lastPathComponent,
+            title: "Imported · " + source.deletingPathExtension().lastPathComponent,
             startedAt: Date(),
             endedAt: Date().addingTimeInterval(result.audioDuration),
             audioDirectory: relative)
@@ -308,7 +310,7 @@ final class AppServices {
         try await store.save(attribution.speakers)
         try await store.save(attribution.segments)
 
-        progress("Generando resumen…")
+        progress(L10n.text("Generating summary…"))
         let request = SummaryRequest(
             meetingID: meetingID, segments: attribution.segments,
             speakers: attribution.speakers, recipe: .general,
@@ -337,7 +339,7 @@ final class AppServices {
         let audioDirectory = Self.prepareSeedAudio()
 
         let meeting = Meeting(
-            title: "Reunión de prueba",
+            title: "Test meeting",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_001_800),
             language: "es",
@@ -367,7 +369,7 @@ final class AppServices {
                     - ▸ El rollout del modelo queda para el viernes.
                     - Se revisará el presupuesto de transcripción.
                     """,
-                actionItems: [ActionItem(text: "Preparar el rollout", ownerSpeakerID: ana.id)]))
+                actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])

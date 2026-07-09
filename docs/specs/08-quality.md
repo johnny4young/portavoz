@@ -1,6 +1,6 @@
 # Spec 08 — Calidad: tests, harnesses y números medidos
 
-Estado: 214 tests de paquete en verde (11 gated) + 4 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Estado: 219 tests de paquete en verde (11 gated) + 5 UI tests XCUITest. CI en GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: config recomendada de industria (reglas por defecto + opt-in de correctness/claridad, umbrales de industria: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` pasa con **cero violaciones** sobre `Sources`; en CI cualquier violación rompe el build. Excepciones inherentes silenciadas in-line con justificación (datos sha256 del catálogo, dispatchers arg-parser del CLI, vistas SwiftUI grandes) — partir esas vistas queda como deuda técnica.
 
@@ -16,6 +16,7 @@ Estado: 214 tests de paquete en verde (11 gated) + 4 UI tests XCUITest. CI en Gi
 | StorageTests | Contrato D4 completo (tombstones, versionado, FTS hostil, retención, paths) |
 | RecordingsLocationTests | 7: marker, fallback, resolve, migración resumable |
 | CoreTypesTests | Tipos + **TitleTemplate** |
+| LocalizationTests / EnglishSourceTests | String Catalogs EN/ES, placeholders, export `.lproj`, higiene de source público en inglés |
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | RAG fusion, protocolo MCP, voiceprint cifrado, exporters offline |
 | ParakeetIntegrationTests + gated | Modelos reales — requieren `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
@@ -23,7 +24,7 @@ Local: `swift test` (si falla con "no such module": `DEVELOPER_DIR=/Applications
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
-XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). `make test-ui` hace preflight: cierra una instancia previa de Portavoz y advierte si Gancho está corriendo, porque XCUITest de macOS puede fallar antes de ejecutar tests con `Timed out while enabling automation mode` o ventanas interruptoras. Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-use-temp-store` (DB desechable) + `-seed-demo` (reunión determinística con transcript, resumen, bullet "▸" de coautoría y **audio**). El audio se aísla con la env `PORTAVOZ_AUDIO_ROOT`; el seed sintetiza un clip de dos tonos (mic/system) o adopta una grabación real dejada en la raíz — apunta `PORTAVOZ_TEST_AUDIO_ROOT` a una copia real para ejercitar el player sobre audio de verdad. Cubre 4 casos: `LibraryUITests` (la biblioteca renderiza), `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28 + **el player renderiza y reproduce** + **marcar in/out revela el botón de exportar clip**) y `SettingsUITests` (la sección "Motor de resúmenes" renderiza — M12). El export en sí (`AudioClipExporter`) se prueba como unit test — un clip de 15 s de un fuente de 30 s exporta a m4a en fracción de segundo (holgado bajo el criterio < 2 s de M11).
+XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). `make test-ui` hace preflight: cierra una instancia previa de Portavoz y advierte si Gancho está corriendo, porque XCUITest de macOS puede fallar antes de ejecutar tests con `Timed out while enabling automation mode` o ventanas interruptoras. Verifica la UI por automatización en vez de conducir la pantalla. Launch-args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (DB desechable; Settings no toca Keychain real), `-seed-demo` (reunión determinística con transcript, resumen, bullet "▸" de coautoría y **audio**) y `-portavoz-open-settings` (sheet determinística de Settings para automation). El audio se aísla con la env `PORTAVOZ_AUDIO_ROOT`; el seed sintetiza un clip de dos tonos (mic/system) o adopta una grabación real dejada en la raíz — apunta `PORTAVOZ_TEST_AUDIO_ROOT` a una copia real para ejercitar el player sobre audio de verdad. Cubre 5 casos: `LibraryUITests` (la biblioteca renderiza por identifiers y valida labels bajo `PORTAVOZ_UI_TEST_LOCALE`), `MeetingDetailUITests` (transcript + resumen + marca ▸ de coautoría D28 + **el player renderiza y reproduce** + **marcar in/out revela el botón de exportar clip**) y `SettingsUITests` (la sección "Motor de resúmenes" renderiza — M12; selector de idioma cambia a Español en vivo y vuelve a system/English sin relaunch). `make test-ui-en` y `make test-ui-es` fuerzan `-AppleLanguages`/`-AppleLocale`. El export en sí (`AudioClipExporter`) se prueba como unit test — un clip de 15 s de un fuente de 30 s exporta a m4a en fracción de segundo (holgado bajo el criterio < 2 s de M11).
 
 ## Harnesses de medición
 

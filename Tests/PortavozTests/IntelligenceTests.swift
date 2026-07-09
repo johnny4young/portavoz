@@ -672,8 +672,8 @@ final class OpenAICompatibleProviderTests: XCTestCase {
 
 final class LiveSummaryPolicyTests: XCTestCase {
     func testFirstRenderAlwaysShows() {
-        XCTAssertTrue(LiveSummaryPolicy.shouldReplace(current: nil, candidate: "## Resumen"))
-        XCTAssertTrue(LiveSummaryPolicy.shouldReplace(current: "", candidate: "## Resumen"))
+        XCTAssertTrue(LiveSummaryPolicy.shouldReplace(current: nil, candidate: "## Summary"))
+        XCTAssertTrue(LiveSummaryPolicy.shouldReplace(current: "", candidate: "## Summary"))
     }
 
     func testEmptyCandidateNeverReplaces() {

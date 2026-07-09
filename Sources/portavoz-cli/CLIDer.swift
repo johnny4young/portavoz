@@ -68,10 +68,10 @@ enum DerCommand {
             let refSpeakers = Set(referenceTurns.map(\.voiceLabel)).count
             let hypSpeakers = Set(hypothesis.map(\.voiceLabel)).count
             print(String(
-                format: "DER %.1f%% (miss %.1f%% · falsa alarma %.1f%% · confusión %.1f%%) — collar %.2fs",
+                format: "DER %.1f%% (miss %.1f%% · false alarm %.1f%% · confusion %.1f%%) — collar %.2fs",
                 score.der * 100, score.miss * 100, score.falseAlarm * 100,
                 score.confusion * 100, collar))
-            print("speakers: referencia \(refSpeakers) · hipótesis \(hypSpeakers) · mapeo \(score.mapping)")
+            print("speakers: reference \(refSpeakers) · hypothesis \(hypSpeakers) · mapping \(score.mapping)")
             print(score.der < 0.15
                 ? "M3: PASS ✓ (DER < 15%)"
                 : "M3: FAIL ✗ (criterio: DER < 15%)")

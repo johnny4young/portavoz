@@ -12,9 +12,9 @@ public enum AudioClipExporter {
 
         public var errorDescription: String? {
             switch self {
-            case .invalidRange: return "El rango del clip no es válido."
-            case .noAudio: return "La reunión no tiene audio para recortar."
-            case .exportFailed(let reason): return "No se pudo exportar el clip: \(reason)"
+            case .invalidRange: return "The clip range is invalid."
+            case .noAudio: return "The meeting has no audio to trim."
+            case .exportFailed(let reason): return "Could not export the clip: \(reason)"
             }
         }
     }

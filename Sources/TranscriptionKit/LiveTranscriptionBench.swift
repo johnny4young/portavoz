@@ -23,12 +23,12 @@ public enum LiveTranscriptionBench {
         }
 
         public var report: String {
-            var lines = ["finales: \(finals) · volátiles: \(volatiles) · chars: \(characters)"]
+            var lines = ["final: \(finals) · volatile: \(volatiles) · chars: \(characters)"]
             if let firstResultAt {
                 lines.append(String(format: "primer resultado: %.2fs", firstResultAt))
             }
             lines.append(String(
-                format: "lag de finalización — p50 %.2fs · p95 %.2fs · max %.2fs",
+                format: "finalization lag — p50 %.2fs · p95 %.2fs · max %.2fs",
                 percentile(0.5), percentile(0.95), lags.last ?? 0))
             return lines.joined(separator: "\n")
         }

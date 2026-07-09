@@ -10,13 +10,12 @@ final class MeetingDetailUITests: XCTestCase {
     /// (Audio/<uuid>/…) to exercise the player on real audio instead.
     @MainActor
     private func launchOnSeededMeeting() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-use-temp-store", "-seed-demo"]
+        let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
-        app.launch()
-        let meeting = app.staticTexts["Reunión de prueba"]
+        app.launchPortavoz()
+        let meeting = app.staticTexts["Test meeting"]
         XCTAssertTrue(
             meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
         meeting.click()

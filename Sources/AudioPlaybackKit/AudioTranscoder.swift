@@ -11,7 +11,7 @@ public enum AudioTranscoder {
 
         public var errorDescription: String? {
             switch self {
-            case .exportFailed(let reason): return "No se pudo comprimir el audio: \(reason)"
+            case .exportFailed(let reason): return "Could not compress audio: \(reason)"
             }
         }
     }

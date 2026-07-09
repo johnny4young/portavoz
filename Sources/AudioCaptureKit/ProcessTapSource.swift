@@ -68,7 +68,7 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
     }
 
     // Construye tap + aggregate device + IOProc de Core Audio; secuencia
-    // imperativa larga contra la API C. Split pendiente como deuda técnica.
+    // long imperative sequence against the C API. Splitting remains technical debt.
     /// Creates the tap + aggregate + IOProc against the CURRENT default
     /// output and starts it, yielding into `self.continuation`. On the first
     /// build it pins `streamSampleRate`; later builds resample to it.

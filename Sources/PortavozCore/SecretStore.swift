@@ -47,8 +47,8 @@ public enum SecretStore {
         switch status {
         case errSecSuccess:
             guard let data = result as? Data else { return nil }
-            // Secreto del Keychain: UTF-8 válido garantizado; conversión total
-            // intencional (la failable cambiaría el contrato de retorno).
+            // Keychain secret: valid UTF-8 is guaranteed; the total conversion
+            // is intentional (the failable variant would change the return contract).
             // swiftlint:disable:next optional_data_string_conversion
             return String(decoding: data, as: UTF8.self)
         case errSecItemNotFound:

@@ -16,7 +16,7 @@ VERSION="${PORTAVOZ_VERSION:-0.1.0}"
 BUILD="${PORTAVOZ_BUILD:-1}"
 
 usage() {
-  echo "uso: scripts/make-app.sh [--release] [--version <version>] [--build <build>]" >&2
+  echo "usage: scripts/make-app.sh [--release] [--version <version>] [--build <build>]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -83,6 +83,13 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>app.portavoz.mac</string>
     <key>CFBundleExecutable</key>
     <string>portavoz-app</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>es</string>
+    </array>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleShortVersionString</key>
@@ -96,21 +103,21 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Portavoz graba tu micrófono para transcribir tus intervenciones en la reunión. El audio nunca sale de tu Mac.</string>
+    <string>Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac.</string>
     <key>NSAudioCaptureUsageDescription</key>
-    <string>Portavoz captura el audio del sistema para transcribir a los demás participantes de la reunión. El audio nunca sale de tu Mac.</string>
+    <string>Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Portavoz lee los asistentes de tus eventos de calendario solo para sugerir nombres de los hablantes de la reunión. Nada sale de tu Mac.</string>
+    <string>Portavoz reads calendar attendees only to suggest meeting speaker names. Nothing leaves your Mac.</string>
     <key>NSDesktopFolderUsageDescription</key>
-    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
+    <string>Portavoz stores meeting audio in the folder you choose.</string>
     <key>NSDocumentsFolderUsageDescription</key>
-    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
+    <string>Portavoz stores meeting audio in the folder you choose.</string>
     <key>NSDownloadsFolderUsageDescription</key>
-    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas.</string>
+    <string>Portavoz stores meeting audio in the folder you choose.</string>
     <key>NSRemovableVolumesUsageDescription</key>
-    <string>Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas, incluidos discos externos.</string>
+    <string>Portavoz stores meeting audio in the folder you choose, including external drives.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Portavoz puede usar el motor de voz de macOS como alternativa de transcripción, siempre on-device.</string>
+    <string>Portavoz can use the macOS speech engine as an on-device transcription fallback.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
 </dict>
@@ -119,6 +126,7 @@ PLIST
 
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
+python3 scripts/export-localizations.py "$APP/Contents/Resources"
 
 # Sparkle update feed + signing key. Without assets/sparkle-public-key
 # the app just never finds updates (fine in dev).
@@ -146,5 +154,5 @@ codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" \
   --entitlements packaging/portavoz.entitlements "$APP"
 
-echo "OK → $APP (firma: $SIGN_ID)"
+echo "OK → $APP (signature: $SIGN_ID)"
 echo "Run it with: open $APP"

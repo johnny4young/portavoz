@@ -148,7 +148,7 @@ public enum PromptFactory {
     public static func namingInstructions() -> String {
         [
             "You map meeting speaker labels (S1, S2, …) to real people's names.",
-            // Instrucción de prompt de una línea.
+            // One-line prompt instruction.
             // swiftlint:disable:next line_length
             "A mapping is valid ONLY with explicit proof in the transcript: the speaker introduces themselves (\"soy Ana\", \"this is John speaking\"), or another speaker addresses them by name immediately around their turn (\"thanks, Ana\" right after S2 spoke).",
             "Never infer names from topics, roles or guesses. Skip the label \"Me\".",

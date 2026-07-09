@@ -6,7 +6,7 @@ import Foundation
 /// chronologically), OBS exposes date/time patterns. Times use dots, not
 /// colons, so a title can double as a filename.
 public enum TitleTemplate {
-    public static let defaultTemplate = "{date} {time} Reunión"
+    public static let defaultTemplate = "{date} {time} Meeting"
 
     /// Tokens: `{date}` → 2026-07-07 · `{time}` → 10.47 · `{seq}` →
     /// per-day sequence (01, 02…) · `{weekday}` → localized weekday name.

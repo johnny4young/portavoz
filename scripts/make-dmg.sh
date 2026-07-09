@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 SKIP_BUILD=false
 
 usage() {
-  echo "uso: scripts/make-dmg.sh [--skip-build]" >&2
+  echo "usage: scripts/make-dmg.sh [--skip-build]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -44,7 +44,7 @@ if [[ "$SKIP_BUILD" == false ]]; then
   fi
   scripts/make-app.sh "${args[@]}"
 elif [[ ! -d dist/Portavoz.app ]]; then
-  echo "dist/Portavoz.app no existe; omite --skip-build o ejecuta scripts/make-app.sh primero." >&2
+  echo "dist/Portavoz.app does not exist; omit --skip-build or run scripts/make-app.sh first." >&2
   exit 66
 fi
 
@@ -65,12 +65,12 @@ if [[ -n "${PORTAVOZ_SIGN_IDENTITY:-}" ]]; then
 fi
 
 if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" ]]; then
-  echo "Notarizando (perfil: $PORTAVOZ_NOTARY_PROFILE)…"
+  echo "Notarizing (profile: $PORTAVOZ_NOTARY_PROFILE)…"
   xcrun notarytool submit "$DMG" --keychain-profile "$PORTAVOZ_NOTARY_PROFILE" --wait
   xcrun stapler staple "$DMG"
 elif [[ -z "${PORTAVOZ_SIGN_IDENTITY:-}" ]]; then
-  echo "⚠️  DMG con firma ad-hoc: sirve para probar en esta máquina."
-  echo "   Para distribuir: PORTAVOZ_SIGN_IDENTITY + PORTAVOZ_NOTARY_PROFILE."
+  echo "⚠️  DMG uses ad-hoc signing: suitable only for testing on this machine."
+  echo "   For distribution: PORTAVOZ_SIGN_IDENTITY + PORTAVOZ_NOTARY_PROFILE."
 fi
 
 shasum -a 256 "$DMG"

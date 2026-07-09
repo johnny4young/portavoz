@@ -54,7 +54,7 @@ enum BenchLiveCommand {
 
         guard let file else {
             print(
-                // Texto de uso (usage) de una línea.
+                // One-line usage text.
                 // swiftlint:disable:next line_length
                 "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech] [--seconds N] [--language es] [--vocab \"a,b\"]"
             )
@@ -80,7 +80,7 @@ enum BenchLiveCommand {
                     return
                 }
                 guard SpeechAnalyzerEngine.isAvailable else {
-                    print("error: SpeechTranscriber no está disponible en este equipo")
+                    print("error: SpeechTranscriber is not available on this device")
                     return
                 }
                 let locale = try await SpeechAnalyzerEngine.ensureAssets(

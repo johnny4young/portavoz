@@ -1,0 +1,86 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "MIT License": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencia MIT"
+          }
+        }
+      }
+    },
+    "Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz"
+          }
+        }
+      }
+    },
+    "Portavoz can use the macOS speech engine as an on-device transcription fallback.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz puede usar el motor de voz de macOS como alternativa de transcripción, siempre on-device."
+          }
+        }
+      }
+    },
+    "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz captura el audio del sistema para transcribir a los demás participantes de la reunión. El audio nunca sale de tu Mac."
+          }
+        }
+      }
+    },
+    "Portavoz reads calendar attendees only to suggest meeting speaker names. Nothing leaves your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz lee los asistentes de tus eventos de calendario solo para sugerir nombres de los hablantes de la reunión. Nada sale de tu Mac."
+          }
+        }
+      }
+    },
+    "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz graba tu micrófono para transcribir tus intervenciones en la reunión. El audio nunca sale de tu Mac."
+          }
+        }
+      }
+    },
+    "Portavoz stores meeting audio in the folder you choose, including external drives.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas, incluidos discos externos."
+          }
+        }
+      }
+    },
+    "Portavoz stores meeting audio in the folder you choose.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz guarda el audio de tus reuniones en la carpeta que tú elijas."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

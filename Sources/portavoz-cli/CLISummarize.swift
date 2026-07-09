@@ -70,7 +70,7 @@ enum SummarizeCommand {
 
         guard let file else {
             print(
-                // Texto de uso (usage) de una línea.
+                // One-line usage text.
                 // swiftlint:disable:next line_length
                 "Usage: portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>]"
             )

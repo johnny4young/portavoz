@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install SwiftLint
         run: brew install swiftlint
-      # Strict (`strict: true` en .swiftlint.yml): CUALQUIER violación rompe
-      # el build. El código pasa con cero violaciones sobre Sources.
+      # Strict (`strict: true` in .swiftlint.yml): ANY violation breaks
+      # the build. Source code currently passes with zero violations.
       - name: SwiftLint
         run: swiftlint lint --strict --reporter github-actions-logging

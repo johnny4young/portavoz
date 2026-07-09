@@ -9,13 +9,13 @@ import SwiftUI
 import TranscriptionKit
 import UniformTypeIdentifiers
 
-// Vista SwiftUI grande (transcript + resumen + action items). Los tipos
-// auxiliares (MeetingPlayerBar, WaveformView, TranscriptSegmentsView,
-// SpeakerPill, ExportDocument) viven en sus propios archivos; el cuerpo del
-// tipo se reparte en `extension MeetingDetailView` más abajo. El archivo
-// sigue por encima del umbral de file_length porque partir el resto exigiría
-// exponer las ~24 propiedades `@State private` a todo el módulo — un precio
-// de encapsulamiento que no vale la línea de conteo (ver reporte de deuda).
+// Large SwiftUI view (transcript + summary + action items). Helper types
+// (MeetingPlayerBar, WaveformView, TranscriptSegmentsView, SpeakerPill,
+// ExportDocument) live in their own files; this type body is split across
+// `extension MeetingDetailView` blocks below. The file stays above the
+// file_length threshold because splitting the rest would expose ~24 private
+// `@State` properties to the whole module — an encapsulation cost not worth
+// paying for line-count only.
 // swiftlint:disable file_length
 
 /// Transcript with editable speaker pills (the M3 leftover), the latest
@@ -51,7 +51,7 @@ struct MeetingDetailView: View {
     @State private var newTitle = ""
 
     /// A refine result awaiting the user's decision — never applied on its
-    /// own. The transcript it would replace stays untouched until "Aplicar".
+    /// own. The transcript it would replace stays untouched until "Apply".
     struct RefineDraft {
         let speakers: [Speaker]
         let segments: [TranscriptSegment]
@@ -101,34 +101,34 @@ struct MeetingDetailView: View {
                 exportDocument = nil
             }
             .confirmationDialog(
-                "El transcript completo saldrá de tu Mac hacia GitHub como gist SECRETO (no listado).",
+                "The full transcript will leave your Mac for GitHub as a SECRET (unlisted) gist.",
                 isPresented: $showGistConfirm,
                 titleVisibility: .visible
             ) {
                 gistConfirmButtons(detail)
             }
-            .alert("Gist publicado", isPresented: gistResultBinding) {
+            .alert("Gist published", isPresented: gistResultBinding) {
                 gistPublishedButtons
             } message: {
                 Text(gistResult?.absoluteString ?? "")
             }
-            .alert("Resumen", isPresented: summaryNoticeBinding) {
+            .alert("Summary", isPresented: summaryNoticeBinding) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(summaryNotice ?? "")
             }
-            .alert("No se pudo completar", isPresented: gistErrorBinding) {
+            .alert("Couldn’t complete", isPresented: gistErrorBinding) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(gistError ?? "")
             }
-            .alert("Renombrar reunión", isPresented: $editingTitle) {
+            .alert("Rename meeting", isPresented: $editingTitle) {
                 renameMeetingButtons(detail)
             }
-            .alert("Renombrar hablante", isPresented: renameBinding) {
+            .alert("Rename speaker", isPresented: renameBinding) {
                 renameSpeakerButtons
             } message: {
-                Text("Etiqueta actual: \(renamingSpeaker?.label ?? "")")
+                Text("Current label: \(renamingSpeaker?.label ?? "")")
             }
     }
 }
@@ -170,13 +170,13 @@ extension MeetingDetailView {
         } else if regenerating {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Generando resumen…").foregroundStyle(.secondary)
+                Text("Generating summary…").foregroundStyle(.secondary)
             }
         } else if !detail.segments.isEmpty {
             Button {
                 regenerate(language: Locale.current.language.languageCode?.identifier ?? "en")
             } label: {
-                Label("Generar resumen", systemImage: "sparkles")
+                Label("Generate summary", systemImage: "sparkles")
             }
         }
     }
@@ -187,7 +187,7 @@ extension MeetingDetailView {
             Text("Transcript").font(.headline)
             if player != nil {
                 Spacer()
-                Text("Toca una línea para saltar ahí")
+                Text("Click a line to jump there")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -217,15 +217,15 @@ extension MeetingDetailView {
                     if compressing {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
-                            Text("Comprimiendo…")
+                            Text("Compressing…")
                         }
                     } else {
-                        Label("Comprimir audio (AAC)", systemImage: "arrow.down.circle")
+                        Label("Compress audio (AAC)", systemImage: "arrow.down.circle")
                     }
                 }
                 .controlSize(.small)
                 .disabled(!canCompressAudio)
-                .help("Convierte el audio a AAC para ahorrar disco, sin pérdida audible para voz")
+                .help("Converts audio to AAC to save disk space, with no audible loss for speech")
                 if let compressMessage {
                     Text(compressMessage)
                         .font(.caption)
@@ -244,25 +244,25 @@ extension MeetingDetailView {
             if refining != nil {
                 ProgressView().controlSize(.small)
             } else {
-                Label("Refinar", systemImage: "wand.and.stars")
+                Label("Refine", systemImage: "wand.and.stars")
             }
         }
         .disabled(refining != nil || detail.meeting.audioDirectory == nil)
         .help(
-            // Texto de ayuda de UI de una línea.
+            // One-line UI help text.
             // swiftlint:disable:next line_length
-            "Re-transcribe con Whisper (máxima calidad) y propone el resultado como borrador — nada se aplica sin tu confirmación"
+            "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation"
         )
     }
 
     private func exportMenu(_ detail: MeetingDetail) -> some View {
         Menu {
-            Button("Exportar Markdown…") { export(detail, as: .markdown) }
-            Button("Exportar PDF…") { export(detail, as: .pdf) }
+            Button("Export Markdown…") { export(detail, as: .markdown) }
+            Button("Export PDF…") { export(detail, as: .pdf) }
             Divider()
-            Button("Publicar como Gist…") { showGistConfirm = true }
+            Button("Publish as Gist…") { showGistConfirm = true }
         } label: {
-            Label("Exportar", systemImage: "square.and.arrow.up")
+            Label("Export", systemImage: "square.and.arrow.up")
         }
     }
 
@@ -274,7 +274,7 @@ extension MeetingDetailView {
                 route = nil
             }
         } label: {
-            Label("Eliminar", systemImage: "trash")
+            Label("Delete", systemImage: "trash")
         }
     }
 
@@ -287,19 +287,19 @@ extension MeetingDetailView {
 
     @ViewBuilder
     private func gistConfirmButtons(_ detail: MeetingDetail) -> some View {
-        Button("Publicar gist secreto") { Task { await publishGist(detail) } }
-        Button("Cancelar", role: .cancel) {}
+        Button("Publish secret gist") { Task { await publishGist(detail) } }
+        Button("Cancel", role: .cancel) {}
     }
 
     @ViewBuilder
     private var gistPublishedButtons: some View {
-        Button("Copiar enlace") {
+        Button("Copy link") {
             if let url = gistResult {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(url.absoluteString, forType: .string)
             }
         }
-        Button("Abrir") {
+        Button("Open") {
             if let url = gistResult { NSWorkspace.shared.open(url) }
         }
         Button("OK", role: .cancel) {}
@@ -307,8 +307,8 @@ extension MeetingDetailView {
 
     @ViewBuilder
     private func renameMeetingButtons(_ detail: MeetingDetail) -> some View {
-        TextField("Título", text: $newTitle)
-        Button("Guardar") {
+        TextField("Title", text: $newTitle)
+        Button("Save") {
             let title = newTitle
             var meeting = detail.meeting
             Task {
@@ -319,13 +319,13 @@ extension MeetingDetailView {
                 services.libraryVersion += 1
             }
         }
-        Button("Cancelar", role: .cancel) {}
+        Button("Cancel", role: .cancel) {}
     }
 
     @ViewBuilder
     private var renameSpeakerButtons: some View {
-        TextField("Nombre", text: $newName)
-        Button("Guardar") {
+        TextField("Name", text: $newName)
+        Button("Save") {
             // Capture NOW: dismissing the alert nils renamingSpeaker
             // before the task runs, which silently dropped the rename.
             if let speaker = renamingSpeaker {
@@ -333,7 +333,7 @@ extension MeetingDetailView {
                 Task { await rename(speaker, to: name) }
             }
         }
-        Button("Cancelar", role: .cancel) {}
+        Button("Cancel", role: .cancel) {}
     }
 
     private var refineDraftBinding: Binding<Bool> {
@@ -378,7 +378,7 @@ extension MeetingDetailView {
                     Image(systemName: "pencil").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Renombrar la reunión")
+                .help("Rename the meeting")
             }
             HStack(spacing: 12) {
                 Text(detail.meeting.startedAt.formatted(date: .long, time: .shortened))
@@ -386,7 +386,7 @@ extension MeetingDetailView {
                     let minutes = Int(ended.timeIntervalSince(detail.meeting.startedAt) / 60)
                     Text("\(minutes) min")
                 }
-                Text("\(detail.segments.count) segmentos")
+                Text("\(detail.segments.count) segments")
             }
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -412,7 +412,7 @@ extension MeetingDetailView {
                     Button {
                         Task { await suggestNames(detail) }
                     } label: {
-                        Label("Sugerir nombres", systemImage: "sparkles")
+                        Label("Suggest names", systemImage: "sparkles")
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
@@ -423,21 +423,21 @@ extension MeetingDetailView {
                 Button {
                     Task { await apply(suggestion, in: detail) }
                 } label: {
-                    Text("\(suggestion.label) → ¿\(suggestion.name)?")
+                    Text("\(suggestion.label) → \(suggestion.name)?")
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
                         .background(Color.accentColor.opacity(0.14), in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .help("Evidencia: \(suggestion.evidence)")
+                .help("Evidence: \(suggestion.evidence)")
             }
         }
     }
 
     private func suggestNames(_ detail: MeetingDetail) async {
         guard #available(macOS 26.0, *) else {
-            gistError = "Las sugerencias de nombres necesitan macOS 26."
+            gistError = L10n.text("Name suggestions require macOS 26.")
             return
         }
         suggestingNames = true
@@ -451,7 +451,8 @@ extension MeetingDetailView {
                 segments: detail.segments, speakers: detail.speakers,
                 attendeeCandidates: attendees)
             if nameSuggestions.isEmpty {
-                gistError = "El transcript no prueba ningún nombre — puedes renombrar los pills a mano."
+                gistError = L10n.text(
+                    "The transcript does not prove any names — you can rename the pills manually.")
             }
         } catch {
             gistError = error.localizedDescription
@@ -475,27 +476,27 @@ extension MeetingDetailView {
     private func summarySection(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Resumen")
+                Text("Summary")
                     .font(.headline)
                 Text("v\(summary.version) · \(summary.draft.language)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Menu {
-                    Button("Copiar como texto") { copySummary(summary.draft, as: .plainText) }
-                    Button("Copiar como Markdown") { copySummary(summary.draft, as: .markdown) }
-                    Button("Copiar para Slack") { copySummary(summary.draft, as: .slack) }
+                    Button("Copy as plain text") { copySummary(summary.draft, as: .plainText) }
+                    Button("Copy as Markdown") { copySummary(summary.draft, as: .markdown) }
+                    Button("Copy for Slack") { copySummary(summary.draft, as: .slack) }
                 } label: {
                     Image(systemName: "doc.on.doc")
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .help("Copia el resumen al portapapeles")
+                .help("Copy the summary to the clipboard")
                 if regenerating {
                     ProgressView().controlSize(.small)
                 } else {
                     Menu {
-                        Button("Regenerar en español") { regenerate(language: "es") }
+                        Button("Regenerate in Spanish") { regenerate(language: "es") }
                         Button("Regenerate in English") { regenerate(language: "en") }
                         if let alt = alternateEngine {
                             Divider()
@@ -596,13 +597,13 @@ extension MeetingDetailView {
                     _ = try? await services.store.saveSummary(draft)
                     services.libraryVersion += 1
                 } else {
-                    gistError = "El modelo local no pudo generar el resumen."
+                    gistError = L10n.text("The local model could not generate the summary.")
                 }
                 return
             }
 
             guard #available(macOS 26.0, *) else {
-                gistError = "Los resúmenes on-device necesitan macOS 26 (o elige Ollama en Ajustes)."
+                gistError = L10n.text("On-device summaries require macOS 26 (or choose Ollama in Settings).")
                 return
             }
             if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
@@ -613,16 +614,18 @@ extension MeetingDetailView {
             let fingerprint = SummaryFingerprint.compute(
                 request: request, providerID: FoundationModelSummaryProvider.providerID)
 
-            // Caché D25: mismo material + mismo idioma ya guardado — con
-            // decodificación greedy el modelo reproduciría lo mismo.
+            // D25 cache: same material + same stored language — with greedy
+            // decoding the model would reproduce the same result.
             if let hit = try? await services.store.latestSummary(
                 meetingID, fingerprint: fingerprint, language: language) {
                 summaryNotice =
-                    "El resumen v\(hit.version) ya corresponde a este material — no hay nada que regenerar. Cambia el transcript, las notas o el vocabulario para producir uno nuevo."
+                    // One-line UI notice.
+                    // swiftlint:disable:next line_length
+                    L10n.format("Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.", hit.version)
                 return
             }
-            // Pivote D25: mismo material en otro idioma → traducir ese
-            // snapshot cuesta una fracción de re-resumir el transcript.
+            // D25 pivot: same material in another language → translating that
+            // snapshot costs a fraction of summarizing the transcript again.
             if let pivot = try? await services.store.latestSummary(
                 meetingID, fingerprint: fingerprint),
                 let translated = try? await provider.translate(
@@ -648,20 +651,20 @@ extension MeetingDetailView {
     /// summary from the clean transcript.
     private func refine(_ detail: MeetingDetail) {
         guard refining == nil else { return }
-        refining = "Preparando…"
+        refining = L10n.text("Preparing…")
         refineError = nil
         Task {
             defer { refining = nil }
             do {
                 guard let relative = detail.meeting.audioDirectory else {
-                    refineError = "Esta reunión no conserva su audio."
+                    refineError = L10n.text("This meeting does not keep its audio.")
                     return
                 }
                 let base = RecordingsLocation.shared.resolve(relative)
                 let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base)
                 let microphoneURL = MeetingAudioLayout.channelFile(named: "microphone", in: base)
                 guard systemURL != nil || microphoneURL != nil else {
-                    refineError = "No se encontró el audio de la reunión."
+                    refineError = L10n.text("Could not find the meeting audio.")
                     return
                 }
 
@@ -676,13 +679,13 @@ extension MeetingDetailView {
 
                 var segments: [TranscriptSegment] = []
                 if let systemURL {
-                    refining = "Re-transcribiendo a los participantes (Whisper)…"
+                    refining = L10n.text("Re-transcribing participants (Whisper)…")
                     let result = try await whisper.transcribeFile(
                         at: systemURL, hints: hints, channel: .system)
                     segments.append(contentsOf: result.segments)
                 }
                 if let microphoneURL {
-                    refining = "Re-transcribiendo tu canal (Whisper)…"
+                    refining = L10n.text("Re-transcribing your channel (Whisper)…")
                     let result = try await whisper.transcribeFile(
                         at: microphoneURL, hints: hints, channel: .microphone)
                     segments.append(contentsOf: result.segments)
@@ -691,7 +694,7 @@ extension MeetingDetailView {
 
                 var turns: [SpeakerTurn] = []
                 if let systemURL, let diarizer = services.diarizer {
-                    refining = "Identificando hablantes…"
+                    refining = L10n.text("Identifying speakers…")
                     turns = (try? await diarizer.diarizeFile(at: systemURL)) ?? []
                 }
                 let attribution = SpeakerAttributor.attribute(
@@ -706,14 +709,14 @@ extension MeetingDetailView {
                     oldSpeakerCount: detail.speakers.count,
                     oldSpeechSeconds: oldSpeech)
             } catch {
-                refineError = "El refinado falló: \(error.localizedDescription)"
+                refineError = L10n.format("Refine failed: %@", error.localizedDescription)
             }
         }
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
         refineDraft = nil
-        refining = "Aplicando el transcript refinado…"
+        refining = L10n.text("Applying the refined transcript…")
         Task {
             defer { refining = nil }
             do {
@@ -727,21 +730,21 @@ extension MeetingDetailView {
                     language: summary?.draft.language
                         ?? Locale.current.language.languageCode?.identifier ?? "en")
             } catch {
-                refineError = "No se pudo aplicar el refinado: \(error.localizedDescription)"
+                refineError = L10n.format("Could not apply refine: %@", error.localizedDescription)
             }
         }
     }
 
     private func refineReviewSheet(_ draft: RefineDraft) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Revisar el transcript refinado", systemImage: "wand.and.stars")
+            Label("Review the refined transcript", systemImage: "wand.and.stars")
                 .font(.title3.weight(.semibold))
 
             if draft.looksLossy {
                 Label(
-                    // Texto de UI de una línea.
+                    // One-line UI text.
                     // swiftlint:disable:next line_length
-                    "El refinado cubre mucho menos habla que el transcript actual — probablemente falló. No lo apliques.",
+                    "The refine covers much less speech than the current transcript — it probably failed. Do not apply it.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .foregroundStyle(.red)
@@ -750,27 +753,27 @@ extension MeetingDetailView {
             Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
                 GridRow {
                     Text("").font(.caption)
-                    Text("Actual").font(.caption.weight(.semibold))
-                    Text("Refinado").font(.caption.weight(.semibold))
+                    Text("Current").font(.caption.weight(.semibold))
+                    Text("Refined").font(.caption.weight(.semibold))
                 }
                 GridRow {
-                    Text("Segmentos").foregroundStyle(.secondary)
+                    Text("Segments").foregroundStyle(.secondary)
                     Text("\(draft.oldSegmentCount)")
                     Text("\(draft.segments.count)")
                 }
                 GridRow {
-                    Text("Hablantes").foregroundStyle(.secondary)
+                    Text("Speakers").foregroundStyle(.secondary)
                     Text("\(draft.oldSpeakerCount)")
                     Text("\(draft.speakers.count)")
                 }
                 GridRow {
-                    Text("Habla cubierta").foregroundStyle(.secondary)
+                    Text("Covered speech").foregroundStyle(.secondary)
                     Text(minutes(draft.oldSpeechSeconds))
                     Text(minutes(draft.newSpeechSeconds))
                 }
             }
 
-            Text("Muestra").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text("Sample").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(draft.segments.prefix(8)) { segment in
@@ -786,8 +789,8 @@ extension MeetingDetailView {
 
             HStack {
                 Spacer()
-                Button("Descartar", role: .cancel) { refineDraft = nil }
-                Button("Aplicar") { applyRefineDraft(draft) }
+                Button("Discard", role: .cancel) { refineDraft = nil }
+                Button("Apply") { applyRefineDraft(draft) }
                     .buttonStyle(.borderedProminent)
                     .disabled(draft.segments.isEmpty)
             }
@@ -810,7 +813,7 @@ extension MeetingDetailView {
             let token = try? SecretStore.get(service: SecretStore.gitHubTokenService),
             !token.isEmpty
         else {
-            gistError = "Configura tu token de GitHub en Ajustes (⌘,) primero."
+            gistError = L10n.text("Configure your GitHub token in Settings (⌘,) first.")
             return
         }
         let markdown = MeetingExporter.markdown(
@@ -838,7 +841,7 @@ extension MeetingDetailView {
         do {
             try await services.store.save([renamed])
         } catch {
-            refineError = "No se pudo renombrar: \(error.localizedDescription)"
+            refineError = L10n.format("Could not rename: %@", error.localizedDescription)
             return
         }
         renamingSpeaker = nil
@@ -912,8 +915,8 @@ extension MeetingDetailView {
             channelURLs = []
             await loadPlayerIfNeeded()
             let saved = max(0, before - AudioTranscoder.totalBytes(of: channelURLs))
-            compressMessage =
-                "Audio comprimido — \(ByteCountFormatter.string(fromByteCount: saved, countStyle: .file)) liberados."
+            let freed = ByteCountFormatter.string(fromByteCount: saved, countStyle: .file)
+            compressMessage = L10n.format("Audio compressed — %@ freed.", freed)
         }
     }
 

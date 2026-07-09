@@ -14,6 +14,11 @@ options:
     macOS: "14.4"
   createIntermediateGroups: true
   groupSortPosition: top
+  developmentLanguage: en
+  knownRegions:
+    - en
+    - es
+    - Base
 
 settings:
   base:
@@ -41,11 +46,14 @@ targets:
     deploymentTarget: "14.4"
     sources:
       - path: Sources/portavoz-app
+      - path: Resources/Localization/Portavoz/Localizable.xcstrings
+      - path: Resources/Localization/Portavoz/InfoPlist.xcstrings
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Portavoz graba tu micrófono para transcribir tus intervenciones. El audio nunca sale de tu Mac."
-        INFOPLIST_KEY_NSAudioCaptureUsageDescription: "Portavoz captura el audio del sistema para transcribir a los demás participantes. El audio nunca sale de tu Mac."
+        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."
+        INFOPLIST_KEY_NSAudioCaptureUsageDescription: "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac."
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         GENERATE_INFOPLIST_FILE: YES
     dependencies:

@@ -35,9 +35,9 @@ struct MarkdownText: View {
                             .strikethrough(line.hasPrefix("- [x] "))
                     }
                 } else if line.hasPrefix("- ▸ ") {
-                    // Coautoría (D28): un bullet que nació de una nota tuya.
-                    // Estilo Granola — el acento lo distingue del resumen puro
-                    // de la IA ("esto salió de lo que TÚ marcaste").
+                    // Coauthoring (D28): a bullet born from one of your notes.
+                    // Granola-style: the marker distinguishes it from a pure
+                    // AI summary ("this came from what YOU flagged").
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("▸").foregroundStyle(.tint)
                         Text(inline(String(line.dropFirst(4))))

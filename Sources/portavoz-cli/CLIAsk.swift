@@ -3,7 +3,7 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
-/// `portavoz-cli ask "¿qué acordamos sobre el presupuesto?" [--db <path>]`
+/// `portavoz-cli ask "what did we agree about the budget?" [--db <path>]`
 ///
 /// Local RAG (M8): embeds anything new, retrieves hybrid (FTS + cosine),
 /// and answers on-device citing meeting + timestamp. Nothing leaves the
@@ -49,7 +49,7 @@ enum AskCommand {
                 let answer = try await RAGAnswerer().answer(question: question, passages: passages)
                 print(answer)
             } else {
-                print("(Apple Intelligence no disponible — esto es lo más relevante que encontré:)")
+                print("(Apple Intelligence unavailable — this is the most relevant context I found:)")
             }
             print("\nfuentes:")
             for (index, passage) in passages.enumerated() {
