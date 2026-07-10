@@ -1,6 +1,6 @@
-# Homebrew cask for Portavoz (D10). Lives in the tap
-# johnny4young/homebrew-portavoz once the repo goes public;
-# scripts/make-release.sh rewrites version and sha256 on every release.
+# Homebrew cask TEMPLATE for Portavoz (D10). The rendered cask lives in
+# the centralized tap johnny4young/homebrew-tap; the update-cask.yml
+# workflow (or scripts/make-release.sh locally) fills version and sha256.
 cask "portavoz" do
   version "__VERSION__"
   sha256 "__SHA256__"
@@ -12,7 +12,7 @@ cask "portavoz" do
   homepage "https://github.com/johnny4young/portavoz"
 
   auto_updates true
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "Portavoz.app"
 

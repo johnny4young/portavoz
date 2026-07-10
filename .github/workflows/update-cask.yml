@@ -1,0 +1,73 @@
+name: Update Homebrew cask
+
+# Cross-repo half of the tap automation (pattern shared with Gancho):
+# regenerate the `portavoz` cask in johnny4young/homebrew-tap from this
+# repo's source template (packaging/Casks/portavoz.rb) with a released
+# DMG's version and SHA-256.
+#
+# Portavoz's DMG is built, signed, and notarized locally — the Developer
+# ID identity and the EdDSA appcast signature both need the maintainer's
+# keys. So run this AFTER the DMG is attached to the release:
+#
+#   gh workflow run update-cask.yml -f tag=v0.1.0
+#
+# Requires the TAP_DEPLOY_KEY secret: an SSH deploy key with write access
+# on johnny4young/homebrew-tap (scoped to that one repo, unlike a PAT).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag whose DMG to publish the cask for (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  update-cask:
+    name: Bump the portavoz cask
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out portavoz (for the cask template)
+        uses: actions/checkout@v7
+
+      - name: Resolve version and DMG checksum
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Portavoz-${VERSION}.dmg"
+          curl -sfL "$URL" -o portavoz.dmg
+          SHA256=$(shasum -a 256 portavoz.dmg | cut -d' ' -f1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the tap
+        uses: actions/checkout@v7
+        with:
+          repository: johnny4young/homebrew-tap
+          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
+          path: tap
+
+      - name: Render and push the cask
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          SHA256: ${{ steps.release.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          sed -e "s/__VERSION__/${VERSION}/" -e "s/__SHA256__/${SHA256}/" \
+            packaging/Casks/portavoz.rb > tap/Casks/portavoz.rb
+          cd tap
+          if [ -x scripts/sync-readme.py ] || [ -f scripts/sync-readme.py ]; then
+            python3 scripts/sync-readme.py || true
+          fi
+          git config user.name "portavoz-release-bot"
+          git config user.email "noreply@github.com"
+          git add Casks/portavoz.rb README.md
+          git diff --cached --quiet && { echo "cask already current"; exit 0; }
+          git commit -m "portavoz ${VERSION}"
+          git push origin main

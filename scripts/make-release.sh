@@ -12,7 +12,7 @@
 # Publishing checklist afterwards:
 #   1. git tag v<version> && push (repo + tag)
 #   2. gh release create v<version> dist/release/Portavoz-<version>.dmg dist/release/appcast.xml
-#   3. Copy dist/release/portavoz.rb into the johnny4young/homebrew-portavoz tap
+#   3. gh workflow run update-cask.yml -f tag=v<version>  (bumps johnny4young/homebrew-tap)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -39,7 +39,7 @@ fi
 # Homebrew cask with real version + sha256.
 SHA256="$(shasum -a 256 "$RELEASE_DIR/Portavoz-$VERSION.dmg" | cut -d' ' -f1)"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$SHA256/" \
-  packaging/portavoz.rb > "$RELEASE_DIR/portavoz.rb"
+  packaging/Casks/portavoz.rb > "$RELEASE_DIR/portavoz.rb"
 
 echo ""
 echo "Release $VERSION ready in $RELEASE_DIR/:"

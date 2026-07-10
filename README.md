@@ -23,7 +23,14 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Private beta — used in real meetings, not yet publicly released.** Capture, live + refine transcription, diarization, bilingual summaries, audio playback, co-authoring notes, and the live companion are all built and measured (see below). The next milestone is the public 0.1 release — Homebrew cask + notarized DMG are built and waiting on publication ([docs/ROADMAP.md](docs/ROADMAP.md), M9). Every feature that ships lands in the [changelog](CHANGELOG.md).
+**v0.1.0 is out.** Install it with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases):
+
+```sh
+brew tap johnny4young/tap
+brew install --cask portavoz
+```
+
+Capture, live + refine transcription, on-device diarization, bilingual summaries (three local engines), audio playback, co-authoring notes, pre-meeting briefs, and the live companion are all built and measured (see below). Every feature that ships lands in the [changelog](CHANGELOG.md).
 
 ## Benchmarks
 
@@ -90,7 +97,7 @@ scripts/make-app.sh && open dist/Portavoz.app
 swift run portavoz-cli models download
 ```
 
-The public release will ship a notarized DMG and a Homebrew cask (`brew install --cask portavoz`) — tracked in M9.
+Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask above (tap: [johnny4young/homebrew-tap](https://github.com/johnny4young/homebrew-tap)).
 
 ## Privacy
 
