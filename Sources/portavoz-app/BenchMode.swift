@@ -146,3 +146,70 @@ extension BenchMode {
             userInfo: [NSLocalizedDescriptionKey: "no meeting with a transcript in the library"])
     }
 }
+
+extension BenchMode {
+    /// `portavoz-app --bench-startup` — prints the time from process exec
+    /// (dyld included, via the kernel's process start time) to the first
+    /// rendered frame of ContentView, then exits. Run it a few times: the
+    /// first run after a reboot is the honest cold start; later runs
+    /// measure the warm start.
+    static func reportStartupIfRequested() {
+        guard ProcessInfo.processInfo.arguments.contains("--bench-startup") else { return }
+        let elapsed = Date().timeIntervalSince(processStartTime())
+        print(String(format: "startup-to-first-frame: %.0f ms", elapsed * 1_000))
+        exit(0)
+    }
+
+    /// `portavoz-app --bench-record <seconds>` — starts a REAL recording
+    /// session (mic + system tap + live transcription) headlessly, samples
+    /// this process's physical footprint every 2 s, and prints the peak
+    /// when the window ends. Combine with -use-temp-store so the bench
+    /// meeting never lands in the real library.
+    @MainActor
+    static func runRecordBenchIfRequested(services: AppServices, recording: RecordingController) {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flag = arguments.firstIndex(of: "--bench-record") else { return }
+        let seconds = arguments.indices.contains(flag + 1) ? Int(arguments[flag + 1]) ?? 60 : 60
+        setbuf(stdout, nil)
+        Task { @MainActor in
+            print("bench-record: starting a real session (models may download/load first)…")
+            await recording.start(services: services)
+            if case .failed(let reason) = recording.phase {
+                print("bench-record: start FAILED: \(reason)")
+                exit(1)
+            }
+            print("bench-record: recording started, sampling footprint for \(seconds) s")
+            var peak: Double = 0
+            for _ in 0..<(seconds / 2) {
+                try? await Task.sleep(for: .seconds(2))
+                peak = max(peak, physicalFootprintMB())
+            }
+            // Print BEFORE stop: the post-meeting pipeline can take the
+            // process down paths that never return in a headless bench.
+            print(String(format: "bench-record: peak footprint %.0f MB over %d s", peak, seconds))
+            await recording.stop(services: services)
+            exit(0)
+        }
+    }
+
+    /// What Activity Monitor's "Memory" column shows for this process.
+    private static func physicalFootprintMB() -> Double {
+        var usage = rusage_info_current()
+        let result = withUnsafeMutablePointer(to: &usage) { pointer in
+            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { reboundPointer in
+                proc_pid_rusage(getpid(), RUSAGE_INFO_CURRENT, reboundPointer)
+            }
+        }
+        guard result == 0 else { return 0 }
+        return Double(usage.ri_phys_footprint) / 1_048_576
+    }
+
+    private static func processStartTime() -> Date {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        sysctl(&mib, 4, &info, &size, nil, 0)
+        let time = info.kp_proc.p_starttime
+        return Date(timeIntervalSince1970: Double(time.tv_sec) + Double(time.tv_usec) / 1e6)
+    }
+}

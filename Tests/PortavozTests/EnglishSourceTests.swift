@@ -67,6 +67,12 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("dólares")
                 || line.contains("migración")
         }
+        if relative == "Sources/portavoz-cli/CLIBenchFTS.swift" {
+            // Synthetic Spanish corpus + queries for the T4 FTS benchmark.
+            return line.contains("presupuesto") || line.contains("qué acordamos")
+                || line.contains("integración") || line.contains("diarización")
+                || line.contains("reunión")
+        }
         if relative == "Sources/IntelligenceKit/Companion.swift" {
             return line.contains("qué") || line.contains("cómo") || line.contains("¿")
                 || line.contains("quién") || line.contains("cuál") || line.contains("cuánto")

@@ -110,10 +110,10 @@ Los momentos que hacen decir "esto no lo hace nadie" — cada uno mapea a un mil
 |---|---|---|
 | Latencia transcript en vivo | < 2 s | ✅ p95 0.53 s |
 | Resumen post-reunión | < 30 s (resumen incremental durante la reunión) | ✅ 3.8 s |
-| Cold start | < 1.5 s | ⏱ pendiente medir (`bench` M10) |
-| RAM grabando (Mac, STT cargado) | < 500 MB | ⏱ pendiente medir |
+| Cold start | < 1.5 s | ✅ 0.94 s frío / ~0.26 s tibio (`portavoz-app --bench-startup`, jul 2026) |
+| RAM grabando (Mac, STT cargado) | < 500 MB | ⏱ harness listo (`portavoz-app --bench-record 60` + `-use-temp-store`); corrida pendiente de máquina libre |
 | Batería (iPhone, STT en vivo) | < 10%/hora (ANE) | fase 3 |
-| Búsqueda en 1,000 reuniones | < 50 ms (FTS5) | ⏱ pendiente corpus sintético |
+| Búsqueda en 1,000 reuniones | < 50 ms (FTS5) | ✅ exacta p50 22.8 ms / p95 23.9 ms; pregunta OR (RAG) p50 54 ms (`portavoz-cli bench-fts`, corpus 80k segmentos) |
 | Drift mic/system | < 50 ms en 30 min | ✅ 4 ms en 22 min reales |
 | DER diarización (4 hablantes) | < 15%; intervenciones del usuario 100% | ✅ AMI 7.6%; reunión real pendiente de RTTM corregido |
 | Refine (Whisper batch) | > 15x tiempo real | ✅ 23–42x |

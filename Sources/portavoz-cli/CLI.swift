@@ -53,6 +53,8 @@ struct PortavozCLI {
             await BenchLiveCommand.run(arguments)
         case "bench-m2":
             await BenchCommand.run(arguments)
+        case "bench-fts":
+            await BenchFTSCommand.run(arguments)
         default:
             printUsage()
         }
@@ -68,6 +70,7 @@ struct PortavozCLI {
               portavoz-cli record [--seconds N] [--mic <name-or-uid>] [--pid <pid> ...] [--system]
                                   [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>]
               portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]
+              portavoz-cli bench-fts [--meetings N] [--segments-per-meeting N]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
