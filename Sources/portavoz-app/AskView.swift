@@ -1,3 +1,4 @@
+import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
@@ -120,7 +121,7 @@ struct AskView: View {
         Task {
             defer { asking = false }
             do {
-                let passages = try await AskEngine.retrieve(
+                let passages = try await AskPipeline.retrieve(
                     question: text, store: services.store)
                 guard !passages.isEmpty else {
                     exchanges.append(AskExchange(

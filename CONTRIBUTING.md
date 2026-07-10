@@ -7,7 +7,7 @@ Thanks for your interest! Portavoz is early — the most valuable contributions 
 - **Privacy is non-negotiable.** No feature may send audio or transcripts off-device without explicit, visible user opt-in. Telemetry is opt-in only.
 - **Swift 6 strict concurrency.** No `@unchecked Sendable` without a comment justifying it.
 - **Every PR keeps `swift test` green.**
-- **Domain types live in `PortavozCore`**; Kits depend on Core, never on each other (except `IntegrationsKit → IntelligenceKit`).
+- **Domain types live in `PortavozCore`**; Kits depend on Core, never on each other (except `IntegrationsKit`, the cross-cutting layer: it may depend on `IntelligenceKit` and `StorageKit` — D31).
 - **License hygiene:** we are MIT. Do not port code from GPL projects (e.g. MacParakeet) — patterns and ideas are fine, code is not. MIT/Apache sources are fine with attribution.
 
 ## Workflow

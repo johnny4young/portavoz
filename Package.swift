@@ -80,7 +80,12 @@ let package = Package(
         .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
 
         .target(name: "SyncKit", dependencies: ["PortavozCore"]),
-        .target(name: "IntegrationsKit", dependencies: ["PortavozCore", "IntelligenceKit"]),
+        // IntegrationsKit is the cross-cutting layer over stored meetings
+        // (export, MCP-ish surfaces, RAG retrieval): the ONLY Kit allowed to
+        // depend on sibling Kits (IntelligenceKit + StorageKit, D31).
+        .target(
+            name: "IntegrationsKit",
+            dependencies: ["PortavozCore", "IntelligenceKit", "StorageKit"]),
 
         // The macOS app shell (M5). Built as a plain SPM executable and
         // wrapped into Portavoz.app by scripts/make-app.sh (D20); shipping

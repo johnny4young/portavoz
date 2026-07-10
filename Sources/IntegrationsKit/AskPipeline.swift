@@ -3,14 +3,14 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
-/// The app-side twin of the CLI's `AskPipeline` (M8 RAG surfaced in the UI).
-/// Kept as a mirror because the pipeline needs BOTH StorageKit and
-/// IntelligenceKit and no shared Kit may depend on both (architecture rule);
-/// behavior changes must land in both places — noted as debt in spec 04.
-enum AskEngine {
+/// Retrieval shared by the app's Ask view, the CLI `ask` command and the
+/// MCP `ask` tool (M8): index what's new, query both ways, fuse by
+/// reciprocal rank. Lives here because IntegrationsKit is the one Kit
+/// allowed to see both StorageKit and IntelligenceKit (D31).
+public enum AskPipeline {
     /// Index what's new, query lexically and semantically (multi-query,
     /// cross-lingual when FM is around), fuse by reciprocal rank.
-    static func retrieve(
+    public static func retrieve(
         question: String, store: MeetingStore, limit: Int = 6
     ) async throws -> [RAGPassage] {
         let embedder = try SentenceEmbedder()
