@@ -8,6 +8,7 @@ entry here — feature name + what it gives you.)
 ## July 9, 2026
 
 - **🎬 Record from the brief** — One click on "Record this meeting" starts a recording linked to the calendar event: the meeting is born as "2026-07-10 Sprint Demo" — real name, date-prefixed so weekly meetings never collide.
+- **⏰ Meeting heads-up** — A floating banner a few minutes before your next calendar meeting: one click starts the linked recording. Configurable in Settings (off / 3 / 5 / 10 minutes); dismiss once, it never nags again.
 - **📌 What-to-know, with receipts** — Each brief bullet now cites the meeting it came from (click to jump there), and ungrounded filler ("the meeting will be brief") is filtered out before you see it.
 - **🎯 Briefs you can trust** — Related meetings are now ranked by real relevance (hybrid search + threshold) and each one shows WHY it's there ("Mentions: Trinity, Daniel"). Weak matches are dropped instead of shown.
 - **✨ Smart titles** — Meetings still named by timestamp get a content-based title suggestion ("LVGT device-ID bug") — one click renames, and titles you wrote are never second-guessed.

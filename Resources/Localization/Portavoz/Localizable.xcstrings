@@ -11,6 +11,46 @@
         }
       }
     },
+    "10 minutes before": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 minutos antes"
+          }
+        }
+      }
+    },
+    "3 minutes before": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 minutos antes"
+          }
+        }
+      }
+    },
+    "5 minutes before": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 minutos antes"
+          }
+        }
+      }
+    },
+    "A floating banner appears before your next calendar meeting — one click starts a recording linked to it. Needs calendar access.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un banner flotante aparece antes de tu próxima reunión del calendario — un click inicia una grabación vinculada. Requiere acceso al calendario."
+          }
+        }
+      }
+    },
     "A token is stored in this device’s Keychain. It is used only when you publish a gist.": {
       "localizations": {
         "es": {
@@ -77,6 +117,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agregar término (LVGT, Vishakha…)"
+          }
+        }
+      }
+    },
+    "Agenda": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agenda"
           }
         }
       }
@@ -691,6 +741,16 @@
         }
       }
     },
+    "Dismiss — it will not remind you again for this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar — no te volverá a avisar para esta reunión"
+          }
+        }
+      }
+    },
     "Done: folder updated.": {
       "localizations": {
         "es": {
@@ -1281,6 +1341,16 @@
         }
       }
     },
+    "Off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagado"
+          }
+        }
+      }
+    },
     "Ollama (local)": {
       "localizations": {
         "es": {
@@ -1611,6 +1681,16 @@
         }
       }
     },
+    "Remind me before meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avísame antes de las reuniones"
+          }
+        }
+      }
+    },
     "Remove note": {
       "localizations": {
         "es": {
@@ -1867,6 +1947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hora de inicio"
+          }
+        }
+      }
+    },
+    "Starts in %lld min": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza en %lld min"
           }
         }
       }

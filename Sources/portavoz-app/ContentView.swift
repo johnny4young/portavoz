@@ -13,6 +13,7 @@ enum Route: Hashable {
 struct ContentView: View {
     @Environment(AppServices.self) private var services
     @State private var route: Route?
+    @State private var reminder = MeetingReminderController()
 
     var body: some View {
         NavigationSplitView {
@@ -38,5 +39,12 @@ struct ContentView: View {
             }
         }
         .task { await services.seedDemoIfRequested() }
+        .task { reminder.start(services: services) }
+        .onChange(of: services.pendingRoute) { _, pending in
+            if let pending {
+                route = pending
+                services.pendingRoute = nil
+            }
+        }
     }
 }

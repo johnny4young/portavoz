@@ -46,6 +46,10 @@ final class AppServices {
 
     /// Bumped after any write so list/detail views know to reload.
     var libraryVersion = 0
+    /// Navigation requested from OUTSIDE the window hierarchy (the
+    /// pre-meeting banner): ContentView observes it, applies it to its
+    /// route, and clears it.
+    var pendingRoute: Route?
 
     init() {
         do {
