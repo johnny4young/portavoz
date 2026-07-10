@@ -151,6 +151,16 @@
         }
       }
     },
+    "Another refine is already running — try again when it finishes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya hay otro refine en curso: inténtalo cuando termine."
+          }
+        }
+      }
+    },
     "Answer Companion knowledge questions with this provider": {
       "localizations": {
         "es": {
@@ -2331,6 +2341,16 @@
         }
       }
     },
+    "Summary looks thin — retry with Built-in?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen quedó corto — ¿reintentar con el Integrado?"
+          }
+        }
+      }
+    },
     "Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.": {
       "localizations": {
         "es": {
@@ -2497,6 +2517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta reunión no conserva su audio."
+          }
+        }
+      }
+    },
+    "This meeting is long but its summary came out very small. Regenerate with the embedded model — nothing changes unless you click.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera con el modelo integrado: nada cambia si no haces clic."
           }
         }
       }

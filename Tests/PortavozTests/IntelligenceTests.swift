@@ -951,3 +951,32 @@ final class ActionItemsDedupTests: XCTestCase {
         XCTAssertTrue(summary.markdown(recipe: .general).contains("## Next steps"))
     }
 }
+
+/// Field case (Jul 10): 56 min → 530 chars and 0 action items from the
+/// 3B. The chip must fire there and stay quiet for short meetings.
+final class ThinSummaryPolicyTests: XCTestCase {
+    func testCollapsedLongMeetingSummaryIsThin() {
+        XCTAssertTrue(ThinSummaryPolicy.isThin(
+            summaryCharacters: 530, actionItems: 0, meetingSeconds: 56 * 60))
+    }
+
+    func testLongMeetingWithoutActionItemsIsThin() {
+        XCTAssertTrue(ThinSummaryPolicy.isThin(
+            summaryCharacters: 2_000, actionItems: 0, meetingSeconds: 45 * 60))
+    }
+
+    func testShortMeetingsAreNeverThin() {
+        XCTAssertFalse(ThinSummaryPolicy.isThin(
+            summaryCharacters: 200, actionItems: 0, meetingSeconds: 10 * 60))
+    }
+
+    func testHealthyLongSummaryIsNotThin() {
+        XCTAssertFalse(ThinSummaryPolicy.isThin(
+            summaryCharacters: 4_000, actionItems: 8, meetingSeconds: 56 * 60))
+    }
+
+    func testMidLengthMeetingWithSubstanceIsNotThin() {
+        XCTAssertFalse(ThinSummaryPolicy.isThin(
+            summaryCharacters: 1_500, actionItems: 0, meetingSeconds: 25 * 60))
+    }
+}

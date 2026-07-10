@@ -50,6 +50,9 @@ final class AppServices {
     /// pre-meeting banner): ContentView observes it, applies it to its
     /// route, and clears it.
     var pendingRoute: Route?
+    /// Quality re-passes keyed by meeting — they outlive the detail view,
+    /// so navigating away never loses a draft (field bug, Jul 10).
+    let refines = RefineService()
 
     init() {
         do {

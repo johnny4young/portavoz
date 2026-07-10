@@ -44,9 +44,22 @@ struct MeetingDetailView: View {
     @State private var summaryNotice: String?
     @State private var nameSuggestions: [NameSuggestion] = []
     @State private var suggestingNames = false
-    @State private var refining: String?
-    @State private var refineError: String?
-    @State private var refineDraft: RefineDraft?
+    /// Refine state lives in RefineService (keyed by meeting) so the work
+    /// and its draft survive navigating away from this view.
+    private var refinePhase: RefineService.Phase? { services.refines.phase(for: meetingID) }
+    private var refining: String? {
+        if case .running(let status) = refinePhase { return status } else { return nil }
+    }
+    private var refineError: String? {
+        if case .failed(let message) = refinePhase { return message } else { return nil }
+    }
+    private var refineDraft: RefineDraft? {
+        if case .draft(let draft) = refinePhase { return draft } else { return nil }
+    }
+    /// Applying a draft (and other row actions) stays view-local: it is a
+    /// short DB write, not a long re-pass.
+    @State private var applying: String?
+    @State private var actionError: String?
     @State private var editingTitle = false
     @State private var newTitle = ""
     /// Typed-recipe suggestion (M13b): detected once per visit, offered as
@@ -56,24 +69,6 @@ struct MeetingDetailView: View {
     /// Content-based title suggestion — same contract: chip, click, never solo.
     @State private var suggestedTitle: String?
     @State private var suggestedTitleOnce = false
-
-    /// A refine result awaiting the user's decision — never applied on its
-    /// own. The transcript it would replace stays untouched until "Apply".
-    struct RefineDraft {
-        let language: String?
-        let speakers: [Speaker]
-        let segments: [TranscriptSegment]
-        let oldSegmentCount: Int
-        let oldSpeakerCount: Int
-        let oldSpeechSeconds: TimeInterval
-
-        var newSpeechSeconds: TimeInterval {
-            segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
-        }
-        /// A refined pass that covers well under the current transcript's
-        /// speech almost certainly failed — surfaced as a loud warning.
-        var looksLossy: Bool { newSpeechSeconds < oldSpeechSeconds * 0.5 }
-    }
 
     var body: some View {
         Group {
@@ -161,14 +156,14 @@ extension MeetingDetailView {
 
     @ViewBuilder
     private var refineStatus: some View {
-        if let refining {
+        if let progress = refining ?? applying {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(refining).foregroundStyle(.secondary)
+                Text(progress).foregroundStyle(.secondary)
             }
         }
-        if let refineError {
-            Text(refineError).font(.caption).foregroundStyle(.red)
+        if let message = refineError ?? actionError {
+            Text(message).font(.caption).foregroundStyle(.red)
         }
     }
 
@@ -346,7 +341,9 @@ extension MeetingDetailView {
     }
 
     private var refineDraftBinding: Binding<Bool> {
-        Binding(get: { refineDraft != nil }, set: { if !$0 { refineDraft = nil } })
+        Binding(
+            get: { refineDraft != nil },
+            set: { if !$0 { services.refines.clear(meetingID) } })
     }
 
     private var exportBinding: Binding<Bool> {
@@ -508,6 +505,7 @@ extension MeetingDetailView {
                     .foregroundStyle(.secondary)
                 Spacer()
                 recipeSuggestionChip(summary)
+                thinSummaryChip(summary)
                 Menu {
                     Button("Copy as plain text") { copySummary(summary.draft, as: .plainText) }
                     Button("Copy as Markdown") { copySummary(summary.draft, as: .markdown) }
@@ -691,93 +689,14 @@ extension MeetingDetailView {
     /// merge included), atomically replaces the cast, and regenerates the
     /// summary from the clean transcript.
     private func refine(_ detail: MeetingDetail) {
-        guard refining == nil else { return }
-        refining = L10n.text("Preparing…")
-        refineError = nil
-        Task {
-            defer { refining = nil }
-            do {
-                guard let relative = detail.meeting.audioDirectory else {
-                    refineError = L10n.text("This meeting does not keep its audio.")
-                    return
-                }
-                let base = RecordingsLocation.shared.resolve(relative)
-                let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base)
-                let microphoneURL = MeetingAudioLayout.channelFile(named: "microphone", in: base)
-                guard systemURL != nil || microphoneURL != nil else {
-                    refineError = L10n.text("Could not find the meeting audio.")
-                    return
-                }
-
-                let whisper = try await services.loadWhisperIfNeeded { status in
-                    refining = status
-                }
-                try await services.loadEnginesIfNeeded()
-
-                let vocabulary = VocabularyPrompt.parse(
-                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-                let hints = refineTranscriptionHints(for: detail, vocabulary: vocabulary)
-
-                var segments: [TranscriptSegment] = []
-                if let systemURL {
-                    refining = L10n.text("Re-transcribing participants (Whisper)…")
-                    let result = try await whisper.transcribeFile(
-                        at: systemURL, hints: hints, channel: .system)
-                    segments.append(contentsOf: result.segments)
-                }
-                if let microphoneURL {
-                    refining = L10n.text("Re-transcribing your channel (Whisper)…")
-                    let result = try await whisper.transcribeFile(
-                        at: microphoneURL, hints: hints, channel: .microphone)
-                    // The mic hears the room through the speakers; whatever
-                    // the system channel already says at the same instant is
-                    // bleed, not the user (field bug: 52% fake "Me" talk).
-                    segments.append(contentsOf: MicBleedFilter.filter(
-                        microphone: result.segments, system: segments))
-                }
-                segments.sort { $0.startTime < $1.startTime }
-
-                var turns: [SpeakerTurn] = []
-                if let systemURL, let diarizer = services.diarizer {
-                    refining = L10n.text("Identifying speakers…")
-                    turns = (try? await diarizer.diarizeFile(at: systemURL)) ?? []
-                }
-                let attribution = SpeakerAttributor.attribute(
-                    segments: segments, turns: turns, meetingID: meetingID)
-
-                // Draft, never override: the user compares and decides.
-                let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
-                refineDraft = RefineDraft(
-                    language: hints.language,
-                    speakers: attribution.speakers,
-                    segments: attribution.segments,
-                    oldSegmentCount: detail.segments.count,
-                    oldSpeakerCount: detail.speakers.count,
-                    oldSpeechSeconds: oldSpeech)
-            } catch {
-                refineError = L10n.format("Refine failed: %@", error.localizedDescription)
-            }
-        }
-    }
-
-    private func refineTranscriptionHints(
-        for detail: MeetingDetail,
-        vocabulary: [String]
-    ) -> TranscriptionHints {
-        let spokenLanguage = SpokenLanguageDetector.transcriptionLanguageHint(
-            for: detail.meeting,
-            segments: detail.segments)
-        return TranscriptionHints(
-            language: spokenLanguage,
-            vocabulary: vocabulary,
-            meetingID: meetingID)
+        services.refines.start(meetingID: meetingID, detail: detail, services: services)
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
-        refineDraft = nil
-        refining = L10n.text("Applying the refined transcript…")
+        services.refines.clear(meetingID)
+        applying = L10n.text("Applying the refined transcript…")
         Task {
-            defer { refining = nil }
+            defer { applying = nil }
             do {
                 if let language = draft.language, var meeting = detail?.meeting {
                     meeting.language = language
@@ -793,7 +712,7 @@ extension MeetingDetailView {
                     language: summary?.draft.language
                         ?? Locale.current.language.languageCode?.identifier ?? "en")
             } catch {
-                refineError = L10n.format("Could not apply refine: %@", error.localizedDescription)
+                actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
             }
         }
     }
@@ -852,7 +771,7 @@ extension MeetingDetailView {
 
             HStack {
                 Spacer()
-                Button("Discard", role: .cancel) { refineDraft = nil }
+                Button("Discard", role: .cancel) { services.refines.clear(meetingID) }
                 Button("Apply") { applyRefineDraft(draft) }
                     .buttonStyle(.borderedProminent)
                     .disabled(draft.segments.isEmpty)
@@ -904,7 +823,7 @@ extension MeetingDetailView {
         do {
             try await services.store.save([renamed])
         } catch {
-            refineError = L10n.format("Could not rename: %@", error.localizedDescription)
+            actionError = L10n.format("Could not rename: %@", error.localizedDescription)
             return
         }
         renamingSpeaker = nil
@@ -983,6 +902,37 @@ extension MeetingDetailView {
             }
             .controlSize(.small)
             .help("This meeting looks like a \(suggested.displayName) — restructure the summary with one click. Nothing changes unless you accept.")
+        }
+    }
+
+    /// "Summary looks thin" — a long meeting whose summary collapsed
+    /// (field case: 56 min → 530 chars, 0 action items from the 3B). One
+    /// click regenerates with the embedded engine, which handled the same
+    /// meeting well. Deterministic gate; only offered when MLX is ready
+    /// and was NOT the engine that produced this summary.
+    @ViewBuilder
+    private func thinSummaryChip(
+        _ summary: (draft: SummaryDraft, version: Int)
+    ) -> some View {
+        if !regenerating,
+            services.summaryEngine != .mlx,
+            services.mlxDownloaded,
+            let detail,
+            let ended = detail.meeting.endedAt,
+            ThinSummaryPolicy.isThin(
+                summaryCharacters: summary.draft.markdown.count,
+                actionItems: summary.draft.actionItems.count,
+                meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt)) {
+            Button {
+                regenerate(language: summary.draft.language, engine: .mlx)
+            } label: {
+                Label("Summary looks thin — retry with Built-in?", systemImage: "sparkles")
+            }
+            .controlSize(.small)
+            .help(
+                // One-line UI help text.
+                // swiftlint:disable:next line_length
+                "This meeting is long but its summary came out very small. Regenerate with the embedded model — nothing changes unless you click.")
         }
     }
 
