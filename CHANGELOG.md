@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🌐 portavoz.app is live** — Portavoz has a home: [portavoz.app](https://portavoz.app), in English and Spanish, with the install command one click away and every performance number reproducible from the repo.
 - **✅ Trustworthy refine warnings** — The "refine probably failed" alert no longer fires when the OLD transcript is the broken one (echo-corrupted transcripts claimed more speech than the meeting even lasted). Good refines now pass quietly.
 - **🔄 Refine keeps working while you browse** — The quality re-pass now runs per meeting in the background: switch meetings freely and the draft will be waiting when you come back, instead of silently vanishing.
 - **🍃 Thin-summary rescue** — When a long meeting produces a suspiciously small summary, a one-click chip offers to retry with the embedded engine. Suggestion only — nothing regenerates on its own.

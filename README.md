@@ -4,6 +4,8 @@
 
 Portavoz records your meetings, transcribes them live, and tells apart every voice — including yours. Built natively in Swift for Apple platforms, running entirely on-device: Neural Engine transcription, local diarization, local summaries.
 
+**[portavoz.app](https://portavoz.app)** · `brew install --cask portavoz` (after `brew tap johnny4young/tap`)
+
 [![CI](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml/badge.svg)](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
