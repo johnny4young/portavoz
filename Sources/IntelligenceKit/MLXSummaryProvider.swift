@@ -1,4 +1,5 @@
 import Foundation
+import MLX
 import MLXLLM
 import MLXLMCommon
 import PortavozCore
@@ -48,9 +49,12 @@ actor MLXModelCache {
         return try await container.perform { context in
             let input = try await context.processor.prepare(
                 input: UserInput(chat: [.system(system), .user(user)]))
+            // maxTokens caps a runaway generation: the structured summary
+            // JSON fits comfortably in 2k tokens; without a cap a rambling
+            // model would keep the GPU busy indefinitely.
             let stream = try MLXLMCommon.generate(
                 input: input,
-                parameters: GenerateParameters(temperature: 0),
+                parameters: GenerateParameters(maxTokens: 2048, temperature: 0),
                 context: context)
             var text = ""
             for await item in stream {
@@ -62,6 +66,11 @@ actor MLXModelCache {
 
     private func load(_ newDirectory: URL) async throws -> ModelContainer {
         if let container, directory == newDirectory { return container }
+        // Without a cache limit MLX keeps every freed GPU buffer around and
+        // a long-prompt prefill balloons to tens of GB (observed: 31 GB on a
+        // 40-min meeting until macOS suspended the process). 20 MB is the
+        // value the mlx-swift-examples LLMEval app ships with.
+        MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
         let loaded = try await LLMModelFactory.shared.loadContainer(
             configuration: ModelConfiguration(directory: newDirectory))
         container = loaded

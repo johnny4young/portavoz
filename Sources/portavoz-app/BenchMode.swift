@@ -2,6 +2,7 @@ import Foundation
 import IntelligenceKit
 import ModelStoreKit
 import PortavozCore
+import StorageKit
 import TranscriptionKit
 
 /// Hidden launch-arg bench mode (M12): SpeechAnalyzer refuses to run in an
@@ -64,35 +65,26 @@ enum BenchMode {
 }
 
 extension BenchMode {
-    /// `portavoz-app --mlx-smoke` — loads the (already downloaded) embedded
-    /// model and summarizes a tiny synthetic Spanish meeting, printing the
-    /// timing and the markdown. In-app on purpose: SwiftPM CLI builds cannot
-    /// compile the Metal shaders (mlx-swift README), so the metallib only
-    /// exists in xcodebuild products — same reasoning as `--bench-live`.
+    /// `portavoz-app --mlx-smoke [real]` — loads the (already downloaded)
+    /// embedded model and summarizes either a tiny synthetic Spanish meeting
+    /// (default) or, with `real`, the most recent library meeting that has a
+    /// transcript (read-only: nothing is saved back). Prints timing and the
+    /// markdown. In-app on purpose: SwiftPM CLI builds cannot compile the
+    /// Metal shaders (mlx-swift README), so the metallib only exists in
+    /// xcodebuild products — same reasoning as `--bench-live`.
     static func runMLXSmokeIfRequested() {
-        guard ProcessInfo.processInfo.arguments.contains("--mlx-smoke") else { return }
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flag = arguments.firstIndex(of: "--mlx-smoke") else { return }
+        let useRealMeeting = arguments.indices.contains(flag + 1) && arguments[flag + 1] == "real"
+        // Unbuffered stdout: when piped to a file, progress lines must land
+        // as they happen — a killed run would otherwise lose everything.
+        setbuf(stdout, nil)
         Task.detached {
             do {
                 let directory = try await ModelStore()
                     .ensureAvailable(ModelCatalog.mlxQwen3)
-                let meetingID = MeetingID()
-                let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
-                let ana = Speaker(meetingID: meetingID, label: "S1", displayName: "Ana")
-                let lines: [(Speaker, String)] = [
-                    (me, "Revisemos el presupuesto de transcripción del trimestre."),
-                    (ana, "El costo actual es de doscientos dólares al mes y podemos bajarlo."),
-                    (me, "Decidido: migramos el pipeline a los modelos locales esta semana."),
-                    (ana, "Yo me encargo de la migración y te aviso el viernes.")
-                ]
-                let segments = lines.enumerated().map { index, line in
-                    TranscriptSegment(
-                        meetingID: meetingID, speakerID: line.0.id, channel: .system,
-                        text: line.1, startTime: TimeInterval(index * 8),
-                        endTime: TimeInterval(index * 8 + 7), isFinal: true)
-                }
-                let request = SummaryRequest(
-                    meetingID: meetingID, segments: segments, speakers: [me, ana],
-                    recipe: .general, targetLanguage: "es", glossary: [])
+                let request =
+                    useRealMeeting ? try await realMeetingRequest() : syntheticRequest()
                 let start = Date()
                 let draft = try await MLXSummaryProvider(modelDirectory: directory)
                     .summarize(request)
@@ -106,5 +98,46 @@ extension BenchMode {
                 exit(1)
             }
         }
+    }
+
+    private static func syntheticRequest() -> SummaryRequest {
+        let meetingID = MeetingID()
+        let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
+        let ana = Speaker(meetingID: meetingID, label: "S1", displayName: "Ana")
+        let lines: [(Speaker, String)] = [
+            (me, "Revisemos el presupuesto de transcripción del trimestre."),
+            (ana, "El costo actual es de doscientos dólares al mes y podemos bajarlo."),
+            (me, "Decidido: migramos el pipeline a los modelos locales esta semana."),
+            (ana, "Yo me encargo de la migración y te aviso el viernes.")
+        ]
+        let segments = lines.enumerated().map { index, line in
+            TranscriptSegment(
+                meetingID: meetingID, speakerID: line.0.id, channel: .system,
+                text: line.1, startTime: TimeInterval(index * 8),
+                endTime: TimeInterval(index * 8 + 7), isFinal: true)
+        }
+        return SummaryRequest(
+            meetingID: meetingID, segments: segments, speakers: [me, ana],
+            recipe: .general, targetLanguage: "es", glossary: [])
+    }
+
+    /// Newest library meeting that has a transcript, as a summary request.
+    /// Reads the real database; never writes.
+    private static func realMeetingRequest() async throws -> SummaryRequest {
+        let store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
+        for meeting in try await store.meetings() {
+            guard let detail = try await store.detail(meeting.id), !detail.segments.isEmpty
+            else { continue }
+            let minutes = Int((meeting.endedAt?.timeIntervalSince(meeting.startedAt) ?? 0) / 60)
+            print("meeting: \(meeting.title) · \(detail.segments.count) segments · \(minutes) min")
+            return SummaryRequest(
+                meetingID: meeting.id, segments: detail.segments,
+                speakers: detail.speakers, recipe: .general,
+                targetLanguage: Locale.current.language.languageCode?.identifier ?? "es",
+                glossary: [])
+        }
+        throw NSError(
+            domain: "MLXSmoke", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "no meeting with a transcript in the library"])
     }
 }
