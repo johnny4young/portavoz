@@ -7,7 +7,7 @@ import TranscriptionKit
 
 /// `portavoz-cli meetings refine <uuid> [--file <wav>] [--language es]
 ///                                [--db <path>] [--models-dir <dir>]
-///                                [--vocab "LVGT,Portavoz,..."]`
+///                                [--vocab "QVTL,Portavoz,..."]`
 ///
 /// The D7 quality re-pass: re-transcribes the meeting's audio with
 /// Whisper large-v3-turbo, re-diarizes, re-attributes, and atomically

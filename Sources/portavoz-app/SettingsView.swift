@@ -33,8 +33,8 @@ struct SettingsView: View {
     @State private var newTerm = ""
     /// Domain terms mined from past transcripts (VocabularyMiner). A chip
     /// PRE-FILLS the add field for review — the miner surfaces what the
-    /// transcriber HEARD, which can be misheard (field case: "Cots2M" for
-    /// the real "Cox2m") — so the user confirms or fixes before adding.
+    /// transcriber HEARD, which can be misheard (field case: "Qord2M" for
+    /// the real "Kord2m") — so the user confirms or fixes before adding.
     @State private var suggestedTerms: [String] = []
     /// The suggestion currently under review in the add field; adding it
     /// (edited or not) retires it, and a corrected spelling also rejects
@@ -388,7 +388,7 @@ extension SettingsView {
                 }
             }
             HStack {
-                TextField("Add term (LVGT, Vishakha…)", text: $newTerm)
+                TextField("Add term (QVTL, Ilarion…)", text: $newTerm)
                     .onSubmit(addTerm)
                     .focused($termFieldFocused)
                 Button("Add", action: addTerm)
@@ -409,7 +409,7 @@ extension SettingsView {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “LVGT” does not become something else."
+                "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “QVTL” does not become something else."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -467,7 +467,7 @@ extension SettingsView {
 
         if let pending = pendingSuggestion {
             // The suggestion under review was handled. If the user CORRECTED
-            // the spelling (field case: mined "Cots2M" → real "Cox2m"), also
+            // the spelling (field case: mined "Qord2M" → real "Kord2m"), also
             // reject the raw misheard form so mining never re-suggests it.
             if pending.caseInsensitiveCompare(term) != .orderedSame {
                 rejectedSuggestions = (VocabularyPrompt.parse(rejectedSuggestions) + [pending])

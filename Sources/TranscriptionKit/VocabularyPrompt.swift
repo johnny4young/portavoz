@@ -30,7 +30,7 @@ public enum AudioLevel {
 ///
 /// Whisper prepends `promptTokens` as "previous context"
 /// (`<|startofprev|>`), so a sentence that mentions the terms verbatim
-/// biases decoding toward them — "LVGT" stops coming out as "LGBT" and the
+/// biases decoding toward them — "QVTL" stops coming out as "LGBT" and the
 /// summary stops hallucinating around the mishearing. Parakeet (live) has no
 /// equivalent hook; the refine pass is where the vocabulary lands.
 public enum VocabularyPrompt {

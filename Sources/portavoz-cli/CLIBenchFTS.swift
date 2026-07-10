@@ -67,7 +67,7 @@ enum BenchFTSCommand {
             ("presupuesto transcripción", true),
             ("qué acordamos sobre el presupuesto del proyecto", false),
             ("deadline", true),
-            ("Trinity integración", true)
+            ("Zephyr integración", true)
         ]
         var perQuery: [String: [Double]] = [:]
         for _ in 0..<20 {
@@ -91,7 +91,7 @@ enum BenchFTSCommand {
     /// corpus, no random source, realistic word variety for bm25.
     private static func seed(store: MeetingStore, meetings: Int, segments: Int) async throws {
         let topics = [
-            "presupuesto", "transcripción", "deadline", "integración", "Trinity",
+            "presupuesto", "transcripción", "deadline", "integración", "Zephyr",
             "roadmap", "deploy", "cliente", "action", "items", "review", "pipeline",
             "modelo", "local", "resumen", "reunión", "proyecto", "equipo", "sprint",
             "release", "bug", "diarización", "audio", "calendario", "notas"

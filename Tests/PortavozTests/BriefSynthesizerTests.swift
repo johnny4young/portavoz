@@ -11,8 +11,8 @@ import XCTest
 @available(macOS 26.0, *)
 final class BriefSynthesizerTests: XCTestCase {
     private let passages = [
-        "El equipo decidió migrar de Keycloak a Trinity antes del cierre del trimestre.",
-        "Daniel quedó de revisar el PR de la función Lambda de LVGT.",
+        "El equipo decidió migrar de Keycloak a Zephyr antes del cierre del trimestre.",
+        "Marta quedó de revisar el PR de la función Lambda de QVTL.",
     ]
 
     private func point(_ text: String, _ index: Int) -> BriefSynthesizer.Point {
@@ -22,8 +22,8 @@ final class BriefSynthesizerTests: XCTestCase {
     func testGroundedBulletsSurviveWithTheirCitation() {
         let kept = BriefSynthesizer.sanitize(
             [
-                point("La migración a Trinity se decidió para este trimestre.", 1),
-                point("Daniel debe revisar el PR de Lambda.", 2),
+                point("La migración a Zephyr se decidió para este trimestre.", 1),
+                point("Marta debe revisar el PR de Lambda.", 2),
             ],
             passages: passages)
         XCTAssertEqual(kept.count, 2)
@@ -42,10 +42,10 @@ final class BriefSynthesizerTests: XCTestCase {
     func testInvalidIndexTooShortAndDuplicatesAreDropped() {
         let kept = BriefSynthesizer.sanitize(
             [
-                point("La migración a Trinity quedó decidida.", 3),  // índice inválido
+                point("La migración a Zephyr quedó decidida.", 3),  // índice inválido
                 point("Corto.", 1),  // muy corto
-                point("Daniel debe revisar el PR de Lambda.", 2),
-                point("daniel debe revisar el pr de lambda.", 2),  // duplicado
+                point("Marta debe revisar el PR de Lambda.", 2),
+                point("marta debe revisar el pr de lambda.", 2),  // duplicado
             ],
             passages: passages)
         XCTAssertEqual(kept.count, 1)

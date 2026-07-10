@@ -4,7 +4,7 @@ import PortavozCore
 #if canImport(FoundationModels)
 import FoundationModels
 
-/// Proposes a content-based meeting title from the summary ("LVGT Lambda
+/// Proposes a content-based meeting title from the summary ("QVTL Lambda
 /// deadline sync" instead of "2026-07-09 09.33 Meeting"). Suggestion-only:
 /// shown as a chip next to the title, applied on click, never renames on
 /// its own. Deterministic gates: length-capped, single line, and never the
@@ -17,7 +17,7 @@ public enum TitleSuggester {
         quotes, no trailing period. Name the concrete topic, never generic \
         words like "meeting", "sync" alone, or "discussion".
         Examples:
-        - summary about a device-ID bug in the LVGT pipeline → LVGT device-ID bug
+        - summary about a device-ID bug in the QVTL pipeline → QVTL device-ID bug
         - resumen sobre el presupuesto de transcripción del Q3 → Presupuesto de transcripción Q3
         """
 

@@ -3,7 +3,7 @@ import Foundation
 /// Mines domain terms from what was actually said in past meetings and
 /// suggests them for the custom vocabulary (the ROADMAP's "vocabulary
 /// learning"). Conservative on purpose: only tokens that LOOK like domain
-/// terms — acronyms (LVGT), letter+digit codes (Cots2M), CamelCase names
+/// terms — acronyms (QVTL), letter+digit codes (Qord2M), CamelCase names
 /// (WhisperKit) — and that recur across the corpus. Plain capitalized words
 /// are ignored (too many false positives: sentence starts, people's names).
 public enum VocabularyMiner {
@@ -44,7 +44,7 @@ public enum VocabularyMiner {
     }
 
     /// Strips punctuation from both edges, keeping interior characters
-    /// ("Cots2M," → "Cots2M"; "(WhisperKit)" → "WhisperKit").
+    /// ("Qord2M," → "Qord2M"; "(WhisperKit)" → "WhisperKit").
     private static func trim(_ raw: Substring) -> String {
         String(raw.drop(while: { !$0.isLetter && !$0.isNumber })
             .reversed()

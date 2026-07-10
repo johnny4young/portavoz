@@ -696,9 +696,9 @@ final class OpenAICompatibleProviderTests: XCTestCase {
     /// Qwen3-4B writes Python-style \' escapes inside JSON strings — an
     /// invalid escape that fails the whole document unless repaired.
     func testRepairsPythonStyleSingleQuoteEscapes() throws {
-        let content = #"{"overview": "usar \'Global Suite\' en vez de Hubble", "sections": [], "actionItems": []}"#
+        let content = #"{"overview": "usar \'Aurora Suite\' en vez de Kepler", "sections": [], "actionItems": []}"#
         let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
-        XCTAssertEqual(summary.overview, "usar 'Global Suite' en vez de Hubble")
+        XCTAssertEqual(summary.overview, "usar 'Aurora Suite' en vez de Kepler")
     }
 }
 
@@ -781,12 +781,12 @@ final class NamingExcerptTests: XCTestCase {
                     speaker: s1, start: Double(index)))
         }
         // Short line late in the meeting, would never make the per-speaker cut.
-        segments.append(segment("thanks Vishakha", speaker: s2, start: 300))
+        segments.append(segment("thanks Ilarion", speaker: s2, start: 300))
 
         let excerpt = NamingExcerpt.build(
             segments: segments, speakers: [me, s1, s2],
-            attendeeCandidates: ["Vishakha Rao"])
-        XCTAssertTrue(excerpt.contains("thanks Vishakha"))
+            attendeeCandidates: ["Ilarion Rao"])
+        XCTAssertTrue(excerpt.contains("thanks Ilarion"))
     }
 
     func testRespectsBudget() {

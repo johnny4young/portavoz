@@ -538,14 +538,14 @@ final class ParakeetSegmentMapperTests: XCTestCase {
 final class VocabularyPromptTests: XCTestCase {
     func testFormatsTermsAsNaturalSentence() {
         XCTAssertEqual(
-            VocabularyPrompt.text(["LVGT", "Portavoz", "Vishakha"]),
-            "In this meeting we discussed LVGT, Portavoz, Vishakha.")
+            VocabularyPrompt.text(["QVTL", "Portavoz", "Ilarion"]),
+            "In this meeting we discussed QVTL, Portavoz, Ilarion.")
     }
 
     func testFormatsSpanishTermsAsSpanishNaturalSentence() {
         XCTAssertEqual(
-            VocabularyPrompt.text(["Cots2M", "Trinity"], language: "es-CO"),
-            "En esta reunión hablamos de Cots2M, Trinity.")
+            VocabularyPrompt.text(["Qord2M", "Zephyr"], language: "es-CO"),
+            "En esta reunión hablamos de Qord2M, Zephyr.")
     }
 
     func testEmptyAndBlankTermsYieldNoPrompt() {
@@ -555,8 +555,8 @@ final class VocabularyPromptTests: XCTestCase {
 
     func testParseSplitsAndTrimsCommaList() {
         XCTAssertEqual(
-            VocabularyPrompt.parse(" LVGT , Portavoz,,  Vishakha "),
-            ["LVGT", "Portavoz", "Vishakha"])
+            VocabularyPrompt.parse(" QVTL , Portavoz,,  Ilarion "),
+            ["QVTL", "Portavoz", "Ilarion"])
         XCTAssertEqual(VocabularyPrompt.parse(""), [])
     }
 }

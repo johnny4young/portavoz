@@ -6,21 +6,21 @@ import XCTest
 final class VocabularyMinerTests: XCTestCase {
     func testRecurringDomainShapesAreSuggestedMostFrequentFirst() {
         let texts = [
-            "we register the device in Cots2M and the LVGT queue",
-            "Cots2M rejected the payload, check LVGT again",
-            "the Cots2M spec says the identifier has no spaces",
-            "LVGT owns that flow now",
-            "Cots2M again for the record",
+            "we register the device in Qord2M and the QVTL queue",
+            "Qord2M rejected the payload, check QVTL again",
+            "the Qord2M spec says the identifier has no spaces",
+            "QVTL owns that flow now",
+            "Qord2M again for the record",
         ]
 
         let suggested = VocabularyMiner.suggest(from: texts, existing: [], minimumOccurrences: 3)
 
-        XCTAssertEqual(suggested, ["Cots2M", "LVGT"], "frequency order, both above threshold")
+        XCTAssertEqual(suggested, ["Qord2M", "QVTL"], "frequency order, both above threshold")
     }
 
     func testPlainWordsAndSentenceCapitalsAreNeverSuggested() {
         let texts = Array(
-            repeating: "The meeting Started early because Daniel wanted the update",
+            repeating: "The meeting Started early because Marta wanted the update",
             count: 5)
 
         XCTAssertTrue(VocabularyMiner.suggest(from: texts, existing: []).isEmpty)
@@ -38,23 +38,23 @@ final class VocabularyMinerTests: XCTestCase {
     }
 
     func testExistingVocabularyAndStoplistAreExcluded() {
-        let texts = Array(repeating: "Cots2M is OK per the LVGT checklist", count: 4)
+        let texts = Array(repeating: "Qord2M is OK per the QVTL checklist", count: 4)
 
         let suggested = VocabularyMiner.suggest(
-            from: texts, existing: ["cots2m"], minimumOccurrences: 3)
+            from: texts, existing: ["qord2m"], minimumOccurrences: 3)
 
-        XCTAssertEqual(suggested, ["LVGT"], "existing (case-insensitive) and OK dropped")
+        XCTAssertEqual(suggested, ["QVTL"], "existing (case-insensitive) and OK dropped")
     }
 
     func testBelowThresholdIsNotSuggested() {
-        let texts = ["Cots2M once", "Cots2M twice"]
+        let texts = ["Qord2M once", "Qord2M twice"]
         XCTAssertTrue(
             VocabularyMiner.suggest(from: texts, existing: [], minimumOccurrences: 3).isEmpty)
     }
 
     func testShapeHeuristics() {
-        XCTAssertTrue(VocabularyMiner.looksLikeDomainTerm("LVGT"))
-        XCTAssertTrue(VocabularyMiner.looksLikeDomainTerm("Cots2M"))
+        XCTAssertTrue(VocabularyMiner.looksLikeDomainTerm("QVTL"))
+        XCTAssertTrue(VocabularyMiner.looksLikeDomainTerm("Qord2M"))
         XCTAssertTrue(VocabularyMiner.looksLikeDomainTerm("WhisperKit"))
         XCTAssertTrue(VocabularyMiner.looksLikeDomainTerm("iPhone"))
         XCTAssertFalse(VocabularyMiner.looksLikeDomainTerm("Started"), "plain capitalized word")

@@ -12,7 +12,7 @@ import PortavozCore
 ///   terms are the event's title words and attendee names actually found in
 ///   its passages. A minimum score gates out weak, single-passage semantic
 ///   noise — better an empty section than a misleading one.
-/// - The matched terms double as the visible REASON ("Mentions: Trinity"),
+/// - The matched terms double as the visible REASON ("Mentions: Zephyr"),
 ///   so the user can see why a meeting showed up.
 public enum BriefRelevance {
     public struct Related: Sendable, Equatable {

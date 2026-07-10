@@ -81,12 +81,12 @@
         }
       }
     },
-    "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “LVGT” does not become something else.": {
+    "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “QVTL” does not become something else.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que “LVGT” no se convierta en otra cosa."
+            "value": "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que “QVTL” no se convierta en otra cosa."
           }
         }
       }
@@ -121,12 +121,12 @@
         }
       }
     },
-    "Add term (LVGT, Vishakha…)": {
+    "Add term (QVTL, Ilarion…)": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agregar término (LVGT, Vishakha…)"
+            "value": "Agregar término (QVTL, Ilarion…)"
           }
         }
       }
