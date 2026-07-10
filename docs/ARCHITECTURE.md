@@ -8,7 +8,7 @@ Diferenciadores en orden de prioridad: who-said-what estructural por captura dua
 
 ## Workspace SPM (un solo package)
 
-`PortavozCore` contiene los tipos de dominio compartidos; los 8 Kits dependen de Core y **nunca entre sí** (única excepción: `IntegrationsKit → IntelligenceKit`).
+`PortavozCore` contiene los tipos de dominio compartidos; los 8 Kits dependen de Core y **nunca entre sí** (única excepción: `IntegrationsKit → IntelligenceKit + StorageKit (D31, única capa cross-Kit)`).
 
 | Módulo | Responsabilidad |
 |---|---|
