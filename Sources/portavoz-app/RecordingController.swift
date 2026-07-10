@@ -1,6 +1,7 @@
 import AudioCaptureKit
 import DiarizationKit
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import Observation
@@ -74,6 +75,12 @@ final class RecordingController {
     private var liveNotes: [String] = []
     private var meetingID = MeetingID()
     private var audioRelative = ""
+    /// Calendar event this recording is linked to (brief flow): its title
+    /// replaces the timestamp template, so the meeting is born with a real
+    /// name. (The smart-title chip's guard is the timestamp-template SHAPE —
+    /// an event title starting with a digit, like "1:1 weekly", can still
+    /// get a suggestion; it stays suggestion-only, so that's acceptable.)
+    private var linkedEvent: UpcomingEvent?
     /// id of the newest caption row — when it changes, the PREVIOUS row
     /// just closed and becomes a companion candidate.
     private var lastOpenRowID: UUID?
@@ -87,8 +94,9 @@ final class RecordingController {
     // Orchestrates capture + transcription + scheduler startup; the sequence
     // is legitimately long. Splitting remains technical debt.
     // swiftlint:disable:next function_body_length cyclomatic_complexity
-    func start(services: AppServices) async {
+    func start(services: AppServices, event: UpcomingEvent? = nil) async {
         guard phase == .idle || isFailed else { return }
+        linkedEvent = event
         phase = .preparing
 
         // Warm the mic engine now so the echo canceller converges while the
@@ -434,9 +442,11 @@ final class RecordingController {
                 ((try? await services.store.meetings()) ?? [])
                 .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: startedAt) }
                 .count
+            let title = linkedEvent?.title
+                ?? TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1)
             let meeting = Meeting(
                 id: meetingID,
-                title: TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1),
+                title: title,
                 startedAt: startedAt,
                 endedAt: Date(),
                 language: spokenLanguage,

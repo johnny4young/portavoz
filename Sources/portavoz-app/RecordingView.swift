@@ -1,3 +1,4 @@
+import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
@@ -7,6 +8,9 @@ import SwiftUI
 struct RecordingView: View {
     @Environment(AppServices.self) private var services
     @Binding var route: Route?
+    /// Calendar event this recording came from (brief's "Record this
+    /// meeting") — nil for a blank recording.
+    let event: UpcomingEvent?
     @State private var controller = RecordingController()
     /// Log-viewer follow mode: captions auto-scroll while the user is at
     /// the bottom; scrolling away pauses the follow (so they can read
@@ -74,7 +78,7 @@ struct RecordingView: View {
         }
         .navigationTitle("Recording")
         .liveTranslation(controller)
-        .task { await controller.start(services: services) }
+        .task { await controller.start(services: services, event: event) }
         .onDisappear { hud.close() }
     }
 

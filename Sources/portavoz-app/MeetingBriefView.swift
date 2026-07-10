@@ -149,6 +149,15 @@ struct MeetingBriefView: View {
             HStack {
                 Spacer()
                 Button("Close") { dismiss() }
+                Button {
+                    dismiss()
+                    route = .recording(brief.event)
+                } label: {
+                    Label("Record this meeting", systemImage: "record.circle")
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("brief-record-button")
+                .help("Starts recording linked to this event: the meeting gets its real title")
             }
         }
         .padding(20)

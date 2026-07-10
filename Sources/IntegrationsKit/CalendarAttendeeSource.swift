@@ -109,7 +109,7 @@ public struct CalendarAttendeeSource: Sendable {
 }
 
 /// The next calendar event, reduced to what a pre-meeting brief needs.
-public struct UpcomingEvent: Sendable, Equatable, Identifiable {
+public struct UpcomingEvent: Sendable, Equatable, Hashable, Identifiable {
     public var id: String { title + startDate.timeIntervalSince1970.description }
     public let title: String
     public let startDate: Date

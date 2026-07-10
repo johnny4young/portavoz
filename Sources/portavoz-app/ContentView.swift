@@ -1,8 +1,11 @@
+import IntegrationsKit
 import PortavozCore
 import SwiftUI
 
 enum Route: Hashable {
-    case recording
+    /// nil = blank recording; an event links the recording to the calendar
+    /// meeting it came from (real title instead of the timestamp template).
+    case recording(UpcomingEvent?)
     case meeting(MeetingID)
     case ask
 }
@@ -17,8 +20,8 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
         } detail: {
             switch route {
-            case .recording:
-                RecordingView(route: $route)
+            case .recording(let event):
+                RecordingView(route: $route, event: event)
             case .meeting(let id):
                 MeetingDetailView(meetingID: id, route: $route)
                     .id(id)  // reload state when switching meetings

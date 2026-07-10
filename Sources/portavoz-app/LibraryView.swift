@@ -40,7 +40,7 @@ struct LibraryView: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                route = .recording
+                route = .recording(nil)
             } label: {
                 Label("New recording", systemImage: "record.circle")
                     .frame(maxWidth: .infinity)

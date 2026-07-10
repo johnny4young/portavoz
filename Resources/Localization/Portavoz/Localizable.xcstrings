@@ -1471,6 +1471,16 @@
         }
       }
     },
+    "Record this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabar esta reunión"
+          }
+        }
+      }
+    },
     "Recording": {
       "localizations": {
         "es": {
@@ -1847,6 +1857,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hora de inicio"
+          }
+        }
+      }
+    },
+    "Starts recording linked to this event: the meeting gets its real title": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia la grabación vinculada a este evento: la reunión nace con su título real"
           }
         }
       }
