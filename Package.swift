@@ -25,13 +25,12 @@ let package = Package(
     ],
     dependencies: [
         // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
-        // Pinned to the exact commit that fixes a deterministic type-checker
-        // timeout in FluidAudioCLI (upstream #732, not yet in a release);
-        // return to .upToNextMinor when a release > 0.15.4 ships. Their
-        // public API renames types across minors (0.12 → 0.15 did).
+        // upToNextMinor on purpose: their public API renames types across
+        // minors (0.12 → 0.15 did). 0.15.5 ships the #732 type-checker fix
+        // we used to pin by revision.
         .package(
             url: "https://github.com/FluidInference/FluidAudio.git",
-            revision: "c367a18e77f9e07a9d0493f6e6fa713d0f774f13"),
+            .upToNextMinor(from: "0.15.5")),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned

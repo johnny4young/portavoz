@@ -12,9 +12,9 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | 4 | ~~**Grabar exige la ventana completa**~~ | **RESUELTO (jul 2026)**: botón "Vista compacta" en grabación → HUD flotante (NSPanel `.nonactivatingPanel` + `.borderless`, level floating, todas las Spaces) con timer, última caption, medidor de mic y stop; la ventana principal se minimiza al Dock y el HUD vuelve a expandirse solo al salir de `.recording`. Los clicks no roban foco de Zoom/Meet | verificación de campo; menu bar item (menor) | ✅ código / campo pendiente |
 | 5 | ~~**UI solo en español**~~ | **RESUELTO (jul 2026)**: source strings en inglés, `Localizable.xcstrings` + `InfoPlist.xcstrings`, traducción ES completa, export a `en.lproj`/`es.lproj` en `make-app.sh`, `CFBundleDevelopmentRegion=en`, `CFBundleLocalizations=[en, es]`, selector Settings **System / English / Español** con locale SwiftUI en vivo | — | ✅ |
 | 6 | **Onboarding inexistente** | primer arranque descarga modelos con progreso, sin explicación de permisos/valor | flujo primera-vez: permisos guiados (mic/system/TCC), descarga con recomendación por hardware, enrolar voz opcional (patrón Meetily) | Parcial en M12 (recomendador); el flujo NO está planeado |
-| 7 | ~~**Macs sin Apple Intelligence = sin resumen local**~~ | **RESUELTO (jul 2026)**: Ollama de primera clase — Ajustes → Motor de resúmenes detecta Ollama, lista modelos, resume 100% local sin key (`OllamaService` + `OpenAICompatibleSummaryProvider`). Verificado E2E con gpt-oss:20b (resumen ES en 24 s). Falta MLX embebido (cero-dependencias, fase posterior) | ✅ |
+| 7 | ~~**Macs sin Apple Intelligence = sin resumen local**~~ | **RESUELTO (jul 2026)**: Ollama de primera clase — Ajustes → Motor de resúmenes detecta Ollama, lista modelos, resume 100% local sin key (`OllamaService` + `OpenAICompatibleSummaryProvider`). Verificado E2E con gpt-oss:20b (resumen ES en 24 s). **MLX embebido también hecho (D32, jul 2026)**: Qwen3-4B 4-bit en GPU, cero instalaciones, verificado en reunión real de 40 min | ✅ |
 | 8 | ~~**Import de audio externo sin UI**~~ | **RESUELTO (jul 2026)**: botón "Importar audio…" + drag-drop en la biblioteca → transcribe (Whisper) + diariza + resume como reunión nueva (M11) | — | ✅ |
-| 9 | Sin brief pre-reunión ni recap email | EventKit ya lee asistentes | Briefs (Granola) + borrador de recap (Gemini) | M13b / M16 |
+| 9 | Sin recap email (brief ✅) | **Brief pre-reunión HECHO (jul 2026)**: agenda colapsable hoy/mañana, brief con relevancia + citas + grabar desde el brief + banner proactivo (M13b) | borrador de recap post-reunión (email/Slack) | M16 |
 | 10 | Sin App Intents/Shortcuts/Spotlight | — | automatizaciones post-reunión | M16 |
 
 ## Brechas técnicas (deuda y riesgo)
@@ -28,8 +28,8 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | T5 | RAG brute-force O(n) | a 1,000+ reuniones el `ask` se degrada | medir primero (T4); sqlite-vec si falla el target |
 | T6 | ~~Storage de audio 126 MB/canal/22 min~~ | **RESUELTO (jul 2026)**: botón "Comprimir audio (AAC)" en el detalle → transcode a m4a (`AudioTranscoder`), borra el original solo tras escritura verificada; `MeetingAudioLayout` prefiere m4a | ✅ |
 | T7 | CI no corre los tests gated de modelos | regresiones de integración invisibles en CI | runner self-hosted o job manual mensual — NO PLANEADO |
-| T8 | Sin SwiftLint/format en CI | estilo a mano | añadir en M9 (barato antes de contribuidores) |
-| T9 | FluidAudio pineado a revisión | fix upstream sin release | volver a upToNextMinor cuando salga > 0.15.4 |
+| T8 | ~~Sin SwiftLint/format en CI~~ | **RESUELTO (jul 2026)**: `.swiftlint.yml` calibrado a cero errores + job `lint` en CI (M9 prep) | ✅ |
+| T9 | ~~FluidAudio pineado a revisión~~ | **RESUELTO (jul 2026)**: 0.15.5 incluye el fix #732; re-pineado a `.upToNextMinor(from: "0.15.5")` | ✅ |
 | T10 | Sin telemetría de crashes (opt-in) | bugs de campo invisibles post-publicación | decidir en M9 (¿solo GitHub issues? ¿MetricKit local?) |
 
 ## Brechas de posicionamiento (contra el mapa competitivo)
