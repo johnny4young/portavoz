@@ -44,6 +44,21 @@ enum TranscriptionTextFilter {
         silenceHallucinations.contains(normalizedPhrase(text))
     }
 
+    /// Low mic signal makes the live engine emit character noise —
+    /// "DDDDD", "....", "kkkkkk" (field evidence, Jul 2026). A delta is
+    /// noise when, after normalizing, every "word" is the same character
+    /// repeated. Real words ("dado", "lll" inside a code name mixed with
+    /// prose) never consist ONLY of such runs.
+    static func isCharacterNoise(_ text: String) -> Bool {
+        let phrase = normalizedPhrase(text)
+        guard !phrase.isEmpty else { return true }
+        let words = phrase.split(separator: " ")
+        return words.allSatisfy { word in
+            guard let first = word.first else { return true }
+            return word.count >= 3 && word.allSatisfy { $0 == first }
+        }
+    }
+
     /// Whisper silence hallucinations often arrive as the same short phrase
     /// every VAD window (≈30 s). Drop only the repeated/regular pattern so a
     /// single genuine "Thank you" still survives.

@@ -134,3 +134,99 @@ final class CaptionCoalescerTests: XCTestCase {
         XCTAssertTrue(captions[0].isFinal)
     }
 }
+
+// MARK: - Chunk-echo overlap trim (field evidence, Jul 10 sprint demo)
+
+/// The live engine re-emits the tail of the previous chunk; before the
+/// trim, 54% of a real 56-min meeting's rows carried the stutter.
+final class CaptionCoalescerOverlapTests: XCTestCase {
+    func testWordEchoAtChunkBoundaryIsTrimmed() {
+        XCTAssertEqual(
+            CaptionCoalescer.join("we added a select all", "all button"),
+            "we added a select all button")
+        XCTAssertEqual(
+            CaptionCoalescer.join("feature roadmap here", "here I've included"),
+            "feature roadmap here I've included")
+    }
+
+    func testMultiWordEchoIsTrimmed() {
+        XCTAssertEqual(
+            CaptionCoalescer.join("I can kinda go over", "go over this"),
+            "I can kinda go over this")
+    }
+
+    func testMidWordSplitEchoIsTrimmed() {
+        XCTAssertEqual(
+            CaptionCoalescer.join("we added", "ed a select"),
+            "we added a select")
+        XCTAssertEqual(
+            CaptionCoalescer.join("cannot become compared", "ed between um"),
+            "cannot become compared between um")
+    }
+
+    func testPartialWordOverlapKeepsTheNewSuffix() {
+        // "subscription" + "criptions page" → the trailing "s" is NEW
+        // information: the row must read "subscriptions page".
+        XCTAssertEqual(
+            CaptionCoalescer.join("to the subscription", "criptions page"),
+            "to the subscriptions page")
+        XCTAssertEqual(
+            CaptionCoalescer.join("six percent", "cent now"),
+            "six percent now")
+    }
+
+    func testLegitimateShortWordsAreNeverEaten() {
+        XCTAssertEqual(
+            CaptionCoalescer.join("the plan", "an idea"),
+            "the plan an idea")
+        XCTAssertEqual(
+            CaptionCoalescer.join("I said", "id number"),
+            "I said id number")
+    }
+
+    func testNoOverlapJoinsWithASpace() {
+        XCTAssertEqual(
+            CaptionCoalescer.join("we shipped the fix", "and the tests pass"),
+            "we shipped the fix and the tests pass")
+    }
+}
+
+/// Low-mic character noise ("DDDDD", "....") must never become rows
+/// (field evidence, Jul 10: quiet mic produced letter runs as captions).
+final class CaptionCoalescerNoiseTests: XCTestCase {
+    private let coalescer = CaptionCoalescer()
+
+    private func segment(_ text: String, at start: TimeInterval = 10) -> TranscriptSegment {
+        TranscriptSegment(
+            meetingID: MeetingID(), speakerID: nil, channel: .microphone,
+            text: text, startTime: start, endTime: start + 1, isFinal: true)
+    }
+
+    func testLetterRunsAreDropped() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment("DDDDD"), to: &captions)
+        coalescer.apply(segment("kkkkkk mmmm"), to: &captions)
+        XCTAssertTrue(captions.isEmpty)
+    }
+
+    func testLongPunctuationRunsAreDropped() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment("Revisemos el presupuesto"), to: &captions)
+        coalescer.apply(segment("....", at: 11.2), to: &captions)
+        XCTAssertEqual(captions.count, 1)
+        XCTAssertEqual(captions[0].text, "Revisemos el presupuesto")
+    }
+
+    func testSingleSentenceCloserStillGlues() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment("Revisemos el presupuesto"), to: &captions)
+        coalescer.apply(segment(".", at: 11.2), to: &captions)
+        XCTAssertEqual(captions[0].text, "Revisemos el presupuesto.")
+    }
+
+    func testRealWordsSurvive() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(segment("dado que el deploy salió bien"), to: &captions)
+        XCTAssertEqual(captions.count, 1)
+    }
+}
