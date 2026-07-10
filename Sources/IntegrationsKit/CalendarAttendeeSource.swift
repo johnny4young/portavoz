@@ -28,21 +28,30 @@ public struct CalendarAttendeeSource: Sendable {
         EKEventStore.authorizationStatus(for: .event) == .fullAccess
     }
 
-    /// The next non-all-day event starting within `window` (events that
-    /// began in the last 15 minutes still count). nil when none or no access.
-    public func nextEvent(within window: TimeInterval = 12 * 3600) -> UpcomingEvent? {
-        guard Self.hasAccess else { return nil }
+    /// The rest of today's meetings plus tomorrow's (non-all-day, still
+    /// ongoing or future), sorted by start — the sidebar's prep agenda.
+    public func upcomingEvents() -> [UpcomingEvent] {
+        guard Self.hasAccess else { return [] }
         let store = EKEventStore()
         let now = Date()
+        let endOfTomorrow = Calendar.current.startOfDay(for: now)
+            .addingTimeInterval(48 * 3600)
         let predicate = store.predicateForEvents(
             withStart: now.addingTimeInterval(-15 * 60),
-            end: now.addingTimeInterval(window),
+            end: endOfTomorrow,
             calendars: nil)
-        let event = store.events(matching: predicate)
+        return store.events(matching: predicate)
             .filter { !$0.isAllDay && $0.endDate > now }
-            .min { $0.startDate < $1.startDate }
-        guard let event else { return nil }
+            .sorted { $0.startDate < $1.startDate }
+            .map(Self.upcoming(from:))
+    }
 
+    /// The next event, if any. Kept for callers that only need one.
+    public func nextEvent() -> UpcomingEvent? {
+        upcomingEvents().first
+    }
+
+    private static func upcoming(from event: EKEvent) -> UpcomingEvent {
         var names: [String] = []
         var seen = Set<String>()
         for participant in event.attendees ?? [] {
@@ -94,7 +103,8 @@ public struct CalendarAttendeeSource: Sendable {
 }
 
 /// The next calendar event, reduced to what a pre-meeting brief needs.
-public struct UpcomingEvent: Sendable, Equatable {
+public struct UpcomingEvent: Sendable, Equatable, Identifiable {
+    public var id: String { title + startDate.timeIntervalSince1970.description }
     public let title: String
     public let startDate: Date
     public let attendees: [String]

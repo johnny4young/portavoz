@@ -25,8 +25,7 @@ struct MeetingBrief {
     /// Related = meetings whose transcripts mention the event's attendees
     /// or title words, ranked by hit count. Pure store work; the optional
     /// FM synthesis reuses the RAG answerer (already gated-tested).
-    static func build(store: MeetingStore) async -> MeetingBrief? {
-        guard let event = CalendarAttendeeSource().nextEvent() else { return nil }
+    static func build(for event: UpcomingEvent, store: MeetingStore) async -> MeetingBrief? {
 
         let titleWords = event.title.split(whereSeparator: \.isWhitespace)
             .map(String.init).filter { $0.count >= 4 }

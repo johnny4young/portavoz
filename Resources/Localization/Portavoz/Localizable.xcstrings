@@ -231,6 +231,16 @@
         }
       }
     },
+    "Brief for this meeting: who's coming, related meetings, open to-dos": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief de esta reunión: quiénes vienen, reuniones relacionadas y pendientes abiertos"
+          }
+        }
+      }
+    },
     "Brief for your next meeting: who's coming, related meetings, open to-dos": {
       "localizations": {
         "es": {
@@ -2111,6 +2121,16 @@
         }
       }
     },
+    "Today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy"
+          }
+        }
+      }
+    },
     "Token deleted.": {
       "localizations": {
         "es": {
@@ -2127,6 +2147,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Token guardado."
+          }
+        }
+      }
+    },
+    "Tomorrow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mañana"
           }
         }
       }

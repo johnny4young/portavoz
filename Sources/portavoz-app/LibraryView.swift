@@ -15,13 +15,15 @@ struct LibraryView: View {
     @State private var hits: [SearchHit] = []
     /// Open action items across ALL meetings — the cross-meeting to-do list.
     @State private var openItems: [MeetingStore.OpenActionItem] = []
-    /// Pre-meeting brief for the next calendar event (M13b). Loads only
-    /// when calendar access was already granted — never prompts here.
+    /// Prep agenda (M13b): the rest of today's meetings + tomorrow's,
+    /// collapsible in the sidebar; clicking one builds its brief ON DEMAND
+    /// (no FM spent up front). Loads only when calendar access was already
+    /// granted — never prompts here. A 5-minute timer keeps it honest.
+    @State private var upcomingToday: [UpcomingEvent] = []
+    @State private var upcomingTomorrow: [UpcomingEvent] = []
     @State private var brief: MeetingBrief?
+    @State private var briefLoading: UpcomingEvent?
     @State private var showBrief = false
-    /// Keeps the brief honest while the app stays open: every 5 minutes it
-    /// re-checks the calendar, drops a brief whose event ended, and only
-    /// pays the full rebuild (FM included) when the NEXT event changed.
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
     @State private var renamingMeeting: Meeting?
     @State private var newTitle = ""
@@ -78,26 +80,6 @@ struct LibraryView: View {
             .help("Natural-language questions over every meeting, answered on your Mac")
             .accessibilityIdentifier("library-ask-button")
 
-            if let brief {
-                Button {
-                    showBrief = true
-                } label: {
-                    Label {
-                        Text("Next: \(brief.event.title)")
-                            .lineLimit(1)
-                        Text(brief.event.startDate.formatted(date: .omitted, time: .shortened))
-                            .foregroundStyle(.secondary)
-                    } icon: {
-                        Image(systemName: "calendar.badge.clock")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .controlSize(.small)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .help("Brief for your next meeting: who's coming, related meetings, open to-dos")
-            }
-
             TextField("Search all meetings…", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)
@@ -120,6 +102,20 @@ struct LibraryView: View {
                         }
                     }
                 } else {
+                    if !upcomingToday.isEmpty {
+                        Section("Today") {
+                            ForEach(upcomingToday) { event in
+                                upcomingRow(event)
+                            }
+                        }
+                    }
+                    if !upcomingTomorrow.isEmpty {
+                        Section("Tomorrow") {
+                            ForEach(upcomingTomorrow) { event in
+                                upcomingRow(event)
+                            }
+                        }
+                    }
                     if !openItems.isEmpty {
                         Section("To-dos") {
                             ForEach(openItems, id: \.item.id) { open in
@@ -211,17 +207,47 @@ struct LibraryView: View {
         await refreshBrief()
     }
 
-    /// Cheap staleness check first (EventKit is local): same upcoming event
-    /// keeps the built brief (and its on-device synthesis); a new, changed
-    /// or ended event triggers the rebuild or clears the row.
+    /// EventKit is local and cheap: re-split the agenda into today/tomorrow.
+    /// Briefs are built on click, so refreshing costs no model time.
     private func refreshBrief() async {
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return }
-        guard let next = CalendarAttendeeSource().nextEvent() else {
-            brief = nil
-            return
+        let events = CalendarAttendeeSource().upcomingEvents()
+        let startOfTomorrow = Calendar.current.startOfDay(
+            for: Date().addingTimeInterval(24 * 3600))
+        upcomingToday = events.filter { $0.startDate < startOfTomorrow }
+        upcomingTomorrow = events.filter { $0.startDate >= startOfTomorrow }
+    }
+
+    /// One agenda row: time + title; click builds that event's brief.
+    private func upcomingRow(_ event: UpcomingEvent) -> some View {
+        Button {
+            openBrief(for: event)
+        } label: {
+            HStack(spacing: 6) {
+                if briefLoading == event {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "calendar.badge.clock")
+                        .foregroundStyle(.secondary)
+                }
+                Text(event.startDate.formatted(date: .omitted, time: .shortened))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Text(event.title).lineLimit(1)
+            }
         }
-        guard next != brief?.event else { return }
-        brief = await MeetingBrief.build(store: services.store)
+        .buttonStyle(.plain)
+        .help("Brief for this meeting: who's coming, related meetings, open to-dos")
+    }
+
+    private func openBrief(for event: UpcomingEvent) {
+        guard briefLoading == nil else { return }
+        briefLoading = event
+        Task {
+            defer { briefLoading = nil }
+            brief = await MeetingBrief.build(for: event, store: services.store)
+            showBrief = brief != nil
+        }
     }
 
     /// One open action item: check it off right here, or click through to
