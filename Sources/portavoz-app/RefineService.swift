@@ -6,24 +6,6 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
-/// A refine result awaiting the user's decision — never applied on its
-/// own. The transcript it would replace stays untouched until "Apply".
-struct RefineDraft {
-    let language: String?
-    let speakers: [Speaker]
-    let segments: [TranscriptSegment]
-    let oldSegmentCount: Int
-    let oldSpeakerCount: Int
-    let oldSpeechSeconds: TimeInterval
-
-    var newSpeechSeconds: TimeInterval {
-        segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
-    }
-    /// A refined pass that covers well under the current transcript's
-    /// speech almost certainly failed — surfaced as a loud warning.
-    var looksLossy: Bool { newSpeechSeconds < oldSpeechSeconds * 0.5 }
-}
-
 /// Runs quality re-passes OUTSIDE the view hierarchy (field bug, Jul 10):
 /// the detail view is recreated when the user switches meetings, so a
 /// view-owned refine kept burning the ANE while its draft sheet was lost.
@@ -119,13 +101,17 @@ final class RefineService {
                     segments: segments, turns: turns, meetingID: meetingID)
 
                 let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
+                let meetingSeconds = detail.meeting.endedAt.map {
+                    $0.timeIntervalSince(detail.meeting.startedAt)
+                }
                 phases[meetingID] = .draft(RefineDraft(
                     language: hints.language,
                     speakers: attribution.speakers,
                     segments: attribution.segments,
                     oldSegmentCount: detail.segments.count,
                     oldSpeakerCount: detail.speakers.count,
-                    oldSpeechSeconds: oldSpeech))
+                    oldSpeechSeconds: oldSpeech,
+                    meetingSeconds: meetingSeconds))
             } catch {
                 phases[meetingID] = .failed(
                     L10n.format("Refine failed: %@", error.localizedDescription))

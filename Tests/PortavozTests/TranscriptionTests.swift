@@ -786,3 +786,37 @@ final class RepeatedHallucinationCountTests: XCTestCase {
             TranscriptionTextFilter.repeatedSilenceHallucinationPhrases(in: segments).isEmpty)
     }
 }
+
+/// The lossy-refine guard must not fire against an impossible baseline:
+/// a bleed-corrupted transcript claimed 108 min of speech in a 56-minute
+/// meeting, flagging the GOOD refine (49:50 covered) as a failure.
+final class RefineDraftLossyGuardTests: XCTestCase {
+    private func draft(
+        oldSpeech: TimeInterval, newSpeech: TimeInterval, meeting: TimeInterval?
+    ) -> RefineDraft {
+        let id = MeetingID()
+        let segment = TranscriptSegment(
+            meetingID: id, speakerID: nil, channel: .system,
+            text: "x", startTime: 0, endTime: newSpeech, isFinal: true)
+        return RefineDraft(
+            language: nil, speakers: [], segments: [segment],
+            oldSegmentCount: 1, oldSpeakerCount: 1,
+            oldSpeechSeconds: oldSpeech, meetingSeconds: meeting)
+    }
+
+    func testCorruptBaselineIsCappedByMeetingDuration() {
+        // Field case: old 108:54, new 49:50, meeting 56:20 → healthy.
+        let healthy = draft(oldSpeech: 6_534, newSpeech: 2_990, meeting: 3_380)
+        XCTAssertFalse(healthy.looksLossy)
+    }
+
+    func testGenuineLossStillWarns() {
+        let lossy = draft(oldSpeech: 3_000, newSpeech: 900, meeting: 3_380)
+        XCTAssertTrue(lossy.looksLossy)
+    }
+
+    func testUnknownDurationKeepsTheOldRule() {
+        let lossy = draft(oldSpeech: 6_000, newSpeech: 2_000, meeting: nil)
+        XCTAssertTrue(lossy.looksLossy)
+    }
+}
