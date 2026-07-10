@@ -40,7 +40,10 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
             Respond with ONLY a JSON object shaped exactly like:
             {"overview": "…", "sections": [{"heading": "…", "bullets": ["…"]}], \
             "actionItems": [{"text": "…", "owner": "…"}]}
-            Use "" for an unknown action-item owner. No markdown fences, no commentary.
+            Use "" for an unknown action-item owner. Every "bullets" item is a plain \
+            string — never an object or key/value pair. Action items go ONLY in \
+            "actionItems"; never add an action-items section to "sections". \
+            No markdown fences, no commentary.
             """
         return (
             system: PromptFactory.summaryInstructions(
@@ -62,12 +65,38 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
             .replacingOccurrences(of: "```", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let json = stripped.data(using: .utf8),
-            let summary = try? JSONDecoder().decode(StructuredSummary.self, from: json)
-        else {
-            throw IntelligenceError.providerFailed(
-                "model did not return the expected JSON shape: \(stripped.prefix(200))")
+        // Local debugging only: dump the raw output when explicitly asked.
+        if ProcessInfo.processInfo.environment["PORTAVOZ_JSON_DUMP"] != nil {
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("portavoz-summary-dump.txt")
+            try? stripped.write(to: url, atomically: true, encoding: .utf8)
         }
-        return summary
+        var firstDecodeError: Error?
+        var candidates = [stripped]
+        // Smaller local models also wrap the object in prose ("Here is the
+        // summary: {…} Let me know…") — add the outermost-braces slice.
+        if let first = stripped.firstIndex(of: "{"), let last = stripped.lastIndex(of: "}"),
+            first < last {
+            candidates.append(String(stripped[first...last]))
+        }
+        for candidate in candidates {
+            // Qwen3-4B (MLX) emits Python-style \' escapes inside strings —
+            // invalid JSON that fails the whole document. Repairing them is
+            // safe: \' never appears in valid JSON.
+            for text in [candidate, candidate.replacingOccurrences(of: "\\'", with: "'")] {
+                guard let json = text.data(using: .utf8) else { continue }
+                do {
+                    return try JSONDecoder().decode(StructuredSummary.self, from: json)
+                } catch {
+                    if firstDecodeError == nil { firstDecodeError = error }
+                }
+            }
+        }
+        // Head AND tail: a truncated generation is instantly visible from
+        // an unterminated tail, while a refusal shows in the head.
+        throw IntelligenceError.providerFailed(
+            "model did not return the expected JSON shape "
+                + "(\(stripped.count) characters): \(stripped.prefix(160)) … \(stripped.suffix(160)) "
+                + "— decoder: \(firstDecodeError.map(String.init(describing:)) ?? "none")")
     }
 }

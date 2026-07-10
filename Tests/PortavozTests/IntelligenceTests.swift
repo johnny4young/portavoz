@@ -675,6 +675,31 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         XCTAssertThrowsError(
             try OpenAICompatibleSummaryProvider.parseStructured("I cannot help with that."))
     }
+
+    /// Smaller local models (MLX Qwen3-4B) wrap the object in prose; the
+    /// parser must recover the outermost braces instead of failing.
+    func testParsesJSONWrappedInProse() throws {
+        let content = """
+            Aquí está el resumen solicitado:
+            {"overview": "ok", "sections": [], "actionItems": []}
+            Avísame si necesitas algo más.
+            """
+        let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
+        XCTAssertEqual(summary.overview, "ok")
+    }
+
+    func testProseWrappedRecoveryStillRejectsBrokenJSON() {
+        XCTAssertThrowsError(
+            try OpenAICompatibleSummaryProvider.parseStructured("nope {\"overview\": } nope"))
+    }
+
+    /// Qwen3-4B writes Python-style \' escapes inside JSON strings — an
+    /// invalid escape that fails the whole document unless repaired.
+    func testRepairsPythonStyleSingleQuoteEscapes() throws {
+        let content = #"{"overview": "usar \'Global Suite\' en vez de Hubble", "sections": [], "actionItems": []}"#
+        let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
+        XCTAssertEqual(summary.overview, "usar 'Global Suite' en vez de Hubble")
+    }
 }
 
 final class LiveSummaryPolicyTests: XCTestCase {

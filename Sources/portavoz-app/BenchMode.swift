@@ -121,7 +121,9 @@ extension BenchMode {
             recipe: .general, targetLanguage: "es", glossary: [])
     }
 
-    /// Newest library meeting that has a transcript, as a summary request.
+    /// Newest library meeting that has a transcript, as a summary request
+    /// shaped exactly like the app's regenerate path: Spanish target, the
+    /// user's vocabulary as glossary, and the meeting's notes woven in.
     /// Reads the real database; never writes.
     private static func realMeetingRequest() async throws -> SummaryRequest {
         let store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
@@ -130,11 +132,14 @@ extension BenchMode {
             else { continue }
             let minutes = Int((meeting.endedAt?.timeIntervalSince(meeting.startedAt) ?? 0) / 60)
             print("meeting: \(meeting.title) · \(detail.segments.count) segments · \(minutes) min")
+            let notes = (try? await store.contextItems(for: meeting.id)) ?? []
             return SummaryRequest(
                 meetingID: meeting.id, segments: detail.segments,
                 speakers: detail.speakers, recipe: .general,
-                targetLanguage: Locale.current.language.languageCode?.identifier ?? "es",
-                glossary: [])
+                targetLanguage: "es",
+                glossary: VocabularyPrompt.parse(
+                    UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
+                contextItems: notes)
         }
         throw NSError(
             domain: "MLXSmoke", code: 1,

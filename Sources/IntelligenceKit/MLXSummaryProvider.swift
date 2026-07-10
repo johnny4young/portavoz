@@ -49,12 +49,13 @@ actor MLXModelCache {
         return try await container.perform { context in
             let input = try await context.processor.prepare(
                 input: UserInput(chat: [.system(system), .user(user)]))
-            // maxTokens caps a runaway generation: the structured summary
-            // JSON fits comfortably in 2k tokens; without a cap a rambling
-            // model would keep the GPU busy indefinitely.
+            // maxTokens is pure runaway protection (a rambling model would
+            // hold the GPU indefinitely): real summaries end well under it —
+            // a 40-min Spanish meeting generates ~8k characters — and 8192
+            // tokens bounds the worst case to a few minutes.
             let stream = try MLXLMCommon.generate(
                 input: input,
-                parameters: GenerateParameters(maxTokens: 2048, temperature: 0),
+                parameters: GenerateParameters(maxTokens: 8192, temperature: 0),
                 context: context)
             var text = ""
             for await item in stream {
