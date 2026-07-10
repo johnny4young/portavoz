@@ -35,9 +35,16 @@ struct RecordingView: View {
                     captionsList
                     // The right column is always present: notes are an input
                     // primario (D28), no algo que aparece solo si hay tarjetas.
+                    // Notes + cards scroll: without it, three cards with long
+                    // answers compress the stack until texts overlap (field
+                    // bug, Jul 10). The live summary keeps its own scroll.
                     VStack(spacing: 10) {
-                        notesPanel
-                        companionCardsPanel
+                        ScrollView {
+                            VStack(spacing: 10) {
+                                notesPanel
+                                companionCardsPanel
+                            }
+                        }
                         if let live = controller.liveSummary {
                             liveSummaryPanel(live)
                         }
@@ -320,6 +327,9 @@ struct RecordingView: View {
                 Text(card.answer)
                     .font(.callout)
                     .textSelection(.enabled)
+                    // Always take the ideal height inside the scroll — a
+                    // compressed Text is what painted over the card footer.
+                    .fixedSize(horizontal: false, vertical: true)
             }
             HStack {
                 Text(companionCardTag(card))

@@ -7,6 +7,9 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🪞 No more stuttering transcripts** — The live engine's chunk echo ("we added ed a select all all button") is now trimmed as you speak. In a real 56-minute meeting it polluted half the lines; those lines now read clean.
+- **🤫 Quiet-mic noise filtered** — A low microphone no longer invents "DDDDD" or "...." caption rows.
+- **🃏 Companion cards never overlap** — Long answers scroll in their column instead of painting over the card's footer.
 - **👋 Guided first run** — New to Portavoz? A four-step welcome now walks you through permissions, the one-time model download (with a recommendation tuned to your Mac), and optional voice enrollment — so your first recording just works.
 
 ## July 9, 2026
