@@ -13,7 +13,16 @@ struct MeetingBrief {
     let event: UpcomingEvent
     let related: [RelatedMeeting]
     let openItems: [MeetingStore.OpenActionItem]
-    let whatToKnow: String?
+    /// "What to know" bullets, each citing the meeting it came from —
+    /// ungrounded/filler bullets are gated out by BriefSynthesizer.
+    let whatToKnow: [KnowPoint]
+
+    struct KnowPoint: Identifiable {
+        let id = UUID()
+        let text: String
+        let meetingID: MeetingID
+        let meetingTitle: String
+    }
 
     struct RelatedMeeting: Identifiable {
         var id: MeetingID { meetingID }
@@ -60,7 +69,7 @@ struct MeetingBrief {
             .filter { relatedIDs.contains($0.meetingID) }
             .prefix(8)
 
-        var whatToKnow: String?
+        var whatToKnow: [KnowPoint] = []
         if !related.isEmpty, #available(macOS 26.0, *),
             FoundationModelSummaryProvider.unavailabilityReason() == nil {
             let passages = related.map {
@@ -68,8 +77,15 @@ struct MeetingBrief {
                     meetingID: $0.meetingID, meetingTitle: $0.title,
                     timestamp: 0, text: $0.overview)
             }
-            whatToKnow = try? await RAGAnswerer().answer(
-                question: briefQuestion(for: event), passages: passages)
+            let points = await BriefSynthesizer.whatToKnow(
+                eventTitle: event.title, passages: passages)
+            whatToKnow = points.map { point in
+                let source = passages[point.passageIndex - 1]
+                return KnowPoint(
+                    text: point.text,
+                    meetingID: source.meetingID,
+                    meetingTitle: source.meetingTitle)
+            }
         }
 
         return MeetingBrief(
@@ -79,11 +95,6 @@ struct MeetingBrief {
             whatToKnow: whatToKnow)
     }
 
-    private static func briefQuestion(for event: UpcomingEvent) -> String {
-        let people = event.attendees.isEmpty
-            ? "" : " with \(event.attendees.joined(separator: ", "))"
-        return "In two or three short bullets: what should I know going into \"\(event.title)\"\(people)?"
-    }
 }
 
 /// The sheet the sidebar's "Next meeting" row opens.
@@ -91,6 +102,27 @@ struct MeetingBriefView: View {
     let brief: MeetingBrief
     @Binding var route: Route?
     @Environment(\.dismiss) private var dismiss
+
+    /// One grounded bullet with its clickable source: tapping the citation
+    /// jumps to the meeting the fact came from.
+    private func knowRow(_ point: MeetingBrief.KnowPoint) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("• \(point.text)").textSelection(.enabled)
+            Button {
+                dismiss()
+                route = .meeting(point.meetingID)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.turn.down.right")
+                    Text(point.meetingTitle).lineLimit(1)
+                }
+                .font(.caption2)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+            .padding(.leading, 12)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -107,12 +139,14 @@ struct MeetingBriefView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            if let whatToKnow = brief.whatToKnow {
-                VStack(alignment: .leading, spacing: 4) {
+            if !brief.whatToKnow.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("What to know")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text(whatToKnow).textSelection(.enabled)
+                    ForEach(brief.whatToKnow) { point in
+                        knowRow(point)
+                    }
                 }
                 .padding(10)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
