@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es" data-lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portavoz — Sabe quién dijo qué, localmente</title>
+  <meta name="description" content="Asistente de reuniones privacy-first para Mac: transcripción en vivo, voces separadas on-device y resúmenes 100% locales. Sin nube, sin bots, sin cuentas.">
+  <link rel="icon" href="assets/portavoz-mark.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://portavoz.app/">
+  <meta property="og:title" content="Portavoz — Knows who said what, locally">
+  <meta property="og:description" content="Privacy-first meeting assistant for Mac. Live transcription, on-device voices, local summaries.">
+  <meta property="og:image" content="https://portavoz.app/assets/og.png">
+  <meta property="og:url" content="https://portavoz.app/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,50&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="#">
+    <img src="assets/portavoz-mark.svg" alt="" width="28" height="28">
+    <span>Portavoz</span>
+  </a>
+  <nav class="top-links">
+    <a href="#features"><span class="es">Qué hace</span><span class="en">Features</span></a>
+    <a href="#numbers"><span class="es">Números</span><span class="en">Numbers</span></a>
+    <a href="#privacy"><span class="es">Privacidad</span><span class="en">Privacy</span></a>
+    <a href="https://github.com/johnny4young/portavoz">GitHub</a>
+  </nav>
+  <div class="lang-toggle" role="group" aria-label="Language">
+    <button data-lang-val="es" aria-label="Español">ES</button>
+    <button data-lang-val="en" aria-label="English">EN</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wave" aria-hidden="true">
+      <i></i><i></i><i></i><i class="peak"></i><i></i><i></i><i></i>
+    </div>
+    <h1>
+      <span class="es">Sabe quién dijo qué<em> — localmente.</em></span>
+      <span class="en">Knows who said what<em> — locally.</em></span>
+    </h1>
+    <p class="lede">
+      <span class="es">Portavoz graba tus reuniones, las transcribe en vivo y distingue cada voz — incluida la tuya. Todo 100% en tu Mac: sin nube, sin bots en la llamada, sin cuentas.</span>
+      <span class="en">Portavoz records your meetings, transcribes them live and tells apart every voice — including yours. Everything 100% on your Mac: no cloud, no call bots, no accounts.</span>
+    </p>
+    <div class="cta">
+      <button class="install" id="copy-brew" type="button" aria-live="polite">
+        <code>brew install --cask portavoz</code>
+        <span class="copy-hint es" data-idle="copiar" data-done="copiado ✓">copiar</span>
+        <span class="copy-hint en" data-idle="copy" data-done="copied ✓">copy</span>
+      </button>
+      <a class="ghost" href="https://github.com/johnny4young/portavoz/releases/latest">
+        <span class="es">Descargar DMG notarizado</span>
+        <span class="en">Download notarized DMG</span>
+      </a>
+    </div>
+    <p class="fine">
+      <span class="es">macOS 14.4+ · Apple Silicon · código abierto MIT</span>
+      <span class="en">macOS 14.4+ · Apple Silicon · MIT open source</span>
+    </p>
+  </section>
+
+  <section id="features" class="features">
+    <h2><span class="es">Nativo, local, serio.</span><span class="en">Native, local, serious.</span></h2>
+    <div class="grid">
+      <article>
+        <h3><span class="es">Transcripción en vivo</span><span class="en">Live transcription</span></h3>
+        <p><span class="es">Subtítulos en menos de un segundo sobre el Neural Engine, y un re-pase Whisper de máxima calidad que apruebas como borrador.</span><span class="en">Captions in under a second on the Neural Engine, plus a maximum-quality Whisper re-pass you approve as a draft.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Cada voz, separada</span><span class="en">Every voice, told apart</span></h3>
+        <p><span class="es">Diarización on-device; tus palabras son tuyas por diseño de hardware — el mic y la llamada jamás se mezclan.</span><span class="en">On-device diarization; your words are yours by hardware design — the mic and the call never mix.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Tres motores de resumen locales</span><span class="en">Three local summary engines</span></h3>
+        <p><span class="es">Apple Intelligence, Ollama o el modelo integrado (una descarga verificada de 3 GB, cero instalaciones). Decisiones, preguntas abiertas y pendientes con responsable.</span><span class="en">Apple Intelligence, Ollama, or the built-in model (one 3 GB verified download, zero installs). Decisions, open questions and owner-tagged action items.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Preparado antes de entrar</span><span class="en">Prepared before you join</span></h3>
+        <p><span class="es">Briefs desde tu calendario con citas verificables, aviso previo a la reunión y grabaciones que nacen con el nombre real del evento.</span><span class="en">Calendar briefs with verifiable citations, a pre-meeting heads-up, and recordings born with the real event name.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Audio de primera clase</span><span class="en">First-class audio</span></h3>
+        <p><span class="es">Player sincronizado estilo letras, waveform por canal, clips exportables y compresión AAC con un click.</span><span class="en">Lyrics-style synced player, per-channel waveform, exportable clips and one-click AAC compression.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Pregúntale a tu historial</span><span class="en">Ask your history</span></h3>
+        <p><span class="es">Chat RAG local con citas que saltan al momento exacto, y un servidor MCP para tus herramientas de IA.</span><span class="en">Local RAG chat with citations that jump to the exact moment, and an MCP server for your AI tools.</span></p>
+      </article>
+    </div>
+  </section>
+
+  <section id="numbers" class="numbers">
+    <h2><span class="es">Medido, no prometido.</span><span class="en">Measured, not promised.</span></h2>
+    <p class="note">
+      <span class="es">En un MacBook Pro M4 Max — cada número es reproducible con el CLI del repo.</span>
+      <span class="en">On an M4 Max MacBook Pro — every number is reproducible with the repo's CLI.</span>
+    </p>
+    <dl class="stats">
+      <div><dt><span class="es">Lag de finalización en vivo</span><span class="en">Live finalization lag</span></dt><dd>p95 0.68 s</dd></div>
+      <div><dt><span class="es">En vivo bajo carga batch</span><span class="en">Live under batch load</span></dt><dd>p95 0.53 s</dd></div>
+      <div><dt><span class="es">Re-pase Whisper</span><span class="en">Whisper refine</span></dt><dd>23–42×</dd></div>
+      <div><dt><span class="es">Diarización (muestra AMI)</span><span class="en">Diarization (AMI sample)</span></dt><dd>DER 7.6%</dd></div>
+      <div><dt><span class="es">Drift entre canales · 30 min</span><span class="en">Dual-channel drift · 30 min</span></dt><dd>4 ms</dd></div>
+      <div><dt><span class="es">Arranque en frío</span><span class="en">Cold start</span></dt><dd>0.94 s</dd></div>
+      <div><dt><span class="es">Búsqueda en 1,000 reuniones</span><span class="en">Search across 1,000 meetings</span></dt><dd>22.8 ms</dd></div>
+    </dl>
+  </section>
+
+  <section id="privacy" class="privacy">
+    <h2><span class="es">Tu historial jamás es rehén.</span><span class="en">Your history is never hostage.</span></h2>
+    <p>
+      <span class="es">Sin telemetría por defecto. Sin cuentas. Tus reuniones viven en un SQLite tuyo, exportables completas a Markdown o PDF cuando quieras. La nube solo existe si tú traes tu propia llave — visible y etiquetada, nunca un default silencioso. Código abierto bajo MIT: compílalo tú mismo si no quieres creernos.</span>
+      <span class="en">No telemetry by default. No accounts. Your meetings live in a SQLite file you own, fully exportable to Markdown or PDF anytime. The cloud only exists if you bring your own key — visible and labeled, never a silent default. MIT open source: build it yourself if you'd rather not take our word.</span>
+    </p>
+  </section>
+</main>
+
+<footer>
+  <img src="assets/portavoz-mark.svg" alt="" width="22" height="22">
+  <nav>
+    <a href="https://github.com/johnny4young/portavoz">GitHub</a>
+    <a href="https://github.com/johnny4young/portavoz/blob/main/CHANGELOG.md"><span class="es">Novedades</span><span class="en">Changelog</span></a>
+    <a href="https://github.com/johnny4young/portavoz/releases"><span class="es">Descargas</span><span class="en">Releases</span></a>
+    <a href="https://github.com/johnny4young/homebrew-tap">Homebrew tap</a>
+    <a href="https://github.com/johnny4young/portavoz/blob/main/LICENSE">MIT</a>
+  </nav>
+</footer>
+
+<script>
+  const LS_LANG = "portavoz-lang";
+  const html = document.documentElement;
+
+  function setLang(lang) {
+    html.setAttribute("data-lang", lang);
+    html.setAttribute("lang", lang);
+    document.querySelectorAll(".lang-toggle button").forEach(function (button) {
+      button.setAttribute("aria-pressed", String(button.dataset.langVal === lang));
+    });
+    try { localStorage.setItem(LS_LANG, lang); } catch (e) {}
+  }
+
+  document.querySelectorAll(".lang-toggle button").forEach(function (button) {
+    button.addEventListener("click", function () { setLang(button.dataset.langVal); });
+  });
+
+  let saved = "es";
+  try { saved = localStorage.getItem(LS_LANG) || "es"; } catch (e) {}
+  if (saved === "es" && navigator.language && !navigator.language.startsWith("es")
+      && !localStorage.getItem(LS_LANG)) {
+    saved = "en";
+  }
+  setLang(saved);
+
+  document.getElementById("copy-brew").addEventListener("click", function () {
+    navigator.clipboard.writeText("brew install --cask portavoz").then(function () {
+      document.querySelectorAll(".copy-hint").forEach(function (hint) {
+        hint.textContent = hint.dataset.done;
+      });
+      setTimeout(function () {
+        document.querySelectorAll(".copy-hint").forEach(function (hint) {
+          hint.textContent = hint.dataset.idle;
+        });
+      }, 1600);
+    });
+  });
+</script>
+</body>
+</html>

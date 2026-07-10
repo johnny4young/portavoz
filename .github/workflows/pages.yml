@@ -1,0 +1,50 @@
+name: Website
+
+# The marketing landing deploys to Cloudflare Pages at the canonical domain
+# (portavoz.app) on every site change — pattern shared with Gancho. The
+# Sparkle appcast is NOT here: it ships as a GitHub Release asset and the
+# app polls releases/latest/download/appcast.xml, so a landing edit can
+# never clobber a release's appcast.
+#
+# One-time setup (owner-gated):
+#   - Create the Pages project once:
+#       npx wrangler pages project create portavoz-web --production-branch=main
+#   - Add the custom domain portavoz.app to the portavoz-web project
+#     (Cloudflare dashboard → Pages → Custom domains), with DNS on Cloudflare.
+#   - Set repo secrets CLOUDFLARE_API_TOKEN (scoped to Pages:Edit) and
+#     CLOUDFLARE_ACCOUNT_ID. Without them the deploy step skips cleanly.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloudflare:
+    name: Deploy landing to Cloudflare Pages
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check site structure
+        run: ./scripts/check-site.sh
+
+      # Guarded by the Cloudflare secrets so a fork (or this repo before the
+      # secrets exist) doesn't fail the workflow.
+      - name: Deploy to Cloudflare Pages
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy site --project-name=portavoz-web --branch=main

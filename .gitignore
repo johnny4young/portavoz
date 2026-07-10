@@ -1,13 +1,14 @@
-.DS_Store
-.build/
-.swiftpm/
-*.xcodeproj
-xcuserdata/
-DerivedData/
-*.profraw
-.env
-dist/
-__pycache__/
 
 # XcodeGen-generated (source of truth is project.yml)
+*.profraw
+*.xcodeproj
+.DS_Store
+.build/
+.env
+.playwright-mcp/
+.swiftpm/
+DerivedData/
 Portavoz.xcodeproj/
+__pycache__/
+dist/
+xcuserdata/
