@@ -30,7 +30,7 @@ enum MeetingsCommand {
 
         if action == "refine" {
             guard let raw = positional.first else {
-                print("Usage: portavoz-cli meetings refine <meeting-uuid> [--file <wav>]")
+                print("Usage: portavoz-cli meetings refine <meeting-uuid> [--file <wav>] [--threshold 0.45]")
                 return
             }
             await RefineCommand.run(meetingRaw: raw, Array(arguments.dropFirst()))

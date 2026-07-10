@@ -7,12 +7,15 @@ import TranscriptionKit
 
 /// `portavoz-cli meetings refine <uuid> [--file <wav>] [--language es]
 ///                                [--db <path>] [--models-dir <dir>]
-///                                [--vocab "QVTL,Portavoz,..."]`
+///                                [--vocab "QVTL,Portavoz,..."]
+///                                [--threshold 0.45]`
 ///
 /// The D7 quality re-pass: re-transcribes the meeting's audio with
 /// Whisper large-v3-turbo, re-diarizes, re-attributes, and atomically
 /// replaces the live transcript (old segments become tombstones).
 /// Uses the stored audio directory, or `--file` for imported meetings.
+/// `--threshold` overrides the diarizer's clustering threshold — the knob
+/// for tuning micro-cluster splits against a corrected reference.
 enum RefineCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -22,6 +25,7 @@ enum RefineCommand {
         var dbPath: String?
         var modelsDir: String?
         var vocabulary: [String] = []
+        var clusteringThreshold: Float?
 
         var index = 0
         while index < arguments.count {
@@ -43,6 +47,15 @@ enum RefineCommand {
             case "--models-dir":
                 index += 1
                 if index < arguments.count { modelsDir = arguments[index] }
+            case "--threshold":
+                index += 1
+                guard index < arguments.count, let value = Float(arguments[index]),
+                    value > 0, value < 1
+                else {
+                    print("error: --threshold expects a number in (0, 1), e.g. 0.45")
+                    return
+                }
+                clusteringThreshold = value
             default:
                 print("Unknown option: \(arguments[index])")
                 return
@@ -120,9 +133,16 @@ enum RefineCommand {
 
             var turns: [SpeakerTurn] = []
             if let systemFile {
-                print("Re-diarizando…")
+                if let clusteringThreshold {
+                    print("Re-diarizando (threshold \(clusteringThreshold))…")
+                } else {
+                    print("Re-diarizando…")
+                }
                 let diarizer = try await PyannoteDiarizer.loadRecommended(
-                    store: modelStore, voiceprint: (try? VoiceprintStore().load()))
+                    store: modelStore,
+                    clusteringThreshold: clusteringThreshold
+                        ?? PyannoteDiarizer.defaultClusteringThreshold,
+                    voiceprint: (try? VoiceprintStore().load()))
                 turns = try await diarizer.diarizeFile(at: systemFile)
             }
             let attribution = SpeakerAttributor.attribute(
