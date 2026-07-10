@@ -11,6 +11,15 @@ cask "portavoz" do
   # portavoz.app is parked until the site ships; the repo is the homepage.
   homepage "https://github.com/johnny4young/portavoz"
 
+  # Stable GitHub release-tag URLs, so livecheck tracks new versions from the
+  # releases page.
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  # Portavoz keeps itself current in place via Sparkle (direct-download
+  # channel), so Homebrew should not flag user-updated copies as outdated.
   auto_updates true
   depends_on macos: :sonoma
 
