@@ -420,7 +420,10 @@ final class RecordingController {
 
         do {
             // Diarize the remote channel; the mic channel is "Me" by
-            // hardware truth and never goes through ML (D5).
+            // hardware truth and never goes through ML (D5). Reload rather
+            // than trust the shared reference: an idle release scheduled by
+            // a refine that finished mid-recording may have dropped it.
+            try? await services.loadEnginesIfNeeded()
             var turns: [SpeakerTurn] = []
             if let systemFile = capture.files[.system], let diarizer = services.diarizer,
                 (capture.secondsWritten[.system] ?? 0) > 1 {
@@ -482,6 +485,9 @@ final class RecordingController {
         } catch {
             phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
         }
+        // The session is over either way: give the engine RAM back after
+        // the idle grace period (a back-to-back recording cancels it).
+        services.scheduleRecordingEnginesRelease()
     }
 
     private var isFailed: Bool {

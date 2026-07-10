@@ -116,6 +116,11 @@ final class RefineService {
                 phases[meetingID] = .failed(
                     L10n.format("Refine failed: %@", error.localizedDescription))
             }
+            // Refines are one-at-a-time, so this run owning Whisper (and
+            // the diarizer) is over either way; give the RAM back after the
+            // idle grace periods.
+            services.scheduleWhisperRelease()
+            services.scheduleRecordingEnginesRelease()
         }
     }
 }

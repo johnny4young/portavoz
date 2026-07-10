@@ -75,6 +75,8 @@ final class AppServices {
     /// Downloads (verified) + loads both engines on first use. The
     /// diarizer carries the enrolled voiceprint when one exists.
     func loadEnginesIfNeeded() async throws {
+        // A fresh use cancels any idle release scheduled by the previous one.
+        enginesIdleGeneration += 1
         if transcriber != nil, diarizer != nil {
             modelsState = .ready
             return
@@ -119,6 +121,8 @@ final class AppServices {
         let compact = UserDefaults.standard.bool(forKey: "whisperCompact")
         let descriptor =
             compact ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
+        // A fresh use cancels any idle release scheduled by the previous one.
+        whisperIdleGeneration += 1
         if let whisper, whisperVariantID == descriptor.id { return whisper }
         let size = compact ? "626 MB" : "1.6 GB"
         let engine = try await WhisperEngine.loadRecommended(
@@ -139,6 +143,61 @@ final class AppServices {
     /// rebuilds the diarizer with the new identity state.
     func invalidateDiarizer() {
         diarizer = nil
+    }
+
+    /// Drops the live-recording engines (Parakeet + pyannote) so their
+    /// weights leave RAM while the app idles; `loadEnginesIfNeeded()`
+    /// restores them on the next recording. Callers must not hold a
+    /// recording open when they call this.
+    func releaseRecordingEngines() {
+        transcriber = nil
+        diarizer = nil
+        modelsState = .unknown
+    }
+
+    /// Bumped by every engine use; a scheduled release only fires if no
+    /// newer use arrived while it slept.
+    private var enginesIdleGeneration = 0
+
+    /// Called when a recording (or refine/import) finishes: keeps the
+    /// engines hot for ten minutes — back-to-back meetings never pay the
+    /// reload — then releases them so a single morning meeting doesn't
+    /// hold hundreds of MB all afternoon. A refine still running when the
+    /// timer fires keeps them (it owns the diarizer); its own completion
+    /// reschedules.
+    func scheduleRecordingEnginesRelease() {
+        enginesIdleGeneration += 1
+        let generation = enginesIdleGeneration
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(600))
+            guard let self, generation == self.enginesIdleGeneration else { return }
+            guard !self.refines.isRunning else { return }
+            self.releaseRecordingEngines()
+        }
+    }
+
+    /// Drops the Whisper quality-pass engine (1.6 GB resident) once the
+    /// refine/import that needed it is done; the next one reloads it.
+    func releaseWhisper() {
+        whisper = nil
+        whisperVariantID = nil
+    }
+
+    /// Bumped by every Whisper use; a scheduled release only fires if no
+    /// newer use arrived while it slept.
+    private var whisperIdleGeneration = 0
+
+    /// Called when a refine/import finishes: keeps Whisper hot for two
+    /// minutes (back-to-back refines skip the reload), then releases it so
+    /// one quality pass never costs 1.6 GB for the rest of the day.
+    func scheduleWhisperRelease() {
+        whisperIdleGeneration += 1
+        let generation = whisperIdleGeneration
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(120))
+            guard let self, generation == self.whisperIdleGeneration else { return }
+            self.releaseWhisper()
+        }
     }
 
     // MARK: - Summary engine (D25/M12)
@@ -342,6 +401,10 @@ final class AppServices {
 
         progress(L10n.text("Preparing models…"))
         let whisper = try await loadWhisperIfNeeded { progress($0) }
+        defer {
+            scheduleWhisperRelease()
+            scheduleRecordingEnginesRelease()
+        }
         try await loadEnginesIfNeeded()
 
         let vocabulary = VocabularyPrompt.parse(
@@ -352,6 +415,9 @@ final class AppServices {
         let result = try await whisper.transcribeFile(at: dest, hints: hints, channel: .system)
 
         progress(L10n.text("Identifying speakers…"))
+        // Reload rather than trust the shared reference: an idle release
+        // scheduled elsewhere may have dropped it during the Whisper pass.
+        try? await loadEnginesIfNeeded()
         let turns = (try? await diarizer?.diarizeFile(at: dest)) ?? []
         let attribution = SpeakerAttributor.attribute(
             segments: result.segments.sorted { $0.startTime < $1.startTime },

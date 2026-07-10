@@ -47,7 +47,10 @@ XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). `make 
 | DER (AMI 2 speakers) | < 15% | **7.6%** (collar 0.25 s) |
 | Resumen ES de reunión EN | < 30 s | **3.8 s** (glosario intacto) |
 | Convergencia AEC | — | **~2 s** (por eso el warm-up) |
-| Cold start / RAM grabando / FTS a 1k reuniones | 1.5 s / 500 MB / 50 ms | **pendiente** — falta `bench` suite (M9) |
+| Cold start | < 1.5 s | **0.94 s frío / ~0.26 s tibio** (`--bench-startup`) |
+| FTS a 1k reuniones (80k segmentos) | < 50 ms | **p50 22.8 ms / p95 23.9 ms** (`portavoz-cli bench-fts`) |
+| RAM por fases (`--bench-record 60 --bench-log <file>`, vía `open -n`) | < 800 MB pico grabando / < 200 MB idle post-reunión | **20 MB sin modelos → ~515 MB engines cargados → 569–795 MB pico grabando (diarización EN VIVO incluida) → 140–160 MB tras la reunión**. El target original (500 MB) se fijó antes de sumar la diarización en vivo; revisado jul 2026 |
+| RAM del resumen embebido (MLX) | transitoria, no residente | **~2.4 GB durante la generación**; `MLXModelCache` la libera solo tras 120 s idle (antes quedaba residente para siempre) |
 
 ## Bugs reales encontrados y corregidos (los que un agente debe conocer)
 

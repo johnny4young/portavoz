@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🎈 Memory comes back when the work is done** — The big models now unload themselves after idling: the embedded summarizer returned its 2.4 GB two minutes after a summary, Whisper its 1.6 GB after a refine, and the live engines wind down ten minutes after a meeting. Between meetings, Portavoz sits under 200 MB instead of holding gigabytes hostage.
 - **🌐 portavoz.app is live** — Portavoz has a home: [portavoz.app](https://portavoz.app), in English and Spanish, with the install command one click away and every performance number reproducible from the repo.
 - **✅ Trustworthy refine warnings** — The "refine probably failed" alert no longer fires when the OLD transcript is the broken one (echo-corrupted transcripts claimed more speech than the meeting even lasted). Good refines now pass quietly.
 - **🔄 Refine keeps working while you browse** — The quality re-pass now runs per meeting in the background: switch meetings freely and the draft will be waiting when you come back, instead of silently vanishing.

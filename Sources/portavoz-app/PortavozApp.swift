@@ -17,6 +17,10 @@ struct PortavozApp: App {
         // SpeechAnalyzer harness inside the bundle and exits.
         BenchMode.runIfRequested()
         BenchMode.runMLXSmokeIfRequested()
+        // Driven from init, not a view .task: a headless launch (open -n
+        // from a script) may never mount the window, and the T4 RAM bench
+        // must still run.
+        BenchMode.runRecordBenchIfRequested(services: services, recording: RecordingController())
     }
 
     var body: some Scene {

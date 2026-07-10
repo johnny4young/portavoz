@@ -15,6 +15,8 @@ Estado: implementado, firmado con Developer ID, **notarizado por Apple (0.1.0, A
 
 DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diarizer` (con voiceprint si existe; `invalidateDiarizer()` tras enrolar/borrar), `whisper` (lazy, primera vez descarga verificada 1.6 GB con progreso). `modelsState` para la UI de descargas; `libraryVersion` invalida listas/detalle (las vistas recargan con `.task(id:)`).
 
+**Idle release (jul 2026)**: los engines NO quedan residentes para siempre. Patrón de generación (un uso nuevo cancela la liberación programada): `scheduleWhisperRelease()` (120 s tras refine/import; Whisper pesa 1.6 GB) y `scheduleRecordingEnginesRelease()` (600 s tras stop/refine/import; no dispara si hay refine corriendo). `MLXModelCache` (IntelligenceKit) hace lo mismo con el container Qwen3.5 (2.4 GB residentes medidos) a los 120 s. Los consumidores NUNCA confían en la referencia compartida tras un await largo: `RecordingController.stop` e `importMeeting` recargan con `loadEnginesIfNeeded()` justo antes de diarizar (una liberación programada por otro flujo pudo soltarla en medio). Nota medida (bench por fases): los pesos CoreML son file-backed y macOS los reclama solo al dejar de usarse — post-stop el footprint cae a ~160 MB sin ayuda; el release explícito garantiza el piso (~140 MB) y suelta el estado no purgeable.
+
 ## Vistas y flujos
 
 **LibraryView**: Nueva grabación (⌘N), búsqueda FTS con snippets, **sección "To-dos"** (action items abiertos de TODAS las reuniones vía `openActionItems` — checkbox completa in-place y bumpa `libraryVersion`; click navega a su reunión; los UITests usan `firstMatch` porque el título de la reunión aparece también como caption de estas filas), lista con context menu Renombrar/Eliminar.

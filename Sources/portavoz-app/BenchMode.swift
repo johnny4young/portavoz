@@ -166,9 +166,11 @@ extension BenchMode {
 
     /// `portavoz-app --bench-record <seconds>` — starts a REAL recording
     /// session (mic + system tap + live transcription) headlessly, samples
-    /// this process's physical footprint every 2 s, and prints the peak
-    /// when the window ends. Combine with -use-temp-store so the bench
-    /// meeting never lands in the real library.
+    /// this process's physical footprint every 2 s, and prints a phase
+    /// breakdown (baseline → engines loaded → recording peak → after stop →
+    /// after releasing the engines) so RAM work targets the right component.
+    /// Combine with -use-temp-store so the bench meeting never lands in the
+    /// real library.
     @MainActor
     static func runRecordBenchIfRequested(services: AppServices, recording: RecordingController) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -176,23 +178,67 @@ extension BenchMode {
         let seconds = arguments.indices.contains(flag + 1) ? Int(arguments[flag + 1]) ?? 60 : 60
         setbuf(stdout, nil)
         Task { @MainActor in
-            print("bench-record: starting a real session (models may download/load first)…")
-            await recording.start(services: services)
-            if case .failed(let reason) = recording.phase {
-                print("bench-record: start FAILED: \(reason)")
+            emit(String(format: "bench-record: baseline (no models) %.0f MB", physicalFootprintMB()))
+            do {
+                try await services.loadEnginesIfNeeded()
+            } catch {
+                emit("bench-record: engine load FAILED: \(error.localizedDescription)")
                 exit(1)
             }
-            print("bench-record: recording started, sampling footprint for \(seconds) s")
+            emit(String(
+                format: "bench-record: engines loaded (Parakeet + pyannote) %.0f MB",
+                physicalFootprintMB()))
+            await recording.start(services: services)
+            if case .failed(let reason) = recording.phase {
+                emit("bench-record: start FAILED: \(reason)")
+                exit(1)
+            }
+            emit("bench-record: recording started, sampling footprint for \(seconds) s")
             var peak: Double = 0
             for _ in 0..<(seconds / 2) {
                 try? await Task.sleep(for: .seconds(2))
                 peak = max(peak, physicalFootprintMB())
             }
-            // Print BEFORE stop: the post-meeting pipeline can take the
-            // process down paths that never return in a headless bench.
-            print(String(format: "bench-record: peak footprint %.0f MB over %d s", peak, seconds))
-            await recording.stop(services: services)
+            emit(String(format: "bench-record: peak footprint %.0f MB over %d s", peak, seconds))
+            // The post-meeting pipeline can take paths that never return in
+            // a headless bench — cap the stop so the breakdown still prints.
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await recording.stop(services: services) }
+                group.addTask { try? await Task.sleep(for: .seconds(30)) }
+                await group.next()
+                group.cancelAll()
+            }
+            try? await Task.sleep(for: .seconds(3))
+            emit(String(format: "bench-record: after stop %.0f MB", physicalFootprintMB()))
+            services.releaseRecordingEngines()
+            // CoreML gives pages back lazily — sample twice so a slow
+            // reclaim isn't mistaken for a leak.
+            try? await Task.sleep(for: .seconds(3))
+            emit(String(format: "bench-record: after engine release (3 s) %.0f MB", physicalFootprintMB()))
+            try? await Task.sleep(for: .seconds(12))
+            emit(String(format: "bench-record: after engine release (15 s) %.0f MB", physicalFootprintMB()))
             exit(0)
+        }
+    }
+
+    /// Prints AND appends to the `--bench-log <path>` file when given —
+    /// a GUI instance launched via `open -n` has no usable stdout, and the
+    /// record bench must run as a real windowed app (its driver is a view
+    /// `.task`, and TCC-covered capture needs the bundle).
+    private static func emit(_ line: String) {
+        print(line)
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flag = arguments.firstIndex(of: "--bench-log"),
+            arguments.indices.contains(flag + 1)
+        else { return }
+        let url = URL(fileURLWithPath: arguments[flag + 1])
+        let data = Data((line + "\n").utf8)
+        if let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: url)
         }
     }
 

@@ -42,9 +42,9 @@ struct ContentView: View {
         .task { await services.seedDemoIfRequested() }
         .task { reminder.start(services: services) }
         .task {
-            // T4 benches (hidden launch args): both exit the process when done.
+            // T4 startup bench (hidden launch arg): measures to first frame,
+            // so it must live in the view; it exits the process when done.
             BenchMode.reportStartupIfRequested()
-            BenchMode.runRecordBenchIfRequested(services: services, recording: RecordingController())
         }
         .task { await decideOnboarding() }
         .sheet(isPresented: $showOnboarding) {

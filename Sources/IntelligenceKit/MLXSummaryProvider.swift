@@ -37,14 +37,27 @@ public struct MLXSummaryProvider: SummaryProvider {
 }
 
 /// Owns the loaded container and serializes generation: one summary at a
-/// time on the GPU. Weights stay loaded until the app quits.
+/// time on the GPU. The weights (2.3 GB resident) stay loaded only while
+/// summaries keep coming: after `idleRelease` without a request the
+/// container is dropped and the next summary reloads it (a few seconds
+/// against a generation that takes tens) — so a summary never leaves the
+/// app holding gigabytes for the rest of the day.
 actor MLXModelCache {
     static let shared = MLXModelCache()
 
+    /// Long enough that "regenerate in the other language" reuses the hot
+    /// container, short enough that the RAM comes back promptly.
+    private static let idleRelease: Duration = .seconds(120)
+
     private var container: ModelContainer?
     private var directory: URL?
+    /// Bumped per request; a scheduled release only fires if no newer
+    /// request has arrived while it slept.
+    private var generation = 0
 
     func respond(system: String, user: String, directory newDirectory: URL) async throws -> String {
+        generation += 1
+        defer { scheduleIdleRelease(after: generation) }
         let container = try await load(newDirectory)
         // `perform` gives isolated access to the model context inside the
         // library's own actor — the blessed pattern for strict concurrency.
@@ -69,6 +82,15 @@ actor MLXModelCache {
                 if case .chunk(let chunk) = item { text += chunk }
             }
             return text
+        }
+    }
+
+    private func scheduleIdleRelease(after requestGeneration: Int) {
+        Task {
+            try? await Task.sleep(for: Self.idleRelease)
+            guard requestGeneration == generation else { return }
+            container = nil
+            directory = nil
         }
     }
 
