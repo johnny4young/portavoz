@@ -20,6 +20,9 @@ struct MeetingBrief {
         let meetingID: MeetingID
         let title: String
         let overview: String
+        /// Why it surfaced: matched event terms, or a passage snippet when
+        /// the match is purely semantic.
+        let reason: String
     }
 
     /// Related = meetings whose transcripts mention the event's attendees
@@ -27,28 +30,29 @@ struct MeetingBrief {
     /// FM synthesis reuses the RAG answerer (already gated-tested).
     static func build(for event: UpcomingEvent, store: MeetingStore) async -> MeetingBrief? {
 
-        let titleWords = event.title.split(whereSeparator: \.isWhitespace)
-            .map(String.init).filter { $0.count >= 4 }
-        let keywords = (event.attendees + titleWords).joined(separator: " ")
-
-        var hitsByMeeting: [MeetingID: (title: String, count: Int)] = [:]
-        if !keywords.isEmpty,
-            let hits = try? await store.search(keywords, limit: 30, requireAll: false) {
-            for hit in hits {
-                hitsByMeeting[hit.meetingID, default: (hit.meetingTitle, 0)].count += 1
-            }
-        }
-        let topMeetings = hitsByMeeting.sorted { $0.value.count > $1.value.count }.prefix(3)
+        // Hybrid retrieval (lexical + semantic, same engine as Ask) scored
+        // and thresholded by BriefRelevance — weak single-passage matches
+        // are dropped instead of shown (field bug: an unrelated 1:1
+        // surfaced as "related" by raw FTS hit count).
+        let terms = BriefRelevance.terms(eventTitle: event.title, attendees: event.attendees)
+        let query = ([event.title] + event.attendees).joined(separator: " ")
+        let passages =
+            (try? await AskPipeline.retrieve(question: query, store: store, limit: 12)) ?? []
+        let ranked = BriefRelevance.rank(passages: passages, terms: terms)
 
         var related: [RelatedMeeting] = []
-        for (meetingID, info) in topMeetings {
-            guard let summary = try? await store.summary(meetingID) else { continue }
+        for candidate in ranked {
+            guard let summary = try? await store.summary(candidate.meetingID) else { continue }
             let overview = summary.draft.markdown
                 .split(separator: "\n", omittingEmptySubsequences: true)
                 .first { !$0.hasPrefix("#") }
                 .map(String.init) ?? ""
+            let reason = candidate.matchedTerms.isEmpty
+                ? String(candidate.snippet.prefix(90))
+                : L10n.format("Mentions: %@", candidate.matchedTerms.joined(separator: ", "))
             related.append(RelatedMeeting(
-                meetingID: meetingID, title: info.title, overview: overview))
+                meetingID: candidate.meetingID, title: candidate.title,
+                overview: overview, reason: reason))
         }
 
         let relatedIDs = Set(related.map(\.meetingID))
@@ -124,6 +128,10 @@ struct MeetingBriefView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(related.title).font(.callout.weight(.medium))
+                            Text(related.reason)
+                                .font(.caption2)
+                                .foregroundStyle(Color.accentColor.opacity(0.9))
+                                .lineLimit(1)
                             if !related.overview.isEmpty {
                                 Text(related.overview)
                                     .font(.caption)

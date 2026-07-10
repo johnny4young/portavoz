@@ -442,7 +442,7 @@ final class RecordingController {
                 ((try? await services.store.meetings()) ?? [])
                 .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: startedAt) }
                 .count
-            let title = linkedEvent?.title
+            let title = linkedEvent.map { TitleTemplate.eventTitle($0.title, date: startedAt) }
                 ?? TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1)
             let meeting = Meeting(
                 id: meetingID,

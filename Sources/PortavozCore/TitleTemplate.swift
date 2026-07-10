@@ -41,3 +41,14 @@ public enum TitleTemplate {
             .replacingOccurrences(of: "{weekday}", with: weekday)
     }
 }
+
+extension TitleTemplate {
+    /// Title for a recording linked to a calendar event: date-prefixed so
+    /// weekly recurring meetings never collide in the library
+    /// ("2026-07-10 Platform Team Sprint Demo", not five identical names).
+    public static func eventTitle(_ eventTitle: String, date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "\(formatter.string(from: date)) \(eventTitle)"
+    }
+}

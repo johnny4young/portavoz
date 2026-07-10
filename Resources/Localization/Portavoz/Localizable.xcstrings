@@ -1121,6 +1121,16 @@
         }
       }
     },
+    "Mentions: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menciona: %@"
+          }
+        }
+      }
+    },
     "Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.": {
       "localizations": {
         "es": {
