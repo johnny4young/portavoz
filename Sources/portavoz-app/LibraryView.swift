@@ -21,6 +21,10 @@ struct LibraryView: View {
     /// granted — never prompts here. A 5-minute timer keeps it honest.
     @State private var upcomingToday: [UpcomingEvent] = []
     @State private var upcomingTomorrow: [UpcomingEvent] = []
+    /// Shown once when calendar access was never asked: the agenda's own
+    /// affordance to request it (fixes the discoverability gap — the brief
+    /// itself never prompts).
+    @State private var offerCalendar = false
     @State private var brief: MeetingBrief?
     @State private var briefLoading: UpcomingEvent?
     @State private var showBrief = false
@@ -79,6 +83,22 @@ struct LibraryView: View {
             .padding(.top, 8)
             .help("Natural-language questions over every meeting, answered on your Mac")
             .accessibilityIdentifier("library-ask-button")
+
+            if offerCalendar {
+                Button {
+                    Task {
+                        _ = await CalendarAttendeeSource.requestAccess()
+                        await refreshBrief()
+                    }
+                } label: {
+                    Label("Connect your calendar", systemImage: "calendar.badge.plus")
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.small)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .help("Shows today's and tomorrow's meetings here, with a prep brief for each. Read-only, on-device.")
+            }
 
             TextField("Search all meetings…", text: $query)
                 .textFieldStyle(.roundedBorder)
@@ -211,6 +231,7 @@ struct LibraryView: View {
     /// Briefs are built on click, so refreshing costs no model time.
     private func refreshBrief() async {
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return }
+        offerCalendar = CalendarAttendeeSource.accessUndetermined
         let events = CalendarAttendeeSource().upcomingEvents()
         let startOfTomorrow = Calendar.current.startOfDay(
             for: Date().addingTimeInterval(24 * 3600))

@@ -421,6 +421,16 @@
         }
       }
     },
+    "Connect your calendar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar tu calendario"
+          }
+        }
+      }
+    },
     "Converts audio to AAC to save disk space, with no audible loss for speech": {
       "localizations": {
         "es": {
@@ -1767,6 +1777,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mostrar tokens y ejemplos disponibles"
+          }
+        }
+      }
+    },
+    "Shows today's and tomorrow's meetings here, with a prep brief for each. Read-only, on-device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra aquí las reuniones de hoy y mañana, con un brief de preparación para cada una. Solo lectura, on-device."
           }
         }
       }

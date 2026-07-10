@@ -28,6 +28,12 @@ public struct CalendarAttendeeSource: Sendable {
         EKEventStore.authorizationStatus(for: .event) == .fullAccess
     }
 
+    /// True while the user was never asked — the sidebar shows a one-time
+    /// "connect your calendar" affordance instead of silently showing nothing.
+    public static var accessUndetermined: Bool {
+        EKEventStore.authorizationStatus(for: .event) == .notDetermined
+    }
+
     /// The rest of today's meetings plus tomorrow's (non-all-day, still
     /// ongoing or future), sorted by start — the sidebar's prep agenda.
     public func upcomingEvents() -> [UpcomingEvent] {
