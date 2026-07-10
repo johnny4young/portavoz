@@ -6,7 +6,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 
 | # | Brecha | Hoy | Falta | Plan |
 |---|---|---|---|---|
-| 1 | **Distribución cero** | DMG notarizado + cask + appcast listos, README con benchmarks ✅, higiene OSS ✅ (SwiftLint + templates + CI lint), localización EN/ES ✅, repo privado, 0 usuarios | acciones públicas (push, release, tap — requieren autorización) | M9 — prep interna hecha; falta publicar |
+| 1 | ~~**Distribución cero**~~ | **RESUELTO (10 jul 2026)**: repo público + release v0.1.0 (DMG notarizado, appcast Sparkle) + tap Homebrew con audit limpio — `brew install --cask portavoz` funciona | crecimiento (stars, discoverability) | ✅ M9 |
 | 2 | ~~**El audio no se puede escuchar**~~ | **RESUELTO (jul 2026)**: player sincronizado + highlight/auto-scroll + waveform coloreado + clips m4a, skip-silencio, transcode AAC e import (`AudioPlaybackKit`, M11) | — | ✅ |
 | 3 | ~~**No se puede escribir durante la reunión**~~ | **RESUELTO (jul 2026)**: panel de notas durante grabación, persistencia, tejido notas→prompt, render de coautoría con marca ▸ (M10/D28) | verificación de campo: 5 notas reales → resumen que las expande sin contradecirlas | ✅ código / campo pendiente |
 | 4 | ~~**Grabar exige la ventana completa**~~ | **RESUELTO (jul 2026)**: botón "Vista compacta" en grabación → HUD flotante (NSPanel `.nonactivatingPanel` + `.borderless`, level floating, todas las Spaces) con timer, última caption, medidor de mic y stop; la ventana principal se minimiza al Dock y el HUD vuelve a expandirse solo al salir de `.recording`. Los clicks no roban foco de Zoom/Meet | verificación de campo; menu bar item (menor) | ✅ código / campo pendiente |

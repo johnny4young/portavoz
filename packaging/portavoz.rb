@@ -8,7 +8,8 @@ cask "portavoz" do
   url "https://github.com/johnny4young/portavoz/releases/download/v#{version}/Portavoz-#{version}.dmg"
   name "Portavoz"
   desc "Privacy-first meeting assistant — knows who said what, locally"
-  homepage "https://portavoz.app"
+  # portavoz.app is parked until the site ships; the repo is the homepage.
+  homepage "https://github.com/johnny4young/portavoz"
 
   auto_updates true
   depends_on macos: ">= :sonoma"
