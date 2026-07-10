@@ -710,3 +710,79 @@ private func languageSegment(_ text: String, language: String?) -> TranscriptSeg
         endTime: 1,
         isFinal: true)
 }
+
+// MARK: - Mic bleed filter (field evidence, Jul 10)
+
+/// With speakers, the mic hears the room; the refined mic channel must not
+/// re-attribute the room's words to "Me" (a real demo showed 52% fake talk).
+final class MicBleedFilterTests: XCTestCase {
+    private func segment(
+        _ text: String, channel: AudioChannel, start: TimeInterval, end: TimeInterval
+    ) -> TranscriptSegment {
+        TranscriptSegment(
+            meetingID: MeetingID(), speakerID: nil, channel: channel,
+            text: text, startTime: start, endTime: end, isFinal: true)
+    }
+
+    func testRoomEchoInMicChannelIsDropped() {
+        let system = [segment(
+            "we updated all of the node asset IDs based on the spreadsheets",
+            channel: .system, start: 100, end: 106)]
+        let mic = [segment(
+            "updated all the node asset IDs based on spreadsheets",
+            channel: .microphone, start: 101, end: 105)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
+    }
+
+    func testGenuineMicUtteranceSurvives() {
+        let system = [segment(
+            "we updated all of the node asset IDs",
+            channel: .system, start: 100, end: 106)]
+        let mic = [segment(
+            "puedo compartir el dashboard que armamos ayer",
+            channel: .microphone, start: 101, end: 105)]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testShortUtterancesAreLeftForOtherFilters() {
+        let system = [segment("yeah exactly", channel: .system, start: 100, end: 102)]
+        let mic = [segment("Yeah.", channel: .microphone, start: 100, end: 101)]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testDistantSystemTextDoesNotMatch() {
+        let system = [segment(
+            "we updated all of the node asset IDs based on the spreadsheets",
+            channel: .system, start: 500, end: 506)]
+        let mic = [segment(
+            "updated all the node asset IDs based on spreadsheets",
+            channel: .microphone, start: 101, end: 105)]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+}
+
+/// From 5 repeats, a known silence phrase is dropped even with an irregular
+/// cadence (bleed breaks the VAD rhythm while the flood continues).
+final class RepeatedHallucinationCountTests: XCTestCase {
+    func testHighCountDropsWithoutCadence() {
+        let starts: [TimeInterval] = [10, 13, 47, 48, 120]
+        let segments = starts.map {
+            TranscriptSegment(
+                meetingID: MeetingID(), speakerID: nil, channel: .microphone,
+                text: "Thank you.", startTime: $0, endTime: $0 + 1, isFinal: true)
+        }
+        let phrases = TranscriptionTextFilter.repeatedSilenceHallucinationPhrases(in: segments)
+        XCTAssertEqual(phrases, ["thank you"])
+    }
+
+    func testLowIrregularCountStillSurvives() {
+        let starts: [TimeInterval] = [10, 13, 47]
+        let segments = starts.map {
+            TranscriptSegment(
+                meetingID: MeetingID(), speakerID: nil, channel: .microphone,
+                text: "Thank you.", startTime: $0, endTime: $0 + 1, isFinal: true)
+        }
+        XCTAssertTrue(
+            TranscriptionTextFilter.repeatedSilenceHallucinationPhrases(in: segments).isEmpty)
+    }
+}

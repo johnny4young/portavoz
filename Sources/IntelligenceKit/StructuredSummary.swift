@@ -47,6 +47,10 @@ extension StructuredSummary {
             parts.append(trimmedOverview)
         }
         for section in sections where !section.bullets.isEmpty {
+            // Models sometimes narrate the action items as a section despite
+            // the schema note; the canonical block below already owns them,
+            // so an action-items-shaped section would only duplicate.
+            if !actionItems.isEmpty, Self.isActionItemsHeading(section.heading) { continue }
             var block = "## \(section.heading)"
             for bullet in section.bullets {
                 block += "\n- \(bullet)"
@@ -62,6 +66,16 @@ extension StructuredSummary {
             parts.append(block)
         }
         return parts.joined(separator: "\n\n")
+    }
+
+    /// Headings that mean "action items" in the languages the app ships:
+    /// those sections duplicate the canonical block and are skipped.
+    static func isActionItemsHeading(_ heading: String) -> Bool {
+        let normalized = heading.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return [
+            "action items", "action item", "pendientes", "next steps",
+            "to-dos", "todos", "tareas", "tareas pendientes"
+        ].contains(normalized)
     }
 
     /// Inverse of `markdown(recipe:)` for snapshots WE rendered (every

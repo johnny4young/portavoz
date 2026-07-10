@@ -729,7 +729,11 @@ extension MeetingDetailView {
                     refining = L10n.text("Re-transcribing your channel (Whisper)…")
                     let result = try await whisper.transcribeFile(
                         at: microphoneURL, hints: hints, channel: .microphone)
-                    segments.append(contentsOf: result.segments)
+                    // The mic hears the room through the speakers; whatever
+                    // the system channel already says at the same instant is
+                    // bleed, not the user (field bug: 52% fake "Me" talk).
+                    segments.append(contentsOf: MicBleedFilter.filter(
+                        microphone: result.segments, system: segments))
                 }
                 segments.sort { $0.startTime < $1.startTime }
 

@@ -926,3 +926,28 @@ final class NotesWeavingTests: XCTestCase {
         XCTAssertFalse(without.contains("▸"))
     }
 }
+
+/// A model that narrates action items as a section would duplicate the
+/// canonical block (field evidence: MLX tripled the list on Jul 10).
+final class ActionItemsDedupTests: XCTestCase {
+    func testActionItemsShapedSectionIsSkippedInMarkdown() {
+        let summary = StructuredSummary(
+            overview: "ok",
+            sections: [
+                .init(heading: "Action Items", bullets: ["S1 committed to own the rollout"]),
+                .init(heading: "Decisions", bullets: ["ship on Monday"])
+            ],
+            actionItems: [.init(text: "own the rollout", owner: "S1")])
+        let markdown = summary.markdown(recipe: .general)
+        XCTAssertEqual(markdown.components(separatedBy: "## Action Items").count, 2, "one block only")
+        XCTAssertTrue(markdown.contains("## Decisions"))
+    }
+
+    func testSectionSurvivesWhenThereAreNoCanonicalItems() {
+        let summary = StructuredSummary(
+            overview: "ok",
+            sections: [.init(heading: "Next steps", bullets: ["definir el plan"])],
+            actionItems: [])
+        XCTAssertTrue(summary.markdown(recipe: .general).contains("## Next steps"))
+    }
+}

@@ -60,11 +60,15 @@ enum TranscriptionTextFilter {
     }
 
     /// Whisper silence hallucinations often arrive as the same short phrase
-    /// every VAD window (≈30 s). Drop only the repeated/regular pattern so a
-    /// single genuine "Thank you" still survives.
+    /// every VAD window (≈30 s). Drop the repeated/regular pattern so a
+    /// single genuine "Thank you" still survives. Field evidence (Jul 10):
+    /// with speaker bleed breaking the silence, the cadence turns irregular
+    /// while the phrase still floods the channel — from 5 occurrences the
+    /// count alone is proof enough and the cadence check is skipped.
     static func repeatedSilenceHallucinationPhrases(
         in segments: [TranscriptSegment],
-        minimumCount: Int = 3
+        minimumCount: Int = 3,
+        cadenceFreeCount: Int = 5
     ) -> Set<String> {
         var startsByPhrase: [String: [TimeInterval]] = [:]
         for segment in segments
@@ -73,7 +77,8 @@ enum TranscriptionTextFilter {
         }
 
         return Set(startsByPhrase.compactMap { phrase, starts in
-            guard starts.count >= minimumCount, looksLikeVADCadence(starts) else { return nil }
+            guard starts.count >= minimumCount else { return nil }
+            guard starts.count >= cadenceFreeCount || looksLikeVADCadence(starts) else { return nil }
             return phrase
         })
     }

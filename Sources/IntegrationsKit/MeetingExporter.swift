@@ -95,6 +95,9 @@ public enum MeetingExporter {
     ) -> String {
         var markdown = summary.markdown
         if !summary.actionItems.isEmpty {
+            // The snapshot's own "## Action Items" block duplicates what we
+            // are about to append with the REAL done-state from the library.
+            markdown = removingActionItemsBlock(from: markdown)
             let labelsByID = Dictionary(
                 uniqueKeysWithValues: speakers.map { ($0.id, displayName($0)) })
             markdown += "\n\n## Pendientes\n"
@@ -252,5 +255,23 @@ public enum MeetingExporter {
         }
         context.closePDF()
         return data as Data
+    }
+}
+
+extension MeetingExporter {
+    /// Drops the snapshot's "## Action Items" block (up to the next heading
+    /// or the end) so exports carry one authoritative pending list.
+    static func removingActionItemsBlock(from markdown: String) -> String {
+        var lines = markdown.components(separatedBy: "\n")
+        guard let start = lines.firstIndex(where: {
+            $0.trimmingCharacters(in: .whitespaces).lowercased() == "## action items"
+        }) else { return markdown }
+        var end = start + 1
+        while end < lines.count,
+            !lines[end].trimmingCharacters(in: .whitespaces).hasPrefix("## ") {
+            end += 1
+        }
+        lines.removeSubrange(start..<end)
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

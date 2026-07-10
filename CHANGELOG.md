@@ -7,6 +7,9 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🎤 Refine no longer steals the room's voice** — With speakers, your mic hears everyone; the quality re-pass was crediting all of it to "Me" (one user showed 52% talk time in a meeting where they barely spoke). Room echo is now detected and dropped, so talk-time stats and "who said what" stay honest.
+- **🙏 Fewer phantom "Thank you."s** — Whisper's silence filler is now caught even when background noise breaks its usual rhythm.
+- **📋 One action-item list, not three** — Summaries and exports no longer repeat the same action items under different headings.
 - **🪞 No more stuttering transcripts** — The live engine's chunk echo ("we added ed a select all all button") is now trimmed as you speak. In a real 56-minute meeting it polluted half the lines; those lines now read clean.
 - **🤫 Quiet-mic noise filtered** — A low microphone no longer invents "DDDDD" or "...." caption rows.
 - **🃏 Companion cards never overlap** — Long answers scroll in their column instead of painting over the card's footer.

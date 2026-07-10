@@ -218,3 +218,28 @@ final class SecretStoreTests: XCTestCase {
         XCTAssertNil(try SecretStore.get(service: service))
     }
 }
+
+/// Exports append "## Pendientes" with the library's real done-state; the
+/// snapshot's own "## Action Items" block must not ride along duplicated.
+final class ExporterActionItemsDedupTests: XCTestCase {
+    func testSnapshotActionItemsBlockIsReplacedByPendientes() {
+        let markdown = """
+            Overview text.
+
+            ## Decisions
+            - ship on Monday
+
+            ## Action Items
+            - [ ] own the rollout — S1
+            """
+        let stripped = MeetingExporter.removingActionItemsBlock(from: markdown)
+        XCTAssertFalse(stripped.contains("## Action Items"))
+        XCTAssertTrue(stripped.contains("## Decisions"))
+        XCTAssertTrue(stripped.hasSuffix("- ship on Monday"))
+    }
+
+    func testMarkdownWithoutTheBlockIsUntouched() {
+        let markdown = "Overview.\n\n## Decisions\n- a"
+        XCTAssertEqual(MeetingExporter.removingActionItemsBlock(from: markdown), markdown)
+    }
+}
