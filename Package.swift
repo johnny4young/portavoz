@@ -41,7 +41,11 @@ let package = Package(
         // Embedded local LLM (MLX, MIT) — D25's last mile: summaries on
         // Macs with neither Apple Intelligence nor Ollama. Pinned exact:
         // the LLM API surface moves between minors.
-        .package(url: "https://github.com/ml-explore/mlx-swift-examples.git", exact: "2.29.1"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.31.4"),
+        // Tokenizer runtime for the embedded summarizer: mlx-swift-lm 3.x
+        // deliberately decoupled swift-transformers — the app provides it
+        // through the MLXHuggingFace macros.
+        .package(url: "https://github.com/huggingface/swift-transformers.git", .upToNextMinor(from: "1.3.3")),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -76,8 +80,10 @@ let package = Package(
             name: "IntelligenceKit",
             dependencies: [
                 "PortavozCore",
-                .product(name: "MLXLLM", package: "mlx-swift-examples"),
-                .product(name: "MLXLMCommon", package: "mlx-swift-examples"),
+                .product(name: "MLXLLM", package: "mlx-swift-lm"),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+                .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
+                .product(name: "Transformers", package: "swift-transformers"),
             ]),
         .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
         .target(

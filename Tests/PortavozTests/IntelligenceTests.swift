@@ -541,7 +541,7 @@ final class HardwareRecommenderTests: XCTestCase {
         let advice = HardwareRecommender.advise(
             .init(memoryGB: 8, appleIntelligence: false, ollamaAvailable: false, freeDiskGB: 100))
         XCTAssertEqual(advice.engine, .mlx)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("2.3 GB") })
+        XCTAssertTrue(advice.reasons.contains { $0.contains("3 GB") })
     }
 
     func testNoneWhenRAMIsTooSmallForEmbeddedModel() {

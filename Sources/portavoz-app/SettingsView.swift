@@ -616,7 +616,7 @@ extension SettingsView {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac. Built-in runs an embedded 4B model (one 2.3 GB verified download) with zero installs. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)"
+                "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac. Built-in runs an embedded 4B model (one 3 GB verified download) with zero installs. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)"
             )
             .font(.caption)
             .foregroundStyle(.secondary)

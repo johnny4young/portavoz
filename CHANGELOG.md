@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🧠 Smarter built-in brain** — The embedded engine upgrades to Qwen3.5 4B (Apache-2.0, 201 languages): on a real 56-minute meeting it delivered clean Spanish decisions, open questions and 11 owner-tagged action items where the previous model looped and failed. One 3 GB verified download.
 - **🎤 Refine no longer steals the room's voice** — With speakers, your mic hears everyone; the quality re-pass was crediting all of it to "Me" (one user showed 52% talk time in a meeting where they barely spoke). Room echo is now detected and dropped, so talk-time stats and "who said what" stay honest.
 - **🙏 Fewer phantom "Thank you."s** — Whisper's silence filler is now caught even when background noise breaks its usual rhythm.
 - **📋 One action-item list, not three** — Summaries and exports no longer repeat the same action items under different headings.

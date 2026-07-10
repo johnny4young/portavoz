@@ -31,8 +31,12 @@ fi
 
 echo "Compiling MLX Metal kernels (one-time per mlx-swift $WANT)…"
 make project > /dev/null
+# Plugin/macro validation is interactive-Xcode machinery; in this scripted
+# one-shot build it only blocks (mlx-swift ships a CudaBuild plugin and
+# MLXHuggingFace ships macros).
 xcodebuild build -project Portavoz.xcodeproj -scheme Portavoz -configuration Debug \
-  -destination 'platform=macOS' -derivedDataPath .build/xcode-mlx -quiet
+  -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/xcode-mlx -quiet \
+  -skipPackagePluginValidation -skipMacroValidation
 
 PRODUCT=".build/xcode-mlx/Build/Products/Debug/Portavoz.app/Contents/Resources/$BUNDLE_NAME"
 if [[ ! -d "$PRODUCT" ]]; then

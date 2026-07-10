@@ -355,6 +355,36 @@ public enum ModelCatalog {
         minimumRAMGB: 8,
         license: "Apache-2.0")
 
+    /// A/B candidate for the embedded summarizer (jul 2026): Qwen3.5-4B,
+    /// the successor generation (201 languages), quantized to 4 bits by
+    /// mlx-community — Apache-2.0 inherited from the base model. The
+    /// checkpoint is the multimodal layout (text_config + processor files);
+    /// mlx-swift-lm's `qwen3_5` loader consumes it as a text model.
+    public static let mlxQwen35 = ModelDescriptor(
+        id: "qwen3.5-4b-mlx-4bit",
+        tasks: [.summarization],
+        displayName: "Qwen3.5 4B integrado (MLX)",
+        folderName: "qwen3.5-4b-mlx-4bit",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/mlx-community/Qwen3.5-4B-MLX-4bit/resolve/32f3e8ecf65426fc3306969496342d504bfa13f3"
+        )!,
+        revision: "32f3e8ecf65426fc3306969496342d504bfa13f3",
+        artifacts: [
+            ModelArtifact(path: "chat_template.jinja", sha256: "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715", sizeBytes: 7756),
+            ModelArtifact(path: "config.json", sha256: "f3efc81b2ea8d96a45301037d3ccccbcccdef44a961845c87f286aaddbc6eaaa", sizeBytes: 3366),
+            ModelArtifact(path: "model.safetensors", sha256: "5fb9acd0246866381cf8c5c354c6db1019f6498eec4ccb4f5edcc71ffeacb2db", sizeBytes: 3034300695),
+            ModelArtifact(path: "model.safetensors.index.json", sha256: "52e534c41f7b97708329c85f762e5882bf48bd5955a422c6ae74eba321e6048a", sizeBytes: 101944),
+            ModelArtifact(path: "preprocessor_config.json", sha256: "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516", sizeBytes: 390),
+            ModelArtifact(path: "processor_config.json", sha256: "14932921ca485d458a04dafd8069fbb0a4505622a48208d19ed247115801385b", sizeBytes: 1300),
+            ModelArtifact(path: "tokenizer.json", sha256: "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4", sizeBytes: 19989343),
+            ModelArtifact(path: "tokenizer_config.json", sha256: "e98f1901ac6f0adff67b1d540bfa0c36ac1a0cf59eb72ed78146ef89aafa1182", sizeBytes: 1139),
+            ModelArtifact(path: "video_preprocessor_config.json", sha256: "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13", sizeBytes: 385),
+            ModelArtifact(path: "vocab.json", sha256: "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003", sizeBytes: 6722759)
+        ],
+        minimumRAMGB: 8,
+        license: "Apache-2.0")
+
     public static let whisperLargeV3_626MB = ModelDescriptor(
         id: "whisper-large-v3-626mb",
         tasks: [.finalTranscription],

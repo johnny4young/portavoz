@@ -188,7 +188,7 @@ final class AppServices {
             // back to Apple rather than failing mid-summary.
             guard mlxDownloaded else { return nil }
             return MLXSummaryProvider(
-                modelDirectory: Self.modelDir(ModelCatalog.mlxQwen3))
+                modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35))
         }
     }
 
@@ -196,13 +196,13 @@ final class AppServices {
 
     var mlxDownloaded: Bool {
         FileManager.default.fileExists(
-            atPath: Self.modelDir(ModelCatalog.mlxQwen3)
+            atPath: Self.modelDir(ModelCatalog.mlxQwen35)
                 .appendingPathComponent("model.safetensors").path)
     }
 
     /// Verified download (D7) with progress, same UX as the Whisper variants.
     func downloadMLX(progress: @escaping @MainActor (String) -> Void) async throws {
-        _ = try await ModelStore().ensureAvailable(ModelCatalog.mlxQwen3) { update in
+        _ = try await ModelStore().ensureAvailable(ModelCatalog.mlxQwen35) { update in
             guard update.totalBytes > 0 else { return }
             let percent = Int(update.fraction * 100)
             Task { @MainActor in
@@ -212,7 +212,7 @@ final class AppServices {
     }
 
     func deleteMLXModel() {
-        try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen3))
+        try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen35))
     }
 
     // MARK: - Whisper variants on disk (M12)

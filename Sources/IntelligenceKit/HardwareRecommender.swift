@@ -62,7 +62,7 @@ public enum HardwareRecommender {
             reasons.append(
                 // One-line UI text.
                 // swiftlint:disable:next line_length
-                "No Apple Intelligence or Ollama, but your Mac can run the embedded model (one 2.3 GB download, verified, 100% on-device).")
+                "No Apple Intelligence or Ollama, but your Mac can run the embedded model (one 3 GB download, verified, 100% on-device).")
         } else {
             engine = .none
             headline = "No local summary engine."

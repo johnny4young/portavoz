@@ -15,7 +15,7 @@ struct MLXModelRow: View {
             Image(systemName: downloaded ? "checkmark.circle.fill" : "arrow.down.circle")
                 .foregroundStyle(downloaded ? Color.green : Color.secondary)
             if downloaded {
-                Text("Qwen3 4B · downloaded · 2.3 GB").font(.caption)
+                Text("Qwen3.5 4B · downloaded · 3 GB").font(.caption)
                 Spacer()
                 Button("Delete", role: .destructive) {
                     services.deleteMLXModel()
@@ -27,7 +27,7 @@ struct MLXModelRow: View {
                 ProgressView().controlSize(.small)
                 Text(status ?? "").font(.caption).foregroundStyle(.secondary)
             } else {
-                Button("Download model (2.3 GB)") { download() }
+                Button("Download model (3 GB)") { download() }
                     .controlSize(.small)
                     .accessibilityIdentifier("settings-mlx-download")
             }

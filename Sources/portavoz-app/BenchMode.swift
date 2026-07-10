@@ -76,13 +76,17 @@ extension BenchMode {
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "--mlx-smoke") else { return }
         let useRealMeeting = arguments.indices.contains(flag + 1) && arguments[flag + 1] == "real"
+        // Optional extra word picks the model — the A/B switch. Qwen3.5 is
+        // the shipping default; "qwen3" reruns the previous generation.
+        let descriptor = arguments.contains("qwen3") ? ModelCatalog.mlxQwen3 : ModelCatalog.mlxQwen35
         // Unbuffered stdout: when piped to a file, progress lines must land
         // as they happen — a killed run would otherwise lose everything.
         setbuf(stdout, nil)
         Task.detached {
             do {
+                print("model: \(descriptor.displayName)")
                 let directory = try await ModelStore()
-                    .ensureAvailable(ModelCatalog.mlxQwen3)
+                    .ensureAvailable(descriptor)
                 let request =
                     useRealMeeting ? try await realMeetingRequest() : syntheticRequest()
                 let start = Date()

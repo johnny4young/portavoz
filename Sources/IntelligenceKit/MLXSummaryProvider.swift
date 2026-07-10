@@ -1,10 +1,12 @@
 import Foundation
 import MLX
+import MLXHuggingFace
 import MLXLLM
 import MLXLMCommon
 import PortavozCore
+import Tokenizers
 
-/// Embedded local summarizer (D25's last mile, D32): a 4-bit Qwen3-4B
+/// Embedded local summarizer (D25's last mile, D32): a 4-bit Qwen3.5-4B
 /// running IN-PROCESS on the GPU via MLX — summaries on Macs with neither
 /// Apple Intelligence nor Ollama, zero external installs. Reuses the exact
 /// prompt/JSON contract of the OpenAI-compatible provider, so switching
@@ -12,7 +14,7 @@ import PortavozCore
 /// IntelligenceScheduler: that lane exists for ANE contention; MLX runs on
 /// the GPU.
 public struct MLXSummaryProvider: SummaryProvider {
-    public static let providerID = "mlx/qwen3-4b-instruct-2507-4bit"
+    public static let providerID = "mlx/qwen3.5-4b-mlx-4bit"
 
     private let modelDirectory: URL
 
@@ -47,15 +49,20 @@ actor MLXModelCache {
         // `perform` gives isolated access to the model context inside the
         // library's own actor — the blessed pattern for strict concurrency.
         return try await container.perform { context in
+            // Qwen3.5 reasons by default and its "Thinking Process:" prose
+            // never reaches the JSON contract; the template switch turns it
+            // off (harmless for models whose template ignores it).
             let input = try await context.processor.prepare(
-                input: UserInput(chat: [.system(system), .user(user)]))
+                input: UserInput(
+                    chat: [.system(system), .user(user)],
+                    additionalContext: ["enable_thinking": false]))
             // maxTokens is pure runaway protection (a rambling model would
-            // hold the GPU indefinitely): real summaries end well under it —
-            // a 40-min Spanish meeting generates ~8k characters — and 8192
-            // tokens bounds the worst case to a few minutes.
+            // hold the GPU indefinitely): a refined 56-min meeting produced
+            // a legitimate 34k-character Spanish summary, so the cap leaves
+            // real generations room and still bounds the worst case.
             let stream = try MLXLMCommon.generate(
                 input: input,
-                parameters: GenerateParameters(maxTokens: 8192, temperature: 0),
+                parameters: GenerateParameters(maxTokens: 16_384, temperature: 0),
                 context: context)
             var text = ""
             for await item in stream {
@@ -73,7 +80,7 @@ actor MLXModelCache {
         // value the mlx-swift-examples LLMEval app ships with.
         MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
         let loaded = try await LLMModelFactory.shared.loadContainer(
-            configuration: ModelConfiguration(directory: newDirectory))
+            from: newDirectory, using: #huggingFaceTokenizerLoader())
         container = loaded
         directory = newDirectory
         return loaded
