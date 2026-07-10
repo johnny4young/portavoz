@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 10, 2026
+
+- **👋 Guided first run** — New to Portavoz? A four-step welcome now walks you through permissions, the one-time model download (with a recommendation tuned to your Mac), and optional voice enrollment — so your first recording just works.
+
 ## July 9, 2026
 
 - **🧠 Built-in brain** — Summaries with zero installs: pick "Built-in (MLX)" in Settings, download one verified 2.3 GB model, and every summary runs on your Mac's GPU. No Apple Intelligence, no Ollama, nothing ever leaves your machine.

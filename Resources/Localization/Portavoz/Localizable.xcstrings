@@ -41,6 +41,16 @@
         }
       }
     },
+    "A 12-second sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una muestra de 12 segundos permite etiquetar tus intervenciones como “Yo” en cualquier micrófono o canal. Puedes enrolarte o repetirla después en Ajustes."
+          }
+        }
+      }
+    },
     "A floating banner appears before your next calendar meeting — one click starts a recording linked to it. Needs calendar access.": {
       "localizations": {
         "es": {
@@ -127,6 +137,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agenda"
+          }
+        }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir"
           }
         }
       }
@@ -321,6 +341,16 @@
         }
       }
     },
+    "Calendar (optional)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendario (opcional)"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "es": {
@@ -491,12 +521,32 @@
         }
       }
     },
+    "Connect": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar"
+          }
+        }
+      }
+    },
     "Connect your calendar": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Conectar tu calendario"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar"
           }
         }
       }
@@ -811,6 +861,16 @@
         }
       }
     },
+    "Download now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar ahora"
+          }
+        }
+      }
+    },
     "Downloaded · ": {
       "localizations": {
         "es": {
@@ -911,6 +971,16 @@
         }
       }
     },
+    "Enroll my voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enrolar mi voz"
+          }
+        }
+      }
+    },
     "Enroll my voice (12 s)": {
       "localizations": {
         "es": {
@@ -937,6 +1007,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Español"
+          }
+        }
+      }
+    },
+    "Every meeting becomes searchable notes with action items.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada reunión se vuelve notas buscables con action items."
           }
         }
       }
@@ -1111,6 +1191,16 @@
         }
       }
     },
+    "It tells apart every voice, including yours.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distingue cada voz, incluida la tuya."
+          }
+        }
+      }
+    },
     "Jump to this moment": {
       "localizations": {
         "es": {
@@ -1147,6 +1237,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Idioma"
+          }
+        }
+      }
+    },
+    "Listening… speak normally for 12 seconds.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando… habla normal durante 12 segundos."
           }
         }
       }
@@ -1231,6 +1331,16 @@
         }
       }
     },
+    "Microphone": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrófono"
+          }
+        }
+      }
+    },
     "Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.": {
       "localizations": {
         "es": {
@@ -1247,6 +1357,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modelo"
+          }
+        }
+      }
+    },
+    "Models ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelos listos"
           }
         }
       }
@@ -1361,6 +1481,16 @@
         }
       }
     },
+    "Nothing leaves this Mac — transcription, voices and summaries run on-device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada sale de esta Mac: la transcripción, las voces y los resúmenes corren en el equipo."
+          }
+        }
+      }
+    },
     "Nothing related in your meetings yet.": {
       "localizations": {
         "es": {
@@ -1421,6 +1551,16 @@
         }
       }
     },
+    "On-device models": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelos en el equipo"
+          }
+        }
+      }
+    },
     "On-device summaries require macOS 26 (or choose Ollama in Settings).": {
       "localizations": {
         "es": {
@@ -1441,12 +1581,32 @@
         }
       }
     },
+    "Or skip — they download on your first recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O sáltalo: se descargan en tu primera grabación."
+          }
+        }
+      }
+    },
     "Pause": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Pausar"
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permisos"
           }
         }
       }
@@ -1477,6 +1637,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Portavoz"
+          }
+        }
+      }
+    },
+    "Portavoz records locally; macOS asks for each permission once.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz graba localmente; macOS pide cada permiso una sola vez."
+          }
+        }
+      }
+    },
+    "Pre-meeting briefs and speaker name suggestions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Briefs pre-reunión y sugerencias de nombres de hablantes."
           }
         }
       }
@@ -1941,6 +2121,16 @@
         }
       }
     },
+    "Skip setup": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saltar configuración"
+          }
+        }
+      }
+    },
     "Skip silence": {
       "localizations": {
         "es": {
@@ -1997,6 +2187,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hora de inicio"
+          }
+        }
+      }
+    },
+    "Start using Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar a usar Portavoz"
           }
         }
       }
@@ -2141,6 +2341,16 @@
         }
       }
     },
+    "System audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio del sistema"
+          }
+        }
+      }
+    },
     "Template": {
       "localizations": {
         "es": {
@@ -2187,6 +2397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El modelo local no pudo generar el resumen."
+          }
+        }
+      }
+    },
+    "The other participants. macOS will ask on your first recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los demás participantes. macOS lo pedirá en tu primera grabación."
           }
         }
       }
@@ -2381,6 +2601,16 @@
         }
       }
     },
+    "Transcription and voice models download once (~1 GB, integrity-verified) and then work offline.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los modelos de transcripción y voz se descargan una vez (~1 GB, verificados) y luego funcionan sin internet."
+          }
+        }
+      }
+    },
     "Translate": {
       "localizations": {
         "es": {
@@ -2431,6 +2661,16 @@
         }
       }
     },
+    "Voice enrolled": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz enrolada"
+          }
+        }
+      }
+    },
     "Voiceprint and key deleted.": {
       "localizations": {
         "es": {
@@ -2447,6 +2687,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Día de la semana"
+          }
+        }
+      }
+    },
+    "Welcome to Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenido a Portavoz"
           }
         }
       }
@@ -2481,6 +2731,26 @@
         }
       }
     },
+    "You can change the summary engine anytime in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes cambiar el motor de resúmenes cuando quieras en Ajustes."
+          }
+        }
+      }
+    },
+    "Your meetings, 100% on your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus reuniones, 100% en tu Mac."
+          }
+        }
+      }
+    },
     "Your name in meetings": {
       "localizations": {
         "es": {
@@ -2497,6 +2767,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus notas"
+          }
+        }
+      }
+    },
+    "Your side of the meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu lado de la reunión."
+          }
+        }
+      }
+    },
+    "Your voice (optional)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu voz (opcional)"
           }
         }
       }
