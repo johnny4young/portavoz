@@ -1,4 +1,5 @@
 import AppKit
+import IntegrationsKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -18,6 +19,10 @@ struct LibraryView: View {
     /// when calendar access was already granted — never prompts here.
     @State private var brief: MeetingBrief?
     @State private var showBrief = false
+    /// Keeps the brief honest while the app stays open: every 5 minutes it
+    /// re-checks the calendar, drops a brief whose event ended, and only
+    /// pays the full rebuild (FM included) when the NEXT event changed.
+    private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
     @State private var renamingMeeting: Meeting?
     @State private var newTitle = ""
     @State private var importStatus: String?
@@ -197,14 +202,26 @@ struct LibraryView: View {
             return true
         }
         .task(id: services.libraryVersion) { await reload() }
+        .onReceive(briefTimer) { _ in Task { await refreshBrief() } }
     }
 
     private func reload() async {
         meetings = (try? await services.store.meetings()) ?? []
         openItems = (try? await services.store.openActionItems(limit: 20)) ?? []
-        if brief == nil, !ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
-            brief = await MeetingBrief.build(store: services.store)
+        await refreshBrief()
+    }
+
+    /// Cheap staleness check first (EventKit is local): same upcoming event
+    /// keeps the built brief (and its on-device synthesis); a new, changed
+    /// or ended event triggers the rebuild or clears the row.
+    private func refreshBrief() async {
+        guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return }
+        guard let next = CalendarAttendeeSource().nextEvent() else {
+            brief = nil
+            return
         }
+        guard next != brief?.event else { return }
+        brief = await MeetingBrief.build(store: services.store)
     }
 
     /// One open action item: check it off right here, or click through to
