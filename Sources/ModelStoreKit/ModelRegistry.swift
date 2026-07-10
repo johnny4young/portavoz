@@ -325,6 +325,36 @@ public enum ModelCatalog {
     /// alternative to turbo for the D7 quality re-pass (M12). Mixed-bit
     /// quantized; recommended multilingual small-footprint variant. Same
     /// tokenizer as turbo. Artifacts sha256-pinned like every model (D7).
+    /// Embedded local summarizer (D25 last mile, D32): Qwen3-4B-Instruct
+    /// 2507 quantized to 4 bits by mlx-community — Apache-2.0, ungated,
+    /// bilingual EN/ES. sha256s from the HF tree API at the pinned commit
+    /// (LFS oids for the big files, hand-hashed for the small ones).
+    public static let mlxQwen3 = ModelDescriptor(
+        id: "qwen3-4b-instruct-2507-4bit",
+        tasks: [.summarization],
+        displayName: "Qwen3 4B integrado (MLX)",
+        folderName: "qwen3-4b-instruct-2507-4bit",
+        resolveBase: URL(
+            string:
+                "https://huggingface.co/mlx-community/Qwen3-4B-Instruct-2507-4bit/resolve/50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b"
+        )!,
+        revision: "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+        artifacts: [
+            ModelArtifact(path: "added_tokens.json", sha256: "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680", sizeBytes: 707),
+            ModelArtifact(path: "chat_template.jinja", sha256: "40c21f34cf67d8c760ef72f8ad3ae5afad514299d4b06e91dd9a8d705af7b541", sizeBytes: 4040),
+            ModelArtifact(path: "config.json", sha256: "574349e5a343236546fda55e4744a76e181f534182d7dc60ff1bad7e7a502849", sizeBytes: 938),
+            ModelArtifact(path: "generation_config.json", sha256: "835fffe355c9438e7a25be099b3fccaa98350b83451f9fd2d99512e74f1ade48", sizeBytes: 238),
+            ModelArtifact(path: "merges.txt", sha256: "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5", sizeBytes: 1671853),
+            ModelArtifact(path: "model.safetensors", sha256: "2a73c6c248601ab904e035548abd8e6abb65ea27dcb5f342fb0a8910eb44173f", sizeBytes: 2263022417),
+            ModelArtifact(path: "model.safetensors.index.json", sha256: "388d811b8b7c2608dd04cce1bcb04a8bf715d19b42790894e6d3427ff429a777", sizeBytes: 63964),
+            ModelArtifact(path: "special_tokens_map.json", sha256: "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd", sizeBytes: 613),
+            ModelArtifact(path: "tokenizer.json", sha256: "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4", sizeBytes: 11422654),
+            ModelArtifact(path: "tokenizer_config.json", sha256: "4397cc477eb6d79715ccd2000accd6b3531928f30029665832fa1b255f24d2b9", sizeBytes: 5440),
+            ModelArtifact(path: "vocab.json", sha256: "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910", sizeBytes: 2776833)
+        ],
+        minimumRAMGB: 8,
+        license: "Apache-2.0")
+
     public static let whisperLargeV3_626MB = ModelDescriptor(
         id: "whisper-large-v3-626mb",
         tasks: [.finalTranscription],

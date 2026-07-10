@@ -39,6 +39,10 @@ let package = Package(
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.0.0"),
         // Auto-updates for the direct-download channel (D10).
         .package(url: "https://github.com/sparkle-project/Sparkle.git", .upToNextMajor(from: "2.9.4")),
+        // Embedded local LLM (MLX, MIT) — D25's last mile: summaries on
+        // Macs with neither Apple Intelligence nor Ollama. Pinned exact:
+        // the LLM API surface moves between minors.
+        .package(url: "https://github.com/ml-explore/mlx-swift-examples.git", exact: "2.29.1"),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
@@ -66,7 +70,16 @@ let package = Package(
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
         ),
-        .target(name: "IntelligenceKit", dependencies: ["PortavozCore"]),
+        // IntelligenceKit carries the MLX dependency directly (D32): the
+        // embedded provider needs the prompt/parsing stack that lives here,
+        // and a separate Kit would force moving all of it to Core.
+        .target(
+            name: "IntelligenceKit",
+            dependencies: [
+                "PortavozCore",
+                .product(name: "MLXLLM", package: "mlx-swift-examples"),
+                .product(name: "MLXLMCommon", package: "mlx-swift-examples"),
+            ]),
         .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
         .target(
             name: "StorageKit",

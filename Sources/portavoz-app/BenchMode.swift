@@ -1,4 +1,6 @@
 import Foundation
+import IntelligenceKit
+import ModelStoreKit
 import PortavozCore
 import TranscriptionKit
 
@@ -55,6 +57,52 @@ enum BenchMode {
                 exit(0)
             } catch {
                 print("error: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+    }
+}
+
+extension BenchMode {
+    /// `portavoz-app --mlx-smoke` — loads the (already downloaded) embedded
+    /// model and summarizes a tiny synthetic Spanish meeting, printing the
+    /// timing and the markdown. In-app on purpose: SwiftPM CLI builds cannot
+    /// compile the Metal shaders (mlx-swift README), so the metallib only
+    /// exists in xcodebuild products — same reasoning as `--bench-live`.
+    static func runMLXSmokeIfRequested() {
+        guard ProcessInfo.processInfo.arguments.contains("--mlx-smoke") else { return }
+        Task.detached {
+            do {
+                let directory = try await ModelStore()
+                    .ensureAvailable(ModelCatalog.mlxQwen3)
+                let meetingID = MeetingID()
+                let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
+                let ana = Speaker(meetingID: meetingID, label: "S1", displayName: "Ana")
+                let lines: [(Speaker, String)] = [
+                    (me, "Revisemos el presupuesto de transcripción del trimestre."),
+                    (ana, "El costo actual es de doscientos dólares al mes y podemos bajarlo."),
+                    (me, "Decidido: migramos el pipeline a los modelos locales esta semana."),
+                    (ana, "Yo me encargo de la migración y te aviso el viernes.")
+                ]
+                let segments = lines.enumerated().map { index, line in
+                    TranscriptSegment(
+                        meetingID: meetingID, speakerID: line.0.id, channel: .system,
+                        text: line.1, startTime: TimeInterval(index * 8),
+                        endTime: TimeInterval(index * 8 + 7), isFinal: true)
+                }
+                let request = SummaryRequest(
+                    meetingID: meetingID, segments: segments, speakers: [me, ana],
+                    recipe: .general, targetLanguage: "es", glossary: [])
+                let start = Date()
+                let draft = try await MLXSummaryProvider(modelDirectory: directory)
+                    .summarize(request)
+                let elapsed = Date().timeIntervalSince(start)
+                print("MLX smoke OK in \(String(format: "%.1f", elapsed)) s")
+                print(draft.markdown)
+                print("action items: \(draft.actionItems.map(\.text))")
+                exit(0)
+            } catch {
+                print("MLX smoke FAILED: \(error)")
                 exit(1)
             }
         }

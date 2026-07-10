@@ -61,6 +61,12 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("El equipo revisó")
                 || line.contains("Se revisará")
         }
+        if relative == "Sources/portavoz-app/BenchMode.swift" {
+            // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
+            return line.contains("Revisemos el presupuesto")
+                || line.contains("dólares")
+                || line.contains("migración")
+        }
         if relative == "Sources/IntelligenceKit/Companion.swift" {
             return line.contains("qué") || line.contains("cómo") || line.contains("¿")
                 || line.contains("quién") || line.contains("cuál") || line.contains("cuánto")

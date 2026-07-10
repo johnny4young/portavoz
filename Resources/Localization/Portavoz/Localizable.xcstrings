@@ -181,6 +181,16 @@
         }
       }
     },
+    "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac. Built-in runs an embedded 4B model (one 2.3 GB verified download) with zero installs. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple usa Foundation Models (macOS 26 + Apple Intelligence). Ollama corre un modelo 100% local en tu Mac. Integrado corre un modelo 4B embebido (una descarga verificada de 2.3 GB) sin instalar nada. En todos los casos, nada sale del equipo. (El resumen EN VIVO durante la grabación siempre usa Apple.)"
+          }
+        }
+      }
+    },
     "Apply": {
       "localizations": {
         "es": {
@@ -297,6 +307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brief de tu próxima reunión: quiénes vienen, reuniones relacionadas y pendientes abiertos"
+          }
+        }
+      }
+    },
+    "Built-in (MLX)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrado (MLX)"
           }
         }
       }
@@ -781,6 +801,16 @@
         }
       }
     },
+    "Download model (2.3 GB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar modelo (2.3 GB)"
+          }
+        }
+      }
+    },
     "Downloaded · ": {
       "localizations": {
         "es": {
@@ -807,6 +837,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descargando modelo de diarización… %d%%"
+          }
+        }
+      }
+    },
+    "Downloading embedded model (2.3 GB, one time only)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando el modelo integrado (2.3 GB, solo una vez)… %d%%"
           }
         }
       }
@@ -1517,6 +1557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preguntas como \"¿qué acordamos del presupuesto?\" — respondidas en tu Mac, citando reunión y momento."
+          }
+        }
+      }
+    },
+    "Qwen3 4B · downloaded · 2.3 GB": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qwen3 4B · descargado · 2.3 GB"
           }
         }
       }

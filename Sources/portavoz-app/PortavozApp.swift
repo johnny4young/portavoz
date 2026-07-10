@@ -16,6 +16,7 @@ struct PortavozApp: App {
         // Hidden bench mode (M12): "--bench-live <file>" runs the
         // SpeechAnalyzer harness inside the bundle and exits.
         BenchMode.runIfRequested()
+        BenchMode.runMLXSmokeIfRequested()
     }
 
     var body: some Scene {

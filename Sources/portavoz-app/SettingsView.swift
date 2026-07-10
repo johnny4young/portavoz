@@ -574,6 +574,7 @@ extension SettingsView {
             Picker("Generate summaries with", selection: $summaryEngine) {
                 Text("Apple (on-device)").tag("appleOnDevice")
                 Text("Ollama (local)").tag("ollama")
+                Text("Built-in (MLX)").tag("mlx")
             }
             .pickerStyle(.radioGroup)
             .accessibilityIdentifier("settings-summary-engine-picker")
@@ -609,10 +610,13 @@ extension SettingsView {
                     }
                 }
             }
+            if summaryEngine == "mlx" {
+                MLXModelRow(services: services)
+            }
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac — ideal if you do not have Apple Intelligence. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)"
+                "Apple uses Foundation Models (macOS 26 + Apple Intelligence). Ollama runs a 100% local model on your Mac. Built-in runs an embedded 4B model (one 2.3 GB verified download) with zero installs. Either way, nothing leaves the device. (The LIVE summary during recording always uses Apple.)"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -689,6 +693,8 @@ extension SettingsView {
 
     private func applyRecommendation(_ advice: EngineAdvice) {
         switch advice.engine {
+        case .mlx:
+            summaryEngine = "mlx"
         case .apple:
             summaryEngine = "appleOnDevice"
         case .ollama:

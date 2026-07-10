@@ -597,7 +597,7 @@ extension MeetingDetailView {
                 return (.ollama, "Regenerar con Ollama · \(model)")
             }
             return nil
-        case .ollama:
+        case .ollama, .mlx:
             if services.appleSummaryAvailable {
                 return (.appleOnDevice, "Regenerar con Apple (on-device)")
             }

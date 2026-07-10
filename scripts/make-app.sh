@@ -63,6 +63,17 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Framewor
 # binary can find it relative to itself.
 cp -a "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/"
 
+# MLX Metal kernels (D32): SwiftPM cannot compile Metal shaders, so the
+# compiled metallib comes from a cached one-time xcodebuild pass. Without
+# the bundle inside Resources the embedded summarizer cannot initialize
+# Metal at runtime. If the cache cannot be built (no Metal Toolchain) the
+# app still ships — only the Built-in engine is unavailable.
+if scripts/build-mlx-metallib.sh; then
+  cp -R .build/mlx/mlx-swift_Cmlx.bundle "$APP/Contents/Resources/"
+else
+  echo "warning: shipping without the MLX metallib — Built-in engine disabled." >&2
+fi
+
 # Icon (regenerate with: swift scripts/make-icon.swift)
 if [[ -f assets/AppIcon.icns ]]; then
   cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

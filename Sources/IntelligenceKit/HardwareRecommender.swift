@@ -21,6 +21,8 @@ public struct HardwareProfile: Sendable, Equatable {
 public enum RecommendedEngine: String, Sendable {
     case apple
     case ollama
+    /// The embedded MLX model (D25 last mile): no installs, ~2.3 GB download.
+    case mlx
     /// Neither local engine is available — the app should point the user at
     /// installing Ollama or configuring BYOK.
     case none
@@ -54,13 +56,20 @@ public enum HardwareRecommender {
                 reasons.append(
                     "Con \(profile.memoryGB) GB de RAM, prefiere modelos Ollama ≤ 8B para que no se ralentice.")
             }
+        } else if profile.memoryGB >= 8, profile.freeDiskGB >= 4 || profile.freeDiskGB == 0 {
+            engine = .mlx
+            headline = "Built-in local model: summaries without installing anything."
+            reasons.append(
+                // One-line UI text.
+                // swiftlint:disable:next line_length
+                "No Apple Intelligence or Ollama, but your Mac can run the embedded model (one 2.3 GB download, verified, 100% on-device).")
         } else {
             engine = .none
             headline = "No local summary engine."
             reasons.append(
                 // One-line UI text.
                 // swiftlint:disable:next line_length
-                "No Apple Intelligence or Ollama. Install Ollama (ollama.com) for local summaries, or configure BYOK in Settings.")
+                "No Apple Intelligence or Ollama, and the embedded model needs 8 GB of RAM and 4 GB of disk. Install Ollama (ollama.com) or configure BYOK in Settings.")
         }
 
         let lowDisk = profile.freeDiskGB > 0 && profile.freeDiskGB < 8

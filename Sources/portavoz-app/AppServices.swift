@@ -143,6 +143,8 @@ final class AppServices {
     enum SummaryEngine: String, CaseIterable {
         case appleOnDevice
         case ollama
+        /// Embedded MLX model (D25 last mile, D32) — in-process, no installs.
+        case mlx
     }
 
     var summaryEngine: SummaryEngine {
@@ -181,7 +183,36 @@ final class AppServices {
         case .ollama:
             guard let model = ollamaModel else { return nil }
             return OllamaService.summaryProvider(model: model)
+        case .mlx:
+            // Only when the verified weights are on disk — otherwise fall
+            // back to Apple rather than failing mid-summary.
+            guard mlxDownloaded else { return nil }
+            return MLXSummaryProvider(
+                modelDirectory: Self.modelDir(ModelCatalog.mlxQwen3))
         }
+    }
+
+    // MARK: - Embedded MLX model (D25 last mile)
+
+    var mlxDownloaded: Bool {
+        FileManager.default.fileExists(
+            atPath: Self.modelDir(ModelCatalog.mlxQwen3)
+                .appendingPathComponent("model.safetensors").path)
+    }
+
+    /// Verified download (D7) with progress, same UX as the Whisper variants.
+    func downloadMLX(progress: @escaping @MainActor (String) -> Void) async throws {
+        _ = try await ModelStore().ensureAvailable(ModelCatalog.mlxQwen3) { update in
+            guard update.totalBytes > 0 else { return }
+            let percent = Int(update.fraction * 100)
+            Task { @MainActor in
+                progress(L10n.format("Downloading embedded model (2.3 GB, one time only)… %d%%", percent))
+            }
+        }
+    }
+
+    func deleteMLXModel() {
+        try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen3))
     }
 
     // MARK: - Whisper variants on disk (M12)

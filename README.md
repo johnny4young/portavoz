@@ -68,7 +68,7 @@ Swift 6 (strict concurrency), SwiftUI, modular SPM workspace. Kits depend on `Po
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
-| `IntelligenceKit` | Summaries (Foundation Models / Ollama / BYOK), recipes, action items, live companion |
+| `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
 | `ContextFeedKit` | Links, notes, and snippets dropped into a live meeting (co-authoring) |
 | `StorageKit` | GRDB/SQLite, FTS5 search, versioned snapshots, local vector index |

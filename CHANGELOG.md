@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 9, 2026
 
+- **🧠 Built-in brain** — Summaries with zero installs: pick "Built-in (MLX)" in Settings, download one verified 2.3 GB model, and every summary runs on your Mac's GPU. No Apple Intelligence, no Ollama, nothing ever leaves your machine.
 - **🎬 Record from the brief** — One click on "Record this meeting" starts a recording linked to the calendar event: the meeting is born as "2026-07-10 Sprint Demo" — real name, date-prefixed so weekly meetings never collide.
 - **⏰ Meeting heads-up** — A floating banner a few minutes before your next calendar meeting: one click starts the linked recording. Configurable in Settings (off / 3 / 5 / 10 minutes); dismiss once, it never nags again.
 - **📌 What-to-know, with receipts** — Each brief bullet now cites the meeting it came from (click to jump there), and ungrounded filler ("the meeting will be brief") is filtered out before you see it.
