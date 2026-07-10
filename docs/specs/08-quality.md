@@ -72,3 +72,12 @@ XCUITest sobre la app real (XcodeGen genera el `.xcodeproj`, gitignored). `make 
 ## Cómo medir antes de afirmar (regla)
 
 Ningún número entra a un spec sin harness reproducible. Si un claim viene de un tercero (benchmark de Apple, WER de Argmax), se cita la fuente y se marca "no medido aquí".
+
+## Flakes conocidos
+
+**Flake de entorno — automation mode (jul 2026):** `make test-ui` falla con
+"Timed out while enabling automation mode" (0 tests ejecutados) cuando hay
+OTRA sesión de automatización/accessibility activa en la máquina — observado
+con la sesión de computer-use de un agente: 3 intentos consecutivos fallaron
+en init y el mismo código pasó 7/7 en un ciclo sin esa sesión. No es fallo de
+código: correr los UITests sin clientes de automatización concurrentes.
