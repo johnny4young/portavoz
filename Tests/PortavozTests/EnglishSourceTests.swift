@@ -61,6 +61,11 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("El equipo revisó")
                 || line.contains("Se revisará")
         }
+        if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
+            // The -seed-showcase library is deliberately Spanish fictional
+            // prose: the bilingual transcript is what the screenshot shows.
+            return true
+        }
         if relative == "Sources/portavoz-app/BenchMode.swift" {
             // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
             return line.contains("Revisemos el presupuesto")

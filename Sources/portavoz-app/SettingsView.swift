@@ -74,6 +74,7 @@ struct SettingsView: View {
         Form {
             languageSection
             audioSection
+            DictationSection()
             agendaSection
             recordingsSection
             titleSection

@@ -53,6 +53,9 @@ final class AppServices {
     /// Quality re-passes keyed by meeting — they outlive the detail view,
     /// so navigating away never loses a draft (field bug, Jul 10).
     let refines = RefineService()
+    /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
+    /// session survive any window coming and going.
+    let dictation = DictationController()
 
     init() {
         do {

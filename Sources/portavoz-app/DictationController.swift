@@ -1,0 +1,175 @@
+import AppKit
+import AudioCaptureKit
+import Carbon.HIToolbox
+import Foundation
+import Observation
+import PortavozCore
+import SwiftUI
+import TranscriptionKit
+
+/// System-wide dictation (the MacParakeet-validated surface): press the
+/// global hotkey anywhere, speak, press it again — the transcript lands in
+/// whatever app is frontmost. Reuses the meeting pipeline as-is: Parakeet
+/// streaming on the ANE, the caption coalescer's echo/noise hygiene, and
+/// the user's custom vocabulary. Mic-only, nothing is stored: no meeting,
+/// no database row, no audio file.
+@MainActor
+@Observable
+final class DictationController {
+    static let defaultsKey = "globalDictationEnabled"
+
+    enum Phase: Equatable {
+        case idle
+        case listening
+        case failed(String)
+    }
+
+    private(set) var phase: Phase = .idle
+    /// Rows confirmed by the engine so far (coalesced, echo-trimmed).
+    private(set) var confirmedText = ""
+    /// The still-changing tail of what's being said.
+    private(set) var partialText = ""
+
+    private var hotkey: GlobalHotkey?
+    private var microphone: MicrophoneSource?
+    private var feed: AsyncStream<AudioChunk>.Continuation?
+    private var session: Task<Void, Never>?
+    private let panel = DictationPanelController()
+
+    /// Registers/unregisters ⌥⌘D to match the Settings toggle. Called at
+    /// launch and whenever the toggle changes.
+    func syncHotkey(services: AppServices) {
+        let enabled = UserDefaults.standard.bool(forKey: Self.defaultsKey)
+        if enabled, hotkey == nil {
+            hotkey = GlobalHotkey(
+                keyCode: UInt32(kVK_ANSI_D),
+                modifiers: UInt32(optionKey | cmdKey)
+            ) { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.toggle(services: services)
+            }
+        } else if !enabled, let hotkey {
+            hotkey.unregister()
+            self.hotkey = nil
+            if phase == .listening { cancel() }
+        }
+    }
+
+    /// Hotkey press: start listening, or finish-and-insert if already on.
+    func toggle(services: AppServices) {
+        switch phase {
+        case .idle, .failed:
+            start(services: services)
+        case .listening:
+            finishAndInsert()
+        }
+    }
+
+    private func start(services: AppServices) {
+        // The paste needs Accessibility; ask BEFORE recording so the user
+        // never dictates into a void.
+        guard TextInserter.canInsert(promptIfNeeded: true) else {
+            phase = .failed(L10n.text(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "Dictation needs the Accessibility permission to type into other apps — grant it in System Settings and try again."))
+            panel.show(controller: self)
+            scheduleFailureDismiss()
+            return
+        }
+        phase = .listening
+        confirmedText = ""
+        partialText = ""
+        panel.show(controller: self)
+
+        session = Task { [weak self, weak services] in
+            guard let self, let services else { return }
+            do {
+                try await services.loadEnginesIfNeeded()
+                guard let engine = services.transcriber else {
+                    throw IntelligenceUnavailable()
+                }
+                let microphone = MicrophoneSource()
+                self.microphone = microphone
+                await microphone.warmUp()
+                let micStream = try await microphone.start()
+
+                let (audio, feed) = AsyncStream.makeStream(of: AudioChunk.self)
+                self.feed = feed
+                let pump = Task {
+                    do {
+                        for try await chunk in micStream { feed.yield(chunk) }
+                    } catch {}
+                    feed.finish()
+                }
+
+                let vocabulary = VocabularyPrompt.parse(
+                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+                let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: MeetingID())
+                var captions: [TranscriptSegment] = []
+                let coalescer = CaptionCoalescer()
+                for try await segment in engine.transcribe(audio, hints: hints) {
+                    coalescer.apply(segment, to: &captions)
+                    let closed = captions.dropLast().map(\.text)
+                    self.confirmedText = closed.joined(separator: " ")
+                    self.partialText = captions.last?.text ?? ""
+                }
+                // Stream drained (mic stopped): everything is confirmed now.
+                self.confirmedText = captions.map(\.text).joined(separator: " ")
+                self.partialText = ""
+                await pump.value
+                self.deliver()
+            } catch {
+                self.phase = .failed(L10n.format(
+                    "Dictation failed: %@", error.localizedDescription))
+                self.scheduleFailureDismiss()
+            }
+        }
+    }
+
+    /// Second hotkey press: stop the mic; the drained stream delivers.
+    private func finishAndInsert() {
+        guard phase == .listening else { return }
+        let microphone = self.microphone
+        Task { await microphone?.stop() }
+    }
+
+    /// Esc in the panel: throw everything away.
+    func cancel() {
+        session?.cancel()
+        session = nil
+        let microphone = self.microphone
+        Task { await microphone?.stop() }
+        self.microphone = nil
+        feed = nil
+        phase = .idle
+        panel.close()
+    }
+
+    private func deliver() {
+        let text = DictationAssembler.text(
+            confirmed: confirmedText, partial: partialText)
+        microphone = nil
+        feed = nil
+        session = nil
+        phase = .idle
+        panel.close()
+        guard !text.isEmpty else { return }
+        TextInserter.insert(text)
+    }
+
+    private func scheduleFailureDismiss() {
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard let self, case .failed = self.phase else { return }
+            self.phase = .idle
+            self.panel.close()
+        }
+    }
+
+    private struct IntelligenceUnavailable: Error, LocalizedError {
+        var errorDescription: String? {
+            L10n.text("The transcription model is not available.")
+        }
+    }
+}

@@ -21,6 +21,9 @@ struct PortavozApp: App {
         // from a script) may never mount the window, and the T4 RAM bench
         // must still run.
         BenchMode.runRecordBenchIfRequested(services: services, recording: RecordingController())
+        // Global feature, not a window feature: ⌥⌘D must work even with
+        // the library window closed.
+        services.dictation.syncHotkey(services: services)
     }
 
     var body: some Scene {

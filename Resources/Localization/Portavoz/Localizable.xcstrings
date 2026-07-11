@@ -371,6 +371,16 @@
         }
       }
     },
+    "Cancel dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar el dictado"
+          }
+        }
+      }
+    },
     "Change…": {
       "localizations": {
         "es": {
@@ -807,6 +817,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detecta preguntas en la conversación y sugiere respuestas en el dispositivo. Nunca responde por ti."
+          }
+        }
+      }
+    },
+    "Dictate anywhere (⌥⌘D)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dicta en cualquier lugar (⌥⌘D)"
+          }
+        }
+      }
+    },
+    "Dictating — ⌥⌘D inserts into the front app": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictando — ⌥⌘D inserta en la app activa"
+          }
+        }
+      }
+    },
+    "Dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictado"
+          }
+        }
+      }
+    },
+    "Dictation failed: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado falló: %@"
+          }
+        }
+      }
+    },
+    "Dictation needs the Accessibility permission to type into other apps — grant it in System Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado necesita el permiso de Accesibilidad para escribir en otras apps — concédelo en Ajustes del Sistema e inténtalo de nuevo."
           }
         }
       }
@@ -1301,6 +1361,16 @@
         }
       }
     },
+    "Listening…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando…"
+          }
+        }
+      }
+    },
     "Listening… speak normally for 12 seconds.": {
       "localizations": {
         "es": {
@@ -1747,6 +1817,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparando…"
+          }
+        }
+      }
+    },
+    "Press ⌥⌘D in any app, speak, press it again: your words are typed where your cursor is — transcribed on this Mac with your custom vocabulary, never stored. Inserting text needs the Accessibility permission (macOS asks on first use).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presiona ⌥⌘D en cualquier app, habla y presiónalo de nuevo: tus palabras se escriben donde está tu cursor — transcritas en esta Mac con tu vocabulario, jamás se guardan. Insertar texto requiere el permiso de Accesibilidad (macOS lo pide la primera vez)."
           }
         }
       }
@@ -2577,6 +2657,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El motor de transcripción no está disponible."
+          }
+        }
+      }
+    },
+    "The transcription model is not available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo de transcripción no está disponible."
           }
         }
       }
