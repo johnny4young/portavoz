@@ -10,6 +10,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      # macos-latest images carry several Xcodes and the default rotates
+      # per runner — mlx-swift needs Swift tools 6.3+, so pin to the
+      # newest Xcode on the image instead of playing image lottery.
+      - name: Select newest Xcode
+        run: |
+          NEWEST="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          echo "Selecting $NEWEST"
+          sudo xcode-select -s "$NEWEST"
       - name: Swift version
         run: swift --version
       - name: Build
@@ -22,6 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install SwiftLint
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: brew install swiftlint
       # Strict (`strict: true` in .swiftlint.yml): ANY violation breaks
       # the build. Source code currently passes with zero violations.
