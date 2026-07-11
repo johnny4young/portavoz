@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🔦 Meetings in Spotlight** — Search a meeting title or a phrase someone said right from Spotlight (⌘Space); one click opens the exact meeting. The index is your Mac's local one — nothing leaves the machine.
 - **📍 Portavoz in your menu bar** — A glanceable icon that turns into a red dot while recording, with one-click start/stop, dictation, and "Launch at login". Close the window: recording, hotkey and menu keep working. Turn it off in Settings if you like your menu bar lean.
 - **🤖 Meetings that file themselves** — Name a Shortcut in Settings and every finished meeting runs it with the full Markdown (summary, action items, transcript) as input: straight to Notes, Mail, Slack — anything Shortcuts reaches. And any automation tool can start a recording by opening `portavoz://record`.
 - **⌨️ Dictate anywhere** — Turn it on in Settings and press ⌥⌘D in any app: speak, press it again, and your words are typed right where your cursor is. Same on-device engine as your meetings — your custom vocabulary included — and nothing is ever stored.

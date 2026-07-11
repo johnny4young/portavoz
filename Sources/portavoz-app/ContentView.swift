@@ -1,3 +1,4 @@
+import CoreSpotlight
 import IntegrationsKit
 import PortavozCore
 import SwiftUI
@@ -41,12 +42,25 @@ struct ContentView: View {
         }
         .task { await services.seedDemoIfRequested() }
         .task { await services.seedShowcaseIfRequested() }
+        .task(id: services.libraryVersion) {
+            // M16: meetings searchable from Spotlight. Full rebuild — cheap
+            // (metadata only) and immune to delete drift.
+            await SpotlightIndexer.reindexAll(store: services.store)
+        }
         .onOpenURL { url in
             // M16: portavoz://record — Shortcuts/automation tools can start
             // a recording (the user still sees it; nothing records hidden).
             if url.host() == "record" {
                 route = .recording(nil)
             }
+        }
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            // A Spotlight hit: its unique identifier is the meeting UUID.
+            guard
+                let raw = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                let uuid = UUID(uuidString: raw)
+            else { return }
+            route = .meeting(MeetingID(rawValue: uuid))
         }
         .task { reminder.start(services: services) }
         .task {
