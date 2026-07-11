@@ -134,6 +134,65 @@ extension MeetingStore {
         public let item: ActionItem
     }
 
+    /// A named participant and how many meetings they appear in.
+    public struct LibraryParticipant: Sendable, Equatable, Identifiable {
+        public let name: String
+        public let meetings: Int
+        public var id: String { name }
+    }
+
+    /// Library-wide people/commitment facts for the Insights dashboard.
+    public struct LibraryFacts: Sendable, Equatable {
+        /// Named (non-"Me") participants by how many meetings they appear
+        /// in — only names the user confirmed, never raw S-labels.
+        public let topParticipants: [LibraryParticipant]
+        public let openActionItems: Int
+        public let doneActionItems: Int
+    }
+
+    public func libraryFacts(topLimit: Int = 8) async throws -> LibraryFacts {
+        try await database.read { db in
+            let participantRows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT displayName AS name,
+                           COUNT(DISTINCT meetingID) AS meetings
+                    FROM speaker
+                    WHERE deletedAt IS NULL
+                      AND isMe = 0
+                      AND displayName IS NOT NULL
+                      AND TRIM(displayName) != ''
+                    GROUP BY LOWER(TRIM(displayName))
+                    ORDER BY meetings DESC, LOWER(TRIM(displayName)) ASC
+                    LIMIT ?
+                    """,
+                arguments: [topLimit])
+            // Same latest-snapshot rule as `openActionItems`: superseded
+            // summary versions must not double-count their items.
+            let counts = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT SUM(actionItem.isDone = 0) AS open,
+                           SUM(actionItem.isDone = 1) AS done
+                    FROM actionItem
+                    JOIN summary ON summary.id = actionItem.summaryID
+                        AND summary.deletedAt IS NULL
+                    WHERE actionItem.deletedAt IS NULL
+                      AND summary.version = (
+                          SELECT MAX(version) FROM summary latest
+                          WHERE latest.meetingID = summary.meetingID
+                            AND latest.recipeID = summary.recipeID
+                            AND latest.deletedAt IS NULL)
+                    """)
+            return LibraryFacts(
+                topParticipants: participantRows.map {
+                    LibraryParticipant(name: $0["name"], meetings: $0["meetings"])
+                },
+                openActionItems: counts?["open"] ?? 0,
+                doneActionItems: counts?["done"] ?? 0)
+        }
+    }
+
     /// Pending action items across all meetings — only from the LATEST
     /// summary snapshot of each (meeting, recipe), so superseded versions
     /// never duplicate their items.

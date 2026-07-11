@@ -87,6 +87,18 @@ struct LibraryView: View {
             .help("Natural-language questions over every meeting, answered on your Mac")
             .accessibilityIdentifier("library-ask-button")
 
+            Button {
+                route = .insights
+            } label: {
+                Label("Insights", systemImage: "chart.bar.xaxis")
+                    .frame(maxWidth: .infinity)
+            }
+            .controlSize(.small)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .help("Totals, cadence, people and commitments — computed on your Mac")
+            .accessibilityIdentifier("library-insights-button")
+
             if offerCalendar {
                 Button {
                     Task {

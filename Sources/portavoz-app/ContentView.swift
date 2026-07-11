@@ -9,6 +9,7 @@ enum Route: Hashable {
     case recording(UpcomingEvent?)
     case meeting(MeetingID)
     case ask
+    case insights
 }
 
 struct ContentView: View {
@@ -30,6 +31,8 @@ struct ContentView: View {
                     .id(id)  // reload state when switching meetings
             case .ask:
                 AskView(route: $route)
+            case .insights:
+                InsightsView()
             case nil:
                 ContentUnavailableView(
                     "Portavoz",

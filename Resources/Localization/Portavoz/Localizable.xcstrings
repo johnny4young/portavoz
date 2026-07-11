@@ -1,12 +1,32 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%d meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d reuniones"
+          }
+        }
+      }
+    },
     "%d model(s) available.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "%d modelo(s) disponible(s)."
+          }
+        }
+      }
+    },
+    "%d still open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d aún abiertos"
           }
         }
       }
@@ -87,6 +107,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Siglas, productos y nombres propios de tus reuniones. Guían la transcripción de calidad y los resúmenes para que “QVTL” no se convierta en otra cosa."
+          }
+        }
+      }
+    },
+    "Action items": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes"
           }
         }
       }
@@ -537,6 +567,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Comprimiendo…"
+          }
+        }
+      }
+    },
+    "Computed on your Mac, from your library — nothing leaves it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculado en tu Mac, desde tu biblioteca — nada sale de ella."
           }
         }
       }
@@ -1321,6 +1361,16 @@
         }
       }
     },
+    "Insights": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estadísticas"
+          }
+        }
+      }
+    },
     "Interruptions made by this speaker": {
       "localizations": {
         "es": {
@@ -1481,6 +1531,16 @@
         }
       }
     },
+    "Meetings per week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reuniones por semana"
+          }
+        }
+      }
+    },
     "Mentions: %@": {
       "localizations": {
         "es": {
@@ -1567,6 +1627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nombre"
+          }
+        }
+      }
+    },
+    "Name speakers in your meetings and the people you meet most will show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponles nombre a los speakers de tus reuniones y aquí aparecerán las personas con quienes más te reúnes."
           }
         }
       }
@@ -1787,6 +1857,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pausar"
+          }
+        }
+      }
+    },
+    "People you meet with": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con quién te reúnes"
           }
         }
       }
@@ -2591,6 +2671,16 @@
         }
       }
     },
+    "Summaries with commitments will count here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los resúmenes con compromisos contarán aquí."
+          }
+        }
+      }
+    },
     "Summarize as %@?": {
       "localizations": {
         "es": {
@@ -2891,6 +2981,16 @@
         }
       }
     },
+    "Totals, cadence, people and commitments — computed on your Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totales, cadencia, personas y compromisos — calculado en tu Mac"
+          }
+        }
+      }
+    },
     "Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting": {
       "localizations": {
         "es": {
@@ -3141,12 +3241,62 @@
         }
       }
     },
+    "avg length": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "duración media"
+          }
+        }
+      }
+    },
+    "busiest day": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "día más activo"
+          }
+        }
+      }
+    },
     "e.g. %@": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "p. ej. %@"
+          }
+        }
+      }
+    },
+    "meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reuniones"
+          }
+        }
+      }
+    },
+    "recorded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "grabadas"
+          }
+        }
+      }
+    },
+    "week streak": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "semanas seguidas"
           }
         }
       }
