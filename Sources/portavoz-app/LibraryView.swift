@@ -10,6 +10,9 @@ struct LibraryView: View {
     @Environment(AppServices.self) private var services
     @Binding var route: Route?
 
+    /// To-dos fold away when the user wants a lean sidebar; the choice
+    /// survives relaunches.
+    @AppStorage("todosSectionExpanded") private var todosExpanded = true
     @State private var meetings: [Meeting] = []
     @State private var query = ""
     @State private var hits: [SearchHit] = []
@@ -137,7 +140,7 @@ struct LibraryView: View {
                         }
                     }
                     if !openItems.isEmpty {
-                        Section("To-dos") {
+                        Section("To-dos", isExpanded: $todosExpanded) {
                             ForEach(openItems, id: \.item.id) { open in
                                 todoRow(open)
                             }
@@ -273,7 +276,10 @@ struct LibraryView: View {
 
     /// One open action item: check it off right here, or click through to
     /// its meeting. Checking bumps `libraryVersion`, which reloads the list
-    /// (and the detail view, which shares the same items).
+    /// (and the detail view, which shares the same items). NOT a selection
+    /// row: several to-dos share one meeting, and tagging them with it made
+    /// the List paint every sibling as selected at once (field bug, Jul 11)
+    /// — so navigation is an explicit tap and selection stays disabled.
     private func todoRow(_ open: MeetingStore.OpenActionItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Toggle(isOn: todoBinding(open)) { EmptyView() }
@@ -286,8 +292,10 @@ struct LibraryView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { route = .meeting(open.meetingID) }
         }
-        .tag(Route.meeting(open.meetingID))
+        .selectionDisabled()
     }
 
     private func todoBinding(_ open: MeetingStore.OpenActionItem) -> Binding<Bool> {
