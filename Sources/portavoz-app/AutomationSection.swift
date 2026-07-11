@@ -19,3 +19,22 @@ struct AutomationSection: View {
         }
     }
 }
+
+/// Menu-bar presence toggle: the `MenuBarExtra` scene observes the same
+/// key via `isInserted`, so the icon appears/disappears immediately.
+struct MenuBarSection: View {
+    @AppStorage("menuBarEnabled") private var menuBarEnabled = true
+
+    var body: some View {
+        Section("Menu bar") {
+            Toggle("Show Portavoz in the menu bar", isOn: $menuBarEnabled)
+            Text(
+                // One-line UI help text.
+                // swiftlint:disable:next line_length
+                "Recording state at a glance, one-click start/stop and dictation — Portavoz keeps working with the window closed."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+}

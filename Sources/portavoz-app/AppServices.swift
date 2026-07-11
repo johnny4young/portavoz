@@ -56,6 +56,10 @@ final class AppServices {
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()
+    /// THE recording session (one at a time by design): shared so the
+    /// recording view, the HUD and the menu bar all observe the same one,
+    /// and navigating away can never orphan a live session.
+    let recording = RecordingController()
 
     init() {
         do {

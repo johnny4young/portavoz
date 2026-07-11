@@ -20,14 +20,16 @@ struct PortavozApp: App {
         // Driven from init, not a view .task: a headless launch (open -n
         // from a script) may never mount the window, and the T4 RAM bench
         // must still run.
-        BenchMode.runRecordBenchIfRequested(services: services, recording: RecordingController())
+        BenchMode.runRecordBenchIfRequested(services: services, recording: services.recording)
         // Global feature, not a window feature: ⌥⌘D must work even with
         // the library window closed.
         services.dictation.syncHotkey(services: services)
     }
 
+    @AppStorage("menuBarEnabled") private var menuBarEnabled = true
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .portavozLocalized()
                 .environment(services)
@@ -37,6 +39,16 @@ struct PortavozApp: App {
         }
         .commands {
             CheckForUpdatesCommand()
+        }
+        MenuBarExtra(isInserted: $menuBarEnabled) {
+            MenuBarContent()
+                .portavozLocalized()
+                .environment(services)
+        } label: {
+            // Template symbol: red dot while a meeting records, waveform
+            // otherwise — the glanceable "am I recording?" answer.
+            Image(systemName: services.recording.phase == .recording
+                ? "record.circle.fill" : "waveform.and.mic")
         }
         Settings {
             SettingsView()

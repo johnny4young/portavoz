@@ -76,6 +76,7 @@ struct SettingsView: View {
             audioSection
             DictationSection()
             AutomationSection()
+            MenuBarSection()
             agendaSection
             recordingsSection
             titleSection

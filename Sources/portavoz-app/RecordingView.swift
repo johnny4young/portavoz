@@ -11,7 +11,9 @@ struct RecordingView: View {
     /// Calendar event this recording came from (brief's "Record this
     /// meeting") — nil for a blank recording.
     let event: UpcomingEvent?
-    @State private var controller = RecordingController()
+    /// Shared with the menu bar and the HUD (AppServices): the session
+    /// must be visible and stoppable from outside this view.
+    private var controller: RecordingController { services.recording }
     /// Log-viewer follow mode: captions auto-scroll while the user is at
     /// the bottom; scrolling away pauses the follow (so they can read
     /// back) and it resumes 10 s after the last manual scroll.

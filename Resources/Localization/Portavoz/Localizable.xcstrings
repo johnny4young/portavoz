@@ -831,6 +831,16 @@
         }
       }
     },
+    "Dictate (⌥⌘D)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictar (⌥⌘D)"
+          }
+        }
+      }
+    },
     "Dictate anywhere (⌥⌘D)": {
       "localizations": {
         "es": {
@@ -1371,6 +1381,16 @@
         }
       }
     },
+    "Launch at login": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir al iniciar sesión"
+          }
+        }
+      }
+    },
     "Listening…": {
       "localizations": {
         "es": {
@@ -1467,6 +1487,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Menciona: %@"
+          }
+        }
+      }
+    },
+    "Menu bar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barra de menú"
           }
         }
       }
@@ -1731,6 +1761,16 @@
         }
       }
     },
+    "Open Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Portavoz"
+          }
+        }
+      }
+    },
     "Or skip — they download on your first recording.": {
       "localizations": {
         "es": {
@@ -1901,6 +1941,16 @@
         }
       }
     },
+    "Quit Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salir de Portavoz"
+          }
+        }
+      }
+    },
     "Qwen3.5 4B · downloaded · 3 GB": {
       "localizations": {
         "es": {
@@ -1977,6 +2027,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grabando micrófono + audio del sistema — todo se queda en tu Mac"
+          }
+        }
+      }
+    },
+    "Recording state at a glance, one-click start/stop and dictation — Portavoz keeps working with the window closed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El estado de grabación de un vistazo, iniciar/detener con un click y dictado — Portavoz sigue funcionando con la ventana cerrada."
           }
         }
       }
@@ -2301,6 +2361,16 @@
         }
       }
     },
+    "Show Portavoz in the menu bar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar Portavoz en la barra de menú"
+          }
+        }
+      }
+    },
     "Show available tokens and examples": {
       "localizations": {
         "es": {
@@ -2377,6 +2447,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inicio"
+          }
+        }
+      }
+    },
+    "Start recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar grabación"
           }
         }
       }
