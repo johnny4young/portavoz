@@ -131,6 +131,12 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>Portavoz can use the macOS speech engine as an on-device transcription fallback.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
+    <key>NSUserActivityTypes</key>
+    <array>
+        <!-- CSSearchableItemActionType: without this, a Spotlight hit only
+             activates the app and the continuation never reaches SwiftUI. -->
+        <string>com.apple.corespotlightitem</string>
+    </array>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
