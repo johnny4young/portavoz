@@ -41,6 +41,13 @@ struct ContentView: View {
         }
         .task { await services.seedDemoIfRequested() }
         .task { await services.seedShowcaseIfRequested() }
+        .onOpenURL { url in
+            // M16: portavoz://record — Shortcuts/automation tools can start
+            // a recording (the user still sees it; nothing records hidden).
+            if url.host() == "record" {
+                route = .recording(nil)
+            }
+        }
         .task { reminder.start(services: services) }
         .task {
             // T4 startup bench (hidden launch arg): measures to first frame,

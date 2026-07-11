@@ -43,3 +43,9 @@ Binario SPM (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli
 1. MCP sin auth (proceso local por stdio — aceptable; el plan de seguridad exige localhost+token si algún día hay transporte de red).
 2. `issues` y `export --gist` verificados offline, publish real con tokens del usuario pendiente.
 3. Sin App Intents/Shortcuts (M16).
+
+## Automatización M16 (jul 2026)
+
+- **Hook post-reunión**: `PostMeetingShortcut.runIfConfigured(markdown:)` — al `.done` del stop, si Ajustes → Automation tiene un nombre de Atajo, corre `/usr/bin/shortcuts run <name> --input-path <tmp.md>` con el export Markdown completo (MeetingExporter). Fire-and-forget deliberado: jamás bloquea ni retrasa el pipeline; los fallos del Atajo se ven en Shortcuts (la reunión ya está guardada igual).
+- **URL scheme** `portavoz://record` (CFBundleURLTypes en make-app.sh): abre la app y ARRANCA una grabación — visible siempre (ventana + indicador de mic; nada graba oculto). Verificado E2E: `open "portavoz://record"` lanza, navega y graba. Combinado con automatizaciones de Shortcuts (hora/calendario) da auto-grabación programada.
+- **AppIntents/Siri**: diferido a M14a — el appintentsmetadataprocessor solo corre en builds Xcode; el bundle SPM de make-app.sh no registra intents.

@@ -461,6 +461,7 @@ final class RecordingController {
             try await services.store.save(attribution.segments)
             try await services.store.save(contextItems)
 
+            var savedSummary: SummaryDraft?
             do {
                 phase = .processing(L10n.text("Generating summary…"))
                 let language = Locale.current.language.languageCode?.identifier ?? "en"
@@ -477,11 +478,17 @@ final class RecordingController {
                 // fine — the transcript is already saved.
                 if let draft = try? await services.summarize(request) {
                     try await services.store.saveSummary(draft)
+                    savedSummary = draft
                 }
             }
 
             services.libraryVersion += 1
             phase = .done(meetingID)
+            // M16: hand the finished meeting to the user's Shortcut (if
+            // configured) — after .done so automation never delays the UI.
+            PostMeetingShortcut.runIfConfigured(markdown: MeetingExporter.markdown(
+                meeting: meeting, speakers: attribution.speakers,
+                segments: attribution.segments, summary: savedSummary))
         } catch {
             phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
         }

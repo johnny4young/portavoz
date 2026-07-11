@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🤖 Meetings that file themselves** — Name a Shortcut in Settings and every finished meeting runs it with the full Markdown (summary, action items, transcript) as input: straight to Notes, Mail, Slack — anything Shortcuts reaches. And any automation tool can start a recording by opening `portavoz://record`.
 - **⌨️ Dictate anywhere** — Turn it on in Settings and press ⌥⌘D in any app: speak, press it again, and your words are typed right where your cursor is. Same on-device engine as your meetings — your custom vocabulary included — and nothing is ever stored.
 - **🎭 Portavoz remembers who sounds like whom** — After you name a speaker, one click remembers their voice; in your next meeting a chip suggests "S1 → Marta?" from the voice alone. Strictly opt-in per person, stored only as an encrypted numeric fingerprint on your Mac (never audio, never synced), forgettable one-by-one or all at once in Settings.
 - **🎈 Memory comes back when the work is done** — The big models now unload themselves after idling: the embedded summarizer returned its 2.4 GB two minutes after a summary, Whisper its 1.6 GB after a refine, and the live engines wind down ten minutes after a meeting. Between meetings, Portavoz sits under 200 MB instead of holding gigabytes hostage.

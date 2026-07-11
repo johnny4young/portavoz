@@ -55,7 +55,7 @@ Constraint duro D11: iOS no captura audio de otras apps. El iPhone es **grabador
 | Milestone | Scope | Acceptance criterion |
 |---|---|---|
 | **M15 — Sharing L1 (D12)** | CKShare de reunión entre Apple IDs (read-only primero); "bundle" exportable `.portavoz` (manifest + sqlite extract + audio opcional) como formato de intercambio offline | Compartir una reunión con otro Apple ID; abrir un bundle en otra Mac |
-| **M16 — App Intents / Shortcuts** | Automatizaciones post-reunión (resumen→Notes/mail/Slack vía Shortcuts), auto-grabación por calendario con guardrails, Spotlight/Quick Look | "Cuando termine una reunión del calendario X, exporta el resumen a Y" sin tocar la app |
+| **M16 — App Intents / Shortcuts** | **v1 HECHA (jul 2026)**: (1) hook post-reunión — Ajustes → nombre de un Atajo que corre al terminar cada reunión con el Markdown completo como input (`shortcuts run` + `--input-path`, best-effort, jamás bloquea el pipeline); (2) URL scheme `portavoz://record` (CFBundleURLTypes) — cualquier automatización arranca una grabación VISIBLE (verificado E2E). **Diferido**: AppIntents/Siri phrases — el metadata processor de AppIntents solo corre en builds Xcode; entra con el proyecto Xcode de M14a. Falta: Spotlight/Quick Look | "Cuando termine una reunión del calendario X, exporta el resumen a Y" sin tocar la app ✅ (Shortcut con el Markdown como input) |
 | **M17 — Sharing L2** | Relay self-hostable (patrón Humla/PocketBase) con visor web read-only de snapshots | Un participante sin la app lee el resumen vía link self-hosted |
 | **M18 — visionOS (halo)** | Port SwiftUI de biblioteca+detalle; sala de revisión inmersiva (timeline espacial con clips); sin promesas de captura | Revisar una reunión en Vision Pro con timeline espacial |
 

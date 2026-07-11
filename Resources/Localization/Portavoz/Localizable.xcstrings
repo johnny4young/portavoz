@@ -301,6 +301,16 @@
         }
       }
     },
+    "Automation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatización"
+          }
+        }
+      }
+    },
     "Back": {
       "localizations": {
         "es": {
@@ -2191,6 +2201,16 @@
         }
       }
     },
+    "Run a Shortcut when a meeting ends": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corre un Atajo cuando termina una reunión"
+          }
+        }
+      }
+    },
     "Sample": {
       "localizations": {
         "es": {
@@ -2847,6 +2867,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Turbo — mejor calidad"
+          }
+        }
+      }
+    },
+    "Type the exact name of a Shortcut; it receives the finished meeting as Markdown (summary, action items and transcript) — connect it to Notes, Mail, Slack or anything else. Tip: any automation tool can also start a recording by opening portavoz://record.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe el nombre exacto de un Atajo; recibe la reunión terminada en Markdown (resumen, pendientes y transcript) — conéctalo a Notas, Mail, Slack o lo que quieras. Tip: cualquier herramienta de automatización también puede iniciar una grabación abriendo portavoz://record."
           }
         }
       }

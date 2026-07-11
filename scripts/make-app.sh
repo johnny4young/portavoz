@@ -131,6 +131,17 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>Portavoz can use the macOS speech engine as an on-device transcription fallback.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>app.portavoz.mac</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>portavoz</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST
