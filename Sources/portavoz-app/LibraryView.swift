@@ -18,6 +18,8 @@ struct LibraryView: View {
     @State private var hits: [SearchHit] = []
     /// Open action items across ALL meetings — the cross-meeting to-do list.
     @State private var openItems: [MeetingStore.OpenActionItem] = []
+    /// Soft-deleted meetings for the "Recently deleted" section.
+    @State private var trashed: [MeetingStore.DeletedMeeting] = []
     /// Prep agenda (M13b): the rest of today's meetings + tomorrow's,
     /// collapsible in the sidebar; clicking one builds its brief ON DEMAND
     /// (no FM spent up front). Loads only when calendar access was already
@@ -185,6 +187,7 @@ struct LibraryView: View {
                             }
                         }
                     }
+                    TrashSection(items: trashed)
                 }
             }
             .listStyle(.sidebar)
@@ -239,6 +242,7 @@ struct LibraryView: View {
     private func reload() async {
         meetings = (try? await services.store.meetings()) ?? []
         openItems = (try? await services.store.openActionItems(limit: 20)) ?? []
+        trashed = (try? await services.store.deletedMeetings()) ?? []
         await refreshBrief()
     }
 

@@ -871,12 +871,32 @@
         }
       }
     },
+    "Delete permanently": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar definitivamente"
+          }
+        }
+      }
+    },
     "Delete token": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Eliminar token"
+          }
+        }
+      }
+    },
+    "Deleted %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminada %@"
           }
         }
       }
@@ -1487,6 +1507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saltar a este momento"
+          }
+        }
+      }
+    },
+    "Kept for 30 days, then removed for good.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se conservan 30 días y luego se eliminan definitivamente."
           }
         }
       }
@@ -2161,6 +2191,16 @@
         }
       }
     },
+    "Recently deleted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminadas recientemente"
+          }
+        }
+      }
+    },
     "Record a meeting or choose one from the library. Everything is processed on your Mac.": {
       "localizations": {
         "es": {
@@ -2417,6 +2457,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restablecer"
+          }
+        }
+      }
+    },
+    "Restore this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar esta reunión"
           }
         }
       }

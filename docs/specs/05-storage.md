@@ -51,3 +51,7 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: token GitHu
 2. Sin columna `provenance` (qué engine produjo cada resumen/segmento) — planeada en D25, aditiva.
 3. `visibility` reservada sin uso (sharing D12).
 4. FTS a 1,000 reuniones sin medir (corpus sintético pendiente, spec 08).
+
+## Papelera (jul 2026)
+
+Los deletes SIEMPRE fueron tombstones (D4); la papelera les da puerta de regreso. `deletedMeetings()` (tombstoned, más reciente primero), `restore(_:)` (limpia el tombstone del meeting — los hijos nunca se tombstonean, las queries filtran a través del meeting, así que TODO vuelve), `purge(_:)` (hard-DELETE de todas las filas; se REHÚSA en reuniones vivas — la papelera es la única puerta; el FTS se limpia solo vía los triggers `synchronize` de GRDB; borrar el audio en disco es del caller). App: sección "Recently deleted" al fondo del sidebar (colapsada; invisible vacía; items cargados por el reload del PADRE — un lifecycle modifier sobre una view-que-produce-Section dentro de una List no dispara confiablemente), restore de un click, "Delete permanently" por context menu (`AppServices.purgeMeeting` borra filas + carpeta de audio), y auto-purge >30 días al launch (`purgeExpiredTrash`). Verificado E2E: borrar → aparece → restore → vuelve completa. 2 tests (round-trip con hijos; purge rehusa vivas y limpia FTS).

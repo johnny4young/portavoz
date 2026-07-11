@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🗑️ Deleted, not gone** — Deleting a meeting now sends it to "Recently deleted" at the bottom of the sidebar: restore it with one click (transcript, summary, audio — everything comes back), or right-click to delete it permanently. The trash empties itself after 30 days.
 - **⌨️ Your dictation, your keys** — The dictation hotkey is now yours to choose: click the recorder in Settings, press any combo (⌃⌥⇧⌘ + key), done. Combos without ⌘ or ⌥ are rejected so a bare letter never hijacks your typing.
 - **🗄️ Your whole library, in plain files** — One click in Settings exports every meeting as a readable Markdown file (summary, action items, full transcript) into a folder you choose — read, grep and back them up without Portavoz. Your history is never hostage, now literally.
 - **🕐 Recent meetings in the menu bar** — Your three latest meetings, one click away from the menu bar icon.

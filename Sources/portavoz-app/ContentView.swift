@@ -44,6 +44,7 @@ struct ContentView: View {
             }
         }
         .task { await services.seedDemoIfRequested() }
+        .task { await services.purgeExpiredTrash() }
         .task { await services.seedShowcaseIfRequested() }
         .task(id: services.libraryVersion) {
             // M16: meetings searchable from Spotlight. Full rebuild — cheap

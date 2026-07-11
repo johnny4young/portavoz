@@ -216,6 +216,59 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    // MARK: - Trash (soft-deleted meetings)
+
+    /// A soft-deleted meeting and when it was deleted — the "Recently
+    /// deleted" list. Tombstones already exist for sync (D4); this just
+    /// surfaces them.
+    public struct DeletedMeeting: Sendable, Identifiable {
+        public let meeting: Meeting
+        public let deletedAt: Date
+        public var id: MeetingID { meeting.id }
+    }
+
+    public func deletedMeetings() async throws -> [DeletedMeeting] {
+        try await database.read { db in
+            try MeetingRecord
+                .filter(Column("deletedAt") != nil)
+                .order(Column("deletedAt").desc)
+                .fetchAll(db)
+                .compactMap { record in
+                    guard let deletedAt = record.deletedAt else { return nil }
+                    return DeletedMeeting(meeting: try record.meeting, deletedAt: deletedAt)
+                }
+        }
+    }
+
+    /// Undeletes: clearing the meeting's tombstone brings everything back —
+    /// children were never tombstoned (queries filter through the meeting).
+    public func restore(_ id: MeetingID) async throws {
+        try await database.write { db in
+            try db.execute(
+                sql: "UPDATE meeting SET deletedAt = NULL, updatedAt = ? WHERE id = ?",
+                arguments: [Date(), id.rawValue.uuidString])
+        }
+    }
+
+    /// Permanently removes a SOFT-DELETED meeting and all its rows (the
+    /// FTS index cleans itself via GRDB's synchronize triggers). Refuses
+    /// live meetings — purging must always go through the trash. Deleting
+    /// the audio folder on disk is the caller's job (paths are app-side).
+    public func purge(_ id: MeetingID) async throws {
+        let key = id.rawValue.uuidString
+        try await database.write { db in
+            guard
+                let record = try MeetingRecord.fetchOne(db, key: key),
+                record.deletedAt != nil
+            else { return }
+            for table in ["actionItem", "summary", "contextItem", "segment", "speaker"] {
+                try db.execute(
+                    sql: "DELETE FROM \(table) WHERE meetingID = ?", arguments: [key])
+            }
+            try db.execute(sql: "DELETE FROM meeting WHERE id = ?", arguments: [key])
+        }
+    }
+
     // MARK: - Context items (D28: the user's notes = intent)
 
     public func save(_ items: [ContextItem]) async throws {

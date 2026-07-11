@@ -108,6 +108,46 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertNil(detail, "tombstoned meetings don't load")
     }
 
+    // MARK: - Trash: restore and purge over tombstones
+
+    func testTrashListsRestoresAndPurges() async throws {
+        _ = try await seedMeetingWithTranscript()
+        try await store.delete(meeting.id)
+
+        // Listed in the trash, newest deletion first.
+        let trash = try await store.deletedMeetings()
+        XCTAssertEqual(trash.map(\.meeting.id), [meeting.id])
+
+        // Restore brings the meeting AND its content back untouched.
+        try await store.restore(meeting.id)
+        let visible = try await store.meetings().map(\.id)
+        XCTAssertEqual(visible, [meeting.id])
+        let restored = try await store.detail(meeting.id)
+        let detail = try XCTUnwrap(restored)
+        XCTAssertFalse(detail.segments.isEmpty, "children come back with the meeting")
+        let trashAfter = try await store.deletedMeetings()
+        XCTAssertTrue(trashAfter.isEmpty)
+    }
+
+    func testPurgeRefusesLiveMeetingsAndErasesTombstonedOnes() async throws {
+        _ = try await seedMeetingWithTranscript()
+
+        // Purging a LIVE meeting is a no-op: the trash is the only door.
+        try await store.purge(meeting.id)
+        let liveCount = try await store.meetings().count
+        XCTAssertEqual(liveCount, 1)
+
+        try await store.delete(meeting.id)
+        try await store.purge(meeting.id)
+        let all = try await store.meetings(includeDeleted: true)
+        XCTAssertTrue(all.isEmpty)
+        let trash = try await store.deletedMeetings()
+        XCTAssertTrue(trash.isEmpty)
+        // FTS cleaned via GRDB triggers: no hits survive the purge.
+        let hits = try await store.search("presupuesto")
+        XCTAssertTrue(hits.isEmpty)
+    }
+
     // MARK: - D4: summaries are immutable versioned snapshots
 
     func testSummaryVersionsIncrementAndOldSnapshotsSurvive() async throws {
