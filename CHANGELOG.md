@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 10, 2026
 
+- **🎚️ Dictation shows it hears you** — The floating dictation strip now has a live mic meter, so you know your voice is landing before the words appear.
 - **📊 Insights** — A new dashboard of your meeting life, computed entirely on your Mac: totals and hours recorded, meetings-per-week cadence, your weekly streak, busiest day, the people you meet most, and how your action items are going. One click in the sidebar.
 - **🧹 A tidier to-do sidebar** — The To-dos section now folds away (your choice sticks between launches), and checking off one to-do no longer paints its whole meeting's siblings as selected. Clicking a to-do still jumps to its meeting.
 - **🔦 Meetings in Spotlight** — Search a meeting title or a phrase someone said right from Spotlight (⌘Space); one click opens the exact meeting. The index is your Mac's local one — nothing leaves the machine.

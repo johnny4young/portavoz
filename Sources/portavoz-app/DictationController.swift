@@ -29,6 +29,8 @@ final class DictationController {
     private(set) var confirmedText = ""
     /// The still-changing tail of what's being said.
     private(set) var partialText = ""
+    /// Mic peak with fast attack / slow decay (same VU feel as the HUD).
+    private(set) var micLevel: Float = 0
 
     private var hotkey: GlobalHotkey?
     private var microphone: MicrophoneSource?
@@ -80,6 +82,7 @@ final class DictationController {
         phase = .listening
         confirmedText = ""
         partialText = ""
+        micLevel = 0
         panel.show(controller: self)
 
         session = Task { [weak self, weak services] in
@@ -96,9 +99,13 @@ final class DictationController {
 
                 let (audio, feed) = AsyncStream.makeStream(of: AudioChunk.self)
                 self.feed = feed
-                let pump = Task {
+                let pump = Task { [weak self] in
                     do {
-                        for try await chunk in micStream { feed.yield(chunk) }
+                        for try await chunk in micStream {
+                            let peak = chunk.samples.reduce(Float(0)) { max($0, abs($1)) }
+                            if let self { self.micLevel = max(peak, self.micLevel * 0.8) }
+                            feed.yield(chunk)
+                        }
                     } catch {}
                     feed.finish()
                 }

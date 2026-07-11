@@ -57,6 +57,9 @@ private struct DictationStripView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
+                if controller.phase == .listening {
+                    meter
+                }
                 Button {
                     controller.cancel()
                 } label: {
@@ -75,6 +78,26 @@ private struct DictationStripView: View {
         .padding(12)
         .frame(width: 520)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Same dB mapping as the recording HUD's meter: −60 dB → 0, 0 dB → 1.
+    private var meter: some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(.quaternary)
+            GeometryReader { geometry in
+                Capsule()
+                    .fill(Color.indigo)
+                    .frame(width: geometry.size.width * meterFraction)
+            }
+        }
+        .frame(width: 70, height: 4)
+    }
+
+    private var meterFraction: CGFloat {
+        let level = controller.micLevel
+        guard level > 0.0001 else { return 0 }
+        let decibels = 20 * log10(level)
+        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
     }
 
     private var isFailed: Bool {
