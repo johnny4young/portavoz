@@ -80,6 +80,7 @@ struct SettingsView: View {
             vocabularySection
             summaryEngineSection
             voiceSection
+            RememberedVoicesSection()
             companionSection
             byokSection
             gitHubSection

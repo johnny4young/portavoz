@@ -33,6 +33,15 @@ Pedido de campo: dos voces remotas hablando seguido se fundían en una sola fila
 - Embedding WeSpeaker 256-dim de ~12 s de voz sola (el audio fuente NO se conserva). Cifrado AES-GCM; la llave SOLO en Keychain (service `app.portavoz.voiceprint-key`, inyectable para tests). `delete()` destruye archivo + llave en una acción. Jamás se sincroniza (se re-enrola por dispositivo).
 - Enrolamiento: app (Ajustes → "Enrolar mi voz", 12 s) o CLI `voice enroll --file <wav>`. El diarizer lo carga con `initializeKnownSpeakers(isPermanent: true)` → label reservado "Me" cross-canal (reuniones híbridas: tu voz llegando por la sala/system también es tuya).
 
+## Voces recordadas de participantes (jul 2026) — cross-meeting naming
+
+Pedido de campo: recordar la voz de un participante entre reuniones para autosugerir su nombre. Reglas MÁS estrictas que el voiceprint propio (guardar biometría de terceros es más sensible, D8):
+
+- **`VoiceGallery`** (`voice-gallery.enc`, mismo patrón que VoiceprintStore: AES-GCM, llave solo en Keychain service `app.portavoz.voice-gallery-key`, jamás sync). Una voz entra SOLO por gesto explícito: el chip "Remember X's voice?" que aparece tras confirmar un nombre (rename manual o chip aplicado). Re-recordar a alguien REEMPLAZA su embedding (uno por persona, case-insensitive). Individual removible (context menu en Ajustes → "Remembered voices") y "Forget all voices" destruye archivo + llave en una acción.
+- **`PyannoteDiarizer.extractVoiceprints(fromFile:rangesBySpeaker:minimumSeconds:maximumSeconds:)`**: un embedding por speaker desde sus spans del canal system — resamplea el archivo UNA vez, corta por rangos (los más largos primero hasta 20 s; < 5 s se descarta: un embedding corto matchearía ruido). Los embeddings son transitorios: NADA se persiste aquí.
+- **`VoiceMatcher`** (puro, 5 tests): distancia coseno propia (fuera de FluidAudio — el clustering interno no sirve cross-meeting), umbral `maxCosineDistance = 0.54` (la misma vara efectiva del clustering D17; pendiente calibración de campo). Cada speaker recibe a lo sumo su voz más cercana y cada voz de la galería se sugiere a lo sumo a un speaker (dos speakers no pueden ser ambos "Marta"). Embeddings degenerados (norma 0, dims distintas) jamás matchean.
+- **UI (MeetingDetailView)**: al abrir un detalle con speakers sin nombre + galería no vacía, un diarizer EFÍMERO (~14 MB; los engines pesados NO se cargan) extrae y matchea una vez por visita → chips "S1 → ¿Marta?" con icono waveform (la evidencia es la voz, no el transcript — por eso NO pasa por `NameSuggestionFilter`). Mismo contrato D21: chip, click, jamás se aplica solo.
+
 ## Nombres automáticos (D21) — IntelligenceKit
 
 - `SpeakerNamer.suggestNames`: propone label→nombre SOLO con evidencia. `NamingExcerpt` arma el contexto: primeras 3 intervenciones sustanciales (≥25 chars) por speaker + líneas que mencionan candidatos del calendario, cronológico, cap 2000 chars (un prefix ciego desbordaba la ventana de 4096 y solo veía el inicio). Retry con extracto a la mitad si aún desborda.

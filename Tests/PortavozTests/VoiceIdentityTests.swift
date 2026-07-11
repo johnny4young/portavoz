@@ -67,6 +67,132 @@ final class VoiceprintStoreTests: XCTestCase {
     }
 }
 
+// MARK: - Remembered voices of participants (D8: stricter than "Me")
+
+final class VoiceGalleryTests: XCTestCase {
+    private var directory: URL!
+    private var keyService: String!
+    private var gallery: VoiceGallery!
+
+    override func setUpWithError() throws {
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-gallery-\(UUID().uuidString)")
+        keyService = "app.portavoz.tests.gallery.\(UUID().uuidString)"
+        gallery = VoiceGallery(directory: directory, keyService: keyService)
+    }
+
+    override func tearDownWithError() throws {
+        try? gallery.deleteAll()
+        try? FileManager.default.removeItem(at: directory)
+    }
+
+    func testRememberRoundTripIsEncryptedAtRest() throws {
+        let voice = RememberedVoice(name: "Marta", embedding: (0..<256).map { Float($0) / 256 })
+        do {
+            try gallery.remember(voice)
+        } catch {
+            throw XCTSkip("keychain unavailable in this environment: \(error)")
+        }
+
+        let voices = try gallery.voices()
+        XCTAssertEqual(voices.count, 1)
+        XCTAssertEqual(voices[0].name, "Marta")
+        XCTAssertEqual(voices[0].embedding, voice.embedding)
+
+        let raw = try Data(contentsOf: directory.appendingPathComponent("voice-gallery.enc"))
+        XCTAssertFalse(String(decoding: raw, as: UTF8.self).contains("Marta"))
+    }
+
+    func testReRememberingReplacesByNameCaseInsensitively() throws {
+        do {
+            try gallery.remember(RememberedVoice(name: "Marta", embedding: [1, 0, 0]))
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+        try gallery.remember(RememberedVoice(name: "marta", embedding: [0, 1, 0]))
+
+        let voices = try gallery.voices()
+        XCTAssertEqual(voices.count, 1, "one embedding per person, refreshed")
+        XCTAssertEqual(voices[0].embedding, [0, 1, 0])
+    }
+
+    func testRemoveLastVoiceDestroysFileAndKey() throws {
+        let voice = RememberedVoice(name: "Ilarion", embedding: [1, 2, 3])
+        do {
+            try gallery.remember(voice)
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+
+        try gallery.remove(id: voice.id)
+        XCTAssertFalse(gallery.exists)
+        XCTAssertNil(try SecretStore.get(service: keyService))
+        XCTAssertTrue(try gallery.voices().isEmpty)
+    }
+
+    func testDeleteAllRemovesFileAndKeyInOneAction() throws {
+        do {
+            try gallery.remember(RememberedVoice(name: "Marta", embedding: [1]))
+            try gallery.remember(RememberedVoice(name: "Ilarion", embedding: [2]))
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+
+        try gallery.deleteAll()
+        XCTAssertFalse(gallery.exists)
+        XCTAssertNil(try SecretStore.get(service: keyService))
+    }
+}
+
+final class VoiceMatcherTests: XCTestCase {
+    func testCosineDistanceBasics() {
+        XCTAssertEqual(VoiceMatcher.cosineDistance([1, 0], [1, 0]), 0)
+        XCTAssertEqual(VoiceMatcher.cosineDistance([1, 0], [0, 1]), 1)
+        XCTAssertNil(VoiceMatcher.cosineDistance([1, 0], [1, 0, 0]), "dimension mismatch")
+        XCTAssertNil(VoiceMatcher.cosineDistance([0, 0], [1, 0]), "zero vector never matches")
+        XCTAssertNil(VoiceMatcher.cosineDistance([], []))
+    }
+
+    func testMatchesClosestVoiceWithinThreshold() {
+        let gallery = [
+            RememberedVoice(name: "Marta", embedding: [1, 0, 0]),
+            RememberedVoice(name: "Ilarion", embedding: [0, 1, 0]),
+        ]
+        let matches = VoiceMatcher.matches(
+            speakers: [("S1", [0.9, 0.1, 0]), ("S2", [0, 0, 1])],
+            gallery: gallery)
+
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertEqual(matches[0].voiceLabel, "S1")
+        XCTAssertEqual(matches[0].name, "Marta")
+        XCTAssertLessThanOrEqual(matches[0].distance, VoiceMatcher.maxCosineDistance)
+    }
+
+    func testEachGalleryVoiceSuggestsAtMostOneSpeaker() {
+        let gallery = [RememberedVoice(name: "Marta", embedding: [1, 0])]
+        // Both speakers resemble Marta; only the closest may claim her.
+        let matches = VoiceMatcher.matches(
+            speakers: [("S1", [0.9, 0.1]), ("S2", [0.99, 0.01])],
+            gallery: gallery)
+
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertEqual(matches[0].voiceLabel, "S2")
+    }
+
+    func testRespectsThresholdBoundary() {
+        let gallery = [RememberedVoice(name: "Marta", embedding: [1, 0])]
+        // Orthogonal voice (distance 1) is far past any sane threshold.
+        let matches = VoiceMatcher.matches(speakers: [("S1", [0, 1])], gallery: gallery)
+        XCTAssertTrue(matches.isEmpty)
+    }
+
+    func testDegenerateEmbeddingNeverMatches() {
+        let gallery = [RememberedVoice(name: "Marta", embedding: [1, 0])]
+        let matches = VoiceMatcher.matches(speakers: [("S1", [0, 0])], gallery: gallery)
+        XCTAssertTrue(matches.isEmpty)
+    }
+}
+
 // MARK: - "Me" via voiceprint in attribution
 
 final class VoiceprintAttributionTests: XCTestCase {

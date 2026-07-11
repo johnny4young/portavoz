@@ -102,6 +102,41 @@ public actor PyannoteDiarizer: Diarizer {
         return Voiceprint(embedding: try manager.extractSpeakerEmbedding(from: resampled))
     }
 
+    /// One voiceprint per speaker from their speech ranges in a meeting's
+    /// audio (the cross-meeting name-suggestion path). The file is
+    /// resampled ONCE and sliced per speaker; the longest ranges win until
+    /// `maximumSeconds` is gathered (enrollment guidance is ≥ 5 s, so
+    /// speakers under `minimumSeconds` of usable audio are skipped — a
+    /// too-short embedding would match noise). Only embeddings leave this
+    /// call; nothing is persisted here.
+    public func extractVoiceprints(
+        fromFile url: URL,
+        rangesBySpeaker: [String: [ClosedRange<TimeInterval>]],
+        minimumSeconds: TimeInterval = 5,
+        maximumSeconds: TimeInterval = 20
+    ) throws -> [String: Voiceprint] {
+        let samples = try converter.resampleAudioFile(url)
+        let rate = Double(Self.modelSampleRate)
+        var result: [String: Voiceprint] = [:]
+        for (label, ranges) in rangesBySpeaker {
+            var gathered: [Float] = []
+            let byLength = ranges.sorted {
+                ($0.upperBound - $0.lowerBound) > ($1.upperBound - $1.lowerBound)
+            }
+            for range in byLength {
+                guard gathered.count < Int(maximumSeconds * rate) else { break }
+                let start = max(0, Int(range.lowerBound * rate))
+                let end = min(samples.count, Int(range.upperBound * rate))
+                guard end > start else { continue }
+                gathered.append(contentsOf: samples[start..<end])
+            }
+            guard gathered.count >= Int(minimumSeconds * rate) else { continue }
+            result[label] = Voiceprint(
+                embedding: try manager.extractSpeakerEmbedding(from: gathered))
+        }
+        return result
+    }
+
     // MARK: - Diarizer
 
     nonisolated public func diarize(

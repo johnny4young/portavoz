@@ -3,6 +3,7 @@ import AudioPlaybackKit
 import DiarizationKit
 import IntegrationsKit
 import IntelligenceKit
+import ModelStoreKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -69,6 +70,14 @@ struct MeetingDetailView: View {
     /// Content-based title suggestion — same contract: chip, click, never solo.
     @State private var suggestedTitle: String?
     @State private var suggestedTitleOnce = false
+    /// Cross-meeting voice matches (D8/D21): computed once per visit when
+    /// the gallery has voices and unnamed speakers exist — chips only.
+    @State private var voiceSuggestions: [VoiceMatcher.Match] = []
+    @State private var voiceMatchedOnce = false
+    /// After the user confirms a name (rename or chip), offer — never do —
+    /// remembering that speaker's voice for future meetings.
+    @State private var rememberOffer: Speaker?
+    @State private var rememberingVoice = false
 
     var body: some View {
         Group {
@@ -454,6 +463,62 @@ extension MeetingDetailView {
                 .buttonStyle(.plain)
                 .help("Evidence: \(suggestion.evidence)")
             }
+            // Cross-meeting voice matches: same chip contract, waveform icon
+            // marks the evidence as "their voice", not the transcript.
+            ForEach(voiceSuggestions, id: \.voiceLabel) { match in
+                Button {
+                    Task { await apply(match, in: detail) }
+                } label: {
+                    Label("\(match.voiceLabel) → \(match.name)?", systemImage: "waveform")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(L10n.format(
+                    "Voice match: sounds like “%@” from your remembered voices.", match.name))
+            }
+            rememberOfferChip
+        }
+    }
+
+    /// The explicit-consent gesture (D8): after the user names a speaker,
+    /// offer to remember that voice — never remember it silently.
+    @ViewBuilder
+    private var rememberOfferChip: some View {
+        if let offer = rememberOffer, let name = offer.displayName {
+            if rememberingVoice {
+                ProgressView().controlSize(.small)
+            } else {
+                HStack(spacing: 6) {
+                    Label(
+                        L10n.format("Remember %@’s voice?", name),
+                        systemImage: "person.wave.2")
+                    .font(.caption)
+                    Button(L10n.text("Remember")) {
+                        Task { await rememberVoice(of: offer) }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+                    Button {
+                        rememberOffer = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.text("Dismiss voice offer"))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.accentColor.opacity(0.08), in: Capsule())
+                .help(L10n.text(
+                    // One-line UI help text.
+                    // swiftlint:disable:next line_length
+                    "Stores only an encrypted numeric fingerprint of their voice on this Mac — never the audio, never synced — so future meetings can suggest their name. Removable in Settings."))
+            }
         }
     }
 
@@ -489,6 +554,103 @@ extension MeetingDetailView {
         try? await services.store.save([speaker])
         nameSuggestions.removeAll { $0.label == suggestion.label }
         services.libraryVersion += 1
+        offerToRemember(speaker)
+    }
+
+    // MARK: Cross-meeting voices (D8/D21)
+
+    private func apply(_ match: VoiceMatcher.Match, in detail: MeetingDetail) async {
+        guard var speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
+            return
+        }
+        speaker.displayName = match.name
+        try? await services.store.save([speaker])
+        voiceSuggestions.removeAll { $0.voiceLabel == match.voiceLabel }
+        services.libraryVersion += 1
+    }
+
+    /// Offers the remember-this-voice chip after a name was confirmed by a
+    /// user gesture. Skipped for "Me" (that's the enrollment in Settings)
+    /// and for names already in the gallery (their voice is remembered).
+    private func offerToRemember(_ speaker: Speaker) {
+        guard !speaker.isMe, let name = speaker.displayName, !name.isEmpty else {
+            rememberOffer = nil
+            return
+        }
+        let remembered = (try? VoiceGallery().voices()) ?? []
+        guard !remembered.contains(where: {
+            $0.name.compare(name, options: .caseInsensitive) == .orderedSame
+        }) else {
+            rememberOffer = nil
+            return
+        }
+        rememberOffer = speaker
+    }
+
+    private func rememberVoice(of speaker: Speaker) async {
+        guard let detail, let name = speaker.displayName else { return }
+        rememberingVoice = true
+        defer {
+            rememberingVoice = false
+            rememberOffer = nil
+        }
+        let prints = await extractVoiceprints(detail, speakers: [speaker])
+        guard let voiceprint = prints[speaker.label] else {
+            gistError = L10n.text(
+                "Not enough clear audio from that voice to remember it (about 5 seconds are needed).")
+            return
+        }
+        do {
+            try VoiceGallery().remember(
+                RememberedVoice(name: name, embedding: voiceprint.embedding))
+        } catch {
+            gistError = L10n.format("Could not remember the voice: %@", error.localizedDescription)
+        }
+    }
+
+    /// Voice-based name chips, computed once per visit: only when the user
+    /// has remembered voices, unnamed speakers exist, and the meeting keeps
+    /// its system audio. Uses a throwaway diarizer (~14 MB models; the
+    /// heavy recording engines are NOT loaded for this).
+    private func suggestFromVoicesIfUseful() async {
+        guard !voiceMatchedOnce, let detail else { return }
+        let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
+        guard !unnamed.isEmpty else { return }
+        guard let gallery = try? VoiceGallery().voices(), !gallery.isEmpty else { return }
+        voiceMatchedOnce = true
+        let prints = await extractVoiceprints(detail, speakers: unnamed)
+        guard !prints.isEmpty else { return }
+        voiceSuggestions = VoiceMatcher.matches(
+            speakers: prints.map { ($0.key, $0.value.embedding) },
+            gallery: gallery)
+    }
+
+    /// One embedding per requested speaker from their system-channel spans.
+    /// Embeddings are transient: nothing is persisted here (persisting is
+    /// the explicit "Remember" gesture only).
+    private func extractVoiceprints(
+        _ detail: MeetingDetail, speakers: [Speaker]
+    ) async -> [String: Voiceprint] {
+        guard let relative = detail.meeting.audioDirectory else { return [:] }
+        let base = RecordingsLocation.shared.resolve(relative)
+        guard let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base) else {
+            return [:]
+        }
+        var ranges: [String: [ClosedRange<TimeInterval>]] = [:]
+        for speaker in speakers {
+            let spans = detail.segments
+                .filter {
+                    $0.speakerID == speaker.id && $0.channel == .system
+                        && $0.endTime > $0.startTime
+                }
+                .map { $0.startTime...$0.endTime }
+            if !spans.isEmpty { ranges[speaker.label] = spans }
+        }
+        guard !ranges.isEmpty,
+            let diarizer = try? await PyannoteDiarizer.loadRecommended(store: ModelStore())
+        else { return [:] }
+        return (try? await diarizer.extractVoiceprints(
+            fromFile: systemURL, rangesBySpeaker: ranges)) ?? [:]
     }
 }
 
@@ -829,6 +991,7 @@ extension MeetingDetailView {
         renamingSpeaker = nil
         await reload()
         services.libraryVersion += 1
+        offerToRemember(renamed)
     }
 
     private func actionBinding(_ item: ActionItem) -> Binding<Bool> {
@@ -849,6 +1012,7 @@ extension MeetingDetailView {
         await loadPlayerIfNeeded()
         await suggestRecipeIfUseful()
         await suggestTitleIfUseful()
+        await suggestFromVoicesIfUseful()
     }
 
     /// Content-based title chip: only while the title still looks like the

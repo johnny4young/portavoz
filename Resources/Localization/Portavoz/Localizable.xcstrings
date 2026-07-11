@@ -681,6 +681,16 @@
         }
       }
     },
+    "Could not remember the voice: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo recordar la voz: %@"
+          }
+        }
+      }
+    },
     "Could not rename: %@": {
       "localizations": {
         "es": {
@@ -821,6 +831,16 @@
         }
       }
     },
+    "Dismiss voice offer": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar la oferta de voz"
+          }
+        }
+      }
+    },
     "Dismiss — it will not remind you again for this meeting": {
       "localizations": {
         "es": {
@@ -951,6 +971,16 @@
         }
       }
     },
+    "Encrypted numeric fingerprints of voices you chose to remember, used only to suggest names in future meetings — never audio, never synced. Right-click a name to forget one voice.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huellas numéricas cifradas de las voces que elegiste recordar, usadas solo para sugerir nombres en futuras reuniones — nunca audio, nunca se sincronizan. Haz click derecho en un nombre para olvidar una voz."
+          }
+        }
+      }
+    },
     "End": {
       "localizations": {
         "es": {
@@ -1077,6 +1107,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Panel mini flotante con el timer y las captions — graba sin tapar tu reunión"
+          }
+        }
+      }
+    },
+    "Forget %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olvidar a %@"
+          }
+        }
+      }
+    },
+    "Forget all voices": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olvidar todas las voces"
           }
         }
       }
@@ -1487,6 +1537,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sin traducción"
+          }
+        }
+      }
+    },
+    "Not enough clear audio from that voice to remember it (about 5 seconds are needed).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay suficiente audio claro de esa voz para recordarla (se necesitan unos 5 segundos)."
           }
         }
       }
@@ -1921,6 +1981,36 @@
         }
       }
     },
+    "Remember": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordar"
+          }
+        }
+      }
+    },
+    "Remember %@’s voice?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Recordar la voz de %@?"
+          }
+        }
+      }
+    },
+    "Remembered voices": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voces recordadas"
+          }
+        }
+      }
+    },
     "Remind me before meetings": {
       "localizations": {
         "es": {
@@ -2257,6 +2347,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detener la grabación"
+          }
+        }
+      }
+    },
+    "Stores only an encrypted numeric fingerprint of their voice on this Mac — never the audio, never synced — so future meetings can suggest their name. Removable in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda solo una huella numérica cifrada de su voz en esta Mac — nunca el audio, nunca se sincroniza — para que futuras reuniones puedan sugerir su nombre. Se puede eliminar en Ajustes."
           }
         }
       }
@@ -2697,6 +2797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Voz enrolada"
+          }
+        }
+      }
+    },
+    "Voice match: sounds like “%@” from your remembered voices.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coincidencia de voz: suena como “%@” entre tus voces recordadas."
           }
         }
       }
