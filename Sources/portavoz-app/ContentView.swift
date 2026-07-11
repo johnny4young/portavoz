@@ -54,6 +54,14 @@ struct ContentView: View {
                 route = .recording(nil)
             }
         }
+        .task {
+            // Cold start: a Spotlight hit can set pendingRoute BEFORE this
+            // view mounts, and onChange never fires for the initial value.
+            if let pending = services.pendingRoute {
+                route = pending
+                services.pendingRoute = nil
+            }
+        }
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             // A Spotlight hit: its unique identifier is the meeting UUID.
             guard

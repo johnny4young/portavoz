@@ -4,9 +4,11 @@ import SwiftUI
 /// glue: library browsing, live recording, and the post-meeting pipeline.
 @main
 struct PortavozApp: App {
+    @NSApplicationDelegateAdaptor(PortavozAppDelegate.self) private var appDelegate
     @State private var services = AppServices()
 
     init() {
+        PortavozAppDelegate.services = services
         let process = ProcessInfo.processInfo
         if process.arguments.contains("-reset-app-language")
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {
