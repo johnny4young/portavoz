@@ -38,22 +38,24 @@ final class DictationController {
     private var session: Task<Void, Never>?
     private let panel = DictationPanelController()
 
-    /// Registers/unregisters ⌥⌘D to match the Settings toggle. Called at
-    /// launch and whenever the toggle changes.
+    /// Registers/unregisters the configured hotkey (⌥⌘D by default) to
+    /// match the Settings toggle AND the recorded combination. Called at
+    /// launch and whenever either changes — always re-registers so a new
+    /// combo takes effect immediately.
     func syncHotkey(services: AppServices) {
-        let enabled = UserDefaults.standard.bool(forKey: Self.defaultsKey)
-        if enabled, hotkey == nil {
-            hotkey = GlobalHotkey(
-                keyCode: UInt32(kVK_ANSI_D),
-                modifiers: UInt32(optionKey | cmdKey)
-            ) { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.toggle(services: services)
-            }
-        } else if !enabled, let hotkey {
-            hotkey.unregister()
-            self.hotkey = nil
+        hotkey?.unregister()
+        hotkey = nil
+        guard UserDefaults.standard.bool(forKey: Self.defaultsKey) else {
             if phase == .listening { cancel() }
+            return
+        }
+        let setting = HotkeySetting.load()
+        hotkey = GlobalHotkey(
+            keyCode: setting.keyCode,
+            modifiers: setting.modifiers
+        ) { [weak self, weak services] in
+            guard let self, let services else { return }
+            self.toggle(services: services)
         }
     }
 

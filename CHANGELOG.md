@@ -7,6 +7,9 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **⌨️ Your dictation, your keys** — The dictation hotkey is now yours to choose: click the recorder in Settings, press any combo (⌃⌥⇧⌘ + key), done. Combos without ⌘ or ⌥ are rejected so a bare letter never hijacks your typing.
+- **🗄️ Your whole library, in plain files** — One click in Settings exports every meeting as a readable Markdown file (summary, action items, full transcript) into a folder you choose — read, grep and back them up without Portavoz. Your history is never hostage, now literally.
+- **🕐 Recent meetings in the menu bar** — Your three latest meetings, one click away from the menu bar icon.
 - **💌 Share a meeting as a file** — Export any meeting as a single `.portavoz` file (transcript, speakers, summary, action items and notes — no audio) and send it to anyone with Portavoz: double-click imports it as a new meeting, exactly as recorded. Import the same file twice and you get two independent copies — nothing ever collides.
 
 ## July 10, 2026

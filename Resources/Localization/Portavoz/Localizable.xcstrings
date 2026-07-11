@@ -11,6 +11,16 @@
         }
       }
     },
+    "%d meetings exported.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d reuniones exportadas."
+          }
+        }
+      }
+    },
     "%d model(s) available.": {
       "localizations": {
         "es": {
@@ -901,12 +911,12 @@
         }
       }
     },
-    "Dictate anywhere (⌥⌘D)": {
+    "Dictate anywhere": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dicta en cualquier lugar (⌥⌘D)"
+            "value": "Dicta en cualquier lugar"
           }
         }
       }
@@ -937,6 +947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El dictado falló: %@"
+          }
+        }
+      }
+    },
+    "Dictation hotkey": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atajo de dictado"
           }
         }
       }
@@ -1231,12 +1251,52 @@
         }
       }
     },
+    "Export all meetings (Markdown)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar todas las reuniones (Markdown)…"
+          }
+        }
+      }
+    },
+    "Export here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar aquí"
+          }
+        }
+      }
+    },
     "Export meeting file (.portavoz)…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Exportar archivo de reunión (.portavoz)…"
+          }
+        }
+      }
+    },
+    "Exporting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportando…"
+          }
+        }
+      }
+    },
+    "Exporting… %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportando… %d"
           }
         }
       }
@@ -1977,6 +2037,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparando…"
+          }
+        }
+      }
+    },
+    "Press keys…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presiona las teclas…"
           }
         }
       }
@@ -3201,12 +3271,32 @@
         }
       }
     },
+    "Writes one Markdown file per meeting — summary, action items and full transcript — into a folder you choose. Plain files you can read, grep and back up without Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe un archivo Markdown por reunión — resumen, pendientes y transcript completo — en la carpeta que elijas. Archivos planos que puedes leer, buscar y respaldar sin Portavoz."
+          }
+        }
+      }
+    },
     "You can change the summary engine anytime in Settings.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Puedes cambiar el motor de resúmenes cuando quieras en Ajustes."
+          }
+        }
+      }
+    },
+    "Your data": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus datos"
           }
         }
       }

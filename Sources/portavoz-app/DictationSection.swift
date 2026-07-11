@@ -9,11 +9,16 @@ struct DictationSection: View {
 
     var body: some View {
         Section("Dictation") {
-            Toggle("Dictate anywhere (⌥⌘D)", isOn: $enabled)
+            Toggle("Dictate anywhere", isOn: $enabled)
                 .accessibilityIdentifier("settings-dictation-toggle")
                 .onChange(of: enabled) {
                     services.dictation.syncHotkey(services: services)
                 }
+            if enabled {
+                HotkeyRecorder {
+                    services.dictation.syncHotkey(services: services)
+                }
+            }
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length

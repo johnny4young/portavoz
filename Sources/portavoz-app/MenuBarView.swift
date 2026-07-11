@@ -1,3 +1,4 @@
+import PortavozCore
 import ServiceManagement
 import SwiftUI
 
@@ -8,6 +9,7 @@ import SwiftUI
 struct MenuBarContent: View {
     @Environment(AppServices.self) private var services
     @Environment(\.openWindow) private var openWindow
+    @State private var recents: [Meeting] = []
 
     var body: some View {
         Group {
@@ -33,6 +35,15 @@ struct MenuBarContent: View {
                     Label("Dictate (⌥⌘D)", systemImage: "waveform.badge.mic")
                 }
             }
+            if !recents.isEmpty {
+                Divider()
+                ForEach(recents) { meeting in
+                    Button(meeting.title) {
+                        openMainWindow()
+                        services.pendingRoute = .meeting(meeting.id)
+                    }
+                }
+            }
             Divider()
             Button {
                 openMainWindow()
@@ -44,6 +55,11 @@ struct MenuBarContent: View {
             Button("Quit Portavoz") {
                 NSApp.terminate(nil)
             }
+        }
+        // Menu-bar content mounts when the menu opens, so this refreshes
+        // the shortlist on every open.
+        .task {
+            recents = Array(((try? await services.store.meetings()) ?? []).prefix(3))
         }
     }
 
