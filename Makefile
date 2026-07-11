@@ -55,7 +55,7 @@ test-ui-es: project
 ## windows. Quit Portavoz before the runner tries to enable automation mode;
 ## warn about known interruptors without killing unrelated user apps.
 test-ui-preflight:
-	-osascript -e 'tell application "Portavoz" to quit' >/dev/null 2>&1
+	-osascript -e 'tell application "Portavoz Dev" to quit' >/dev/null 2>&1
 	@if pgrep -x Gancho >/dev/null || pgrep -x gancho >/dev/null; then \
 		echo "⚠️  Gancho is running; if XCUITest fails because of interrupting windows, close it and retry."; \
 	fi
@@ -65,13 +65,22 @@ test-ui-preflight:
 app:
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
 
-## Build the release app, install it to /Applications, and relaunch it.
-## Run this after any change you want to try in the real app so what's
-## installed always matches the latest work.
+## Build the dev app and install it as "Portavoz Dev" — NEVER touching
+## /Applications/Portavoz.app, which is the user's notarized release copy
+## (it updates via Sparkle/Homebrew only). Same bundle id, so TCC grants
+## and Keychain items keep working; different name and path so both
+## coexist. Need real recordings/data for a test? COPY them — never
+## operate on the release app's live folders.
 install:
-	-osascript -e 'tell application "Portavoz" to quit' 2>/dev/null; sleep 1
+	-osascript -e 'tell application "Portavoz Dev" to quit' 2>/dev/null; sleep 1
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
-	rm -rf /Applications/Portavoz.app
-	cp -R dist/Portavoz.app /Applications/
-	open /Applications/Portavoz.app
-	@echo "✅ Portavoz reinstalled in /Applications with the latest changes."
+	plutil -replace CFBundleDisplayName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist
+	plutil -replace CFBundleName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist
+	# Editing Info.plist invalidates the signature; re-sign or TCC grants
+	# (mic, screen recording) will not stick to the dev app.
+	codesign --force --options runtime --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
+		--entitlements packaging/portavoz.entitlements dist/Portavoz.app
+	rm -rf "/Applications/Portavoz Dev.app"
+	cp -R dist/Portavoz.app "/Applications/Portavoz Dev.app"
+	open "/Applications/Portavoz Dev.app"
+	@echo "✅ Portavoz Dev reinstalled (release copy untouched)."

@@ -117,3 +117,7 @@ swift test     # suite XCTest
 ## Contexto de negocio para decisiones técnicas
 
 Todo open source (MIT). FREE nunca limita minutos/reuniones/historial — la computación local del usuario es gratis. PRO = pago único (conveniencia y poder: sync, integraciones dev, RAG, MCP). Distribución: DMG notarizado + Sparkle + Homebrew cask + venta directa; App Store en iOS. Detalle completo en [PRODUCT.md](PRODUCT.md) y decisiones D9/D10 en [DECISIONS.md](DECISIONS.md).
+
+## Flujo de app local (jul 2026)
+
+`/Applications/Portavoz.app` es la copia RELEASE del usuario (notarizada, instalada vía DMG/brew, se actualiza sola por Sparkle) — **ningún flujo de desarrollo la toca**. `make install` construye e instala `/Applications/Portavoz Dev.app` (mismo bundle id — TCC y Keychain compartidos; display name distinto; Info.plist editado post-build y RE-FIRMADO, porque una firma inválida impide que los grants de TCC persistan). Ambas comparten `~/Library/Application Support/Portavoz` (DB, modelos): si un build dev introduce una migración de schema nueva, probar primero con `-use-temp-store` o con una COPIA de la DB — jamás contra la DB real. Grabaciones reales para pruebas: copiarlas, nunca operar en vivo.
