@@ -52,12 +52,30 @@ final class DictationController {
         let setting = HotkeySetting.load()
         hotkey = GlobalHotkey(
             keyCode: setting.keyCode,
-            modifiers: setting.modifiers
-        ) { [weak self, weak services] in
-            guard let self, let services else { return }
-            self.toggle(services: services)
-        }
+            modifiers: setting.modifiers,
+            onPress: { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.pressedAt = Date()
+                self.toggle(services: services)
+            },
+            onRelease: { [weak self] in
+                guard let self else { return }
+                // Hold-to-talk: a TAP (quick release) leaves the toggle
+                // behavior untouched; holding the combo while speaking and
+                // letting go delivers — the walkie-talkie gesture. The
+                // threshold splits the two without any setting.
+                guard self.phase == .listening,
+                    let pressedAt = self.pressedAt,
+                    Date().timeIntervalSince(pressedAt) > Self.holdThreshold
+                else { return }
+                self.finishAndInsert()
+            })
     }
+
+    /// Press-to-release lapse that separates a toggle TAP from a
+    /// hold-to-talk gesture.
+    private static let holdThreshold: TimeInterval = 0.5
+    private var pressedAt: Date?
 
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {

@@ -81,6 +81,28 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
     }
 
+    func testAudioAttachmentsRideAlongAndSurviveRemap() throws {
+        var bundle = sample()
+        bundle.audioFiles = [
+            MeetingBundle.AudioAttachment(
+                name: "system", fileExtension: "m4a", data: Data([0x01, 0x02, 0x03]))
+        ]
+        let decoded = try MeetingBundle.decode(try bundle.encoded())
+        XCTAssertEqual(decoded.audioFiles?.count, 1)
+        XCTAssertEqual(decoded.audioFiles?.first?.data, Data([0x01, 0x02, 0x03]))
+
+        let remapped = decoded.remappedForImport()
+        XCTAssertEqual(remapped.audioFiles?.first?.name, "system", "audio survives the remap")
+    }
+
+    func testTextOnlyFileDecodesWithoutAudioField() throws {
+        // A pre-audio (0.3.0) file has no audioFiles key at all.
+        var json = String(data: try sample().encoded(), encoding: .utf8)!
+        XCTAssertFalse(json.contains("audioFiles"), "text-only export omits the field")
+        let decoded = try MeetingBundle.decode(Data(json.utf8))
+        XCTAssertNil(decoded.audioFiles)
+    }
+
     func testImportingTwiceYieldsIndependentMeetings() {
         let bundle = sample()
         let first = bundle.remappedForImport()

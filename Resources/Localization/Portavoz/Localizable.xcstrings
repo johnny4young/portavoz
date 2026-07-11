@@ -1301,6 +1301,16 @@
         }
       }
     },
+    "Export meeting file with audio…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar archivo de reunión con audio…"
+          }
+        }
+      }
+    },
     "Exporting…": {
       "localizations": {
         "es": {

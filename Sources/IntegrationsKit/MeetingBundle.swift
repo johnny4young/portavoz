@@ -3,11 +3,12 @@ import PortavozCore
 
 /// The `.portavoz` interchange file (M15 L0): one meeting — transcript,
 /// cast, latest summary, co-authoring notes — as a single versioned JSON
-/// document another Mac can import. Deliberately WITHOUT audio in v1: the
-/// shareable value is who-said-what and what was decided, and a text-only
-/// file stays mail-sized. The format is additive: readers accept any file
+/// document another Mac can import. Audio is OPTIONAL (an additive field,
+/// so no version bump: readers without it import the text and ignore the
+/// audio) — a text-only file stays mail-sized, a with-audio file carries
+/// the recording itself. The format is additive: readers accept any file
 /// whose `formatVersion` they know, and unknown FUTURE fields are ignored
-/// by Codable, so v1 readers keep opening v1 files forever.
+/// by Codable.
 public struct MeetingBundle: Codable, Sendable {
     public static let currentFormatVersion = 1
     public static let fileExtension = "portavoz"
@@ -21,6 +22,23 @@ public struct MeetingBundle: Codable, Sendable {
     public var segments: [TranscriptSegment]
     public var summary: SummaryDraft?
     public var contextItems: [ContextItem]
+    /// Optional recording channels ("system"/"microphone"); `Data` rides
+    /// as base64 via Codable's default strategy. Additive: absent in
+    /// text-only exports, ignored by readers that predate it.
+    public var audioFiles: [AudioAttachment]?
+
+    public struct AudioAttachment: Codable, Sendable {
+        /// Channel name without extension ("system", "microphone").
+        public let name: String
+        public let fileExtension: String
+        public let data: Data
+
+        public init(name: String, fileExtension: String, data: Data) {
+            self.name = name
+            self.fileExtension = fileExtension
+            self.data = data
+        }
+    }
 
     public init(
         meeting: Meeting,
@@ -28,6 +46,7 @@ public struct MeetingBundle: Codable, Sendable {
         segments: [TranscriptSegment],
         summary: SummaryDraft? = nil,
         contextItems: [ContextItem] = [],
+        audioFiles: [AudioAttachment]? = nil,
         exportedAt: Date = Date()
     ) {
         self.formatVersion = Self.currentFormatVersion
@@ -40,6 +59,7 @@ public struct MeetingBundle: Codable, Sendable {
         self.segments = segments
         self.summary = summary
         self.contextItems = contextItems
+        self.audioFiles = audioFiles
     }
 
     public enum BundleError: Error, LocalizedError, Equatable {

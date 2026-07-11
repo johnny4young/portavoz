@@ -17,7 +17,20 @@ extension AppServices {
     /// transcript-and-summary only.
     func importBundle(from url: URL) async throws -> MeetingID {
         let data = try Data(contentsOf: url)
-        let bundle = try MeetingBundle.decode(data).remappedForImport()
+        var bundle = try MeetingBundle.decode(data).remappedForImport()
+        // Materialize traveling audio under a fresh directory so the
+        // imported meeting plays like a recorded one.
+        if let attachments = bundle.audioFiles, !attachments.isEmpty {
+            let relative = "Audio/\(bundle.meeting.id.rawValue.uuidString)"
+            let dir = Self.audioRoot.appendingPathComponent(relative, isDirectory: true)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            for attachment in attachments {
+                let file = dir.appendingPathComponent(
+                    "\(attachment.name).\(attachment.fileExtension)")
+                try attachment.data.write(to: file)
+            }
+            bundle.meeting.audioDirectory = relative
+        }
         try await store.save(bundle.meeting)
         try await store.save(bundle.speakers)
         try await store.save(bundle.segments)

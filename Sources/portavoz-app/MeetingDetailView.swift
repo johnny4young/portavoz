@@ -273,7 +273,10 @@ extension MeetingDetailView {
             Button("Export Markdown…") { export(detail, as: .markdown) }
             Button("Export PDF…") { export(detail, as: .pdf) }
             Button("Export meeting file (.portavoz)…") {
-                Task { await exportBundle(detail) }
+                Task { await exportBundle(detail, includeAudio: false) }
+            }
+            Button("Export meeting file with audio…") {
+                Task { await exportBundle(detail, includeAudio: true) }
             }
             Divider()
             Button("Publish as Gist…") { showGistConfirm = true }
@@ -283,15 +286,29 @@ extension MeetingDetailView {
     }
 
     /// The .portavoz interchange file (M15 L0): transcript + cast +
-    /// latest summary + notes, no audio — see `MeetingBundle`.
-    private func exportBundle(_ detail: MeetingDetail) async {
+    /// latest summary + notes — and optionally the recording itself
+    /// (compress first via "Compress audio (AAC)" for a mail-sized file).
+    private func exportBundle(_ detail: MeetingDetail, includeAudio: Bool) async {
         let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
+        var audio: [MeetingBundle.AudioAttachment]?
+        if includeAudio, let relative = detail.meeting.audioDirectory {
+            let base = RecordingsLocation.shared.resolve(relative)
+            let attachments = ["system", "microphone"].compactMap { name -> MeetingBundle.AudioAttachment? in
+                guard let url = MeetingAudioLayout.channelFile(named: name, in: base),
+                    let data = try? Data(contentsOf: url)
+                else { return nil }
+                return MeetingBundle.AudioAttachment(
+                    name: name, fileExtension: url.pathExtension, data: data)
+            }
+            audio = attachments.isEmpty ? nil : attachments
+        }
         let bundle = MeetingBundle(
             meeting: detail.meeting,
             speakers: detail.speakers,
             segments: detail.segments,
             summary: summary?.draft,
-            contextItems: notes)
+            contextItems: notes,
+            audioFiles: audio)
         guard let data = try? bundle.encoded() else {
             gistError = L10n.text("Could not encode the meeting file.")
             return

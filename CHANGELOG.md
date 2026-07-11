@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🔊 Meetings travel with their audio** — "Export meeting file with audio…" packs the recording into the `.portavoz` file: the receiver gets the synced player, waveform and clips as if they had recorded it. Older Portavoz versions still open the file — they just import the text. Tip: run "Compress audio (AAC)" first for a mail-sized file.
+- **🎙️ Hold to talk** — Hold your dictation hotkey down, speak, let go: your words are typed the moment you release — the walkie-talkie way. A quick tap still toggles like before; no setting needed.
 - **🗑️ Deleted, not gone** — Deleting a meeting now sends it to "Recently deleted" at the bottom of the sidebar: restore it with one click (transcript, summary, audio — everything comes back), or right-click to delete it permanently. The trash empties itself after 30 days.
 - **⌨️ Your dictation, your keys** — The dictation hotkey is now yours to choose: click the recorder in Settings, press any combo (⌃⌥⇧⌘ + key), done. Combos without ⌘ or ⌥ are rejected so a bare letter never hijacks your typing.
 - **🗄️ Your whole library, in plain files** — One click in Settings exports every meeting as a readable Markdown file (summary, action items, full transcript) into a folder you choose — read, grep and back them up without Portavoz. Your history is never hostage, now literally.

@@ -27,6 +27,8 @@ DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diari
 
 ## Dictado global (jul 2026)
 
+**Hold-to-talk (jul 2026)**: `GlobalHotkey` escucha kEventHotKeyPressed Y kEventHotKeyReleased (`GetEventKind` en el mismo handler). Gesto sin setting: un TAP (release < 0.5 s) conserva el toggle; MANTENER la combinación mientras hablas y soltar entrega al release — walkie-talkie. Verificado E2E: hold de 2.5 s abre el panel al press y lo cierra solo al soltar.
+
 **Hotkey configurable (jul 2026)**: `HotkeySetting` (keyCode + máscara Carbon + label, AppStorage; default ⌥⌘D) + `HotkeyRecorder` en Ajustes (NSEvent local monitor captura la próxima combinación; Esc cancela; combos SIN ⌘/⌥ se rechazan con beep — una letra sola como hotkey GLOBAL secuestraría el tipeo). `syncHotkey` ahora siempre unregister-first para que la combinación nueva aplique en vivo. Verificado E2E: grabar ⌃⌥⌘M y dispararlo abre el panel.
  — ⌥⌘D en cualquier app
 
