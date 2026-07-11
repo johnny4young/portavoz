@@ -11,6 +11,10 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
+![A meeting in Portavoz: speaker pills with one-click name suggestions, a structured summary with decisions and co-authored notes, owner-tagged action items, per-speaker talk-time, and a bilingual who-said-what transcript](assets/screenshots/meeting-detail.png)
+
+<sub>Demo data — regenerate this exact library with `Portavoz.app --args -use-temp-store -seed-showcase`.</sub>
+
 > *Portavoz* (Spanish): the one who carries the voice — a spokesperson.
 
 ## Why Portavoz

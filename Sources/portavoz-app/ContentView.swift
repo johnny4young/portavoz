@@ -40,6 +40,7 @@ struct ContentView: View {
             }
         }
         .task { await services.seedDemoIfRequested() }
+        .task { await services.seedShowcaseIfRequested() }
         .task { reminder.start(services: services) }
         .task {
             // T4 startup bench (hidden launch arg): measures to first frame,
