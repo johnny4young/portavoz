@@ -13,6 +13,21 @@ final class PortavozAppDelegate: NSObject, NSApplicationDelegate {
     /// adaptor before any scene exists.
     @MainActor static weak var services: AppServices?
 
+    /// Double-clicking a `.portavoz` file: import it as a new meeting and
+    /// navigate there (same pendingRoute channel as Spotlight hits).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        MainActor.assumeIsolated {
+            guard let services = Self.services else { return }
+            for url in urls where url.pathExtension.lowercased() == "portavoz" {
+                Task { @MainActor in
+                    if let id = try? await services.importBundle(from: url) {
+                        services.pendingRoute = .meeting(id)
+                    }
+                }
+            }
+        }
+    }
+
     func application(
         _ application: NSApplication,
         continue userActivity: NSUserActivity,

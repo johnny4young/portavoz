@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 11, 2026
+
+- **💌 Share a meeting as a file** — Export any meeting as a single `.portavoz` file (transcript, speakers, summary, action items and notes — no audio) and send it to anyone with Portavoz: double-click imports it as a new meeting, exactly as recorded. Import the same file twice and you get two independent copies — nothing ever collides.
+
 ## July 10, 2026
 
 - **🎚️ Dictation shows it hears you** — The floating dictation strip now has a live mic meter, so you know your voice is landing before the words appear.

@@ -137,6 +137,39 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
              activates the app and the continuation never reaches SwiftUI. -->
         <string>com.apple.corespotlightitem</string>
     </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>app.portavoz.meeting-bundle</string>
+            <key>UTTypeDescription</key>
+            <string>Portavoz meeting</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.json</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>portavoz</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Portavoz meeting</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>app.portavoz.meeting-bundle</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

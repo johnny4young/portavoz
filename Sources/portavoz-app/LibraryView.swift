@@ -38,7 +38,7 @@ struct LibraryView: View {
     @State private var importError: String?
 
     /// Audio the importer accepts (drag-drop or the Import button).
-    private static let importTypes: [UTType] = [.audio, .mpeg4Audio, .wav, .mp3]
+    private static let importTypes: [UTType] = [.audio, .mpeg4Audio, .wav, .mp3, .meetingBundle]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -334,7 +334,7 @@ struct LibraryView: View {
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = Self.importTypes
         panel.prompt = L10n.text("Import")
-        panel.message = L10n.text("Choose an audio file to transcribe as a meeting")
+        panel.message = L10n.text("Choose an audio file to transcribe, or a .portavoz meeting file")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         importAudio(from: url)
     }
@@ -344,8 +344,13 @@ struct LibraryView: View {
         importStatus = L10n.text("Preparing…")
         Task {
             do {
-                let id = try await services.importMeeting(from: url) { status in
-                    importStatus = status
+                let id: MeetingID
+                if url.pathExtension.lowercased() == MeetingBundle.fileExtension {
+                    id = try await services.importBundle(from: url)
+                } else {
+                    id = try await services.importMeeting(from: url) { status in
+                        importStatus = status
+                    }
                 }
                 importStatus = nil
                 route = .meeting(id)

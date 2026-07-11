@@ -272,11 +272,33 @@ extension MeetingDetailView {
         Menu {
             Button("Export Markdown…") { export(detail, as: .markdown) }
             Button("Export PDF…") { export(detail, as: .pdf) }
+            Button("Export meeting file (.portavoz)…") {
+                Task { await exportBundle(detail) }
+            }
             Divider()
             Button("Publish as Gist…") { showGistConfirm = true }
         } label: {
             Label("Export", systemImage: "square.and.arrow.up")
         }
+    }
+
+    /// The .portavoz interchange file (M15 L0): transcript + cast +
+    /// latest summary + notes, no audio — see `MeetingBundle`.
+    private func exportBundle(_ detail: MeetingDetail) async {
+        let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
+        let bundle = MeetingBundle(
+            meeting: detail.meeting,
+            speakers: detail.speakers,
+            segments: detail.segments,
+            summary: summary?.draft,
+            contextItems: notes)
+        guard let data = try? bundle.encoded() else {
+            gistError = L10n.text("Could not encode the meeting file.")
+            return
+        }
+        exportType = .meetingBundle
+        exportName = "\(detail.meeting.title).portavoz"
+        exportDocument = ExportDocument(data: data)
     }
 
     private var deleteButton: some View {

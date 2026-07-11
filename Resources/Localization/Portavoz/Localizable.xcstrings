@@ -471,6 +471,16 @@
         }
       }
     },
+    "Choose an audio file to transcribe, or a .portavoz meeting file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un archivo de audio para transcribir, o un archivo de reunión .portavoz"
+          }
+        }
+      }
+    },
     "Choose the folder where Portavoz will store your recordings": {
       "localizations": {
         "es": {
@@ -697,6 +707,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo aplicar el refine: %@"
+          }
+        }
+      }
+    },
+    "Could not encode the meeting file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo codificar el archivo de reunión."
           }
         }
       }
@@ -1207,6 +1227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Exportar PDF…"
+          }
+        }
+      }
+    },
+    "Export meeting file (.portavoz)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar archivo de reunión (.portavoz)…"
           }
         }
       }

@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// Write-only wrapper so `fileExporter` can save bytes we already built.
 struct ExportDocument: FileDocument {
-    static let readableContentTypes: [UTType] = [.plainText, .pdf]
+    static let readableContentTypes: [UTType] = [.plainText, .pdf, .meetingBundle]
     let data: Data
 
     init(data: Data) { self.data = data }
