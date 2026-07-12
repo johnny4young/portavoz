@@ -551,6 +551,26 @@
         }
       }
     },
+    "Chapters": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capítulos"
+          }
+        }
+      }
+    },
+    "Chapters jump the player — this meeting has no audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los capítulos saltan el reproductor — esta reunión no tiene audio."
+          }
+        }
+      }
+    },
     "Check for updates…": {
       "localizations": {
         "es": {
@@ -2261,6 +2281,16 @@
         }
       }
     },
+    "Only my voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo mi voz"
+          }
+        }
+      }
+    },
     "Open": {
       "localizations": {
         "es": {
@@ -2337,6 +2367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reproducir"
+          }
+        }
+      }
+    },
+    "Play only your own turns — skips everyone else": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduce solo tus turnos — salta a los demás"
           }
         }
       }

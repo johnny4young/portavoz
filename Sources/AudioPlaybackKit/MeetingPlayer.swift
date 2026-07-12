@@ -26,6 +26,12 @@ public final class MeetingPlayer {
     public var skipSilence = false
     private var silentRanges: [ClosedRange<TimeInterval>] = []
 
+    /// Play only the user's own turns (design system: "solo mi voz"). The
+    /// non-voice ranges are everything that is NOT the user speaking; while
+    /// on, playback jumps over them exactly like silent gaps.
+    public var onlyMyVoice = false
+    private var nonVoiceRanges: [ClosedRange<TimeInterval>] = []
+
     /// The channel files this player mixed — the clip exporter trims these.
     public let channelFiles: [URL]
 
@@ -52,6 +58,11 @@ public final class MeetingPlayer {
                         $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
                     }) {
                     self.seek(to: gap.upperBound - 0.2)
+                } else if self.onlyMyVoice, self.isPlaying,
+                    let gap = self.nonVoiceRanges.first(where: {
+                        $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
+                    }) {
+                    self.seek(to: gap.upperBound - 0.05)
                 }
             }
         }
@@ -119,6 +130,12 @@ public final class MeetingPlayer {
 
     public func setSilentRanges(_ ranges: [ClosedRange<TimeInterval>]) {
         silentRanges = ranges
+    }
+
+    /// The gaps to skip when "solo mi voz" is on: everything that is NOT
+    /// the user speaking, merged and sorted by the caller.
+    public func setNonVoiceRanges(_ ranges: [ClosedRange<TimeInterval>]) {
+        nonVoiceRanges = ranges
     }
 
     public func play() {

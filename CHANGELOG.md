@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **✦ Chapters** — Portavoz now finds the turning points in a meeting on its own — a long pause, or a stretch that has run long — and lists them as chapters you can jump to, each labeled with the line that opens it. Found locally from your transcript; nothing invented.
+- **🔊 Play only my voice** — A new toggle in the player skips straight through everyone else and plays only your own turns — replay what YOU said in a long meeting without scrubbing. Rides the same skip engine as "Skip silence".
 - **🔖 Tabbed summaries** — The meeting summary now has tabs — Summary, then each section (Decisions · 3, Open questions · 1…) with its count, and To-dos · done/total — so a long summary is something you skim by topic instead of scroll. Parsed from the summary itself, in whatever language it's in.
 - **🗂️ A library that reads like a timeline** — Meetings in the sidebar now group by when they happened — Today, This week, Last week, Earlier — and the selected one glows in the brand's indigo→violet gradient instead of your system's accent color, matching the rest of Portavoz.
 - **⚡ Meeting actions, front and center** — Refine, export and delete moved from the window's top-right corner to a row of round buttons right under the meeting title — where the meeting is, not tucked in the toolbar.

@@ -38,6 +38,13 @@ struct MeetingPlayerBar: View {
                 .toggleStyle(.button)
                 .controlSize(.small)
                 .help("Automatically skip silence during playback")
+                Toggle(isOn: Binding(get: { player.onlyMyVoice }, set: { player.onlyMyVoice = $0 })) {
+                    Label("Only my voice", systemImage: "person.wave.2")
+                }
+                .toggleStyle(.button)
+                .controlSize(.small)
+                .tint(VoicePalette.me)
+                .help("Play only your own turns — skips everyone else")
                 Text(clock(player.duration))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)

@@ -154,6 +154,7 @@ extension MeetingDetailView {
                 refineStatus
                 summaryOrGenerate(detail)
                 MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
+                chaptersSection(detail)
                 transcriptSection(detail)
             }
             .padding(16)
@@ -1242,6 +1243,14 @@ extension MeetingDetailView {
         }.value
         player?.setSilentRanges(
             Waveform.silentRanges(waveform, duration: player?.duration ?? 0))
+        // "Solo mi voz": skip everything that isn't the user's mic turns.
+        if let player, let detail {
+            let voiceRanges = detail.segments
+                .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
+                .map { $0.startTime...$0.endTime }
+            player.setNonVoiceRanges(
+                PlaybackRanges.complement(of: voiceRanges, within: player.duration))
+        }
     }
 
     /// True when there's lossless audio (CAF/WAV) still worth compressing.
@@ -1281,5 +1290,48 @@ extension MeetingDetailView {
     private func timestamp(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+
+    /// ✦ Chapters (design system): break points the app finds locally in
+    /// the transcript — a long pause or a topic that has run long — each
+    /// labeled with a real opening line and seeking the player on tap.
+    /// Shown only when the meeting actually breaks into more than one.
+    @ViewBuilder
+    private func chaptersSection(_ detail: MeetingDetail) -> some View {
+        let chapters = ChapterExtractor.chapters(from: detail.segments)
+        if !chapters.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Chapters", systemImage: "sparkles")
+                    .font(.headline)
+                    .foregroundStyle(PVDesign.accent)
+                ForEach(chapters) { chapter in
+                    Button {
+                        player?.seek(to: chapter.startTime)
+                        player?.play()
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(timestamp(chapter.startTime))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(PVDesign.accent)
+                                .frame(width: 44, alignment: .leading)
+                            Text(chapter.title)
+                                .font(.callout)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(player == nil)
+                    .padding(.vertical, 3)
+                    .help(player == nil
+                        ? L10n.text("Chapters jump the player — this meeting has no audio.")
+                        : L10n.text("Jump to this moment"))
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
     }
 }
