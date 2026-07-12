@@ -1049,6 +1049,11 @@ extension MeetingDetailView {
         detail = try? await services.store.detail(meetingID)
         summary = try? await services.store.summary(meetingID)
         await loadPlayerIfNeeded()
+        // A palette citation navigated here: jump to the cited moment.
+        if let seek = services.pendingSeek {
+            services.pendingSeek = nil
+            player?.seek(to: seek)
+        }
         await suggestRecipeIfUseful()
         await suggestTitleIfUseful()
         await suggestFromVoicesIfUseful()

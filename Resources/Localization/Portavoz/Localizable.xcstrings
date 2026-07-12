@@ -311,6 +311,16 @@
         }
       }
     },
+    "Ask your week…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregúntale a tu semana…"
+          }
+        }
+      }
+    },
     "Audio": {
       "localizations": {
         "es": {
@@ -647,6 +657,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Convierte el audio a AAC para ahorrar espacio, sin pérdida audible en voz"
+          }
+        }
+      }
+    },
+    "Copy answer with citations (Markdown)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar la respuesta con citas (Markdown)"
           }
         }
       }
@@ -2077,6 +2097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preparando…"
+          }
+        }
+      }
+    },
+    "Press Enter for a full answer with receipts.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presiona Enter para una respuesta completa con citas."
           }
         }
       }

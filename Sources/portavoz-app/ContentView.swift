@@ -1,3 +1,4 @@
+import AppKit
 import CoreSpotlight
 import IntegrationsKit
 import PortavozCore
@@ -14,6 +15,7 @@ enum Route: Hashable {
 
 struct ContentView: View {
     @Environment(AppServices.self) private var services
+    @Environment(\.openWindow) private var openWindow
     @State private var route: Route?
     @State private var reminder = MeetingReminderController()
     @State private var showOnboarding = false
@@ -41,6 +43,20 @@ struct ContentView: View {
                     // swiftlint:disable:next line_length
                     description: Text("Record a meeting or choose one from the library. Everything is processed on your Mac.")
                 )
+            }
+        }
+        .task {
+            // Palette citations may need to reopen the library window —
+            // but only when none is visible: openWindow ALWAYS creates a
+            // new one, and a citation should reuse the window you have.
+            services.palette.openMainWindow = {
+                let hasMainWindow = NSApp.windows.contains {
+                    !($0 is NSPanel) && $0.isVisible && $0.canBecomeMain
+                }
+                if !hasMainWindow {
+                    openWindow(id: "main")
+                }
+                NSApp.activate(ignoringOtherApps: true)
             }
         }
         .task { await services.seedDemoIfRequested() }

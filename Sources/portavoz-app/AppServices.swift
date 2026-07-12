@@ -60,6 +60,12 @@ final class AppServices {
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
     let recording = RecordingController()
+    /// ⌘K palette (design system 6a-1): floats over any view; state lives
+    /// here so it works with the library window closed.
+    let palette = CommandPaletteController()
+    /// One-shot seek consumed by the detail view when a palette citation
+    /// navigates to a meeting — jump to the cited moment.
+    var pendingSeek: TimeInterval?
 
     init() {
         do {
@@ -336,46 +342,6 @@ final class AppServices {
             total += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
         }
         return total
-    }
-
-    /// Mines domain terms from recent transcripts to suggest for the custom
-    /// vocabulary (Settings). Bounded: the last 12 meetings' segments.
-    /// Dismissed suggestions ("don't suggest again") count as known — a
-    /// misheard form the user already corrected must never come back.
-    func mineVocabularySuggestions() async -> [String] {
-        let existing =
-            VocabularyPrompt.parse(
-                UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-            + VocabularyPrompt.parse(
-                UserDefaults.standard.string(forKey: "vocabularyRejectedSuggestions") ?? "")
-        let recent = ((try? await store.meetings()) ?? []).prefix(12)
-        var texts: [String] = []
-        for meeting in recent {
-            guard let detail = try? await store.detail(meeting.id) else { continue }
-            texts.append(contentsOf: detail.segments.map(\.text))
-        }
-        return VocabularyMiner.suggest(from: texts, existing: existing)
-    }
-
-    /// The machine's facts for "Recomendado para tu Mac" (M12).
-    func currentHardwareProfile() async -> HardwareProfile {
-        let memoryGB = Int((ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)
-        let appleIntelligence: Bool
-        if #available(macOS 26.0, *) {
-            appleIntelligence = FoundationModelSummaryProvider.unavailabilityReason() == nil
-        } else {
-            appleIntelligence = false
-        }
-        let ollama = await OllamaService.isRunning()
-        let free =
-            (try? URL(fileURLWithPath: NSHomeDirectory())
-                .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                .volumeAvailableCapacityForImportantUsage)
-        return HardwareProfile(
-            memoryGB: memoryGB,
-            appleIntelligence: appleIntelligence,
-            ollamaAvailable: ollama,
-            freeDiskGB: Int((free ?? 0) / 1_000_000_000))
     }
 
     /// Summarizes with the configured engine, falling back to Apple FM.

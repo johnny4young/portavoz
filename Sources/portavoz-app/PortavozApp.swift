@@ -41,6 +41,12 @@ struct PortavozApp: App {
         }
         .commands {
             CheckForUpdatesCommand()
+            CommandGroup(after: .newItem) {
+                Button("Ask your week…") {
+                    services.palette.toggle(services: services)
+                }
+                .keyboardShortcut("k")
+            }
         }
         MenuBarExtra(isInserted: $menuBarEnabled) {
             MenuBarContent()

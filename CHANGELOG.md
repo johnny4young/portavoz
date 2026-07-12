@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **✨ ⌘K — Ask your week, anywhere** — Press ⌘K over any view: instant results from your meetings while you type, and Enter brings a full on-device answer with citation chips (`↗ meeting · mm:ss`) that jump straight to the moment. Copy the answer with its receipts in Markdown. Same local engine as "Ask your meetings" — nothing leaves your Mac.
+
 - **🔊 Meetings travel with their audio** — "Export meeting file with audio…" packs the recording into the `.portavoz` file: the receiver gets the synced player, waveform and clips as if they had recorded it. Older Portavoz versions still open the file — they just import the text. Tip: run "Compress audio (AAC)" first for a mail-sized file.
 - **🎙️ Hold to talk** — Hold your dictation hotkey down, speak, let go: your words are typed the moment you release — the walkie-talkie way. A quick tap still toggles like before; no setting needed.
 - **🗑️ Deleted, not gone** — Deleting a meeting now sends it to "Recently deleted" at the bottom of the sidebar: restore it with one click (transcript, summary, audio — everything comes back), or right-click to delete it permanently. The trash empties itself after 30 days.
