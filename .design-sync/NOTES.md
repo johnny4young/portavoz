@@ -24,3 +24,12 @@
   se lee como botón»), ui_kits/macos-app completo (firma: mix de voces por fila
   de reunión en el sidebar) y el proposals HTML entero (rondas 1a-7a, todas
   aprobadas). readme/styles/SKILL sin cambios de fondo. Todo en docs/design/ds/.
+
+- Pull jul 11 noche (3º, opus): el usuario añadió 3 pantallas nuevas al ui_kit en
+  Claude Design — Settings.jsx (2a: nav+búsqueda, recomendación honesta de Apple
+  Intelligence, ledger de privacidad), Menubar.jsx (2b: icono waveform vivo,
+  acciones, próxima reunión, recientes) y Dictation.jsx (4b: una tira flotante que
+  muta dictando→insertado→aviso), cada una con su .card.html. index.html cambió el
+  name del @dsCard a "macOS app". tokens/colors.css, Recording.jsx y demás sin
+  cambios vs el 2º pull. Confirma: los chips por evidencia (--chip-ai-spark) ya se
+  usan en Settings y Menubar.
