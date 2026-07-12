@@ -49,17 +49,9 @@ struct LibraryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Button {
-                route = .recording(nil)
-            } label: {
-                Label("New recording", systemImage: "record.circle")
-                    .frame(maxWidth: .infinity)
-            }
-            .accessibilityIdentifier("library-new-recording-button")
-            .controlSize(.large)
-            .keyboardShortcut("n")
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
+            recordButton
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
 
             if let importStatus {
                 HStack(spacing: 6) {
@@ -69,42 +61,26 @@ struct LibraryView: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
             } else {
-                Button {
-                    chooseAudioToImport()
-                } label: {
-                    Label("Import audio…", systemImage: "square.and.arrow.down")
-                        .frame(maxWidth: .infinity)
+                HStack(spacing: 6) {
+                    actionChip(
+                        "Import", systemImage: "square.and.arrow.down",
+                        id: "library-import-audio-button",
+                        help: "Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting"
+                    ) { chooseAudioToImport() }
+                    actionChip(
+                        "Ask", systemImage: "bubble.left.and.text.bubble.right",
+                        id: "library-ask-button", active: route == .ask,
+                        help: "Natural-language questions over every meeting, answered on your Mac"
+                    ) { route = .ask }
+                    actionChip(
+                        "Insights", systemImage: "chart.bar.xaxis",
+                        id: "library-insights-button", active: route == .insights,
+                        help: "Totals, cadence, people and commitments — computed on your Mac"
+                    ) { route = .insights }
                 }
-                .controlSize(.small)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-                .help("Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting")
-                .accessibilityIdentifier("library-import-audio-button")
             }
-
-            Button {
-                route = .ask
-            } label: {
-                Label("Ask your meetings", systemImage: "bubble.left.and.text.bubble.right")
-                    .frame(maxWidth: .infinity)
-            }
-            .controlSize(.small)
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .help("Natural-language questions over every meeting, answered on your Mac")
-            .accessibilityIdentifier("library-ask-button")
-
-            Button {
-                route = .insights
-            } label: {
-                Label("Insights", systemImage: "chart.bar.xaxis")
-                    .frame(maxWidth: .infinity)
-            }
-            .controlSize(.small)
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .help("Totals, cadence, people and commitments — computed on your Mac")
-            .accessibilityIdentifier("library-insights-button")
 
             if offerCalendar {
                 Button {
@@ -122,10 +98,9 @@ struct LibraryView: View {
                 .help("Shows today's and tomorrow's meetings here, with a prep brief for each. Read-only, on-device.")
             }
 
-            TextField("Search all meetings…", text: $query)
-                .textFieldStyle(.roundedBorder)
+            searchField
                 .padding(.horizontal, 12)
-                .task(id: query) { await search(query) }
+                .padding(.top, 8)
 
             List(selection: $route) {
                 if !query.isEmpty {
@@ -199,6 +174,7 @@ struct LibraryView: View {
                 }
             }
             .listStyle(.sidebar)
+            localFooter
         }
         .navigationTitle("Portavoz")
         .alert(
@@ -245,6 +221,95 @@ struct LibraryView: View {
         }
         .task(id: services.libraryVersion) { await reload() }
         .onReceive(briefTimer) { _ in Task { await refreshBrief() } }
+    }
+
+    /// The primary action, styled to the design system: an indigo→violet
+    /// gradient pill whose leading glyph is a mini-waveform with your amber
+    /// peak — the brand mark on the button you press most.
+    private var recordButton: some View {
+        Button {
+            route = .recording(nil)
+        } label: {
+            HStack(spacing: 8) {
+                HStack(alignment: .bottom, spacing: 2) {
+                    Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 6)
+                    Capsule().fill(VoicePalette.me).frame(width: 2.5, height: 13)
+                    Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 8)
+                }
+                .frame(height: 13)
+                Text("New recording").fontWeight(.medium)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(
+                LinearGradient(
+                    colors: [PVDesign.accent, PVDesign.brandViolet],
+                    startPoint: .topLeading, endPoint: .bottomTrailing),
+                in: RoundedRectangle(cornerRadius: 10))
+            .shadow(color: PVDesign.brandViolet.opacity(0.4), radius: 8, y: 3)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("n")
+        .accessibilityIdentifier("library-new-recording-button")
+    }
+
+    /// One of the vertical action chips (Import / Ask / Insights): a stacked
+    /// icon + label that lights up when its route is active.
+    private func actionChip(
+        _ title: LocalizedStringKey, systemImage: String, id: String,
+        active: Bool = false, help: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Image(systemName: systemImage).font(.system(size: 14))
+                Text(title).font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(active ? PVDesign.accent : .secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(
+                (active ? PVDesign.accent.opacity(0.16) : Color.secondary.opacity(0.10)),
+                in: RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityIdentifier(id)
+    }
+
+    /// Search field with a ⌘K keycap — the palette is one shortcut away.
+    private var searchField: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("Search all meetings…", text: $query)
+                .textFieldStyle(.plain)
+                .task(id: query) { await search(query) }
+            Text(verbatim: "⌘K")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
+                .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 4))
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// The standing privacy line, pinned under the library — the product's
+    /// core claim, always in view.
+    private var localFooter: some View {
+        HStack(spacing: 7) {
+            Circle().fill(.green).frame(width: 7, height: 7)
+            Text("100% local — nothing leaves your Mac")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
     }
 
     private func reload() async {

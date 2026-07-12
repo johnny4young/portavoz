@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🎬 A library that looks the part** — The sidebar now opens with a violet-gradient "New recording" button carrying a live waveform, Import / Ask / Insights as quick chips, a search field with its ⌘K keycap, and a "100% local" line pinned at the bottom — the design system's shelf-of-conversations, brought into the app.
 - **📈 Insights, redrawn** — Your stats now open with a live amber waveform and a real week-over-week delta (▲ +3), and the flat bar chart is now a rhythm heatmap: twelve weeks across, weekdays down, each cell brighter the more you met — your meeting life at a glance, computed on your Mac.
 - **⚙️ Settings that guide you** — Each settings category now shows a one-line preview of what's inside, the selected one glows indigo→violet, and "Your data" lays your privacy ledger out as four tiles — audio on disk, meetings, 0 B to the network, voices — so the receipts are right there.
 - **⌨️ Dictation that shows where it lands** — The dictation strip now names the app your words will go into (a `✎ Notes` chip), shows the settled words in full color while the still-changing tail stays gray, and confirms with "42 words inserted into Notes — nothing was saved" before it fades. You never dictate blind, and it never leaves a trace.
