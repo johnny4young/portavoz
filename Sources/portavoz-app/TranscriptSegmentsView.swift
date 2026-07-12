@@ -66,7 +66,7 @@ struct TranscriptSegmentsView: View {
         .padding(.vertical, 2)
         .padding(.horizontal, 8)
         .background(
-            isActive ? Color.accentColor.opacity(0.12) : Color.clear,
+            isActive ? PVDesign.accent.opacity(0.12) : Color.clear,
             in: RoundedRectangle(cornerRadius: 6))
     }
 

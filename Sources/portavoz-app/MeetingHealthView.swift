@@ -73,7 +73,7 @@ struct MeetingHealthView: View {
     /// Voices B: each bar wears its speaker's color — "the color IS the voice".
     private func voiceColor(_ id: SpeakerID) -> Color {
         guard let speaker = speakers.first(where: { $0.id == id }) else {
-            return Color.accentColor.opacity(0.65)
+            return PVDesign.accent.opacity(0.65)
         }
         if speaker.isMe { return VoicePalette.me }
         return VoicePalette.color(for: speaker, in: speakers, colorScheme: colorScheme)

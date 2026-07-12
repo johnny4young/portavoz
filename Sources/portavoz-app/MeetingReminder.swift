@@ -103,7 +103,7 @@ struct ReminderBannerView: View {
         HStack(spacing: 10) {
             Image(systemName: "calendar.badge.clock")
                 .font(.title3)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(PVDesign.accent)
             VStack(alignment: .leading, spacing: 1) {
                 Text(event.title)
                     .font(.callout.weight(.semibold))

@@ -149,7 +149,7 @@ private final class CommandPalettePanelController {
             rootView: CommandPaletteView(controller: controller)
                 .portavozLocalized()
                 .environment(services)
-                .tint(.indigo))
+                .tint(PVDesign.accent))
         // Spotlight position: horizontally centered, upper third.
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame
@@ -209,7 +209,7 @@ private struct CommandPaletteView: View {
     private var inputRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "bubble.left.and.text.bubble.right")
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(PVDesign.accent)
             TextField("Ask your week…", text: $text)
                 .textFieldStyle(.plain)
                 .font(.title3)
@@ -300,7 +300,7 @@ private struct FlowCitations: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Color.accentColor.opacity(0.14), in: Capsule())
+                    .background(PVDesign.accent.opacity(0.14), in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .help(passage.text)

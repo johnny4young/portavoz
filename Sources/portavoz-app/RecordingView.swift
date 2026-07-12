@@ -312,7 +312,7 @@ struct RecordingView: View {
     }
 
     private func companionCardView(_ card: CompanionCard) -> some View {
-        let tint: Color = card.directed ? .orange : .accentColor
+        let tint: Color = card.directed ? .orange : PVDesign.accent
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Label(card.question, systemImage: "questionmark.bubble.fill")
@@ -399,7 +399,7 @@ struct RecordingView: View {
                 if let translated = controller.translations[segment.id] {
                     Text(translated)
                         .font(.callout)
-                        .foregroundStyle(Color.accentColor.opacity(0.9))
+                        .foregroundStyle(PVDesign.accent.opacity(0.9))
                 }
             }
         }

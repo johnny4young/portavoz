@@ -36,7 +36,7 @@ struct PortavozApp: App {
                 .portavozLocalized()
                 .environment(services)
                 .frame(minWidth: 900, minHeight: 560)
-                .tint(.indigo)
+                .tint(PVDesign.accent)
                 .modifier(OpenSettingsSheetModifier(services: services))
         }
         .commands {
@@ -62,7 +62,7 @@ struct PortavozApp: App {
             SettingsView()
                 .portavozLocalized()
                 .environment(services)
-                .tint(.indigo)
+                .tint(PVDesign.accent)
         }
     }
 }
@@ -83,7 +83,7 @@ private struct OpenSettingsSheetModifier: ViewModifier {
                 SettingsView()
                     .portavozLocalized()
                     .environment(services)
-                    .tint(.indigo)
+                    .tint(PVDesign.accent)
             }
     }
 }

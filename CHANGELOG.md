@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🌌 Aurora — the brand enters the shell** — In dark mode the app now wears the icon's world: a slate-violet gradient rising in the window, a soft violet glow bleeding under the toolbar, and a deep-glass sidebar. Controlled doses — your content stays neutral, your voices keep the color. And every accent in the app is now consistently indigo, the product's one accent.
 - **🎨 The color IS the voice** — Your voice is now always amber — in speaker pills, the transcript, talk-time bars and the player's waveform — and every other participant gets their own stable hue (Marta is violet in every meeting, forever). Who-said-what and who-talked-how-much now read at a glance, by color. First piece of the new Portavoz design system.
 - **✨ ⌘K — Ask your week, anywhere** — Press ⌘K over any view: instant results from your meetings while you type, and Enter brings a full on-device answer with citation chips (`↗ meeting · mm:ss`) that jump straight to the moment. Copy the answer with its receipts in Markdown. Same local engine as "Ask your meetings" — nothing leaves your Mac.
 

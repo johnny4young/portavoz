@@ -51,7 +51,7 @@ private struct DictationStripView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: "waveform.badge.mic")
-                    .foregroundStyle(isFailed ? Color.orange : Color.indigo)
+                    .foregroundStyle(isFailed ? Color.orange : PVDesign.accent)
                     .symbolEffect(.pulse, isActive: controller.phase == .listening)
                 Text(title)
                     .font(.caption.weight(.semibold))
@@ -86,7 +86,7 @@ private struct DictationStripView: View {
             Capsule().fill(.quaternary)
             GeometryReader { geometry in
                 Capsule()
-                    .fill(Color.indigo)
+                    .fill(PVDesign.accent)
                     .frame(width: geometry.size.width * meterFraction)
             }
         }

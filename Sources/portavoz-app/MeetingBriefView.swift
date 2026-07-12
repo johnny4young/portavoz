@@ -119,7 +119,7 @@ struct MeetingBriefView: View {
                 .font(.caption2)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(PVDesign.accent)
             .padding(.leading, 12)
         }
     }
@@ -164,7 +164,7 @@ struct MeetingBriefView: View {
                             Text(related.title).font(.callout.weight(.medium))
                             Text(related.reason)
                                 .font(.caption2)
-                                .foregroundStyle(Color.accentColor.opacity(0.9))
+                                .foregroundStyle(PVDesign.accent.opacity(0.9))
                                 .lineLimit(1)
                             if !related.overview.isEmpty {
                                 Text(related.overview)

@@ -486,7 +486,7 @@ extension MeetingDetailView {
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(PVDesign.accent)
                 }
             }
             ForEach(nameSuggestions, id: \.label) { suggestion in
@@ -497,7 +497,7 @@ extension MeetingDetailView {
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.14), in: Capsule())
+                        .background(PVDesign.accent.opacity(0.14), in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .help("Evidence: \(suggestion.evidence)")
@@ -512,7 +512,7 @@ extension MeetingDetailView {
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.14), in: Capsule())
+                        .background(PVDesign.accent.opacity(0.14), in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .help(L10n.format(
@@ -540,7 +540,7 @@ extension MeetingDetailView {
                     }
                     .font(.caption.weight(.semibold))
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(PVDesign.accent)
                     Button {
                         rememberOffer = nil
                     } label: {
@@ -552,7 +552,7 @@ extension MeetingDetailView {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 2)
-                .background(Color.accentColor.opacity(0.08), in: Capsule())
+                .background(PVDesign.accent.opacity(0.08), in: Capsule())
                 .help(L10n.text(
                     // One-line UI help text.
                     // swiftlint:disable:next line_length

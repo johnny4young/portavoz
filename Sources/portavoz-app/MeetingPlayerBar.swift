@@ -173,7 +173,7 @@ struct WaveformView: View {
                         height: size.height)
                     context.fill(
                         Path(roundedRect: rect, cornerRadius: 3),
-                        with: .color(.accentColor.opacity(0.15)))
+                        with: .color(PVDesign.accent.opacity(0.15)))
                 }
                 let barWidth = size.width / CGFloat(buckets.count)
                 let mid = size.height / 2

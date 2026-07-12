@@ -52,7 +52,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             Image(systemName: "waveform.badge.mic")
                 .font(.system(size: 44))
-                .foregroundStyle(.indigo)
+                .foregroundStyle(PVDesign.accent)
             Text("Welcome to Portavoz").font(.largeTitle.bold())
             Text("Your meetings, 100% on your Mac.")
                 .font(.title3)
@@ -164,7 +164,7 @@ struct OnboardingView: View {
 
     private func bullet(_ icon: String, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).foregroundStyle(.indigo).frame(width: 22)
+            Image(systemName: icon).foregroundStyle(PVDesign.accent).frame(width: 22)
             Text(text)
         }
     }
@@ -174,7 +174,7 @@ struct OnboardingView: View {
         done: Bool, action: (() -> Void)?, actionLabel: String
     ) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).foregroundStyle(.indigo).frame(width: 22)
+            Image(systemName: icon).foregroundStyle(PVDesign.accent).frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.callout.weight(.medium))
                 Text(detail).font(.caption).foregroundStyle(.secondary)

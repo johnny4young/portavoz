@@ -24,26 +24,31 @@ struct ContentView: View {
         NavigationSplitView {
             LibraryView(route: $route)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
+                .background { AuroraSidebarBackground() }
         } detail: {
-            switch route {
-            case .recording(let event):
-                RecordingView(route: $route, event: event)
-            case .meeting(let id):
-                MeetingDetailView(meetingID: id, route: $route)
-                    .id(id)  // reload state when switching meetings
-            case .ask:
-                AskView(route: $route)
-            case .insights:
-                InsightsView()
-            case nil:
-                ContentUnavailableView(
-                    "Portavoz",
-                    systemImage: "waveform.badge.mic",
-                    // One-line UI copy.
-                    // swiftlint:disable:next line_length
-                    description: Text("Record a meeting or choose one from the library. Everything is processed on your Mac.")
-                )
+            Group {
+                switch route {
+                case .recording(let event):
+                    RecordingView(route: $route, event: event)
+                case .meeting(let id):
+                    MeetingDetailView(meetingID: id, route: $route)
+                        .id(id)  // reload state when switching meetings
+                case .ask:
+                    AskView(route: $route)
+                case .insights:
+                    InsightsView()
+                case nil:
+                    ContentUnavailableView(
+                        "Portavoz",
+                        systemImage: "waveform.badge.mic",
+                        // One-line UI copy.
+                        // swiftlint:disable:next line_length
+                        description: Text("Record a meeting or choose one from the library. Everything is processed on your Mac.")
+                    )
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { AuroraDetailBackground() }
         }
         .task {
             // Palette citations may need to reopen the library window —
@@ -101,7 +106,7 @@ struct ContentView: View {
             OnboardingView(isPresented: $showOnboarding)
                 .portavozLocalized()
                 .environment(services)
-                .tint(.indigo)
+                .tint(PVDesign.accent)
         }
         .onChange(of: services.pendingRoute) { _, pending in
             if let pending {

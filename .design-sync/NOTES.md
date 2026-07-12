@@ -13,3 +13,5 @@
   B, «el color ES la voz»); jamás como accent general.
 - Next implementation source: docs/design/ds/explorations/6a-implementation-spec.md
   (4 features aprobadas) + Aurora shell + voces B como refresh visual.
+
+- Aurora en la app (jul 11): dosis window/header/sidebar implementadas en dark; `--aurora-selection` deliberadamente NO — la selección de listas la dibuja AppKit y repintarla pelea contra la plataforma; la postura indigo quedó vía AccentColor compilado + PVDesign.accent en todo el chrome propio.

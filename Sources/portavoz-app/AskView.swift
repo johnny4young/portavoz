@@ -72,7 +72,7 @@ struct AskView: View {
             Text(exchange.question)
                 .font(.callout.weight(.semibold))
                 .padding(10)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .background(PVDesign.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             Text(exchange.answer)
                 .textSelection(.enabled)
             if !exchange.passages.isEmpty {
@@ -91,7 +91,7 @@ struct AskView: View {
                         .font(.caption)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(PVDesign.accent)
                     .help(passage.text)
                 }
             }

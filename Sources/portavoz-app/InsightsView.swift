@@ -92,7 +92,7 @@ struct InsightsView: View {
                     x: .value("Week", bucket.weekStart, unit: .weekOfYear),
                     y: .value("Meetings", bucket.count)
                 )
-                .foregroundStyle(Color.accentColor.gradient)
+                .foregroundStyle(PVDesign.accent.gradient)
                 .cornerRadius(3)
             }
             .chartXAxis {
@@ -151,7 +151,7 @@ struct InsightsView: View {
                         .monospacedDigit()
                 }
                 .gaugeStyle(.accessoryCircularCapacity)
-                .tint(Color.accentColor)
+                .tint(PVDesign.accent)
                 Text(L10n.format("%d still open", facts.openActionItems))
                     .font(.caption)
                     .foregroundStyle(.secondary)

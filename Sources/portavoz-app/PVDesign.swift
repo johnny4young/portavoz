@@ -7,6 +7,13 @@ import SwiftUI
 /// pulled to the repo). When a value changes there, it changes HERE and
 /// nowhere else in the app.
 enum PVDesign {
+    /// The one accent of the product (the DS's stance on the accent debt):
+    /// system indigo — #5856D6 light / #5E5CE6 dark, exactly the DS tokens.
+    /// UI that means "the accent" reads THIS (or inherits the root `.tint`),
+    /// never `Color.accentColor`, which follows the user's system accent.
+    /// macOS still paints native list selection and focus rings itself.
+    static let accent = Color.indigo
+
     // MARK: Spacing (12/16/24 core scale)
 
     static let space1: CGFloat = 4
