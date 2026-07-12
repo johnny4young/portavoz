@@ -51,6 +51,16 @@
         }
       }
     },
+    "100% local · 0 B to the network today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100% local · 0 B a la red hoy"
+          }
+        }
+      }
+    },
     "100% local — nothing leaves your Mac": {
       "localizations": {
         "es": {
@@ -307,6 +317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aplicando la transcripción refinada…"
+          }
+        }
+      }
+    },
+    "Ask": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntar"
           }
         }
       }
@@ -977,6 +997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detecta preguntas en la conversación y sugiere respuestas en el dispositivo. Nunca responde por ti."
+          }
+        }
+      }
+    },
+    "Dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictar"
           }
         }
       }
@@ -1911,6 +1941,16 @@
         }
       }
     },
+    "Next meeting · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima reunión · %@"
+          }
+        }
+      }
+    },
     "Next: %@": {
       "localizations": {
         "es": {
@@ -2161,6 +2201,16 @@
         }
       }
     },
+    "Portavoz is idle": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz en reposo"
+          }
+        }
+      }
+    },
     "Portavoz records locally; macOS asks for each permission once.": {
       "localizations": {
         "es": {
@@ -2291,6 +2341,16 @@
         }
       }
     },
+    "Quit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salir"
+          }
+        }
+      }
+    },
     "Quit Portavoz": {
       "localizations": {
         "es": {
@@ -2331,12 +2391,32 @@
         }
       }
     },
+    "Recent": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recientes"
+          }
+        }
+      }
+    },
     "Recently deleted": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Eliminadas recientemente"
+          }
+        }
+      }
+    },
+    "Record": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabar"
           }
         }
       }
@@ -2357,6 +2437,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grabar esta reunión"
+          }
+        }
+      }
+    },
+    "Record when it starts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabar al empezar"
           }
         }
       }
@@ -2417,6 +2507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grabaciones"
+          }
+        }
+      }
+    },
+    "Recording…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabando…"
           }
         }
       }

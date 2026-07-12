@@ -14,6 +14,11 @@ struct LibraryView: View {
     /// survives relaunches.
     @AppStorage("todosSectionExpanded") private var todosExpanded = true
     @State private var meetings: [Meeting] = []
+    /// Per-meeting voice mix (design system: every meeting row is a shelf
+    /// of who spoke, in voice colors — amber is you). Loaded alongside the
+    /// list; a meeting missing here just shows no bar.
+    @State private var voiceMixes: [MeetingID: [MeetingStore.VoiceMixSlice]] = [:]
+    @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
     @State private var hits: [SearchHit] = []
     /// Open action items across ALL meetings — the cross-meeting to-do list.
@@ -165,11 +170,14 @@ struct LibraryView: View {
                             Text("No meetings yet").foregroundStyle(.secondary)
                         }
                         ForEach(meetings) { meeting in
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 3) {
                                 Text(meeting.title).lineLimit(1)
                                 Text(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if let mix = voiceMixes[meeting.id] {
+                                    VoiceMixBar(slices: mix, colorScheme: colorScheme)
+                                }
                             }
                             .tag(Route.meeting(meeting.id))
                             .contextMenu {
@@ -241,6 +249,8 @@ struct LibraryView: View {
 
     private func reload() async {
         meetings = (try? await services.store.meetings()) ?? []
+        voiceMixes =
+            (try? await services.store.voiceMixes(for: meetings.map(\.id))) ?? [:]
         openItems = (try? await services.store.openActionItems(limit: 20)) ?? []
         trashed = (try? await services.store.deletedMeetings()) ?? []
         await refreshBrief()

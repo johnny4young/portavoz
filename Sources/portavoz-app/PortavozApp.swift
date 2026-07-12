@@ -52,6 +52,7 @@ struct PortavozApp: App {
             MenuBarContent()
                 .portavozLocalized()
                 .environment(services)
+                .tint(PVDesign.accent)
         } label: {
             // «La P que habla» as a template image at rest; the red dot
             // while a meeting records — the glanceable "am I recording?"
@@ -64,6 +65,7 @@ struct PortavozApp: App {
                 Image(systemName: "waveform.and.mic")
             }
         }
+        .menuBarExtraStyle(.window)
         Settings {
             SettingsView()
                 .portavozLocalized()

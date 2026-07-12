@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🎚️ See who spoke, right from the library** — Every meeting in the sidebar now carries a slim voice-mix bar under its title: colored segments sized by how much each person spoke, your amber always first. The library becomes a shelf of conversations you can size up at a glance — who dominated, where you barely spoke — without opening anything.
+- **📊 A menu-bar panel, not just a menu** — Clicking the menu-bar P now opens a real panel: recording status with a live amber waveform, "100% local · 0 B to the network today", one-tap Record / Dictate / Ask, your next meeting with record-on-start, and recents. Everything one click away with the window closed.
 - **🅿️ «La P que habla» — the new face of Portavoz** — The app icon is now a Fraunces P whose stem is an amber waveform bar, standing on the brand's slate-and-violet world. The same P, monochrome, lives in your menu bar and adapts to any wallpaper like a native citizen.
 - **⚙️ Settings, reorganized** — No more endless scroll: seven categories with a search field, and a new "Your data" pane whose privacy ledger shows the real numbers — audio on your disk, meetings in your database, voices remembered — plus exactly what ever leaves this Mac (only what you send yourself). "100% local" is now one click from its receipts.
 - **🎤 Live captions, lyrics-style** — While recording, the newest line reads big and clear; when it's YOUR voice it glows in an amber card. Every speaker's label is a colored pill — the same stable voice colors as everywhere else — and older lines rise, fade and blur away like song lyrics.
