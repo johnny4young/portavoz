@@ -37,9 +37,23 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .audio: "mic"
         case .intelligence: "sparkles"
         case .voice: "person.wave.2"
-        case .agenda: "calendar"
+        case .agenda: "calendar.badge.clock"
         case .integrations: "link"
-        case .data: "lock"
+        case .data: "lock.shield"
+        }
+    }
+
+    /// The one-line preview under each nav item (design system 2a): the
+    /// pane's contents at a glance, so the sidebar tells you where to go.
+    var subtitle: String {
+        switch self {
+        case .general: L10n.text("System language · English/Spanish · menu bar")
+        case .audio: L10n.text("Echo cancellation · dictate anywhere · ⌥⌘D")
+        case .intelligence: L10n.text("Summary engine · Whisper refine · vocabulary")
+        case .voice: L10n.text("Enrolled voice · your name · Companion")
+        case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
+        case .integrations: L10n.text("BYOK OpenAI-compatible · GitHub gists · MCP")
+        case .data: L10n.text("Export Markdown · recordings folder · trash")
         }
     }
 
@@ -86,11 +100,16 @@ struct LedgerSection: View {
 
     var body: some View {
         Section {
-            LabeledContent("Audio on your disk", value: audioText)
-            LabeledContent("Meetings in your database", value: meetingText)
-            LabeledContent(
-                "Voices remembered — encrypted on this Mac",
-                value: voiceText)
+            // The DS's privacy ledger: four tiles read from the real disk
+            // and database — never a promise. The "to the network" tile is
+            // a structural fact (nothing auto-uploads), the green receipt.
+            HStack(spacing: 10) {
+                tile(audioText, "audio on your disk")
+                tile(meetingText, "meetings in your database")
+                tile("0 B", "to the network", tint: .green)
+                tile(voiceText, "voices, encrypted here")
+            }
+            .padding(.vertical, 4)
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
@@ -102,6 +121,22 @@ struct LedgerSection: View {
             Text("Your data, on this Mac")
         }
         .task { await load() }
+    }
+
+    /// One ledger tile: a big tabular number over a quiet caption.
+    private func tile(_ value: String, _ label: LocalizedStringKey, tint: Color = .primary) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value)
+                .font(.title3.weight(.bold).monospacedDigit())
+                .foregroundStyle(tint)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .topLeading)
+        .padding(12)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var audioText: String {

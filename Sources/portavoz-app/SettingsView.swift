@@ -72,28 +72,8 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $category) {
-                ForEach(SettingsCategory.allCases.filter { $0.matches(settingsQuery) }) { item in
-                    Label(item.title, systemImage: item.icon).tag(item)
-                }
-            }
-            .listStyle(.sidebar)
-            .searchable(text: $settingsQuery, placement: .sidebar, prompt: Text("Search settings"))
-            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
-            .safeAreaInset(edge: .bottom) {
-                // The DS's standing banner: the privacy claim, always one
-                // click from its receipts (the ledger in "Your data").
-                Button {
-                    category = .data
-                } label: {
-                    Label("100% local — nothing leaves your Mac", systemImage: "lock.fill")
-                        .font(.caption2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .padding(10)
-            }
+            SettingsSidebar(category: $category, query: $settingsQuery)
+                .navigationSplitViewColumnWidth(224)
         } detail: {
             Form {
                 switch category ?? .general {
@@ -126,7 +106,7 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .navigationTitle((category ?? .general).title)
         }
-        .frame(width: 720)
+        .frame(width: 760)
         .frame(minHeight: 620)
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {

@@ -231,6 +231,16 @@
         }
       }
     },
+    "All local": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo local"
+          }
+        }
+      }
+    },
     "Allow": {
       "localizations": {
         "es": {
@@ -437,6 +447,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Automatización"
+          }
+        }
+      }
+    },
+    "BYOK OpenAI-compatible · GitHub gists · MCP": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BYOK OpenAI-compatible · GitHub gists · MCP"
           }
         }
       }
@@ -1271,6 +1291,16 @@
         }
       }
     },
+    "Echo cancellation · dictate anywhere · ⌥⌘D": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelación de eco · dicta donde sea · ⌥⌘D"
+          }
+        }
+      }
+    },
     "Encrypted numeric fingerprints of voices you chose to remember, used only to suggest names in future meetings — never audio, never synced. Right-click a name to forget one voice.": {
       "localizations": {
         "es": {
@@ -1341,6 +1371,16 @@
         }
       }
     },
+    "Enrolled voice · your name · Companion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz enrolada · tu nombre · Companion"
+          }
+        }
+      }
+    },
     "Español": {
       "localizations": {
         "es": {
@@ -1367,6 +1407,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Exportar"
+          }
+        }
+      }
+    },
+    "Export Markdown · recordings folder · trash": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar Markdown · carpeta de grabaciones · papelera"
           }
         }
       }
@@ -2041,6 +2091,16 @@
         }
       }
     },
+    "Nothing auto-uploads. Check the receipts in “Your data”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada se sube solo. Verifica los recibos en «Tus datos»."
+          }
+        }
+      }
+    },
     "Nothing leaves this Mac except what you send yourself: gists you export, questions you ask an external model, and the update check.": {
       "localizations": {
         "es": {
@@ -2671,6 +2731,16 @@
         }
       }
     },
+    "Reminder · end-of-meeting Shortcut · title template": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aviso · Atajo al terminar · plantilla de títulos"
+          }
+        }
+      }
+    },
     "Remove note": {
       "localizations": {
         "es": {
@@ -3151,6 +3221,16 @@
         }
       }
     },
+    "Summary engine · Whisper refine · vocabulary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de resúmenes · refine Whisper · vocabulario"
+          }
+        }
+      }
+    },
     "Summary looks thin — retry with Built-in?": {
       "localizations": {
         "es": {
@@ -3177,6 +3257,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Audio del sistema"
+          }
+        }
+      }
+    },
+    "System language · English/Spanish · menu bar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma del sistema · English/Español · barra de menú"
           }
         }
       }
@@ -3721,6 +3811,16 @@
         }
       }
     },
+    "audio on your disk": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "audio en tu disco"
+          }
+        }
+      }
+    },
     "avg length": {
       "localizations": {
         "es": {
@@ -3801,6 +3901,16 @@
         }
       }
     },
+    "meetings in your database": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reuniones en tu base de datos"
+          }
+        }
+      }
+    },
     "recorded": {
       "localizations": {
         "es": {
@@ -3831,12 +3941,32 @@
         }
       }
     },
+    "to the network": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "enviados a la red"
+          }
+        }
+      }
+    },
     "voice enroll companion name remembered": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "voz enrolar companion nombre recordadas"
+          }
+        }
+      }
+    },
+    "voices, encrypted here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "voces, cifradas aquí"
           }
         }
       }
