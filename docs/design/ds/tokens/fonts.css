@@ -1,0 +1,6 @@
+/* Portavoz — fonts.
+   The repo ships NO font binaries; the site loads these three families from
+   Google Fonts (see site/index.html). We keep the same CDN import here.
+   ⚠️ SUBSTITUTION FLAG: if self-hosted font files become available, replace
+   this @import with @font-face rules pointing at assets/fonts/. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,50&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");

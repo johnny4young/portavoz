@@ -1,0 +1,24 @@
+/* Portavoz — motion. Two gestures only:
+   · pulse on active symbols (dictation mic, recording dot)
+   · "breathe" on the brand waveform (3.6s ease-in-out, staggered)
+   Always behind prefers-reduced-motion. */
+
+:root {
+  --breathe-duration: 3.6s; /* @kind other */
+  --pulse-duration: 1s; /* @kind other */
+  --ease-standard: ease-in-out; /* @kind other */
+}
+
+@keyframes pv-breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.72); }
+}
+
+@keyframes pv-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-breathe, .pv-pulse { animation: none !important; }
+}

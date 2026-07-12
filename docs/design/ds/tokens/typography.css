@@ -1,0 +1,28 @@
+/* Portavoz — typography tokens.
+   APP: system font (SF Pro on a Mac). Numbers are ALWAYS tabular
+   (monospacedDigit in SwiftUI → font-variant-numeric: tabular-nums).
+   WEB: Fraunces (display serif, SOFT 50) + Instrument Sans (body) +
+   IBM Plex Mono (commands & measured numbers). */
+
+:root {
+  --font-app: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-web-body: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Fraunces axis settings used on the web */
+  --display-settings: "SOFT" 50, "opsz" 100; /* @kind other */
+
+  /* macOS text-style scale (px) — the hierarchy the app actually uses */
+  --type-large-title: 700 26px/1.22 var(--font-app);  /* page titles */
+  --type-title2: 700 17px/1.3 var(--font-app);        /* tile values, meeting title */
+  --type-title3: 600 15px/1.33 var(--font-app);
+  --type-headline: 600 13px/1.38 var(--font-app);     /* card titles */
+  --type-body: 400 13px/1.46 var(--font-app);
+  --type-callout: 400 12px/1.42 var(--font-app);
+  --type-caption: 400 10px/1.3 var(--font-app);       /* helper text */
+  --type-caption-semibold: 600 10px/1.3 var(--font-app); /* pills, chips */
+
+  /* numbers: apply with font-variant-numeric on any timer/stat */
+  --numeric: tabular-nums; /* @kind other */
+}

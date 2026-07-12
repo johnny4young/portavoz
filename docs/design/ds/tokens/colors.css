@@ -1,0 +1,97 @@
+/* Portavoz — color tokens.
+   Two worlds, one system:
+   · APP (macOS): system indigo accent, macOS neutrals, light + dark.
+   · BRAND (portavoz.app web): slate ground, violet radials, one amber accent.
+   Stance on the known debt: list selection uses INDIGO, never the user's
+   system accent. Indigo is the one accent of the product. */
+
+:root {
+  /* ---- accent (macOS system indigo, light appearance) ---- */
+  --accent: #5856d6;
+  --accent-tint-14: rgba(88, 86, 214, 0.14);  /* suggestion chip capsule */
+  --accent-tint-08: rgba(88, 86, 214, 0.08);  /* secondary offer capsule */
+  --accent-tint-18: rgba(88, 86, 214, 0.18);  /* "Me" speaker pill */
+  --on-accent: #ffffff;
+
+  /* ---- semantics (macOS system palette, light) ---- */
+  --success: #34c759;      /* mic OK, checkmarks, enrolled */
+  --warning: #ff9500;      /* mic low, permissions pending */
+  --destructive: #ff3b30;  /* delete, recording dot */
+  --recording: var(--destructive);
+  --ai: var(--accent);     /* ✦ suggestions are always accent-colored */
+
+  /* ---- app neutrals (light) ---- */
+  --bg-window: #ffffff;
+  --bg-sidebar: #f5f4f5;
+  --text-primary: rgba(0, 0, 0, 0.85);
+  --text-secondary: rgba(0, 0, 0, 0.5);
+  --text-tertiary: rgba(0, 0, 0, 0.26);
+  --separator: rgba(0, 0, 0, 0.1);
+  --fill-quaternary: rgba(120, 120, 128, 0.16);       /* .quaternary */
+  --surface-card: rgba(120, 120, 128, 0.08);          /* quaternary.opacity(0.5) */
+  --surface-card-soft: rgba(120, 120, 128, 0.05);     /* opacity(0.3) */
+  --surface-material: rgba(246, 246, 246, 0.82);      /* .regularMaterial stand-in */
+  --pill-neutral: rgba(120, 120, 128, 0.18);          /* secondary speaker pill */
+
+  /* ---- Aurora (dirección canónica de la app: el mundo del icono entra al shell) ---- */
+  --aurora-window: linear-gradient(140deg, #1c1a2e 0%, #262626 45%, #262626 100%); /* @kind other */
+  --aurora-sidebar: rgba(14, 17, 32, 0.6);
+  --aurora-header:
+    radial-gradient(700px 260px at 20% -40%, rgba(82, 38, 191, 0.5), transparent 70%); /* @kind other */
+  --aurora-selection: linear-gradient(135deg, rgba(94, 92, 230, 0.85), rgba(82, 38, 191, 0.85)); /* @kind other */
+
+  /* ---- voces (dirección B: «el color ES la voz») ----
+     Tú SIEMPRE ámbar; cada speaker recibe un hue estable por orden de
+     aparición (persistente por persona nombrada). La UI se mantiene neutra
+     para que el único color con significado sea la voz. */
+  --voice-me: #fdbf47;
+  --voice-me-contrast: #4a3800;
+  --voice-1: #8b7cf0;
+  --voice-2: #4aa8d8;
+  --voice-3: #3fbf9a;
+  --voice-4: #e07a9b;
+  --voice-5: #b98ae0;
+  --voice-6: #d8a24a;
+
+  /* ---- brand (portavoz.app — the icon's world; always dark) ---- */
+  --brand-ink: #f3f1ec;
+  --brand-ink-dim: #b9b6c4;
+  --brand-ground-0: #0e1120;
+  --brand-ground-1: #171b31;
+  --brand-violet: #5226bf;
+  --brand-amber: #fdbf47;
+  --brand-line: rgba(243, 241, 236, 0.14);
+  --brand-radial:
+    radial-gradient(1200px 700px at 85% -10%, rgba(82, 38, 191, 0.55), transparent 60%),
+    radial-gradient(900px 600px at -10% 30%, rgba(82, 38, 191, 0.25), transparent 55%),
+    #0e1120; /* @kind other */
+}
+
+/* macOS dark appearance — scope any subtree with data-theme="dark". */
+[data-theme="dark"] {
+  --accent: #5e5ce6;
+  --accent-tint-14: rgba(94, 92, 230, 0.2);
+  --accent-tint-08: rgba(94, 92, 230, 0.12);
+  --accent-tint-18: rgba(94, 92, 230, 0.28);
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --destructive: #ff453a;
+  --bg-window: #262626;
+  --bg-sidebar: #1e1e1e;
+  --text-primary: rgba(255, 255, 255, 0.85);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.26);
+  --separator: rgba(255, 255, 255, 0.1);
+  --fill-quaternary: rgba(120, 120, 128, 0.26);
+  --surface-card: rgba(120, 120, 128, 0.13);
+  --surface-card-soft: rgba(120, 120, 128, 0.08);
+  --surface-material: rgba(40, 40, 40, 0.78);
+  --pill-neutral: rgba(120, 120, 128, 0.3);
+  /* voces: en dark suben un punto de luminancia para AA sobre #262626 */
+  --voice-1: #9d8ffa;
+  --voice-2: #5cb8e6;
+  --voice-3: #4fd0ab;
+  --voice-4: #ef8fae;
+  --voice-5: #c89aee;
+  --voice-6: #e6b25e;
+}

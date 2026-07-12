@@ -1,0 +1,17 @@
+/* Portavoz — spacing & radii. Today's de-facto scale: 12/16/24 paddings,
+   radii 10 (tiles) / 12 (cards) / 14 (floating panels). */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;   /* tile padding, sidebar gutters */
+  --space-4: 16px;   /* card padding, detail padding */
+  --space-6: 24px;   /* page padding */
+  --space-8: 32px;
+
+  --radius-sm: 8px;      /* permission rows, small insets */
+  --radius-tile: 10px;   /* stat tiles, summary card */
+  --radius-card: 12px;   /* content cards, HUD */
+  --radius-panel: 14px;  /* floating panels (dictation, materials) */
+  --radius-pill: 999px;  /* capsules: chips, pills, meters */
+}
