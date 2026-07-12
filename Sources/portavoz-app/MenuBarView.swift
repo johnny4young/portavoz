@@ -11,6 +11,8 @@ struct MenuBarContent: View {
     @Environment(AppServices.self) private var services
     @Environment(\.openWindow) private var openWindow
     @State private var recents: [Meeting] = []
+    /// Open action-item counts per recent meeting — the "✦ N pending" badge.
+    @State private var pendingByMeeting: [MeetingID: Int] = [:]
     @State private var nextEvent: UpcomingEvent?
 
     private var recording: Bool { services.recording.phase == .recording }
@@ -32,6 +34,8 @@ struct MenuBarContent: View {
         .frame(width: 320)
         .task {
             recents = Array(((try? await services.store.meetings()) ?? []).prefix(3))
+            let open = (try? await services.store.openActionItems(limit: 200)) ?? []
+            pendingByMeeting = Dictionary(grouping: open, by: \.meetingID).mapValues(\.count)
             if !CalendarAttendeeSource.accessUndetermined {
                 nextEvent = CalendarAttendeeSource().upcomingEvents().first
             }
@@ -164,9 +168,14 @@ struct MenuBarContent: View {
                     openMainWindow()
                     services.pendingRoute = .meeting(meeting.id)
                 } label: {
-                    HStack {
+                    HStack(spacing: 6) {
                         Text(meeting.title).lineLimit(1)
-                        Spacer()
+                        Spacer(minLength: 4)
+                        if let pending = pendingByMeeting[meeting.id], pending > 0 {
+                            Label("\(pending)", systemImage: "sparkles")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(PVDesign.accent)
+                        }
                         Text(relative(meeting.startedAt))
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
