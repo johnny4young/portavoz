@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **📈 Insights, redrawn** — Your stats now open with a live amber waveform and a real week-over-week delta (▲ +3), and the flat bar chart is now a rhythm heatmap: twelve weeks across, weekdays down, each cell brighter the more you met — your meeting life at a glance, computed on your Mac.
+- **⚙️ Settings that guide you** — Each settings category now shows a one-line preview of what's inside, the selected one glows indigo→violet, and "Your data" lays your privacy ledger out as four tiles — audio on disk, meetings, 0 B to the network, voices — so the receipts are right there.
 - **⌨️ Dictation that shows where it lands** — The dictation strip now names the app your words will go into (a `✎ Notes` chip), shows the settled words in full color while the still-changing tail stays gray, and confirms with "42 words inserted into Notes — nothing was saved" before it fades. You never dictate blind, and it never leaves a trace.
 - **🎚️ See who spoke, right from the library** — Every meeting in the sidebar now carries a slim voice-mix bar under its title: colored segments sized by how much each person spoke, your amber always first. The library becomes a shelf of conversations you can size up at a glance — who dominated, where you barely spoke — without opening anything.
 - **📊 A menu-bar panel, not just a menu** — Clicking the menu-bar P now opens a real panel: recording status with a live amber waveform, "100% local · 0 B to the network today", one-tap Record / Dictate / Ask, your next meeting with record-on-start, and recents. Everything one click away with the window closed.

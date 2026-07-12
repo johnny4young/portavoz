@@ -22,6 +22,12 @@ public struct LibraryStats: Sendable, Equatable {
     public let busiestWeekday: Int?
     /// Consecutive weeks ending NOW with at least one meeting.
     public let weeklyStreak: Int
+    /// Rhythm heatmap: `heatmap[w][d]` is the meeting count for week `w`
+    /// (0 = oldest of the window, aligned with `perWeek`) and weekday `d`
+    /// (0 = the calendar's first weekday). The Insights heatmap reads this.
+    public let heatmap: [[Int]]
+    /// The busiest single cell in the heatmap — the color scale's top.
+    public let heatmapMax: Int
 
     public static func compute(
         meetings: [Meeting],
@@ -61,12 +67,30 @@ public struct LibraryStats: Sendable, Equatable {
             streak += 1
         }
 
+        // Rhythm heatmap: week (column, aligned with buckets) × weekday.
+        var grid = Array(repeating: Array(repeating: 0, count: 7), count: buckets.count)
+        let indexByStart = Dictionary(
+            uniqueKeysWithValues: buckets.enumerated().map { ($1.weekStart, $0) })
+        for meeting in meetings {
+            guard
+                let weekStart = calendar.dateInterval(
+                    of: .weekOfYear, for: meeting.startedAt)?.start,
+                let column = indexByStart[weekStart]
+            else { continue }
+            let weekday = calendar.component(.weekday, from: meeting.startedAt)
+            let row = (weekday - calendar.firstWeekday + 7) % 7
+            grid[column][row] += 1
+        }
+        let heatMax = grid.flatMap { $0 }.max() ?? 0
+
         return LibraryStats(
             totalMeetings: meetings.count,
             totalSeconds: total,
             averageSeconds: durations.isEmpty ? 0 : total / Double(durations.count),
             perWeek: buckets,
             busiestWeekday: busiest,
-            weeklyStreak: streak)
+            weeklyStreak: streak,
+            heatmap: grid,
+            heatmapMax: heatMax)
     }
 }

@@ -701,6 +701,16 @@
         }
       }
     },
+    "Computed on your Mac — nothing leaves it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculado en tu Mac — nada sale de él."
+          }
+        }
+      }
+    },
     "Computed on your Mac, from your library — nothing leaves it.": {
       "localizations": {
         "es": {
@@ -3781,6 +3791,16 @@
         }
       }
     },
+    "Your rhythm · 12 weeks": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu ritmo · 12 semanas"
+          }
+        }
+      }
+    },
     "Your side of the meeting.": {
       "localizations": {
         "es": {
@@ -3847,6 +3867,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "byok api key github gist token mcp endpoint openai"
+          }
+        }
+      }
+    },
+    "column = week · row = weekday · more intense = more meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "columna = semana · fila = día · más intenso = más reuniones"
           }
         }
       }

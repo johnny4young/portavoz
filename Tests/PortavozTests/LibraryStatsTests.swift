@@ -82,4 +82,27 @@ final class LibraryStatsTests: XCTestCase {
         XCTAssertEqual(stats.weeklyStreak, 0)
         XCTAssertNil(stats.busiestWeekday)
     }
+
+    func testHeatmapGridAlignsWithBucketsAndCountsWeekdays() {
+        // now = Wed Jul 8. Two meetings today (this week), one 7 days ago.
+        let stats = LibraryStats.compute(
+            meetings: [meeting(daysAgo: 0), meeting(daysAgo: 0), meeting(daysAgo: 7)],
+            weeks: 4, calendar: calendar, now: now)
+        // One column per bucket, seven weekday rows each.
+        XCTAssertEqual(stats.heatmap.count, stats.perWeek.count)
+        XCTAssertTrue(stats.heatmap.allSatisfy { $0.count == 7 })
+        // Every meeting lands in a cell; the total matches.
+        XCTAssertEqual(stats.heatmap.flatMap { $0 }.reduce(0, +), 3)
+        // The busiest cell (two meetings on the same Wednesday) is the max.
+        XCTAssertEqual(stats.heatmapMax, 2)
+        // The newest column (this week) holds the two-meeting Wednesday.
+        XCTAssertEqual(stats.heatmap.last?.max(), 2)
+    }
+
+    func testHeatmapEmptyLibraryIsAllZeros() {
+        let stats = LibraryStats.compute(
+            meetings: [], weeks: 4, calendar: calendar, now: now)
+        XCTAssertEqual(stats.heatmapMax, 0)
+        XCTAssertEqual(stats.heatmap.flatMap { $0 }.reduce(0, +), 0)
+    }
 }

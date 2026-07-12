@@ -1,4 +1,3 @@
-import Charts
 import IntegrationsKit
 import PortavozCore
 import StorageKit
@@ -14,12 +13,18 @@ struct InsightsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Insights")
-                    .font(.largeTitle.bold())
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Insights")
+                        .font(.largeTitle.bold())
+                    Spacer()
+                    Label("Computed on your Mac — nothing leaves it.", systemImage: "lock.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
                 if let stats {
                     tiles(stats)
-                    cadenceChart(stats)
+                    rhythmHeatmap(stats)
                 }
                 if let facts {
                     HStack(alignment: .top, spacing: 16) {
@@ -27,12 +32,9 @@ struct InsightsView: View {
                         commitmentsCard(facts)
                     }
                 }
-                Text("Computed on your Mac, from your library — nothing leaves it.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             .padding(24)
-            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: 860, alignment: .leading)
         }
         .task(id: services.libraryVersion) { await reload() }
     }
@@ -49,62 +51,120 @@ struct InsightsView: View {
         HStack(spacing: 12) {
             tile(
                 value: "\(stats.totalMeetings)",
-                label: L10n.text("meetings"))
-            tile(
-                value: hours(stats.totalSeconds),
-                label: L10n.text("recorded"))
-            tile(
-                value: minutes(stats.averageSeconds),
-                label: L10n.text("avg length"))
-            tile(
-                value: "\(stats.weeklyStreak)",
-                label: L10n.text("week streak"))
+                label: L10n.text("meetings"),
+                delta: weeklyDelta(stats),
+                waveform: true)
+            tile(value: hours(stats.totalSeconds), label: L10n.text("recorded"))
+            tile(value: minutes(stats.averageSeconds), label: L10n.text("avg length"))
+            tile(value: "\(stats.weeklyStreak)", label: L10n.text("week streak"))
             if let weekday = stats.busiestWeekday {
-                tile(
-                    value: weekdayName(weekday),
-                    label: L10n.text("busiest day"))
+                tile(value: weekdayName(weekday), label: L10n.text("busiest day"))
             }
         }
     }
 
-    private func tile(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.title2.bold())
-                .monospacedDigit()
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    /// This week vs last week, from the two newest buckets — a real delta,
+    /// nil when there isn't enough history to compare.
+    private func weeklyDelta(_ stats: LibraryStats) -> Int? {
+        guard stats.perWeek.count >= 2 else { return nil }
+        return stats.perWeek[stats.perWeek.count - 1].count
+            - stats.perWeek[stats.perWeek.count - 2].count
+    }
+
+    private func tile(
+        value: String, label: String, delta: Int? = nil, waveform: Bool = false
+    ) -> some View {
+        HStack(spacing: 10) {
+            if waveform {
+                miniWaveform
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(value)
+                        .font(.title2.bold())
+                        .monospacedDigit()
+                    if let delta, delta != 0 {
+                        Text(delta > 0 ? "▲ +\(delta)" : "▼ \(delta)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(delta > 0 ? Color.green : .secondary)
+                    }
+                }
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    // MARK: - Cadence
-
-    private func cadenceChart(_ stats: LibraryStats) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Meetings per week")
-                .font(.headline)
-            Chart(stats.perWeek) { bucket in
-                BarMark(
-                    x: .value("Week", bucket.weekStart, unit: .weekOfYear),
-                    y: .value("Meetings", bucket.count)
-                )
-                .foregroundStyle(PVDesign.accent.gradient)
-                .cornerRadius(3)
+    /// A tiny four-bar waveform whose peak is your amber — the brand mark
+    /// as a stat accent.
+    private var miniWaveform: some View {
+        HStack(alignment: .bottom, spacing: 2.5) {
+            ForEach(Array([0.4, 0.55, 0.7, 1.0].enumerated()), id: \.offset) { index, height in
+                Capsule()
+                    .fill(index == 3 ? PVDesign.accent : PVDesign.accent.opacity(0.4))
+                    .frame(width: 4, height: 28 * height)
             }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .weekOfYear, count: 2)) { _ in
-                    AxisGridLine()
-                    AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+        }
+        .frame(height: 28)
+    }
+
+    // MARK: - Rhythm heatmap
+
+    private func rhythmHeatmap(_ stats: LibraryStats) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Your rhythm · 12 weeks")
+                    .font(.headline)
+                Text("column = week · row = weekday · more intense = more meetings")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            HStack(spacing: 7) {
+                VStack(alignment: .trailing, spacing: 4) {
+                    ForEach(weekdayInitials, id: \.self) { day in
+                        Text(day)
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .frame(height: 13)
+                    }
+                }
+                HStack(spacing: 4) {
+                    ForEach(Array(stats.heatmap.enumerated()), id: \.offset) { _, week in
+                        VStack(spacing: 4) {
+                            ForEach(Array(week.enumerated()), id: \.offset) { _, count in
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(heatColor(count, max: stats.heatmapMax))
+                                    .frame(height: 13)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
                 }
             }
-            .frame(height: 160)
         }
         .padding(16)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// The intensity ramp: quiet fill → full accent as the cell's count
+    /// approaches the busiest cell.
+    private func heatColor(_ count: Int, max: Int) -> Color {
+        guard count > 0, max > 0 else { return .primary.opacity(0.06) }
+        let step = Double(count) / Double(max)
+        return PVDesign.accent.opacity(0.18 + 0.82 * step)
+    }
+
+    /// Weekday initials starting at the calendar's first weekday, so the
+    /// rows line up with `heatmap`'s ordering.
+    private var weekdayInitials: [String] {
+        let calendar = Calendar.current
+        let symbols = calendar.veryShortWeekdaySymbols
+        return (0..<7).map { symbols[(calendar.firstWeekday - 1 + $0) % 7] }
     }
 
     // MARK: - People & commitments
