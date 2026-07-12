@@ -41,6 +41,26 @@
         }
       }
     },
+    "%d words inserted into %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d palabras insertadas en %@."
+          }
+        }
+      }
+    },
+    "%d words inserted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d palabras insertadas."
+          }
+        }
+      }
+    },
     "10 minutes before": {
       "localizations": {
         "es": {
@@ -1027,6 +1047,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dicta en cualquier lugar"
+          }
+        }
+      }
+    },
+    "Dictating": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictando"
           }
         }
       }
@@ -2037,6 +2067,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todavía no hay nada relacionado en tus reuniones."
+          }
+        }
+      }
+    },
+    "Nothing was saved in Portavoz — dictation never leaves a trace.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada se guardó en Portavoz — el dictado jamás deja huella."
           }
         }
       }

@@ -48,6 +48,21 @@ private struct DictationStripView: View {
     let controller: DictationController
 
     var body: some View {
+        Group {
+            if case .inserted(let words) = controller.phase {
+                insertedView(words)
+            } else {
+                dictatingView
+            }
+        }
+        .padding(12)
+        .frame(width: 520)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// The active strip: what you're saying, and — the 4b signature — WHERE
+    /// it will land, so you never dictate blind.
+    private var dictatingView: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: "waveform.badge.mic")
@@ -56,6 +71,9 @@ private struct DictationStripView: View {
                 Text(title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+                if let target = controller.targetApp, controller.phase == .listening {
+                    targetChip(target)
+                }
                 Spacer()
                 if controller.phase == .listening {
                     meter
@@ -69,15 +87,61 @@ private struct DictationStripView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Cancel dictation"))
             }
-            Text(transcript.isEmpty ? L10n.text("Listening…") : transcript)
-                .font(.body)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(transcript.isEmpty ? .secondary : .primary)
+            if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
+                Text("Listening…")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                // Confirmed words are settled; the tail is still volatile, so
+                // it reads gray — it firms up as the engine commits it.
+                (Text(controller.confirmedText)
+                    .foregroundStyle(.primary)
+                    + Text(controller.partialText.isEmpty ? "" : " ")
+                    + Text(controller.partialText)
+                    .foregroundStyle(.tertiary))
+                    .font(.body)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .padding(12)
-        .frame(width: 520)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// The brief confirmation after insertion: N words → the target app,
+    /// and the honest reassurance that nothing was stored.
+    private func insertedView(_ words: Int) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(insertedTitle(words))
+                    .font(.callout.weight(.medium))
+                Text("Nothing was saved in Portavoz — dictation never leaves a trace.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+
+    private func insertedTitle(_ words: Int) -> String {
+        if let target = controller.targetApp {
+            return L10n.format("%d words inserted into %@.", words, target)
+        }
+        return L10n.format("%d words inserted.", words)
+    }
+
+    /// The destination chip: `✎ Notes` — the app the words will land in.
+    private func targetChip(_ app: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "pencil").font(.caption2)
+            Text(app).font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(PVDesign.accent)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(PVDesign.accent.opacity(0.14), in: Capsule())
     }
 
     /// Same dB mapping as the recording HUD's meter: −60 dB → 0, 0 dB → 1.
@@ -108,16 +172,11 @@ private struct DictationStripView: View {
     private var title: String {
         switch controller.phase {
         case .listening:
-            return L10n.text("Dictating — ⌥⌘D inserts into the front app")
+            return L10n.text("Dictating")
         case .failed(let message):
             return message
-        case .idle:
+        case .idle, .inserted:
             return ""
         }
-    }
-
-    private var transcript: String {
-        DictationAssembler.text(
-            confirmed: controller.confirmedText, partial: controller.partialText)
     }
 }

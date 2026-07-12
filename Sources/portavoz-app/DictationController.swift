@@ -21,6 +21,10 @@ final class DictationController {
     enum Phase: Equatable {
         case idle
         case listening
+        /// Words landed in the target app — a brief confirmation before the
+        /// strip fades, so the user sees the dictation took (design system
+        /// 4b: "inserted, no trace").
+        case inserted(Int)
         case failed(String)
     }
 
@@ -31,6 +35,9 @@ final class DictationController {
     private(set) var partialText = ""
     /// Mic peak with fast attack / slow decay (same VU feel as the HUD).
     private(set) var micLevel: Float = 0
+    /// The app that was frontmost when dictation started — where the text
+    /// will land. The strip shows it so you never dictate "blind" (4b).
+    private(set) var targetApp: String?
 
     private var hotkey: GlobalHotkey?
     private var microphone: MicrophoneSource?
@@ -80,7 +87,7 @@ final class DictationController {
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
         switch phase {
-        case .idle, .failed:
+        case .idle, .failed, .inserted:
             start(services: services)
         case .listening:
             finishAndInsert()
@@ -99,6 +106,9 @@ final class DictationController {
             scheduleFailureDismiss()
             return
         }
+        // Capture the destination BEFORE the non-activating panel appears —
+        // the frontmost app is still the one the user will dictate into.
+        targetApp = NSWorkspace.shared.frontmostApplication?.localizedName
         phase = .listening
         confirmedText = ""
         partialText = ""
@@ -179,10 +189,21 @@ final class DictationController {
         microphone = nil
         feed = nil
         session = nil
-        phase = .idle
-        panel.close()
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else {
+            phase = .idle
+            panel.close()
+            return
+        }
         TextInserter.insert(text)
+        // Confirm the insertion for a beat, then fade — the user sees it took.
+        let words = text.split(whereSeparator: \.isWhitespace).count
+        phase = .inserted(words)
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1600))
+            guard let self, case .inserted = self.phase else { return }
+            self.phase = .idle
+            self.panel.close()
+        }
     }
 
     private func scheduleFailureDismiss() {
