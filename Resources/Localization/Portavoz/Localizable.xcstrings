@@ -1291,6 +1291,16 @@
         }
       }
     },
+    "Earlier": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antes"
+          }
+        }
+      }
+    },
     "Echo cancellation (recommended with speakers)": {
       "localizations": {
         "es": {
@@ -1487,6 +1497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Exportar archivo de reunión con audio…"
+          }
+        }
+      }
+    },
+    "Export or share this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar o compartir esta reunión"
           }
         }
       }
@@ -1771,6 +1791,16 @@
         }
       }
     },
+    "Last week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semana pasada"
+          }
+        }
+      }
+    },
     "Launch at login": {
       "localizations": {
         "es": {
@@ -1947,6 +1977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modelos listos"
+          }
+        }
+      }
+    },
+    "Move this meeting to Recently deleted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover esta reunión a Eliminadas recientemente"
           }
         }
       }
@@ -3447,6 +3487,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera con el modelo integrado: nada cambia si no haces clic."
+          }
+        }
+      }
+    },
+    "This week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta semana"
           }
         }
       }

@@ -99,11 +99,6 @@ struct MeetingDetailView: View {
         loadedBody(detail)
             .navigationTitle(detail.meeting.title)
             .sheet(isPresented: refineDraftBinding) { refineSheet }
-            .toolbar {
-                refineButton(detail)
-                exportMenu(detail)
-                deleteButton
-            }
             .fileExporter(
                 isPresented: exportBinding,
                 document: exportDocument,
@@ -250,41 +245,6 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func refineButton(_ detail: MeetingDetail) -> some View {
-        Button {
-            refine(detail)
-        } label: {
-            if refining != nil {
-                ProgressView().controlSize(.small)
-            } else {
-                Label("Refine", systemImage: "wand.and.stars")
-            }
-        }
-        .disabled(refining != nil || detail.meeting.audioDirectory == nil)
-        .help(
-            // One-line UI help text.
-            // swiftlint:disable:next line_length
-            "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation"
-        )
-    }
-
-    private func exportMenu(_ detail: MeetingDetail) -> some View {
-        Menu {
-            Button("Export Markdown…") { export(detail, as: .markdown) }
-            Button("Export PDF…") { export(detail, as: .pdf) }
-            Button("Export meeting file (.portavoz)…") {
-                Task { await exportBundle(detail, includeAudio: false) }
-            }
-            Button("Export meeting file with audio…") {
-                Task { await exportBundle(detail, includeAudio: true) }
-            }
-            Divider()
-            Button("Publish as Gist…") { showGistConfirm = true }
-        } label: {
-            Label("Export", systemImage: "square.and.arrow.up")
-        }
-    }
-
     /// The .portavoz interchange file (M15 L0): transcript + cast +
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
@@ -316,18 +276,6 @@ extension MeetingDetailView {
         exportType = .meetingBundle
         exportName = "\(detail.meeting.title).portavoz"
         exportDocument = ExportDocument(data: data)
-    }
-
-    private var deleteButton: some View {
-        Button(role: .destructive) {
-            Task {
-                try? await services.store.delete(meetingID)
-                services.libraryVersion += 1
-                route = nil
-            }
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
     }
 
     @ViewBuilder
@@ -448,7 +396,9 @@ extension MeetingDetailView {
                     .buttonStyle(.plain)
                     .help("Suggested title from the summary — one click renames, nothing changes on its own")
                 }
+                Spacer(minLength: 0)
             }
+            actionRow(detail)
             HStack(spacing: 12) {
                 Text(detail.meeting.startedAt.formatted(date: .long, time: .shortened))
                 if let ended = detail.meeting.endedAt {
@@ -460,6 +410,80 @@ extension MeetingDetailView {
             .font(.callout)
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// The meeting's actions as a row of round buttons under the title
+    /// (design system: refine · export · delete live with the meeting, not
+    /// in the window toolbar). Export is tinted the accent; delete is
+    /// destructive red.
+    private func actionRow(_ detail: MeetingDetail) -> some View {
+        HStack(spacing: 8) {
+            roundButton(
+                systemImage: "wand.and.stars", tint: .secondary,
+                busy: refining != nil,
+                disabled: refining != nil || detail.meeting.audioDirectory == nil,
+                // swiftlint:disable:next line_length
+                help: "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation"
+            ) { refine(detail) }
+
+            Menu {
+                Button("Export Markdown…") { export(detail, as: .markdown) }
+                Button("Export PDF…") { export(detail, as: .pdf) }
+                Button("Export meeting file (.portavoz)…") {
+                    Task { await exportBundle(detail, includeAudio: false) }
+                }
+                Button("Export meeting file with audio…") {
+                    Task { await exportBundle(detail, includeAudio: true) }
+                }
+                Divider()
+                Button("Publish as Gist…") { showGistConfirm = true }
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 13))
+                    .foregroundStyle(PVDesign.accent)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(PVDesign.accent.opacity(0.16)))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(L10n.text("Export or share this meeting"))
+
+            roundButton(
+                systemImage: "trash", tint: .red, role: .destructive,
+                help: "Move this meeting to Recently deleted"
+            ) {
+                Task {
+                    try? await services.store.delete(meetingID)
+                    services.libraryVersion += 1
+                    route = nil
+                }
+            }
+        }
+    }
+
+    /// One circular icon action, matching the DS's under-title button row.
+    @ViewBuilder
+    private func roundButton(
+        systemImage: String, tint: Color, role: ButtonRole? = nil,
+        busy: Bool = false, disabled: Bool = false, help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            Group {
+                if busy {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: systemImage).font(.system(size: 13))
+                }
+            }
+            .foregroundStyle(tint)
+            .frame(width: 30, height: 30)
+            .background(Circle().fill(.quaternary.opacity(0.5)))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .help(help)
     }
 
     /// The meeting's cast, with the M6 "1-tap speaker→name" flow: ✦
