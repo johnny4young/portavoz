@@ -19,10 +19,6 @@ struct SettingsView: View {
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
 
-    @State private var token = ""
-    @State private var hasStoredToken = false
-    @State private var tokenMessage: String?
-
     @State private var voiceprint: Voiceprint?
     @State private var enrolling = false
     @State private var voiceMessage: String?
@@ -69,36 +65,74 @@ struct SettingsView: View {
     @State private var advice: EngineAdvice?
     @State private var whisperVariants: [AppServices.WhisperVariant] = []
 
+    /// 2a: category navigation instead of one endless scroll. The search
+    /// field filters categories by what each pane contains.
+    @State private var category: SettingsCategory? = .general
+    @State private var settingsQuery = ""
+
     var body: some View {
-        Form {
-            languageSection
-            AudioSection()
-            DictationSection()
-            AutomationSection()
-            MenuBarSection()
-            BackupSection()
-            agendaSection
-            recordingsSection
-            titleSection
-            vocabularySection
-            summaryEngineSection
-            voiceSection
-            RememberedVoicesSection()
-            companionSection
-            byokSection
-            gitHubSection
+        NavigationSplitView {
+            List(selection: $category) {
+                ForEach(SettingsCategory.allCases.filter { $0.matches(settingsQuery) }) { item in
+                    Label(item.title, systemImage: item.icon).tag(item)
+                }
+            }
+            .listStyle(.sidebar)
+            .searchable(text: $settingsQuery, placement: .sidebar, prompt: Text("Search settings"))
+            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
+            .safeAreaInset(edge: .bottom) {
+                // The DS's standing banner: the privacy claim, always one
+                // click from its receipts (the ledger in "Your data").
+                Button {
+                    category = .data
+                } label: {
+                    Label("100% local — nothing leaves your Mac", systemImage: "lock.fill")
+                        .font(.caption2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .padding(10)
+            }
+        } detail: {
+            Form {
+                switch category ?? .general {
+                case .general:
+                    languageSection
+                    MenuBarSection()
+                case .audio:
+                    AudioSection()
+                    DictationSection()
+                case .intelligence:
+                    summaryEngineSection
+                    vocabularySection
+                case .voice:
+                    voiceSection
+                    RememberedVoicesSection()
+                    companionSection
+                case .agenda:
+                    agendaSection
+                    AutomationSection()
+                    titleSection
+                case .integrations:
+                    byokSection
+                    GitHubSection()
+                case .data:
+                    LedgerSection()
+                    BackupSection()
+                    recordingsSection
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle((category ?? .general).title)
         }
-        .formStyle(.grouped)
-        .frame(width: 480)
+        .frame(width: 720)
         .frame(minHeight: 620)
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
-                hasStoredToken = false
                 hasStoredBYOKKey = false
                 voiceprint = nil
             } else {
-                hasStoredToken =
-                    ((try? SecretStore.get(service: SecretStore.gitHubTokenService))) != nil
                 hasStoredBYOKKey =
                     ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
                 voiceprint = (try? VoiceprintStore().load())
@@ -776,39 +810,4 @@ extension SettingsView {
 
     // MARK: - GitHub
 
-    private var gitHubSection: some View {
-        Section("GitHub") {
-            SecureField("Personal token (scope: gist)", text: $token)
-            HStack {
-                Button("Save in Keychain") {
-                    do {
-                        try SecretStore.set(token, service: SecretStore.gitHubTokenService)
-                        token = ""
-                        hasStoredToken = true
-                        tokenMessage = L10n.text("Token saved.")
-                    } catch {
-                        tokenMessage = error.localizedDescription
-                    }
-                }
-                .disabled(token.isEmpty)
-                if hasStoredToken {
-                    Button("Delete token", role: .destructive) {
-                        try? SecretStore.delete(service: SecretStore.gitHubTokenService)
-                        hasStoredToken = false
-                        tokenMessage = L10n.text("Token deleted.")
-                    }
-                }
-            }
-            Text(
-                hasStoredToken
-                    ? "A token is stored in this device’s Keychain. It is used only when you publish a gist."
-                    : "Required only to publish gists. It is stored in Keychain — never in the database or cloud."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if let tokenMessage {
-                Text(tokenMessage).font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
 }

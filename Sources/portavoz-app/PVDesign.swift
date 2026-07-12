@@ -1,3 +1,4 @@
+import AppKit
 import IntegrationsKit
 import PortavozCore
 import SwiftUI
@@ -34,6 +35,42 @@ enum PVDesign {
     static let chipTint = 0.14        // suggestion chip capsule
     static let offerTint = 0.08       // secondary offer capsule
     static let mePillTint = 0.18      // legacy "Me" pill (pre voices-B)
+
+    // MARK: Suggestion chips (`--chip-*`: color-coded by evidence source
+    // — distinct from the plain indigo of ordinary controls, so a
+    // suggestion never reads as a button)
+
+    /// ✦ AI suggestions: violet ink…
+    static let chipAIInk = dynamic(
+        light: NSColor(red: 0x5B / 255, green: 0x3F / 255, blue: 0xD0 / 255, alpha: 1),
+        dark: NSColor(red: 0xB6 / 255, green: 0xA8 / 255, blue: 0xFF / 255, alpha: 1))
+    static let chipAIBg = dynamic(
+        light: NSColor(red: 0x5B / 255, green: 0x3F / 255, blue: 0xD0 / 255, alpha: 0.10),
+        dark: NSColor(red: 0x9D / 255, green: 0x8F / 255, blue: 0xFA / 255, alpha: 0.16))
+    /// …with the amber ✦ — the intelligence signature.
+    static let chipAISpark = dynamic(
+        light: NSColor(red: 0xE0 / 255, green: 0x91 / 255, blue: 0x2A / 255, alpha: 1),
+        dark: NSColor(red: 0xFD / 255, green: 0xBF / 255, blue: 0x47 / 255, alpha: 1))
+    /// Voice matches ("sounds like"): cyan.
+    static let chipVoiceInk = dynamic(
+        light: NSColor(red: 0x1F / 255, green: 0x88 / 255, blue: 0xBF / 255, alpha: 1),
+        dark: NSColor(red: 0x6C / 255, green: 0xC4 / 255, blue: 0xEC / 255, alpha: 1))
+    static let chipVoiceBg = dynamic(
+        light: NSColor(red: 0x1F / 255, green: 0x88 / 255, blue: 0xBF / 255, alpha: 0.11),
+        dark: NSColor(red: 0x5C / 255, green: 0xB8 / 255, blue: 0xE6 / 255, alpha: 0.16))
+    /// Offers (consent gestures): soft neutral.
+    static let chipOfferInk = dynamic(
+        light: NSColor(red: 0x6B / 255, green: 0x6B / 255, blue: 0x76 / 255, alpha: 1),
+        dark: NSColor(white: 1, alpha: 0.62))
+    static let chipOfferBg = dynamic(
+        light: NSColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.10),
+        dark: NSColor(white: 1, alpha: 0.08))
+
+    private static func dynamic(light: NSColor, dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+        })
+    }
 
     // MARK: Brand (the icon's world — web + Aurora doses)
 

@@ -7,6 +7,7 @@ import SwiftUI
 /// until the meeting lands in the library.
 struct RecordingView: View {
     @Environment(AppServices.self) private var services
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var route: Route?
     /// Calendar event this recording came from (brief's "Record this
     /// meeting") — nil for a blank recording.
@@ -379,22 +380,28 @@ struct RecordingView: View {
                 height: geo.size.height,
                 anchor: UnitPoint(x: 0.5, y: 0.82),
                 followSignal: controller.captions.last?.endTime ?? 0
-            ) { segment, _ in
-                captionRow(segment)
+            ) { segment, active in
+                captionRow(segment, active: active)
             }
         }
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func captionRow(_ segment: TranscriptSegment) -> some View {
+    /// One lyrics line (4a): a voice-colored pill + the words. The active
+    /// (newest) line reads bigger; when it's YOURS it sits in an
+    /// amber-tinted card — your voice is the only color with meaning.
+    private func captionRow(_ segment: TranscriptSegment, active: Bool) -> some View {
         let voice = liveVoice(for: segment)
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(voice.label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(voice.isMe ? VoicePalette.me : .secondary)
-                .frame(width: 40, alignment: .trailing)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(voice.isMe ? VoicePalette.meContrast : pillInk(voice))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(pillBackground(voice), in: Capsule())
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.text)
+                    .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
                 if let translated = controller.translations[segment.id] {
                     Text(translated)
@@ -404,7 +411,34 @@ struct RecordingView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
+        .padding(.vertical, active && voice.isMe ? 10 : 0)
+        .background {
+            if active && voice.isMe {
+                RoundedRectangle(cornerRadius: PVDesign.radiusCard)
+                    .fill(VoicePalette.me.opacity(0.12))
+                    .strokeBorder(VoicePalette.me.opacity(0.35))
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+
+    /// Ink for a non-me live pill: the speaker's stable voice hue once the
+    /// diarizer names them (S1/S2 or a remembered voice), neutral for the
+    /// generic "Them".
+    private func pillInk(_ voice: (label: String, isMe: Bool)) -> Color {
+        guard voice.label != L10n.text("Them") else { return .secondary }
+        return VoicePalette.color(
+            index: VoiceHue.index(name: voice.label, fallbackOrder: 0),
+            colorScheme: colorScheme)
+    }
+
+    private func pillBackground(_ voice: (label: String, isMe: Bool)) -> Color {
+        if voice.isMe { return VoicePalette.me }
+        guard voice.label != L10n.text("Them") else {
+            return Color(nsColor: .quaternarySystemFill)
+        }
+        return pillInk(voice).opacity(0.22)
     }
 
     /// The live speaker pill for a caption row. Mic rows are the user by

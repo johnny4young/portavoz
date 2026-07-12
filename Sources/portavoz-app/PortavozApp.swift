@@ -53,10 +53,16 @@ struct PortavozApp: App {
                 .portavozLocalized()
                 .environment(services)
         } label: {
-            // Template symbol: red dot while a meeting records, waveform
-            // otherwise — the glanceable "am I recording?" answer.
-            Image(systemName: services.recording.phase == .recording
-                ? "record.circle.fill" : "waveform.and.mic")
+            // «La P que habla» as a template image at rest; the red dot
+            // while a meeting records — the glanceable "am I recording?"
+            // answer. (The DS's pulsing-stem idea stays a web flourish.)
+            if services.recording.phase == .recording {
+                Image(systemName: "record.circle.fill")
+            } else if let icon = MenuBarIcon.image {
+                Image(nsImage: icon)
+            } else {
+                Image(systemName: "waveform.and.mic")
+            }
         }
         Settings {
             SettingsView()

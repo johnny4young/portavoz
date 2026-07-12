@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- «La P que habla» — renders the app icon (design system:
+     docs/design/ds/assets/portavoz-icon-p.svg) on the macOS icon grid
+     (1024 canvas, 824 squircle, radius 185) plus the 16/32 px menu-bar
+     template. Needs Fraunces, loaded from Google Fonts, so it runs in a
+     browser: open this file, wait for "ready", and export each canvas
+     with toDataURL. Regenerates assets/AppIcon.icns via scripts/make-icns.sh. -->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Portavoz icon render</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>body { background: #888; font-family: monospace; } canvas { outline: 1px solid #000; margin: 8px; }</style>
+</head>
+<body>
+<div id="status">loading font…</div>
+<canvas id="app" width="1024" height="1024"></canvas>
+<canvas id="mb16" width="16" height="16"></canvas>
+<canvas id="mb32" width="32" height="32"></canvas>
+<script>
+// SVG source geometry lives in a 512-box; the macOS grid squares it into
+// an 824 content square at (100,100).
+function drawApp(ctx) {
+  const o = 100, s = 824 / 512;
+  ctx.clearRect(0, 0, 1024, 1024);
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(o, o, 824, 824, 185);
+  ctx.clip();
+  ctx.fillStyle = "#0e1120";
+  ctx.fillRect(o, o, 824, 824);
+  const g = ctx.createRadialGradient(o + 0.30 * 824, o + 824, 0, o + 0.30 * 824, o + 824, 0.90 * 824);
+  g.addColorStop(0, "rgba(82,38,191,0.75)");
+  g.addColorStop(0.65, "rgba(82,38,191,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(o, o, 824, 824);
+  ctx.fillStyle = "#f3f1ec";
+  ctx.font = "600 " + (368 * s) + "px Fraunces";
+  ctx.textAlign = "center";
+  ctx.fillText("P", o + 262 * s, o + 392 * s);
+  ctx.beginPath();
+  ctx.roundRect(o + 134 * s, o + 194 * s, 64 * s, 210 * s, 32 * s);
+  ctx.fillStyle = "rgba(253,191,71,0.18)";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(o + 146 * s, o + 206 * s, 40 * s, 186 * s, 20 * s);
+  ctx.fillStyle = "#fdbf47";
+  ctx.fill();
+  ctx.restore();
+}
+
+// Menu bar 16-box (portavoz-icon-p-menubar.svg), black = template.
+function drawMenuBar(ctx, scale) {
+  ctx.clearRect(0, 0, 16 * scale, 16 * scale);
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#000";
+  ctx.font = "600 14px Fraunces";
+  ctx.textAlign = "center";
+  ctx.fillText("P", 8.6, 13.2);
+  ctx.beginPath();
+  ctx.roundRect(3.4, 5.4, 2, 7.2, 1);
+  ctx.fill();
+  ctx.restore();
+}
+
+document.fonts.load("600 368px Fraunces", "P").then(() => {
+  drawApp(document.getElementById("app").getContext("2d"));
+  drawMenuBar(document.getElementById("mb16").getContext("2d"), 1);
+  drawMenuBar(document.getElementById("mb32").getContext("2d"), 2);
+  document.getElementById("status").textContent = "ready";
+});
+</script>
+</body>
+</html>

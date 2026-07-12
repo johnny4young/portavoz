@@ -443,10 +443,9 @@ extension MeetingDetailView {
                             services.libraryVersion += 1
                         }
                     } label: {
-                        Label("“\(suggestion)”?", systemImage: "sparkles")
-                            .font(.caption)
+                        ChipLabel(kind: .ai, text: "“\(suggestion)”?")
                     }
-                    .controlSize(.small)
+                    .buttonStyle(.plain)
                     .help("Suggested title from the summary — one click renames, nothing changes on its own")
                 }
             }
@@ -493,11 +492,7 @@ extension MeetingDetailView {
                 Button {
                     Task { await apply(suggestion, in: detail) }
                 } label: {
-                    Text("\(suggestion.label) → \(suggestion.name)?")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(PVDesign.accent.opacity(0.14), in: Capsule())
+                    ChipLabel(kind: .ai, text: "\(suggestion.label) → \(suggestion.name)?")
                 }
                 .buttonStyle(.plain)
                 .help("Evidence: \(suggestion.evidence)")
@@ -508,11 +503,7 @@ extension MeetingDetailView {
                 Button {
                     Task { await apply(match, in: detail) }
                 } label: {
-                    Label("\(match.voiceLabel) → \(match.name)?", systemImage: "waveform")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(PVDesign.accent.opacity(0.14), in: Capsule())
+                    ChipLabel(kind: .voice, text: "\(match.voiceLabel) → \(match.name)?")
                 }
                 .buttonStyle(.plain)
                 .help(L10n.format(
@@ -535,6 +526,7 @@ extension MeetingDetailView {
                         L10n.format("Remember %@’s voice?", name),
                         systemImage: "person.wave.2")
                     .font(.caption)
+                    .foregroundStyle(PVDesign.chipOfferInk)
                     Button(L10n.text("Remember")) {
                         Task { await rememberVoice(of: offer) }
                     }
@@ -546,13 +538,14 @@ extension MeetingDetailView {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.caption2)
+                            .foregroundStyle(PVDesign.chipOfferInk)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(L10n.text("Dismiss voice offer"))
                 }
                 .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(PVDesign.accent.opacity(0.08), in: Capsule())
+                .padding(.vertical, 3)
+                .background(PVDesign.chipOfferBg, in: Capsule())
                 .help(L10n.text(
                     // One-line UI help text.
                     // swiftlint:disable:next line_length
@@ -1104,11 +1097,11 @@ extension MeetingDetailView {
                 suggestedRecipe = nil
                 regenerate(language: summary.draft.language, recipe: suggested)
             } label: {
-                Label(
-                    L10n.format("Summarize as %@?", suggested.displayName),
-                    systemImage: "sparkles")
+                ChipLabel(
+                    kind: .ai,
+                    text: L10n.format("Summarize as %@?", suggested.displayName))
             }
-            .controlSize(.small)
+            .buttonStyle(.plain)
             .help("This meeting looks like a \(suggested.displayName) — restructure the summary with one click. Nothing changes unless you accept.")
         }
     }

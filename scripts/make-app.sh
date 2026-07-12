@@ -74,9 +74,13 @@ else
   echo "warning: shipping without the MLX metallib — Built-in engine disabled." >&2
 fi
 
-# Icon (regenerate with: swift scripts/make-icon.swift)
+# Icon «La P que habla» (regenerate with: scripts/icon-p.html + scripts/make-icns.sh)
 if [[ -f assets/AppIcon.icns ]]; then
   cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+fi
+# Menu bar template P (pre-rendered: Fraunces can't render without the font)
+if [[ -f assets/icon/pv-menubar-32.png ]]; then
+  cp assets/icon/pv-menubar-32.png "$APP/Contents/Resources/pv-menubar-32.png"
 fi
 
 # App accent color (design system: indigo is THE accent — resolves the

@@ -51,6 +51,16 @@
         }
       }
     },
+    "100% local — nothing leaves your Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "100% local — nada sale de tu Mac"
+          }
+        }
+      }
+    },
     "3 minutes before": {
       "localizations": {
         "es": {
@@ -177,6 +187,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agenda"
+          }
+        }
+      }
+    },
+    "Agenda & automation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agenda y automatización"
           }
         }
       }
@@ -331,12 +351,32 @@
         }
       }
     },
+    "Audio & dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio y dictado"
+          }
+        }
+      }
+    },
     "Audio compressed — %@ freed.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Audio comprimido — %@ liberados."
+          }
+        }
+      }
+    },
+    "Audio on your disk": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio en tu disco"
           }
         }
       }
@@ -1401,6 +1441,16 @@
         }
       }
     },
+    "General & language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General e idioma"
+          }
+        }
+      }
+    },
     "Generate summaries with": {
       "localizations": {
         "es": {
@@ -1507,6 +1557,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Estadísticas"
+          }
+        }
+      }
+    },
+    "Integrations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integraciones"
+          }
+        }
+      }
+    },
+    "Intelligence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inteligencia"
           }
         }
       }
@@ -1681,6 +1751,16 @@
         }
       }
     },
+    "Meetings in your database": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reuniones en tu base de datos"
+          }
+        }
+      }
+    },
     "Meetings per week": {
       "localizations": {
         "es": {
@@ -1767,6 +1847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mi voz"
+          }
+        }
+      }
+    },
+    "My voice & Companion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi voz y Companion"
           }
         }
       }
@@ -1877,6 +1967,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No hay suficiente audio claro de esa voz para recordarla (se necesitan unos 5 segundos)."
+          }
+        }
+      }
+    },
+    "Nothing leaves this Mac except what you send yourself: gists you export, questions you ask an external model, and the update check.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De este Mac no sale nada salvo lo que tú mismo envíes: los gists que exportes, las preguntas que hagas a un modelo externo y la comprobación de updates."
           }
         }
       }
@@ -2611,6 +2711,16 @@
         }
       }
     },
+    "Search settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar en ajustes"
+          }
+        }
+      }
+    },
     "Searching your meetings…": {
       "localizations": {
         "es": {
@@ -3311,6 +3421,16 @@
         }
       }
     },
+    "Voices remembered — encrypted on this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voces recordadas — cifradas en este Mac"
+          }
+        }
+      }
+    },
     "Weekday": {
       "localizations": {
         "es": {
@@ -3387,6 +3507,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus datos"
+          }
+        }
+      }
+    },
+    "Your data, on this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus datos, en este Mac"
           }
         }
       }
@@ -3471,12 +3601,52 @@
         }
       }
     },
+    "byok api key github gist token mcp endpoint openai": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "byok api key github gist token mcp endpoint openai"
+          }
+        }
+      }
+    },
     "e.g. %@": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "p. ej. %@"
+          }
+        }
+      }
+    },
+    "echo aec dictation hotkey microphone mic level": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eco aec dictado atajo micrófono nivel"
+          }
+        }
+      }
+    },
+    "export markdown backup folder recordings trash privacy local": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "exportar markdown backup carpeta grabaciones papelera privacidad local"
+          }
+        }
+      }
+    },
+    "language english spanish menu bar launch login": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "idioma english español barra de menú arranque login"
           }
         }
       }
@@ -3497,6 +3667,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "grabadas"
+          }
+        }
+      }
+    },
+    "reminder calendar shortcut title template": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aviso calendario atajo título plantilla"
+          }
+        }
+      }
+    },
+    "summary engine apple ollama mlx whisper refine vocabulary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "resumen motor apple ollama mlx whisper refine vocabulario"
+          }
+        }
+      }
+    },
+    "voice enroll companion name remembered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "voz enrolar companion nombre recordadas"
           }
         }
       }
