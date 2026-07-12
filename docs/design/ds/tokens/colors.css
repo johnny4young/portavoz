@@ -13,6 +13,21 @@
   --accent-tint-18: rgba(88, 86, 214, 0.18);  /* "Me" speaker pill */
   --on-accent: #ffffff;
 
+  /* ---- suggestion chips: color-coded by evidence source ----
+     AI ✦ = violet ink + brand-amber spark (the intelligence signature);
+     voice = cyan ("sounds like"); offer = soft neutral. Distinct from the
+     plain indigo of ordinary controls so a suggestion never reads as a button. */
+  --chip-ai-ink: #5b3fd0;
+  --chip-ai-bg: rgba(91, 63, 208, 0.10);
+  --chip-ai-bg-hover: rgba(91, 63, 208, 0.17);
+  --chip-ai-spark: #e0912a;              /* amber ✦, AA on the violet tint */
+  --chip-voice-ink: #1f88bf;
+  --chip-voice-bg: rgba(31, 136, 191, 0.11);
+  --chip-voice-bg-hover: rgba(31, 136, 191, 0.18);
+  --chip-offer-ink: #6b6b76;
+  --chip-offer-bg: rgba(120, 120, 128, 0.10);
+  --chip-offer-bg-hover: rgba(120, 120, 128, 0.16);
+
   /* ---- semantics (macOS system palette, light) ---- */
   --success: #34c759;      /* mic OK, checkmarks, enrolled */
   --warning: #ff9500;      /* mic low, permissions pending */
@@ -73,6 +88,16 @@
   --accent-tint-14: rgba(94, 92, 230, 0.2);
   --accent-tint-08: rgba(94, 92, 230, 0.12);
   --accent-tint-18: rgba(94, 92, 230, 0.28);
+  --chip-ai-ink: #b6a8ff;
+  --chip-ai-bg: rgba(157, 143, 250, 0.16);
+  --chip-ai-bg-hover: rgba(157, 143, 250, 0.26);
+  --chip-ai-spark: #fdbf47;              /* brand amber pops on dark */
+  --chip-voice-ink: #6cc4ec;
+  --chip-voice-bg: rgba(92, 184, 230, 0.16);
+  --chip-voice-bg-hover: rgba(92, 184, 230, 0.26);
+  --chip-offer-ink: rgba(255, 255, 255, 0.62);
+  --chip-offer-bg: rgba(255, 255, 255, 0.08);
+  --chip-offer-bg-hover: rgba(255, 255, 255, 0.14);
   --success: #30d158;
   --warning: #ff9f0a;
   --destructive: #ff453a;

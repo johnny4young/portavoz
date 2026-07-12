@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="violet" cx="30%" cy="100%" r="90%">
+      <stop offset="0%" stop-color="#5226bf" stop-opacity="0.75"></stop>
+      <stop offset="65%" stop-color="#5226bf" stop-opacity="0"></stop>
+    </radialGradient>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="512" height="512" rx="116"></rect>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="512" height="512" fill="#0e1120"></rect>
+    <rect width="512" height="512" fill="url(#violet)"></rect>
+    <text x="262" y="392" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="368" fill="#f3f1ec">P</text>
+    <rect x="146" y="206" width="40" height="186" rx="20" fill="#fdbf47"></rect>
+    <rect x="134" y="194" width="64" height="210" rx="32" fill="#fdbf47" opacity="0.18"></rect>
+  </g>
+</svg>

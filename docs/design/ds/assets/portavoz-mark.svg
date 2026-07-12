@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Portavoz">
+  <g fill="#F3F1EC">
+    <rect x="8" y="47" width="10" height="26" rx="5"></rect>
+    <rect x="24" y="36" width="10" height="48" rx="5"></rect>
+    <rect x="40" y="23" width="10" height="74" rx="5"></rect>
+    <rect x="72" y="27" width="10" height="66" rx="5"></rect>
+    <rect x="88" y="40" width="10" height="40" rx="5"></rect>
+    <rect x="104" y="48" width="10" height="24" rx="5"></rect>
+  </g>
+  <rect x="56" y="9" width="10" height="102" rx="5" fill="#FDBF47"></rect>
+</svg>

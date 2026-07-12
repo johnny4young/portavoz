@@ -1,0 +1,73 @@
+<!-- @dsCard group="macOS app" viewport="1280x800" name="Portavoz — macOS app" subtitle="Interactive kit — lands on Insights; navigate the sidebar to recording, Ask, and the meeting detail" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Portavoz — macOS app UI kit</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="data.js"></script>
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #3a3a3c; font-family: var(--font-app); display: flex; align-items: center; justify-content: center; }
+  a { color: var(--accent); } a:hover { opacity: 0.8; }
+  ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-thumb { background: var(--fill-quaternary); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"></div>
+<script type="text/babel" src="Sidebar.jsx"></script>
+<script type="text/babel" src="MeetingDetail.jsx"></script>
+<script type="text/babel" src="Insights.jsx"></script>
+<script type="text/babel" src="Recording.jsx"></script>
+<script type="text/babel">
+const { EmptyState, SFIcon, Button } = window.PortavozDesignSystem_fd5562;
+
+function App() {
+  const [route, setRoute] = React.useState("insights");
+  const [hud, setHud] = React.useState(false);
+  const [todos, setTodos] = React.useState(window.PV_DATA.todos.map((t) => ({ ...t, done: false })));
+  const toggleTodo = (id) => setTodos((ts) => ts.map((t) => t.id === id ? { ...t, done: !t.done } : t));
+
+  let content;
+  if (route === "insights") content = <PVInsights />;
+  else if (route === "recording") content = <PVRecording onStop={() => setRoute("m1")} onHud={() => setHud(true)} />;
+  else if (route === "ask") content = (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <EmptyState
+        icon={<SFIcon name="bubble.left.and.text.bubble.right" size={32} color="var(--text-tertiary)" />}
+        title="Ask your meetings"
+        message="Natural-language questions over every meeting, answered on your Mac — with citations that jump to the exact moment."
+        action={<Button variant="primary" size="small" onClick={() => setRoute("m1")}>Back to the library</Button>} />
+    </div>
+  );
+  else if (route === "m1") content = <PVMeetingDetail todos={todos} onToggleTodo={toggleTodo} />;
+  else content = (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <EmptyState
+        icon={<SFIcon name="waveform.and.mic" size={32} color="var(--text-tertiary)" />}
+        title={window.PV_DATA.meetings.find((m) => m.id === route)?.title || "Meeting"}
+        message="This demo library only seeds the Sprint Demo in full — open 2026-07-10 Sprint Demo · Zephyr." />
+    </div>
+  );
+
+  return (
+    <div data-theme="dark" data-screen-label="Portavoz macOS app" style={{
+      width: 1240, height: 760, display: "flex", position: "relative",
+      background: "var(--aurora-window)", borderRadius: 10, overflow: "hidden",
+      boxShadow: "0 0 0 0.5px rgba(255,255,255,0.15), 0 24px 60px rgba(0,0,0,0.5)",
+      color: "var(--text-primary)",
+    }}>
+      <PVSidebar route={route} onRoute={setRoute} todos={todos} onToggleTodo={toggleTodo} />
+      {content}
+      {hud ? <PVRecordingHUD onExpand={() => { setHud(false); setRoute("recording"); }} onStop={() => { setHud(false); setRoute("m1"); }} /> : null}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
