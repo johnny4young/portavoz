@@ -54,7 +54,10 @@ struct TranscriptSegmentsView: View {
             .buttonStyle(.plain)
             .disabled(player == nil)
             .help("Jump to this moment")
-            SpeakerPill(speaker: speakers.first { $0.id == segment.speakerID }, onRename: onRenameTap)
+            SpeakerPill(
+                speaker: speakers.first { $0.id == segment.speakerID },
+                cast: speakers,
+                onRename: onRenameTap)
             Text(segment.text)
                 .font(.callout)
                 .textSelection(.enabled)

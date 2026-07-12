@@ -391,7 +391,7 @@ struct RecordingView: View {
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(voice.label)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(voice.isMe ? Color.accentColor : .secondary)
+                .foregroundStyle(voice.isMe ? VoicePalette.me : .secondary)
                 .frame(width: 40, alignment: .trailing)
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.text)

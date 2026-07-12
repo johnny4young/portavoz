@@ -6,6 +6,7 @@ import SwiftUI
 /// interruptions — computed locally from the attributed transcript, no
 /// model involved. Collapsed into a compact block under the summary.
 struct MeetingHealthView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let speakers: [Speaker]
     let segments: [TranscriptSegment]
 
@@ -53,7 +54,7 @@ struct MeetingHealthView: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(.quaternary)
                     Capsule()
-                        .fill(Color.accentColor.opacity(0.65))
+                        .fill(voiceColor(stat.speakerID))
                         .frame(width: max(3, geometry.size.width * stat.share))
                 }
             }
@@ -67,6 +68,16 @@ struct MeetingHealthView: View {
                     .help("Interruptions made by this speaker")
             }
         }
+    }
+
+    /// Voices B: each bar wears its speaker's color — "the color IS the voice".
+    private func voiceColor(_ id: SpeakerID) -> Color {
+        guard let speaker = speakers.first(where: { $0.id == id }) else {
+            return Color.accentColor.opacity(0.65)
+        }
+        if speaker.isMe { return VoicePalette.me }
+        return VoicePalette.color(for: speaker, in: speakers, colorScheme: colorScheme)
+            .opacity(0.85)
     }
 
     private func chip(_ icon: String, _ value: String) -> some View {

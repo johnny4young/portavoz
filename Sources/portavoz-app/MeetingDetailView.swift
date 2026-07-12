@@ -470,7 +470,7 @@ extension MeetingDetailView {
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
         HStack(spacing: 8) {
             ForEach(detail.speakers) { speaker in
-                SpeakerPill(speaker: speaker) { speaker in
+                SpeakerPill(speaker: speaker, cast: detail.speakers) { speaker in
                     renamingSpeaker = speaker
                     newName = speaker.displayName ?? ""
                 }

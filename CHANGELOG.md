@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🎨 The color IS the voice** — Your voice is now always amber — in speaker pills, the transcript, talk-time bars and the player's waveform — and every other participant gets their own stable hue (Marta is violet in every meeting, forever). Who-said-what and who-talked-how-much now read at a glance, by color. First piece of the new Portavoz design system.
 - **✨ ⌘K — Ask your week, anywhere** — Press ⌘K over any view: instant results from your meetings while you type, and Enter brings a full on-device answer with citation chips (`↗ meeting · mm:ss`) that jump straight to the moment. Copy the answer with its receipts in Markdown. Same local engine as "Ask your meetings" — nothing leaves your Mac.
 
 - **🔊 Meetings travel with their audio** — "Export meeting file with audio…" packs the recording into the `.portavoz` file: the receiver gets the synced player, waveform and clips as if they had recorded it. Older Portavoz versions still open the file — they just import the text. Tip: run "Compress audio (AAC)" first for a mail-sized file.

@@ -79,6 +79,15 @@ if [[ -f assets/AppIcon.icns ]]; then
   cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 fi
 
+# App accent color (design system: indigo is THE accent — resolves the
+# system-accent debt): compile the asset catalog so NSAccentColorName
+# resolves. Users who picked a specific system accent still win, per macOS.
+if [[ -d assets/Assets.xcassets ]]; then
+  xcrun actool assets/Assets.xcassets --compile "$APP/Contents/Resources" \
+    --platform macosx --minimum-deployment-target 14.4 \
+    --output-format human-readable-text > /dev/null
+fi
+
 cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -103,6 +112,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     </array>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <key>NSAccentColorName</key>
+    <string>AccentColor</string>
     <key>CFBundleShortVersionString</key>
     <string>0.1.0</string>
     <key>CFBundleVersion</key>

@@ -185,7 +185,8 @@ struct WaveformView: View {
                         width: max(1, barWidth * 0.6),
                         height: height)
                     let played = (Double(index) + 0.5) / Double(buckets.count) <= progress
-                    let base: Color = bucket.micDominant ? .accentColor : .gray
+                    // Voices B: your channel is amber — the color IS the voice.
+                    let base: Color = bucket.micDominant ? PVDesign.brandAmber : .gray
                     context.fill(
                         Path(roundedRect: rect, cornerRadius: 1),
                         with: .color(base.opacity(played ? 0.9 : 0.3)))
