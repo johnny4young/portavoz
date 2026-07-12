@@ -70,6 +70,9 @@ struct MeetingDetailView: View {
     /// Content-based title suggestion — same contract: chip, click, never solo.
     @State private var suggestedTitle: String?
     @State private var suggestedTitleOnce = false
+    /// Which summary tab is showing (0 = overview · 1…N = `##` sections ·
+    /// 1000 = action items).
+    @State private var summaryTabSelection = 0
     /// Cross-meeting voice matches (D8/D21): computed once per visit when
     /// the gallery has voices and unnamed speakers exist — chips only.
     @State private var voiceSuggestions: [VoiceMatcher.Match] = []
@@ -761,17 +764,68 @@ extension MeetingDetailView {
                     .fixedSize()
                 }
             }
-            MarkdownText(text: summary.draft.markdown)
-            ForEach(summary.draft.actionItems) { item in
-                Toggle(isOn: actionBinding(item)) {
-                    Text(item.text)
-                        .strikethrough(item.isDone)
-                }
-                .toggleStyle(.checkbox)
-            }
+            summaryTabs(summary)
+            summaryTabContent(summary)
         }
         .padding(14)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// The tab strip (design system): Resumen · each `##` section (with its
+    /// bullet count) · Pendientes (done/total). Parsed from the Markdown so
+    /// it works in any language.
+    @ViewBuilder
+    private func summaryTabs(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+        let parsed = SummarySections.parse(summary.draft.markdown)
+        let done = summary.draft.actionItems.filter(\.isDone).count
+        let total = summary.draft.actionItems.count
+        HStack(spacing: 6) {
+            summaryTab(L10n.text("Summary"), tag: 0)
+            ForEach(Array(parsed.sections.enumerated()), id: \.offset) { index, section in
+                summaryTab("\(section.heading) · \(section.bulletCount)", tag: index + 1)
+            }
+            if total > 0 {
+                summaryTab(L10n.format("To-dos · %d/%d", done, total), tag: 1000)
+            }
+        }
+    }
+
+    private func summaryTab(_ label: String, tag: Int) -> some View {
+        let on = summaryTabSelection == tag
+        return Button {
+            summaryTabSelection = tag
+        } label: {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(on ? Color.white : .secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background {
+                    if on {
+                        Capsule().fill(PVDesign.accent)
+                    } else {
+                        Capsule().fill(.quaternary.opacity(0.6))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func summaryTabContent(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+        let parsed = SummarySections.parse(summary.draft.markdown)
+        if summaryTabSelection == 1000 {
+            ForEach(summary.draft.actionItems) { item in
+                Toggle(isOn: actionBinding(item)) {
+                    Text(item.text).strikethrough(item.isDone)
+                }
+                .toggleStyle(.checkbox)
+            }
+        } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
+            MarkdownText(text: parsed.sections[summaryTabSelection - 1].body)
+        } else {
+            MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
+        }
     }
 
     private enum ExportFormat { case markdown, pdf }

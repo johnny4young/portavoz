@@ -3531,6 +3531,16 @@
         }
       }
     },
+    "To-dos · %d/%d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes · %d/%d"
+          }
+        }
+      }
+    },
     "Today": {
       "localizations": {
         "es": {

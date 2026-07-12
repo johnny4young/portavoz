@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🔖 Tabbed summaries** — The meeting summary now has tabs — Summary, then each section (Decisions · 3, Open questions · 1…) with its count, and To-dos · done/total — so a long summary is something you skim by topic instead of scroll. Parsed from the summary itself, in whatever language it's in.
 - **🗂️ A library that reads like a timeline** — Meetings in the sidebar now group by when they happened — Today, This week, Last week, Earlier — and the selected one glows in the brand's indigo→violet gradient instead of your system's accent color, matching the rest of Portavoz.
 - **⚡ Meeting actions, front and center** — Refine, export and delete moved from the window's top-right corner to a row of round buttons right under the meeting title — where the meeting is, not tucked in the toolbar.
 - **🎬 A library that looks the part** — The sidebar now opens with a violet-gradient "New recording" button carrying a live waveform, Import / Ask / Insights as quick chips, a search field with its ⌘K keycap, and a "100% local" line pinned at the bottom — the design system's shelf-of-conversations, brought into the app.
