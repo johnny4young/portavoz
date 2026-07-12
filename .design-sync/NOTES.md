@@ -33,3 +33,12 @@
   name del @dsCard a "macOS app". tokens/colors.css, Recording.jsx y demás sin
   cambios vs el 2º pull. Confirma: los chips por evidencia (--chip-ai-spark) ya se
   usan en Settings y Menubar.
+
+- Pull jul 11 (4º, opus): el usuario mejoró Settings.jsx — ahora los 7 paneles
+  tienen contenido REAL (antes solo Inteligencia): PVPaneGeneral/Audio/Intel/
+  Voice/Agenda/Integrations/Data con primitivas reutilizables (PVRow título+sub,
+  PVGroup, PVToggle, PVSeg, PVRadio, PVKeycap, PVGhostBtn). El motor de resúmenes
+  es 3 radios (Apple/Ollama/Integrado MLX) + Qwen3.5 4B eliminable; refine =
+  Turbo/Compacto; vocabulario = chips con ✕; ledger = 4 tiles. Dictation.jsx y
+  Recording.jsx SIN cambios. El usuario pide aplicar estas «interfaces claras» a
+  la app (settings, dictation panel, recording hud).
