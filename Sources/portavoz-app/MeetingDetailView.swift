@@ -107,7 +107,10 @@ struct MeetingDetailView: View {
     /// stays a flat composition.
     private func loaded(_ detail: MeetingDetail) -> some View {
         loadedBody(detail)
-            .navigationTitle(detail.meeting.title)
+            // No `.navigationTitle`: the meeting title already lives in the
+            // header below, and showing it in the window bar too read as a
+            // duplicate. The window bar keeps the app's own title.
+            .navigationTitle("Portavoz")
             .sheet(isPresented: refineDraftBinding) { refineSheet }
             .sheet(isPresented: mirrorBinding(detail)) { mirrorSheet(detail) }
             .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
@@ -141,8 +144,8 @@ struct MeetingDetailView: View {
             } message: {
                 Text(gistError ?? "")
             }
-            .alert("Rename meeting", isPresented: $editingTitle) {
-                renameMeetingButtons(detail)
+            .sheet(isPresented: $editingTitle) {
+                renameSheet(detail)
             }
             .alert("Rename speaker", isPresented: renameBinding) {
                 renameSpeakerButtons
@@ -344,20 +347,38 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func renameMeetingButtons(_ detail: MeetingDetail) -> some View {
-        TextField("Title", text: $newTitle)
-        Button("Save") {
-            let title = newTitle
-            var meeting = detail.meeting
-            Task {
-                meeting.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !meeting.title.isEmpty else { return }
-                try? await services.store.save(meeting)
-                await reload()
-                services.libraryVersion += 1
+    /// A compact rename sheet — opens pre-filled with the current title,
+    /// selected, so you can type over it or edit. (Replaces the old `.alert`,
+    /// whose text field went blank on the second open.)
+    private func renameSheet(_ detail: MeetingDetail) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Rename meeting").font(.headline)
+            AutoSelectTextField(text: $newTitle, onSubmit: { commitRename(detail) })
+                .frame(width: 340, height: 22)
+            HStack {
+                Spacer()
+                Button("Cancel") { editingTitle = false }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { commitRename(detail) }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
         }
-        Button("Cancel", role: .cancel) {}
+        .padding(20)
+        .frame(width: 380)
+    }
+
+    private func commitRename(_ detail: MeetingDetail) {
+        let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        editingTitle = false
+        guard !title.isEmpty else { return }
+        var meeting = detail.meeting
+        Task {
+            meeting.title = title
+            try? await services.store.save(meeting)
+            await reload()
+            services.libraryVersion += 1
+        }
     }
 
     @ViewBuilder
