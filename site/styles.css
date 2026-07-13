@@ -1,7 +1,9 @@
 /* Portavoz landing — the app icon's world as an editorial dark page.
    Palette: deep slate → violet ground, warm paper text, a single amber
    accent (the waveform's peak). Type: Fraunces (display serif, SOFT axis),
-   Instrument Sans (body), IBM Plex Mono (commands & measured numbers). */
+   Instrument Sans (body), IBM Plex Mono (commands & measured numbers).
+   The hero is the "constelación de voces": each voice orbits the breathing
+   P, and the amber one is you. */
 
 :root {
   --ink: #f3f1ec;
@@ -10,6 +12,7 @@
   --ground-1: #171b31;
   --violet: #5226bf;
   --amber: #fdbf47;
+  --voice-1: #8b7cf0;
   --line: rgba(243, 241, 236, 0.14);
   --radius: 14px;
 }
@@ -28,21 +31,22 @@ body {
   font-size: 17px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* Language switching: exactly one language visible at a time. */
-html[data-lang="es"] .en { display: none; }
-html[data-lang="en"] .es { display: none; }
+a { color: inherit; }
 
-a { color: inherit; text-decoration: none; }
+/* One language visible at a time. */
+[data-lang="es"] .en { display: none; }
+[data-lang="en"] .es { display: none; }
 
-/* ---------- top bar ---------- */
+/* ── Header ─────────────────────────────────────────────────────────── */
 
 .top {
   display: flex;
   align-items: center;
   gap: 28px;
-  max-width: 1060px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 22px 24px;
 }
@@ -54,15 +58,24 @@ a { color: inherit; text-decoration: none; }
   font-family: "Fraunces", serif;
   font-size: 22px;
   font-weight: 600;
+  text-decoration: none;
 }
+
+.brand img { border-radius: 7px; }
 
 .top-links {
   display: flex;
   gap: 22px;
   margin-left: auto;
   font-size: 15px;
-  color: var(--ink-dim);
 }
+
+.top-links a {
+  color: var(--ink-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
 .top-links a:hover { color: var(--ink); }
 
 .lang-toggle {
@@ -71,91 +84,71 @@ a { color: inherit; text-decoration: none; }
   border-radius: 999px;
   overflow: hidden;
 }
+
 .lang-toggle button {
   background: none;
-  border: 0;
+  border: none;
   color: var(--ink-dim);
   font: 600 12px/1 "Instrument Sans", sans-serif;
   letter-spacing: 0.06em;
   padding: 8px 12px;
   cursor: pointer;
 }
-.lang-toggle button[aria-pressed="true"] {
+
+[data-lang="es"] .lang-toggle button[data-lang-val="es"],
+[data-lang="en"] .lang-toggle button[data-lang-val="en"] {
   background: var(--ink);
   color: var(--ground-0);
 }
 
-/* ---------- hero ---------- */
+/* ── Hero ───────────────────────────────────────────────────────────── */
 
 .hero {
-  max-width: 880px;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 72px 24px 96px;
-  text-align: center;
-}
-
-.wave {
-  display: flex;
-  justify-content: center;
+  padding: 48px 24px 84px;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  gap: 24px;
   align-items: center;
-  gap: 14px;
-  height: 130px;
-  margin-bottom: 44px;
 }
-.wave i {
-  width: 16px;
-  border-radius: 999px;
-  background: rgba(243, 241, 236, 0.92);
-  animation: breathe 3.6s ease-in-out infinite;
-}
-.wave i:nth-child(1) { height: 26%; animation-delay: 0s; }
-.wave i:nth-child(2) { height: 44%; animation-delay: 0.35s; }
-.wave i:nth-child(3) { height: 66%; animation-delay: 0.7s; }
-.wave i:nth-child(4) { height: 92%; animation-delay: 1.05s; }
-.wave i:nth-child(5) { height: 58%; animation-delay: 1.4s; }
-.wave i:nth-child(6) { height: 38%; animation-delay: 1.75s; }
-.wave i:nth-child(7) { height: 22%; animation-delay: 2.1s; }
-.wave .peak { background: var(--amber); }
 
-@keyframes breathe {
-  0%, 100% { transform: scaleY(1); }
-  50% { transform: scaleY(0.72); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .wave i { animation: none; }
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .hero h1 {
   font-family: "Fraunces", serif;
-  font-size: clamp(40px, 6.4vw, 68px);
+  font-size: 60px;
   font-weight: 560;
   font-variation-settings: "SOFT" 50, "opsz" 100;
-  line-height: 1.08;
+  line-height: 1.06;
   text-wrap: balance;
 }
+
 .hero h1 em {
   font-style: italic;
   color: var(--amber);
 }
 
 .lede {
-  max-width: 62ch;
-  margin: 26px auto 0;
+  max-width: 46ch;
   font-size: 19px;
+  line-height: 1.6;
   color: var(--ink-dim);
   text-wrap: pretty;
 }
 
-.cta {
+.cta-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   align-items: center;
   gap: 16px;
-  margin-top: 40px;
 }
 
-.install {
+.brew {
   display: flex;
   align-items: baseline;
   gap: 14px;
@@ -164,15 +157,18 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--radius);
   padding: 15px 20px;
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.15s ease;
 }
-.install:hover { border-color: var(--amber); }
-.install code {
+
+.brew:hover { border-color: var(--amber); }
+
+.brew code {
   font-family: "IBM Plex Mono", monospace;
   font-size: 16.5px;
   color: var(--amber);
 }
-.copy-hint {
+
+.brew-hint {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -184,36 +180,176 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   font-weight: 500;
-  transition: border-color 0.2s ease;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
 }
+
 .ghost:hover { border-color: var(--ink); }
 
-.fine {
-  margin-top: 22px;
+.stats {
+  display: flex;
+  gap: 26px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats b {
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.platform {
   font-size: 13.5px;
   color: var(--ink-dim);
   letter-spacing: 0.02em;
 }
 
-/* ---------- shared section chrome ---------- */
+/* ── Constellation ──────────────────────────────────────────────────── */
 
-main section { padding: 84px 24px; }
+.constellation {
+  position: relative;
+  width: 480px;
+  height: 480px;
+  justify-self: center;
+}
 
-h2 {
+.ring {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px dashed rgba(243, 241, 236, 0.11);
+}
+
+.ring-1 { inset: 40px; }
+.ring-2 { inset: 90px; }
+.ring-3 { inset: 138px; }
+
+.core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sidewave {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 72px;
+}
+
+.sidewave i {
+  display: block;
+  width: 7px;
+  border-radius: 999px;
+  background: var(--ink);
+  transform-origin: center;
+  animation: pv-speak 3.6s ease-in-out infinite;
+}
+
+/* The brand "P que habla": the P breathes on its own Fraunces SOFT axis,
+   its amber stem pulses, a halo radiates outward as sound. */
+.glyph-p {
+  position: relative;
+  width: 74px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.glyph-p .halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  border: 1px solid rgba(253, 191, 71, 0.4);
+  animation: pv-halo 3.6s ease-in-out infinite;
+}
+
+.glyph-p .p {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
   font-family: "Fraunces", serif;
-  font-size: clamp(30px, 4vw, 42px);
+  font-variation-settings: "SOFT" 50;
+  font-weight: 600;
+  font-size: 90px;
+  line-height: 1;
+  color: var(--ink);
+  animation: pv-p 3.6s ease-in-out infinite;
+}
+
+.glyph-p .stem {
+  position: absolute;
+  left: 12px;
+  bottom: 5px;
+  width: 10px;
+  height: 60px;
+  border-radius: 999px;
+  background: var(--amber);
+  transform-origin: bottom;
+  animation: pv-stem 3.6s ease-in-out infinite;
+}
+
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+
+.orbit-a { animation: pv-orbit-a 26s linear infinite; }
+.orbit-b { animation: pv-orbit-b 34s linear infinite; }
+.orbit-c { animation: pv-orbit-c 44s linear infinite; }
+
+.voice-chip {
+  display: flex;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  background: rgba(23, 27, 49, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 600 12px/1 "Instrument Sans", sans-serif;
+  white-space: nowrap;
+}
+
+.voice-chip.violet { color: #cfc9ff; border-color: rgba(139, 124, 240, 0.5); }
+.voice-chip.dim { color: var(--ink-dim); border-color: rgba(139, 124, 240, 0.35); }
+.voice-chip.me { color: var(--amber); border-color: rgba(253, 191, 71, 0.55); }
+
+/* ── Sections ───────────────────────────────────────────────────────── */
+
+section#features,
+section#numbers,
+section#privacy {
+  border-top: 1px solid var(--line);
+  padding: 84px 24px;
+}
+
+section h2 {
+  font-family: "Fraunces", serif;
+  font-size: 40px;
   font-weight: 560;
   font-variation-settings: "SOFT" 50;
   text-align: center;
-  margin-bottom: 18px;
+  margin: 0 auto 18px;
   text-wrap: balance;
 }
 
-/* ---------- features ---------- */
+.section-lede {
+  text-align: center;
+  color: var(--ink-dim);
+  margin: 0 0 40px;
+}
 
-.features { border-top: 1px solid var(--line); }
-
-.features .grid {
+.cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 18px;
@@ -221,38 +357,31 @@ h2 {
   margin: 42px auto 0;
 }
 
-.features article {
+.cards article {
   background: rgba(23, 27, 49, 0.72);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 26px 24px;
 }
-.features h3 {
+
+.cards h3 {
   font-family: "Fraunces", serif;
   font-size: 21px;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin: 0 0 10px;
 }
-.features p {
+
+.cards p {
   font-size: 15.5px;
   color: var(--ink-dim);
 }
 
-/* ---------- measured numbers ---------- */
-
-.numbers { border-top: 1px solid var(--line); }
-
-.numbers .note {
-  text-align: center;
-  color: var(--ink-dim);
-  margin-bottom: 40px;
-}
-
-.stats {
+.ledger {
   max-width: 720px;
   margin: 0 auto;
 }
-.stats div {
+
+.ledger div {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -260,22 +389,21 @@ h2 {
   padding: 15px 4px;
   border-bottom: 1px dashed var(--line);
 }
-.stats dt { color: var(--ink-dim); }
-.stats dd {
+
+.ledger dt { color: var(--ink-dim); }
+
+.ledger dd {
   font-family: "IBM Plex Mono", monospace;
   font-size: 19px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--amber);
+  margin: 0;
 }
 
-/* ---------- privacy ---------- */
+section#privacy { text-align: center; }
 
-.privacy {
-  border-top: 1px solid var(--line);
-  text-align: center;
-}
-.privacy p {
+.privacy-body {
   max-width: 68ch;
   margin: 0 auto;
   font-size: 18px;
@@ -283,7 +411,7 @@ h2 {
   text-wrap: pretty;
 }
 
-/* ---------- footer ---------- */
+/* ── Footer ─────────────────────────────────────────────────────────── */
 
 footer {
   display: flex;
@@ -294,21 +422,89 @@ footer {
   padding: 34px 24px 46px;
   border-top: 1px solid var(--line);
 }
+
+footer img { border-radius: 5px; }
+
 footer nav {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   font-size: 14.5px;
-  color: var(--ink-dim);
 }
+
+footer nav a {
+  color: var(--ink-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
 footer nav a:hover { color: var(--ink); }
 
-/* ---------- small screens ---------- */
+/* ── Animations ─────────────────────────────────────────────────────── */
 
-@media (max-width: 640px) {
-  .top { flex-wrap: wrap; gap: 14px; }
-  .top-links { order: 3; width: 100%; justify-content: center; margin-left: 0; }
-  .hero { padding-top: 40px; }
-  .wave { height: 96px; gap: 10px; }
-  .wave i { width: 12px; }
+@keyframes pv-speak {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes pv-stem {
+  0%, 100% { transform: scaleY(1); box-shadow: 0 0 18px rgba(253, 191, 71, 0.5); }
+  50% { transform: scaleY(0.82); box-shadow: 0 0 36px rgba(253, 191, 71, 0.85); }
+}
+
+@keyframes pv-p {
+  0%, 100% { font-variation-settings: "SOFT" 0; }
+  50% { font-variation-settings: "SOFT" 100; }
+}
+
+@keyframes pv-halo {
+  0% { transform: translate(-50%, -50%) scale(0.55); opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(1.05); opacity: 0; }
+}
+
+@keyframes pv-orbit-a {
+  from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+}
+
+@keyframes pv-orbit-b {
+  from { transform: rotate(120deg) translateX(168px) rotate(-120deg); }
+  to { transform: rotate(480deg) translateX(168px) rotate(-480deg); }
+}
+
+@keyframes pv-orbit-c {
+  from { transform: rotate(230deg) translateX(205px) rotate(-230deg); }
+  to { transform: rotate(590deg) translateX(205px) rotate(-590deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidewave i,
+  .glyph-p .halo,
+  .glyph-p .p,
+  .glyph-p .stem,
+  .orbit { animation: none !important; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 920px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding-bottom: 48px;
+  }
+  .hero h1 { font-size: 44px; }
+  .constellation {
+    width: 340px;
+    height: 340px;
+    transform: scale(0.72);
+    transform-origin: top center;
+    margin-top: -20px;
+  }
+  .top-links { display: none; }
+}
+
+@media (max-width: 560px) {
+  .stats { flex-wrap: wrap; gap: 14px; }
+  section#features, section#numbers, section#privacy { padding: 56px 20px; }
+  .brew code { font-size: 14px; }
 }
