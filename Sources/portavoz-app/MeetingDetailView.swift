@@ -159,25 +159,81 @@ struct MeetingDetailView: View {
 
 extension MeetingDetailView {
     private func loadedBody(_ detail: MeetingDetail) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header(detail)
-                speakersRow(detail)
-                refineStatus
-                // Two columns (design system Aurora detail): the summary,
-                // transcript and player on the left; the meeting-health and
-                // chapters rail on the right.
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        summaryOrGenerate(detail)
-                        transcriptSection(detail)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    detailRail(detail)
+        // A fixed-height composition (NOT one big page scroll): header and
+        // summary sit at the top, the transcript fills the middle and scrolls
+        // in its own viewport, and the player is DOCKED at the bottom — so you
+        // never scroll the page to reach the player, and reading the
+        // transcript never moves it. The health + chapters rail sits alongside.
+        VStack(alignment: .leading, spacing: 12) {
+            header(detail)
+            speakersRow(detail)
+            refineStatus
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    summaryOrGenerate(detail)
+                    transcriptHeader
+                    transcriptArea(detail)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    playerDock
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                detailRail(detail)
             }
-            .padding(16)
-            .frame(maxWidth: 1060, alignment: .leading)
+            .frame(maxHeight: .infinity)
+        }
+        .padding(16)
+        .frame(maxWidth: 1060, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var transcriptHeader: some View {
+        HStack {
+            Text("Transcript").font(.headline)
+            if player != nil {
+                Spacer()
+                Text("Click a line to jump there")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    /// The transcript body: a self-centering lyrics carousel when there's
+    /// audio (sized to fill the space above the docked player), or a plain
+    /// scrolling list otherwise.
+    @ViewBuilder
+    private func transcriptArea(_ detail: MeetingDetail) -> some View {
+        if player != nil {
+            GeometryReader { geometry in
+                transcriptLines(detail, carouselHeight: max(180, geometry.size.height))
+            }
+        } else {
+            ScrollView { transcriptLines(detail, carouselHeight: 440) }
+        }
+    }
+
+    private func transcriptLines(_ detail: MeetingDetail, carouselHeight: CGFloat) -> some View {
+        // Own View struct so only it re-renders as the playhead moves — the
+        // header and summary above stay put.
+        TranscriptSegmentsView(
+            segments: detail.segments,
+            speakers: detail.speakers,
+            player: player,
+            onSeek: { player?.seek(to: $0); player?.play() },
+            onRenameTap: { speaker in
+                renamingSpeaker = speaker
+                newName = speaker.displayName ?? ""
+            },
+            carouselHeight: carouselHeight)
+    }
+
+    /// The audio player, docked at the bottom of the transcript column so it
+    /// stays put while you read.
+    @ViewBuilder
+    private var playerDock: some View {
+        if let player {
+            Divider()
+            MeetingPlayerBar(player: player, waveform: waveform)
+            compressRow
         }
     }
 
@@ -228,34 +284,6 @@ extension MeetingDetailView {
                 Label("Generate summary", systemImage: "sparkles")
             }
         }
-    }
-
-    @ViewBuilder
-    private func transcriptSection(_ detail: MeetingDetail) -> some View {
-        HStack {
-            Text("Transcript").font(.headline)
-            if player != nil {
-                Spacer()
-                Text("Click a line to jump there")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        if let player {
-            MeetingPlayerBar(player: player, waveform: waveform)
-            compressRow
-        }
-        // Own View structs so only they re-render as the playhead
-        // moves — the header and summary above stay put.
-        TranscriptSegmentsView(
-            segments: detail.segments,
-            speakers: detail.speakers,
-            player: player,
-            onSeek: { player?.seek(to: $0); player?.play() },
-            onRenameTap: { speaker in
-                renamingSpeaker = speaker
-                newName = speaker.displayName ?? ""
-            })
     }
 
     @ViewBuilder

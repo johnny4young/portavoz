@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 13, 2026
 
+- **🎧 The player, docked** — In a meeting with audio, the player now sits pinned at the bottom of the transcript, always in reach: the transcript fills the space above it and scrolls on its own, so you never scroll the page to hit play or drag the scrubber. Everything fits the window — no more hunting for the controls.
 - **🗣️ Pin your spoken language** — A new "Transcription language" setting (Auto-detect · English · Español) stops a quiet or noisy recording from being transcribed in the wrong language — no more English meeting coming out as Cyrillic. Auto-detect stays the default for clear audio.
 - **🌐 Summaries in the meeting's language** — The summary now comes out in the language actually spoken (or the one you pinned), not your Mac's UI language — a Spanish meeting no longer returns an English summary.
 - **🔇 A heads-up when the other side isn't captured** — If the incoming audio (the other participants) stays silent while you record — often a Bluetooth-output or permission hiccup — Portavoz now nudges you in real time instead of letting you find out afterward. Dismissable, since in-person meetings have no incoming audio.

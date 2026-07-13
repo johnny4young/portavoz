@@ -11,6 +11,9 @@ struct TranscriptSegmentsView: View {
     let player: MeetingPlayer?
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
+    /// Height of the lyrics carousel when there's audio — the detail sizes it
+    /// to the available space so the docked player is never pushed off.
+    var carouselHeight: CGFloat = 440
 
     /// The segment under the playhead: the one whose range contains the
     /// current time, or the last one that already started (so a gap between
@@ -27,7 +30,9 @@ struct TranscriptSegmentsView: View {
             // With audio, the transcript is a Spotify-lyrics carousel: the
             // spoken line stays centered inside its own viewport, so seeking
             // moves the transcript, never the whole page.
-            FocusedTranscriptView(segments: segments, activeID: activeSegmentID) { segment, isActive in
+            FocusedTranscriptView(
+                segments: segments, activeID: activeSegmentID, height: carouselHeight
+            ) { segment, isActive in
                 row(segment, isActive: isActive)
             }
         } else {
