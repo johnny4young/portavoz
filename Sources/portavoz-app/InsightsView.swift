@@ -9,10 +9,14 @@ import SwiftUI
 struct InsightsView: View {
     @Environment(AppServices.self) private var services
 
+    @Binding var route: Route?
+
     @State private var meetings: [Meeting] = []
     @State private var stats: LibraryStats?
     @State private var facts: MeetingStore.LibraryFacts?
     @State private var balance: MeetingStore.VoiceBalance?
+    @State private var noDecision: InsightsFindings.NoDecision?
+    @State private var topics: [InsightsFindings.RecurringTopic] = []
     @AppStorage("insightsScope") private var scopeRaw = InsightsScope.week.rawValue
 
     private var scope: InsightsScope { InsightsScope(rawValue: scopeRaw) ?? .week }
@@ -27,6 +31,7 @@ struct InsightsView: View {
                 header
                 if let stats {
                     tiles(stats)
+                    findingsSection
                     HStack(alignment: .top, spacing: 16) {
                         rhythmHeatmap(stats)
                         if let balance, !balance.participants.isEmpty {
@@ -39,6 +44,7 @@ struct InsightsView: View {
             .frame(maxWidth: 920, alignment: .leading)
         }
         .task(id: services.libraryVersion) { await reload() }
+        .task(id: "\(services.libraryVersion)-\(scopeRaw)") { await loadFindings() }
     }
 
     private var header: some View {
@@ -67,6 +73,52 @@ struct InsightsView: View {
         stats = LibraryStats.compute(meetings: meetings)
         facts = try? await services.store.libraryFacts()
         balance = try? await services.store.voiceBalance()
+    }
+
+    // MARK: - Findings ✦
+
+    /// Detects the "Hallazgos ✦" over the current scope's meetings, honestly:
+    /// which summarized meetings reached no decision, and which domain terms
+    /// keep recurring. Bounded to the 60 most recent in scope.
+    private func loadFindings() async {
+        let interval = scope.currentInterval(now: Date())
+        let scoped = meetings
+            .filter { interval.contains($0.startedAt) }
+            .prefix(60)
+        let inputs = (try? await services.store.findingInputs(for: scoped.map(\.id))) ?? [:]
+        let facts = scoped.map { meeting -> InsightsFindings.MeetingFact in
+            let input = inputs[meeting.id]
+            let seconds = meeting.endedAt.map { $0.timeIntervalSince(meeting.startedAt) } ?? 0
+            let hasDecision = (input?.actionItemCount ?? 0) > 0
+                || markdownHasDecision(input?.summaryMarkdown)
+            return InsightsFindings.MeetingFact(
+                id: meeting.id,
+                startedAt: meeting.startedAt,
+                seconds: max(0, seconds),
+                hasSummary: input?.summaryMarkdown != nil,
+                hasDecision: hasDecision,
+                transcript: input?.transcript ?? "")
+        }
+        noDecision = InsightsFindings.noDecision(Array(facts))
+        topics = InsightsFindings.recurringTopics(Array(facts), exclude: participantNames())
+    }
+
+    /// Known participant names (lowercased) so a person who recurs reads as a
+    /// participant in the panel above, never as a "topic".
+    private func participantNames() -> Set<String> {
+        var names: Set<String> = ["me", "yo"]
+        for person in balance?.participants ?? [] { names.insert(person.name.lowercased()) }
+        for person in facts?.topParticipants ?? [] { names.insert(person.name.lowercased()) }
+        return names
+    }
+
+    /// A summary reaches a decision when it has a "Decisions/Decisiones"
+    /// section with at least one bullet — matched language-agnostically.
+    private func markdownHasDecision(_ markdown: String?) -> Bool {
+        guard let markdown else { return false }
+        return SummarySections.parse(markdown).sections.contains { section in
+            section.bulletCount > 0 && section.heading.lowercased().contains("decis")
+        }
     }
 
     // MARK: - Tiles
@@ -353,5 +405,80 @@ struct InsightsView: View {
 
     private func percent(_ fraction: Double) -> String {
         "\(Int((fraction * 100).rounded()))%"
+    }
+}
+
+// MARK: - Findings ✦ cards
+
+extension InsightsView {
+    @ViewBuilder var findingsSection: some View {
+        if noDecision != nil || !topics.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("Findings ✦ from your meetings")
+                        .font(.headline)
+                        .accessibilityIdentifier("insights-findings")
+                    Text("detected locally in your transcripts — each with an action")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                HStack(alignment: .top, spacing: 12) {
+                    if let noDecision {
+                        findingCard(
+                            headline: L10n.format(
+                                "%@ in meetings with no decision", hours(noDecision.totalSeconds)),
+                            detail: L10n.format(
+                                "%d meetings closed without a decision or action item",
+                                noDecision.count),
+                            identifier: "insights-finding-nodecision",
+                            action: { route = .meeting(noDecision.mostRecent) })
+                    }
+                    let topicSlots = noDecision == nil ? 3 : 2
+                    ForEach(topics.prefix(topicSlots)) { topic in
+                        findingCard(
+                            headline: L10n.format(
+                                "\u{201C}%@\u{201D} came up in %d meetings", topic.term, topic.count),
+                            detail: L10n.text("A recurring topic across your recent meetings."),
+                            identifier: "insights-finding-topic-\(topic.id)",
+                            action: { route = .meeting(topic.mostRecent) })
+                    }
+                }
+            }
+        }
+    }
+
+    private func findingCard(
+        headline: String, detail: String, identifier: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(headline)
+                    .font(.callout.weight(.semibold))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.caption2)
+                        .foregroundStyle(PVDesign.chipAISpark)
+                    Text("See").font(.caption2.weight(.medium)).foregroundStyle(PVDesign.accent)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(PVDesign.brandViolet.opacity(0.10)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(PVDesign.brandViolet.opacity(0.22)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 }

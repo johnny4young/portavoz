@@ -36,7 +36,7 @@ struct ContentView: View {
                 case .ask:
                     AskView(route: $route)
                 case .insights:
-                    InsightsView()
+                    InsightsView(route: $route)
                 case nil:
                     ContentUnavailableView(
                         "Portavoz",

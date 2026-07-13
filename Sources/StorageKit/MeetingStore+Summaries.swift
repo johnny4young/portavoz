@@ -150,6 +150,68 @@ extension MeetingStore {
         public let doneActionItems: Int
     }
 
+    /// Raw material for the Insights "Hallazgos ✦" findings: the transcript
+    /// and the latest summary's markdown + action-item count, per meeting.
+    /// The caller decides what counts as a "decision" (parsing is an
+    /// intelligence concern, not a storage one).
+    public struct FindingInput: Sendable, Equatable {
+        public let transcript: String
+        public let summaryMarkdown: String?
+        public let actionItemCount: Int
+    }
+
+    public func findingInputs(
+        for meetingIDs: [MeetingID]
+    ) async throws -> [MeetingID: FindingInput] {
+        guard !meetingIDs.isEmpty else { return [:] }
+        let ids = meetingIDs.map { $0.rawValue.uuidString }
+        return try await database.read { db in
+            let placeholders = databaseQuestionMarks(count: ids.count)
+            let transcripts = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
+                    FROM segment
+                    WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))
+                    GROUP BY meetingID
+                    """,
+                arguments: StatementArguments(ids))
+            var byMeeting: [String: (String, String?, Int)] = [:]
+            for row in transcripts {
+                byMeeting[row["meetingID"]] = (row["transcript"] ?? "", nil, 0)
+            }
+
+            // The newest summary per meeting, and its action-item count.
+            let summaries = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT s.meetingID AS meetingID, s.markdown AS markdown,
+                           (SELECT COUNT(*) FROM actionItem ai
+                            WHERE ai.summaryID = s.id AND ai.deletedAt IS NULL) AS items
+                    FROM summary s
+                    WHERE s.deletedAt IS NULL
+                      AND s.meetingID IN (\(placeholders))
+                      AND s.version = (
+                          SELECT MAX(l.version) FROM summary l
+                          WHERE l.meetingID = s.meetingID AND l.deletedAt IS NULL)
+                    """,
+                arguments: StatementArguments(ids))
+            for row in summaries {
+                let key: String = row["meetingID"]
+                let existing = byMeeting[key] ?? ("", nil, 0)
+                byMeeting[key] = (existing.0, row["markdown"], row["items"])
+            }
+
+            var result: [MeetingID: FindingInput] = [:]
+            for (key, value) in byMeeting {
+                guard let uuid = UUID(uuidString: key) else { continue }
+                result[MeetingID(rawValue: uuid)] = FindingInput(
+                    transcript: value.0, summaryMarkdown: value.1, actionItemCount: value.2)
+            }
+            return result
+        }
+    }
+
     public func libraryFacts(topLimit: Int = 8) async throws -> LibraryFacts {
         try await database.read { db in
             let participantRows = try Row.fetchAll(

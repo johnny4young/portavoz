@@ -1,12 +1,32 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ in meetings with no decision": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ en reuniones sin ninguna decisión"
+          }
+        }
+      }
+    },
     "%d meetings": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "%d reuniones"
+          }
+        }
+      }
+    },
+    "%d meetings closed without a decision or action item": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d reuniones cerraron sin decisión ni pendiente"
           }
         }
       }
@@ -157,6 +177,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Un banner flotante aparece antes de tu próxima reunión del calendario — un click inicia una grabación vinculada. Requiere acceso al calendario."
+          }
+        }
+      }
+    },
+    "A recurring topic across your recent meetings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un tema recurrente en tus reuniones recientes."
           }
         }
       }
@@ -1617,6 +1647,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modelo externo (BYOK)"
+          }
+        }
+      }
+    },
+    "Findings ✦ from your meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hallazgos ✦ de tus reuniones"
           }
         }
       }
@@ -3241,6 +3281,16 @@
         }
       }
     },
+    "See": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver"
+          }
+        }
+      }
+    },
     "See my trend": {
       "localizations": {
         "es": {
@@ -4321,6 +4371,16 @@
         }
       }
     },
+    "detected locally in your transcripts — each with an action": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "detectados localmente en tus transcripts — cada uno con su acción"
+          }
+        }
+      }
+    },
     "e.g. %@": {
       "localizations": {
         "es": {
@@ -4577,6 +4637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "hablaste tú"
+          }
+        }
+      }
+    },
+    "“%@” came up in %d meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» apareció en %d reuniones"
           }
         }
       }
