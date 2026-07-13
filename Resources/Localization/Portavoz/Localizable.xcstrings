@@ -2931,6 +2931,36 @@
         }
       }
     },
+    "Re-transcribe in English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a transcribir en inglés"
+          }
+        }
+      }
+    },
+    "Re-transcribe in Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a transcribir en español"
+          }
+        }
+      }
+    },
+    "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a transcribir con Whisper (máxima calidad) y muestra el resultado como borrador — no se aplica nada sin tu confirmación. Usa el menú para forzar un idioma."
+          }
+        }
+      }
+    },
     "Re-transcribing participants (Whisper)…": {
       "localizations": {
         "es": {

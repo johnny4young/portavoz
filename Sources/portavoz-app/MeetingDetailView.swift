@@ -513,13 +513,7 @@ extension MeetingDetailView {
     /// destructive red.
     private func actionRow(_ detail: MeetingDetail) -> some View {
         HStack(spacing: 8) {
-            roundButton(
-                systemImage: "wand.and.stars", tint: .secondary,
-                busy: refining != nil,
-                disabled: refining != nil || detail.meeting.audioDirectory == nil,
-                // swiftlint:disable:next line_length
-                help: "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation"
-            ) { refine(detail) }
+            refineMenu(detail)
 
             Menu {
                 Button("Export Markdown…") { export(detail, as: .markdown) }
@@ -1055,8 +1049,44 @@ extension MeetingDetailView {
     /// Whisper (with the user's vocabulary), re-diarizes (micro-cluster
     /// merge included), atomically replaces the cast, and regenerates the
     /// summary from the clean transcript.
-    private func refine(_ detail: MeetingDetail) {
-        services.refines.start(meetingID: meetingID, detail: detail, services: services)
+    /// The refine control: a normal click re-transcribes auto-detecting the
+    /// language (or honoring the Settings pin); the chevron offers a per-meeting
+    /// language override, the fix for a meeting whose transcript came out in
+    /// the wrong language on weak audio.
+    private func refineMenu(_ detail: MeetingDetail) -> some View {
+        let disabled = refining != nil || detail.meeting.audioDirectory == nil
+        return Menu {
+            Button("Re-transcribe in Spanish") { refine(detail, language: "es") }
+            Button("Re-transcribe in English") { refine(detail, language: "en") }
+        } label: {
+            Group {
+                if refining != nil {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "wand.and.stars").font(.system(size: 13))
+                }
+            }
+            .foregroundStyle(.secondary)
+            .frame(width: 30, height: 30)
+            .background(Circle().fill(.quaternary.opacity(0.5)))
+        } primaryAction: {
+            refine(detail)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(disabled)
+        .accessibilityIdentifier("detail-refine")
+        .help(
+            L10n.text(
+                // swiftlint:disable:next line_length
+                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."
+            ))
+    }
+
+    private func refine(_ detail: MeetingDetail, language: String? = nil) {
+        services.refines.start(
+            meetingID: meetingID, detail: detail, services: services, language: language)
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
