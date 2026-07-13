@@ -152,13 +152,38 @@ extension MeetingDetailView {
                 header(detail)
                 speakersRow(detail)
                 refineStatus
-                summaryOrGenerate(detail)
-                MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
-                chaptersSection(detail)
-                transcriptSection(detail)
+                // Two columns (design system Aurora detail): the summary,
+                // transcript and player on the left; the meeting-health and
+                // chapters rail on the right.
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        summaryOrGenerate(detail)
+                        transcriptSection(detail)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    detailRail(detail)
+                }
             }
             .padding(16)
-            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: 1060, alignment: .leading)
+        }
+    }
+
+    /// The right rail: meeting health + ✦ chapters — the at-a-glance column
+    /// beside the transcript. Hidden entirely when it would be empty (no
+    /// attributed speech and no chapters) so the page doesn't carry a void.
+    @ViewBuilder
+    private func detailRail(_ detail: MeetingDetail) -> some View {
+        let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
+        let hasHealth = detail.segments.contains { $0.speakerID != nil }
+        if hasHealth || hasChapters {
+            VStack(alignment: .leading, spacing: 12) {
+                if hasHealth {
+                    MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
+                }
+                chaptersSection(detail)
+            }
+            .frame(width: 260)
         }
     }
 
