@@ -72,10 +72,22 @@ struct SettingsView: View {
     @State private var settingsQuery = ""
 
     var body: some View {
-        NavigationSplitView {
+        // A fixed two-pane layout, NOT a NavigationSplitView: the settings
+        // window is a fixed size with a permanent sidebar (design system 2a),
+        // so the collapsible split view only added a misplaced toggle button
+        // and — with the fixed window width — crashed on collapse/expand. The
+        // NavigationStack is just for the centered titlebar title; it adds no
+        // collapse chrome.
+        NavigationStack {
+            settingsBody
+        }
+    }
+
+    private var settingsBody: some View {
+        HStack(spacing: 0) {
             SettingsSidebar(category: $category, query: $settingsQuery)
-                .navigationSplitViewColumnWidth(224)
-        } detail: {
+                .frame(width: 224)
+            Divider()
             Form {
                 switch category ?? .general {
                 case .general:
@@ -105,10 +117,11 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle((category ?? .general).title)
+            .frame(maxWidth: .infinity)
         }
         .frame(width: 760)
         .frame(minHeight: 620)
+        .navigationTitle((category ?? .general).title)
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
