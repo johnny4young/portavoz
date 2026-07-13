@@ -66,6 +66,24 @@ final class AppServices {
     /// One-shot seek consumed by the detail view when a palette citation
     /// navigates to a meeting — jump to the cited moment.
     var pendingSeek: TimeInterval?
+    /// The meeting that just finished recording — the detail view shows the
+    /// post-meeting mirror (6a-2) once for it, if the setting is on and it
+    /// qualifies. One-shot: consumed on show.
+    var justRecorded: MeetingID?
+
+    /// The user's average talk-share over their recent meetings (excluding
+    /// one) — the mirror compares "% you spoke" against this. Nil when there
+    /// isn't enough history. Reuses the aggregate voice-mix query.
+    func averageMyShare(excluding meetingID: MeetingID, recent: Int = 10) async -> Double? {
+        guard let meetings = try? await store.meetings() else { return nil }
+        let recentIDs = meetings.filter { $0.id != meetingID }.prefix(recent).map(\.id)
+        guard !recentIDs.isEmpty,
+            let mixes = try? await store.voiceMixes(for: Array(recentIDs))
+        else { return nil }
+        let shares = mixes.values.compactMap { $0.first(where: \.isMe)?.fraction }
+        guard !shares.isEmpty else { return nil }
+        return shares.reduce(0, +) / Double(shares.count)
+    }
 
     init() {
         do {

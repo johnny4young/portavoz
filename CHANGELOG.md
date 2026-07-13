@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 12, 2026
+
+- **🪞 Your mirror, after each meeting** — Turn it on and, whenever a real conversation wraps (two or more voices, at least five minutes), Portavoz shows a private card with your own numbers next to your usual average: how much you spoke, questions you asked, times you cut in — plus one plain line of what changed ("You listened more than usual. You asked 2 questions."). Measured, not judged; computed on your Mac; off by default.
+
 ## July 11, 2026
 
 - **🎙️ Recording, redesigned** — The live recording view now matches the design: a compact top bar (timer, mic level, Translate, Companion, HUD and a red Stop), then a single column where your words are the interface — the lyrics captions fill the space, with the Companion cards and your notes flowing below.

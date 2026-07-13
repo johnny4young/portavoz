@@ -82,6 +82,13 @@ struct MeetingDetailView: View {
     @State private var rememberOffer: Speaker?
     @State private var rememberingVoice = false
 
+    /// The post-meeting mirror (6a-2): opt-in, shown once right after a
+    /// qualifying recording. `mirrorAverageShare` is the user's usual talk
+    /// share across recent meetings, loaded lazily so the card can compare.
+    @AppStorage("mirrorAfterMeeting") private var mirrorAfterMeeting = false
+    @State private var mirrorAverageShare: Double?
+    @State private var mirrorAverageLoadedFor: MeetingID?
+
     var body: some View {
         Group {
             if let detail {
@@ -102,6 +109,8 @@ struct MeetingDetailView: View {
         loadedBody(detail)
             .navigationTitle(detail.meeting.title)
             .sheet(isPresented: refineDraftBinding) { refineSheet }
+            .sheet(isPresented: mirrorBinding(detail)) { mirrorSheet(detail) }
+            .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
             .fileExporter(
                 isPresented: exportBinding,
                 document: exportDocument,
@@ -1141,6 +1150,75 @@ extension MeetingDetailView {
                 }
             }
         )
+    }
+
+    // MARK: - Post-meeting mirror (6a-2)
+
+    /// The meeting's duration, preferring wall-clock (start→end) and falling
+    /// back to attributed speech when the meeting has no recorded end.
+    private func mirrorDuration(_ detail: MeetingDetail, health: MeetingHealth) -> TimeInterval {
+        if let ended = detail.meeting.endedAt {
+            return ended.timeIntervalSince(detail.meeting.startedAt)
+        }
+        return health.totalSpeechSeconds
+    }
+
+    /// The user's own stat for this meeting, matched by the `isMe` speaker.
+    private func mirrorMyStat(
+        _ detail: MeetingDetail, health: MeetingHealth
+    ) -> MeetingHealth.SpeakerStat? {
+        guard let me = detail.speakers.first(where: \.isMe) else { return nil }
+        return health.stats.first { $0.speakerID == me.id }
+    }
+
+    /// The mirror shows once, right after a qualifying recording, and only
+    /// when the user opted in. Everything is local and gated on real signal.
+    private func mirrorShouldShow(_ detail: MeetingDetail) -> Bool {
+        guard mirrorAfterMeeting, services.justRecorded == meetingID else { return false }
+        let health = MeetingHealth.compute(segments: detail.segments)
+        guard mirrorMyStat(detail, health: health) != nil else { return false }
+        return MirrorStats.qualifies(
+            speakerCount: health.stats.count,
+            seconds: mirrorDuration(detail, health: health))
+    }
+
+    private func mirrorBinding(_ detail: MeetingDetail) -> Binding<Bool> {
+        Binding(
+            get: { mirrorShouldShow(detail) },
+            set: { if !$0 { services.justRecorded = nil } })
+    }
+
+    /// Recompute the comparison average whenever a fresh recording arrives.
+    private var mirrorTaskID: MeetingID? { services.justRecorded }
+
+    private func loadMirrorAverageIfNeeded() async {
+        guard mirrorAfterMeeting, services.justRecorded == meetingID,
+            mirrorAverageLoadedFor != meetingID
+        else { return }
+        mirrorAverageLoadedFor = meetingID
+        mirrorAverageShare = await services.averageMyShare(excluding: meetingID)
+    }
+
+    @ViewBuilder
+    private func mirrorSheet(_ detail: MeetingDetail) -> some View {
+        let health = MeetingHealth.compute(segments: detail.segments)
+        if let mine = mirrorMyStat(detail, health: health) {
+            MirrorCard(
+                myShare: mine.share,
+                myQuestions: mine.questions,
+                myInterruptions: mine.interruptionsMade,
+                language: Locale.current.language.languageCode?.identifier ?? "en",
+                averageShare: mirrorAverageShare,
+                onSeeTrend: {
+                    services.justRecorded = nil
+                    route = .insights
+                },
+                onDismiss: { services.justRecorded = nil },
+                onTurnOff: {
+                    mirrorAfterMeeting = false
+                    services.justRecorded = nil
+                })
+        }
     }
 
     private func reload() async {

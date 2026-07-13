@@ -1241,6 +1241,16 @@
         }
       }
     },
+    "Don’t show after each meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No mostrar después de cada reunión"
+          }
+        }
+      }
+    },
     "Download model (3 GB)": {
       "localizations": {
         "es": {
@@ -1911,6 +1921,16 @@
         }
       }
     },
+    "Measured, not judged — computed on your Mac from this meeting and your library.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medido, no juzgado — calculado en tu Mac a partir de esta reunión y tu biblioteca."
+          }
+        }
+      }
+    },
     "Meeting audio lives in Audio/ inside this folder. When you change it, existing recordings move to the new location; the database and transcripts stay where they are.": {
       "localizations": {
         "es": {
@@ -1997,6 +2017,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La migración falló: %@. Nada se perdió — las grabaciones que no se movieron aún se leen desde la carpeta anterior; puedes reintentar."
+          }
+        }
+      }
+    },
+    "Mirror after each meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espejo después de cada reunión"
           }
         }
       }
@@ -3051,6 +3081,16 @@
         }
       }
     },
+    "See my trend": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver mi tendencia"
+          }
+        }
+      }
+    },
     "Segments": {
       "localizations": {
         "es": {
@@ -3821,6 +3861,16 @@
         }
       }
     },
+    "When a meeting has two or more speakers and runs at least five minutes, show a private card with your own numbers next to your usual average — measured on your Mac, never judged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuando una reunión tiene dos o más hablantes y dura al menos cinco minutos, muestra una tarjeta privada con tus propios números junto a tu media habitual — medido en tu Mac, nunca juzgado."
+          }
+        }
+      }
+    },
     "When someone asks for you by name (\"%@\", what do you think?), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.": {
       "localizations": {
         "es": {
@@ -3887,6 +3937,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus reuniones, 100% en tu Mac."
+          }
+        }
+      }
+    },
+    "Your mirror": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu espejo"
           }
         }
       }
@@ -4031,6 +4091,16 @@
         }
       }
     },
+    "interruptions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "interrupciones"
+          }
+        }
+      }
+    },
     "language english spanish menu bar launch login": {
       "localizations": {
         "es": {
@@ -4057,6 +4127,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "reuniones en tu base de datos"
+          }
+        }
+      }
+    },
+    "questions you asked": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "preguntas que hiciste"
           }
         }
       }
@@ -4127,6 +4207,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "semanas seguidas"
+          }
+        }
+      }
+    },
+    "you spoke": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hablaste tú"
           }
         }
       }

@@ -64,7 +64,12 @@ struct RecordingView: View {
                 Spacer()
 
             case .done(let meetingID):
-                Color.clear.onAppear { route = .meeting(meetingID) }
+                Color.clear.onAppear {
+                    // Flag this as just-recorded so the detail can offer the
+                    // post-meeting mirror (6a-2) once, if the user opted in.
+                    services.justRecorded = meetingID
+                    route = .meeting(meetingID)
+                }
 
             case .failed(let message):
                 Spacer()

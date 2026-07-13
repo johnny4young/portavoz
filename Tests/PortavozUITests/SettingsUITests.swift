@@ -32,6 +32,24 @@ final class SettingsUITests: XCTestCase {
     }
 
     @MainActor
+    func testVoicePaneOffersTheMirrorOptIn() {
+        // The post-meeting mirror (6a-2) is opt-in and off by default; its
+        // switch lives in the "My voice & Companion" pane.
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let voice = app.control(withIdentifier: "settings-category-voice")
+        XCTAssertTrue(voice.waitForExistence(timeout: 10))
+        voice.click()
+
+        let mirror = app.control(withIdentifier: "settings-mirror-after-meeting")
+        XCTAssertTrue(
+            mirror.waitForExistence(timeout: 5),
+            "the voice pane must offer the post-meeting mirror opt-in")
+    }
+
+    @MainActor
     func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() {
         // The standalone Settings window (⌘,), not the test sheet: the sheet
         // clips the trailing-edge toggle, the real window lays it out fully.

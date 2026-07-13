@@ -55,6 +55,7 @@ struct SettingsView: View {
     @State private var byokMessage: String?
 
     @AppStorage("companionUserName") private var companionUserName = ""
+    @AppStorage("mirrorAfterMeeting") private var mirrorAfterMeeting = false
 
     @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
     @AppStorage("ollamaModel") private var ollamaModel = ""
@@ -723,6 +724,15 @@ extension SettingsView {
             Text(
                 "When someone asks for you by name (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), what do you think?\"), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name."
             )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            Toggle(isOn: $mirrorAfterMeeting) {
+                Text("Mirror after each meeting")
+            }
+            .accessibilityIdentifier("settings-mirror-after-meeting")
+            // swiftlint:disable:next line_length
+            Text("When a meeting has two or more speakers and runs at least five minutes, show a private card with your own numbers next to your usual average — measured on your Mac, never judged.")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
