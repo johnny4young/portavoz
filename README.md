@@ -11,7 +11,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-![A meeting in Portavoz: speaker pills with one-click name suggestions, a structured summary with decisions and co-authored notes, owner-tagged action items, per-speaker talk-time, and a bilingual who-said-what transcript](assets/screenshots/meeting-detail.png)
+![A meeting in Portavoz: colored speaker pills with one-click name suggestions, a tabbed summary (decisions, open questions, to-dos), a bilingual who-said-what transcript, and a right rail with per-speaker meeting health and ✦ chapters](assets/screenshots/meeting-detail.png)
 
 <sub>Demo data — regenerate this exact library with `Portavoz.app --args -use-temp-store -seed-showcase`.</sub>
 
@@ -29,7 +29,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**v0.1.0 is out.** Install it with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases):
+**Shipping and self-updating.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew tap johnny4young/tap
@@ -37,6 +37,41 @@ brew install --cask portavoz
 ```
 
 Capture, live + refine transcription, on-device diarization, bilingual summaries (three local engines), audio playback, co-authoring notes, pre-meeting briefs, and the live companion are all built and measured (see below). Every feature that ships lands in the [changelog](CHANGELOG.md).
+
+## What you get
+
+Everything below runs on your Mac. Grouped by what you're doing:
+
+**Capture & transcribe**
+- **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, and a low-mic nudge included.
+- **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive.
+- **Whisper refine** — a maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime.
+- **Import any audio** — drag in a file (or a `.portavoz` bundle) and it transcribes, diarizes and summarizes like a live recording.
+
+**Understand the meeting**
+- **Every voice, told apart** — on-device diarization; each speaker gets a stable color, mapped to real names automatically (calendar + LLM) or with one click.
+- **Three local summary engines** — Apple Intelligence, Ollama, or a built-in model. Decisions, open questions, and owner-tagged action items, in whichever language you choose. **Tabbed** so a long summary is skimmable.
+- **✦ Chapters** — Portavoz finds the turning points (a long pause, a stretch that ran long) and lets you jump to them, each labeled with the line that opens it.
+- **Meeting health** — talk-time, interruptions and questions per speaker, computed locally.
+- **Co-authoring notes** — jot raw notes while recording; the summary weaves them in and marks the co-authored lines (▸).
+
+**Listen back**
+- **Synced player** — the transcript scrolls like song lyrics, per-channel colored waveform, **"only my voice"** to replay just your turns, skip-silence, and any span exported as an audio clip or compressed to AAC in one click.
+
+**Reflect & review**
+- **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, violet = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
+- **🪞 Post-meeting mirror** (opt-in) — a private card at the end of a real meeting: your numbers next to your usual average, measured, never judged.
+- **⌘K — ask your week** — a Spotlight-style palette over any view: instant results as you type, a full on-device answer with citation chips that jump to the exact moment.
+
+**Fits your workflow**
+- **Companion while you talk** (opt-in) — live cards answer a factual question the room just asked, or flag when someone addressed you by name.
+- **Dictate anywhere** — a global hotkey (⌥⌘D) transcribes straight into any app, tap-to-toggle or hold-to-talk.
+- **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
+- **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
+- **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
+
+**Own your data**
+- **Open format** — Markdown + a SQLite file you own. Full-library Markdown backup, per-meeting `.portavoz` bundles (optionally with audio), and a **trash** with restore (auto-purge after 30 days). No accounts, no lock-in.
 
 ## Benchmarks
 
