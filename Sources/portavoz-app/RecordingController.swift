@@ -40,8 +40,23 @@ final class RecordingController {
     }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
-    /// BCP-47 target for live translation; nil = off.
-    var translationTarget: String?
+    /// BCP-47 target for live translation; nil = off. Changing it clears the
+    /// download-gate flags so the new pair is re-checked from scratch.
+    var translationTarget: String? {
+        didSet {
+            guard translationTarget != oldValue else { return }
+            translationNeedsDownload = false
+            translationDownloadApproved = false
+        }
+    }
+    /// The selected translation pair isn't installed yet — set by the live
+    /// translation loop when it declines to auto-trigger Apple's download
+    /// sheet mid-meeting. Drives the dismissable "download to translate" banner.
+    var translationNeedsDownload = false
+    /// The user tapped "Download" on that banner: only then does the loop
+    /// call `prepareTranslation()` (the deliberate, expected download sheet)
+    /// so the assets are fetched without ever interrupting the meeting on its own.
+    var translationDownloadApproved = false
 
     /// Live mic input level (0…1, smoothed peak) for the on-screen meter, and
     /// a "your voice is coming in low/far" flag — once enough VOICED audio

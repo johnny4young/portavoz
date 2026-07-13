@@ -1381,6 +1381,16 @@
         }
       }
     },
+    "Download": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar"
+          }
+        }
+      }
+    },
     "Download model (3 GB)": {
       "localizations": {
         "es": {
@@ -2131,6 +2141,16 @@
         }
       }
     },
+    "Live translation needs a one-time language download.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción en vivo necesita descargar un idioma por única vez."
+          }
+        }
+      }
+    },
     "Mark clip end at the current playhead": {
       "localizations": {
         "es": {
@@ -2477,6 +2497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No hay suficiente audio claro de esa voz para recordarla (se necesitan unos 5 segundos)."
+          }
+        }
+      }
+    },
+    "Not now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora no"
           }
         }
       }

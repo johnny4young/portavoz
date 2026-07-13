@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 13, 2026
 
+- **🌍 Live translation that waits its turn** — Turning on live translation no longer lets macOS interrupt your meeting with a language-download prompt out of nowhere. If the language pack isn't installed yet, Portavoz shows a small, dismissable "download once" banner instead — the download only starts when you say so, and never steals focus mid-sentence.
 - **🧩 Custom structures** — Beyond the five built-in summary shapes, you can now author your own in Settings ▸ Intelligence — name it (a Hangout, a Brainstorm, a Retro), list its sections one per line, add an optional instruction, and it shows up in every meeting's Structure menu. You can also spin a new one up on the spot from that menu. Edit or delete them anytime.
 - **🎧 The player, docked** — In a meeting with audio, the player now sits pinned at the bottom of the transcript, always in reach: the transcript fills the space above it and scrolls on its own, so you never scroll the page to hit play or drag the scrubber. Everything fits the window — no more hunting for the controls.
 - **🗣️ Pin your spoken language** — A new "Transcription language" setting (Auto-detect · English · Español) stops a quiet or noisy recording from being transcribed in the wrong language — no more English meeting coming out as Cyrillic. Auto-detect stays the default for clear audio.
