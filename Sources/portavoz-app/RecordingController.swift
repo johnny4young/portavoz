@@ -130,10 +130,28 @@ final class RecordingController {
         return raw == "auto" ? nil : raw
     }
 
+    /// Returns the shared session to `.idle` once a finished recording has
+    /// been handed off to its detail view. The controller is a singleton, so
+    /// without this the next "New recording" leaves it stuck in
+    /// `.done(previousID)`: `start()` bails on its `phase == .idle` guard and
+    /// the recording view immediately re-routes to the previous meeting. Also
+    /// drops the transient live state so a new recording never flashes the
+    /// last one's captions.
+    func readyForNextSession() {
+        guard case .done = phase else { return }
+        phase = .idle
+        captions = []
+        translations = [:]
+    }
+
     // Orchestrates capture + transcription + scheduler startup; the sequence
     // is legitimately long. Splitting remains technical debt.
     // swiftlint:disable:next function_body_length cyclomatic_complexity
     func start(services: AppServices, event: UpcomingEvent? = nil) async {
+        // A finished session must never block a new one — starting via the
+        // hotkey or menu bar while the last meeting's detail is still open
+        // would otherwise no-op on the guard below.
+        if case .done = phase { phase = .idle }
         guard phase == .idle || isFailed else { return }
         linkedEvent = event
         phase = .preparing

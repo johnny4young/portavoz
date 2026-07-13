@@ -78,6 +78,9 @@ struct RecordingView: View {
                     // post-meeting mirror (6a-2) once, if the user opted in.
                     services.justRecorded = meetingID
                     route = .meeting(meetingID)
+                    // Release the shared session so the NEXT "New recording"
+                    // starts fresh instead of bouncing back to this meeting.
+                    controller.readyForNextSession()
                 }
 
             case .failed(let message):

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 13, 2026
 
+- **🔁 New recording always starts fresh** — After finishing a meeting, tapping "New recording" now actually starts a new one instead of bouncing you back to the meeting you just recorded. The recording session is released the moment it's handed to its detail view.
 - **🈺 Re-transcribe in the right language** — If a meeting came out in the wrong language (a quiet or noisy recording can fool auto-detect), the refine button now has a menu: "Re-transcribe in Spanish / English." It forces Whisper to that language on this one meeting, recovering a transcript that came out as gibberish — no need to change any global setting. A pinned transcription language is also honored automatically.
 - **🌍 Live translation that waits its turn** — Turning on live translation no longer lets macOS interrupt your meeting with a language-download prompt out of nowhere. If the language pack isn't installed yet, Portavoz shows a small, dismissable "download once" banner instead — the download only starts when you say so, and never steals focus mid-sentence.
 - **🧩 Custom structures** — Beyond the five built-in summary shapes, you can now author your own in Settings ▸ Intelligence — name it (a Hangout, a Brainstorm, a Retro), list its sections one per line, add an optional instruction, and it shows up in every meeting's Structure menu. You can also spin a new one up on the spot from that menu. Edit or delete them anytime.
