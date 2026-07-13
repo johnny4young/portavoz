@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 13, 2026
 
+- **✦ Findings from your meetings** — Insights now surfaces what your week is quietly telling you: how much time went to meetings that reached no decision, and the topics that keep coming up across meetings (a real recurring name like "Zephyr", not a stray word) — each with a click that jumps you straight to the meeting. Detected on your Mac from your own transcripts; nothing invented.
 - **🛠️ Settings no longer crash** — The Settings window had a stray sidebar-collapse button that was misplaced and, worse, could crash Portavoz when toggled. Settings now uses a clean fixed two-pane layout — no collapse button, no crash.
 - **📊 Insights that answer "who, and how much"** — Insights now scopes to this week, month or year (with the delta against the last one), and a new "Who you talk with" panel draws a two-tone bar per person — amber is you, violet is them — so you can see at a glance where you dominate and where you mostly listen. A talk-balance tile sums it up across your whole library. All computed on your Mac.
 - **👂 Your first listen** — Onboarding now opens by *doing* instead of describing: say one sentence and watch Portavoz transcribe it live, 100% on your Mac, before a single model has downloaded (it uses macOS's built-in on-device recognizer). Those same 10 seconds can become your enrolled voice with one tap — no need to speak twice — and Skip is always one click away.
