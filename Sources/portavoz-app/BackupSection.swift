@@ -20,6 +20,7 @@ struct BackupSection: View {
                 Label("Export all meetings (Markdown)…", systemImage: "externaldrive")
             }
             .disabled(running)
+            .accessibilityIdentifier("settings-export-all-button")
             if let status {
                 Text(status).font(.caption).foregroundStyle(.secondary)
             }

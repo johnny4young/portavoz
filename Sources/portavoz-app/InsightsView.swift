@@ -17,6 +17,7 @@ struct InsightsView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("Insights")
                         .font(.largeTitle.bold())
+                        .accessibilityIdentifier("insights-title")
                     Spacer()
                     Label("Computed on your Mac — nothing leaves it.", systemImage: "lock.fill")
                         .font(.caption2)
@@ -120,6 +121,7 @@ struct InsightsView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("Your rhythm · 12 weeks")
                     .font(.headline)
+                    .accessibilityIdentifier("insights-heatmap")
                 Text("column = week · row = weekday · more intense = more meetings")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)

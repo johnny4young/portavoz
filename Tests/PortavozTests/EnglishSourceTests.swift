@@ -60,6 +60,7 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("Revisemos el presupuesto")
                 || line.contains("El equipo revisó")
                 || line.contains("Se revisará")
+                || line.contains("Cerremos con los próximos")
         }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional

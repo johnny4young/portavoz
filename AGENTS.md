@@ -19,7 +19,27 @@ New knowledge goes to its durable home: state/progress -> **ROADMAP**, as-built 
 ```sh
 swift build
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+make test-ui  # XCUITest smoke suite (Library/Insights/MeetingDetail/Settings); test-ui-en / test-ui-es for locales
 ```
+
+## Verifying UI changes — XCUITest first, computer-use last
+
+Validate UI with **XCUITest** (`make test-ui`), not by driving the screen. It is
+deterministic, catches crashes/regressions, and runs headless. `Tests/PortavozUITests`
+launches the real app with `-use-temp-store -seed-demo` (never touches the real
+library) and asserts against `accessibilityIdentifier`s.
+
+- **Every new interactive control gets an `accessibilityIdentifier`** in the same
+  change, and a matching assertion in the relevant `*UITests.swift`. Naming: `area-thing`
+  (e.g. `settings-category-intelligence`, `summary-tab-1`, `chapter-200`, `player-only-my-voice`).
+- Prefer identifiers over localized text; assert seed *content* (Spanish) for data, and
+  a nav category / pane title for live-localization.
+- Structural UI changes (a control moving panes, a section going behind a tab) will break
+  existing UI tests — that is the point; fix the test in the same commit.
+- Reach for **computer-use only as a last resort**, when XCUITest genuinely can't reach
+  what you need to see (menu-bar-extra panels, a visual-only regression). Note why.
+- The seed-demo meeting deliberately carries a later turn (200 s) so the detail has a
+  second chapter and mic-only audio to exercise chapters + "only my voice".
 
 ## Rules for every change
 

@@ -29,9 +29,15 @@ public enum PlaybackRanges {
         of voiceRanges: [ClosedRange<TimeInterval>], within duration: TimeInterval
     ) -> [ClosedRange<TimeInterval>] {
         guard duration > 0 else { return [] }
-        let merged = merge(voiceRanges).map {
-            max(0, $0.lowerBound)...min(duration, $0.upperBound)
-        }.filter { $0.lowerBound < $0.upperBound }
+        // Clamp to [0, duration] BEFORE forming the range — a voice range
+        // that starts past the audio's end (a transcript timestamp beyond a
+        // shorter recording) would otherwise build an inverted ClosedRange
+        // and crash. compactMap drops those instead.
+        let merged = merge(voiceRanges).compactMap { range -> ClosedRange<TimeInterval>? in
+            let lower = max(0, range.lowerBound)
+            let upper = min(duration, range.upperBound)
+            return lower < upper ? lower...upper : nil
+        }
         guard !merged.isEmpty else { return [0...duration] }
 
         var gaps: [ClosedRange<TimeInterval>] = []

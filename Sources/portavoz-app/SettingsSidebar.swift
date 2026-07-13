@@ -82,6 +82,7 @@ struct SettingsSidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("settings-category-\(item.rawValue)")
     }
 
     /// The standing privacy seal: local by design, one click from the ledger.

@@ -25,6 +25,7 @@ struct MeetingHealthView: View {
                 HStack(spacing: 8) {
                     Label("Meeting health", systemImage: "waveform.path.ecg")
                         .font(.headline)
+                        .accessibilityIdentifier("detail-meeting-health")
                     Spacer()
                     if health.questionsTotal > 0 {
                         chip("questionmark.bubble", "\(health.questionsTotal)")

@@ -456,7 +456,14 @@ final class AppServices {
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: ana.id, channel: .system,
                 text: "El rollout del modelo queda para el viernes.",
-                startTime: 3, endTime: 6, isFinal: true)
+                startTime: 3, endTime: 6, isFinal: true),
+            // A later turn after a long pause — gives the detail a second
+            // chapter (ChapterExtractor) and more of the user's own audio
+            // for the "only my voice" filter. The UI tests rely on both.
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
+                text: "Cerremos con los próximos pasos del rollout.",
+                startTime: 200, endTime: 205, isFinal: true)
         ])
         try? await store.saveSummary(
             SummaryDraft(

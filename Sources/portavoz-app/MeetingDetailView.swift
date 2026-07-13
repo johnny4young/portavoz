@@ -835,6 +835,7 @@ extension MeetingDetailView {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(tag == 1000 ? "summary-tab-todos" : "summary-tab-\(tag)")
     }
 
     @ViewBuilder
@@ -1329,6 +1330,7 @@ extension MeetingDetailView {
                 Label("Chapters", systemImage: "sparkles")
                     .font(.headline)
                     .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("detail-chapters")
                 ForEach(chapters) { chapter in
                     Button {
                         player?.seek(to: chapter.startTime)
@@ -1349,6 +1351,7 @@ extension MeetingDetailView {
                     .buttonStyle(.plain)
                     .disabled(player == nil)
                     .padding(.vertical, 3)
+                    .accessibilityIdentifier("chapter-\(Int(chapter.startTime))")
                     .help(player == nil
                         ? L10n.text("Chapters jump the player — this meeting has no audio.")
                         : L10n.text("Jump to this moment"))

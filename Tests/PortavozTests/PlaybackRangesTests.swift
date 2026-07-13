@@ -34,4 +34,11 @@ final class PlaybackRangesTests: XCTestCase {
     func testZeroDuration() {
         XCTAssertTrue(PlaybackRanges.complement(of: [1...2], within: 0).isEmpty)
     }
+
+    func testVoiceRangeBeyondDurationDoesNotCrash() {
+        // A transcript segment can sit past a shorter recording's end; the
+        // clamp must drop it, never build an inverted range (would crash).
+        let gaps = PlaybackRanges.complement(of: [0...3, 200...205], within: 6)
+        XCTAssertEqual(gaps, [3.25...6])
+    }
 }

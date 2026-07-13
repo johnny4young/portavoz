@@ -1,9 +1,10 @@
 import XCTest
 
-/// Drives a seeded meeting to verify the detail view renders — the
-/// automated stand-in for eyeballing it. Launches with `-seed-demo` so the
-/// library has one deterministic meeting with a transcript, a summary, and
-/// a coauthoring bullet (D28).
+/// Drives a seeded meeting to verify the redesigned detail view renders —
+/// the automated stand-in for eyeballing it. Launches with `-seed-demo`
+/// so the library has one deterministic meeting with a transcript, a
+/// tabbed summary (with a coauthoring ▸ bullet under Decisiones), meeting
+/// health and chapters in the right rail, and a player.
 final class MeetingDetailUITests: XCTestCase {
     /// Launches the app on the seeded meeting with isolated audio. Point
     /// PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
@@ -25,7 +26,7 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
-    func testSeededMeetingShowsTranscriptAndCoauthoringBullet() {
+    func testTabbedSummaryRevealsTheCoauthoringBullet() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
@@ -35,23 +36,50 @@ final class MeetingDetailUITests: XCTestCase {
                 .waitForExistence(timeout: 10),
             "the detail view must render the seeded transcript")
 
-        // The summary rendered (its overview is unique to the summary block).
+        // The default "Summary" tab shows the intro/overview.
         XCTAssertTrue(
             app.staticTexts["El equipo revisó el presupuesto y fijó el rollout."]
                 .waitForExistence(timeout: 10),
-            "the summary block must render")
+            "the summary's Summary tab must show the overview")
 
-        // The D28 coauthoring marker: only the note-derived bullet carries "▸".
+        // The ▸ coauthoring marker lives under the Decisiones section, now
+        // behind its own tab — switching to it reveals the bullet.
+        app.control(withIdentifier: "summary-tab-1").click()
         XCTAssertTrue(
             app.staticTexts["▸"].waitForExistence(timeout: 5),
-            "a bullet born from a user note must render its ▸ coauthoring marker")
+            "the Decisiones tab must reveal the ▸ coauthored bullet (D28)")
+    }
 
-        // The player rendered — the seed wrote audio, so the transport bar
-        // (M11) exists and can be played.
+    @MainActor
+    func testRightRailShowsHealthAndChapters() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-meeting-health").waitForExistence(timeout: 10),
+            "the right rail must show meeting health")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-chapters").exists,
+            "the right rail must show the ✦ chapters (the seed has a second chapter)")
+        // The second chapter is the 200 s turn — proving a real break was
+        // found (the title itself truncates in the narrow rail).
+        XCTAssertTrue(
+            app.control(withIdentifier: "chapter-200").exists,
+            "a chapter must mark the later turn the seed placed at 200 s")
+    }
+
+    @MainActor
+    func testPlayerExposesSkipAndOnlyMyVoice() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
         let play = app.buttons["player-play-pause"]
         XCTAssertTrue(
-            play.waitForExistence(timeout: 5),
+            play.waitForExistence(timeout: 10),
             "the player transport must render for a meeting that has audio")
+        XCTAssertTrue(
+            app.control(withIdentifier: "player-only-my-voice").exists,
+            "the player must offer the 'only my voice' filter")
         play.click()  // smoke: play doesn't crash
     }
 

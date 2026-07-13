@@ -45,6 +45,7 @@ struct MeetingPlayerBar: View {
                 .controlSize(.small)
                 .tint(VoicePalette.me)
                 .help("Play only your own turns — skips everyone else")
+                .accessibilityIdentifier("player-only-my-voice")
                 Text(clock(player.duration))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
