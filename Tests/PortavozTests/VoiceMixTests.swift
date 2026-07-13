@@ -53,6 +53,29 @@ final class VoiceMixTests: XCTestCase {
         XCTAssertTrue(mixes.isEmpty)
     }
 
+    func testVoiceBalanceSplitsYouVsNamedPeople() async throws {
+        _ = try await seed()  // Me 6 s, Marta 3 s (named), S1 1 s (unnamed)
+        let balance = try await store.voiceBalance()
+
+        XCTAssertTrue(balance.hasData)
+        // Your share of ALL attributed speech: 6 / (6+3+1).
+        XCTAssertEqual(balance.myOverallShare, 0.6, accuracy: 0.0001)
+        // Only named, non-me people surface — Marta, not the unnamed S1.
+        XCTAssertEqual(balance.participants.count, 1)
+        let marta = try XCTUnwrap(balance.participants.first)
+        XCTAssertEqual(marta.name, "Marta")
+        XCTAssertEqual(marta.meetings, 1)
+        XCTAssertEqual(marta.theirSeconds, 3, accuracy: 0.0001)
+        // With Marta you dominate: 6 / (6 + 3).
+        XCTAssertEqual(marta.myShareWithThem, 6.0 / 9.0, accuracy: 0.0001)
+    }
+
+    func testVoiceBalanceEmptyWhenNoAttributedSpeech() async throws {
+        let balance = try await store.voiceBalance()
+        XCTAssertFalse(balance.hasData)
+        XCTAssertTrue(balance.participants.isEmpty)
+    }
+
     func testMeetingWithNoAttributedSpeechIsAbsent() async throws {
         // A meeting whose only segment has no speaker contributes nothing.
         let meeting = Meeting(title: "Silent", startedAt: Date())

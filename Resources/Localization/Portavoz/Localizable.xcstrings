@@ -21,12 +21,32 @@
         }
       }
     },
+    "%d meetings · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d reuniones · %@"
+          }
+        }
+      }
+    },
     "%d model(s) available.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "%d modelo(s) disponible(s)."
+          }
+        }
+      }
+    },
+    "%d open — review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d abiertos — revisar"
           }
         }
       }
@@ -2141,6 +2161,16 @@
         }
       }
     },
+    "Month": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mes"
+          }
+        }
+      }
+    },
     "Move this meeting to Recently deleted": {
       "localizations": {
         "es": {
@@ -3551,6 +3581,16 @@
         }
       }
     },
+    "Talk balance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balance de habla"
+          }
+        }
+      }
+    },
     "Template": {
       "localizations": {
         "es": {
@@ -3991,6 +4031,16 @@
         }
       }
     },
+    "Week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semana"
+          }
+        }
+      }
+    },
     "Weekday": {
       "localizations": {
         "es": {
@@ -4041,6 +4091,16 @@
         }
       }
     },
+    "Who you talk with, and how": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con quién y cómo hablas"
+          }
+        }
+      }
+    },
     "With your voice enrolled, Portavoz also recognizes you when you arrive through system audio (hybrid meetings). Only an encrypted numeric fingerprint is stored on this device — never audio, never cloud data; delete it with one click.": {
       "localizations": {
         "es": {
@@ -4057,6 +4117,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escribe un archivo Markdown por reunión — resumen, pendientes y transcript completo — en la carpeta que elijas. Archivos planos que puedes leer, buscar y respaldar sin Portavoz."
+          }
+        }
+      }
+    },
+    "Year": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Año"
           }
         }
       }
@@ -4181,6 +4251,16 @@
         }
       }
     },
+    "action items": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pendientes"
+          }
+        }
+      }
+    },
     "audio on your disk": {
       "localizations": {
         "es": {
@@ -4197,6 +4277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "duración media"
+          }
+        }
+      }
+    },
+    "balanced": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "equilibrado"
           }
         }
       }
@@ -4281,6 +4371,36 @@
         }
       }
     },
+    "last month": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mes anterior"
+          }
+        }
+      }
+    },
+    "last week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "semana anterior"
+          }
+        }
+      }
+    },
+    "last year": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "año anterior"
+          }
+        }
+      }
+    },
     "meetings": {
       "localizations": {
         "es": {
@@ -4297,6 +4417,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "reuniones en tu base de datos"
+          }
+        }
+      }
+    },
+    "meetings · vs %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reuniones · vs %@"
           }
         }
       }
@@ -4321,6 +4451,16 @@
         }
       }
     },
+    "recorded · %@ avg": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "grabadas · %@ de media"
+          }
+        }
+      }
+    },
     "reminder calendar shortcut title template": {
       "localizations": {
         "es": {
@@ -4341,12 +4481,32 @@
         }
       }
     },
+    "talk balance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "balance de habla"
+          }
+        }
+      }
+    },
     "to the network": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "enviados a la red"
+          }
+        }
+      }
+    },
+    "violet = they speak · amber = you. The bar is your share of talk with them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "violeta = hablan ellos · ámbar = tú. La barra es tu parte del habla con esa persona."
           }
         }
       }
@@ -4377,6 +4537,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "semanas seguidas"
+          }
+        }
+      }
+    },
+    "you %d%% · listen %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hablas %d%% · escuchas %d%%"
+          }
+        }
+      }
+    },
+    "you listen more": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "escuchas más"
+          }
+        }
+      }
+    },
+    "you speak more": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hablas más"
           }
         }
       }

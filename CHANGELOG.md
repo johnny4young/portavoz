@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 13, 2026
 
+- **📊 Insights that answer "who, and how much"** — Insights now scopes to this week, month or year (with the delta against the last one), and a new "Who you talk with" panel draws a two-tone bar per person — amber is you, violet is them — so you can see at a glance where you dominate and where you mostly listen. A talk-balance tile sums it up across your whole library. All computed on your Mac.
 - **👂 Your first listen** — Onboarding now opens by *doing* instead of describing: say one sentence and watch Portavoz transcribe it live, 100% on your Mac, before a single model has downloaded (it uses macOS's built-in on-device recognizer). Those same 10 seconds can become your enrolled voice with one tap — no need to speak twice — and Skip is always one click away.
 
 ## July 12, 2026
