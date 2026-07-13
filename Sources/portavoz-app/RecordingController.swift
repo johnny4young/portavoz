@@ -52,6 +52,21 @@ final class RecordingController {
     private var voicedChunks = 0
     var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
 
+    /// RMS of the system (incoming) channel, smoothed. Stays near zero when
+    /// the other participants' audio isn't being captured (field bug jul 2026:
+    /// AirPods output switch left the system tap silent → only the mic).
+    private var systemRMS: Float = 0
+    private var systemChunks = 0
+    /// Sustained near-silence on the system channel — likely a call whose
+    /// incoming audio isn't reaching the tap (or an in-person meeting, which
+    /// the dismissable banner lets you wave off).
+    var systemAudioMissing: Bool { systemChunks > 500 && systemRMS < 0.003 }
+
+    private func updateSystemLevel(_ rms: Float) {
+        systemChunks += 1
+        systemRMS = systemRMS * 0.98 + rms * 0.02
+    }
+
     /// Live speaker hints (field ask jul 2026: two remote voices back to back
     /// merged into one "Them" row). A DEDICATED diarizer instance — the
     /// SpeakerManager is per session (spec 03), so the batch pass at stop
@@ -89,6 +104,15 @@ final class RecordingController {
     /// summaries and conditioning vocabulary for transcription hints.
     private var vocabulary: [String] {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+    }
+
+    /// Pinned transcription language (Settings → Intelligence): `nil` = auto,
+    /// else "en"/"es". Forcing it stops the multilingual model from
+    /// hallucinating a wrong language on weak/low-SNR audio — field bug
+    /// jul 2026: quiet English (far AirPods mic) decoded as Russian.
+    private var pinnedLanguage: String? {
+        let raw = UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "auto"
+        return raw == "auto" ? nil : raw
     }
 
     // Orchestrates capture + transcription + scheduler startup; the sequence
@@ -131,6 +155,8 @@ final class RecordingController {
         micLevel = 0
         voicedLevel = 0
         voicedChunks = 0
+        systemRMS = 0
+        systemChunks = 0
         liveTurns = []
         liveSpeakerLabels = [:]
         for source in sources {
@@ -138,7 +164,8 @@ final class RecordingController {
             feeds[source.channel] = continuation
             let segments = engine.transcribe(
                 stream,
-                hints: TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID))
+                hints: TranscriptionHints(
+                    language: pinnedLanguage, vocabulary: vocabulary, meetingID: meetingID))
             consumers.append(Task { @MainActor [weak self] in
                 do {
                     for try await segment in segments {
@@ -164,6 +191,11 @@ final class RecordingController {
                 channelFeeds[chunk.channel]?.yield(chunk)
                 if chunk.channel == .system {
                     diarizerFeed.yield(chunk)
+                    var sumSquares: Float = 0
+                    for sample in chunk.samples { sumSquares += sample * sample }
+                    let rms = chunk.samples.isEmpty
+                        ? 0 : (sumSquares / Float(chunk.samples.count)).squareRoot()
+                    Task { @MainActor in self?.updateSystemLevel(rms) }
                 }
                 guard chunk.channel == .microphone else { return }
                 var peak: Float = 0
@@ -352,7 +384,7 @@ final class RecordingController {
             copy.speakerID = segment.channel == .microphone ? me.id : them.id
             return copy
         }
-        let language = Locale.current.language.languageCode?.identifier ?? "en"
+        let language = pinnedLanguage ?? Locale.current.language.languageCode?.identifier ?? "en"
         let provider = FoundationModelSummaryProvider()
         do {
             // Map: one dense note for the new window; the rest is already noted.
@@ -464,7 +496,11 @@ final class RecordingController {
             var savedSummary: SummaryDraft?
             do {
                 phase = .processing(L10n.text("Generating summary…"))
-                let language = Locale.current.language.languageCode?.identifier ?? "en"
+                // Summarize in the meeting's real language (pinned, else what
+                // was detected), not the Mac's UI locale — a Spanish meeting
+                // no longer comes back as an English summary.
+                let language = pinnedLanguage ?? spokenLanguage
+                    ?? Locale.current.language.languageCode?.identifier ?? "en"
                 let request = SummaryRequest(
                     meetingID: meetingID,
                     segments: attribution.segments,

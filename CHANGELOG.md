@@ -7,6 +7,9 @@ entry here — feature name + what it gives you.)
 
 ## July 13, 2026
 
+- **🗣️ Pin your spoken language** — A new "Transcription language" setting (Auto-detect · English · Español) stops a quiet or noisy recording from being transcribed in the wrong language — no more English meeting coming out as Cyrillic. Auto-detect stays the default for clear audio.
+- **🌐 Summaries in the meeting's language** — The summary now comes out in the language actually spoken (or the one you pinned), not your Mac's UI language — a Spanish meeting no longer returns an English summary.
+- **🔇 A heads-up when the other side isn't captured** — If the incoming audio (the other participants) stays silent while you record — often a Bluetooth-output or permission hiccup — Portavoz now nudges you in real time instead of letting you find out afterward. Dismissable, since in-person meetings have no incoming audio.
 - **✏️ Rename that's ready to type** — The rename dialog now opens pre-filled with the current title, already selected, so you can type straight over it or tweak it — no more blank field on the second rename.
 - **🏷️ One title, not two** — The meeting title no longer shows twice (window bar + header). It lives in the header where you edit it, and the window bar stays out of the way — a little more room for the meeting itself.
 - **✦ Findings from your meetings** — Insights now surfaces what your week is quietly telling you: how much time went to meetings that reached no decision, and the topics that keep coming up across meetings (a real recurring name like "Zephyr", not a stray word) — each with a click that jumps you straight to the meeting. Detected on your Mac from your own transcripts; nothing invented.

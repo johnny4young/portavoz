@@ -21,6 +21,9 @@ struct RecordingView: View {
     @State private var noteDraft = ""
     /// Compact floating HUD (GAPS #4): recording without the full window.
     @State private var hud = RecordingHUDController()
+    /// One-tap dismiss for the "no incoming audio" nudge (in-person meetings
+    /// legitimately have a silent system channel).
+    @State private var systemWarningDismissed = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -39,6 +42,9 @@ struct RecordingView: View {
                 recordingBar
                 if controller.micLevelLow {
                     micLowBanner
+                }
+                if controller.systemAudioMissing && !systemWarningDismissed {
+                    systemAudioBanner
                 }
                 captionsList
                     .frame(maxHeight: .infinity)
@@ -180,6 +186,27 @@ struct RecordingView: View {
             systemImage: "exclamationmark.triangle.fill")
         .font(.caption)
         .foregroundStyle(.orange)
+        .padding(.horizontal, 20)
+    }
+
+    /// Shown when the incoming (system) channel stays near-silent — likely a
+    /// call whose audio isn't reaching the tap (Bluetooth output, or the
+    /// system-audio permission). Dismissable, since an in-person meeting has
+    /// no incoming audio by design.
+    private var systemAudioBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.",
+                systemImage: "speaker.slash.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Button("Dismiss") { systemWarningDismissed = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
         .padding(.horizontal, 20)
     }
 

@@ -501,6 +501,16 @@
         }
       }
     },
+    "Auto-detect": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detección automática"
+          }
+        }
+      }
+    },
     "Automatically skip silence during playback": {
       "localizations": {
         "es": {
@@ -547,6 +557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volver a la ventana completa"
+          }
+        }
+      }
+    },
+    "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apenas se escucha a los demás — si es una llamada, revisa tu dispositivo de salida o el permiso de audio de sistema."
           }
         }
       }
@@ -1257,6 +1277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descartar el clip"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar"
           }
         }
       }
@@ -2581,6 +2611,16 @@
         }
       }
     },
+    "Pin the language you speak so a quiet or noisy recording is never transcribed in the wrong language. Auto-detect works well with clear audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fija el idioma que hablas para que una grabación baja o con ruido nunca se transcriba en el idioma equivocado. La detección automática funciona bien con audio claro."
+          }
+        }
+      }
+    },
     "Play": {
       "localizations": {
         "es": {
@@ -3391,6 +3431,16 @@
         }
       }
     },
+    "Spoken language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma hablado"
+          }
+        }
+      }
+    },
     "Start": {
       "localizations": {
         "es": {
@@ -3947,6 +3997,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Los modelos de transcripción y voz se descargan una vez (~1 GB, verificados) y luego funcionan sin internet."
+          }
+        }
+      }
+    },
+    "Transcription language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de transcripción"
           }
         }
       }

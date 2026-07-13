@@ -57,6 +57,7 @@ struct SettingsView: View {
     @AppStorage("companionUserName") private var companionUserName = ""
     @AppStorage("mirrorAfterMeeting") private var mirrorAfterMeeting = false
 
+    @AppStorage("transcriptionLanguage") private var transcriptionLanguage = "auto"
     @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
     @AppStorage("ollamaModel") private var ollamaModel = ""
     @AppStorage("whisperCompact") private var whisperCompact = false
@@ -97,6 +98,7 @@ struct SettingsView: View {
                     AudioSection()
                     DictationSection()
                 case .intelligence:
+                    transcriptionLanguageSection
                     summaryEngineSection
                     vocabularySection
                 case .voice:
@@ -571,6 +573,25 @@ extension SettingsView {
     }
 
     // MARK: - Summary engine (D25/M12)
+
+    private var transcriptionLanguageSection: some View {
+        Section("Transcription language") {
+            Picker("Spoken language", selection: $transcriptionLanguage) {
+                Text("Auto-detect").tag("auto")
+                Text("English").tag("en")
+                Text("Español").tag("es")
+            }
+            .pickerStyle(.radioGroup)
+            .accessibilityIdentifier("settings-transcription-language")
+            Text(
+                // One-line UI help.
+                // swiftlint:disable:next line_length
+                "Pin the language you speak so a quiet or noisy recording is never transcribed in the wrong language. Auto-detect works well with clear audio."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
 
     private var summaryEngineSection: some View {
         Section("Summary engine") {
