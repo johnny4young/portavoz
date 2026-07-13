@@ -203,6 +203,11 @@ final class RecordingController {
                 do {
                     for try await segment in segments {
                         guard let self else { break }
+                        // Drop captions from a channel that has gone provably
+                        // silent — the models hallucinate ("Thank you.",
+                        // foreign script) on the digital silence a Bluetooth
+                        // output can leave in the system channel.
+                        if segment.channel == .system, self.systemAudioMissing { continue }
                         self.coalescer.apply(segment, to: &self.captions)
                         self.detectClosedRow()
                     }

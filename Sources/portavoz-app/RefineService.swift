@@ -84,15 +84,20 @@ final class RefineService {
                     vocabulary: vocabulary,
                     meetingID: meetingID)
 
+                // A digitally-silent channel (e.g. AirPods dropped the
+                // system-audio capture) must be skipped — Whisper invents
+                // "Thank you." / foreign-script text on pure silence.
+                let systemSilent = systemURL.map { AudioSilence.fileIsSilent(at: $0) } ?? true
+
                 var segments: [TranscriptSegment] = []
-                if let systemURL {
+                if let systemURL, !systemSilent {
                     phases[meetingID] = .running(
                         L10n.text("Re-transcribing participants (Whisper)…"))
                     let result = try await whisper.transcribeFile(
                         at: systemURL, hints: hints, channel: .system)
                     segments.append(contentsOf: result.segments)
                 }
-                if let microphoneURL {
+                if let microphoneURL, !AudioSilence.fileIsSilent(at: microphoneURL) {
                     phases[meetingID] = .running(
                         L10n.text("Re-transcribing your channel (Whisper)…"))
                     let result = try await whisper.transcribeFile(
@@ -106,7 +111,7 @@ final class RefineService {
                 segments.sort { $0.startTime < $1.startTime }
 
                 var turns: [SpeakerTurn] = []
-                if let systemURL, let diarizer = services.diarizer {
+                if let systemURL, !systemSilent, let diarizer = services.diarizer {
                     phases[meetingID] = .running(L10n.text("Identifying speakers…"))
                     turns = (try? await diarizer.diarizeFile(at: systemURL)) ?? []
                 }
