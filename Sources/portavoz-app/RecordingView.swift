@@ -33,37 +33,29 @@ struct RecordingView: View {
                 Spacer()
 
             case .recording:
-                header
-                HStack(alignment: .top, spacing: 12) {
-                    captionsList
-                    // The right column is always present: notes are an input
-                    // primario (D28), no algo que aparece solo si hay tarjetas.
-                    // Notes + cards scroll: without it, three cards with long
-                    // answers compress the stack until texts overlap (field
-                    // bug, Jul 10). The live summary keeps its own scroll.
+                // Design system 4a: a compact top bar, then a single column
+                // — the words ARE the interface. Captions are the focal
+                // lyrics area; the Companion cards and notes flow below.
+                recordingBar
+                if controller.micLevelLow {
+                    micLowBanner
+                }
+                captionsList
+                    .frame(maxHeight: .infinity)
+                    .padding(.horizontal, 20)
+                ScrollView {
                     VStack(spacing: 10) {
-                        ScrollView {
-                            VStack(spacing: 10) {
-                                notesPanel
-                                companionCardsPanel
-                            }
-                        }
+                        companionCardsPanel
+                        notesPanel
                         if let live = controller.liveSummary {
                             liveSummaryPanel(live)
                         }
                     }
-                    .frame(width: 300)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 20)
-                Button {
-                    Task { await controller.stop(services: services) }
-                } label: {
-                    Label("Stop", systemImage: "stop.circle.fill")
-                        .frame(minWidth: 160)
-                }
-                .controlSize(.large)
-                .keyboardShortcut(".")
-                .padding(.bottom, 20)
+                .frame(maxHeight: 260)
+                .padding(.bottom, 16)
 
             case .processing(let step):
                 Spacer()
@@ -99,63 +91,69 @@ struct RecordingView: View {
         return "Preparing…"
     }
 
-    private var header: some View {
-        VStack(spacing: 4) {
+    /// The 4a top bar: recording dot + timer + mic meter on the left; the
+    /// live controls (Translate, Companion, HUD) and the red Stop on the
+    /// right — all in one compact row, so the words below own the space.
+    private var recordingBar: some View {
+        HStack(spacing: 12) {
             TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
                 let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Circle()
                         .fill(.red)
-                        .frame(width: 12, height: 12)
+                        .frame(width: 10, height: 10)
                         .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
                         .animation(.easeInOut(duration: 0.6), value: elapsed)
                     Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
-                        .font(.system(size: 40, weight: .medium).monospacedDigit())
+                        .font(.system(size: 24, weight: .medium).monospacedDigit())
                 }
             }
-            HStack(spacing: 12) {
-                Label("Recording mic + system audio — everything stays on your Mac", systemImage: "waveform")
-                if #available(macOS 15.0, *) {
-                    Picker("Translate", selection: translationBinding) {
-                        Text("No translation").tag(String?.none)
-                        Text("→ Spanish").tag(String?.some("es"))
-                        Text("→ English").tag(String?.some("en"))
-                    }
-                    .pickerStyle(.menu)
-                    .fixedSize()
+            compactMeter
+            Spacer()
+            if #available(macOS 15.0, *) {
+                Picker("Translate", selection: translationBinding) {
+                    Text("No translation").tag(String?.none)
+                    Text("→ Spanish").tag(String?.some("es"))
+                    Text("→ English").tag(String?.some("en"))
                 }
-                if #available(macOS 26.0, *) {
-                    Toggle(isOn: companionBinding) {
-                        Label("Companion", systemImage: "questionmark.bubble")
-                    }
-                    .toggleStyle(.checkbox)
-                    .help(
-                        // One-line UI help.
-                        // swiftlint:disable:next line_length
-                        "Detects questions in the conversation and suggests on-device answers. It never answers for you."
-                    )
-                }
-                Button(action: enterCompactMode) {
-                    Label("Compact view", systemImage: "arrow.down.right.and.arrow.up.left")
-                }
-                .buttonStyle(.plain)
-                .help("Floating mini panel with the timer and captions — records without covering your meeting")
+                .pickerStyle(.menu)
+                .fixedSize()
+                .controlSize(.small)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            micMeter
+            if #available(macOS 26.0, *) {
+                Toggle(isOn: companionBinding) {
+                    Label("Companion", systemImage: "questionmark.bubble")
+                }
+                .toggleStyle(.button)
+                .controlSize(.small)
+                .help("Detects questions and suggests on-device answers. It never answers for you.")
+            }
+            Button(action: enterCompactMode) {
+                Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
+            }
+            .controlSize(.small)
+            .help("Floating mini panel with the timer and captions — records without covering your meeting")
+            Button {
+                Task { await controller.stop(services: services) }
+            } label: {
+                Label("Stop", systemImage: "stop.circle.fill")
+            }
+            .controlSize(.small)
+            .tint(.red)
+            .keyboardShortcut(".")
         }
-        .padding(.top, 24)
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
     }
 
-    /// Live mic-input meter (field bug jul 2026: the built-in far-field mic
-    /// captured the user at ≤ -45 dBFS and sounded distant to the call). The
-    /// bar is on a dB scale so speech levels are visible; a sustained-low
-    /// reading nudges the user to move closer or use a headset mic.
-    private var micMeter: some View {
-        HStack(spacing: 8) {
+    /// The compact mic meter for the top bar: icon + a short dB bar. The
+    /// full "move closer" nudge lives in its own banner when the level
+    /// stays low.
+    private var compactMeter: some View {
+        HStack(spacing: 6) {
             Image(systemName: controller.micLevelLow ? "mic.fill" : "mic")
                 .foregroundStyle(controller.micLevelLow ? .orange : .secondary)
+                .font(.caption)
             ZStack(alignment: .leading) {
                 Capsule().fill(.quaternary)
                 GeometryReader { geometry in
@@ -164,15 +162,20 @@ struct RecordingView: View {
                         .frame(width: geometry.size.width * meterFraction)
                 }
             }
-            .frame(width: 120, height: 6)
+            .frame(width: 90, height: 5)
             .animation(.easeOut(duration: 0.15), value: controller.micLevel)
-            if controller.micLevelLow {
-                Text("Your voice sounds low — move closer or use headphones with a microphone")
-                    .foregroundStyle(.orange)
-            }
         }
-        .font(.caption2)
-        .foregroundStyle(.secondary)
+    }
+
+    /// Shown only when the mic stays quiet — the far-field-mic nudge (field
+    /// bug jul 2026), out of the compact bar so it never crowds it.
+    private var micLowBanner: some View {
+        Label(
+            "Your voice sounds low — move closer or use headphones with a microphone",
+            systemImage: "exclamationmark.triangle.fill")
+        .font(.caption)
+        .foregroundStyle(.orange)
+        .padding(.horizontal, 20)
     }
 
     /// Maps the linear mic level onto a −60…0 dBFS bar (0…1).
@@ -404,9 +407,12 @@ struct RecordingView: View {
                     .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
                 if let translated = controller.translations[segment.id] {
+                    // The language bridge (6a-3): a secondary rail under the
+                    // real line. Not amber — amber is reserved for YOUR voice
+                    // (voices B); this reads as a quiet translation.
                     Text(translated)
-                        .font(.callout)
-                        .foregroundStyle(PVDesign.accent.opacity(0.9))
+                        .font(.callout.italic())
+                        .foregroundStyle(.secondary)
                 }
             }
         }

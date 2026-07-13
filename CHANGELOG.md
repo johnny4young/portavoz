@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 11, 2026
 
+- **🎙️ Recording, redesigned** — The live recording view now matches the design: a compact top bar (timer, mic level, Translate, Companion, HUD and a red Stop), then a single column where your words are the interface — the lyrics captions fill the space, with the Companion cards and your notes flowing below.
 - **🪟 A two-column meeting** — The meeting view now matches the design: your summary, transcript and player fill the left, while meeting health and the ✦ chapters sit in a rail on the right — the whole meeting readable without scrolling past the numbers.
 - **✦ Chapters** — Portavoz now finds the turning points in a meeting on its own — a long pause, or a stretch that has run long — and lists them as chapters you can jump to, each labeled with the line that opens it. Found locally from your transcript; nothing invented.
 - **🔊 Play only my voice** — A new toggle in the player skips straight through everyone else and plays only your own turns — replay what YOU said in a long meeting without scrubbing. Rides the same skip engine as "Skip silence".

@@ -1061,6 +1061,16 @@
         }
       }
     },
+    "Detects questions and suggests on-device answers. It never answers for you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detecta preguntas y sugiere respuestas en tu Mac. Jamás responde por ti."
+          }
+        }
+      }
+    },
     "Detects questions in the conversation and suggests on-device answers. It never answers for you.": {
       "localizations": {
         "es": {
@@ -1657,6 +1667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "GitHub"
+          }
+        }
+      }
+    },
+    "HUD": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUD"
           }
         }
       }
