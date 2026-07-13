@@ -43,14 +43,16 @@ Capture, live + refine transcription, on-device diarization, bilingual summaries
 Everything below runs on your Mac. Grouped by what you're doing:
 
 **Capture & transcribe**
-- **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, and a low-mic nudge included.
-- **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive.
-- **Whisper refine** — a maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime.
+- **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, a low-mic nudge, and a heads-up when the incoming channel goes silent. A channel that captured nothing stays empty — never filled with invented text.
+- **Right language, always** — pin the language you speak so a quiet or noisy recording is never transcribed in the wrong one; auto-detect stays the default for clear audio.
+- **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
+- **Whisper refine** — a maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Force a language per meeting to recover one that came out wrong.
 - **Import any audio** — drag in a file (or a `.portavoz` bundle) and it transcribes, diarizes and summarizes like a live recording.
 
 **Understand the meeting**
 - **Every voice, told apart** — on-device diarization; each speaker gets a stable color, mapped to real names automatically (calendar + LLM) or with one click.
 - **Three local summary engines** — Apple Intelligence, Ollama, or a built-in model. Decisions, open questions, and owner-tagged action items, in whichever language you choose. **Tabbed** so a long summary is skimmable.
+- **Custom structures** — beyond the five built-in shapes (standup, 1:1, planning…), author your own — a Hangout, a Retro — with the sections you want. They appear in every meeting's Structure menu.
 - **✦ Chapters** — Portavoz finds the turning points (a long pause, a stretch that ran long) and lets you jump to them, each labeled with the line that opens it.
 - **Meeting health** — talk-time, interruptions and questions per speaker, computed locally.
 - **Co-authoring notes** — jot raw notes while recording; the summary weaves them in and marks the co-authored lines (▸).

@@ -33,7 +33,10 @@ final class RefineService {
     // The orchestration is legitimately long (audio resolution + two Whisper
     // passes + diarization); splitting further would only scatter it.
     // swiftlint:disable:next function_body_length
-    func start(meetingID: MeetingID, detail: MeetingDetail, services: AppServices) {
+    func start(
+        meetingID: MeetingID, detail: MeetingDetail, services: AppServices,
+        language: String? = nil
+    ) {
         if case .running = phases[meetingID] { return }
         // One refine at a time: Whisper and the diarizer are heavy enough
         // that concurrent re-passes would starve each other on the ANE.
@@ -65,21 +68,36 @@ final class RefineService {
 
                 let vocabulary = VocabularyPrompt.parse(
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+                // A pinned transcription language (Settings ▸ Intelligence)
+                // wins here. Otherwise the refine inherits the language the
+                // current segments were detected as — and if those were
+                // hallucinated on weak audio (field bug: a Spanish meeting
+                // mislabeled Russian), Whisper re-transcribes the same wrong
+                // language. The pin is the escape hatch that fixes such a meeting.
+                let pinned = UserDefaults.standard.string(forKey: "transcriptionLanguage")
+                let pinnedLanguage = (pinned == nil || pinned == "auto") ? nil : pinned
                 let hints = TranscriptionHints(
-                    language: SpokenLanguageDetector.transcriptionLanguageHint(
-                        for: detail.meeting, segments: detail.segments),
+                    language: language  // explicit per-meeting override wins
+                        ?? pinnedLanguage
+                        ?? SpokenLanguageDetector.transcriptionLanguageHint(
+                            for: detail.meeting, segments: detail.segments),
                     vocabulary: vocabulary,
                     meetingID: meetingID)
 
+                // A digitally-silent channel (e.g. AirPods dropped the
+                // system-audio capture) must be skipped — Whisper invents
+                // "Thank you." / foreign-script text on pure silence.
+                let systemSilent = systemURL.map { AudioSilence.fileIsSilent(at: $0) } ?? true
+
                 var segments: [TranscriptSegment] = []
-                if let systemURL {
+                if let systemURL, !systemSilent {
                     phases[meetingID] = .running(
                         L10n.text("Re-transcribing participants (Whisper)…"))
                     let result = try await whisper.transcribeFile(
                         at: systemURL, hints: hints, channel: .system)
                     segments.append(contentsOf: result.segments)
                 }
-                if let microphoneURL {
+                if let microphoneURL, !AudioSilence.fileIsSilent(at: microphoneURL) {
                     phases[meetingID] = .running(
                         L10n.text("Re-transcribing your channel (Whisper)…"))
                     let result = try await whisper.transcribeFile(
@@ -93,7 +111,7 @@ final class RefineService {
                 segments.sort { $0.startTime < $1.startTime }
 
                 var turns: [SpeakerTurn] = []
-                if let systemURL, let diarizer = services.diarizer {
+                if let systemURL, !systemSilent, let diarizer = services.diarizer {
                     phases[meetingID] = .running(L10n.text("Identifying speakers…"))
                     turns = (try? await diarizer.diarizeFile(at: systemURL)) ?? []
                 }

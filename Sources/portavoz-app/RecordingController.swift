@@ -40,8 +40,23 @@ final class RecordingController {
     }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
-    /// BCP-47 target for live translation; nil = off.
-    var translationTarget: String?
+    /// BCP-47 target for live translation; nil = off. Changing it clears the
+    /// download-gate flags so the new pair is re-checked from scratch.
+    var translationTarget: String? {
+        didSet {
+            guard translationTarget != oldValue else { return }
+            translationNeedsDownload = false
+            translationDownloadApproved = false
+        }
+    }
+    /// The selected translation pair isn't installed yet — set by the live
+    /// translation loop when it declines to auto-trigger Apple's download
+    /// sheet mid-meeting. Drives the dismissable "download to translate" banner.
+    var translationNeedsDownload = false
+    /// The user tapped "Download" on that banner: only then does the loop
+    /// call `prepareTranslation()` (the deliberate, expected download sheet)
+    /// so the assets are fetched without ever interrupting the meeting on its own.
+    var translationDownloadApproved = false
 
     /// Live mic input level (0…1, smoothed peak) for the on-screen meter, and
     /// a "your voice is coming in low/far" flag — once enough VOICED audio
@@ -51,6 +66,21 @@ final class RecordingController {
     private var voicedLevel: Float = 0
     private var voicedChunks = 0
     var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
+
+    /// RMS of the system (incoming) channel, smoothed. Stays near zero when
+    /// the other participants' audio isn't being captured (field bug jul 2026:
+    /// AirPods output switch left the system tap silent → only the mic).
+    private var systemRMS: Float = 0
+    private var systemChunks = 0
+    /// Sustained near-silence on the system channel — likely a call whose
+    /// incoming audio isn't reaching the tap (or an in-person meeting, which
+    /// the dismissable banner lets you wave off).
+    var systemAudioMissing: Bool { systemChunks > 500 && systemRMS < 0.003 }
+
+    private func updateSystemLevel(_ rms: Float) {
+        systemChunks += 1
+        systemRMS = systemRMS * 0.98 + rms * 0.02
+    }
 
     /// Live speaker hints (field ask jul 2026: two remote voices back to back
     /// merged into one "Them" row). A DEDICATED diarizer instance — the
@@ -91,10 +121,37 @@ final class RecordingController {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
+    /// Pinned transcription language (Settings → Intelligence): `nil` = auto,
+    /// else "en"/"es". Forcing it stops the multilingual model from
+    /// hallucinating a wrong language on weak/low-SNR audio — field bug
+    /// jul 2026: quiet English (far AirPods mic) decoded as Russian.
+    private var pinnedLanguage: String? {
+        let raw = UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "auto"
+        return raw == "auto" ? nil : raw
+    }
+
+    /// Returns the shared session to `.idle` once a finished recording has
+    /// been handed off to its detail view. The controller is a singleton, so
+    /// without this the next "New recording" leaves it stuck in
+    /// `.done(previousID)`: `start()` bails on its `phase == .idle` guard and
+    /// the recording view immediately re-routes to the previous meeting. Also
+    /// drops the transient live state so a new recording never flashes the
+    /// last one's captions.
+    func readyForNextSession() {
+        guard case .done = phase else { return }
+        phase = .idle
+        captions = []
+        translations = [:]
+    }
+
     // Orchestrates capture + transcription + scheduler startup; the sequence
     // is legitimately long. Splitting remains technical debt.
     // swiftlint:disable:next function_body_length cyclomatic_complexity
     func start(services: AppServices, event: UpcomingEvent? = nil) async {
+        // A finished session must never block a new one — starting via the
+        // hotkey or menu bar while the last meeting's detail is still open
+        // would otherwise no-op on the guard below.
+        if case .done = phase { phase = .idle }
         guard phase == .idle || isFailed else { return }
         linkedEvent = event
         phase = .preparing
@@ -131,6 +188,8 @@ final class RecordingController {
         micLevel = 0
         voicedLevel = 0
         voicedChunks = 0
+        systemRMS = 0
+        systemChunks = 0
         liveTurns = []
         liveSpeakerLabels = [:]
         for source in sources {
@@ -138,11 +197,17 @@ final class RecordingController {
             feeds[source.channel] = continuation
             let segments = engine.transcribe(
                 stream,
-                hints: TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID))
+                hints: TranscriptionHints(
+                    language: pinnedLanguage, vocabulary: vocabulary, meetingID: meetingID))
             consumers.append(Task { @MainActor [weak self] in
                 do {
                     for try await segment in segments {
                         guard let self else { break }
+                        // Drop captions from a channel that has gone provably
+                        // silent — the models hallucinate ("Thank you.",
+                        // foreign script) on the digital silence a Bluetooth
+                        // output can leave in the system channel.
+                        if segment.channel == .system, self.systemAudioMissing { continue }
                         self.coalescer.apply(segment, to: &self.captions)
                         self.detectClosedRow()
                     }
@@ -164,6 +229,11 @@ final class RecordingController {
                 channelFeeds[chunk.channel]?.yield(chunk)
                 if chunk.channel == .system {
                     diarizerFeed.yield(chunk)
+                    var sumSquares: Float = 0
+                    for sample in chunk.samples { sumSquares += sample * sample }
+                    let rms = chunk.samples.isEmpty
+                        ? 0 : (sumSquares / Float(chunk.samples.count)).squareRoot()
+                    Task { @MainActor in self?.updateSystemLevel(rms) }
                 }
                 guard chunk.channel == .microphone else { return }
                 var peak: Float = 0
@@ -352,7 +422,7 @@ final class RecordingController {
             copy.speakerID = segment.channel == .microphone ? me.id : them.id
             return copy
         }
-        let language = Locale.current.language.languageCode?.identifier ?? "en"
+        let language = pinnedLanguage ?? Locale.current.language.languageCode?.identifier ?? "en"
         let provider = FoundationModelSummaryProvider()
         do {
             // Map: one dense note for the new window; the rest is already noted.
@@ -464,7 +534,11 @@ final class RecordingController {
             var savedSummary: SummaryDraft?
             do {
                 phase = .processing(L10n.text("Generating summary…"))
-                let language = Locale.current.language.languageCode?.identifier ?? "en"
+                // Summarize in the meeting's real language (pinned, else what
+                // was detected), not the Mac's UI locale — a Spanish meeting
+                // no longer comes back as an English summary.
+                let language = pinnedLanguage ?? spokenLanguage
+                    ?? Locale.current.language.languageCode?.identifier ?? "en"
                 let request = SummaryRequest(
                     meetingID: meetingID,
                     segments: attribution.segments,

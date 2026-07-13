@@ -67,6 +67,8 @@ struct MeetingDetailView: View {
     /// a chip — never applied on its own.
     @State private var suggestedRecipe: Recipe?
     @State private var detectedRecipeOnce = false
+    /// Presents the "New structure…" sheet from the Structure menu.
+    @State private var showingNewStructure = false
     /// Content-based title suggestion — same contract: chip, click, never solo.
     @State private var suggestedTitle: String?
     @State private var suggestedTitleOnce = false
@@ -107,7 +109,10 @@ struct MeetingDetailView: View {
     /// stays a flat composition.
     private func loaded(_ detail: MeetingDetail) -> some View {
         loadedBody(detail)
-            .navigationTitle(detail.meeting.title)
+            // No `.navigationTitle`: the meeting title already lives in the
+            // header below, and showing it in the window bar too read as a
+            // duplicate. The window bar keeps the app's own title.
+            .navigationTitle("Portavoz")
             .sheet(isPresented: refineDraftBinding) { refineSheet }
             .sheet(isPresented: mirrorBinding(detail)) { mirrorSheet(detail) }
             .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
@@ -141,8 +146,14 @@ struct MeetingDetailView: View {
             } message: {
                 Text(gistError ?? "")
             }
-            .alert("Rename meeting", isPresented: $editingTitle) {
-                renameMeetingButtons(detail)
+            .sheet(isPresented: $editingTitle) {
+                renameSheet(detail)
+            }
+            .sheet(isPresented: $showingNewStructure) {
+                CustomStructureSheet(existing: nil) { recipe in
+                    CustomRecipeStore.upsert(recipe)
+                    regenerate(language: summary?.draft.language ?? "en", recipe: recipe)
+                }
             }
             .alert("Rename speaker", isPresented: renameBinding) {
                 renameSpeakerButtons
@@ -156,25 +167,81 @@ struct MeetingDetailView: View {
 
 extension MeetingDetailView {
     private func loadedBody(_ detail: MeetingDetail) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header(detail)
-                speakersRow(detail)
-                refineStatus
-                // Two columns (design system Aurora detail): the summary,
-                // transcript and player on the left; the meeting-health and
-                // chapters rail on the right.
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        summaryOrGenerate(detail)
-                        transcriptSection(detail)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    detailRail(detail)
+        // A fixed-height composition (NOT one big page scroll): header and
+        // summary sit at the top, the transcript fills the middle and scrolls
+        // in its own viewport, and the player is DOCKED at the bottom — so you
+        // never scroll the page to reach the player, and reading the
+        // transcript never moves it. The health + chapters rail sits alongside.
+        VStack(alignment: .leading, spacing: 12) {
+            header(detail)
+            speakersRow(detail)
+            refineStatus
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    summaryOrGenerate(detail)
+                    transcriptHeader
+                    transcriptArea(detail)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    playerDock
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                detailRail(detail)
             }
-            .padding(16)
-            .frame(maxWidth: 1060, alignment: .leading)
+            .frame(maxHeight: .infinity)
+        }
+        .padding(16)
+        .frame(maxWidth: 1060, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var transcriptHeader: some View {
+        HStack {
+            Text("Transcript").font(.headline)
+            if player != nil {
+                Spacer()
+                Text("Click a line to jump there")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    /// The transcript body: a self-centering lyrics carousel when there's
+    /// audio (sized to fill the space above the docked player), or a plain
+    /// scrolling list otherwise.
+    @ViewBuilder
+    private func transcriptArea(_ detail: MeetingDetail) -> some View {
+        if player != nil {
+            GeometryReader { geometry in
+                transcriptLines(detail, carouselHeight: max(180, geometry.size.height))
+            }
+        } else {
+            ScrollView { transcriptLines(detail, carouselHeight: 440) }
+        }
+    }
+
+    private func transcriptLines(_ detail: MeetingDetail, carouselHeight: CGFloat) -> some View {
+        // Own View struct so only it re-renders as the playhead moves — the
+        // header and summary above stay put.
+        TranscriptSegmentsView(
+            segments: detail.segments,
+            speakers: detail.speakers,
+            player: player,
+            onSeek: { player?.seek(to: $0); player?.play() },
+            onRenameTap: { speaker in
+                renamingSpeaker = speaker
+                newName = speaker.displayName ?? ""
+            },
+            carouselHeight: carouselHeight)
+    }
+
+    /// The audio player, docked at the bottom of the transcript column so it
+    /// stays put while you read.
+    @ViewBuilder
+    private var playerDock: some View {
+        if let player {
+            Divider()
+            MeetingPlayerBar(player: player, waveform: waveform)
+            compressRow
         }
     }
 
@@ -225,34 +292,6 @@ extension MeetingDetailView {
                 Label("Generate summary", systemImage: "sparkles")
             }
         }
-    }
-
-    @ViewBuilder
-    private func transcriptSection(_ detail: MeetingDetail) -> some View {
-        HStack {
-            Text("Transcript").font(.headline)
-            if player != nil {
-                Spacer()
-                Text("Click a line to jump there")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        if let player {
-            MeetingPlayerBar(player: player, waveform: waveform)
-            compressRow
-        }
-        // Own View structs so only they re-render as the playhead
-        // moves — the header and summary above stay put.
-        TranscriptSegmentsView(
-            segments: detail.segments,
-            speakers: detail.speakers,
-            player: player,
-            onSeek: { player?.seek(to: $0); player?.play() },
-            onRenameTap: { speaker in
-                renamingSpeaker = speaker
-                newName = speaker.displayName ?? ""
-            })
     }
 
     @ViewBuilder
@@ -344,20 +383,38 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func renameMeetingButtons(_ detail: MeetingDetail) -> some View {
-        TextField("Title", text: $newTitle)
-        Button("Save") {
-            let title = newTitle
-            var meeting = detail.meeting
-            Task {
-                meeting.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !meeting.title.isEmpty else { return }
-                try? await services.store.save(meeting)
-                await reload()
-                services.libraryVersion += 1
+    /// A compact rename sheet — opens pre-filled with the current title,
+    /// selected, so you can type over it or edit. (Replaces the old `.alert`,
+    /// whose text field went blank on the second open.)
+    private func renameSheet(_ detail: MeetingDetail) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Rename meeting").font(.headline)
+            AutoSelectTextField(text: $newTitle, onSubmit: { commitRename(detail) })
+                .frame(width: 340, height: 22)
+            HStack {
+                Spacer()
+                Button("Cancel") { editingTitle = false }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { commitRename(detail) }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
         }
-        Button("Cancel", role: .cancel) {}
+        .padding(20)
+        .frame(width: 380)
+    }
+
+    private func commitRename(_ detail: MeetingDetail) {
+        let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        editingTitle = false
+        guard !title.isEmpty else { return }
+        var meeting = detail.meeting
+        Task {
+            meeting.title = title
+            try? await services.store.save(meeting)
+            await reload()
+            services.libraryVersion += 1
+        }
     }
 
     @ViewBuilder
@@ -456,13 +513,7 @@ extension MeetingDetailView {
     /// destructive red.
     private func actionRow(_ detail: MeetingDetail) -> some View {
         HStack(spacing: 8) {
-            roundButton(
-                systemImage: "wand.and.stars", tint: .secondary,
-                busy: refining != nil,
-                disabled: refining != nil || detail.meeting.audioDirectory == nil,
-                // swiftlint:disable:next line_length
-                help: "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation"
-            ) { refine(detail) }
+            refineMenu(detail)
 
             Menu {
                 Button("Export Markdown…") { export(detail, as: .markdown) }
@@ -779,11 +830,13 @@ extension MeetingDetailView {
                         Button("Regenerate in Spanish") { regenerate(language: "es") }
                         Button("Regenerate in English") { regenerate(language: "en") }
                         Menu("Structure") {
-                            ForEach(Recipe.all) { recipe in
+                            ForEach(CustomRecipeStore.all()) { recipe in
                                 Button(recipe.displayName) {
                                     regenerate(language: summary.draft.language, recipe: recipe)
                                 }
                             }
+                            Divider()
+                            Button("New structure…") { showingNewStructure = true }
                         }
                         if let alt = alternateEngine {
                             Divider()
@@ -921,7 +974,7 @@ extension MeetingDetailView {
         // No explicit recipe keeps whatever structure the summary already
         // has — regenerating in another language must not lose a Standup.
         let activeRecipe =
-            recipe ?? summary.flatMap { Recipe.byID($0.draft.recipeID) } ?? .general
+            recipe ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) } ?? .general
         Task {
             defer { regenerating = false }
             let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
@@ -996,8 +1049,44 @@ extension MeetingDetailView {
     /// Whisper (with the user's vocabulary), re-diarizes (micro-cluster
     /// merge included), atomically replaces the cast, and regenerates the
     /// summary from the clean transcript.
-    private func refine(_ detail: MeetingDetail) {
-        services.refines.start(meetingID: meetingID, detail: detail, services: services)
+    /// The refine control: a normal click re-transcribes auto-detecting the
+    /// language (or honoring the Settings pin); the chevron offers a per-meeting
+    /// language override, the fix for a meeting whose transcript came out in
+    /// the wrong language on weak audio.
+    private func refineMenu(_ detail: MeetingDetail) -> some View {
+        let disabled = refining != nil || detail.meeting.audioDirectory == nil
+        return Menu {
+            Button("Re-transcribe in Spanish") { refine(detail, language: "es") }
+            Button("Re-transcribe in English") { refine(detail, language: "en") }
+        } label: {
+            Group {
+                if refining != nil {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "wand.and.stars").font(.system(size: 13))
+                }
+            }
+            .foregroundStyle(.secondary)
+            .frame(width: 30, height: 30)
+            .background(Circle().fill(.quaternary.opacity(0.5)))
+        } primaryAction: {
+            refine(detail)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(disabled)
+        .accessibilityIdentifier("detail-refine")
+        .help(
+            L10n.text(
+                // swiftlint:disable:next line_length
+                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."
+            ))
+    }
+
+    private func refine(_ detail: MeetingDetail, language: String? = nil) {
+        services.refines.start(
+            meetingID: meetingID, detail: detail, services: services, language: language)
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
@@ -1324,7 +1413,7 @@ extension MeetingDetailView {
     private func summaryBadge(_ summary: (draft: SummaryDraft, version: Int)) -> String {
         var badge = "v\(summary.version) · \(summary.draft.language)"
         if summary.draft.recipeID != Recipe.general.id,
-            let recipe = Recipe.byID(summary.draft.recipeID) {
+            let recipe = CustomRecipeStore.byID(summary.draft.recipeID) {
             badge += " · \(recipe.displayName)"
         }
         return badge

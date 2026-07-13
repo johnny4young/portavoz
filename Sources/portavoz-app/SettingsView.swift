@@ -57,6 +57,12 @@ struct SettingsView: View {
     @AppStorage("companionUserName") private var companionUserName = ""
     @AppStorage("mirrorAfterMeeting") private var mirrorAfterMeeting = false
 
+    // Internal (not private) so the intelligence-pane extension in
+    // SettingsView+Intelligence.swift can reach them.
+    @AppStorage("transcriptionLanguage") var transcriptionLanguage = "auto"
+    @State var customStructures: [Recipe] = CustomRecipeStore.custom()
+    @State var editingStructure: Recipe?
+    @State var showingStructureSheet = false
     @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
     @AppStorage("ollamaModel") private var ollamaModel = ""
     @AppStorage("whisperCompact") private var whisperCompact = false
@@ -97,7 +103,9 @@ struct SettingsView: View {
                     AudioSection()
                     DictationSection()
                 case .intelligence:
+                    transcriptionLanguageSection
                     summaryEngineSection
+                    customStructuresSection
                     vocabularySection
                 case .voice:
                     voiceSection
@@ -122,6 +130,12 @@ struct SettingsView: View {
         .frame(width: 760)
         .frame(minHeight: 620)
         .navigationTitle((category ?? .general).title)
+        .sheet(isPresented: $showingStructureSheet) {
+            CustomStructureSheet(existing: editingStructure) { recipe in
+                CustomRecipeStore.upsert(recipe)
+                customStructures = CustomRecipeStore.custom()
+            }
+        }
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false

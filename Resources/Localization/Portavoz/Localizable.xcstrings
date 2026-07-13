@@ -271,6 +271,16 @@
         }
       }
     },
+    "Add structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir estructura"
+          }
+        }
+      }
+    },
     "Add term (QVTL, Ilarion…)": {
       "localizations": {
         "es": {
@@ -501,6 +511,16 @@
         }
       }
     },
+    "Auto-detect": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detección automática"
+          }
+        }
+      }
+    },
     "Automatically skip silence during playback": {
       "localizations": {
         "es": {
@@ -547,6 +567,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volver a la ventana completa"
+          }
+        }
+      }
+    },
+    "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apenas se escucha a los demás — si es una llamada, revisa tu dispositivo de salida o el permiso de audio de sistema."
           }
         }
       }
@@ -1041,12 +1071,32 @@
         }
       }
     },
+    "Create your own summary shapes — a Hangout, a Brainstorm — beyond the five built-ins. They appear in a meeting's Structure menu.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea tus propias formas de resumen — un Hangout, una lluvia de ideas — más allá de las cinco de fábrica. Aparecen en el menú Structure de cada reunión."
+          }
+        }
+      }
+    },
     "Current": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Actual"
+          }
+        }
+      }
+    },
+    "Custom structures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estructuras personalizadas"
           }
         }
       }
@@ -1261,6 +1311,16 @@
         }
       }
     },
+    "Dismiss": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar"
+          }
+        }
+      }
+    },
     "Dismiss voice offer": {
       "localizations": {
         "es": {
@@ -1317,6 +1377,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No mostrar después de cada reunión"
+          }
+        }
+      }
+    },
+    "Download": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar"
           }
         }
       }
@@ -1427,6 +1497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cancelación de eco · dicta donde sea · ⌥⌘D"
+          }
+        }
+      }
+    },
+    "Edit structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar estructura"
           }
         }
       }
@@ -1651,6 +1731,16 @@
         }
       }
     },
+    "Extra instructions (optional)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrucciones extra (opcional)"
+          }
+        }
+      }
+    },
     "Findings ✦ from your meetings": {
       "localizations": {
         "es": {
@@ -1797,6 +1887,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Te escuché — nada salió de tu dispositivo."
+          }
+        }
+      }
+    },
+    "How this summary should be shaped…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo debe darse forma a este resumen…"
           }
         }
       }
@@ -2037,6 +2137,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Resumen en vivo"
+          }
+        }
+      }
+    },
+    "Live translation needs a one-time language download.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción en vivo necesita descargar un idioma por única vez."
           }
         }
       }
@@ -2301,6 +2411,26 @@
         }
       }
     },
+    "New structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva estructura"
+          }
+        }
+      }
+    },
+    "New structure…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva estructura…"
+          }
+        }
+      }
+    },
     "Next meeting · %@": {
       "localizations": {
         "es": {
@@ -2367,6 +2497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No hay suficiente audio claro de esa voz para recordarla (se necesitan unos 5 segundos)."
+          }
+        }
+      }
+    },
+    "Not now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora no"
           }
         }
       }
@@ -2581,6 +2721,16 @@
         }
       }
     },
+    "Pin the language you speak so a quiet or noisy recording is never transcribed in the wrong language. Auto-detect works well with clear audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fija el idioma que hablas para que una grabación baja o con ruido nunca se transcriba en el idioma equivocado. La detección automática funciona bien con audio claro."
+          }
+        }
+      }
+    },
     "Play": {
       "localizations": {
         "es": {
@@ -2777,6 +2927,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Qwen3.5 4B · descargado · 3 GB"
+          }
+        }
+      }
+    },
+    "Re-transcribe in English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a transcribir en inglés"
+          }
+        }
+      }
+    },
+    "Re-transcribe in Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a transcribir en español"
+          }
+        }
+      }
+    },
+    "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a transcribir con Whisper (máxima calidad) y muestra el resultado como borrador — no se aplica nada sin tu confirmación. Usa el menú para forzar un idioma."
           }
         }
       }
@@ -3281,6 +3461,16 @@
         }
       }
     },
+    "Sections — one per line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secciones — una por línea"
+          }
+        }
+      }
+    },
     "See": {
       "localizations": {
         "es": {
@@ -3387,6 +3577,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hablantes"
+          }
+        }
+      }
+    },
+    "Spoken language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma hablado"
           }
         }
       }
@@ -3947,6 +4147,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Los modelos de transcripción y voz se descargan una vez (~1 GB, verificados) y luego funcionan sin internet."
+          }
+        }
+      }
+    },
+    "Transcription language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de transcripción"
           }
         }
       }

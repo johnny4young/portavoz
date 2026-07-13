@@ -69,6 +69,40 @@ public struct Recipe: Codable, Sendable, Identifiable {
     public static func byID(_ id: String) -> Recipe? {
         all.first { $0.id == id }
     }
+
+    /// Prefix that marks a user-authored structure, distinguishing it from
+    /// the five built-ins.
+    public static let customIDPrefix = "custom-"
+
+    /// Whether an id refers to a user-authored structure.
+    public static func isCustom(_ id: String) -> Bool { id.hasPrefix(customIDPrefix) }
+
+    /// Builds a user-authored structure from raw input — trimmed name, one
+    /// section per non-empty line, a reused id when editing (a fresh
+    /// `custom-` id otherwise), and a safe default instruction when the user
+    /// leaves it blank. Returns nil when the name or every section is empty.
+    public static func custom(
+        id existingID: String? = nil,
+        name: String,
+        sectionsText: String,
+        instructions: String
+    ) -> Recipe? {
+        let displayName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sections = sectionsText
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard !displayName.isEmpty, !sections.isEmpty else { return nil }
+        let trimmed = instructions.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Recipe(
+            id: existingID ?? customIDPrefix + UUID().uuidString,
+            displayName: displayName,
+            sections: sections,
+            instructions: trimmed.isEmpty
+                ? "Summarize the meeting faithfully into the sections above. "
+                    + "Attribute decisions and commitments to named speakers. Never invent content."
+                : trimmed)
+    }
 }
 
 /// The result of a summarization pass. Stored as an immutable versioned

@@ -53,6 +53,11 @@ final class EnglishSourceTests: XCTestCase {
         if relative == "Sources/portavoz-app/SettingsView.swift", line.contains("Español") {
             return true
         }
+        if relative == "Sources/portavoz-app/SettingsView+Intelligence.swift",
+            line.contains("Español") {
+            // Native language name shown in the transcription-language pin.
+            return true
+        }
         if relative == "Sources/portavoz-app/MeetingDetailView.swift", line.contains("Español") {
             return true
         }

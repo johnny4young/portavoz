@@ -58,6 +58,11 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-meeting-health").waitForExistence(timeout: 10),
             "the right rail must show meeting health")
+        // The refine control (now a menu with a per-meeting language override)
+        // is present for a meeting that keeps its audio.
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-refine").exists,
+            "the action row must offer the refine control")
         XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").exists,
             "the right rail must show the ✦ chapters (the seed has a second chapter)")

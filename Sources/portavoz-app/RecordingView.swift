@@ -21,6 +21,9 @@ struct RecordingView: View {
     @State private var noteDraft = ""
     /// Compact floating HUD (GAPS #4): recording without the full window.
     @State private var hud = RecordingHUDController()
+    /// One-tap dismiss for the "no incoming audio" nudge (in-person meetings
+    /// legitimately have a silent system channel).
+    @State private var systemWarningDismissed = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -39,6 +42,12 @@ struct RecordingView: View {
                 recordingBar
                 if controller.micLevelLow {
                     micLowBanner
+                }
+                if controller.systemAudioMissing && !systemWarningDismissed {
+                    systemAudioBanner
+                }
+                if controller.translationNeedsDownload {
+                    translationDownloadBanner
                 }
                 captionsList
                     .frame(maxHeight: .infinity)
@@ -69,6 +78,9 @@ struct RecordingView: View {
                     // post-meeting mirror (6a-2) once, if the user opted in.
                     services.justRecorded = meetingID
                     route = .meeting(meetingID)
+                    // Release the shared session so the NEXT "New recording"
+                    // starts fresh instead of bouncing back to this meeting.
+                    controller.readyForNextSession()
                 }
 
             case .failed(let message):
@@ -170,17 +182,6 @@ struct RecordingView: View {
             .frame(width: 90, height: 5)
             .animation(.easeOut(duration: 0.15), value: controller.micLevel)
         }
-    }
-
-    /// Shown only when the mic stays quiet — the far-field-mic nudge (field
-    /// bug jul 2026), out of the compact bar so it never crowds it.
-    private var micLowBanner: some View {
-        Label(
-            "Your voice sounds low — move closer or use headphones with a microphone",
-            systemImage: "exclamationmark.triangle.fill")
-        .font(.caption)
-        .foregroundStyle(.orange)
-        .padding(.horizontal, 20)
     }
 
     /// Maps the linear mic level onto a −60…0 dBFS bar (0…1).
@@ -462,5 +463,67 @@ struct RecordingView: View {
             return voice == "Me" ? (L10n.text("Me"), true) : (voice, false)
         }
         return (L10n.text("Them"), false)
+    }
+}
+
+// MARK: - Capture / translation nudges
+//
+// The dismissable banners over the caption area, split out to keep the main
+// view body under the length limit. `private` stays file-scoped, so these
+// still reach `controller` and `systemWarningDismissed`.
+extension RecordingView {
+    /// Shown only when the mic stays quiet — the far-field-mic nudge (field
+    /// bug jul 2026), out of the compact bar so it never crowds it.
+    var micLowBanner: some View {
+        Label(
+            "Your voice sounds low — move closer or use headphones with a microphone",
+            systemImage: "exclamationmark.triangle.fill")
+        .font(.caption)
+        .foregroundStyle(.orange)
+        .padding(.horizontal, 20)
+    }
+
+    /// Shown when the incoming (system) channel stays near-silent — likely a
+    /// call whose audio isn't reaching the tap (Bluetooth output, or the
+    /// system-audio permission). Dismissable, since an in-person meeting has
+    /// no incoming audio by design.
+    var systemAudioBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "Barely hearing the other participants — if this is a call, check your output device or system-audio permission.",
+                systemImage: "speaker.slash.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Button("Dismiss") { systemWarningDismissed = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    /// Live translation needs a language pack Apple hasn't downloaded yet. We
+    /// never let the system sheet pop up on its own mid-meeting — this banner
+    /// makes the download a deliberate choice, and the fetch runs in the
+    /// background once approved.
+    var translationDownloadBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                "Live translation needs a one-time language download.",
+                systemImage: "arrow.down.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("Download") { controller.translationDownloadApproved = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tint)
+            Button("Not now") { controller.translationTarget = nil }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
     }
 }
