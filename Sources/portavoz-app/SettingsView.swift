@@ -57,7 +57,12 @@ struct SettingsView: View {
     @AppStorage("companionUserName") private var companionUserName = ""
     @AppStorage("mirrorAfterMeeting") private var mirrorAfterMeeting = false
 
-    @AppStorage("transcriptionLanguage") private var transcriptionLanguage = "auto"
+    // Internal (not private) so the intelligence-pane extension in
+    // SettingsView+Intelligence.swift can reach them.
+    @AppStorage("transcriptionLanguage") var transcriptionLanguage = "auto"
+    @State var customStructures: [Recipe] = CustomRecipeStore.custom()
+    @State var editingStructure: Recipe?
+    @State var showingStructureSheet = false
     @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
     @AppStorage("ollamaModel") private var ollamaModel = ""
     @AppStorage("whisperCompact") private var whisperCompact = false
@@ -100,6 +105,7 @@ struct SettingsView: View {
                 case .intelligence:
                     transcriptionLanguageSection
                     summaryEngineSection
+                    customStructuresSection
                     vocabularySection
                 case .voice:
                     voiceSection
@@ -124,6 +130,12 @@ struct SettingsView: View {
         .frame(width: 760)
         .frame(minHeight: 620)
         .navigationTitle((category ?? .general).title)
+        .sheet(isPresented: $showingStructureSheet) {
+            CustomStructureSheet(existing: editingStructure) { recipe in
+                CustomRecipeStore.upsert(recipe)
+                customStructures = CustomRecipeStore.custom()
+            }
+        }
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
@@ -573,25 +585,6 @@ extension SettingsView {
     }
 
     // MARK: - Summary engine (D25/M12)
-
-    private var transcriptionLanguageSection: some View {
-        Section("Transcription language") {
-            Picker("Spoken language", selection: $transcriptionLanguage) {
-                Text("Auto-detect").tag("auto")
-                Text("English").tag("en")
-                Text("Español").tag("es")
-            }
-            .pickerStyle(.radioGroup)
-            .accessibilityIdentifier("settings-transcription-language")
-            Text(
-                // One-line UI help.
-                // swiftlint:disable:next line_length
-                "Pin the language you speak so a quiet or noisy recording is never transcribed in the wrong language. Auto-detect works well with clear audio."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-    }
 
     private var summaryEngineSection: some View {
         Section("Summary engine") {

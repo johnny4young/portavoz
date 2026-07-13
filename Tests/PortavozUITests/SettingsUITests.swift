@@ -32,6 +32,29 @@ final class SettingsUITests: XCTestCase {
     }
 
     @MainActor
+    func testIntelligencePaneCreatesACustomStructure() {
+        // The Intelligence pane lets you author your own summary structures;
+        // "Add structure" opens the editor sheet with a name field.
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let intelligence = app.control(withIdentifier: "settings-category-intelligence")
+        XCTAssertTrue(intelligence.waitForExistence(timeout: 10))
+        intelligence.click()
+
+        let add = app.buttons["settings-add-structure"]
+        XCTAssertTrue(
+            add.waitForExistence(timeout: 5),
+            "the Intelligence pane must offer the custom-structure creator")
+        add.click()
+
+        XCTAssertTrue(
+            app.textFields["structure-name"].waitForExistence(timeout: 5),
+            "Add structure must open the editor sheet with a name field")
+    }
+
+    @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
         // switch lives in the "My voice & Companion" pane.

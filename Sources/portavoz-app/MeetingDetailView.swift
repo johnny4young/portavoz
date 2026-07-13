@@ -67,6 +67,8 @@ struct MeetingDetailView: View {
     /// a chip — never applied on its own.
     @State private var suggestedRecipe: Recipe?
     @State private var detectedRecipeOnce = false
+    /// Presents the "New structure…" sheet from the Structure menu.
+    @State private var showingNewStructure = false
     /// Content-based title suggestion — same contract: chip, click, never solo.
     @State private var suggestedTitle: String?
     @State private var suggestedTitleOnce = false
@@ -146,6 +148,12 @@ struct MeetingDetailView: View {
             }
             .sheet(isPresented: $editingTitle) {
                 renameSheet(detail)
+            }
+            .sheet(isPresented: $showingNewStructure) {
+                CustomStructureSheet(existing: nil) { recipe in
+                    CustomRecipeStore.upsert(recipe)
+                    regenerate(language: summary?.draft.language ?? "en", recipe: recipe)
+                }
             }
             .alert("Rename speaker", isPresented: renameBinding) {
                 renameSpeakerButtons
@@ -828,11 +836,13 @@ extension MeetingDetailView {
                         Button("Regenerate in Spanish") { regenerate(language: "es") }
                         Button("Regenerate in English") { regenerate(language: "en") }
                         Menu("Structure") {
-                            ForEach(Recipe.all) { recipe in
+                            ForEach(CustomRecipeStore.all()) { recipe in
                                 Button(recipe.displayName) {
                                     regenerate(language: summary.draft.language, recipe: recipe)
                                 }
                             }
+                            Divider()
+                            Button("New structure…") { showingNewStructure = true }
                         }
                         if let alt = alternateEngine {
                             Divider()
@@ -970,7 +980,7 @@ extension MeetingDetailView {
         // No explicit recipe keeps whatever structure the summary already
         // has — regenerating in another language must not lose a Standup.
         let activeRecipe =
-            recipe ?? summary.flatMap { Recipe.byID($0.draft.recipeID) } ?? .general
+            recipe ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) } ?? .general
         Task {
             defer { regenerating = false }
             let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
@@ -1373,7 +1383,7 @@ extension MeetingDetailView {
     private func summaryBadge(_ summary: (draft: SummaryDraft, version: Int)) -> String {
         var badge = "v\(summary.version) · \(summary.draft.language)"
         if summary.draft.recipeID != Recipe.general.id,
-            let recipe = Recipe.byID(summary.draft.recipeID) {
+            let recipe = CustomRecipeStore.byID(summary.draft.recipeID) {
             badge += " · \(recipe.displayName)"
         }
         return badge

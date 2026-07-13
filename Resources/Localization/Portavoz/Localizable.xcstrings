@@ -271,6 +271,16 @@
         }
       }
     },
+    "Add structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir estructura"
+          }
+        }
+      }
+    },
     "Add term (QVTL, Ilarion…)": {
       "localizations": {
         "es": {
@@ -1061,12 +1071,32 @@
         }
       }
     },
+    "Create your own summary shapes — a Hangout, a Brainstorm — beyond the five built-ins. They appear in a meeting's Structure menu.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea tus propias formas de resumen — un Hangout, una lluvia de ideas — más allá de las cinco de fábrica. Aparecen en el menú Structure de cada reunión."
+          }
+        }
+      }
+    },
     "Current": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Actual"
+          }
+        }
+      }
+    },
+    "Custom structures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estructuras personalizadas"
           }
         }
       }
@@ -1461,6 +1491,16 @@
         }
       }
     },
+    "Edit structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar estructura"
+          }
+        }
+      }
+    },
     "Encrypted numeric fingerprints of voices you chose to remember, used only to suggest names in future meetings — never audio, never synced. Right-click a name to forget one voice.": {
       "localizations": {
         "es": {
@@ -1681,6 +1721,16 @@
         }
       }
     },
+    "Extra instructions (optional)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrucciones extra (opcional)"
+          }
+        }
+      }
+    },
     "Findings ✦ from your meetings": {
       "localizations": {
         "es": {
@@ -1827,6 +1877,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Te escuché — nada salió de tu dispositivo."
+          }
+        }
+      }
+    },
+    "How this summary should be shaped…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo debe darse forma a este resumen…"
           }
         }
       }
@@ -2327,6 +2387,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nueva grabación"
+          }
+        }
+      }
+    },
+    "New structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva estructura"
+          }
+        }
+      }
+    },
+    "New structure…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva estructura…"
           }
         }
       }
@@ -3317,6 +3397,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buscando en tus reuniones…"
+          }
+        }
+      }
+    },
+    "Sections — one per line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secciones — una por línea"
           }
         }
       }
