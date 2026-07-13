@@ -23,6 +23,7 @@ struct OnboardingView: View {
     @State private var enrolling = false
     @State private var enrolled = false
     @State private var enrollMessage: String?
+    @State private var listen = FirstListenController()
 
     private let lastStep = 3
 
@@ -35,11 +36,12 @@ struct OnboardingView: View {
         }
         .frame(width: 520, height: 480)
         .task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
+        .onDisappear { listen.cancel() }
     }
 
     @ViewBuilder private var content: some View {
         switch step {
-        case 0: welcome
+        case 0: firstListen
         case 1: permissions
         case 2: models
         default: voice
@@ -48,19 +50,101 @@ struct OnboardingView: View {
 
     // MARK: - Steps
 
-    private var welcome: some View {
+    /// Step 0 — the value proposition, demonstrated instead of described: the
+    /// user says a sentence and watches Portavoz transcribe it live, on-device,
+    /// before a single model has downloaded (6a-4).
+    private var firstListen: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: "waveform.badge.mic")
-                .font(.system(size: 44))
-                .foregroundStyle(PVDesign.accent)
-            Text("Welcome to Portavoz").font(.largeTitle.bold())
-            Text("Your meetings, 100% on your Mac.")
+            // The identifier lives on the title, not the container: a container
+            // `.accessibilityIdentifier` stamps ALL its descendants on macOS,
+            // which would clobber the button's and caption's own ids.
+            Text("Your first listen")
+                .font(.largeTitle.bold())
+                .accessibilityIdentifier("onboarding-first-listen")
+            Text("Say a sentence — anything about your day. Portavoz transcribes it live, 100% on this Mac.")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-            bullet("lock.shield", "Nothing leaves this Mac — transcription, voices and summaries run on-device.")
-            bullet("person.2.wave.2", "It tells apart every voice, including yours.")
-            bullet("doc.text.magnifyingglass", "Every meeting becomes searchable notes with action items.")
+
+            FirstListenWaveform(level: listen.level, active: listen.phase == .listening)
+                .frame(height: 56)
+                .padding(.vertical, 4)
+
+            firstListenBody
         }
+    }
+
+    @ViewBuilder private var firstListenBody: some View {
+        switch listen.phase {
+        case .idle:
+            Button {
+                listen.start()
+            } label: {
+                Label("Listen for 10 seconds", systemImage: "mic.fill")
+            }
+            .controlSize(.large)
+            .buttonStyle(.borderedProminent)
+            .tint(PVDesign.accent)
+            .accessibilityIdentifier("onboarding-first-listen-button")
+        case .preparing:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Warming up the on-device listener…").foregroundStyle(.secondary)
+            }
+        case .listening:
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.format("Listening… %d s", listen.secondsLeft))
+                    .font(.callout).foregroundStyle(.secondary)
+                captionCard(listen.hasCaption ? listen.caption : L10n.text("Go ahead, speak…"))
+            }
+        case .done:
+            firstListenResult
+        case .captionsUnavailable:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Heard you — 100% on your Mac.", systemImage: "checkmark.seal.fill")
+                    .foregroundStyle(.green)
+                Text("Live captions need macOS 26; your words never left this Mac either way.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message).font(.callout).foregroundStyle(.secondary)
+                Button("Try again") { listen.start() }
+            }
+        }
+    }
+
+    private var firstListenResult: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if listen.hasCaption {
+                captionCard(listen.caption)
+                Label(
+                    L10n.format("%d words · transcribed on this Mac · nothing left your device", listen.wordCount),
+                    systemImage: "lock.shield")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Label("Heard you — nothing left your device.", systemImage: "lock.shield")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Button("Listen again") { listen.start() }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(PVDesign.accent)
+        }
+    }
+
+    /// The caption shown the way live meetings show your voice: an amber card,
+    /// so the "your voice is amber" language is taught here first.
+    private func captionCard(_ text: String) -> some View {
+        Text(text)
+            .font(.title3)
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(VoicePalette.me.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(VoicePalette.me.opacity(0.4), lineWidth: 1))
+            .accessibilityIdentifier("onboarding-first-listen-caption")
     }
 
     private var permissions: some View {
@@ -82,6 +166,10 @@ struct OnboardingView: View {
                 detail: L10n.text("Pre-meeting briefs and speaker name suggestions."),
                 done: calendarConnected, action: requestCalendar,
                 actionLabel: L10n.text("Connect"))
+        }
+        // The first listen already prompted for the mic — reflect that here.
+        .onAppear {
+            micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
         }
     }
 
@@ -116,23 +204,44 @@ struct OnboardingView: View {
         }
     }
 
+    /// Whether the first-listen captured enough audio to enroll from directly
+    /// (≥ 4 s), so the user needn't speak a second time.
+    private var canReuseFirstListen: Bool {
+        Double(listen.capturedSamples.count) >= listen.capturedSampleRate * 4
+    }
+
     private var voice: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Your voice (optional)").font(.largeTitle.bold())
             // Two-sentence explainer.
             // swiftlint:disable:next line_length
-            Text("A 12-second sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.")
+            Text("A short voice sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.")
                 .foregroundStyle(.secondary)
-            HStack(spacing: 10) {
-                if enrolled {
+            if enrolled {
+                HStack(spacing: 10) {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
                     Text("Voice enrolled").font(.callout)
-                } else if enrolling {
+                }
+            } else if enrolling {
+                HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
-                    Text("Listening… speak normally for 12 seconds.")
-                        .font(.callout).foregroundStyle(.secondary)
-                } else {
-                    Button("Enroll my voice") { enrollVoice() }
+                    Text("One moment…").font(.callout).foregroundStyle(.secondary)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    if canReuseFirstListen {
+                        Button("Use my first listen") { enrollVoice(reusingFirstListen: true) }
+                            .buttonStyle(.borderedProminent)
+                            .tint(PVDesign.accent)
+                        Text("Reuses what you just said — no need to speak again.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("Record a fresh 12 seconds") { enrollVoice(reusingFirstListen: false) }
+                            .buttonStyle(.bordered)
+                    } else {
+                        Button("Enroll my voice") { enrollVoice(reusingFirstListen: false) }
+                            .buttonStyle(.borderedProminent)
+                            .tint(PVDesign.accent)
+                    }
                 }
             }
             if let enrollMessage {
@@ -148,6 +257,7 @@ struct OnboardingView: View {
             Button("Skip setup") { finish() }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("onboarding-skip")
             Spacer()
             if step > 0 {
                 Button("Back") { step -= 1 }
@@ -157,6 +267,7 @@ struct OnboardingView: View {
             }
             .keyboardShortcut(.defaultAction)
             .disabled(enrolling)
+            .accessibilityIdentifier("onboarding-continue")
         }
         .padding(20)
         .background(.bar)
@@ -217,9 +328,10 @@ struct OnboardingView: View {
         }
     }
 
-    /// Same flow as Settings: 12 s of mic → voiceprint saved; the
-    /// diarizer reloads with it on the next recording.
-    private func enrollVoice() {
+    /// Voiceprint enrollment → saved; the diarizer reloads with it on the next
+    /// recording. `reusingFirstListen` skips the second recording and derives
+    /// the print from the 10 s the user already spoke in step 0 (6a-4).
+    private func enrollVoice(reusingFirstListen: Bool) {
         enrolling = true
         enrollMessage = nil
         Task { @MainActor in
@@ -227,17 +339,14 @@ struct OnboardingView: View {
             do {
                 try await services.loadEnginesIfNeeded()
                 guard let diarizer = services.diarizer else { return }
-                let microphone = MicrophoneSource(voiceProcessing: false)
-                let stream = try await microphone.start()
-                var samples: [Float] = []
-                var sampleRate = 16_000.0
-                let deadline = Date().addingTimeInterval(12)
-                for try await chunk in stream {
-                    samples.append(contentsOf: chunk.samples)
-                    sampleRate = chunk.sampleRate
-                    if Date() >= deadline { break }
+                let samples: [Float]
+                let sampleRate: Double
+                if reusingFirstListen {
+                    samples = listen.capturedSamples
+                    sampleRate = listen.capturedSampleRate
+                } else {
+                    (samples, sampleRate) = try await recordEnrollmentSample()
                 }
-                await microphone.stop()
                 let voiceprint = try await diarizer.extractVoiceprint(
                     fromSamples: samples, sampleRate: sampleRate)
                 try VoiceprintStore().save(voiceprint)
@@ -249,8 +358,61 @@ struct OnboardingView: View {
         }
     }
 
+    /// Records a fresh 12 s microphone sample for enrollment (the path when
+    /// the user opts to speak again rather than reuse the first listen).
+    private func recordEnrollmentSample() async throws -> (samples: [Float], sampleRate: Double) {
+        let microphone = MicrophoneSource(voiceProcessing: false)
+        let stream = try await microphone.start()
+        var samples: [Float] = []
+        var sampleRate = 16_000.0
+        let deadline = Date().addingTimeInterval(12)
+        for try await chunk in stream {
+            samples.append(contentsOf: chunk.samples)
+            sampleRate = chunk.sampleRate
+            if Date() >= deadline { break }
+        }
+        await microphone.stop()
+        return (samples, sampleRate)
+    }
+
     private func finish() {
         UserDefaults.standard.set(true, forKey: "hasOnboarded")
         isPresented = false
+    }
+}
+
+/// A row of bars that breathe with the microphone level — the onboarding
+/// first-listen's visual heartbeat. Idle bars pulse gently; while listening
+/// they rise with the captured level and glow in the user's amber.
+private struct FirstListenWaveform: View {
+    let level: Double
+    let active: Bool
+
+    private let barCount = 27
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let phase = timeline.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .center, spacing: 4) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    Capsule()
+                        .fill(active
+                            ? AnyShapeStyle(VoicePalette.me)
+                            : AnyShapeStyle(Color.secondary.opacity(0.35)))
+                        .frame(width: 4, height: height(index, phase: phase))
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func height(_ index: Int, phase: Double) -> CGFloat {
+        // A gentle idle ripple, plus the live level shaped into a soft hill so
+        // the middle bars react most.
+        let idle = 0.5 + 0.5 * sin(phase * 2 + Double(index) * 0.5)
+        let bell = sin(Double(index) / Double(barCount - 1) * .pi)
+        let amplitude = active ? (0.2 + level * bell) : (0.10 + 0.06 * idle)
+        return CGFloat(8 + amplitude * 40)
     }
 }

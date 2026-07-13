@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 13, 2026
+
+- **👂 Your first listen** — Onboarding now opens by *doing* instead of describing: say one sentence and watch Portavoz transcribe it live, 100% on your Mac, before a single model has downloaded (it uses macOS's built-in on-device recognizer). Those same 10 seconds can become your enrolled voice with one tap — no need to speak twice — and Skip is always one click away.
+
 ## July 12, 2026
 
 - **🪞 Your mirror, after each meeting** — Turn it on and, whenever a real conversation wraps (two or more voices, at least five minutes), Portavoz shows a private card with your own numbers next to your usual average: how much you spoke, questions you asked, times you cut in — plus one plain line of what changed ("You listened more than usual. You asked 2 questions."). Measured, not judged; computed on your Mac; off by default.
