@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import TranscriptionKit
+@testable import PortavozCore
 
 final class TranscriptNoiseFilterTests: XCTestCase {
     private func noise(_ t: String, _ c: Double?) -> Bool {

@@ -353,6 +353,8 @@ final class RecordingController {
         guard
             let closed = captions.last(where: { $0.id == previousOpen }),
             closed.channel == .system,
+            // Don't burn a model call on a garbled/low-confidence caption.
+            !TranscriptNoiseFilter.isLikelyNoise(text: closed.text, confidence: closed.confidence),
             QuestionHeuristic.looksLikeQuestion(closed.text)
                 || ownerName.map({ QuestionHeuristic.mentions($0, in: closed.text) }) == true
         else { return }
@@ -370,7 +372,9 @@ final class RecordingController {
                     candidate: candidate, recentTranscript: passages,
                     ownerName: ownerName, askedAt: askedAt),
                 self.phase == .recording,
-                self.companionCards.last?.question != card.question
+                // Dedup against every card kept, not just the last — the same
+                // question can resurface after others and shouldn't repeat.
+                !self.companionCards.contains(where: { $0.question == card.question })
             else { return }
             self.companionCards.append(card)
         }

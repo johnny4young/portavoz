@@ -31,19 +31,20 @@ public enum ChapterExtractor {
         guard let first = ordered.first else { return [] }
 
         var chapters: [Chapter] = [
-            Chapter(startTime: first.startTime, title: title(from: first.text))
+            Chapter(startTime: first.startTime, title: bestLabel(ordered, from: 0))
         ]
         var chapterStart = first.startTime
         var previousEnd = first.endTime
 
-        for segment in ordered.dropFirst() {
+        for index in 1..<ordered.count {
+            let segment = ordered[index]
             let pause = segment.startTime - previousEnd
             let sinceChapter = segment.startTime - chapterStart
             let breakByPause = pause >= pauseThreshold && sinceChapter >= minChapterSpacing
             let breakByLength = sinceChapter >= maxChapterLength
             if breakByPause || breakByLength {
                 chapters.append(
-                    Chapter(startTime: segment.startTime, title: title(from: segment.text)))
+                    Chapter(startTime: segment.startTime, title: bestLabel(ordered, from: index)))
                 chapterStart = segment.startTime
             }
             previousEnd = segment.endTime
@@ -51,6 +52,25 @@ public enum ChapterExtractor {
         // A single chapter tells the reader nothing the header didn't — a
         // rail earns its place only once the meeting actually breaks up.
         return chapters.count > 1 ? chapters : []
+    }
+
+    /// The label for a chapter starting at `index`: the first substantial,
+    /// non-noise line at or just after the break — so a chapter that happens
+    /// to open on a stray fragment ("E", "TO", a low-confidence garble) is
+    /// still labeled by a real, readable line instead of the junk. Falls back
+    /// to the opening segment when nothing substantial is nearby.
+    private static func bestLabel(_ ordered: [TranscriptSegment], from index: Int) -> String {
+        for segment in ordered[index...].prefix(6) where isSubstantial(segment) {
+            return title(from: segment.text)
+        }
+        return title(from: ordered[index].text)
+    }
+
+    /// A line worth showing as a chapter label: not model-flagged noise, and
+    /// at least a few words long.
+    private static func isSubstantial(_ segment: TranscriptSegment) -> Bool {
+        !TranscriptNoiseFilter.isLikelyNoise(text: segment.text, confidence: segment.confidence)
+            && segment.text.split(separator: " ").count >= 3
     }
 
     /// The opening segment's first sentence, trimmed — a real line from the

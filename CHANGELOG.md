@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 14, 2026
 
+- **✦ Chapters that read like chapters** — A chapter that happened to open on a stray fragment ("E", "TO", a garble) is now labeled by the first real, substantial line instead of the junk — so the chapter rail is scannable even when a stretch started messy.
+- **💬 A sharper Companion** — It no longer spends a model call on a garbled caption, and the same question won't show up twice — cleaner cards, less wasted work.
 - **🎛️ Choose your capture sources** — New in Settings ▸ Audio: pick which **microphone** to record from (any input device, not just the system default), and choose what Portavoz captures for the other side — **Automatic**, **the meeting app** (record a Zoom/Meet/Teams/browser call directly, no AirPods needed), or **all system audio**. You're no longer tied to using AirPods just to capture a browser call.
 - **🧹 No more garbage from a quiet mic** — When you're barely speaking, a far-field mic used to fill your side of the transcript with stray letters and gibberish ("R", "SR", "IT'NAKE THINKE") — which also skewed meeting health and chapters. Portavoz now filters those non-speech fragments out of your channel, live and on refine, so your transcript, talk-time and chapters reflect what you actually said.
 - **🔎 The current line stays sharp** — In the lyrics-style player and live captions, the focused line and the one right next to it now stay fully readable; only lines further away fade and blur.
