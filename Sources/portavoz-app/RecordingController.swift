@@ -183,7 +183,7 @@ final class RecordingController {
 
         var sources: [any AudioCaptureSource] = [microphone]
         if #available(macOS 14.4, *) {
-            sources.append(makeSystemTapSource())
+            sources.append(await makeSystemTapSource())
         }
 
         captions = []
@@ -591,13 +591,19 @@ extension RecordingController {
     /// misses a browser's audio-rendering helper, so every process currently
     /// producing output (helper included, minus Portavoz) is tapped too.
     /// Falls back to the global tap off Bluetooth or when nothing is found.
-    func makeSystemTapSource() -> ProcessTapSource {
+    func makeSystemTapSource() async -> ProcessTapSource {
         let bluetooth = AudioDeviceCatalog.defaultOutputIsBluetooth()
         let meetingApps = bluetooth ? MeetingAppDetector.running() : []
         tappedMeetingApps = meetingApps.map(\.name)
-        let helperPIDs = bluetooth
-            ? AudioProcessCatalog.outputProducingPIDs(
-                excluding: ProcessInfo.processInfo.processIdentifier)
+        // Enumerating Core Audio's process list runs a property query PER
+        // process — off the main actor so the UI never hitches as a recording
+        // starts (field finding: it froze the window for a beat).
+        let selfPID = ProcessInfo.processInfo.processIdentifier
+        let helperPIDs =
+            bluetooth
+            ? await Task.detached {
+                AudioProcessCatalog.outputProducingPIDs(excluding: selfPID)
+            }.value
             : []
         return ProcessTapSource(processIDs: Array(Set(meetingApps.map(\.pid) + helperPIDs)))
     }
