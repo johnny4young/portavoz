@@ -173,18 +173,31 @@ struct RecordingView: View {
     /// stays low.
     private var compactMeter: some View {
         HStack(spacing: 6) {
-            Image(systemName: controller.micLevelLow ? "mic.fill" : "mic")
-                .foregroundStyle(controller.micLevelLow ? .orange : .secondary)
+            Button {
+                controller.setMicMuted(!controller.micMuted)
+            } label: {
+                Image(
+                    systemName: controller.micMuted
+                        ? "mic.slash.fill" : (controller.micLevelLow ? "mic.fill" : "mic")
+                )
+                .foregroundStyle(
+                    controller.micMuted ? .red : (controller.micLevelLow ? .orange : .secondary)
+                )
                 .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("recording-mute-mic")
+            .help(controller.micMuted ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz")
             ZStack(alignment: .leading) {
                 Capsule().fill(.quaternary)
                 GeometryReader { geometry in
                     Capsule()
                         .fill(controller.micLevelLow ? Color.orange : Color.green)
-                        .frame(width: geometry.size.width * meterFraction)
+                        .frame(width: geometry.size.width * (controller.micMuted ? 0 : meterFraction))
                 }
             }
             .frame(width: 90, height: 5)
+            .opacity(controller.micMuted ? 0.4 : 1)
             .animation(.easeOut(duration: 0.15), value: controller.micLevel)
         }
     }

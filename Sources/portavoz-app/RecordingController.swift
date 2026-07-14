@@ -67,6 +67,11 @@ final class RecordingController {
     private var voicedChunks = 0
     var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
 
+    /// Whether YOUR mic is muted FOR PORTAVOZ (not the system input) — the
+    /// meeting app keeps its own mic; Portavoz records silence on your channel.
+    private(set) var micMuted = false
+    fileprivate var micSource: MicrophoneSource?
+
     /// RMS of the system (incoming) channel, smoothed. Stays near zero when
     /// the other participants' audio isn't being captured (field bug jul 2026:
     /// AirPods output switch left the system tap silent → only the mic).
@@ -168,6 +173,8 @@ final class RecordingController {
         let inputUID = UserDefaults.standard.string(forKey: "preferredInputUID")
         let micDevice = (inputUID == nil || inputUID == "default") ? nil : inputUID
         let microphone = MicrophoneSource(deviceIdentifier: micDevice, voiceProcessing: aec)
+        micSource = microphone
+        micMuted = false
         Task { await microphone.warmUp() }
 
         do {
@@ -393,10 +400,6 @@ final class RecordingController {
         }
     }
 
-    func dismissCompanionCard(_ id: UUID) {
-        companionCards.removeAll { $0.id == id }
-    }
-
     /// The name the meeting uses to address you: Settings if it
     /// was configured, otherwise your macOS account name. nil = detector off.
     static func companionOwnerName() -> String? {
@@ -404,24 +407,6 @@ final class RecordingController {
             .trimmingCharacters(in: .whitespaces)
         let name = custom.isEmpty ? NSFullUserName() : custom
         return name.isEmpty ? nil : name
-    }
-
-    // MARK: - Notes (D28)
-
-    /// Adds a typed note anchored to the current moment of the recording.
-    func addContextNote(_ text: String, kind: ContextItem.Kind = .note) {
-        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !content.isEmpty, phase == .recording else { return }
-        contextItems.append(
-            ContextItem(
-                meetingID: meetingID,
-                kind: kind,
-                content: content,
-                timestamp: Date().timeIntervalSince(startedAt)))
-    }
-
-    func removeContextItem(_ id: UUID) {
-        contextItems.removeAll { $0.id == id }
     }
 
     @available(macOS 26.0, *)
@@ -632,5 +617,35 @@ extension RecordingController {
             }.value
             : []
         return ProcessTapSource(processIDs: Array(Set(meetingApps.map(\.pid) + helperPIDs)))
+    }
+}
+
+// MARK: - Live user actions during a recording
+
+extension RecordingController {
+    /// Mute/unmute your mic for Portavoz only. Takes effect on the next buffer.
+    func setMicMuted(_ value: Bool) {
+        micMuted = value
+        micSource?.setMuted(value)
+    }
+
+    func dismissCompanionCard(_ id: UUID) {
+        companionCards.removeAll { $0.id == id }
+    }
+
+    /// Adds a typed note anchored to the current moment of the recording.
+    func addContextNote(_ text: String, kind: ContextItem.Kind = .note) {
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty, phase == .recording else { return }
+        contextItems.append(
+            ContextItem(
+                meetingID: meetingID,
+                kind: kind,
+                content: content,
+                timestamp: Date().timeIntervalSince(startedAt)))
+    }
+
+    func removeContextItem(_ id: UUID) {
+        contextItems.removeAll { $0.id == id }
     }
 }

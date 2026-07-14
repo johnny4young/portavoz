@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 14, 2026
 
+- **🎙️ Mute your mic to Portavoz** — A one-tap mute on the recording bar silences *your* channel to Portavoz without touching the call — the meeting keeps hearing you through its own mic, while Portavoz records silence on your side. Handy when a bad mic is feeding garbage into your transcript, or for anything you'd rather not have captured on your channel.
 - **✦ Chapters that read like chapters** — A chapter that happened to open on a stray fragment ("E", "TO", a garble) is now labeled by the first real, substantial line instead of the junk — so the chapter rail is scannable even when a stretch started messy.
 - **💬 A sharper Companion** — It no longer spends a model call on a garbled caption, and the same question won't show up twice — cleaner cards, less wasted work.
 - **🎛️ Choose your capture sources** — New in Settings ▸ Audio: pick which **microphone** to record from (any input device, not just the system default), and choose what Portavoz captures for the other side — **Automatic**, **the meeting app** (record a Zoom/Meet/Teams/browser call directly, no AirPods needed), or **all system audio**. You're no longer tied to using AirPods just to capture a browser call.

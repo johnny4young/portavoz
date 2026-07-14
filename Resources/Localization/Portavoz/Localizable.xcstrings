@@ -2391,6 +2391,16 @@
         }
       }
     },
+    "Mute your mic for Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Silenciar tu mic para Portavoz"
+          }
+        }
+      }
+    },
     "My voice": {
       "localizations": {
         "es": {
@@ -4517,6 +4527,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus reuniones, 100% en tu Mac."
+          }
+        }
+      }
+    },
+    "Your mic is muted for Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu mic está silenciado para Portavoz"
           }
         }
       }

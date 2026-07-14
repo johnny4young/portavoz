@@ -38,6 +38,26 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// change. Touched from the render thread and the restart queue.
     private let deliveredLock = NSLock()
     private var samplesDelivered = 0
+    /// When muted, the tap yields silence instead of the captured samples —
+    /// so Portavoz stops recording/transcribing YOUR voice while the meeting
+    /// app keeps its own mic (this mutes the app, not the system input). The
+    /// file stays timeline-aligned because silence is still written.
+    private let muteLock = NSLock()
+    private var muted = false
+
+    /// Mute or unmute the mic for Portavoz only. Thread-safe; takes effect on
+    /// the next buffer.
+    public func setMuted(_ value: Bool) {
+        muteLock.lock()
+        muted = value
+        muteLock.unlock()
+    }
+
+    private var isMuted: Bool {
+        muteLock.lock()
+        defer { muteLock.unlock() }
+        return muted
+    }
 
     /// - Parameters:
     ///   - deviceIdentifier: UID or name of the input device to use (macOS).
@@ -152,6 +172,11 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             guard let self else { return }
             var samples = Downmix.mono(from: buffer)
             guard !samples.isEmpty else { return }
+            // Muted for Portavoz: write silence, so YOUR voice isn't recorded
+            // or transcribed while the file/timeline stays aligned.
+            if self.isMuted {
+                samples = [Float](repeating: 0, count: samples.count)
+            }
             if native != target {
                 samples = Resample.linear(samples, from: native, to: target)
             }
