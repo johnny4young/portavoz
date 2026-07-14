@@ -163,7 +163,11 @@ final class RecordingController {
         // Warm the mic engine now so the echo canceller converges while the
         // models load — otherwise the first seconds of captions leak echo.
         let aec = UserDefaults.standard.object(forKey: "aecEnabled") as? Bool ?? true
-        let microphone = MicrophoneSource(voiceProcessing: aec)
+        // The microphone to record from (Settings ▸ Audio). "default"/nil
+        // follows the system default input; otherwise pin the chosen device.
+        let inputUID = UserDefaults.standard.string(forKey: "preferredInputUID")
+        let micDevice = (inputUID == nil || inputUID == "default") ? nil : inputUID
+        let microphone = MicrophoneSource(deviceIdentifier: micDevice, voiceProcessing: aec)
         Task { await microphone.warmUp() }
 
         do {
@@ -589,24 +593,36 @@ final class RecordingController {
 
 @available(macOS 14.4, *)
 extension RecordingController {
-    /// Builds the system-audio tap for the current output. A Bluetooth output
-    /// (AirPods) flips to the narrowband HFP profile the moment the mic opens,
-    /// and the global tap goes silent. Tapping the meeting app's PROCESS reads
-    /// its audio upstream of device routing, so the call is still captured
-    /// while your voice keeps coming from the AirPods mic. The app-level PID
-    /// misses a browser's audio-rendering helper, so every process currently
-    /// producing output (helper included, minus Portavoz) is tapped too.
-    /// Falls back to the global tap off Bluetooth or when nothing is found.
+    /// Builds the system-audio tap for the chosen capture mode (Settings ▸
+    /// Audio). Tapping the meeting app's PROCESS reads its audio upstream of
+    /// device routing, so the call is captured even when a Bluetooth output
+    /// (AirPods) is in the narrowband HFP profile that silences the global
+    /// tap. The app-level PID misses a browser's audio-rendering helper, so
+    /// every process currently producing output (helper included, minus
+    /// Portavoz) is tapped too. Falls back to the global tap when the mode is
+    /// "system", or when app capture finds nothing.
+    ///
+    /// - `auto` (default): global tap, or the app tap when the output is
+    ///   Bluetooth — the historical smart behavior.
+    /// - `app`: always tap the meeting app(s), regardless of output — this is
+    ///   how you record a browser/Zoom call without AirPods.
+    /// - `system`: always the global tap.
     func makeSystemTapSource() async -> ProcessTapSource {
-        let bluetooth = AudioDeviceCatalog.defaultOutputIsBluetooth()
-        let meetingApps = bluetooth ? MeetingAppDetector.running() : []
+        let mode = UserDefaults.standard.string(forKey: "captureMode") ?? "auto"
+        let useAppTap: Bool
+        switch mode {
+        case "app": useAppTap = true
+        case "system": useAppTap = false
+        default: useAppTap = AudioDeviceCatalog.defaultOutputIsBluetooth()
+        }
+        let meetingApps = useAppTap ? MeetingAppDetector.running() : []
         tappedMeetingApps = meetingApps.map(\.name)
         // Enumerating Core Audio's process list runs a property query PER
         // process — off the main actor so the UI never hitches as a recording
         // starts (field finding: it froze the window for a beat).
         let selfPID = ProcessInfo.processInfo.processIdentifier
         let helperPIDs =
-            bluetooth
+            useAppTap
             ? await Task.detached {
                 AudioProcessCatalog.outputProducingPIDs(excluding: selfPID)
             }.value

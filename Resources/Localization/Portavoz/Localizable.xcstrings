@@ -321,6 +321,16 @@
         }
       }
     },
+    "All system audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo el audio del sistema"
+          }
+        }
+      }
+    },
     "Allow": {
       "localizations": {
         "es": {
@@ -521,6 +531,16 @@
         }
       }
     },
+    "Automatic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático"
+          }
+        }
+      }
+    },
     "Automatically skip silence during playback": {
       "localizations": {
         "es": {
@@ -637,6 +657,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cancelar el dictado"
+          }
+        }
+      }
+    },
+    "Capture the other side": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar el otro lado"
           }
         }
       }
@@ -3841,6 +3871,16 @@
         }
       }
     },
+    "System default": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Predeterminado del sistema"
+          }
+        }
+      }
+    },
     "System language · English/Spanish · menu bar": {
       "localizations": {
         "es": {
@@ -3907,6 +3947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El modelo local no pudo generar el resumen."
+          }
+        }
+      }
+    },
+    "The meeting app": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La app de la reunión"
           }
         }
       }
@@ -4337,6 +4387,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bienvenido a Portavoz"
+          }
+        }
+      }
+    },
+    "What Portavoz records besides your mic. Automatic captures your system audio, switching to the meeting app's own audio on AirPods. Pick “The meeting app” to always record a call (Zoom, Meet, Teams, a browser) even without AirPods. “All system audio” records everything playing on your Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué graba Portavoz además de tu mic. Automático captura el audio de tu sistema y cambia al audio propio de la app de reunión con AirPods. Elige “La app de la reunión” para grabar siempre una llamada (Zoom, Meet, Teams, un navegador) incluso sin AirPods. “Todo el audio del sistema” graba todo lo que suena en tu Mac."
           }
         }
       }

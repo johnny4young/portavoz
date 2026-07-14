@@ -55,6 +55,26 @@ final class SettingsUITests: XCTestCase {
     }
 
     @MainActor
+    func testAudioPaneOffersCaptureSourceControls() {
+        // Capture control (field feedback): pick your mic and what to record
+        // for the other side, independent of AirPods.
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let audio = app.control(withIdentifier: "settings-category-audio")
+        XCTAssertTrue(audio.waitForExistence(timeout: 10))
+        audio.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-mic-device").waitForExistence(timeout: 5),
+            "the Audio pane must offer a microphone picker")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-capture-mode").exists,
+            "the Audio pane must offer a capture-source picker")
+    }
+
+    @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
         // switch lives in the "My voice & Companion" pane.
