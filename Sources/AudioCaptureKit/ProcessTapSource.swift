@@ -75,11 +75,15 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
     private func buildGraph() throws { // swiftlint:disable:this function_body_length
         guard let continuation else { return }
 
+        // Skip PIDs that don't resolve to an audio process object (a process
+        // may have exited, or never produced audio); tap the rest as a
+        // mixdown. If none resolve, fall back to the global tap rather than
+        // failing the recording.
+        let objects = processIDs.compactMap { try? Self.processObject(for: $0) }
         let description: CATapDescription
-        if processIDs.isEmpty {
+        if objects.isEmpty {
             description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
         } else {
-            let objects = try processIDs.map(Self.processObject(for:))
             description = CATapDescription(stereoMixdownOfProcesses: objects)
         }
         description.isPrivate = true

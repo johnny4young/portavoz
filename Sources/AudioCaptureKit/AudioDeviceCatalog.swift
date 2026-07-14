@@ -50,6 +50,42 @@ public enum AudioDeviceCatalog {
         }
     }
 
+    /// The system default output device, or nil if none.
+    public static func defaultOutputDeviceID() -> AudioObjectID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID)
+        guard status == noErr, deviceID != AudioObjectID(kAudioObjectUnknown) else { return nil }
+        return deviceID
+    }
+
+    /// Whether a device connects over Bluetooth (AirPods and the like), where
+    /// opening its mic forces the narrowband HFP profile and silences the
+    /// global system-audio tap.
+    public static func isBluetooth(_ deviceID: AudioObjectID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var transport: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &transport) == noErr
+        else { return false }
+        return transport == kAudioDeviceTransportTypeBluetooth
+    }
+
+    /// Whether the current default OUTPUT is a Bluetooth device.
+    public static func defaultOutputIsBluetooth() -> Bool {
+        defaultOutputDeviceID().map(isBluetooth) ?? false
+    }
+
     private static func inputChannelCount(_ deviceID: AudioObjectID) -> Int {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyStreamConfiguration,

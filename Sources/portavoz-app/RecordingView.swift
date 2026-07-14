@@ -24,6 +24,8 @@ struct RecordingView: View {
     /// One-tap dismiss for the "no incoming audio" nudge (in-person meetings
     /// legitimately have a silent system channel).
     @State private var systemWarningDismissed = false
+    /// One-tap dismiss for the "capturing app directly" note.
+    @State private var appTapNoteDismissed = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -45,6 +47,9 @@ struct RecordingView: View {
                 }
                 if controller.systemAudioMissing && !systemWarningDismissed {
                     systemAudioBanner
+                }
+                if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
+                    appTapBanner
                 }
                 if controller.translationNeedsDownload {
                     translationDownloadBanner
@@ -497,6 +502,26 @@ extension RecordingView {
                 .font(.caption)
                 .foregroundStyle(.orange)
             Button("Dismiss") { systemWarningDismissed = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
+    }
+
+    /// Shown when a Bluetooth output made Portavoz tap the meeting app's
+    /// process directly so the call is still captured on AirPods (HFP would
+    /// otherwise silence the global tap). Informational; names the app(s).
+    var appTapBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                L10n.format(
+                    "Capturing %@ directly so the call is recorded on AirPods.",
+                    controller.tappedMeetingApps.joined(separator: ", ")),
+                systemImage: "airpods")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("Got it") { appTapNoteDismissed = true }
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
