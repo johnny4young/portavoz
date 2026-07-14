@@ -326,11 +326,42 @@ a { color: inherit; }
 
 /* ── Sections ───────────────────────────────────────────────────────── */
 
+section#screens,
 section#features,
 section#numbers,
 section#privacy {
   border-top: 1px solid var(--line);
   padding: 84px 24px;
+}
+
+.shot {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.shot img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: 0 34px 80px -34px rgba(0, 0, 0, 0.75);
+}
+.shot figcaption {
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 14px;
+  margin-top: 13px;
+}
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 26px;
+  max-width: 1080px;
+  margin: 30px auto 0;
+}
+.shots .shot {
+  max-width: none;
+  margin: 0;
 }
 
 section h2 {
