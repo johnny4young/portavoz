@@ -1003,6 +1003,11 @@ final class CompanionAnswerTests: XCTestCase {
             "Yes, the endpoint is the lab vision location API that they are no longer using.")
     }
 
+    func testKeepsPassageWordsThatArePartOfTheAnswer() {
+        let answer = "Passage 3 of the migration plan owns the rollback procedure."
+        XCTAssertEqual(CompanionAnswer.usable(answer), answer)
+    }
+
     func testDropsEnglishHedges() {
         XCTAssertNil(CompanionAnswer.usable(
             "No, the VBD84 is not the one. The VBD84 is not mentioned in the context."))

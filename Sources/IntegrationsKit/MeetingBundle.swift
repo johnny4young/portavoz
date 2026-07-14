@@ -2,8 +2,8 @@ import Foundation
 import PortavozCore
 
 /// The `.portavoz` interchange file (M15 L0): one meeting — transcript,
-/// cast, latest summary, co-authoring notes — as a single versioned JSON
-/// document another Mac can import. Audio is OPTIONAL (an additive field,
+/// cast, latest summary, co-authoring notes, and Companion cards — as one
+/// versioned JSON document another Mac can import. Audio is OPTIONAL (an additive field,
 /// so no version bump: readers without it import the text and ignore the
 /// audio) — a text-only file stays mail-sized, a with-audio file carries
 /// the recording itself. The format is additive: readers accept any file
@@ -22,6 +22,9 @@ public struct MeetingBundle: Codable, Sendable {
     public var segments: [TranscriptSegment]
     public var summary: SummaryDraft?
     public var contextItems: [ContextItem]
+    /// Saved Companion answers/pings. Optional so bundles written before the
+    /// field existed keep decoding as format v1; nil and empty are equivalent.
+    public var companionCards: [CompanionCard]?
     /// Optional recording channels ("system"/"microphone"); `Data` rides
     /// as base64 via Codable's default strategy. Additive: absent in
     /// text-only exports, ignored by readers that predate it.
@@ -46,19 +49,21 @@ public struct MeetingBundle: Codable, Sendable {
         segments: [TranscriptSegment],
         summary: SummaryDraft? = nil,
         contextItems: [ContextItem] = [],
+        companionCards: [CompanionCard] = [],
         audioFiles: [AudioAttachment]? = nil,
         exportedAt: Date = Date()
     ) {
         self.formatVersion = Self.currentFormatVersion
         self.exportedAt = exportedAt
         var shared = meeting
-        // Paths are machine-local (D4) and audio does not travel in v1.
+        // Paths are machine-local (D4); optional audio travels as attachments.
         shared.audioDirectory = nil
         self.meeting = shared
         self.speakers = speakers
         self.segments = segments
         self.summary = summary
         self.contextItems = contextItems
+        self.companionCards = companionCards.isEmpty ? nil : companionCards
         self.audioFiles = audioFiles
     }
 
@@ -91,9 +96,9 @@ public struct MeetingBundle: Codable, Sendable {
     }
 
     /// A copy with FRESH identifiers throughout (meeting, speakers,
-    /// segments, action items, notes) with every relation preserved —
-    /// importing can never collide with existing rows, and importing the
-    /// same file twice yields two independent meetings.
+    /// segments, action items, notes, Companion cards) with every relation
+    /// preserved — importing can never collide with existing rows, and
+    /// importing the same file twice yields two independent meetings.
     public func remappedForImport() -> MeetingBundle {
         var copy = self
         let newMeetingID = MeetingID()
@@ -145,6 +150,12 @@ public struct MeetingBundle: Codable, Sendable {
                 kind: item.kind,
                 content: item.content,
                 timestamp: item.timestamp)
+        }
+        copy.companionCards = companionCards?.map { card in
+            CompanionCard(
+                id: UUID(), question: card.question, answer: card.answer,
+                kind: card.kind, source: card.source, directed: card.directed,
+                askedAt: card.askedAt)
         }
         return copy
     }

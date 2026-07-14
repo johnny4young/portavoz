@@ -176,19 +176,33 @@ final class RecordingController {
         // The microphone to record from (Settings ▸ Audio). "default"/nil
         // follows the system default input; otherwise pin the chosen device.
         let inputUID = UserDefaults.standard.string(forKey: "preferredInputUID")
-        let micDevice = (inputUID == nil || inputUID == "default") ? nil : inputUID
+        let selectedDevice = (inputUID == nil || inputUID == "default") ? nil : inputUID
+        // A remembered USB/Bluetooth mic may be temporarily disconnected.
+        // Fall back to the system input for this recording rather than failing
+        // capture; keep the preference so reconnecting restores it next time.
+        let micDevice = selectedDevice.flatMap { identifier in
+            (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil ? identifier : nil
+        }
         let microphone = MicrophoneSource(deviceIdentifier: micDevice, voiceProcessing: aec)
         micSource = microphone
         micMuted = false
-        Task { await microphone.warmUp() }
+        let warmupTask = Task { await microphone.warmUp() }
 
         do {
             try await services.loadEnginesIfNeeded()
         } catch {
+            warmupTask.cancel()
+            await microphone.stop()
+            micSource = nil
+            services.scheduleRecordingEnginesRelease()
             phase = .failed(L10n.format("Could not prepare the models: %@", error.localizedDescription))
             return
         }
         guard let engine = services.transcriber else {
+            warmupTask.cancel()
+            await microphone.stop()
+            micSource = nil
+            services.scheduleRecordingEnginesRelease()
             phase = .failed(L10n.text("The transcription engine is not available."))
             return
         }
@@ -270,6 +284,19 @@ final class RecordingController {
                 Task { @MainActor in self?.updateMicLevel(peak) }
             }
         } catch {
+            // RecordingSession releases any partially-started capture sources;
+            // close the app-side feeds too so Parakeet/diarization tasks don't
+            // stay suspended forever after a startup failure.
+            for continuation in feeds.values { continuation.finish() }
+            for consumer in consumers { await consumer.value }
+            feeds = [:]
+            consumers = []
+            diarizerFeed.finish()
+            liveDiarizerFeed = nil
+            liveDiarizerTask?.cancel()
+            liveDiarizerTask = nil
+            micSource = nil
+            services.scheduleRecordingEnginesRelease()
             phase = .failed(L10n.format("Could not start capture: %@", error.localizedDescription))
             return
         }
@@ -414,72 +441,18 @@ final class RecordingController {
         return name.isEmpty ? nil : name
     }
 
-    @available(macOS 26.0, *)
-    private func refreshLiveSummary() async {
-        // The newest row is still growing (coalescer); note only CLOSED rows,
-        // and only when there are new ones — silence costs nothing.
-        let closed = max(captions.count - 1, 0)
-        guard closed >= 3, closed > summarizedCount else { return }
-        let window = Array(captions[summarizedCount..<closed])
-
-        // Attribution runs at stop; live labels are structural: channel.
-        let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
-        let them = Speaker(meetingID: meetingID, label: "Them")
-        let labeled = window.map { segment -> TranscriptSegment in
-            var copy = segment
-            copy.speakerID = segment.channel == .microphone ? me.id : them.id
-            return copy
-        }
-        let language = pinnedLanguage ?? Locale.current.language.languageCode?.identifier ?? "en"
-        let provider = FoundationModelSummaryProvider()
-        do {
-            // Map: one dense note for the new window; the rest is already noted.
-            let note = try await provider.condenseWindow(
-                segments: labeled, speakers: [me, them], targetLanguage: language,
-                glossary: vocabulary, priority: .background)
-            liveNotes.append(note)
-            summarizedCount = closed  // only once the window is safely noted
-
-            // Keep the pile bounded so long meetings don't slow the ticks.
-            var joined = liveNotes.joined(separator: "\n")
-            if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
-                joined = try await provider.condenseNotes(
-                    joined, targetLanguage: language, glossary: vocabulary,
-                    priority: .background)
-                liveNotes = [joined]
-            }
-
-            // Reduce: re-render the structured summary from all notes.
-            let request = SummaryRequest(
-                meetingID: meetingID,
-                segments: [],
-                speakers: [me, them],
-                recipe: .general,
-                targetLanguage: language,
-                glossary: vocabulary,
-                contextItems: contextItems
-            )
-            let draft = try await provider.summarizeNotes(
-                joined, request: request, priority: .background)
-            if phase == .recording,
-                LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown) {
-                liveSummary = draft.markdown
-            }
-        } catch {
-            // A failed tick keeps the previous summary; the notes retry with
-            // more material on the next one.
-        }
-    }
-
     // Orderly session close (flush, persistence, teardown);
     // the sequence is legitimately long. Splitting remains technical debt.
     // swiftlint:disable:next function_body_length
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        defer { services.scheduleRecordingEnginesRelease() }
         rollingTask?.cancel()
         phase = .processing(L10n.text("Closing the recording…"))
 
         let capture = await session.stop()
+        micSource = nil
+        micMuted = false
         for continuation in feeds.values { continuation.finish() }
         for consumer in consumers { await consumer.value }
         // Live hints end here — the batch pass below re-attributes everything.
@@ -575,14 +548,72 @@ final class RecordingController {
         } catch {
             phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
         }
-        // The session is over either way: give the engine RAM back after
-        // the idle grace period (a back-to-back recording cancels it).
-        services.scheduleRecordingEnginesRelease()
     }
 
     private var isFailed: Bool {
         if case .failed = phase { return true }
         return false
+    }
+}
+
+// The rolling-summary pipeline is a cohesive concern and lives outside the
+// already-large capture/persistence controller body.
+private extension RecordingController {
+    @available(macOS 26.0, *)
+    func refreshLiveSummary() async {
+        // The newest row is still growing (coalescer); note only CLOSED rows,
+        // and only when there are new ones — silence costs nothing.
+        let closed = max(captions.count - 1, 0)
+        guard closed >= 3, closed > summarizedCount else { return }
+        let window = Array(captions[summarizedCount..<closed])
+
+        // Attribution runs at stop; live labels are structural: channel.
+        let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
+        let them = Speaker(meetingID: meetingID, label: "Them")
+        let labeled = window.map { segment -> TranscriptSegment in
+            var copy = segment
+            copy.speakerID = segment.channel == .microphone ? me.id : them.id
+            return copy
+        }
+        let language = pinnedLanguage ?? Locale.current.language.languageCode?.identifier ?? "en"
+        let provider = FoundationModelSummaryProvider()
+        do {
+            // Map: one dense note for the new window; the rest is already noted.
+            let note = try await provider.condenseWindow(
+                segments: labeled, speakers: [me, them], targetLanguage: language,
+                glossary: vocabulary, priority: .background)
+            liveNotes.append(note)
+            summarizedCount = closed  // only once the window is safely noted
+
+            // Keep the pile bounded so long meetings don't slow the ticks.
+            var joined = liveNotes.joined(separator: "\n")
+            if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
+                joined = try await provider.condenseNotes(
+                    joined, targetLanguage: language, glossary: vocabulary,
+                    priority: .background)
+                liveNotes = [joined]
+            }
+
+            // Reduce: re-render the structured summary from all notes.
+            let request = SummaryRequest(
+                meetingID: meetingID,
+                segments: [],
+                speakers: [me, them],
+                recipe: .general,
+                targetLanguage: language,
+                glossary: vocabulary,
+                contextItems: contextItems
+            )
+            let draft = try await provider.summarizeNotes(
+                joined, request: request, priority: .background)
+            if phase == .recording,
+                LiveSummaryPolicy.shouldReplace(current: liveSummary, candidate: draft.markdown) {
+                liveSummary = draft.markdown
+            }
+        } catch {
+            // A failed tick keeps the previous summary; the notes retry with
+            // more material on the next one.
+        }
     }
 }
 
@@ -593,9 +624,9 @@ extension RecordingController {
     /// device routing, so the call is captured even when a Bluetooth output
     /// (AirPods) is in the narrowband HFP profile that silences the global
     /// tap. The app-level PID misses a browser's audio-rendering helper, so
-    /// every process currently producing output (helper included, minus
-    /// Portavoz) is tapped too. Falls back to the global tap when the mode is
-    /// "system", or when app capture finds nothing.
+    /// currently-producing helpers whose bundle IDs belong to a recognized
+    /// meeting app are included too. Unrelated apps stay out. Falls back to
+    /// the global tap when the mode is "system", or app capture finds nothing.
     ///
     /// - `auto` (default): global tap, or the app tap when the output is
     ///   Bluetooth — the historical smart behavior.
@@ -616,10 +647,12 @@ extension RecordingController {
         // process — off the main actor so the UI never hitches as a recording
         // starts (field finding: it froze the window for a beat).
         let selfPID = ProcessInfo.processInfo.processIdentifier
+        let allowedBundleIDs = Set(meetingApps.map(\.bundleID))
         let helperPIDs =
             useAppTap
             ? await Task.detached {
-                AudioProcessCatalog.outputProducingPIDs(excluding: selfPID)
+                AudioProcessCatalog.outputProducingPIDs(
+                    excluding: selfPID, matchingBundleIDs: allowedBundleIDs)
             }.value
             : []
         return ProcessTapSource(processIDs: Array(Set(meetingApps.map(\.pid) + helperPIDs)))

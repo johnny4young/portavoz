@@ -6,7 +6,7 @@ Estado: implementado y en producción (la DB del usuario sobrevivió un incident
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, en `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI acepta `--db`).
 
-### Schema (migraciones `v1`–`v4` en `Sources/StorageKit/Schema.swift`)
+### Schema (migraciones `v1`–`v5` en `Sources/StorageKit/Schema.swift`)
 
 Tablas singulares camelCase, 1:1 con records Codable:
 
@@ -18,6 +18,7 @@ Tablas singulares camelCase, 1:1 con records Codable:
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — snapshots inmutables), **fingerprint** (v4, D25 — identidad del material sin idioma; NULL en snapshots viejos = jamás matchean) |
 | `actionItem` | id, summaryID (FK CASCADE), meetingID, text, ownerSpeakerID?, isDone (la excepción MUTABLE), tombstone |
 | `contextItem` (v3) | id, meetingID (FK CASCADE), kind (note/link/codeSnippet/file), content, timestamp (segundos desde el inicio), tombstone — las notas del usuario (D28) |
+| `companionCard` (v5) | id, meetingID (FK CASCADE), question, answer, kind, source, directed, askedAt, createdAt/updatedAt/deletedAt — snapshot revisable del Companion (D26) |
 | `segmentSearch` | FTS5 external-content sobre segment.text, sincronizada por triggers ai/ad/au |
 
 ### Contrato D4 (ejecutado, no aspiracional)
@@ -29,7 +30,11 @@ Tablas singulares camelCase, 1:1 con records Codable:
 
 ## MeetingStore — API
 
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `meetings(includeDeleted:)`, `detail(id)` (meeting+speakers+segments vivos), `delete(id)` (tombstone), `saveSummary(draft)` (versión autoincremental por meeting+recipe; jamás toca snapshots previos; persiste el fingerprint D25), `summary(id)` (último snapshot + versión), `latestSummary(id:fingerprint:language:)` (D25 — con `language` es el cache-hit exacto, sin él devuelve el pivote de traducción en cualquier idioma), `search(text, requireAll:)` (FTS5 con snippets; `ftsQuery` entrecomilla tokens — input hostil sanitizado), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstonea el cast vivo e inserta el nuevo, atómico — el refine D7), `enforceAudioRetention(audioRoot:)` (borra SOLO audio expirado según la policy del meeting, jamás transcript; guard anti path-escape).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)` y `replaceCompanionCards(_:for:)` (reemplazo atómico con tombstones), `meetings(includeDeleted:)`, `detail(id)` (meeting+speakers+segments vivos), `delete(id)` (tombstone), `saveSummary(draft)` (versión autoincremental por meeting+recipe; jamás toca snapshots previos; persiste el fingerprint D25), `summary(id)` (último snapshot + versión), `latestSummary(id:fingerprint:language:)` (D25 — con `language` es el cache-hit exacto, sin él devuelve el pivote de traducción en cualquier idioma), `search(text, requireAll:)` (FTS5 con snippets; `ftsQuery` entrecomilla tokens — input hostil sanitizado), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstonea el cast vivo e inserta el nuevo, atómico — el refine D7), `enforceAudioRetention(audioRoot:)` (borra SOLO audio expirado según la policy del meeting, jamás transcript; guard anti path-escape).
+
+## Bundle `.portavoz` (M15 L0)
+
+`MeetingBundle` conserva `formatVersion = 1` y evoluciona solo con campos opcionales/aditivos. Exporta transcript, cast, último resumen, notas, Companion cards y, si el usuario lo pide, audio. Importar remapea IDs de reunión, speakers, segmentos, action items, notas y tarjetas para que dos imports sean independientes. Un bundle v1 anterior sin `companionCards` sigue decodificando; los paths locales nunca viajan.
 
 ## Carpeta de grabaciones — `RecordingsLocation`
 

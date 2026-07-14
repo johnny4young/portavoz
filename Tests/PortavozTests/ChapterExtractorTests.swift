@@ -56,4 +56,16 @@ final class ChapterExtractorTests: XCTestCase {
     func testEmptyInput() {
         XCTAssertTrue(ChapterExtractor.chapters(from: []).isEmpty)
     }
+
+    func testFallbackLabelNeverLeaksFromTheNextChapter() {
+        let chapters = ChapterExtractor.chapters(from: [
+            segment(0, 1, "E"),
+            segment(100, 101, "TO"),
+            segment(140, 145, "Budget planning starts with the Q3 forecast."),
+        ])
+
+        XCTAssertEqual(chapters.count, 2)
+        XCTAssertEqual(chapters[0].title, "E")
+        XCTAssertEqual(chapters[1].title, "Budget planning starts with the Q3 forecast")
+    }
 }

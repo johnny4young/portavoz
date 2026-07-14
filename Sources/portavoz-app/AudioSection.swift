@@ -16,6 +16,10 @@ struct AudioSection: View {
                 ForEach(inputs) { device in
                     Text(device.name).tag(device.uid)
                 }
+                if preferredInputUID != "default",
+                    !inputs.contains(where: { $0.uid == preferredInputUID }) {
+                    Text("Unavailable — using system default").tag(preferredInputUID)
+                }
             }
             .accessibilityIdentifier("settings-mic-device")
 
@@ -28,7 +32,7 @@ struct AudioSection: View {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "What Portavoz records besides your mic. Automatic captures your system audio, switching to the meeting app's own audio on AirPods. Pick “The meeting app” to always record a call (Zoom, Meet, Teams, a browser) even without AirPods. “All system audio” records everything playing on your Mac."
+                "What Portavoz records besides your mic. Automatic captures your system audio, switching to recognized meeting apps on AirPods. Pick “The meeting app” to always record recognized call apps (Zoom, Meet, Teams, supported browsers) even without AirPods; their audio helpers are included, unrelated apps are not. If none is found, Portavoz falls back to all system audio."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

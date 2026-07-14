@@ -29,9 +29,12 @@ final class MeetingBundleTests: XCTestCase {
             actionItems: [ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)])
         let note = ContextItem(
             meetingID: meeting.id, kind: .note, content: "congelar scope", timestamp: 12)
+        let card = CompanionCard(
+            question: "¿Cuándo sale la beta?", answer: "El lunes.", kind: .context,
+            source: "on-device", directed: true, askedAt: 22)
         return MeetingBundle(
             meeting: meeting, speakers: [me, marta], segments: segments,
-            summary: summary, contextItems: [note])
+            summary: summary, contextItems: [note], companionCards: [card])
     }
 
     func testRoundTripPreservesContent() throws {
@@ -44,6 +47,7 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(decoded.segments.count, 2)
         XCTAssertEqual(decoded.summary?.actionItems.first?.text, "Preparar demo")
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
+        XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
     }
 
     func testAudioPathNeverTravels() throws {
@@ -79,6 +83,9 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(remapped.summary?.actionItems.first?.ownerSpeakerID, newMarta.id)
         // "Me" flag survives.
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
+        XCTAssertNotEqual(
+            remapped.companionCards?.first?.id,
+            original.companionCards?.first?.id)
     }
 
     func testAudioAttachmentsRideAlongAndSurviveRemap() throws {
@@ -97,10 +104,20 @@ final class MeetingBundleTests: XCTestCase {
 
     func testTextOnlyFileDecodesWithoutAudioField() throws {
         // A pre-audio (0.3.0) file has no audioFiles key at all.
-        var json = String(data: try sample().encoded(), encoding: .utf8)!
+        let json = String(data: try sample().encoded(), encoding: .utf8)!
         XCTAssertFalse(json.contains("audioFiles"), "text-only export omits the field")
         let decoded = try MeetingBundle.decode(Data(json.utf8))
         XCTAssertNil(decoded.audioFiles)
+    }
+
+    func testOlderV1FileDecodesWithoutCompanionCardsField() throws {
+        let encoded = try sample().encoded()
+        var json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        json.removeValue(forKey: "companionCards")
+        let decoded = try MeetingBundle.decode(
+            JSONSerialization.data(withJSONObject: json, options: [.sortedKeys]))
+        XCTAssertNil(decoded.companionCards)
     }
 
     func testImportingTwiceYieldsIndependentMeetings() {

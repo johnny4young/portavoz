@@ -90,6 +90,11 @@ struct MeetingDetailView: View {
     @State private var rememberOffer: Speaker?
     @State private var rememberingVoice = false
 
+    private struct ReloadID: Hashable {
+        let meetingID: MeetingID
+        let libraryVersion: Int
+    }
+
     /// The post-meeting mirror (6a-2): opt-in, shown once right after a
     /// qualifying recording. `mirrorAverageShare` is the user's usual talk
     /// share across recent meetings, loaded lazily so the card can compare.
@@ -105,7 +110,9 @@ struct MeetingDetailView: View {
                 ProgressView()
             }
         }
-        .task(id: services.libraryVersion) { await reload() }
+        .task(id: ReloadID(meetingID: meetingID, libraryVersion: services.libraryVersion)) {
+            await reload()
+        }
         .onDisappear { player?.invalidate() }
     }
 
@@ -333,12 +340,12 @@ extension MeetingDetailView {
         }
     }
 
-    @ViewBuilder
     /// The .portavoz interchange file (M15 L0): transcript + cast +
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
     private func exportBundle(_ detail: MeetingDetail, includeAudio: Bool) async {
         let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
+        let cards = (try? await services.store.companionCards(for: meetingID)) ?? []
         var audio: [MeetingBundle.AudioAttachment]?
         if includeAudio, let relative = detail.meeting.audioDirectory {
             let base = RecordingsLocation.shared.resolve(relative)
@@ -357,6 +364,7 @@ extension MeetingDetailView {
             segments: detail.segments,
             summary: summary?.draft,
             contextItems: notes,
+            companionCards: cards,
             audioFiles: audio)
         guard let data = try? bundle.encoded() else {
             gistError = L10n.text("Could not encode the meeting file.")
@@ -1129,8 +1137,8 @@ extension MeetingDetailView {
 
     /// Re-runs the Companion over the refined transcript so its answer cards
     /// improve with it (D26/D7). Gated on the Companion being enabled and
-    /// available; a re-derivation that comes back empty (a model hiccup, or no
-    /// questions survive) is discarded so refine never WIPES good cards.
+    /// available. An interrupted/failed pass preserves the old cards; a fully
+    /// successful pass replaces them, including with an empty clean result.
     private func refreshCompanionCards(from segments: [TranscriptSegment]) async {
         guard #available(macOS 26.0, *) else { return }
         guard
@@ -1138,9 +1146,17 @@ extension MeetingDetailView {
             FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return }
         applying = L10n.text("Re-checking the Companion's answers…")
-        let refreshed = await CompanionRefresh.regenerate(from: segments, meetingID: meetingID)
-        guard !refreshed.isEmpty else { return }
-        try? await services.store.replaceCompanionCards(refreshed, for: meetingID)
+        let refresh = await CompanionRefresh.regenerate(from: segments, meetingID: meetingID)
+        // An incomplete pass means at least one model call failed/cancelled;
+        // preserve the old snapshot. A COMPLETE empty pass is meaningful: the
+        // refined transcript contains no card-worthy questions, so stale live
+        // cards should be removed.
+        guard refresh.completed else { return }
+        do {
+            try await services.store.replaceCompanionCards(refresh.cards, for: meetingID)
+        } catch {
+            actionError = L10n.text("The transcript was refined, but Companion cards could not be refreshed.")
+        }
     }
 
     private func refineReviewSheet(_ draft: RefineDraft) -> some View {
@@ -1340,10 +1356,26 @@ extension MeetingDetailView {
     }
 
     private func reload() async {
-        detail = try? await services.store.detail(meetingID)
-        companionCards = (try? await services.store.companionCards(for: meetingID)) ?? []
-        summary = try? await services.store.summary(meetingID)
+        if detail?.meeting.id != meetingID {
+            player?.invalidate()
+            player = nil
+            waveform = []
+            channelURLs = []
+            chapterTitles = [:]
+            companionCards = []
+            summary = nil
+        }
+        let loadedDetail = try? await services.store.detail(meetingID)
+        guard !Task.isCancelled else { return }
+        detail = loadedDetail
+        let loadedCards = (try? await services.store.companionCards(for: meetingID)) ?? []
+        guard !Task.isCancelled else { return }
+        companionCards = loadedCards
+        let loadedSummary = try? await services.store.summary(meetingID)
+        guard !Task.isCancelled else { return }
+        summary = loadedSummary
         await loadPlayerIfNeeded()
+        guard !Task.isCancelled else { return }
         // A palette citation navigated here: jump to the cited moment.
         if let seek = services.pendingSeek {
             services.pendingSeek = nil
@@ -1476,27 +1508,39 @@ extension MeetingDetailView {
     /// Builds the synchronized player + waveform once (M11). Audio survives
     /// refine, so there's no reason to rebuild when the library version bumps.
     private func loadPlayerIfNeeded() async {
-        guard player == nil, let relative = detail?.meeting.audioDirectory else { return }
+        guard player == nil, let loadedDetail = detail,
+            let relative = loadedDetail.meeting.audioDirectory
+        else { return }
         let base = RecordingsLocation.shared.resolve(relative)
         let system = MeetingAudioLayout.channelFile(named: "system", in: base)
         let mic = MeetingAudioLayout.channelFile(named: "microphone", in: base)
         let files = [system, mic].compactMap { $0 }
         guard !files.isEmpty else { return }
-        channelURLs = files
-        player = await MeetingPlayer.make(channelFiles: files)
+        let loadedPlayer = await MeetingPlayer.make(channelFiles: files)
+        guard !Task.isCancelled else {
+            loadedPlayer?.invalidate()
+            return
+        }
         // Off the main actor: a long meeting reads a lot of frames.
-        waveform = await Task.detached {
+        let loadedWaveform = await Task.detached {
             Waveform.generate(micFile: mic, systemFile: system, buckets: 600)
         }.value
-        player?.setSilentRanges(
-            Waveform.silentRanges(waveform, duration: player?.duration ?? 0))
+        guard !Task.isCancelled else {
+            loadedPlayer?.invalidate()
+            return
+        }
+        channelURLs = files
+        player = loadedPlayer
+        waveform = loadedWaveform
+        loadedPlayer?.setSilentRanges(
+            Waveform.silentRanges(loadedWaveform, duration: loadedPlayer?.duration ?? 0))
         // "Solo mi voz": skip everything that isn't the user's mic turns.
-        if let player, let detail {
-            let voiceRanges = detail.segments
+        if let loadedPlayer {
+            let voiceRanges = loadedDetail.segments
                 .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
                 .map { $0.startTime...$0.endTime }
-            player.setNonVoiceRanges(
-                PlaybackRanges.complement(of: voiceRanges, within: player.duration))
+            loadedPlayer.setNonVoiceRanges(
+                PlaybackRanges.complement(of: voiceRanges, within: loadedPlayer.duration))
         }
     }
 

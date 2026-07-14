@@ -526,13 +526,14 @@ extension RecordingView {
     }
 
     /// Shown when a Bluetooth output made Portavoz tap the meeting app's
-    /// process directly so the call is still captured on AirPods (HFP would
-    /// otherwise silence the global tap). Informational; names the app(s).
+    /// process directly so the call stays isolated from unrelated app audio
+    /// (and still works on AirPods, where HFP silences the global tap).
+    /// Informational; names the app(s).
     var appTapBanner: some View {
         HStack(spacing: 8) {
             Label(
                 L10n.format(
-                    "Capturing %@ directly so the call is recorded on AirPods.",
+                    "Capturing %@ directly; unrelated app audio stays out.",
                     controller.tappedMeetingApps.joined(separator: ", ")),
                 systemImage: "airpods")
                 .font(.caption)

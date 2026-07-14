@@ -11,6 +11,13 @@ import PortavozCore
 /// an "asked you" ping, and context drawn from BOTH sides of the conversation.
 @available(macOS 26.0, *)
 enum CompanionRefresh {
+    struct Result {
+        let cards: [CompanionCard]
+        /// False when cancellation or any model call failed. Callers preserve
+        /// the previous snapshot rather than replacing it with partial data.
+        let completed: Bool
+    }
+
     /// A coalesced participant turn: contiguous system segments of one speaker,
     /// merged so the Companion sees a whole intervention (a stray fragment like
     /// "…, right?" on its own answers badly; the full turn classifies well).
@@ -26,7 +33,7 @@ enum CompanionRefresh {
     @MainActor
     static func regenerate(
         from segments: [TranscriptSegment], meetingID: MeetingID
-    ) async -> [CompanionCard] {
+    ) async -> Result {
         let ownerName = RecordingController.companionOwnerName()
         let companion = LiveCompanion(byok: BYOKSettings.companionClient())
         let ordered = segments
@@ -34,8 +41,12 @@ enum CompanionRefresh {
             .sorted { $0.startTime < $1.startTime }
 
         var cards: [CompanionCard] = []
+        var completed = true
         for turn in participantTurns(ordered) {
-            if Task.isCancelled { break }
+            if Task.isCancelled {
+                completed = false
+                break
+            }
             // Don't burn a model call on a garbled turn or a non-question.
             guard
                 !TranscriptNoiseFilter.isLikelyNoise(text: turn.text, confidence: nil)
@@ -55,16 +66,20 @@ enum CompanionRefresh {
                         timestamp: segment.startTime,
                         text: (segment.channel == .microphone ? "Me: " : "Them: ") + segment.text)
                 }
-            guard
-                let card = try? await companion.process(
+            do {
+                guard let card = try await companion.process(
                     candidate: turn.text, recentTranscript: passages,
-                    ownerName: ownerName, askedAt: turn.startTime),
+                    ownerName: ownerName, askedAt: turn.startTime)
+                else { continue }
                 // Dedup by question, exactly like the live flow.
-                !cards.contains(where: { $0.question == card.question })
-            else { continue }
-            cards.append(card)
+                if !cards.contains(where: { $0.question == card.question }) {
+                    cards.append(card)
+                }
+            } catch {
+                completed = false
+            }
         }
-        return cards
+        return Result(cards: cards, completed: completed)
     }
 
     /// Coalesces the participants' (system-channel) segments into interventions:

@@ -16,9 +16,12 @@ final class MeetingDetailUITests: XCTestCase {
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
         app.launchPortavoz()
-        // firstMatch: the title also shows as the caption of the sidebar's
-        // To-dos rows; both rows route to the same meeting.
-        let meeting = app.staticTexts["Test meeting"].firstMatch
+        // Select the real library row by structure, not the duplicated title
+        // text (it also appears under To-dos and can point at a stale scroll
+        // snapshot during rapid relaunches).
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
         XCTAssertTrue(
             meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
         meeting.click()

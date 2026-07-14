@@ -71,9 +71,9 @@ public enum CompanionAnswer {
         // "… se confirma en el pasaje 3."). No accents in the pattern — the
         // "English source" gate scans this file. swiftlint:disable line_length
         let enPassage =
-            #"(?i)[,;]?\s*(this is |as )?\b(confirmed|mentioned|stated|shown|noted)?\b\s*(in|en el|en los|en)?\s*passages?\s+\d+(\s*(,|and|y)\s*\d+)*\.?"#
+            #"(?i)[,;]?\s*(this is |as )?\b(confirmed|mentioned|stated|shown|noted)?\b\s*(in|en el|en los|en)?\s*passages?\s+\d+(\s*(,|and|y)\s*\d+)*\.?\s*$"#
         let esPassage =
-            #"(?i)[,;]?\s*(esto se |como se |lo )?(confirma|menciona|indica|ve|dice)?\s*(en el|en los|en)?\s*pasajes?\s+\d+(\s*(,|y)\s*\d+)*\)?\.?"#
+            #"(?i)[,;]?\s*(esto se |como se |lo )?(confirma|menciona|indica|ve|dice)?\s*(en el|en los|en)?\s*pasajes?\s+\d+(\s*(,|y)\s*\d+)*\)?\.?\s*$"#
         // swiftlint:enable line_length
         let text = raw
             .replacingOccurrences(of: #"\s*\[\d+\]"#, with: "", options: .regularExpression)

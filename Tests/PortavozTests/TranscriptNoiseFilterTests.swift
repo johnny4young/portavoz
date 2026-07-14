@@ -18,7 +18,13 @@ final class TranscriptNoiseFilterTests: XCTestCase {
 
     func testShortNoVowelTokensAreNoise() {
         XCTAssertTrue(noise("SR", 0.38))
-        XCTAssertTrue(noise("MK", 0.7))  // no vowel, short → noise even if confident
+        XCTAssertTrue(noise("MK", 0.38))
+    }
+
+    func testConfidentShortWordsAndAcronymsAreKept() {
+        XCTAssertFalse(noise("OK", 0.8))
+        XCTAssertFalse(noise("AI", 0.8))
+        XCTAssertFalse(noise("ML", 0.8))
     }
 
     func testLowConfidenceFragmentsAreNoise() {
@@ -26,6 +32,11 @@ final class TranscriptNoiseFilterTests: XCTestCase {
         XCTAssertTrue(noise("IT'NAKE THINKE", 0.36))
         XCTAssertTrue(noise("YOU MAY IGHT", 0.37))
         XCTAssertTrue(noise("THE PARE", 0.36))
+    }
+
+    func testLowConfidenceSentenceIsNotDeletedWholesale() {
+        XCTAssertFalse(noise(
+            "The rollout still needs approval from the security team.", 0.36))
     }
 
     func testRealSpeechIsKept() {
