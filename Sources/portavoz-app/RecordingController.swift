@@ -76,6 +76,10 @@ final class RecordingController {
     /// incoming audio isn't reaching the tap (or an in-person meeting, which
     /// the dismissable banner lets you wave off).
     var systemAudioMissing: Bool { systemChunks > 500 && systemRMS < 0.003 }
+    /// Non-empty when this recording taps meeting apps by process (Bluetooth
+    /// output) instead of the global device output — the AirPods-HFP workaround.
+    /// Names the apps being captured for the on-screen note.
+    private(set) var tappedMeetingApps: [String] = []
 
     private func updateSystemLevel(_ rms: Float) {
         systemChunks += 1
@@ -179,7 +183,7 @@ final class RecordingController {
 
         var sources: [any AudioCaptureSource] = [microphone]
         if #available(macOS 14.4, *) {
-            sources.append(ProcessTapSource())
+            sources.append(await makeSystemTapSource())
         }
 
         captions = []
@@ -574,5 +578,33 @@ final class RecordingController {
     private var isFailed: Bool {
         if case .failed = phase { return true }
         return false
+    }
+}
+
+@available(macOS 14.4, *)
+extension RecordingController {
+    /// Builds the system-audio tap for the current output. A Bluetooth output
+    /// (AirPods) flips to the narrowband HFP profile the moment the mic opens,
+    /// and the global tap goes silent. Tapping the meeting app's PROCESS reads
+    /// its audio upstream of device routing, so the call is still captured
+    /// while your voice keeps coming from the AirPods mic. The app-level PID
+    /// misses a browser's audio-rendering helper, so every process currently
+    /// producing output (helper included, minus Portavoz) is tapped too.
+    /// Falls back to the global tap off Bluetooth or when nothing is found.
+    func makeSystemTapSource() async -> ProcessTapSource {
+        let bluetooth = AudioDeviceCatalog.defaultOutputIsBluetooth()
+        let meetingApps = bluetooth ? MeetingAppDetector.running() : []
+        tappedMeetingApps = meetingApps.map(\.name)
+        // Enumerating Core Audio's process list runs a property query PER
+        // process — off the main actor so the UI never hitches as a recording
+        // starts (field finding: it froze the window for a beat).
+        let selfPID = ProcessInfo.processInfo.processIdentifier
+        let helperPIDs =
+            bluetooth
+            ? await Task.detached {
+                AudioProcessCatalog.outputProducingPIDs(excluding: selfPID)
+            }.value
+            : []
+        return ProcessTapSource(processIDs: Array(Set(meetingApps.map(\.pid) + helperPIDs)))
     }
 }
