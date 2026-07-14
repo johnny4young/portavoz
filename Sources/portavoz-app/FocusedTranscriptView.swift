@@ -35,14 +35,19 @@ struct FocusedTranscriptView<Row: View>: View {
                             .visualEffect { content, geometry in
                                 // Distance of this row's center from the
                                 // focus line, 0…1 — drives the fade, shrink
-                                // and blur of the cylinder.
+                                // and blur of the cylinder. A dead zone keeps
+                                // the focused line AND the one right above/below
+                                // it fully sharp and readable; only lines
+                                // further out fade.
                                 let midY = geometry.frame(in: .named(space)).midY
-                                let t = min(1, abs(midY - focusY) / reach)
+                                let deadzone: CGFloat = 58
+                                let far = max(1, reach - deadzone)
+                                let t = min(1, max(0, (abs(midY - focusY) - deadzone) / far))
                                 return
                                     content
                                     .opacity(1 - 0.72 * t)
                                     .scaleEffect(1 - 0.10 * t, anchor: .center)
-                                    .blur(radius: 2.2 * t)
+                                    .blur(radius: 2.0 * t)
                             }
                     }
                 }

@@ -5,6 +5,12 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 14, 2026
+
+- **🧹 No more garbage from a quiet mic** — When you're barely speaking, a far-field mic used to fill your side of the transcript with stray letters and gibberish ("R", "SR", "IT'NAKE THINKE") — which also skewed meeting health and chapters. Portavoz now filters those non-speech fragments out of your channel, live and on refine, so your transcript, talk-time and chapters reflect what you actually said.
+- **🔎 The current line stays sharp** — In the lyrics-style player and live captions, the focused line and the one right next to it now stay fully readable; only lines further away fade and blur.
+- **💬 Companion keeps every card** — Live answer cards no longer fall off after a few — all of them stay, newest on top, and the panel scrolls. Nothing you might want to glance back at disappears.
+
 ## July 13, 2026
 
 - **🎧 Capture the call even on AirPods** — Recording a call on AirPods used to lose the other participants entirely: opening the AirPods mic forces a low-quality Bluetooth mode that silences the system-audio capture. Portavoz now taps the meeting app's audio directly (Zoom, Meet, Teams, Slack, and browser calls) so the whole conversation is captured while your voice keeps coming from the AirPods mic — no need to switch to speakers or lose your mobility. Kicks in automatically when a Bluetooth output is active.

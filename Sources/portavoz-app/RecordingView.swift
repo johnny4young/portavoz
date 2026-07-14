@@ -321,7 +321,9 @@ struct RecordingView: View {
     /// on its own.
     @ViewBuilder
     private var companionCardsPanel: some View {
-        ForEach(controller.companionCards.suffix(3)) { card in
+        // Newest first, none dropped — the panel lives in a scroll view, so
+        // older cards stay reachable instead of falling off after a few.
+        ForEach(Array(controller.companionCards.reversed())) { card in
             companionCardView(card)
         }
     }

@@ -212,6 +212,12 @@ final class RecordingController {
                         // foreign script) on the digital silence a Bluetooth
                         // output can leave in the system channel.
                         if segment.channel == .system, self.systemAudioMissing { continue }
+                        // A far-field / barely-used mic emits stray letters and
+                        // low-confidence fragments when you're not speaking;
+                        // keep them out of the transcript, health and chapters.
+                        if segment.channel == .microphone,
+                            TranscriptNoiseFilter.isLikelyNoise(
+                                text: segment.text, confidence: segment.confidence) { continue }
                         self.coalescer.apply(segment, to: &self.captions)
                         self.detectClosedRow()
                     }
