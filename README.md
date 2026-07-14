@@ -11,9 +11,20 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-![A meeting in Portavoz: colored speaker pills with one-click name suggestions, a tabbed summary (decisions, open questions, to-dos), a bilingual who-said-what transcript, and a right rail with per-speaker meeting health and ✦ chapters](assets/screenshots/meeting-detail.png)
+![A meeting in Portavoz: colored speaker pills with one-click name suggestions, a tabbed summary (decisions, open questions, to-dos), a who-said-what transcript, a docked player with waveform, and a right rail with per-speaker meeting health and ✦ chapters](assets/screenshots/meeting-detail.png)
 
-<sub>Demo data — regenerate this exact library with `Portavoz.app --args -use-temp-store -seed-showcase`.</sub>
+<table>
+<tr>
+<td width="50%"><img alt="Live recording: lyrics-style captions with your voice glowing amber, and the Companion answering a factual question the room just asked — entirely on-device" src="assets/screenshots/recording-companion.png"></td>
+<td width="50%"><img alt="Insights: meetings, talk time, decisions and questions with month-over-month deltas; a two-tone bar per person for who you talk with; ✦ findings; and a 12-week rhythm heatmap" src="assets/screenshots/insights.png"></td>
+</tr>
+<tr>
+<td align="center"><sub><b>Live recording</b> — lyrics captions + the on-device Companion</sub></td>
+<td align="center"><sub><b>Insights</b> — your meeting life, computed on your Mac</sub></td>
+</tr>
+</table>
+
+<sub>Representative data, English UI. Everything shown is computed and rendered on-device.</sub>
 
 > *Portavoz* (Spanish): the one who carries the voice — a spokesperson.
 
