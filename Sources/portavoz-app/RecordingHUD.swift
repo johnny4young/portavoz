@@ -12,10 +12,14 @@ final class RecordingHUDController {
 
     var isVisible: Bool { panel != nil }
 
+    private static let width: CGFloat = 400
+    private static let baseHeight: CGFloat = 88
+    private static let maxHeight: CGFloat = 220
+
     func show(content: some View) {
         guard panel == nil else { return }
         let panel = HUDPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 88),
+            contentRect: NSRect(x: 0, y: 0, width: Self.width, height: Self.baseHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
@@ -25,14 +29,42 @@ final class RecordingHUDController {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        panel.contentView = NSHostingView(rootView: AnyView(content))
+        let hosting = NSHostingView(rootView: AnyView(content))
+        hosting.autoresizingMask = [.width, .height]
+        panel.contentView = hosting
         // Top-right corner of the main screen, under the menu bar.
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: frame.maxX - 416, y: frame.maxY - 104))
+            panel.setFrameOrigin(
+                NSPoint(x: frame.maxX - Self.width - 16, y: frame.maxY - Self.baseHeight - 16))
         }
         panel.orderFrontRegardless()
         self.panel = panel
+    }
+
+    /// Resizes the HUD to fit its content, growing toward whichever side has
+    /// room: parked in the lower half of the screen it grows UPWARD (bottom
+    /// edge fixed); up near the menu bar it grows downward (top edge fixed).
+    /// Either way the newest caption stays visible and the panel is clamped
+    /// inside the visible frame. Clamped in height so a long caption can't run
+    /// off-screen.
+    func setContentHeight(_ height: CGFloat) {
+        guard let panel else { return }
+        let clamped = max(Self.baseHeight, min(Self.maxHeight, height))
+        guard abs(clamped - panel.frame.height) > 0.5 else { return }
+        var frame = panel.frame
+        let visible = (panel.screen ?? NSScreen.main)?.visibleFrame ?? frame
+        // AppKit's y grows upward, so a smaller midY means the lower half.
+        if frame.midY < visible.midY {
+            frame.size.height = clamped  // grow up: bottom (origin.y) stays put
+        } else {
+            let top = frame.maxY
+            frame.size.height = clamped
+            frame.origin.y = top - clamped  // grow down: top stays put
+        }
+        if frame.maxY > visible.maxY { frame.origin.y = visible.maxY - frame.height }
+        if frame.minY < visible.minY { frame.origin.y = visible.minY }
+        panel.setFrame(frame, display: true, animate: false)
     }
 
     func close() {
@@ -55,6 +87,14 @@ struct RecordingHUDView: View {
     let controller: RecordingController
     let onExpand: () -> Void
     let onStop: () -> Void
+    /// The panel resizes to this content height so a long, unbroken caption
+    /// grows the HUD (up to a cap) instead of clipping — see `captionLineCap`.
+    var onHeight: (CGFloat) -> Void = { _ in }
+
+    /// How many lines a single ongoing utterance may grow the HUD to before it
+    /// stops growing and shows only the newest lines (head truncation). A pause
+    /// or a new speaker starts a fresh coalesced line, resetting it to one.
+    private let captionLineCap = 6
 
     var body: some View {
         HStack(spacing: 10) {
@@ -73,8 +113,13 @@ struct RecordingHUDView: View {
                 Text(controller.captions.last?.text ?? "…")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    // Grow with the current utterance, but keep the NEWEST words
+                    // visible: past the cap, truncate the head (what was said
+                    // earliest), never the tail (what's being said now).
+                    .lineLimit(captionLineCap)
+                    .truncationMode(.head)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 hudMeter
             }
             Button(action: onExpand) {
@@ -93,7 +138,15 @@ struct RecordingHUDView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(width: 400)
+        .fixedSize(horizontal: false, vertical: true)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onChange(of: geo.size.height) { _, height in onHeight(height) }
+                    .onAppear { onHeight(geo.size.height) }
+            }
+        )
         .onChange(of: controller.phase) { _, phase in
             if phase != .recording { onExpand() }
         }

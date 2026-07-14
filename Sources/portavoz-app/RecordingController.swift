@@ -144,13 +144,18 @@ final class RecordingController {
     /// without this the next "New recording" leaves it stuck in
     /// `.done(previousID)`: `start()` bails on its `phase == .idle` guard and
     /// the recording view immediately re-routes to the previous meeting. Also
-    /// drops the transient live state so a new recording never flashes the
-    /// last one's captions.
+    /// drops EVERY piece of transient live state so a new recording never
+    /// flashes the last one's captions, live summary, or Companion cards
+    /// before `start()` gets to reset them.
     func readyForNextSession() {
         guard case .done = phase else { return }
         phase = .idle
         captions = []
         translations = [:]
+        liveSummary = nil
+        companionCards = []
+        contextItems = []
+        liveNotes = []
     }
 
     // Orchestrates capture + transcription + scheduler startup; the sequence

@@ -417,4 +417,28 @@ extension MeetingStoreTests {
         let remaining = try await store.companionCards(for: meeting.id)
         XCTAssertEqual(remaining.map(\.question), [second.question])
     }
+
+    func testReplaceCompanionCardsTombstonesTheOldSnapshot() async throws {
+        try await store.save(meeting)
+        try await store.save(
+            [
+                CompanionCard(
+                    question: "vieja 1", answer: "a", kind: .knowledge, source: "on-device",
+                    askedAt: 10),
+                CompanionCard(
+                    question: "vieja 2", answer: "b", kind: .context, source: "on-device",
+                    askedAt: 20)
+            ], for: meeting.id)
+
+        // Refine re-derives a different set from the clean transcript.
+        try await store.replaceCompanionCards(
+            [
+                CompanionCard(
+                    question: "nueva", answer: "c", kind: .knowledge, source: "on-device",
+                    askedAt: 15)
+            ], for: meeting.id)
+
+        let cards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(cards.map(\.question), ["nueva"])  // the old snapshot is gone
+    }
 }

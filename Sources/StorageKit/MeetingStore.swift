@@ -337,4 +337,25 @@ public final class MeetingStore: Sendable {
                 arguments: [Date(), Date(), id.uuidString])
         }
     }
+
+    /// Replaces a meeting's Companion cards wholesale: tombstones the live
+    /// snapshot and inserts the freshly re-derived ones (refine re-runs the
+    /// Companion over the clean transcript). One transaction, mirroring
+    /// `replaceCast`.
+    public func replaceCompanionCards(_ cards: [CompanionCard], for id: MeetingID) async throws {
+        let key = id.rawValue.uuidString
+        try await database.write { db in
+            let now = Date()
+            try db.execute(
+                sql: """
+                    UPDATE companionCard SET deletedAt = ?, updatedAt = ? \
+                    WHERE meetingID = ? AND deletedAt IS NULL
+                    """,
+                arguments: [now, now, key])
+            for card in cards {
+                var record = CompanionCardRecord(card, meetingID: id, createdAt: now, updatedAt: now)
+                try record.save(db)
+            }
+        }
+    }
 }

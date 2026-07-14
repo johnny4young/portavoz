@@ -3011,6 +3011,16 @@
         }
       }
     },
+    "Re-checking the Companion's answers…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando las respuestas del Companion…"
+          }
+        }
+      }
+    },
     "Re-transcribe in English": {
       "localizations": {
         "es": {

@@ -30,6 +30,9 @@ struct MeetingDetailView: View {
     /// The live Companion's answer cards, persisted (D26) so the meeting can
     /// be reviewed afterward. Loaded lazily; empty hides the rail section.
     @State private var companionCards: [CompanionCard] = []
+    /// AI topic headings per chapter, keyed by the chapter's start time. Filled
+    /// lazily; a chapter with no entry falls back to its real-excerpt title.
+    @State private var chapterTitles: [TimeInterval: String] = [:]
     @State private var summary: (draft: SummaryDraft, version: Int)?
     @State private var player: MeetingPlayer?
     @State private var waveform: [Waveform.Bucket] = []
@@ -248,22 +251,27 @@ extension MeetingDetailView {
         }
     }
 
-    /// The right rail: meeting health + ✦ chapters — the at-a-glance column
-    /// beside the transcript. Hidden entirely when it would be empty (no
-    /// attributed speech and no chapters) so the page doesn't carry a void.
+    /// The right rail: meeting health + ✦ chapters + the Companion's answers —
+    /// the at-a-glance column beside the transcript. Hidden entirely when it
+    /// would be empty. SCROLLS on its own so a long Companion list (many
+    /// cards) never grows the page and pushes the header or docked player
+    /// off-screen — the rail stays within its column, everything else stays put.
     @ViewBuilder
     private func detailRail(_ detail: MeetingDetail) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
         if hasHealth || hasChapters || !companionCards.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                if hasHealth {
-                    MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if hasHealth {
+                        MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
+                    }
+                    chaptersSection(detail)
+                    companionCardsSection
                 }
-                chaptersSection(detail)
-                companionCardsSection
             }
             .frame(width: 260)
+            .frame(maxHeight: .infinity)
         }
     }
 
@@ -1107,6 +1115,7 @@ extension MeetingDetailView {
                     for: meetingID,
                     speakers: draft.speakers,
                     segments: draft.segments)
+                await refreshCompanionCards(from: draft.segments)
                 await reload()
                 services.libraryVersion += 1
                 regenerate(
@@ -1116,6 +1125,22 @@ extension MeetingDetailView {
                 actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
             }
         }
+    }
+
+    /// Re-runs the Companion over the refined transcript so its answer cards
+    /// improve with it (D26/D7). Gated on the Companion being enabled and
+    /// available; a re-derivation that comes back empty (a model hiccup, or no
+    /// questions survive) is discarded so refine never WIPES good cards.
+    private func refreshCompanionCards(from segments: [TranscriptSegment]) async {
+        guard #available(macOS 26.0, *) else { return }
+        guard
+            UserDefaults.standard.bool(forKey: "companionEnabled"),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        else { return }
+        applying = L10n.text("Re-checking the Companion's answers…")
+        let refreshed = await CompanionRefresh.regenerate(from: segments, meetingID: meetingID)
+        guard !refreshed.isEmpty else { return }
+        try? await services.store.replaceCompanionCards(refreshed, for: meetingID)
     }
 
     private func refineReviewSheet(_ draft: RefineDraft) -> some View {
@@ -1327,6 +1352,30 @@ extension MeetingDetailView {
         await suggestRecipeIfUseful()
         await suggestTitleIfUseful()
         await suggestFromVoicesIfUseful()
+        await titleChaptersIfNeeded()
+    }
+
+    /// Generates a short topic heading for each chapter (Apple Intelligence),
+    /// keyed by start time so re-renders reuse it. Self-healing: only the
+    /// chapters missing a title are generated, so a refine that shifts the
+    /// breaks re-titles just the new ones. Silent no-op without the model —
+    /// the rail then shows the real-excerpt titles.
+    private func titleChaptersIfNeeded() async {
+        guard #available(macOS 26.0, *) else { return }
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil else { return }
+        guard let detail else { return }
+        let chapters = ChapterExtractor.chapters(from: detail.segments)
+        for (index, chapter) in chapters.enumerated() where chapterTitles[chapter.startTime] == nil {
+            let end = index + 1 < chapters.count ? chapters[index + 1].startTime : .infinity
+            let text = detail.segments
+                .filter { $0.startTime >= chapter.startTime && $0.startTime < end && !$0.text.isEmpty }
+                .prefix(24)
+                .map(\.text)
+                .joined(separator: " ")
+            if let title = await ChapterTitler.title(forChapterText: text) {
+                chapterTitles[chapter.startTime] = title
+            }
+        }
     }
 
     /// Content-based title chip: only while the title still looks like the
@@ -1513,7 +1562,7 @@ extension MeetingDetailView {
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(PVDesign.accent)
                                 .frame(width: 44, alignment: .leading)
-                            Text(chapter.title)
+                            Text(chapterTitles[chapter.startTime] ?? chapter.title)
                                 .font(.callout)
                                 .lineLimit(1)
                                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -218,7 +218,8 @@ struct RecordingView: View {
         hud.show(content: RecordingHUDView(
             controller: controller,
             onExpand: { exitCompactMode() },
-            onStop: { Task { await controller.stop(services: services) } }))
+            onStop: { Task { await controller.stop(services: services) } },
+            onHeight: { [hud] height in hud.setContentHeight(height) }))
         NSApp.keyWindow?.miniaturize(nil)
     }
 
