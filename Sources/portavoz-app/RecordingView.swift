@@ -148,13 +148,14 @@ struct RecordingView: View {
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
-                .help("Detects questions and suggests on-device answers. It never answers for you.")
+                .help(L10n.text("Detects questions and suggests on-device answers. It never answers for you."))
             }
             Button(action: enterCompactMode) {
                 Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
             }
             .controlSize(.small)
-            .help("Floating mini panel with the timer and captions — records without covering your meeting")
+            .help(L10n.text(
+                "Floating mini panel with the timer and captions — records without covering your meeting"))
             Button {
                 Task { await controller.stop(services: services) }
             } label: {
@@ -187,7 +188,8 @@ struct RecordingView: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("recording-mute-mic")
-            .help(controller.micMuted ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz")
+            .help(L10n.text(controller.micMuted
+                    ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz"))
             ZStack(alignment: .leading) {
                 Capsule().fill(.quaternary)
                 GeometryReader { geometry in
@@ -265,7 +267,7 @@ struct RecordingView: View {
                     noteDraft.trimmingCharacters(in: .whitespaces).isEmpty
                         ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
                 .disabled(noteDraft.trimmingCharacters(in: .whitespaces).isEmpty)
-                .help("Add note (⏎)")
+                .help(L10n.text("Add note (⏎)"))
             }
             if !controller.contextItems.isEmpty {
                 ScrollView {
@@ -288,7 +290,7 @@ struct RecordingView: View {
                                         .foregroundStyle(.tertiary)
                                 }
                                 .buttonStyle(.plain)
-                                .help("Remove note")
+                                .help(L10n.text("Remove note"))
                             }
                         }
                     }
@@ -328,75 +330,6 @@ struct RecordingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    /// The companion's answer cards (D26): question detected in the
-    /// conversation → suggested answer. Read, copy or dismiss — never acts
-    /// on its own.
-    @ViewBuilder
-    private var companionCardsPanel: some View {
-        // Newest first, none dropped — the panel lives in a scroll view, so
-        // older cards stay reachable instead of falling off after a few.
-        ForEach(Array(controller.companionCards.reversed())) { card in
-            companionCardView(card)
-        }
-    }
-
-    private func companionCardView(_ card: CompanionCard) -> some View {
-        let tint: Color = card.directed ? .orange : PVDesign.accent
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Label(card.question, systemImage: "questionmark.bubble.fill")
-                    .font(.callout.weight(.semibold))
-                Spacer(minLength: 4)
-                Button {
-                    controller.dismissCompanionCard(card.id)
-                } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-            }
-            if !card.answer.isEmpty {
-                Text(card.answer)
-                    .font(.callout)
-                    .textSelection(.enabled)
-                    // Always take the ideal height inside the scroll — a
-                    // compressed Text is what painted over the card footer.
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack {
-                Text(companionCardTag(card))
-                    .font(.caption2)
-                    .foregroundStyle(card.directed ? tint : Color.secondary)
-                Spacer()
-                if !card.answer.isEmpty {
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(card.answer, forType: .string)
-                    } label: {
-                        Image(systemName: "doc.on.doc")
-                    }
-                    .buttonStyle(.plain)
-                    .controlSize(.small)
-                    .help("Copy response")
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(tint.opacity(0.25), lineWidth: 1)
-        )
-    }
-
-    private func companionCardTag(_ card: CompanionCard) -> String {
-        let base = card.kind == .context ? "from this meeting" : "knowledge · \(card.source)"
-        if card.directed {
-            return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
-        }
-        return base
     }
 
     /// Live captions as a Spotify-lyrics carousel (M11): the newest line
@@ -567,5 +500,81 @@ extension RecordingView {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - Companion cards
+//
+// The live answer panel (D26), split out to keep the main view under
+// the type-body cap.
+
+extension RecordingView {
+    /// The companion's answer cards (D26): question detected in the
+    /// conversation → suggested answer. Read, copy or dismiss — never acts
+    /// on its own.
+    @ViewBuilder
+    private var companionCardsPanel: some View {
+        // Newest first, none dropped — the panel lives in a scroll view, so
+        // older cards stay reachable instead of falling off after a few.
+        ForEach(Array(controller.companionCards.reversed())) { card in
+            companionCardView(card)
+        }
+    }
+
+    private func companionCardView(_ card: CompanionCard) -> some View {
+        let tint: Color = card.directed ? .orange : PVDesign.accent
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(card.question, systemImage: "questionmark.bubble.fill")
+                    .font(.callout.weight(.semibold))
+                Spacer(minLength: 4)
+                Button {
+                    controller.dismissCompanionCard(card.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+            if !card.answer.isEmpty {
+                Text(card.answer)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    // Always take the ideal height inside the scroll — a
+                    // compressed Text is what painted over the card footer.
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Text(companionCardTag(card))
+                    .font(.caption2)
+                    .foregroundStyle(card.directed ? tint : Color.secondary)
+                Spacer()
+                if !card.answer.isEmpty {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(card.answer, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.plain)
+                    .controlSize(.small)
+                    .help(L10n.text("Copy response"))
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(tint.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private func companionCardTag(_ card: CompanionCard) -> String {
+        let base = card.kind == .context ? "from this meeting" : "knowledge · \(card.source)"
+        if card.directed {
+            return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
+        }
+        return base
     }
 }

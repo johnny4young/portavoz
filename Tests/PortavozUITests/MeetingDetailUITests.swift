@@ -76,11 +76,13 @@ final class MeetingDetailUITests: XCTestCase {
             "a chapter must mark the later turn the seed placed at 200 s")
         // The persisted Companion cards (D26) render in the rail: the seed
         // has an answered card (askedAt 6) and an "asked you" ping (200).
+        // These WAIT: the cards are fetched separately from the meeting
+        // detail, so the section lands a beat after the rest of the rail.
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-companion").exists,
+            app.control(withIdentifier: "detail-companion").waitForExistence(timeout: 5),
             "the right rail must show the persisted Companion answers")
         XCTAssertTrue(
-            app.control(withIdentifier: "companion-card-6").exists,
+            app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
             "the answered Companion card must render for review")
     }
 

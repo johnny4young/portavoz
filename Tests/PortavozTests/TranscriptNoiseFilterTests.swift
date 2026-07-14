@@ -47,6 +47,16 @@ final class TranscriptNoiseFilterTests: XCTestCase {
         XCTAssertFalse(noise("Revisemos el presupuesto.", 0.7))  // Spanish, accents
     }
 
+    func testUppercaseVowelsCountAsVowels() {
+        // The vowel set is lowercase and the text is case-folded before the
+        // lookup, so an UPPERCASE acronym with a vowel is NOT shape-junk.
+        // Pinned with no confidence, where the shape rule alone decides —
+        // that is the branch the folding actually feeds.
+        XCTAssertFalse(noise("AI", nil))
+        XCTAssertFalse(noise("OK", nil))
+        XCTAssertTrue(noise("MK", nil))  // contrast: same shape, no vowel
+    }
+
     func testMissingConfidenceFallsBackToShape() {
         // With no confidence we only drop the obvious shape-junk, never real words.
         XCTAssertTrue(noise("R", nil))

@@ -70,7 +70,7 @@ final class SettingsUITests: XCTestCase {
             app.control(withIdentifier: "settings-mic-device").waitForExistence(timeout: 5),
             "the Audio pane must offer a microphone picker")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-capture-mode").exists,
+            app.control(withIdentifier: "settings-capture-mode").waitForExistence(timeout: 5),
             "the Audio pane must offer a capture-source picker")
     }
 
