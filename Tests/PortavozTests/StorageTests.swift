@@ -395,4 +395,26 @@ extension MeetingStoreTests {
         let remaining = try await store.contextItems(for: meeting.id)
         XCTAssertEqual(remaining.map(\.content), ["https://x.test"])
     }
+
+    func testCompanionCardsRoundTripAndTombstone() async throws {
+        try await store.save(meeting)
+
+        let first = CompanionCard(
+            question: "¿Qué framework usamos?", answer: "SwiftUI", kind: .knowledge,
+            source: "on-device", askedAt: 90)
+        let second = CompanionCard(
+            question: "¿Te acuerdas del presupuesto?", answer: "", kind: .context,
+            source: "on-device", directed: true, askedAt: 40)
+        try await store.save([first, second], for: meeting.id)
+
+        let cards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(cards.map(\.question), [second.question, first.question])  // por askedAt
+        XCTAssertEqual(cards.map(\.kind), [.context, .knowledge])
+        XCTAssertEqual(cards.first?.directed, true)
+        XCTAssertEqual(cards.last?.answer, "SwiftUI")
+
+        try await store.deleteCompanionCard(first.id)
+        let remaining = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(remaining.map(\.question), [second.question])
+    }
 }

@@ -931,6 +931,16 @@
         }
       }
     },
+    "Copy answer": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar respuesta"
+          }
+        }
+      }
+    },
     "Copy answer with citations (Markdown)": {
       "localizations": {
         "es": {
@@ -1067,6 +1077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo recordar la voz: %@"
+          }
+        }
+      }
+    },
+    "Could not remove the card.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo quitar la tarjeta."
           }
         }
       }
@@ -3301,6 +3321,16 @@
         }
       }
     },
+    "Remove card": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar tarjeta"
+          }
+        }
+      }
+    },
     "Remove note": {
       "localizations": {
         "es": {
@@ -4621,6 +4651,16 @@
         }
       }
     },
+    "asked you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "te preguntó"
+          }
+        }
+      }
+    },
     "audio on your disk": {
       "localizations": {
         "es": {
@@ -4721,12 +4761,32 @@
         }
       }
     },
+    "from this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de esta reunión"
+          }
+        }
+      }
+    },
     "interruptions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "interrupciones"
+          }
+        }
+      }
+    },
+    "knowledge · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conocimiento · %@"
           }
         }
       }

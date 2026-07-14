@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 4
+    public static let version = 5
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -143,6 +143,29 @@ public enum StorageSchema {
             try db.alter(table: "summary") { t in
                 t.add(column: "fingerprint", .text)
             }
+        }
+
+        // v5 (D26): the live Companion's answer cards, kept so the meeting can
+        // be reviewed afterward instead of the cards dying with the session.
+        // Timestamped (askedAt) to interleave with the transcript; tombstoned
+        // like everything else (D4).
+        migrator.registerMigration("v5") { db in
+            try db.create(table: "companionCard") { t in
+                t.primaryKey("id", .text)
+                t.column("meetingID", .text).notNull()
+                    .references("meeting", onDelete: .cascade)
+                t.column("question", .text).notNull()
+                t.column("answer", .text).notNull()
+                t.column("kind", .text).notNull()
+                t.column("source", .text).notNull()
+                t.column("directed", .boolean).notNull()
+                t.column("askedAt", .double).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("deletedAt", .datetime)
+            }
+            try db.create(
+                index: "companionCard_on_meetingID", on: "companionCard", columns: ["meetingID"])
         }
 
         return migrator

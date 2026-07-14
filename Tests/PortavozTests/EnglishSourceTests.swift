@@ -66,6 +66,9 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("El equipo revisó")
                 || line.contains("Se revisará")
                 || line.contains("Cerremos con los próximos")
+                // Seeded Companion cards (D26) — Spanish demo Q&A.
+                || line.contains("¿Cuándo es el rollout")
+                || line.contains("te encargas del presupuesto")
         }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional

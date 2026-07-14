@@ -533,6 +533,7 @@ final class RecordingController {
             try await services.store.save(attribution.speakers)
             try await services.store.save(attribution.segments)
             try await services.store.save(contextItems)
+            try await services.store.save(companionCards, for: meeting.id)
 
             var savedSummary: SummaryDraft?
             do {

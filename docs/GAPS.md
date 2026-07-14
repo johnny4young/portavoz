@@ -31,6 +31,7 @@ Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido e
 | T8 | ~~Sin SwiftLint/format en CI~~ | **RESUELTO (jul 2026)**: `.swiftlint.yml` calibrado a cero errores + job `lint` en CI (M9 prep) | ✅ |
 | T9 | ~~FluidAudio pineado a revisión~~ | **RESUELTO (jul 2026)**: 0.15.5 incluye el fix #732; re-pineado a `.upToNextMinor(from: "0.15.5")` | ✅ |
 | T10 | Sin telemetría de crashes (opt-in) | bugs de campo invisibles post-publicación | decidir en M9 (¿solo GitHub issues? ¿MetricKit local?) |
+| T11 | **Companion cards fuera del bundle `.portavoz`** | las tarjetas del Companion se persisten (tabla `companionCard`, migración v5) y se revisan en el detalle, pero NO viajan en export/import `.portavoz` — exportar/importar una reunión pierde sus tarjetas (los `contextItems` sí van) | añadir `companionCards` a `MeetingBundle` + su round-trip cuando toque tocar el formato del bundle |
 
 ## Brechas de posicionamiento (contra el mapa competitivo)
 

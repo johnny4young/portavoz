@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 14, 2026
 
+- **💬 The Companion's answers, kept** — The live answer cards the Companion surfaces during a meeting no longer vanish when the recording ends: they're saved with the meeting and shown in the detail's side rail, each one jumping the player to the moment the question was asked. Copy an answer, or clear a card you don't need. "Asked you" pings are kept too, so you can see afterward every time the room turned to you.
 - **🎙️ Mute your mic to Portavoz** — A one-tap mute on the recording bar silences *your* channel to Portavoz without touching the call — the meeting keeps hearing you through its own mic, while Portavoz records silence on your side. Handy when a bad mic is feeding garbage into your transcript, or for anything you'd rather not have captured on your channel.
 - **✦ Chapters that read like chapters** — A chapter that happened to open on a stray fragment ("E", "TO", a garble) is now labeled by the first real, substantial line instead of the junk — so the chapter rail is scannable even when a stretch started messy.
 - **💬 A sharper Companion** — It no longer spends a model call on a garbled caption, and the same question won't show up twice — cleaner cards, less wasted work.

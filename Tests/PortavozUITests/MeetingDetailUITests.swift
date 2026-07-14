@@ -71,6 +71,14 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "chapter-200").exists,
             "a chapter must mark the later turn the seed placed at 200 s")
+        // The persisted Companion cards (D26) render in the rail: the seed
+        // has an answered card (askedAt 6) and an "asked you" ping (200).
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-companion").exists,
+            "the right rail must show the persisted Companion answers")
+        XCTAssertTrue(
+            app.control(withIdentifier: "companion-card-6").exists,
+            "the answered Companion card must render for review")
     }
 
     @MainActor

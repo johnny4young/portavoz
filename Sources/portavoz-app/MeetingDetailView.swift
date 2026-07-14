@@ -27,6 +27,9 @@ struct MeetingDetailView: View {
     @Binding var route: Route?
 
     @State private var detail: MeetingDetail?
+    /// The live Companion's answer cards, persisted (D26) so the meeting can
+    /// be reviewed afterward. Loaded lazily; empty hides the rail section.
+    @State private var companionCards: [CompanionCard] = []
     @State private var summary: (draft: SummaryDraft, version: Int)?
     @State private var player: MeetingPlayer?
     @State private var waveform: [Waveform.Bucket] = []
@@ -252,12 +255,13 @@ extension MeetingDetailView {
     private func detailRail(_ detail: MeetingDetail) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
-        if hasHealth || hasChapters {
+        if hasHealth || hasChapters || !companionCards.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 if hasHealth {
                     MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
                 }
                 chaptersSection(detail)
+                companionCardsSection
             }
             .frame(width: 260)
         }
@@ -1312,6 +1316,7 @@ extension MeetingDetailView {
 
     private func reload() async {
         detail = try? await services.store.detail(meetingID)
+        companionCards = (try? await services.store.companionCards(for: meetingID)) ?? []
         summary = try? await services.store.summary(meetingID)
         await loadPlayerIfNeeded()
         // A palette citation navigated here: jump to the cited moment.
@@ -1527,6 +1532,108 @@ extension MeetingDetailView {
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    /// The live Companion's answers, kept for review (D26): each card seeks
+    /// the player to the moment the question was asked, and can be copied or
+    /// removed. Hidden when the meeting had none.
+    @ViewBuilder
+    private var companionCardsSection: some View {
+        if !companionCards.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Companion", systemImage: "sparkles")
+                    .font(.headline)
+                    .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("detail-companion")
+                ForEach(companionCards) { card in
+                    companionCardRow(card)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private func companionCardRow(_ card: CompanionCard) -> some View {
+        let tint: Color = card.directed ? .orange : PVDesign.accent
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Button {
+                    player?.seek(to: card.askedAt)
+                    player?.play()
+                } label: {
+                    Text(timestamp(card.askedAt))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(tint)
+                }
+                .buttonStyle(.plain)
+                .disabled(player == nil)
+                Text(card.question)
+                    .font(.callout.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !card.answer.isEmpty {
+                Text(card.answer)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Text(companionCardTag(card))
+                    .font(.caption2)
+                    .foregroundStyle(card.directed ? tint : Color.secondary)
+                Spacer()
+                if !card.answer.isEmpty {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(card.answer, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.plain)
+                    .controlSize(.small)
+                    .help(L10n.text("Copy answer"))
+                }
+                Button {
+                    Task { await removeCompanionCard(card.id) }
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .controlSize(.small)
+                .accessibilityLabel(L10n.text("Remove card"))
+                .help(L10n.text("Remove card"))
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8).strokeBorder(tint.opacity(0.25), lineWidth: 1)
+        )
+        .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
+    }
+
+    private func companionCardTag(_ card: CompanionCard) -> String {
+        let base = card.kind == .context
+            ? L10n.text("from this meeting")
+            : L10n.format("knowledge · %@", card.source)
+        if card.directed {
+            return card.answer.isEmpty ? L10n.text("asked you") : "\(L10n.text("asked you")) · \(base)"
+        }
+        return base
+    }
+
+    private func removeCompanionCard(_ id: UUID) async {
+        // Drop from the UI only after the tombstone lands — a failed delete
+        // leaves the card in place instead of stranding a phantom removal.
+        do {
+            try await services.store.deleteCompanionCard(id)
+            companionCards.removeAll { $0.id == id }
+        } catch {
+            actionError = L10n.text("Could not remove the card.")
         }
     }
 }

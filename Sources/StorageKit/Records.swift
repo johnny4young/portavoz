@@ -221,3 +221,45 @@ struct ContextItemRecord: Codable, FetchableRecord, PersistableRecord {
             kind: kind, content: content, timestamp: timestamp)
     }
 }
+
+struct CompanionCardRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "companionCard"
+
+    var id: String
+    var meetingID: String
+    var question: String
+    var answer: String
+    var kind: String
+    var source: String
+    var directed: Bool
+    var askedAt: Double
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    // `CompanionCard` carries no meetingID (it's a transient UI card); the
+    // owning meeting is stamped here at persistence time.
+    init(_ card: CompanionCard, meetingID: MeetingID, createdAt: Date, updatedAt: Date) {
+        self.id = card.id.uuidString
+        self.meetingID = meetingID.rawValue.uuidString
+        self.question = card.question
+        self.answer = card.answer
+        self.kind = card.kind.rawValue
+        self.source = card.source
+        self.directed = card.directed
+        self.askedAt = card.askedAt
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = nil
+    }
+
+    var card: CompanionCard? {
+        guard
+            let uuid = UUID(uuidString: id),
+            let kind = CompanionCard.Kind(rawValue: kind)
+        else { return nil }
+        return CompanionCard(
+            id: uuid, question: question, answer: answer, kind: kind,
+            source: source, directed: directed, askedAt: askedAt)
+    }
+}

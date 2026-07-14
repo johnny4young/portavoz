@@ -497,6 +497,16 @@ final class AppServices {
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
+        // Persisted Companion cards (D26) — one answered question and one
+        // "asked you" ping — so the detail's Companion review section renders.
+        try? await store.save([
+            CompanionCard(
+                question: "¿Cuándo es el rollout?", answer: "El rollout queda para el viernes.",
+                kind: .context, source: "on-device", askedAt: 6),
+            CompanionCard(
+                question: "Ana, ¿te encargas del presupuesto?", answer: "",
+                kind: .context, source: "on-device", directed: true, askedAt: 200)
+        ], for: meeting.id)
         libraryVersion += 1
     }
 
