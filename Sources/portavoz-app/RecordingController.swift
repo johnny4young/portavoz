@@ -1,3 +1,4 @@
+import ApplicationKit
 import AudioCaptureKit
 import DiarizationKit
 import Foundation
@@ -514,12 +515,10 @@ final class RecordingController {
 }
 
 extension RecordingController {
-    // Orderly session close (flush, persistence, teardown);
-    // the sequence is legitimately long. Splitting remains technical debt.
-    // swiftlint:disable:next function_body_length cyclomatic_complexity
+    /// Closes the platform session before crossing the durable application
+    /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
-        defer { services.scheduleRecordingEnginesRelease() }
         rollingTask?.cancel()
         phase = .processing(L10n.text("Closing the recording…"))
 
@@ -528,7 +527,7 @@ extension RecordingController {
         micMuted = false
         for continuation in feeds.values { continuation.finish() }
         for consumer in consumers { await consumer.value }
-        // Live hints end here — the batch pass below re-attributes everything.
+        // Live hints end here — the durable workflow re-attributes everything.
         liveDiarizerFeed?.finish()
         liveDiarizerFeed = nil
         liveDiarizerTask?.cancel()
@@ -538,162 +537,66 @@ extension RecordingController {
         sessionVoiceprintTask = nil
         defer { voiceprintTask?.cancel() }
 
-        guard var meeting = recordingShell else {
+        var voiceprint: Voiceprint?
+        if !capture.publishedFiles.isEmpty, !captions.isEmpty {
+            voiceprint = await voiceprintTask?.value
+            phase = .processing(L10n.text("Saving…"))
+        }
+
+        let result = await services.stopRecording.execute(StopRecordingRequest(
+            recordingShell: recordingShell,
+            reservedAssets: reservedAssets,
+            captions: captions,
+            contextItems: contextItems,
+            companionCards: companionCards,
+            capture: StopRecordingCapture(capture),
+            voiceprint: voiceprint))
+        applyStopRecordingResult(result, services: services)
+    }
+
+    private func applyStopRecordingResult(
+        _ result: StopRecordingResult,
+        services: AppServices
+    ) {
+        switch result {
+        case .completed(let commit):
+            adoptStopRecordingCommit(commit, services: services)
+            // UI handoff never waits for derived diarization or summary work.
+            phase = .done(commit.meeting.id)
+        case .audioRecoveryPreserved(let commit):
+            adoptStopRecordingCommit(commit, services: services)
+            phase = .failed(L10n.text(
+                "The audio could not be finalized, but its recovery file was preserved."))
+        case .transcriptEmpty(let commit):
+            adoptStopRecordingCommit(commit, services: services)
+            phase = .failed(L10n.text(
+                // One-line user-visible recovery guidance.
+                // swiftlint:disable:next line_length
+                "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it."))
+        case .noAudioCaptured:
+            recordingShell = nil
+            reservedAssets = []
+            services.libraryVersion += 1
+            phase = .failed(L10n.text(
+                "No audio was captured. Check Portavoz microphone and system audio recording permissions."))
+        case .localStateUnavailable:
             phase = .failed(L10n.text(
                 "The recording could not be saved because its local state was unavailable."))
-            return
-        }
-
-        guard !capture.files.isEmpty else {
-            if hasReservedCaptureFile() {
-                meeting.endedAt = Date()
-                meeting.lifecycleState = .needsAttention
-                meeting.lastProcessingError = "capture.publication.failed"
-                do {
-                    try await services.store.save(meeting)
-                    recordingShell = meeting
-                    services.libraryVersion += 1
-                    phase = .failed(L10n.text(
-                        "The audio could not be finalized, but its recovery file was preserved."))
-                } catch {
-                    phase = .failed(L10n.format(
-                        "Processing failed: %@", error.localizedDescription))
-                }
-                return
+        case .processingFailed(let message, let fallback):
+            if let fallback {
+                adoptStopRecordingCommit(fallback, services: services)
             }
-            do {
-                guard try await services.store.discardUnstartedRecording(meeting.id) else {
-                    phase = .failed(L10n.text(
-                        "The recording could not be saved because its local state was unavailable."))
-                    return
-                }
-                recordingShell = nil
-                reservedAssets = []
-                services.libraryVersion += 1
-            } catch {
-                phase = .failed(L10n.format(
-                    "Processing failed: %@", error.localizedDescription))
-                return
-            }
-            phase = .failed(
-                L10n.text("No audio was captured. Check Portavoz microphone and system audio recording permissions.")
-            )
-            return
-        }
-
-        // Publishable audio and the live meeting projection become visible in
-        // one DB Unit of Work. Later diarization can replace this provisional
-        // cast, but a failure can no longer erase the captured transcript.
-        meeting.endedAt = Date()
-        meeting.lifecycleState = .captured
-        meeting.lastProcessingError = nil
-        let provisionalAttribution = SpeakerAttributor.attribute(
-            segments: captions, turns: [], meetingID: meetingID)
-        meeting.language = SpokenLanguageDetector.homogeneousLanguage(
-            in: provisionalAttribution.segments)
-        let capturedAssets = reconciledAssets(from: capture, at: meeting.endedAt ?? Date())
-        let hasPendingPublication = capturedAssets.contains { $0.healthStatus == .pending }
-
-        guard !captions.isEmpty else {
-            meeting.lifecycleState = .needsAttention
-            meeting.lastProcessingError = "transcription.empty"
-            do {
-                try await services.store.installCapturedSnapshot(capturedSnapshot(
-                    meeting: meeting,
-                    assets: capturedAssets,
-                    attribution: provisionalAttribution))
-                recordingShell = meeting
-                reservedAssets = capturedAssets
-                services.libraryVersion += 1
-                phase = .failed(L10n.text(
-                    // One-line user-visible recovery guidance.
-                    // swiftlint:disable:next line_length
-                    "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it."))
-            } catch {
-                phase = .failed(L10n.format(
-                    "Processing failed: %@", error.localizedDescription))
-            }
-            return
-        }
-
-        let request: ProcessingJobRequest
-        do {
-            request = try PostCaptureProcessingCoordinator.initialDiarizationRequest(
-                meeting: meeting,
-                segments: provisionalAttribution.segments,
-                assets: capturedAssets,
-                voiceprint: await voiceprintTask?.value)
-        } catch {
-            meeting.lifecycleState = .needsAttention
-            meeting.lastProcessingError = hasPendingPublication
-                ? "capture.publication.failed" : "processing.enqueue.failed"
-            do {
-                try await services.store.installCapturedSnapshot(capturedSnapshot(
-                    meeting: meeting,
-                    assets: capturedAssets,
-                    attribution: provisionalAttribution))
-                recordingShell = meeting
-                reservedAssets = capturedAssets
-                services.libraryVersion += 1
-            } catch {
-                // The original producer failure is more actionable; launch
-                // recovery still owns any shell that could not be installed.
-            }
-            phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
-            return
-        }
-
-        do {
-            phase = .processing(L10n.text("Saving…"))
-            try await services.store.installCapturedSnapshot(
-                capturedSnapshot(
-                    meeting: meeting,
-                    assets: capturedAssets,
-                    attribution: provisionalAttribution),
-                enqueue: [request])
-            meeting.lifecycleState = .processing
-            recordingShell = meeting
-            reservedAssets = capturedAssets
-            services.libraryVersion += 1
-
-            // UI handoff no longer waits for diarization or summary. The
-            // process supervisor owns those durable operations and refreshes
-            // the selected detail after each atomic artifact commit.
-            phase = .done(meetingID)
-            services.kickPostCaptureProcessing()
-        } catch {
-            meeting.lifecycleState = .needsAttention
-            meeting.lastProcessingError = hasPendingPublication
-                ? "capture.publication.failed" : "processing.enqueue.failed"
-            do {
-                try await services.store.installCapturedSnapshot(capturedSnapshot(
-                    meeting: meeting,
-                    assets: capturedAssets,
-                    attribution: provisionalAttribution))
-                recordingShell = meeting
-                reservedAssets = capturedAssets
-                services.libraryVersion += 1
-            } catch {
-                // Surface the original failure below. The recovery slice will
-                // reconcile a shell if this second persistence attempt also
-                // fails; never delete its audio as error cleanup.
-            }
-            phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
+            phase = .failed(L10n.format("Processing failed: %@", message))
         }
     }
 
-    private func capturedSnapshot(
-        meeting: Meeting,
-        assets: [AudioAsset],
-        attribution: SpeakerAttributor.Attribution
-    ) -> CapturedMeetingSnapshot {
-        CapturedMeetingSnapshot(
-            meeting: meeting,
-            assets: assets,
-            speakers: attribution.speakers,
-            segments: attribution.segments,
-            contextItems: contextItems,
-            companionCards: companionCards)
+    private func adoptStopRecordingCommit(
+        _ commit: StopRecordingCommit,
+        services: AppServices
+    ) {
+        recordingShell = commit.meeting
+        reservedAssets = commit.assets
+        services.libraryVersion += 1
     }
 
     /// Computes the durable title before reservation. Sequence now reflects
@@ -735,40 +638,6 @@ extension RecordingController {
             return nil
         } catch {
             return error.localizedDescription
-        }
-    }
-
-    /// Maps publication evidence onto the stable reservation identities. A
-    /// source that produced no file becomes `missing`; a staging file that
-    /// failed publication remains `pending` for the recovery slice.
-    private func reconciledAssets(
-        from capture: RecordingSession.Summary,
-        at timestamp: Date
-    ) -> [AudioAsset] {
-        reservedAssets.map { reservation in
-            var asset = reservation
-            asset.updatedAt = timestamp
-            guard let published = capture.publishedFiles[asset.channel] else {
-                if !captureFileExists(
-                    relativePath: AudioCapturePath.stagingRelativePath(
-                        directory: audioRelative, channel: asset.channel)) {
-                    asset.healthStatus = .missing
-                }
-                return asset
-            }
-            asset.relativePath = AudioCapturePath.publishedRelativePath(
-                directory: audioRelative, channel: asset.channel)
-            asset.container = published.container
-            asset.codec = published.codec
-            asset.sampleRate = published.sampleRate
-            asset.channelCount = published.channelCount
-            asset.durationSeconds = published.durationSeconds
-            asset.byteCount = published.byteCount
-            asset.sha256 = published.sha256
-            asset.healthStatus = published.healthStatus
-            asset.peakDBFS = published.peakDBFS
-            asset.rmsDBFS = published.rmsDBFS
-            return asset
         }
     }
 

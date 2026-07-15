@@ -1,3 +1,4 @@
+import ApplicationKit
 import DiarizationKit
 import Foundation
 import IntegrationsKit
@@ -96,26 +97,6 @@ enum PostCaptureProcessingCoordinator {
             logger.error("Could not prepare processing fixture: \(error.localizedDescription)")
         }
         services.postCaptureProcessing.kick(services: services)
-    }
-
-    /// Strangler producer boundary used by the atomic capture handoff. The
-    /// caller supplies the voiceprint sampled for this recording; this method
-    /// owns exact operation identity and fixed execution policy.
-    static func initialDiarizationRequest(
-        meeting: Meeting,
-        segments: [TranscriptSegment],
-        assets: [AudioAsset],
-        voiceprint: Voiceprint?
-    ) throws -> ProcessingJobRequest {
-        guard !segments.isEmpty else { throw WorkerError.emptyTranscript }
-        guard let request = DiarizationOperationFingerprint.request(
-            meetingID: meeting.id,
-            transcriptRevision: meeting.transcriptRevision,
-            segments: segments,
-            systemAsset: currentSystemCapture(in: assets),
-            voiceprint: voiceprint)
-        else { throw WorkerError.inputNotReady }
-        return request
     }
 
     static func drain(services: AppServices, owner: String) async {
@@ -488,7 +469,7 @@ enum PostCaptureProcessingCoordinator {
         try await services.store.save(meeting)
         try await services.store.save(attribution.speakers)
         try await services.store.save(attribution.segments)
-        let request = try initialDiarizationRequest(
+        let request = try StopRecordingJobFactory.initialDiarizationRequest(
             meeting: meeting,
             segments: attribution.segments,
             assets: [],

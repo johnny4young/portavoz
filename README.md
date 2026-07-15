@@ -132,7 +132,7 @@ architecture migration is tracked in
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized application workflows for meeting lifecycle, trash purge, summary regeneration, external-audio import, and reviewable/revision-fenced meeting refinement over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio import, reviewable/revision-fenced refinement, and the durable post-capture Stop handoff over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |

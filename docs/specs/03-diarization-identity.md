@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -93,8 +93,9 @@ and publishes honest unattributed system segments; a finalized audio path that
 has disappeared is a durable retryable failure. `SpeakerAttributor` output,
 homogeneous language, transcript revision increment, job success, and the exact
 dependent summary enqueue share one StorageKit transaction. D43 makes normal
-Stop produce the first exact job atomically with captured content, using the
-same recording-scoped voiceprint value that seeded live diarization.
+`ApplicationKit.StopRecordingJobFactory` produces the first exact job and Stop
+admits it atomically with captured content, using the same recording-scoped
+voiceprint value that seeded live diarization (D48).
 
 ## Known limits
 

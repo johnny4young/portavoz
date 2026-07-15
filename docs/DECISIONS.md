@@ -773,3 +773,40 @@ transcript-without-derived-content contract. The split is a Strangler move:
 the same language, filtering, comparison, draft approval, navigation, and
 summary UX remain, but business failure policy is now testable without SwiftUI,
 real models, or platform storage.
+
+## D48 — Durable Stop policy belongs to ApplicationKit, not capture presentation (Jul 2026)
+
+**Context:** D43 made normal Stop an atomic producer for durable post-capture
+processing, but `RecordingController` still combined two different concerns:
+flushing a concrete `RecordingSession` and tearing down live feeds, then
+deciding how finalized media, provisional transcript truth, no-audio recovery,
+job admission, worker launch, and engine release should behave. That second
+half is business workflow policy. Leaving it in an `@MainActor` presentation
+controller made failure order difficult to characterize and allowed a future
+UI edit to bypass the atomic handoff.
+
+**Decision:** `ApplicationKit.StopRecording` receives immutable published-file
+evidence plus the reserved aggregate projection. It owns finalized/missing
+asset reconciliation, provisional structural attribution, homogeneous
+meeting-language derivation while preserving every segment's recognized
+language, transcript-empty and no-audio recovery, exact initial diarization
+request construction, atomic captured-snapshot/job admission, the
+`needsAttention` fallback, process-worker kick, and recording-engine release.
+Filesystem existence, storage, and process lifecycle cross narrow async ports;
+`MeetingStore` and private app adapters implement them. The use case never
+receives `RecordingSession`, file handles, absolute paths, SwiftUI state, or
+localized copy.
+
+`RecordingController` remains responsible for stopping the actual platform
+session, finishing consumers and live diarization feeds, sampling the existing
+recording-scoped voiceprint, and mapping typed outcomes to the released phases
+and localized guidance. The process-scoped worker remains the sole owner of
+durable diarization/summary execution and terminal-aware Shortcut delivery;
+Stop only admits the first exact job and kicks that worker after commit.
+
+**Rationale:** this is the narrowest Strangler boundary that preserves D43's
+audio-first durability and immediate navigation without pulling platform
+capture into ApplicationKit. One application owner makes success, rollback,
+recovery, release, and ordering independently testable. Keeping live teardown
+above the boundary avoids a reverse dependency on AudioCaptureKit and keeps
+the application layer free of platform sessions and filesystem APIs.

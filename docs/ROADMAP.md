@@ -8,14 +8,25 @@ Single source of truth for progress — it previously lived in a session HANDOFF
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
 program in [refactor-20260714.md](refactor-20260714.md): extract
-`StopRecording` from `RecordingController` while preserving immediate detail
-navigation, the atomic captured-snapshot/job handoff, degradable derived work,
-engine release, terminal-aware Shortcut timing, and the transcript/no-audio
-fallbacks. `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and
-1 are complete. Every slice
+`StartRecording` while preserving atomic pre-capture reservation, engine
+preparation, source-start rollback, live scheduler isolation, and the released
+navigation/presentation timing. `StopRecording`, `RefineMeeting`,
+`ImportMeeting`, and T16 are complete; Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48).
+
+- **Architecture Band 2 slice 2H complete — Stop has one durable owner (Jul
+  15, 2026)**: `ApplicationKit.StopRecording` receives immutable finalized
+  capture evidence and owns reservation/publication reconciliation,
+  provisional attribution, homogeneous aggregate language without changing
+  each segment language, transcript/no-audio recovery, atomic captured
+  snapshot plus exact initial-job admission, worker kick, and recording-engine
+  release. `RecordingController` retains only the real session flush/feed
+  teardown and typed result-to-UI mapping. The existing worker still owns
+  diarization, optional summary, and terminal-aware Shortcut delivery. Eleven
+  use-case/real-Store tests plus a tenth architecture rule bring the verified
+  baseline to 516 package tests (13 gated) plus 19 UI cases (D48).
 
 - **Architecture Band 2 slice 2G complete — reviewed refine cannot overwrite
   newer truth (Jul 15, 2026)**: `ApplicationKit.RefineMeeting` owns the typed

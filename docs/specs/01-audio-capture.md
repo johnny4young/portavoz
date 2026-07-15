@@ -91,15 +91,20 @@ there was not enough audio to keep.
 
 ## Durable post-capture handoff (D43)
 
-Normal `RecordingController.stop` now hands capture to the process-scoped
-executor. A recording-scoped voiceprint read begins while capture is active.
-After channel publication, one StorageKit transaction installs finalized or
-missing assets, the provisional transcript/cast, notes, Companion cards, and
-the exact first diarization job. Stop then navigates immediately and kicks the
-worker; relaunch resumes the same owner-leased work after capture recovery.
-Job-admission failure cannot expose a half-installed captured snapshot, and the
-controller attempts an explicit `needsAttention` snapshot fallback without
-deleting audio.
+`RecordingController.stop` flushes the concrete `RecordingSession`, finishes
+live consumers/diarization feeds, and maps finalized publication evidence into
+an immutable `ApplicationKit.StopRecording` request. A recording-scoped
+voiceprint read begins while capture is active. The use case reconciles
+finalized or missing assets, derives provisional cast and homogeneous aggregate
+language without translating per-turn text, and installs assets, transcript,
+notes, Companion cards, and the exact first diarization job in one StorageKit
+transaction. It then kicks the process worker and schedules engine release;
+the controller navigates immediately from the typed success. Relaunch resumes
+the same owner-leased work after capture recovery. Job-admission failure cannot
+expose a half-installed captured snapshot, and the use case attempts an
+explicit `needsAttention` snapshot fallback without deleting audio. Empty
+publication evidence preserves staging/final recovery files or discards only
+an untouched empty shell (D48).
 
 ## External-audio ownership (D46)
 

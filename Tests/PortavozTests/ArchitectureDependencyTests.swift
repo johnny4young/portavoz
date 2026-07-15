@@ -126,6 +126,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "App refine mutations must enter through ApplicationKit: \(violations)")
     }
 
+    func testAppRecordingStopEntersThroughApplicationKit() throws {
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+
+        XCTAssertTrue(controller.contains("services.stopRecording.execute"))
+        XCTAssertFalse(controller.contains("services.store.installCapturedSnapshot"))
+        XCTAssertFalse(controller.contains(
+            "PostCaptureProcessingCoordinator.initialDiarizationRequest"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

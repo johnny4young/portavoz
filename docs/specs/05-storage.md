@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48 (application-owned Stop policy).
 
 ## Database
 
@@ -252,3 +252,13 @@ acceptance uses optimistic revision fencing and one aggregate transaction.
 Companion cards are a separate optional post-commit replacement, and summaries
 remain immutable history. A source rule prevents the macOS app from bypassing
 the use case through direct refine mutations (D47).
+
+Slice 2H makes `MeetingStore` conform to the narrow `StopRecordingStore` port.
+The adapter exposes guarded empty-shell discard, canonical recovery marking,
+and the existing captured snapshot plus initial-job Unit of Work; it does not
+expose GRDB records or transaction mechanics to ApplicationKit. A failed first
+admission rolls back before `StopRecording` attempts an explicit no-job
+`needsAttention` snapshot. A real in-memory adapter test proves the successful
+snapshot and exact diarization job become visible together, while the source
+ratchet prevents `RecordingController` from returning to direct Stop writes
+(D48).

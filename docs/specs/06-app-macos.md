@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D47 (application dependency and workflow ownership).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D48 (application dependency and workflow ownership).
 
 ## Structure
 
@@ -47,7 +47,17 @@ rejected; summaries remain immutable; and Companion refresh is post-commit
 optional work. Remaining recording/recovery orchestration awaits later Band 2
 slices (D47).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
+`RecordingController` still flushes `RecordingSession`, closes live feeds, and
+maps typed outcomes into the same navigation/failure phases. The use case owns
+publication/reservation reconciliation, provisional attribution and language,
+transcript/no-audio recovery, atomic captured snapshot plus exact first-job
+admission, worker kick, and recording-engine release through private filesystem
+and lifecycle adapters plus `MeetingStore`. The durable worker still owns
+diarization, optional summary, and terminal-aware Shortcut timing. Recording
+start and launch recovery remain later Band 2 extractions (D48).
+
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StopRecording` schedules the recording-engine policy after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
