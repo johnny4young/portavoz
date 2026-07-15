@@ -114,6 +114,13 @@ final class RecordingController {
     private var liveNotes: [String] = []
     private var meetingID = MeetingID()
     private var audioRelative = ""
+    /// Durable aggregate created before capture starts. It remains the source
+    /// of lifecycle truth while the existing controller is incrementally
+    /// strangled behind ApplicationKit use cases (Band 1 before Band 2).
+    private var recordingShell: Meeting?
+    /// Asset reservations written with the shell. Playback still reads the
+    /// legacy meeting directory; later Band 1 slices finalize this metadata.
+    private var reservedAssets: [AudioAsset] = []
     /// Calendar event this recording is linked to (brief flow): its title
     /// replaces the timestamp template, so the meeting is born with a real
     /// name. (The smart-title chip's guard is the timestamp-template SHAPE —
@@ -155,6 +162,8 @@ final class RecordingController {
         companionCards = []
         contextItems = []
         liveNotes = []
+        recordingShell = nil
+        reservedAssets = []
     }
 
     // Orchestrates capture + transcription + scheduler startup; the sequence
@@ -167,6 +176,8 @@ final class RecordingController {
         if case .done = phase { phase = .idle }
         guard phase == .idle || isFailed else { return }
         linkedEvent = event
+        recordingShell = nil
+        reservedAssets = []
         phase = .preparing
 
         // Warm the mic engine now so the echo canceller converges while the
@@ -214,6 +225,40 @@ final class RecordingController {
         if #available(macOS 14.4, *) {
             sources.append(await makeSystemTapSource())
         }
+
+        // Install the aggregate and reserve every capture path before any
+        // source starts. A model or DB failure above captures nothing; after
+        // this point every byte has a discoverable meeting owner (D33/D36).
+        startedAt = Date()
+        let title = await makeMeetingTitle(services: services)
+        let shell = Meeting(
+            id: meetingID,
+            title: title,
+            startedAt: startedAt,
+            audioDirectory: audioRelative,
+            retention: .keep,
+            lifecycleState: .recording)
+        let assets = sources.map { source in
+            AudioAsset.pendingCapture(
+                meetingID: meetingID,
+                channel: source.channel,
+                relativePath: "\(audioRelative)/\(source.channel.rawValue).caf",
+                at: startedAt)
+        }
+        do {
+            try await services.store.beginRecording(shell, assets: assets)
+        } catch {
+            warmupTask.cancel()
+            await microphone.stop()
+            micSource = nil
+            services.scheduleRecordingEnginesRelease()
+            phase = .failed(L10n.format(
+                "Could not start capture: %@", error.localizedDescription))
+            return
+        }
+        recordingShell = shell
+        reservedAssets = assets
+        services.libraryVersion += 1
 
         captions = []
         feeds = [:]
@@ -296,13 +341,17 @@ final class RecordingController {
             liveDiarizerFeed = nil
             liveDiarizerTask?.cancel()
             liveDiarizerTask = nil
+            warmupTask.cancel()
+            await microphone.stop()
             micSource = nil
             services.scheduleRecordingEnginesRelease()
-            phase = .failed(L10n.format("Could not start capture: %@", error.localizedDescription))
+            let captureError = error.localizedDescription
+            let reconciliationError = await reconcileCaptureStartFailure(services: services)
+            let detail = reconciliationError.map { "\(captureError) · \($0)" } ?? captureError
+            phase = .failed(L10n.format("Could not start capture: %@", detail))
             return
         }
         self.session = session
-        startedAt = Date()
         liveSummary = nil
         summarizedCount = 0
         liveNotes = []
@@ -442,9 +491,16 @@ final class RecordingController {
         return name.isEmpty ? nil : name
     }
 
+    private var isFailed: Bool {
+        if case .failed = phase { return true }
+        return false
+    }
+}
+
+extension RecordingController {
     // Orderly session close (flush, persistence, teardown);
     // the sequence is legitimately long. Splitting remains technical debt.
-    // swiftlint:disable:next function_body_length
+    // swiftlint:disable:next function_body_length cyclomatic_complexity
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
         defer { services.scheduleRecordingEnginesRelease() }
@@ -463,14 +519,73 @@ final class RecordingController {
         liveDiarizerTask = nil
         self.session = nil
 
-        guard !capture.files.isEmpty, !captions.isEmpty else {
+        guard var meeting = recordingShell else {
+            phase = .failed(L10n.text(
+                "The recording could not be saved because its local state was unavailable."))
+            return
+        }
+
+        guard !capture.files.isEmpty else {
+            do {
+                guard try await services.store.discardUnstartedRecording(meeting.id) else {
+                    phase = .failed(L10n.text(
+                        "The recording could not be saved because its local state was unavailable."))
+                    return
+                }
+                recordingShell = nil
+                reservedAssets = []
+                services.libraryVersion += 1
+            } catch {
+                phase = .failed(L10n.format(
+                    "Processing failed: %@", error.localizedDescription))
+                return
+            }
             phase = .failed(
                 L10n.text("No audio was captured. Check Portavoz microphone and system audio recording permissions.")
             )
             return
         }
 
+        // The audio is now discoverable regardless of every derived step
+        // below. Captions, diarization, and summaries may fail without
+        // deleting or hiding the aggregate (Band 1 durable state machine).
+        meeting.endedAt = Date()
+        meeting.lifecycleState = .captured
+        meeting.lastProcessingError = nil
         do {
+            try await services.store.save(meeting)
+            recordingShell = meeting
+            services.libraryVersion += 1
+        } catch {
+            phase = .failed(L10n.format(
+                "Processing failed: %@", error.localizedDescription))
+            return
+        }
+
+        guard !captions.isEmpty else {
+            meeting.lifecycleState = .needsAttention
+            meeting.lastProcessingError = "transcription.empty"
+            do {
+                try await services.store.save(meeting)
+                recordingShell = meeting
+                services.libraryVersion += 1
+                phase = .failed(L10n.text(
+                    // One-line user-visible recovery guidance.
+                    // swiftlint:disable:next line_length
+                    "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it."))
+            } catch {
+                phase = .failed(L10n.format(
+                    "Processing failed: %@", error.localizedDescription))
+            }
+            return
+        }
+
+        do {
+            meeting.lifecycleState = .processing
+            try await services.store.save(meeting)
+            recordingShell = meeting
+            services.libraryVersion += 1
+
             // Diarize the remote channel; the mic channel is "Me" by
             // hardware truth and never goes through ML (D5). Reload rather
             // than trust the shared reference: an idle release scheduled by
@@ -488,27 +603,7 @@ final class RecordingController {
                 in: attribution.segments)
 
             phase = .processing(L10n.text("Saving…"))
-            // Title from the user's template (Settings → Titles); {seq} is
-            // the 1-based position among today's meetings.
-            let template =
-                UserDefaults.standard.string(forKey: "titleTemplate")
-                ?? TitleTemplate.defaultTemplate
-            let todayCount =
-                ((try? await services.store.meetings()) ?? [])
-                .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: startedAt) }
-                .count
-            let title = linkedEvent.map { TitleTemplate.eventTitle($0.title, date: startedAt) }
-                ?? TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1)
-            let meeting = Meeting(
-                id: meetingID,
-                title: title,
-                startedAt: startedAt,
-                endedAt: Date(),
-                language: spokenLanguage,
-                audioDirectory: audioRelative,
-                retention: .keep
-            )
-            try await services.store.save(meeting)
+            meeting.language = spokenLanguage
             try await services.store.save(attribution.speakers)
             try await services.store.save(attribution.segments)
             try await services.store.save(contextItems)
@@ -539,6 +634,10 @@ final class RecordingController {
                 }
             }
 
+            meeting.lifecycleState = .ready
+            meeting.lastProcessingError = nil
+            try await services.store.save(meeting)
+            recordingShell = meeting
             services.libraryVersion += 1
             phase = .done(meetingID)
             // M16: hand the finished meeting to the user's Shortcut (if
@@ -547,14 +646,66 @@ final class RecordingController {
                 meeting: meeting, speakers: attribution.speakers,
                 segments: attribution.segments, summary: savedSummary))
         } catch {
+            meeting.lifecycleState = .needsAttention
+            meeting.lastProcessingError = "processing.failed"
+            do {
+                try await services.store.save(meeting)
+                recordingShell = meeting
+                services.libraryVersion += 1
+            } catch {
+                // Surface the original failure below. The recovery slice will
+                // reconcile a shell if this second persistence attempt also
+                // fails; never delete its audio as error cleanup.
+            }
             phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
         }
     }
 
-    private var isFailed: Bool {
-        if case .failed = phase { return true }
-        return false
+    /// Computes the durable title before reservation. Sequence now reflects
+    /// recording start order rather than whichever meeting finishes first.
+    private func makeMeetingTitle(services: AppServices) async -> String {
+        let template =
+            UserDefaults.standard.string(forKey: "titleTemplate")
+            ?? TitleTemplate.defaultTemplate
+        let todayCount =
+            ((try? await services.store.meetings()) ?? [])
+            .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: startedAt) }
+            .count
+        return linkedEvent.map { TitleTemplate.eventTitle($0.title, date: startedAt) }
+            ?? TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1)
     }
+
+    /// A failed source startup is reconciled against the filesystem after
+    /// `RecordingSession` has stopped every source. Empty reservations are
+    /// rolled back; if any channel file exists, its meeting is preserved for
+    /// launch recovery instead of deleting potentially useful audio.
+    private func reconcileCaptureStartFailure(services: AppServices) async -> String? {
+        guard var meeting = recordingShell else { return nil }
+        let hasCapturedFile = reservedAssets.contains { asset in
+            FileManager.default.fileExists(
+                atPath: AppServices.audioRoot.appendingPathComponent(asset.relativePath).path)
+        }
+        do {
+            if hasCapturedFile {
+                meeting.endedAt = Date()
+                meeting.lifecycleState = .needsAttention
+                meeting.lastProcessingError = "capture.start.failed"
+                try await services.store.save(meeting)
+                recordingShell = meeting
+            } else {
+                guard try await services.store.discardUnstartedRecording(meeting.id) else {
+                    return "recording shell could not be reconciled"
+                }
+                recordingShell = nil
+                reservedAssets = []
+            }
+            services.libraryVersion += 1
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
 }
 
 // The rolling-summary pipeline is a cohesive concern and lives outside the

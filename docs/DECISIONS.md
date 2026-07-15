@@ -247,7 +247,10 @@ or database framework. Every slice must preserve all released features and be
 independently shippable. The full plan and decision gates are recorded in
 `refactor-20260714.md`.
 
-**Status:** accepted target, not yet implemented. `ARCHITECTURE.md` must always
+**Status:** accepted target under incremental adoption. Band 0 established its
+truth boundaries; Band 1 slices 1A/1B installed schema v6 and the first durable
+pre-capture shell/assets workflow. `ApplicationKit`, jobs, recovery, outbox,
+and scoped observations remain targets. `ARCHITECTURE.md` must always
 distinguish current behavior from this target.
 
 ## D34 — English, commit-synchronized project documentation (Jul 2026)
@@ -329,7 +332,41 @@ states or rows become authoritative, binary rollback requires an explicit
 compatibility assessment and a scratch copy of the database; schema rollback
 is not the recovery mechanism.
 
+Slice 1B crosses that behavioral-adoption boundary for recordings created by
+the new binary: their pre-capture lifecycle and `audioAsset` reservations are
+authoritative. An older binary may still open the additive schema, but it does
+not understand or reconcile those rows and must not be treated as an automatic
+safe rollback. Roll back only after inspecting a copied database and preserving
+the new recording directories; never remove v6 tables to make the old binary
+appear compatible.
+
 **Rationale:** one durable contract gives every later Band 1 slice stable
 foreign keys and invariants while keeping runtime risk small. Deferring
 filesystem backfill avoids fabricating metadata, blocking launch on media I/O,
 or changing the released audio path before parity tests exist.
+
+## D37 — Only an unstarted provisional recording may be hard-deleted (Jul 2026)
+
+**Context:** D4 requires tombstones for user meetings, while Band 1 creates a
+meeting shell before any capture source starts. A source-start failure that
+writes no bytes should not leave an empty ghost meeting or a sync tombstone;
+conversely, cleanup must never delete a shell that owns audio or persisted
+meeting content.
+
+**Decision:** the sole recording-time hard-delete exception is a provisional
+shell still in `recording` state for which the controller found no reserved
+channel file and StorageKit found no speaker, segment, summary, context item,
+or Companion card. `MeetingStore.discardUnstartedRecording` enforces the
+database half of that invariant and asset rows cascade with the shell. If any
+channel file exists, startup failure preserves the meeting as
+`needsAttention`. Once capture has produced a file or persisted content, normal
+tombstone and recovery rules apply; error cleanup never deletes the audio.
+
+Slice 1B reserves the as-built final `channel.caf` paths. Slice 1C will move
+publication through `.partial` files and finalize metadata without weakening
+this preservation rule.
+
+**Rationale:** this keeps the library free of attempts that never became user
+data while making the conservative choice whenever potentially useful audio
+exists. The narrow two-sided guard prevents a convenience rollback from
+becoming a data-loss path.

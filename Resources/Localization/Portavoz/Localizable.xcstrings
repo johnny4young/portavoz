@@ -4001,6 +4001,16 @@
         }
       }
     },
+    "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio se guardó, pero no se produjo ninguna transcripción. Abre la reunión desde la biblioteca para reproducirla o exportarla."
+          }
+        }
+      }
+    },
     "The diarizer is not available.": {
       "localizations": {
         "es": {
@@ -4067,6 +4077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El refine cubre mucha menos voz que el transcript actual — probablemente falló. No lo apliques."
+          }
+        }
+      }
+    },
+    "The recording could not be saved because its local state was unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar la grabación porque su estado local no estaba disponible."
           }
         }
       }

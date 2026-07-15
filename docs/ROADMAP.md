@@ -6,15 +6,25 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement Band 1 slice 1B of the approved
+**Next concrete step:** implement Band 1 slice 1C of the approved
 architecture-hardening program in
-[refactor-20260714.md](refactor-20260714.md): persist a `recording` meeting
-shell and pending `audioAsset` reservations before capture starts, behind a
-Strangler boundary that leaves the released path available until parity is
-proven. Band 0 is complete and Band 1 slice 1A is complete. Every slice
+[refactor-20260714.md](refactor-20260714.md): atomically publish and finalize
+channel files, then install the captured meeting snapshot through one Unit of
+Work. Band 0 is complete and Band 1 slices 1A/1B are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36).
+commit (D33/D34/D36/D37).
+
+- **Architecture Band 1 slice 1B complete (Jul 15, 2026)**: every new live
+  recording now atomically persists a `recording` meeting shell and one typed
+  pending `audioAsset` per selected source before capture starts. Empty startup
+  attempts are rolled back only when no file or persisted content exists; any
+  written channel is preserved as `needsAttention`. Stop advances the durable
+  lifecycle through `captured`, `processing`, and `ready`, while empty captions
+  or later required-write failures keep the audio discoverable. Four focused
+  reservation/rollback tests bring the package baseline to 419 tests. Playback
+  still reads `Meeting.audioDirectory`, and assets still use the current final
+  CAF paths pending slice 1C finalization.
 
 - **Architecture Band 1 slice 1A complete (Jul 15, 2026)**: one atomic,
   additive schema-v6 migration establishes meeting lifecycle/revision fields,

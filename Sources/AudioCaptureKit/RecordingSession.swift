@@ -52,7 +52,7 @@ public actor RecordingSession {
         self.outputDirectory = outputDirectory
     }
 
-    /// Starts every source and streams its chunks into its own WAV file.
+    /// Starts every source and streams its chunks into its own CAF file.
     /// Writers are created lazily on the first chunk, at the source's real
     /// sample rate.
     ///

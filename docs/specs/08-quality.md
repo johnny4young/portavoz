@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 415 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Status: 419 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -20,7 +20,7 @@ Status: 415 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHu
 | MeetingHealthTests | 6 cases: talk-time/share, ES/EN questions, thresholded interruptions, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
-| StorageTests / StorageSchemaV6Tests / VoiceMixTests | Complete D4 contract (strict persisted IDs/enums, tombstones, versioning, hostile FTS, retention, paths), delete/restore conservation, schema-v6 v5-fixture migration, and lifecycle/path/language/idempotency constraints |
+| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / VoiceMixTests | Complete D4/D36/D37 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration, lifecycle/path/language/idempotency constraints, and atomic pre-capture shell/asset reservations |
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
@@ -33,6 +33,14 @@ CLI, and compare legacy logical rows and meeting fields before/after. The v6
 copy preserved them, left all new workflow tables empty, returned
 `integrity_check = ok`, and had zero foreign-key violations. The live database
 was never opened by v6 code.
+
+Band 1 slice 1B adds four focused persistence tests. They prove that the shell
+and every pending asset commit atomically, a conflicting asset path rolls the
+new shell back, invalid ownership/channel/path/state shapes write nothing, and
+hard rollback cannot remove a shell that already owns transcript content.
+Controller integration is retained by the full app build and the existing
+English/Spanish XCUITest suites; capture hardware itself is not simulated by
+XCUITest. The dev app is reinstalled only as `/Applications/Portavoz Dev.app`.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

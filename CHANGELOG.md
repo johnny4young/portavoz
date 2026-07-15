@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 15, 2026
 
+- **🛟 Your recording exists before AI does** — Portavoz now creates the meeting and reserves each audio channel before capture starts. If transcription or processing fails after audio was written, the recording stays discoverable in your library instead of disappearing with the error.
 - **🌍 Every voice keeps its language** — Auto-detect now preserves the language each person actually spoke in mixed meetings and after Refine. A separate Summary language setting consistently controls generated output for recordings, imports, live summaries, and regeneration without translating the transcript.
 
 ## July 14, 2026

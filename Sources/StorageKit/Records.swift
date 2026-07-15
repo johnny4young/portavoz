@@ -97,6 +97,95 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+struct AudioAssetRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "audioAsset"
+
+    var id: String
+    var meetingID: String
+    var channel: String
+    var role: String
+    var relativePath: String
+    var container: String?
+    var codec: String?
+    var sampleRate: Double?
+    var channelCount: Int?
+    var durationSeconds: Double?
+    var byteCount: Int64?
+    var sha256: String?
+    var healthStatus: String
+    var peakDBFS: Double?
+    var rmsDBFS: Double?
+    var sourceAssetID: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var supersededAt: Date?
+    var deletedAt: Date?
+
+    init(_ asset: AudioAsset) {
+        id = asset.id.rawValue.uuidString
+        meetingID = asset.meetingID.rawValue.uuidString
+        channel = asset.channel.rawValue
+        role = asset.role.rawValue
+        relativePath = asset.relativePath
+        container = asset.container
+        codec = asset.codec
+        sampleRate = asset.sampleRate
+        channelCount = asset.channelCount
+        durationSeconds = asset.durationSeconds
+        byteCount = asset.byteCount
+        sha256 = asset.sha256
+        healthStatus = asset.healthStatus.rawValue
+        peakDBFS = asset.peakDBFS
+        rmsDBFS = asset.rmsDBFS
+        sourceAssetID = asset.sourceAssetID?.rawValue.uuidString
+        createdAt = asset.createdAt
+        updatedAt = asset.updatedAt
+        supersededAt = asset.supersededAt
+        deletedAt = asset.deletedAt
+    }
+
+    var asset: AudioAsset {
+        get throws {
+            guard let channel = AudioChannel(rawValue: channel) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "channel", value: self.channel)
+            }
+            guard let health = AudioAssetHealthStatus(rawValue: healthStatus) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "healthStatus",
+                    value: healthStatus)
+            }
+            try StoredAudioPath.validate(relativePath)
+            return AudioAsset(
+                id: AudioAssetID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                channel: channel,
+                role: AudioAssetRole(rawValue: role),
+                relativePath: relativePath,
+                container: container,
+                codec: codec,
+                sampleRate: sampleRate,
+                channelCount: channelCount,
+                durationSeconds: durationSeconds,
+                byteCount: byteCount,
+                sha256: sha256,
+                healthStatus: health,
+                peakDBFS: peakDBFS,
+                rmsDBFS: rmsDBFS,
+                sourceAssetID: try PersistedIdentity.optional(
+                    sourceAssetID, table: Self.databaseTableName, column: "sourceAssetID"
+                ).map { AudioAssetID(rawValue: $0) },
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                supersededAt: supersededAt,
+                deletedAt: deletedAt)
+        }
+    }
+}
+
 struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "speaker"
 

@@ -3,9 +3,10 @@ import GRDB
 import PortavozCore
 
 public enum StorageError: Error, LocalizedError {
-    /// D4: the database never stores absolute paths (nor escapes the root).
+    /// D4: the database never stores invalid paths or escapes the audio root.
     case absolutePathRejected(String)
     case meetingNotFound(MeetingID)
+    case invalidRecordingReservation(String)
     /// Persisted identity is immutable. Corrupt rows must fail loudly rather
     /// than being assigned a fresh UUID and silently becoming another entity.
     case invalidPersistedUUID(table: String, column: String, value: String)
@@ -14,9 +15,11 @@ public enum StorageError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .absolutePathRejected(let path):
-            return "audioDirectory must be relative to the audio root, got: \(path)"
+            return "audio paths must be relative to the audio root, got: \(path)"
         case .meetingNotFound(let id):
             return "no such meeting: \(id.rawValue.uuidString)"
+        case .invalidRecordingReservation(let reason):
+            return "invalid recording reservation: \(reason)"
         case .invalidPersistedUUID(let table, let column, let value):
             return "invalid persisted UUID in \(table).\(column): \(value)"
         case .invalidPersistedValue(let table, let column, let value):
@@ -52,7 +55,8 @@ public struct SearchHit: Sendable {
 }
 
 /// The SQLite-backed store (GRDB + FTS5, D4 contract in `StorageSchema`).
-/// All writes stamp `updatedAt`; deletion is always a tombstone.
+/// All writes stamp `updatedAt`; user-visible deletion is a tombstone. D37's
+/// empty pre-capture reservation is the sole guarded rollback exception.
 ///
 /// The CRUD surface is split across `MeetingStore+Summaries.swift`,
 /// `MeetingStore+Search.swift`, and `MeetingStore+Retention.swift` — this
@@ -92,10 +96,7 @@ public final class MeetingStore: Sendable {
 
     /// Insert-or-update; `createdAt` survives updates, `updatedAt` bumps.
     public func save(_ meeting: Meeting) async throws {
-        if let path = meeting.audioDirectory,
-            path.hasPrefix("/") || path.contains("..") {
-            throw StorageError.absolutePathRejected(path)
-        }
+        if let path = meeting.audioDirectory { try StoredAudioPath.validate(path) }
         try await database.write { db in
             let now = Date()
             let existing = try MeetingRecord.fetchOne(
@@ -364,6 +365,15 @@ public final class MeetingStore: Sendable {
                 var record = CompanionCardRecord(card, meetingID: id, createdAt: now, updatedAt: now)
                 try record.save(db)
             }
+        }
+    }
+}
+
+enum StoredAudioPath {
+    static func validate(_ path: String) throws {
+        let components = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !path.isEmpty, !path.hasPrefix("/"), !components.contains("..") else {
+            throw StorageError.absolutePathRejected(path)
         }
     }
 }

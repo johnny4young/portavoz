@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback).
 
 ## Database
 
@@ -26,13 +26,20 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 
-Schema v6 is an additive foundation (D36), not workflow adoption. Existing
-meetings migrate to `ready`, revision zero, and no processing error. The
-migration does not inspect the filesystem and does not synthesize
-`audioAsset` rows, so `Meeting.audioDirectory` remains the authoritative
-runtime audio reference. The app does not create/read jobs, generation runs,
-outbox events, or per-meeting preferences yet. Their constraints and indexes
-are installed now so later Band 1 slices can migrate one workflow at a time.
+Schema v6 is an additive foundation (D36). Existing meetings migrate to
+`ready`, revision zero, and no processing error. The migration does not inspect
+the filesystem or synthesize `audioAsset` rows, so `Meeting.audioDirectory`
+remains the authoritative product audio reference for legacy and new meetings.
+
+Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
+`AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
+states. `MeetingStore.beginRecording` inserts one `recording` meeting plus all
+pending capture assets in a single transaction before sources start;
+`audioAssets(for:)` exposes them only through a live meeting root. These rows
+reserve the current final `<audioDirectory>/<channel>.caf` paths and do not yet
+carry finalized media metadata. The app still does not create/read jobs,
+generation runs, outbox events, or per-meeting preferences. Atomic `.partial`
+publication and metadata finalization are slice 1C.
 The migration is verified both by a deterministic v5 fixture and by migrating
 a scratch copy of the real release database: legacy logical rows and meeting
 fields were preserved, the new workflow tables remained empty, integrity was
@@ -48,7 +55,12 @@ opened by v6 code.
   or silently omitted. Invalid persisted record enums such as segment channel
   and card/context kind throw `StorageError.invalidPersistedValue` rather than
   changing meaning.
-- **Tombstones, never hard delete** (`deletedAt`; future sync needs them). This made it possible to restore a meeting that a defective refine had replaced.
+- **Tombstones for user meetings** (`deletedAt`; future sync needs them). The
+  sole D37 exception is `discardUnstartedRecording`: it can hard-delete only a
+  shell still in `recording` state with no speaker, segment, summary, context
+  item, or Companion card, and the controller calls it only when no reserved
+  channel file exists. Assets cascade with that no-data rollback. Any file or
+  content preserves the meeting for recovery.
 - **Relative paths only**: `save(meeting)` REJECTS absolute paths or `..` (`StorageError.absolutePathRejected`).
 - Schema-v6 `audioAsset.relativePath` independently rejects absolute and
   parent-traversal paths. Reserved assets may leave finalized media metadata
@@ -60,6 +72,11 @@ opened by v6 code.
 
 ## MeetingStore — API
 
+Recording durability APIs are `beginRecording(_:assets:)` (atomic shell plus
+reservations), `audioAssets(for:)` (strict, live-rooted read), and
+`discardUnstartedRecording(_:)` (D37-guarded no-data rollback).
+
+The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id)` (latest live-meeting snapshot + version), `latestSummary(id:fingerprint:language:)` (D25 — with `language`, it is the exact cache hit; without it, returns the translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
 All cross-library projections are live-rooted. `libraryFacts`, `findingInputs`,

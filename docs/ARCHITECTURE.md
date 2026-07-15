@@ -21,7 +21,8 @@ library/Insights projections through live meetings. Slice 0B separated
 transcript recognition policy from generated-output language and made
 recording, rolling summary, import, refine, and regeneration use the same typed
 policy boundary. Band 1 slice 1A installed the additive schema-v6 durability
-contract without changing the current recording workflow. Every refactor commit must update this file to reflect the
+contract. Slice 1B adopted its first runtime boundary: new recordings now own a
+durable shell and pending assets before capture starts. Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
 
@@ -42,7 +43,7 @@ the capabilities directly today.
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker through FluidAudio) over system/room channels; `SpeakerAttributor` (structural who-said-what); `Voiceprint` (biometric: on-device only, encrypted, never synced, erasable) |
 | `IntelligenceKit` | Summary providers for Foundation Models, OpenAI-compatible BYOK/Ollama, and embedded MLX; structured summaries, Recipes, fingerprint caching, Companion/RAG intelligence, schedulers, embeddings, and bilingual output policy |
 | `ContextFeedKit` | Placeholder-scale compatibility target; timestamped note behavior is implemented through Core/app/storage rather than a substantial standalone Kit |
-| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus additive lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Existing runtime paths do not consume the new workflow tables yet. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
+| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording now writes lifecycle and pending audio-asset state; jobs, provenance, outbox, and per-meeting preferences are not consumed yet. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
 | `AudioPlaybackKit` | Synchronized playback, channel-aware waveform data, clips, silence skipping, and AAC transcoding |
 | `SyncKit` | Placeholder-scale `Visibility` model. CKSyncEngine and CloudKit sync are planned, not implemented |
 | `IntegrationsKit` | Export and external-system adapters plus several cross-cutting read/product policies. It is the only cross-Kit layer under D31; narrowing it is part of Band 2 |
@@ -110,7 +111,7 @@ Feature parity is non-negotiable: the current release remains functional after
 every incremental Strangler slice. The old path is removed only after the new
 path has characterization coverage and equivalent runtime evidence.
 
-## Durability foundation (schema v6 as built)
+## Durability foundation and first runtime adoption (as built)
 
 Band 1 slice 1A adds one atomic, additive `v6` migration (D36):
 
@@ -122,19 +123,39 @@ Band 1 slice 1A adds one atomic, additive `v6` migration (D36):
 - nullable `generationRunID` foreign keys on segments, summaries, and
   Companion cards.
 
-This is a storage contract, not workflow adoption. The migration never reads
-the filesystem and creates no synthetic `audioAsset` rows for legacy
-recordings. `Meeting.audioDirectory` remains the authoritative read path, the
-app still persists the main meeting after capture, and global UserDefaults
-remain the active language defaults. Subsequent Band 1 slices will introduce
-typed records and move each workflow behind the new tables incrementally.
+Slice 1B adds the first workflow adoption behind that contract:
 
-## Durable meeting lifecycle target (workflow not implemented yet)
+- `AudioAssetID`, `AudioAsset`, strict record conversion, and live-rooted asset
+  reads;
+- one `MeetingStore.beginRecording` transaction that inserts a `recording`
+  shell plus all pending capture assets before sources start;
+- guarded rollback only for an empty provisional shell that never produced a
+  file or user/generated content (D37);
+- controller transitions through `captured`, `processing`, `ready`, or
+  `needsAttention`; valid audio is retained when transcription or later work
+  fails.
 
-The current app persists the main meeting record after capture stops and then
-coordinates several derived writes from `RecordingController`. The target
-persists a discoverable meeting shell before capture and treats every derived
-step as retryable work:
+The v6 migration still never reads the filesystem or synthesizes assets for
+legacy recordings. `Meeting.audioDirectory` remains the authoritative product
+read path for all meetings. New `audioAsset` rows reserve the current final CAF
+paths and remain `pending`; atomic `.partial` publication, metadata/checksum
+finalization, one captured-snapshot Unit of Work, jobs, and launch recovery are
+subsequent Band 1 slices. Global UserDefaults remain the active language
+defaults. Slice 1B crosses D36's behavioral-adoption boundary: an older binary
+may open the additive schema but cannot reconcile new lifecycle/assets, so any
+binary rollback now requires a copied-database assessment and preservation of
+v6 rows and recording directories.
+
+## Durable meeting lifecycle (partially adopted; target retained)
+
+The app now persists a discoverable shell and pending capture assets before
+`RecordingSession.start`. On normal stop it records `captured`, then
+`processing`, and finally `ready`; audio without captions or a later required
+write failure becomes `needsAttention`. A startup failure with no file rolls
+back only the empty provisional shell, while any existing channel file keeps
+the aggregate. `RecordingController` still coordinates these writes directly,
+asset finalization is not atomic yet, and there is no launch recovery or durable
+job execution. The retained target is:
 
 ```mermaid
 stateDiagram-v2
@@ -218,7 +239,7 @@ The goal: support heterogeneous hardware (from 8 GB without Apple Intelligence t
 - **Protocols by role, not by model**: `SummaryProvider` already exists (Foundation Models, OpenAI-compatible/Ollama, and MLX implement it); the same applies to quality transcription (`FileTranscriber`: Whisper today, SpeechAnalyzer and Parakeet-batch candidates). Views and the CLI depend on the protocol; selection lives in Settings + per-meeting/language overrides.
 - **The fallback chain is visible**: every result carries the engine that produced it (`provenance` column on summary/segment when the schema reaches that point — additive, D4 permits it); the UI shows it in gray ("Resumido on-device" / "Resumido por Ollama·qwen3"). Nothing silently fails over to another provider: degrade = inform.
 - **Layered configuration**: hardware default → global Settings by role → per-meeting override → per-language override (Humla pattern). Global settings currently use UserDefaults; durable typed per-meeting policy is a refactor target.
-- **Audio is already first-class in the product flow (D27)**: dual CAF capture feeds transcription, diarization, playback, waveform, clips, compression, and import through `MeetingAudioLayout`. Schema v6 now contains the constrained `audioAsset` table, including health metadata, checksums, lineage, and tombstones. **There is no implemented `AudioAsset` domain/read path yet**: current runtime storage still resolves `Meeting.audioDirectory`, and durable waveform/content-addressable caches remain targets described in [refactor-20260714.md](refactor-20260714.md).
+- **Audio is already first-class in the product flow (D27)**: dual CAF capture feeds transcription, diarization, playback, waveform, clips, compression, and import through `MeetingAudioLayout`. Schema v6 now has the constrained `audioAsset` table plus an `AudioAsset` domain/record/read path. New capture reserves pending rows before sources start, but product readers still resolve `Meeting.audioDirectory`; final metadata/checksums and durable waveform/content-addressable caches remain targets described in [refactor-20260714.md](refactor-20260714.md).
 
 Transcript recognition and generated-output language are separate as-built
 policies (D35). `TranscriptLanguagePolicy.automatic` leaves mixed meetings
@@ -256,8 +277,8 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 415-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
-| 1 — Indestructible recording | In progress — slice 1A adds the complete additive schema-v6 contract, v5 fixtures, and a successful scratch migration of the real release database; runtime still uses the legacy recording path | Next: persist a meeting shell and pending `audioAsset` rows before capture, without removing the old path |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 419-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 1 — Indestructible recording | In progress — slices 1A/1B: additive schema-v6 contract, real-v5 scratch migration, typed assets, atomic pre-capture shell/reservations, guarded no-byte rollback, and lifecycle reconciliation | Next: atomically publish/finalize channel files and install the captured snapshot through one Unit of Work; playback remains on `Meeting.audioDirectory` until parity is proven |
 | 2 — Application layer | Not started | `ApplicationKit`, composition-only `AppServices`, feature models, scoped GRDB observations |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |

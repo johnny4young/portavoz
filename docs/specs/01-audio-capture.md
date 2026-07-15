@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback).
 
 ## Channel model (D5)
 
@@ -34,7 +34,20 @@ Two SEPARATE streams, never mixed before diarization:
 
 Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: files, secondsWritten, peaks, errors, `driftSeconds`.
 
-Startup is transactional at both levels: `RecordingSession` stops partially started sources; `RecordingController` finishes Parakeet/diarization feeds, cancels their tasks, stops mic warm-up, and schedules idle engine release after any failure. `stop` schedules that release with `defer`, even when there was not enough audio/caption content to save.
+Startup is transactional at both levels. Before a source starts,
+`RecordingController` atomically inserts a `recording` meeting shell and one
+pending `AudioAsset` reservation per selected channel. It then starts
+`RecordingSession`, which stops partially started sources on failure; the
+controller finishes Parakeet/diarization feeds, cancels their tasks, stops mic
+warm-up, and schedules idle engine release. If startup wrote no channel file,
+the empty provisional shell is rolled back. If any reserved file exists, the
+shell is retained as `needsAttention` for recovery (D37).
+
+On stop, the controller persists `captured` before diarization or summary work,
+then `processing`, and finally `ready`. Audio with no captions is retained as a
+discoverable `needsAttention` meeting rather than discarded. A later required
+write failure does the same. `stop` schedules engine release with `defer`, even
+when there was not enough audio to keep.
 
 `CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers for older meetings (.wav) continue to work through `MeetingAudioLayout.channelFile` (prefers .caf, falls back to .wav). `verify_drift.py` converts CAF with afconvert.
 
@@ -57,4 +70,13 @@ Startup is transactional at both levels: `RecordingSession` stops partially star
 
 ## Planned (not implemented)
 
-Room channel; −23 LUFS normalization in the capture pipeline (today only peak-normalize before Whisper, spec 02). Playback/waveform/clips, skip silence, AAC transcode, and import are already implemented in M11 (spec 06 + AudioPlaybackKit).
+Band 1 slice 1C will write through `.partial` channel paths, atomically publish
+validated files, persist finalized duration/size/checksum/health metadata, and
+install the captured snapshot through one Unit of Work. Slice 1B deliberately
+reserves the current final `channel.caf` paths so database truth matches the
+as-built writer until that cutover. Launch recovery follows in a later slice.
+
+Other planned work: room channel; −23 LUFS normalization in the capture
+pipeline (today only peak-normalize before Whisper, spec 02).
+Playback/waveform/clips, skip silence, AAC transcode, and import are already
+implemented in M11 (spec 06 + AudioPlaybackKit).
