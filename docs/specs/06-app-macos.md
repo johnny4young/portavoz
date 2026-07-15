@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D49 (application dependency and workflow ownership).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D50 (application dependency and workflow ownership).
 
 ## Structure
 
@@ -154,16 +154,20 @@ insert rolls back the snapshot; the controller then attempts one explicit
 `needsAttention` snapshot fallback and never deletes audio.
 
 Process launch creates `RecordingRecoveryCoordinator` outside the view
-hierarchy. It recovers expired leases, scans non-ready meetings in the
-configured and fallback recordings roots, revalidates staging-only or
-final-only CAF evidence off the main actor, and commits recovered assets and
-lifecycle through StorageKit. Missing files are explicit; staging plus final
-or duplicate-root evidence is preserved as `capture.recovery.ambiguous`
-without overwrite or deletion. After that pass, the process supervisor resumes
-owner-leased diarization/summary work with durable retries and one scheduled
-wake instead of polling. The user's post-meeting Shortcut runs after terminal
-derived work, including transcript-only completion when summary is unavailable;
-temp-store launches suppress real host Shortcuts.
+hierarchy. It seeds only the temp-store UI fixture and enters
+`ApplicationKit.RecoverInterruptedMeetings`, which recovers expired leases,
+filters non-ready meetings, rechecks live-capture activity per candidate, and
+owns recovered-asset/lifecycle/failure policy. The private app filesystem
+adapter scans configured and fallback roots and revalidates staging-only or
+final-only CAF evidence off the main actor. Missing files are explicit;
+staging plus final or duplicate-root evidence is preserved as
+`capture.recovery.ambiguous` without overwrite or deletion. The coordinator
+maps typed issues to OSLog and one broad invalidation. Only after the awaited
+pass does the process supervisor resume owner-leased diarization/summary work
+with durable retries and one scheduled wake instead of polling. The user's
+post-meeting Shortcut runs after terminal derived work, including
+transcript-only completion when summary is unavailable; temp-store launches
+suppress real host Shortcuts (D50).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
 - **Refine (D7/D35/D47 in-app)**: `ApplicationKit.RefineMeeting` re-transcribes retained non-silent channels with Whisper (+vocabulary), then applies microphone noise/bleed filtering and best-effort diarization. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. On acceptance, `ApplyRefinedMeeting` atomically installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale draft is rejected. Companion refresh runs only afterward and preserves prior cards on incomplete work; persistence failure warns without failing the transcript. Meeting Detail reloads and invokes the existing `RegenerateSummary` use case under the independent current recipe/output policy, preserving older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).

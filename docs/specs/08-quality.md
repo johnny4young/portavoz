@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 527 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
+Status: 541 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -217,6 +217,21 @@ rejects direct `beginRecording`, `MicrophoneSource`, `RecordingSession`, or
 system-tap construction in the controller. Strict SwiftLint remains clean
 across 213 source files; no UI control or visible copy changed, so the existing
 19-case suite remains the UI contract.
+
+Band 2 slice 2J adds thirteen launch-recovery tests and a twelfth architecture
+rule. Port fakes prove expired leases run first, the live-recording gate is
+sampled per candidate, active capture defers without reading files, recovered
+audio installs an explicit transcript-recovery snapshot, empty shells use only
+the guarded discard, missing/ambiguous evidence keeps canonical guidance,
+captured and processing meetings respect durable jobs, and publication-only
+recovery never replaces existing content. Candidate-read and preservation
+failures retain the released invalidation/reporting timing. A real in-memory
+MeetingStore case proves ready protection and empty-shell deletion together.
+The architecture rule requires app launch recovery to enter through
+`RecoverInterruptedMeetings`, keeps CAF recovery in the private adapter, and
+asserts worker resume remains later in launch order. Strict SwiftLint remains
+clean across 215 source files; no UI control or visible copy changed, so the
+existing recovery XCUITest and 19-case suite remain the UI contract.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation).
 
 ## Database
 
@@ -277,3 +277,13 @@ shell discard or mark the incomplete aggregate `needsAttention`; filesystem
 evidence checks remain in a separate app-owned adapter. The architecture rule
 requires `RecordingController` to enter through `StartRecording` and rejects a
 return to direct reservation or concrete source/session construction (D49).
+
+Slice 2J makes `MeetingStore` conform to
+`RecoverInterruptedMeetingsStore`. Its adapter filters ready aggregates before
+the pass, recovers expired leases at the workflow timestamp, projects only
+meeting/transcript/job state required by reconciliation, and delegates every
+write to the existing guarded discard, captured-snapshot, recovered-assets, or
+canonical needs-attention transaction. ApplicationKit receives no GRDB record
+or SQL detail. A real in-memory adapter test proves a ready aggregate remains
+untouched while an empty interrupted recording shell is the only hard-deleted
+candidate (D50).

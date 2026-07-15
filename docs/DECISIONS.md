@@ -851,3 +851,41 @@ objects and real-time feed mechanics remain replaceable adapters, while the
 business invariants from D36/D37 become independent of SwiftUI and model or
 hardware availability. The split preserves every released live feature and
 leaves launch recovery as the next bounded workflow.
+
+## D50 — Launch recovery owns reconciliation before worker adoption (Jul 2026)
+
+**Context:** D40 already fixed the evidence precedence and repeat-safe storage
+transactions, but the macOS `RecordingRecoveryCoordinator` still combined
+expired-lease policy, candidate selection, live-capture exclusion, lifecycle
+decisions, filesystem scanning/publication, persistence, OSLog, UI fixtures,
+and broad Library invalidation. That made the most failure-sensitive launch
+workflow an app-target static function and left its ordering and per-meeting
+fallbacks difficult to characterize without launching the application.
+
+**Decision:** `ApplicationKit.RecoverInterruptedMeetings` samples one timestamp,
+recovers expired leases first, loads only non-ready candidates, rechecks an
+injected live-recording gate before every aggregate, and owns the D40
+evidence-to-lifecycle policy. It requests one recovered value per pending asset
+from a filesystem port, installs a recovered snapshot only into an untouched
+shell, otherwise uses the repeat-safe asset transaction, hard-deletes only a
+guard-approved empty recording shell, preserves typed capture failures under
+canonical error codes, and reconciles jobless `captured`/`processing` states.
+It returns a typed launch report for the released OSLog and single broad
+invalidation timing.
+
+The private macOS filesystem adapter still owns `RecordingsLocation`, scans the
+configured and default roots together, performs meeting-length CAF validation,
+hashing, signal measurement, and no-overwrite publication on a detached utility
+task, and maps ambiguity/invalid evidence to typed application errors. The app
+coordinator retains only benchmark exclusion, the temp-store-only XCUITest
+fixture, OSLog mapping, and `libraryVersion` projection. `PortavozApp` continues
+to await the complete recovery pass before starting the process worker. The use
+case never loads transcription, diarization, summary, or other ML engines.
+
+**Rationale:** recovery intent is application policy, while file handles,
+recordings-root discovery, and CAF mechanics are platform capabilities. This
+split gives expired-lease ordering, live-writer exclusion, ready protection,
+failure preservation, and invalidation parity one independently testable owner
+without adding `AudioCaptureKit` or OSLog to ApplicationKit. Keeping worker
+adoption after the awaited boundary preserves D42 and prevents derived work
+from racing incomplete audio truth.

@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation).
 
 ## Channel model (D5)
 
@@ -63,14 +63,15 @@ paths, then one same-directory rename publishes `<channel>.caf`. Missing
 channels stay metadata-free; a staging file that could not publish remains for
 recovery.
 
-At process launch, `RecordingRecoveryCoordinator` scans pending assets in both
-the configured recordings root and the default fallback. Staging-only CAFs are
+At process launch, `ApplicationKit.RecoverInterruptedMeetings` requests pending
+asset evidence through a private macOS adapter. That adapter scans both the
+configured recordings root and the default fallback. Staging-only CAFs are
 reopened, remeasured from persisted PCM, hashed, classified, and published;
 final-only CAFs receive the same full validation. File inspection runs off the
 main actor because meeting-length hashing and signal measurement must not block
 launch. Missing files remain explicit missing evidence. Staging plus final, or
 duplicate candidates across roots, is `capture.recovery.ambiguous`: every copy
-is preserved and Portavoz neither overwrites nor guesses (D40).
+is preserved and Portavoz neither overwrites nor guesses (D40/D50).
 
 `ApplicationKit.StopRecording` installs `captured`, finalized/missing assets,
 provisional live cast/transcript, notes, Companion cards, and the exact first

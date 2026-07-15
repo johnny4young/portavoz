@@ -7,15 +7,29 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): extract
-`RecoverInterruptedMeetings` while preserving evidence-first scans across
-configured/fallback roots, expired-lease recovery, ready-meeting protection,
-no ML during reconciliation, worker startup order, and the released
-presentation/invalidation timing. `StartRecording`, `StopRecording`,
-`RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are complete. Every slice
+program in [refactor-20260714.md](refactor-20260714.md): begin composition-root
+reduction with `ImportMeetingBundle`. Preserve remapped aggregate identity,
+optional audio attachments, immutable summaries, notes and Companion cards,
+temp-store safety, and exact Library/navigation behavior while replacing the
+current sequence of independent writes with one characterized application/
+storage boundary and explicit staged-file cleanup. `RecoverInterruptedMeetings`,
+`StartRecording`, `StopRecording`, `RefineMeeting`, `ImportMeeting`, and T16
+are complete; Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50).
+
+- **Architecture Band 2 slice 2J complete — recovery finishes before workers
+  begin (Jul 15, 2026)**: `ApplicationKit.RecoverInterruptedMeetings` now owns
+  expired-lease-first ordering, non-ready candidate selection, a dynamic
+  per-aggregate live-recording gate, evidence-to-lifecycle reconciliation,
+  guarded empty-shell discard, canonical failure preservation, and typed
+  invalidation/logging results. The private macOS adapter retains configured
+  plus fallback root discovery and detached CAF validation, hashing,
+  remeasurement, and no-overwrite publication. Launch still awaits the full
+  no-ML pass before worker adoption. Thirteen use-case/real-Store tests plus a
+  twelfth architecture rule bring the verified baseline to 541 package tests
+  (13 gated) plus 19 UI cases (D50).
 
 - **Architecture Band 2 slice 2I complete — Start reserves truth before
   hardware (Jul 15, 2026)**: `ApplicationKit.StartRecording` samples start

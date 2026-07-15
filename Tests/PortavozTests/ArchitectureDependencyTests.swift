@@ -150,6 +150,27 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
     }
 
+    func testAppLaunchRecoveryEntersThroughApplicationKitBeforeWorkerResume() throws {
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/RecordingRecoveryCoordinator.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+RecoverInterruptedMeetings.swift")
+        let launch = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+
+        XCTAssertTrue(coordinator.contains("services.recoverInterruptedMeetings.execute"))
+        XCTAssertTrue(adapter.contains("CaptureFileRecovery"))
+        XCTAssertFalse(coordinator.contains("recoverExpiredProcessingJobs"))
+        XCTAssertFalse(coordinator.contains("installRecoveredCaptureAssets"))
+        XCTAssertFalse(coordinator.contains("installCapturedSnapshot"))
+        XCTAssertFalse(coordinator.contains("markMeetingNeedsAttention"))
+        XCTAssertFalse(coordinator.contains("CaptureFileRecovery"))
+        let recovery = try XCTUnwrap(launch.range(of:
+            "RecordingRecoveryCoordinator.runIfNeeded"))
+        let worker = try XCTUnwrap(launch.range(of:
+            "PostCaptureProcessingCoordinator.resumeAfterRecovery"))
+        XCTAssertLessThan(recovery.lowerBound, worker.lowerBound)
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")
