@@ -103,6 +103,10 @@ final class RecordingController {
     private var liveTurns: [SpeakerTurn] = []
     private var liveDiarizerTask: Task<Void, Never>?
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
+    /// Loaded once off the main actor while capture is active. The same
+    /// identity seeds live hints and the atomic post-capture job, avoiding a
+    /// Keychain wait between publishing audio and committing its durable work.
+    private var sessionVoiceprintTask: Task<Voiceprint?, Never>?
 
     private let coalescer = CaptionCoalescer()
     private var session: RecordingSession?
@@ -165,6 +169,8 @@ final class RecordingController {
         liveNotes = []
         recordingShell = nil
         reservedAssets = []
+        sessionVoiceprintTask?.cancel()
+        sessionVoiceprintTask = nil
     }
 
     // Orchestrates capture + transcription + scheduler startup; the sequence
@@ -179,6 +185,8 @@ final class RecordingController {
         linkedEvent = event
         recordingShell = nil
         reservedAssets = []
+        sessionVoiceprintTask?.cancel()
+        sessionVoiceprintTask = nil
         phase = .preparing
 
         // Warm the mic engine now so the echo canceller converges while the
@@ -261,6 +269,9 @@ final class RecordingController {
         recordingShell = shell
         reservedAssets = assets
         services.libraryVersion += 1
+        sessionVoiceprintTask = Task.detached(priority: .utility) {
+            try? VoiceprintStore().load()
+        }
 
         captions = []
         feeds = [:]
@@ -343,6 +354,8 @@ final class RecordingController {
             liveDiarizerFeed = nil
             liveDiarizerTask?.cancel()
             liveDiarizerTask = nil
+            sessionVoiceprintTask?.cancel()
+            sessionVoiceprintTask = nil
             warmupTask.cancel()
             await microphone.stop()
             micSource = nil
@@ -384,17 +397,18 @@ final class RecordingController {
     /// is finished so a meeting's worth of chunks never buffers for nothing.
     private func startLiveDiarization(consuming stream: AsyncStream<AudioChunk>) {
         liveDiarizerTask = Task { [weak self] in
+            guard let self else { return }
+            let voiceprint = await self.sessionVoiceprintTask?.value
             guard
                 let diarizer = try? await PyannoteDiarizer.loadRecommended(
                     store: ModelStore(),
-                    voiceprint: (try? VoiceprintStore().load()))
+                    voiceprint: voiceprint)
             else {
-                self?.liveDiarizerFeed?.finish()
+                self.liveDiarizerFeed?.finish()
                 return
             }
             do {
                 for try await turn in diarizer.diarize(stream) {
-                    guard let self else { break }
                     self.liveTurns.append(turn)
                     self.applyLiveSpeakerHints()
                 }
@@ -520,6 +534,9 @@ extension RecordingController {
         liveDiarizerTask?.cancel()
         liveDiarizerTask = nil
         self.session = nil
+        let voiceprintTask = sessionVoiceprintTask
+        sessionVoiceprintTask = nil
+        defer { voiceprintTask?.cancel() }
 
         guard var meeting = recordingShell else {
             phase = .failed(L10n.text(
@@ -576,29 +593,17 @@ extension RecordingController {
             in: provisionalAttribution.segments)
         let capturedAssets = reconciledAssets(from: capture, at: meeting.endedAt ?? Date())
         let hasPendingPublication = capturedAssets.contains { $0.healthStatus == .pending }
-        do {
-            try await services.store.installCapturedSnapshot(CapturedMeetingSnapshot(
-                meeting: meeting,
-                assets: capturedAssets,
-                speakers: provisionalAttribution.speakers,
-                segments: provisionalAttribution.segments,
-                contextItems: contextItems,
-                companionCards: companionCards))
-            recordingShell = meeting
-            reservedAssets = capturedAssets
-            services.libraryVersion += 1
-        } catch {
-            phase = .failed(L10n.format(
-                "Processing failed: %@", error.localizedDescription))
-            return
-        }
 
         guard !captions.isEmpty else {
             meeting.lifecycleState = .needsAttention
             meeting.lastProcessingError = "transcription.empty"
             do {
-                try await services.store.save(meeting)
+                try await services.store.installCapturedSnapshot(capturedSnapshot(
+                    meeting: meeting,
+                    assets: capturedAssets,
+                    attribution: provisionalAttribution))
                 recordingShell = meeting
+                reservedAssets = capturedAssets
                 services.libraryVersion += 1
                 phase = .failed(L10n.text(
                     // One-line user-visible recovery guidance.
@@ -611,78 +616,62 @@ extension RecordingController {
             return
         }
 
+        let request: ProcessingJobRequest
         do {
-            meeting.lifecycleState = .processing
-            try await services.store.save(meeting)
-            recordingShell = meeting
-            services.libraryVersion += 1
-
-            // Diarize the remote channel; the mic channel is "Me" by
-            // hardware truth and never goes through ML (D5). Reload rather
-            // than trust the shared reference: an idle release scheduled by
-            // a refine that finished mid-recording may have dropped it.
-            try? await services.loadEnginesIfNeeded()
-            var turns: [SpeakerTurn] = []
-            if let systemFile = capture.files[.system], let diarizer = services.diarizer,
-                (capture.secondsWritten[.system] ?? 0) > 1 {
-                phase = .processing(L10n.text("Identifying speakers…"))
-                turns = (try? await diarizer.diarizeFile(at: systemFile)) ?? []
-            }
-            let attribution = SpeakerAttributor.attribute(
-                segments: captions, turns: turns, meetingID: meetingID)
-            let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
-                in: attribution.segments)
-
-            phase = .processing(L10n.text("Saving…"))
-            meeting.language = spokenLanguage
-            try await services.store.replaceCast(
-                for: meeting.id,
-                speakers: attribution.speakers,
-                segments: attribution.segments)
-
-            var savedSummary: SummaryDraft?
-            do {
-                phase = .processing(L10n.text("Generating summary…"))
-                // Transcript recognition and generated-output language are
-                // independent policies. The default follows homogeneous
-                // speech; a fixed summary preference never changes captions.
-                let language = MeetingLanguagePreferences.resolvedSummaryLanguage(
-                    spokenLanguage: spokenLanguage).identifier
-                let request = SummaryRequest(
-                    meetingID: meetingID,
-                    segments: attribution.segments,
-                    speakers: attribution.speakers,
-                    recipe: .general,
-                    targetLanguage: language,
-                    glossary: vocabulary,
-                    contextItems: contextItems
-                )
-                // Configured engine (Apple FM or local Ollama). No summary is
-                // fine — the transcript is already saved.
-                if let draft = try? await services.summarize(request) {
-                    try await services.store.saveSummary(draft)
-                    savedSummary = draft
-                }
-            }
-
-            meeting.lifecycleState = hasPendingPublication ? .needsAttention : .ready
-            meeting.lastProcessingError = hasPendingPublication
-                ? "capture.publication.failed" : nil
-            try await services.store.save(meeting)
-            recordingShell = meeting
-            services.libraryVersion += 1
-            phase = .done(meetingID)
-            // M16: hand the finished meeting to the user's Shortcut (if
-            // configured) — after .done so automation never delays the UI.
-            PostMeetingShortcut.runIfConfigured(markdown: MeetingExporter.markdown(
-                meeting: meeting, speakers: attribution.speakers,
-                segments: attribution.segments, summary: savedSummary))
+            request = try PostCaptureProcessingCoordinator.initialDiarizationRequest(
+                meeting: meeting,
+                segments: provisionalAttribution.segments,
+                assets: capturedAssets,
+                voiceprint: await voiceprintTask?.value)
         } catch {
             meeting.lifecycleState = .needsAttention
-            meeting.lastProcessingError = "processing.failed"
+            meeting.lastProcessingError = hasPendingPublication
+                ? "capture.publication.failed" : "processing.enqueue.failed"
             do {
-                try await services.store.save(meeting)
+                try await services.store.installCapturedSnapshot(capturedSnapshot(
+                    meeting: meeting,
+                    assets: capturedAssets,
+                    attribution: provisionalAttribution))
                 recordingShell = meeting
+                reservedAssets = capturedAssets
+                services.libraryVersion += 1
+            } catch {
+                // The original producer failure is more actionable; launch
+                // recovery still owns any shell that could not be installed.
+            }
+            phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
+            return
+        }
+
+        do {
+            phase = .processing(L10n.text("Saving…"))
+            try await services.store.installCapturedSnapshot(
+                capturedSnapshot(
+                    meeting: meeting,
+                    assets: capturedAssets,
+                    attribution: provisionalAttribution),
+                enqueue: [request])
+            meeting.lifecycleState = .processing
+            recordingShell = meeting
+            reservedAssets = capturedAssets
+            services.libraryVersion += 1
+
+            // UI handoff no longer waits for diarization or summary. The
+            // process supervisor owns those durable operations and refreshes
+            // the selected detail after each atomic artifact commit.
+            phase = .done(meetingID)
+            services.kickPostCaptureProcessing()
+        } catch {
+            meeting.lifecycleState = .needsAttention
+            meeting.lastProcessingError = hasPendingPublication
+                ? "capture.publication.failed" : "processing.enqueue.failed"
+            do {
+                try await services.store.installCapturedSnapshot(capturedSnapshot(
+                    meeting: meeting,
+                    assets: capturedAssets,
+                    attribution: provisionalAttribution))
+                recordingShell = meeting
+                reservedAssets = capturedAssets
                 services.libraryVersion += 1
             } catch {
                 // Surface the original failure below. The recovery slice will
@@ -691,6 +680,20 @@ extension RecordingController {
             }
             phase = .failed(L10n.format("Processing failed: %@", error.localizedDescription))
         }
+    }
+
+    private func capturedSnapshot(
+        meeting: Meeting,
+        assets: [AudioAsset],
+        attribution: SpeakerAttributor.Attribution
+    ) -> CapturedMeetingSnapshot {
+        CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: assets,
+            speakers: attribution.speakers,
+            segments: attribution.segments,
+            contextItems: contextItems,
+            companionCards: companionCards)
     }
 
     /// Computes the durable title before reservation. Sequence now reflects

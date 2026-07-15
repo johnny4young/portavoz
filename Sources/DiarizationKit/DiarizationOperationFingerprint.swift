@@ -6,6 +6,30 @@ import PortavozCore
 public enum DiarizationOperationFingerprint {
     private static let version = "diarization-v1"
 
+    /// Initial durable work created after the captured snapshot commits.
+    /// Keeping the execution policy beside the exact fingerprint prevents
+    /// producers from inventing a second idempotency or retry contract.
+    public static func request(
+        meetingID: MeetingID,
+        transcriptRevision: Int,
+        segments: [TranscriptSegment],
+        systemAsset: AudioAsset?,
+        voiceprint: Voiceprint?
+    ) -> ProcessingJobRequest? {
+        guard let fingerprint = compute(
+            meetingID: meetingID,
+            transcriptRevision: transcriptRevision,
+            segments: segments,
+            systemAsset: systemAsset,
+            voiceprint: voiceprint)
+        else { return nil }
+        return ProcessingJobRequest(
+            kind: .diarization,
+            inputFingerprint: fingerprint,
+            priority: 20,
+            maxAttempts: 3)
+    }
+
     public static func compute(
         meetingID: MeetingID,
         transcriptRevision: Int,

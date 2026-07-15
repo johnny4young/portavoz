@@ -6,18 +6,25 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** finish Band 1 slice 1D-b2b of the approved
-architecture-hardening program in
-[refactor-20260714.md](refactor-20260714.md): switch the normal Stop path from
-synchronous post-processing to enqueueing the exact diarization operation and
-kicking the process-scoped durable executor. The cutover must preserve
-immediate navigation, transcript-only completion when no summary provider is
-available, and the post-meeting Shortcut hook. Band 0 is complete and Band 1
-slices 1A/1B/1C/1D-a/1D-b1/1D-b2a plus the 1D-b2b control-plane and executor
-units are complete. Every slice
+**Next concrete step:** begin Band 2 of the approved architecture-hardening
+program in [refactor-20260714.md](refactor-20260714.md): add the
+`ApplicationKit` dependency shell plus architecture rule tests, without moving
+runtime behavior yet. Then extract one use case at a time behind that boundary.
+Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43).
+
+- **Architecture Band 1 complete — normal Stop is durable (Jul 15, 2026)**:
+  Stop now publishes audio, installs captured assets/live transcript/notes/cards,
+  and admits the exact first diarization job in one SQLite transaction (D43).
+  The meeting opens immediately while the process worker continues attribution
+  and optional summary; relaunch resumes the same work. One recording-scoped
+  voiceprint value keeps live and durable identity consistent. The configured
+  Shortcut runs after terminal processing, including transcript-only success,
+  while temp-store automation can never invoke a host Shortcut. One request
+  policy test plus atomic admission/rollback tests bring the package baseline
+  to 449. The next architecture band is the application-layer extraction.
 
 - **Architecture Band 1 slice 1D-b2b executor complete (Jul 15, 2026)**: a
   process-scoped supervisor now starts after capture recovery and serially

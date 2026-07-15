@@ -79,6 +79,31 @@ final class ProcessingOperationFingerprintTests: XCTestCase {
         XCTAssertNotNil(diarizationFingerprint(systemAsset: nil))
     }
 
+    func testDiarizationRequestCarriesExactExecutionPolicy() throws {
+        let segments = [segment(
+            id: "22222222-2222-2222-2222-222222222222",
+            text: "hola", language: "es", start: 0)]
+        let request = try XCTUnwrap(DiarizationOperationFingerprint.request(
+            meetingID: meetingID,
+            transcriptRevision: 7,
+            segments: segments,
+            systemAsset: systemAsset(),
+            voiceprint: nil))
+
+        XCTAssertEqual(request.kind, .diarization)
+        XCTAssertEqual(request.priority, 20)
+        XCTAssertEqual(request.maxAttempts, 3)
+        XCTAssertNil(request.notBefore)
+        XCTAssertEqual(
+            request.inputFingerprint,
+            DiarizationOperationFingerprint.compute(
+                meetingID: meetingID,
+                transcriptRevision: 7,
+                segments: segments,
+                systemAsset: systemAsset(),
+                voiceprint: nil))
+    }
+
     func testSummaryOperationAddsLanguageAndRevisionToMaterialIdentity() {
         let spanish = summaryRequest(language: "es")
         let english = summaryRequest(language: "en")

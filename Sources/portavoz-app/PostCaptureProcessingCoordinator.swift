@@ -1,5 +1,6 @@
 import DiarizationKit
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import OSLog
@@ -74,9 +75,9 @@ final class PostCaptureProcessingSupervisor {
     }
 }
 
-/// Concrete Band 1 worker for the already-durable diarization and summary
-/// operations. Capture recovery always runs first; Stop remains on the legacy
-/// synchronous path until the following Strangler commit starts enqueueing.
+/// Concrete Band 1 worker for durable diarization and summary operations.
+/// Capture recovery always runs first; normal Stop atomically admits the first
+/// job and hands the remaining work to this process-scoped supervisor.
 @MainActor
 enum PostCaptureProcessingCoordinator {
     static let supportedKinds: Set<ProcessingJobKind> = [.diarization, .summary]
@@ -95,6 +96,26 @@ enum PostCaptureProcessingCoordinator {
             logger.error("Could not prepare processing fixture: \(error.localizedDescription)")
         }
         services.postCaptureProcessing.kick(services: services)
+    }
+
+    /// Strangler producer boundary used by the atomic capture handoff. The
+    /// caller supplies the voiceprint sampled for this recording; this method
+    /// owns exact operation identity and fixed execution policy.
+    static func initialDiarizationRequest(
+        meeting: Meeting,
+        segments: [TranscriptSegment],
+        assets: [AudioAsset],
+        voiceprint: Voiceprint?
+    ) throws -> ProcessingJobRequest {
+        guard !segments.isEmpty else { throw WorkerError.emptyTranscript }
+        guard let request = DiarizationOperationFingerprint.request(
+            meetingID: meeting.id,
+            transcriptRevision: meeting.transcriptRevision,
+            segments: segments,
+            systemAsset: currentSystemCapture(in: assets),
+            voiceprint: voiceprint)
+        else { throw WorkerError.inputNotReady }
+        return request
     }
 
     static func drain(services: AppServices, owner: String) async {
@@ -144,7 +165,7 @@ enum PostCaptureProcessingCoordinator {
             return false
         } catch {
             return await preserveFailure(
-                error, for: job, owner: owner, store: services.store)
+                error, for: job, owner: owner, services: services)
         }
     }
 
@@ -181,14 +202,7 @@ enum PostCaptureProcessingCoordinator {
 
         let assets = try await services.store.audioAssets(for: job.meetingID)
         let systemAsset = currentSystemCapture(in: assets)
-        let voiceprint: Voiceprint?
-        if isSafeProcessingFixture {
-            voiceprint = nil
-        } else {
-            voiceprint = await Task.detached(priority: .utility) {
-                try? VoiceprintStore().load()
-            }.value
-        }
+        let voiceprint = await currentVoiceprint()
         guard let fingerprint = DiarizationOperationFingerprint.compute(
             meetingID: job.meetingID,
             transcriptRevision: detail.meeting.transcriptRevision,
@@ -217,7 +231,7 @@ enum PostCaptureProcessingCoordinator {
             transcriptRevision: nextRevision,
             services: services)
 
-        _ = try await services.store.completeDiarizationJob(
+        let completion = try await services.store.completeDiarizationJob(
             job.id,
             owner: owner,
             artifact: DiarizationArtifact(
@@ -228,6 +242,9 @@ enum PostCaptureProcessingCoordinator {
                 speakers: attribution.speakers,
                 segments: attribution.segments),
             enqueue: followUps)
+        if completion.enqueuedJobs.isEmpty {
+            await runPostMeetingShortcut(for: job.meetingID, services: services)
+        }
         services.scheduleRecordingEnginesRelease()
     }
 
@@ -266,6 +283,7 @@ enum PostCaptureProcessingCoordinator {
                 inputFingerprint: fingerprint,
                 sourceTranscriptRevision: detail.meeting.transcriptRevision,
                 draft: draft))
+        await runPostMeetingShortcut(for: job.meetingID, services: services)
     }
 
     private static func speakerTurns(
@@ -342,31 +360,37 @@ enum PostCaptureProcessingCoordinator {
         _ error: Error,
         for job: ProcessingJob,
         owner: String,
-        store: MeetingStore
+        services: AppServices
     ) async -> Bool {
         do {
+            var shouldRunShortcut = false
             if error.isSupersededProcessingInput {
-                _ = try await store.cancelProcessingJob(
+                _ = try await services.store.cancelProcessingJob(
                     job.id,
                     owner: owner,
                     reason: ProcessingJobFailure(
                         code: "processing.input.superseded",
                         message: error.localizedDescription))
+                shouldRunShortcut = job.kind == .summary
             } else if job.kind == .summary, job.attempt >= job.maxAttempts {
-                _ = try await store.cancelProcessingJob(
+                _ = try await services.store.cancelProcessingJob(
                     job.id,
                     owner: owner,
                     reason: ProcessingJobFailure(
                         code: "processing.summary.unavailable",
                         message: error.localizedDescription))
+                shouldRunShortcut = true
             } else {
-                _ = try await store.failProcessingJob(
+                _ = try await services.store.failProcessingJob(
                     job.id,
                     owner: owner,
                     failure: ProcessingJobFailure(
                         code: failureCode(for: job.kind),
                         message: error.localizedDescription),
                     retryAt: retryDate(after: job.attempt))
+            }
+            if shouldRunShortcut {
+                await runPostMeetingShortcut(for: job.meetingID, services: services)
             }
             return true
         } catch let storageError as StorageError where storageError.isLeaseLoss {
@@ -399,6 +423,34 @@ enum PostCaptureProcessingCoordinator {
                     && $0.supersededAt == nil && $0.deletedAt == nil
             }
             .max { $0.updatedAt < $1.updatedAt }
+    }
+
+    private static func currentVoiceprint() async -> Voiceprint? {
+        guard !isSafeProcessingFixture else { return nil }
+        return await Task.detached(priority: .utility) {
+            try? VoiceprintStore().load()
+        }.value
+    }
+
+    /// Preserves M16 after Stop becomes asynchronous. Disposable stores never
+    /// invoke a real user Shortcut, even if the host defaults contain one.
+    private static func runPostMeetingShortcut(
+        for meetingID: MeetingID,
+        services: AppServices
+    ) async {
+        guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return }
+        do {
+            guard let detail = try await services.store.detail(meetingID) else { return }
+            let summary = try await services.store.summary(meetingID)?.draft
+            PostMeetingShortcut.runIfConfigured(markdown: MeetingExporter.markdown(
+                meeting: detail.meeting,
+                speakers: detail.speakers,
+                segments: detail.segments,
+                summary: summary))
+        } catch {
+            logger.error(
+                "Could not prepare post-meeting Shortcut: \(error.localizedDescription)")
+        }
     }
 
     private static func seedFixtureIfRequested(
@@ -436,19 +488,13 @@ enum PostCaptureProcessingCoordinator {
         try await services.store.save(meeting)
         try await services.store.save(attribution.speakers)
         try await services.store.save(attribution.segments)
-        let fingerprint = DiarizationOperationFingerprint.compute(
-            meetingID: meetingID,
-            transcriptRevision: meeting.transcriptRevision,
+        let request = try initialDiarizationRequest(
+            meeting: meeting,
             segments: attribution.segments,
-            systemAsset: nil,
-            voiceprint: nil)!
+            assets: [],
+            voiceprint: nil)
         _ = try await services.store.enqueueProcessingJobs(
-            for: meetingID,
-            requests: [ProcessingJobRequest(
-                kind: .diarization,
-                inputFingerprint: fingerprint,
-                priority: 20,
-                maxAttempts: 3)])
+            for: meetingID, requests: [request])
         return true
     }
 

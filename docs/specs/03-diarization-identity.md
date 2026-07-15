@@ -22,7 +22,7 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
 
 Field request: two remote voices speaking one after the other were merged into a single live "Ellos" row — it was not apparent that they were two people. Pipeline:
 
-- `RecordingController` feeds the system channel to a **DEDICATED instance** of `PyannoteDiarizer` (fresh SpeakerManager per session — the batch pass at stop remains uncontaminated) via `diarize(AsyncStream)`, in 10 s windows; inference runs on the diarizer actor (~14 MB, ms per window — it never competes with Parakeet's live lane).
+- `RecordingController` feeds the system channel to a **DEDICATED instance** of `PyannoteDiarizer` (fresh SpeakerManager per session — the durable post-capture pass remains uncontaminated) via `diarize(AsyncStream)`, in 10 s windows; inference runs on the diarizer actor (~14 MB, ms per window — it never competes with Parakeet's live lane).
 - With each turn, `LiveSpeakerLabeler.relabel` (pure, idempotent, 7 tests) relabels CLOSED system rows: a row that crosses two voices is **split** at turn boundaries (reuses `SpeakerAttributor`, proportional word distribution), and each piece shows its **S1/S2** pill (or "Me"→"Yo" via voiceprint). The last row (still growing, a coalescer invariant) is never touched; rows without a covering window remain "Ellos". Split rows receive new IDs → live translation picks them up automatically (it translates closed rows without a translation).
 - Live labels are **ephemeral hints**: at stop, the batch pass (`diarizeFile` + micro-cluster merge + attribution) remains the truth and reattributes everything from the file; live S-numbers do not have to match the final ones.
 - Best-effort: if the models fail to load, the feed closes (an entire meeting is not accumulated in memory), and captions remain "Ellos" as before.
@@ -71,8 +71,9 @@ turns. Model load/inference failure retains the released best-effort behavior
 and publishes honest unattributed system segments; a finalized audio path that
 has disappeared is a durable retryable failure. `SpeakerAttributor` output,
 homogeneous language, transcript revision increment, job success, and the exact
-dependent summary enqueue share one StorageKit transaction. Normal Stop does
-not produce these jobs yet.
+dependent summary enqueue share one StorageKit transaction. D43 makes normal
+Stop produce the first exact job atomically with captured content, using the
+same recording-scoped voiceprint value that seeded live diarization.
 
 ## Known limits
 

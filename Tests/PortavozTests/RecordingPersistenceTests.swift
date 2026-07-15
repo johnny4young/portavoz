@@ -302,6 +302,107 @@ final class RecordingPersistenceTests: XCTestCase {
         XCTAssertEqual(storedCards.map(\.id), [card.id])
     }
 
+    func testCapturedSnapshotAtomicallyAdmitsInitialProcessing() async throws {
+        let store = try MeetingStore.inMemory()
+        var meeting = shell()
+        let reservation = assets(for: meeting, channels: [.microphone])[0]
+        try await store.beginRecording(meeting, assets: [reservation])
+        let speaker = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: speaker.id,
+            channel: .microphone,
+            text: "The durable worker owns the next step.",
+            startTime: 0,
+            endTime: 2,
+            isFinal: true)
+        meeting.endedAt = meeting.startedAt.addingTimeInterval(2)
+        meeting.language = "en"
+        meeting.lifecycleState = .captured
+        let timestamp = meeting.startedAt.addingTimeInterval(3)
+
+        let jobs = try await store.installCapturedSnapshot(
+            CapturedMeetingSnapshot(
+                meeting: meeting,
+                assets: [published(reservation)],
+                speakers: [speaker],
+                segments: [segment],
+                contextItems: [],
+                companionCards: []),
+            enqueue: [ProcessingJobRequest(
+                kind: .diarization,
+                inputFingerprint: "initial-diarization",
+                priority: 20,
+                maxAttempts: 3)],
+            at: timestamp)
+
+        let loadedDetail = try await store.detail(meeting.id)
+        let detail = try XCTUnwrap(loadedDetail)
+        let storedJobs = try await store.processingJobs(for: meeting.id)
+        let storedAssets = try await store.audioAssets(for: meeting.id)
+        XCTAssertEqual(jobs.map(\.id), storedJobs.map(\.id))
+        XCTAssertEqual(storedJobs.map(\.state), [.pending])
+        XCTAssertEqual(storedJobs.map(\.kind), [.diarization])
+        XCTAssertEqual(detail.meeting.lifecycleState, .processing)
+        XCTAssertEqual(detail.segments.map(\.id), [segment.id])
+        XCTAssertEqual(storedAssets.map(\.healthStatus), [.healthy])
+    }
+
+    func testInitialJobFailureRollsCapturedSnapshotBack() async throws {
+        let store = try MeetingStore.inMemory()
+        var meeting = shell()
+        let reservation = assets(for: meeting, channels: [.microphone])[0]
+        try await store.beginRecording(meeting, assets: [reservation])
+        let speaker = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: speaker.id,
+            channel: .microphone,
+            text: "Neither half may commit alone.",
+            startTime: 0,
+            endTime: 2,
+            isFinal: true)
+        meeting.endedAt = meeting.startedAt.addingTimeInterval(2)
+        meeting.lifecycleState = .captured
+        try await store.database.write { db in
+            try db.execute(sql: """
+                CREATE TRIGGER reject_initial_processing_job
+                BEFORE INSERT ON processingJob
+                BEGIN
+                    SELECT RAISE(ABORT, 'injected initial job failure');
+                END
+                """)
+        }
+
+        do {
+            try await store.installCapturedSnapshot(
+                CapturedMeetingSnapshot(
+                    meeting: meeting,
+                    assets: [published(reservation)],
+                    speakers: [speaker],
+                    segments: [segment],
+                    contextItems: [],
+                    companionCards: []),
+                enqueue: [ProcessingJobRequest(
+                    kind: .diarization,
+                    inputFingerprint: "initial-diarization")])
+            XCTFail("job admission failure must roll back the captured snapshot")
+        } catch {
+            XCTAssertTrue(error is DatabaseError, "wrong error: \(error)")
+        }
+
+        let loadedDetail = try await store.detail(meeting.id)
+        let detail = try XCTUnwrap(loadedDetail)
+        let storedJobs = try await store.processingJobs(for: meeting.id)
+        XCTAssertEqual(detail.meeting.lifecycleState, .recording)
+        XCTAssertTrue(detail.speakers.isEmpty)
+        XCTAssertTrue(detail.segments.isEmpty)
+        XCTAssertTrue(storedJobs.isEmpty)
+        let storedAssets = try await store.audioAssets(for: meeting.id)
+        XCTAssertEqual(storedAssets.map(\.healthStatus), [.pending])
+        XCTAssertEqual(storedAssets.map(\.relativePath), [reservation.relativePath])
+    }
+
     func testCapturedSnapshotRollsBackEveryWriteWhenAssetPublicationConflicts() async throws {
         let store = try MeetingStore.inMemory()
         let directory = "Audio/shared-finalization"

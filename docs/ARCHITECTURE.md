@@ -15,8 +15,8 @@ executable migration plan, rationale, bands, target schemas, and acceptance
 criteria live in [refactor-20260714.md](refactor-20260714.md).
 
 The rearchitecture direction is approved and execution is active on
-`codex/refactor-20260717`. Band 0 is complete in two independently shippable
-slices, and Band 1 is in progress. Slice 0A made persisted identity/enum decoding strict and scoped
+`codex/refactor-20260717`. Bands 0 and 1 are complete in independently
+shippable slices. Slice 0A made persisted identity/enum decoding strict and scoped
 library/Insights projections through live meetings. Slice 0B separated
 transcript recognition policy from generated-output language and made
 recording, rolling summary, import, refine, and regeneration use the same typed
@@ -33,8 +33,9 @@ summary artifact completion. The first 1D-b2b control-plane unit adds
 owner-fenced cancellation for degradable work and durable scheduled-wake
 discovery. The second 1D-b2b unit adds the concrete process-scoped diarization
 and summary executor, exact operation fingerprints, heartbeat/retry ownership,
-and a single non-polling wake. The normal Stop path does not enqueue yet; that
-producer cutover remains the next unit.
+and a single non-polling wake. The final 1D-b2b unit atomically installs the
+captured snapshot plus initial exact job, makes normal Stop navigate immediately
+and kick the executor, and preserves terminal-aware Shortcut delivery (D43).
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -56,7 +57,7 @@ the capabilities directly today.
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker through FluidAudio) over system/room channels; `SpeakerAttributor` (structural who-said-what); exact post-capture operation fingerprints; `Voiceprint` (biometric: on-device only, encrypted, never synced, erasable) |
 | `IntelligenceKit` | Summary providers for Foundation Models, OpenAI-compatible BYOK/Ollama, and embedded MLX; structured summaries, Recipes, material-cache and language/revision-aware operation fingerprints, Companion/RAG intelligence, schedulers, embeddings, and bilingual output policy |
 | `ContextFeedKit` | Placeholder-scale compatibility target; timestamped note behavior is implemented through Core/app/storage rather than a substantial standalone Kit |
-| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording reserves assets and installs the captured meeting/assets/live content in one Unit of Work; recovery installs revalidated assets through a repeat-safe Unit of Work that protects ready meetings. The typed job queue enforces idempotent enqueue, owner-bound leases, retries, scheduled wake discovery, success/failure/cancellation terminal states, and lifecycle derivation; generated diarization/summary artifacts have stale-safe atomic completion boundaries consumed by the launch executor, while normal Stop does not enqueue yet. Provenance, outbox, and per-meeting preferences remain unconsumed. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
+| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording reserves assets and atomically installs the captured meeting/assets/live content plus its initial exact job; recovery installs revalidated assets through a repeat-safe Unit of Work that protects ready meetings. The typed job queue enforces idempotent enqueue, owner-bound leases, retries, scheduled wake discovery, success/failure/cancellation terminal states, and lifecycle derivation; generated diarization/summary artifacts have stale-safe atomic completion boundaries consumed by the process executor. Provenance, outbox, and per-meeting preferences remain unconsumed. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
 | `AudioPlaybackKit` | Synchronized playback, channel-aware waveform data, clips, silence skipping, and AAC transcoding |
 | `SyncKit` | Placeholder-scale `Visibility` model. CKSyncEngine and CloudKit sync are planned, not implemented |
 | `IntegrationsKit` | Export and external-system adapters plus several cross-cutting read/product policies. It is the only cross-Kit layer under D31; narrowing it is part of Band 2 |
@@ -159,8 +160,9 @@ Slice 1C closes the normal Stop publication boundary (D38):
   to `<channel>.caf` without overwriting an existing final file;
 - `MeetingStore.installCapturedSnapshot` advances the untouched shell and
   installs finalized/missing assets, the provisional live cast/transcript,
-  notes, and Companion cards in one transaction; batch diarization later uses
-  the existing atomic `replaceCast` path;
+  notes, and Companion cards in one transaction. D43 later extends this same
+  Unit of Work to admit the initial job atomically; durable diarization uses
+  D41's artifact completion boundary;
 - publication failure preserves either staging or final audio and marks the
   shell `needsAttention`; it never enters D37's no-file hard rollback.
 
@@ -234,7 +236,7 @@ non-polling app worker:
   work, so a process can sleep until durable work is due instead of polling.
 
 The second 1D-b2b unit adopts those boundaries in a concrete app executor
-(D42), still without changing normal Stop:
+(D42), independently of normal Stop:
 
 - `PostCaptureProcessingSupervisor` owns at most one serial drain and one
   future retry wake for the process. Repeated launch/producer kicks coalesce,
@@ -257,10 +259,24 @@ The second 1D-b2b unit adopts those boundaries in a concrete app executor
   launch resume through diarization, dependent summary, UI invalidation, and
   `ready`.
 
-The released synchronous `RecordingController` Stop path remains unchanged.
-The next 1D-b2b unit makes normal Stop enqueue the exact diarization operation
-and kick this executor; the schema-v6 `generationRun` provenance envelope
-remains Band 3 work.
+The final 1D-b2b unit completes Band 1 adoption (D43):
+
+- one utility-priority voiceprint read begins after reservation and supplies
+  both live diarization and the exact initial job identity;
+- `installCapturedSnapshot(..., enqueue:)` commits finalized/missing assets,
+  provisional cast/transcript, notes, Companion cards, and the first
+  diarization job in one transaction. An injected job-write failure rolls
+  every captured write back; the controller then attempts one explicit
+  `needsAttention` snapshot fallback so audio/content remain discoverable;
+- after that transaction Stop moves immediately to `done` and kicks the
+  process supervisor. Detail remains usable while attribution and optional
+  summary arrive through scoped library invalidation;
+- the post-meeting Shortcut runs after terminal derived work: after
+  diarization when no summary provider exists, or after summary success or
+  exhausted optional cancellation. Disposable stores never invoke host
+  Shortcuts. Exactly-once external delivery remains Band 3 outbox work.
+
+The schema-v6 `generationRun` provenance envelope remains Band 3 work.
 
 The v6 migration still never reads the filesystem or synthesizes assets for
 legacy recordings. `Meeting.audioDirectory` remains the authoritative product
@@ -268,27 +284,26 @@ read path for all meetings. New `audioAsset` rows move from a staging path to
 the current final CAF path only after publication; finalized rows carry media,
 checksum, level, and health evidence. Missing channels remain metadata-free,
 and an unpublished staging file remains pending until the launch reconciler
-classifies it. The normal Stop producer cutover remains the next 1D-b2b unit.
+classifies it.
 Global UserDefaults remain the active language
 defaults. Slice 1B crosses D36's behavioral-adoption boundary: an older binary
 may open the additive schema but cannot reconcile new lifecycle/assets, so any
 binary rollback now requires a copied-database assessment and preservation of
 v6 rows and recording directories.
 
-## Durable meeting lifecycle (partially adopted; target retained)
+## Durable meeting lifecycle (adopted for normal recording)
 
-The app now persists a discoverable shell and pending capture assets before
-`RecordingSession.start`. On normal stop it atomically publishes valid files
-and installs `captured` plus provisional live content in one transaction, then
-records `processing` and finally `ready`; audio without captions or a later
-required write failure becomes `needsAttention`. A startup failure with no
-file rolls back only the empty provisional shell, while any staging or final
-channel file keeps the aggregate. `RecordingController` still coordinates this
-normal Stop saga directly. At process launch, `RecordingRecoveryCoordinator`
+The app persists a discoverable shell and pending capture assets before
+`RecordingSession.start`. On normal Stop it atomically publishes valid files,
+then installs `captured` plus provisional live content and the initial exact
+job in one database transaction. The process worker derives `processing` and
+finally `ready`; audio without captions, failed job admission, or exhausted
+required work becomes `needsAttention`. A startup failure with no file rolls
+back only the empty provisional shell, while any staging or final channel file
+keeps the aggregate. At process launch, `RecordingRecoveryCoordinator`
 revalidates interrupted assets and reconciles incomplete lifecycle state while
 StorageKit recovers expired leases; immediately afterward the process worker
-resumes any already-enqueued diarization/summary work. The app does not yet
-enqueue normal Stop work. The retained target is:
+resumes durable diarization/summary work. The state model is:
 
 ```mermaid
 stateDiagram-v2
@@ -413,9 +428,9 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 446-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
-| 1 — Indestructible recording | In progress — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a plus 1D-b2b control plane and executor: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, captured/recovery Units of Work, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, exact operation fingerprints, degradable cancellation, heartbeat/retry execution, and scheduled wakes (D39–D42) | Next: switch normal Stop from synchronous post-processing to enqueue + worker kick; playback remains on `Meeting.audioDirectory` until asset-reader parity is proven |
-| 2 — Application layer | Not started | `ApplicationKit`, composition-only `AppServices`, feature models, scoped GRDB observations |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 449-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, atomic captured-state/initial-job handoff, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, exact operation fingerprints, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43) | Valid audio is durable before derivation; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
+| 2 — Application layer | Next — begin with the `ApplicationKit` dependency shell and architecture rule tests before extracting one use case | `ApplicationKit`, composition-only `AppServices`, feature models, scoped GRDB observations |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |

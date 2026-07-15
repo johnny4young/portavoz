@@ -89,15 +89,19 @@ there was not enough audio to keep.
 3. **No "room" channel** yet (iPhone as a room mic through Continuity — planned, PRODUCT).
 4. PCM = ~126 MB per channel per 22 min (CAF, same bitrate as WAV); **AAC transcode resolved in M11** through `AudioTranscoder` and the "Comprimir audio" action.
 
-## Planned (not implemented)
+## Durable post-capture handoff (D43)
 
-The process-scoped Band 1D-b2b executor now resumes already-enqueued
-post-capture diarization and summary jobs after launch recovery, with exact
-input fingerprints, leased heartbeats/retries, atomic dependent enqueue, and a
-single scheduled wake. Normal `RecordingController.stop` still runs that work
-synchronously; switching Stop to enqueue and kick the executor is the remaining
-1D-b2b producer cutover. The stale-safe artifact boundary shipped in 1D-b2a,
-and interrupted capture reconciliation shipped in 1D-b1.
+Normal `RecordingController.stop` now hands capture to the process-scoped
+executor. A recording-scoped voiceprint read begins while capture is active.
+After channel publication, one StorageKit transaction installs finalized or
+missing assets, the provisional transcript/cast, notes, Companion cards, and
+the exact first diarization job. Stop then navigates immediately and kicks the
+worker; relaunch resumes the same owner-leased work after capture recovery.
+Job-admission failure cannot expose a half-installed captured snapshot, and the
+controller attempts an explicit `needsAttention` snapshot fallback without
+deleting audio.
+
+## Planned (not implemented)
 
 Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 15, 2026
 
+- **⚡ Stop recording, open it now** — Your meeting opens as soon as its local audio and transcript are safely stored; speaker cleanup and the summary continue durably in the background and resume after a restart instead of keeping you on the recording screen.
 - **🛟 Interrupted recordings come back on launch** — If Portavoz or your Mac stops between capture and saving, Portavoz now revalidates the local CAF and restores it to the library without waiting for AI. Ambiguous copies are preserved instead of overwritten or deleted.
 - **🔒 Audio appears only when it is whole** — Each channel now records behind a recovery filename, verifies its CAF structure, duration, size, checksum, signal levels, and health, then appears for playback in one atomic step. Portavoz preserves the recovery file instead of overwriting an existing recording or exposing a half-written channel.
 - **🛟 Your recording exists before AI does** — Portavoz now creates the meeting and reserves each audio channel before capture starts. If transcription or processing fails after audio was written, the recording stays discoverable in your library instead of disappearing with the error.

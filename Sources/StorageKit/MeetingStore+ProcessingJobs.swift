@@ -11,7 +11,7 @@ extension MeetingStore {
         requests: [ProcessingJobRequest],
         at timestamp: Date = Date()
     ) async throws -> [ProcessingJob] {
-        try Self.validate(requests)
+        try Self.validateProcessingRequests(requests)
         let key = meetingID.rawValue.uuidString
         return try await database.write { db in
             guard
@@ -26,10 +26,11 @@ extension MeetingStore {
             }
 
             let jobs = try requests.map { request in
-                try Self.enqueue(
+                try Self.enqueueProcessingRequest(
                     request, meetingID: meetingID, timestamp: timestamp, in: db)
             }
-            try Self.reconcileLifecycle(for: meetingID, at: timestamp, in: db)
+            try Self.reconcileProcessingLifecycle(
+                for: meetingID, at: timestamp, in: db)
             return jobs
         }
     }
@@ -124,7 +125,8 @@ extension MeetingStore {
                     "generated-content jobs require their domain artifact completion API")
             }
             let job = try Self.succeed(&record, at: timestamp, in: db)
-            try Self.reconcileLifecycle(for: job.meetingID, at: timestamp, in: db)
+            try Self.reconcileProcessingLifecycle(
+                for: job.meetingID, at: timestamp, in: db)
             return job
         }
     }
@@ -156,7 +158,8 @@ extension MeetingStore {
             let enqueued = try Self.enqueueFollowUps(
                 followUpRequests, after: record, at: timestamp, in: db)
             let completed = try Self.succeed(&record, at: timestamp, in: db)
-            try Self.reconcileLifecycle(for: artifact.meetingID, at: timestamp, in: db)
+            try Self.reconcileProcessingLifecycle(
+                for: artifact.meetingID, at: timestamp, in: db)
             return ProcessingArtifactCommit(
                 completedJob: completed,
                 enqueuedJobs: enqueued,
@@ -191,7 +194,7 @@ extension MeetingStore {
             let enqueued = try Self.enqueueFollowUps(
                 followUpRequests, after: record, at: timestamp, in: db)
             let completed = try Self.succeed(&record, at: timestamp, in: db)
-            try Self.reconcileLifecycle(
+            try Self.reconcileProcessingLifecycle(
                 for: artifact.draft.meetingID, at: timestamp, in: db)
             return ProcessingArtifactCommit(
                 completedJob: completed,
@@ -227,7 +230,8 @@ extension MeetingStore {
             record.updatedAt = timestamp
             try record.update(db)
             let job = try record.job
-            try Self.reconcileLifecycle(for: job.meetingID, at: timestamp, in: db)
+            try Self.reconcileProcessingLifecycle(
+                for: job.meetingID, at: timestamp, in: db)
             return job
         }
     }
@@ -256,7 +260,8 @@ extension MeetingStore {
             record.updatedAt = timestamp
             try record.update(db)
             let job = try record.job
-            try Self.reconcileLifecycle(for: job.meetingID, at: timestamp, in: db)
+            try Self.reconcileProcessingLifecycle(
+                for: job.meetingID, at: timestamp, in: db)
             return job
         }
     }
@@ -322,7 +327,8 @@ extension MeetingStore {
                 meetingIDs.insert(job.meetingID)
             }
             for meetingID in meetingIDs {
-                try Self.reconcileLifecycle(for: meetingID, at: timestamp, in: db)
+                try Self.reconcileProcessingLifecycle(
+                    for: meetingID, at: timestamp, in: db)
             }
             return recovered
         }
@@ -330,7 +336,7 @@ extension MeetingStore {
 }
 
 extension MeetingStore {
-    private static func enqueue(
+    static func enqueueProcessingRequest(
         _ request: ProcessingJobRequest,
         meetingID: MeetingID,
         timestamp: Date,
@@ -395,7 +401,7 @@ extension MeetingStore {
         return record
     }
 
-    private static func reconcileLifecycle(
+    static func reconcileProcessingLifecycle(
         for meetingID: MeetingID,
         at timestamp: Date,
         in db: Database
@@ -433,7 +439,9 @@ extension MeetingStore {
         try meeting.update(db)
     }
 
-    private static func validate(_ requests: [ProcessingJobRequest]) throws {
+    static func validateProcessingRequests(
+        _ requests: [ProcessingJobRequest]
+    ) throws {
         guard !requests.isEmpty else {
             throw StorageError.invalidProcessingJob("at least one request is required")
         }
@@ -456,7 +464,7 @@ extension MeetingStore {
 
     private static func validateFollowUps(_ requests: [ProcessingJobRequest]) throws {
         guard !requests.isEmpty else { return }
-        try validate(requests)
+        try validateProcessingRequests(requests)
     }
 
     private static func requiresArtifactCommit(_ kind: String) -> Bool {
@@ -670,7 +678,8 @@ extension MeetingStore {
                 "a job cannot enqueue itself as dependent work")
         }
         return try requests.map {
-            try enqueue($0, meetingID: currentJob.meetingID, timestamp: timestamp, in: db)
+            try enqueueProcessingRequest(
+                $0, meetingID: currentJob.meetingID, timestamp: timestamp, in: db)
         }
     }
 

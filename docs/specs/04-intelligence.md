@@ -64,6 +64,13 @@ summary Unit of Work. Transient provider failure retries durably; exhausted
 summary work cancels without failing the meeting because the released product
 already treats a transcript without a summary as valid.
 
+D43 preserves post-meeting Shortcut behavior after Stop becomes asynchronous.
+When no summary provider is available, the Shortcut receives transcript-only
+Markdown after diarization. Otherwise it runs after summary success or terminal
+optional cancellation. This hook remains best-effort; disposable temp-store
+launches suppress it, and exactly-once external delivery remains planned for
+the Band 3 outbox.
+
 ## Local RAG (D22) — `SentenceEmbedder` + `RAGAnswerer` + storage
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.

@@ -73,16 +73,38 @@ extension MeetingStore {
     }
 
     /// Advances an untouched recording shell to `captured`, replaces every
-    /// pending reservation with its published/missing state, and installs the
-    /// provisional live cast, transcript, notes, and Companion cards as one
-    /// Unit of Work. Later diarization may atomically replace the cast.
-    public func installCapturedSnapshot(_ snapshot: CapturedMeetingSnapshot) async throws {
+    /// pending reservation with its published/missing state, installs the
+    /// provisional live content, and optionally admits its initial derived
+    /// work in one Unit of Work. No crash can expose a captured transcript
+    /// without the durable job that will continue it.
+    @discardableResult
+    public func installCapturedSnapshot(
+        _ snapshot: CapturedMeetingSnapshot,
+        enqueue requests: [ProcessingJobRequest] = [],
+        at timestamp: Date = Date()
+    ) async throws -> [ProcessingJob] {
         try Self.validateCapturedSnapshot(snapshot)
-        try await database.write { db in
+        if !requests.isEmpty {
+            try Self.validateProcessingRequests(requests)
+        }
+        return try await database.write { db in
             let existingRecord = try Self.matchingRecordingShell(for: snapshot, in: db)
             try Self.validateStoredReservations(for: snapshot, in: db)
             try Self.requireUntouchedShell(snapshot.meeting.id, in: db)
-            try Self.writeCapturedSnapshot(snapshot, replacing: existingRecord, in: db)
+            try Self.writeCapturedSnapshot(
+                snapshot, replacing: existingRecord, at: timestamp, in: db)
+            let jobs = try requests.map {
+                try Self.enqueueProcessingRequest(
+                    $0,
+                    meetingID: snapshot.meeting.id,
+                    timestamp: timestamp,
+                    in: db)
+            }
+            if !jobs.isEmpty {
+                try Self.reconcileProcessingLifecycle(
+                    for: snapshot.meeting.id, at: timestamp, in: db)
+            }
+            return jobs
         }
     }
 
@@ -368,38 +390,41 @@ extension MeetingStore {
     private static func writeCapturedSnapshot(
         _ snapshot: CapturedMeetingSnapshot,
         replacing existingRecord: MeetingRecord,
+        at timestamp: Date,
         in db: Database
     ) throws {
-        let now = Date()
         let meetingRecord = try MeetingRecord(
             snapshot.meeting,
             createdAt: existingRecord.createdAt,
-            updatedAt: now,
+            updatedAt: timestamp,
             deletedAt: nil)
         try meetingRecord.update(db)
         for asset in snapshot.assets {
             var record = AudioAssetRecord(asset)
-            record.updatedAt = now
+            record.updatedAt = timestamp
             try record.update(db)
         }
         for speaker in snapshot.speakers {
-            let record = SpeakerRecord(speaker, createdAt: now, updatedAt: now)
+            let record = SpeakerRecord(
+                speaker, createdAt: timestamp, updatedAt: timestamp)
             try record.insert(db)
         }
         for segment in snapshot.segments {
-            let record = SegmentRecord(segment, createdAt: now, updatedAt: now)
+            let record = SegmentRecord(
+                segment, createdAt: timestamp, updatedAt: timestamp)
             try record.insert(db)
         }
         for item in snapshot.contextItems {
-            let record = ContextItemRecord(item, createdAt: now, updatedAt: now)
+            let record = ContextItemRecord(
+                item, createdAt: timestamp, updatedAt: timestamp)
             try record.insert(db)
         }
         for card in snapshot.companionCards {
             let record = CompanionCardRecord(
                 card,
                 meetingID: snapshot.meeting.id,
-                createdAt: now,
-                updatedAt: now)
+                createdAt: timestamp,
+                updatedAt: timestamp)
             try record.insert(db)
         }
     }
@@ -412,6 +437,7 @@ extension MeetingStore {
             && meeting.lastProcessingError == nil
         let isRecovered = meeting.lifecycleState == .needsAttention
             && (meeting.lastProcessingError == "transcription.empty"
+                || meeting.lastProcessingError == "processing.enqueue.failed"
                 || meeting.lastProcessingError?.hasPrefix("capture.") == true)
         guard isCaptured || isRecovered,
             let endedAt = meeting.endedAt,

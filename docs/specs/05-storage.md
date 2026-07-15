@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff).
 
 ## Database
 
@@ -48,6 +48,13 @@ cards. A changed shell, preexisting child/summary, malformed finalized
 metadata, final-path uniqueness collision, or child insert failure rolls the
 entire transaction back.
 
+D43 extends this boundary with `installCapturedSnapshot(_:enqueue:at:)`.
+Normal Stop supplies the exact initial diarization request, and the same
+transaction installs captured content, inserts that immutable-key job, and
+derives `processing`. A job constraint/write failure therefore rolls the
+snapshot and job back together; package tests inject that failure and verify
+the original recording shell plus pending reservation remain untouched.
+
 Slice 1D-a maps `processingJob` through strict `ProcessingJobID`, open typed
 kinds, states, requests/failures, and `ProcessingJobRecord`. One enqueue
 transaction inserts each `(meetingID, kind, inputFingerprint)` only once and
@@ -81,8 +88,9 @@ retained as `needsAttention` with `transcription.empty`.
 `markMeetingNeedsAttention` is repeat-safe and accepts only incomplete live
 states. The app invokes expired-lease recovery and these boundaries at process
 launch, then runs the concrete D42 diarization/summary executor. Normal Stop
-still does not enqueue work; only already-durable jobs and the isolated
-characterization fixture reach the executor in this slice.
+now reaches it through D43's atomic snapshot/initial-job handoff. The isolated
+characterization fixture uses the same exact request factory and normal queue
+admission without real capture evidence.
 Generation runs, outbox events, and per-meeting preferences are also not
 consumed yet.
 
@@ -121,10 +129,10 @@ opened by v6 code.
 Recording durability APIs are `beginRecording(_:assets:)` (atomic shell plus
 reservations), `audioAssets(for:)` (strict, live-rooted read), and
 `discardUnstartedRecording(_:)` (D37-guarded no-data rollback).
-`installCapturedSnapshot(_:)` is the D38 Unit of Work for the first durable
-post-capture projection; it accepts only an untouched `recording` shell with
-the exact pending reservation set and at least one published healthy, silent,
-or clipped channel. Recovery uses
+`installCapturedSnapshot(_:enqueue:at:)` is the D38/D43 Unit of Work for the
+first durable post-capture projection and optional initial jobs; it accepts
+only an untouched `recording` shell with the exact pending reservation set and
+at least one published healthy, silent, or clipped channel. Recovery uses
 `installRecoveredCaptureAssets(_:for:at:)`, the same captured Unit of Work for
 an interrupted `capture.*` shell, and
 `markMeetingNeedsAttention(_:errorCode:endedAt:at:)`; these operations protect
@@ -177,22 +185,6 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
    semantic-search budgets are planned in the refactor program.
-5. The durable job queue is not yet the normal Stop path.
-   Slice 1D-b2a adds typed `DiarizationArtifact`/`SummaryArtifact` completion:
-   an owned unexpired lease, exact operation fingerprint, live meeting-owned
-   identities, and unchanged source transcript revision are required before
-   StorageKit atomically commits the artifact, job success, and optional
-   dependent enqueue. Summary cache identity remains separate because D25
-   excludes output language. Generic completion rejects generated-content
-   jobs, lifecycle derivation cannot hide pending capture publication, and
-   owner-fenced cancellation can settle degradable work without fabricating an
-   artifact or failing the meeting. A process-scoped executor now resumes
-   already-enqueued diarization/summary jobs after launch recovery with exact
-   fingerprints, heartbeats, bounded retries, stale cancellation, and one
-   scheduled wake (D42). Making normal Stop produce and kick the initial job is
-   the final 1D-b2b unit; process-launch capture and lease recovery shipped in
-   1D-b1.
-
 ## Trash (Jul 2026)
 
 Deletes were ALWAYS tombstones (D4); the trash provides a way back.

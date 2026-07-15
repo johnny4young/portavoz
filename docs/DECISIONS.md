@@ -446,8 +446,9 @@ should participate in the meeting lifecycle. Slice 1D-a implements this Core
 and StorageKit contract while retaining the released synchronous
 `RecordingController` path. Slice 1D-b1 owns launch reconciliation of meetings,
 leases, and staging files; slice 1D-b2a owns atomic artifact completion and the
-first 1D-b2b units own the worker control plane and concrete execution. Normal
-Stop enqueue remains the final 1D-b2b producer cutover.
+first 1D-b2b units own the worker control plane and concrete execution. D43
+completes adoption by making normal Stop atomically install captured state and
+the initial exact job before kicking that executor.
 
 **Rationale:** immutable operation identity makes retries idempotent, leases
 fence stale workers, and deriving aggregate state in StorageKit prevents UI or
@@ -490,7 +491,7 @@ interrupted recording without transcript becomes `needsAttention` with
 aggregate already has transcript content and no active jobs. Slice 1D-b1 runs
 no transcription, diarization, or summary engine. Slice 1D-b2a subsequently
 establishes the atomic artifact completion boundary, and D42 starts the worker
-only after this recovery pass; normal Stop remains the pending producer.
+only after this recovery pass. D43 makes normal Stop its initial producer.
 
 **Rationale:** recovery has incomplete intent but durable evidence. Explicit
 precedence, off-main remeasurement, and conservative ambiguity handling make
@@ -525,8 +526,8 @@ artifact. Aggregate reconciliation also treats a pending capture asset as
 `capture.publication.failed`; historical succeeded jobs do not block later
 asset recovery. Slice 1D-b2a establishes these boundaries without changing the
 released synchronous Stop path. D42 adopts them in a process-scoped executor;
-normal Stop enqueue remains the next 1D-b2b unit, and `generationRun`
-provenance remains Band 3.
+D43 adopts the producer and atomic handoff, while `generationRun` provenance
+remains Band 3.
 
 **Rationale:** idempotency requires the operation outcome and its durable
 artifact to share one commit boundary. Separating operation identity from cache
@@ -563,12 +564,46 @@ preserves the released "transcript without summary is valid" contract.
 
 The deterministic `-seed-processing` characterization path is accepted only
 with `-use-temp-store`. It uses a mic-only transcript and fake local summary
-provider, and bypasses real audio, models, voiceprint files, and Keychain.
-Normal `RecordingController.stop` still runs synchronously and does not enqueue;
-its producer cutover is the next Strangler unit.
+provider, and bypasses real audio, models, voiceprint files, and Keychain. D43
+subsequently adopts this executor from normal Stop.
 
 **Rationale:** process ownership survives window churn, exact identities make
 retry and supersession honest, one durable wake minimizes idle cost, and
 landing the executor before its producer keeps feature parity and rollback
 small. Separating fixture adapters from biometric/Keychain state also makes the
 end-to-end characterization safe rather than merely database-isolated.
+
+## D43 — Stop atomically hands captured truth to durable processing (Jul 2026)
+
+**Context:** D42 proved the replacement executor independently, but committing
+the captured snapshot and enqueueing its first job in separate transactions
+would leave a termination window: launch could find a real transcript and
+finalized audio with no resumable operation. Loading the encrypted voiceprint
+only after file publication would widen that window. Moving post-meeting work
+off Stop must also preserve immediate navigation, transcript-only success when
+summary is unavailable, and the user's configured Shortcut.
+
+**Decision:** each recording starts one utility-priority voiceprint read after
+its shell/assets are reserved. The value is shared by live diarization and the
+exact initial operation request. On Stop, valid audio is published first;
+`installCapturedSnapshot(..., enqueue:)` then installs finalized/missing assets,
+provisional cast/transcript, notes, Companion cards, and the initial
+diarization job in one SQLite transaction. Job-admission failure rolls the
+whole snapshot back; the controller then makes one best-effort fallback commit
+of the captured content as `needsAttention`, never deleting audio.
+
+After that commit, `RecordingController` immediately enters `done` and kicks
+the process supervisor. Diarization and optional summary continue through D42
+and refresh the selected detail after atomic artifact commits. If no summary
+provider exists, the Shortcut runs after diarization with transcript-only
+Markdown; if summary succeeds or exhausts its optional retries, it runs after
+that terminal outcome. Disposable `-use-temp-store` launches never invoke a
+real host Shortcut. Shortcut execution remains best-effort and is not yet an
+outbox event; durable exactly-once external delivery remains Band 3.
+
+**Rationale:** one transaction closes the only database-side gap between
+irreversible capture and retryable derivation. Sampling identity evidence
+during capture keeps Stop responsive and gives live/batch paths the same
+speaker-identity input. Immediate handoff improves UX without weakening
+recovery, while terminal-aware Shortcut timing preserves released automation
+and the valid transcript-without-summary contract.
