@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48 (application-owned Stop policy).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy).
 
 ## Database
 
@@ -112,9 +112,10 @@ opened by v6 code.
 - **Tombstones for user meetings** (`deletedAt`; future sync needs them). The
   sole D37 exception is `discardUnstartedRecording`: it can hard-delete only a
   shell still in `recording` state with no speaker, segment, summary, context
-  item, or Companion card, and the controller calls it only when no reserved
-  channel file exists. Assets cascade with that no-data rollback. Any file or
-  content preserves the meeting for recovery.
+  item, or Companion card. `ApplicationKit.StartRecording` invokes it only
+  after checking every reserved staging and published channel path. Assets
+  cascade with that no-data rollback. Any file or content preserves the meeting
+  for recovery.
 - **Relative paths only**: `save(meeting)` REJECTS absolute paths or `..` (`StorageError.absolutePathRejected`).
 - Schema-v6 `audioAsset.relativePath` independently rejects absolute and
   parent-traversal paths. Reserved assets may leave finalized media metadata
@@ -129,6 +130,11 @@ opened by v6 code.
 Recording durability APIs are `beginRecording(_:assets:)` (atomic shell plus
 reservations), `audioAssets(for:)` (strict, live-rooted read), and
 `discardUnstartedRecording(_:)` (D37-guarded no-data rollback).
+`MeetingStore` implements `StartRecordingStore` by adapting same-day sequence
+counting, `beginRecording`, guarded discard, and canonical
+`capture.start.failed` needs-attention marking. ApplicationKit sees no GRDB
+record or transaction detail; a real adapter test proves shell and all selected
+assets exist before the runtime source-start callback (D49).
 `installCapturedSnapshot(_:enqueue:at:)` is the D38/D43 Unit of Work for the
 first durable post-capture projection and optional initial jobs; it accepts
 only an untouched `recording` shell with the exact pending reservation set and
@@ -262,3 +268,12 @@ admission rolls back before `StopRecording` attempts an explicit no-job
 snapshot and exact diarization job become visible together, while the source
 ratchet prevents `RecordingController` from returning to direct Stop writes
 (D48).
+
+Slice 2I makes `MeetingStore` conform to the narrow `StartRecordingStore` port.
+The use case supplies one immutable meeting plus all selected pending assets to
+the existing atomic reservation API before asking the capture runtime to start.
+If that runtime fails, the store adapter can either perform D37's guarded empty
+shell discard or mark the incomplete aggregate `needsAttention`; filesystem
+evidence checks remain in a separate app-owned adapter. The architecture rule
+requires `RecordingController` to enter through `StartRecording` and rejects a
+return to direct reservation or concrete source/session construction (D49).

@@ -8,13 +8,28 @@ Single source of truth for progress — it previously lived in a session HANDOFF
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
 program in [refactor-20260714.md](refactor-20260714.md): extract
-`StartRecording` while preserving atomic pre-capture reservation, engine
-preparation, source-start rollback, live scheduler isolation, and the released
-navigation/presentation timing. `StopRecording`, `RefineMeeting`,
-`ImportMeeting`, and T16 are complete; Bands 0 and 1 are complete. Every slice
+`RecoverInterruptedMeetings` while preserving evidence-first scans across
+configured/fallback roots, expired-lease recovery, ready-meeting protection,
+no ML during reconciliation, worker startup order, and the released
+presentation/invalidation timing. `StartRecording`, `StopRecording`,
+`RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49).
+
+- **Architecture Band 2 slice 2I complete — Start reserves truth before
+  hardware (Jul 15, 2026)**: `ApplicationKit.StartRecording` samples start
+  preferences once, prepares an injected runtime, derives the title and
+  same-day sequence, atomically reserves the meeting shell plus pending channel
+  assets, and only then invokes source start. Failed starts inspect staging and
+  published evidence, retain any bytes as `needsAttention`, and discard only
+  an untouched empty shell; every failure releases preparation. A private app
+  runtime owns concrete mic/process-tap sources, `RecordingSession`, direct
+  per-channel Parakeet streams, and one voiceprint future shared by live
+  diarization and Stop. The controller retains live filtering, diarization,
+  rolling summary, localized result mapping, and synchronous next-buffer mic
+  mute. Ten use-case/real-Store tests plus an eleventh architecture rule bring
+  the verified baseline to 527 package tests (13 gated) plus 19 UI cases (D49).
 
 - **Architecture Band 2 slice 2H complete — Stop has one durable owner (Jul
   15, 2026)**: `ApplicationKit.StopRecording` receives immutable finalized

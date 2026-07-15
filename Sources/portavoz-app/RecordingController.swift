@@ -1,5 +1,4 @@
 import ApplicationKit
-import AudioCaptureKit
 import DiarizationKit
 import Foundation
 import IntegrationsKit
@@ -72,7 +71,6 @@ final class RecordingController {
     /// Whether YOUR mic is muted FOR PORTAVOZ (not the system input) — the
     /// meeting app keeps its own mic; Portavoz records silence on your channel.
     private(set) var micMuted = false
-    fileprivate var micSource: MicrophoneSource?
 
     /// RMS of the system (incoming) channel, smoothed. Stays near zero when
     /// the other participants' audio isn't being captured (field bug jul 2026:
@@ -104,15 +102,9 @@ final class RecordingController {
     private var liveTurns: [SpeakerTurn] = []
     private var liveDiarizerTask: Task<Void, Never>?
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
-    /// Loaded once off the main actor while capture is active. The same
-    /// identity seeds live hints and the atomic post-capture job, avoiding a
-    /// Keychain wait between publishing audio and committing its durable work.
-    private var sessionVoiceprintTask: Task<Voiceprint?, Never>?
 
     private let coalescer = CaptionCoalescer()
-    private var session: RecordingSession?
-    private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]
-    private var consumers: [Task<Void, Never>] = []
+    private var session: (any StartRecordingSession)?
     private var rollingTask: Task<Void, Never>?
     private var summarizedCount = 0
     /// Dense notes accumulated window by window; the live summary re-renders
@@ -127,28 +119,14 @@ final class RecordingController {
     /// Asset reservations written with the shell. Playback still reads the
     /// legacy meeting directory; later Band 1 slices finalize this metadata.
     private var reservedAssets: [AudioAsset] = []
-    /// Calendar event this recording is linked to (brief flow): its title
-    /// replaces the timestamp template, so the meeting is born with a real
-    /// name. (The smart-title chip's guard is the timestamp-template SHAPE —
-    /// an event title starting with a digit, like "1:1 weekly", can still
-    /// get a suggestion; it stays suggestion-only, so that's acceptable.)
-    private var linkedEvent: UpcomingEvent?
     /// id of the newest caption row — when it changes, the PREVIOUS row
     /// just closed and becomes a companion candidate.
     private var lastOpenRowID: UUID?
 
-    /// User-defined domain terms (Settings → Vocabulary): glossary for the
-    /// summaries and conditioning vocabulary for transcription hints.
+    /// User-defined domain terms reused by the optional rolling summary.
+    /// StartRecording samples the same setting for transcription hints.
     private var vocabulary: [String] {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-    }
-
-    /// Transcription-only policy (Settings → Intelligence). A fixed hint
-    /// stops the multilingual model from
-    /// hallucinating a wrong language on weak/low-SNR audio — field bug
-    /// jul 2026: quiet English (far AirPods mic) decoded as Russian.
-    private var transcriptLanguagePolicy: TranscriptLanguagePolicy {
-        MeetingLanguagePreferences.transcript()
     }
 
     /// Returns the shared session to `.idle` once a finished recording has
@@ -170,163 +148,25 @@ final class RecordingController {
         liveNotes = []
         recordingShell = nil
         reservedAssets = []
-        sessionVoiceprintTask?.cancel()
-        sessionVoiceprintTask = nil
     }
 
-    // Orchestrates capture + transcription + scheduler startup; the sequence
-    // is legitimately long. Splitting remains technical debt.
-    // swiftlint:disable:next function_body_length cyclomatic_complexity
+    /// Enters the application-owned recording-start workflow. Concrete audio
+    /// sources and live transcription feeds stay behind its private runtime;
+    /// this controller receives only callbacks and a typed active session.
     func start(services: AppServices, event: UpcomingEvent? = nil) async {
-        // A finished session must never block a new one — starting via the
-        // hotkey or menu bar while the last meeting's detail is still open
-        // would otherwise no-op on the guard below.
+        // A finished session must never block a hotkey/menu-bar start while
+        // its previous detail remains open.
         if case .done = phase { phase = .idle }
         guard phase == .idle || isFailed else { return }
-        linkedEvent = event
-        recordingShell = nil
-        reservedAssets = []
-        sessionVoiceprintTask?.cancel()
-        sessionVoiceprintTask = nil
+
+        resetForRecordingStart()
         phase = .preparing
-
-        // Warm the mic engine now so the echo canceller converges while the
-        // models load — otherwise the first seconds of captions leak echo.
-        let aec = UserDefaults.standard.object(forKey: "aecEnabled") as? Bool ?? true
-        // The microphone to record from (Settings ▸ Audio). "default"/nil
-        // follows the system default input; otherwise pin the chosen device.
-        let inputUID = UserDefaults.standard.string(forKey: "preferredInputUID")
-        let selectedDevice = (inputUID == nil || inputUID == "default") ? nil : inputUID
-        // A remembered USB/Bluetooth mic may be temporarily disconnected.
-        // Fall back to the system input for this recording rather than failing
-        // capture; keep the preference so reconnecting restores it next time.
-        let micDevice = selectedDevice.flatMap { identifier in
-            (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil ? identifier : nil
-        }
-        let microphone = MicrophoneSource(deviceIdentifier: micDevice, voiceProcessing: aec)
-        micSource = microphone
-        micMuted = false
-        let warmupTask = Task { await microphone.warmUp() }
-
-        do {
-            try await services.loadEnginesIfNeeded()
-        } catch {
-            warmupTask.cancel()
-            await microphone.stop()
-            micSource = nil
-            services.scheduleRecordingEnginesRelease()
-            phase = .failed(L10n.format("Could not prepare the models: %@", error.localizedDescription))
-            return
-        }
-        guard let engine = services.transcriber else {
-            warmupTask.cancel()
-            await microphone.stop()
-            micSource = nil
-            services.scheduleRecordingEnginesRelease()
-            phase = .failed(L10n.text("The transcription engine is not available."))
-            return
-        }
-
-        meetingID = MeetingID()
-        audioRelative = "Audio/\(meetingID.rawValue.uuidString)"
-        let outputDirectory = AppServices.audioRoot.appendingPathComponent(audioRelative)
-
-        var sources: [any AudioCaptureSource] = [microphone]
-        if #available(macOS 14.4, *) {
-            sources.append(await makeSystemTapSource())
-        }
-
-        // Install the aggregate and reserve every capture path before any
-        // source starts. A model or DB failure above captures nothing; after
-        // this point every byte has a discoverable meeting owner (D33/D36).
-        startedAt = Date()
-        let title = await makeMeetingTitle(services: services)
-        let shell = Meeting(
-            id: meetingID,
-            title: title,
-            startedAt: startedAt,
-            audioDirectory: audioRelative,
-            retention: .keep,
-            lifecycleState: .recording)
-        let assets = sources.map { source in
-            AudioAsset.pendingCapture(
-                meetingID: meetingID,
-                channel: source.channel,
-                relativePath: AudioCapturePath.stagingRelativePath(
-                    directory: audioRelative, channel: source.channel),
-                at: startedAt)
-        }
-        do {
-            try await services.store.beginRecording(shell, assets: assets)
-        } catch {
-            warmupTask.cancel()
-            await microphone.stop()
-            micSource = nil
-            services.scheduleRecordingEnginesRelease()
-            phase = .failed(L10n.format(
-                "Could not start capture: %@", error.localizedDescription))
-            return
-        }
-        recordingShell = shell
-        reservedAssets = assets
-        services.libraryVersion += 1
-        sessionVoiceprintTask = Task.detached(priority: .utility) {
-            try? VoiceprintStore().load()
-        }
-
-        captions = []
-        feeds = [:]
-        consumers = []
-        micLevel = 0
-        voicedLevel = 0
-        voicedChunks = 0
-        systemRMS = 0
-        systemChunks = 0
-        liveTurns = []
-        liveSpeakerLabels = [:]
-        for source in sources {
-            let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
-            feeds[source.channel] = continuation
-            let segments = engine.transcribe(
-                stream,
-                hints: TranscriptionHints(
-                    language: transcriptLanguagePolicy.languageHint,
-                    vocabulary: vocabulary,
-                    meetingID: meetingID))
-            consumers.append(Task { @MainActor [weak self] in
-                do {
-                    for try await segment in segments {
-                        guard let self else { break }
-                        // Drop captions from a channel that has gone provably
-                        // silent — the models hallucinate ("Thank you.",
-                        // foreign script) on the digital silence a Bluetooth
-                        // output can leave in the system channel.
-                        if segment.channel == .system, self.systemAudioMissing { continue }
-                        // A far-field / barely-used mic emits stray letters and
-                        // low-confidence fragments when you're not speaking;
-                        // keep them out of the transcript, health and chapters.
-                        if segment.channel == .microphone,
-                            TranscriptNoiseFilter.isLikelyNoise(
-                                text: segment.text, confidence: segment.confidence) { continue }
-                        self.coalescer.apply(segment, to: &self.captions)
-                        self.detectClosedRow()
-                    }
-                } catch {
-                    // A dead channel ends its captions; the recording and
-                    // the other channel keep going.
-                }
-            })
-        }
-
         let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(of: AudioChunk.self)
-        liveDiarizerFeed = diarizerFeed
-        startLiveDiarization(consuming: diarizerStream)
-
-        let session = RecordingSession(outputDirectory: outputDirectory)
-        let channelFeeds = feeds
-        do {
-            try await session.start(sources: sources) { [weak self] chunk in
-                channelFeeds[chunk.channel]?.yield(chunk)
+        let callbacks = StartRecordingLiveCallbacks(
+            caption: { [weak self] segment in
+                await self?.receiveLiveCaption(segment)
+            },
+            chunk: { [weak self] chunk in
                 if chunk.channel == .system {
                     diarizerFeed.yield(chunk)
                     var sumSquares: Float = 0
@@ -334,6 +174,7 @@ final class RecordingController {
                     let rms = chunk.samples.isEmpty
                         ? 0 : (sumSquares / Float(chunk.samples.count)).squareRoot()
                     Task { @MainActor in self?.updateSystemLevel(rms) }
+                    return
                 }
                 guard chunk.channel == .microphone else { return }
                 var peak: Float = 0
@@ -342,43 +183,98 @@ final class RecordingController {
                     if magnitude > peak { peak = magnitude }
                 }
                 Task { @MainActor in self?.updateMicLevel(peak) }
-            }
-        } catch {
-            // RecordingSession releases any partially-started capture sources;
-            // close the app-side feeds too so Parakeet/diarization tasks don't
-            // stay suspended forever after a startup failure.
-            for continuation in feeds.values { continuation.finish() }
-            for consumer in consumers { await consumer.value }
-            feeds = [:]
-            consumers = []
-            diarizerFeed.finish()
-            liveDiarizerFeed = nil
-            liveDiarizerTask?.cancel()
-            liveDiarizerTask = nil
-            sessionVoiceprintTask?.cancel()
-            sessionVoiceprintTask = nil
-            warmupTask.cancel()
-            await microphone.stop()
-            micSource = nil
-            services.scheduleRecordingEnginesRelease()
-            let captureError = error.localizedDescription
-            let reconciliationError = await reconcileCaptureStartFailure(services: services)
-            let detail = reconciliationError.map { "\(captureError) · \($0)" } ?? captureError
-            phase = .failed(L10n.format("Could not start capture: %@", detail))
-            return
-        }
-        self.session = session
+            })
+        let result = await services.startRecording.execute(StartRecordingRequest(
+            eventTitle: event?.title,
+            callbacks: callbacks))
+        applyStartRecordingResult(
+            result,
+            diarizerStream: diarizerStream,
+            diarizerFeed: diarizerFeed,
+            services: services)
+    }
+
+    private func resetForRecordingStart() {
+        rollingTask?.cancel()
+        liveDiarizerFeed?.finish()
+        liveDiarizerTask?.cancel()
+        liveDiarizerFeed = nil
+        liveDiarizerTask = nil
+        session = nil
+        recordingShell = nil
+        reservedAssets = []
+        captions = []
+        translations = [:]
         liveSummary = nil
-        summarizedCount = 0
         liveNotes = []
+        summarizedCount = 0
         companionCards = []
         contextItems = []
         lastOpenRowID = nil
-        phase = .recording
+        micLevel = 0
+        voicedLevel = 0
+        voicedChunks = 0
+        systemRMS = 0
+        systemChunks = 0
+        liveTurns = []
+        liveSpeakerLabels = [:]
+        tappedMeetingApps = []
+        micMuted = false
+    }
 
-        // Rolling summary (M4's "incremental" made visible): every ~40 s,
-        // re-summarize the captions so far. Only when Apple Intelligence
-        // is around; the recording never depends on it.
+    private func receiveLiveCaption(_ segment: TranscriptSegment) {
+        meetingID = segment.meetingID
+        // Digital silence on a system tap can make a model invent speech.
+        if segment.channel == .system, systemAudioMissing { return }
+        // Barely used/far-field mic channels produce stray low-confidence text.
+        if segment.channel == .microphone,
+            TranscriptNoiseFilter.isLikelyNoise(
+                text: segment.text,
+                confidence: segment.confidence) { return }
+        coalescer.apply(segment, to: &captions)
+        detectClosedRow()
+    }
+
+    private func applyStartRecordingResult(
+        _ result: StartRecordingResult,
+        diarizerStream: AsyncStream<AudioChunk>,
+        diarizerFeed: AsyncStream<AudioChunk>.Continuation,
+        services: AppServices
+    ) {
+        switch result {
+        case .started(let commit):
+            let reservation = commit.reservation
+            meetingID = reservation.meeting.id
+            audioRelative = reservation.meeting.audioDirectory ?? ""
+            startedAt = reservation.meeting.startedAt
+            recordingShell = reservation.meeting
+            reservedAssets = reservation.assets
+            tappedMeetingApps = commit.tappedMeetingApps
+            session = commit.session
+            services.libraryVersion += 1
+            liveDiarizerFeed = diarizerFeed
+            startLiveDiarization(
+                consuming: diarizerStream,
+                session: commit.session)
+            phase = .recording
+            startRollingSummaryIfAvailable()
+        case .modelPreparationFailed(let message):
+            diarizerFeed.finish()
+            phase = .failed(L10n.format("Could not prepare the models: %@", message))
+        case .transcriptionEngineUnavailable:
+            diarizerFeed.finish()
+            phase = .failed(L10n.text("The transcription engine is not available."))
+        case .captureFailed(let message, let reservation, let invalidations):
+            diarizerFeed.finish()
+            recordingShell = reservation?.meeting
+            reservedAssets = reservation?.assets ?? []
+            for _ in 0..<invalidations { services.libraryVersion += 1 }
+            phase = .failed(L10n.format("Could not start capture: %@", message))
+        }
+    }
+
+    private func startRollingSummaryIfAvailable() {
+        // Rolling summary is optional and never gates capture.
         if #available(macOS 26.0, *),
             FoundationModelSummaryProvider.unavailabilityReason() == nil {
             rollingTask = Task { @MainActor [weak self] in
@@ -396,10 +292,13 @@ final class RecordingController {
     /// milliseconds per window — never competes with Parakeet's live lane); the
     /// loop body only mutates state on the MainActor. On load failure the feed
     /// is finished so a meeting's worth of chunks never buffers for nothing.
-    private func startLiveDiarization(consuming stream: AsyncStream<AudioChunk>) {
+    private func startLiveDiarization(
+        consuming stream: AsyncStream<AudioChunk>,
+        session: any StartRecordingSession
+    ) {
         liveDiarizerTask = Task { [weak self] in
             guard let self else { return }
-            let voiceprint = await self.sessionVoiceprintTask?.value
+            let voiceprint = await session.voiceprint()
             guard
                 let diarizer = try? await PyannoteDiarizer.loadRecommended(
                     store: ModelStore(),
@@ -523,23 +422,17 @@ extension RecordingController {
         phase = .processing(L10n.text("Closing the recording…"))
 
         let capture = await session.stop()
-        micSource = nil
         micMuted = false
-        for continuation in feeds.values { continuation.finish() }
-        for consumer in consumers { await consumer.value }
         // Live hints end here — the durable workflow re-attributes everything.
         liveDiarizerFeed?.finish()
         liveDiarizerFeed = nil
         liveDiarizerTask?.cancel()
         liveDiarizerTask = nil
         self.session = nil
-        let voiceprintTask = sessionVoiceprintTask
-        sessionVoiceprintTask = nil
-        defer { voiceprintTask?.cancel() }
 
         var voiceprint: Voiceprint?
         if !capture.publishedFiles.isEmpty, !captions.isEmpty {
-            voiceprint = await voiceprintTask?.value
+            voiceprint = await session.voiceprint()
             phase = .processing(L10n.text("Saving…"))
         }
 
@@ -549,8 +442,9 @@ extension RecordingController {
             captions: captions,
             contextItems: contextItems,
             companionCards: companionCards,
-            capture: StopRecordingCapture(capture),
+            capture: capture,
             voiceprint: voiceprint))
+        await session.cancelVoiceprintRead()
         applyStopRecordingResult(result, services: services)
     }
 
@@ -597,64 +491,6 @@ extension RecordingController {
         recordingShell = commit.meeting
         reservedAssets = commit.assets
         services.libraryVersion += 1
-    }
-
-    /// Computes the durable title before reservation. Sequence now reflects
-    /// recording start order rather than whichever meeting finishes first.
-    private func makeMeetingTitle(services: AppServices) async -> String {
-        let template =
-            UserDefaults.standard.string(forKey: "titleTemplate")
-            ?? TitleTemplate.defaultTemplate
-        let todayCount =
-            ((try? await services.store.meetings()) ?? [])
-            .filter { Calendar.current.isDate($0.startedAt, inSameDayAs: startedAt) }
-            .count
-        return linkedEvent.map { TitleTemplate.eventTitle($0.title, date: startedAt) }
-            ?? TitleTemplate.render(template, date: startedAt, sequence: todayCount + 1)
-    }
-
-    /// A failed source startup is reconciled against the filesystem after
-    /// `RecordingSession` has stopped every source. Empty reservations are
-    /// rolled back; if any channel file exists, its meeting is preserved for
-    /// launch recovery instead of deleting potentially useful audio.
-    private func reconcileCaptureStartFailure(services: AppServices) async -> String? {
-        guard var meeting = recordingShell else { return nil }
-        let hasCapturedFile = hasReservedCaptureFile()
-        do {
-            if hasCapturedFile {
-                meeting.endedAt = Date()
-                meeting.lifecycleState = .needsAttention
-                meeting.lastProcessingError = "capture.start.failed"
-                try await services.store.save(meeting)
-                recordingShell = meeting
-            } else {
-                guard try await services.store.discardUnstartedRecording(meeting.id) else {
-                    return "recording shell could not be reconciled"
-                }
-                recordingShell = nil
-                reservedAssets = []
-            }
-            services.libraryVersion += 1
-            return nil
-        } catch {
-            return error.localizedDescription
-        }
-    }
-
-    /// D37's filesystem half checks both staging and published names because
-    /// a crash or failed rename may leave either side of the capture saga.
-    private func hasReservedCaptureFile() -> Bool {
-        reservedAssets.contains { asset in
-            captureFileExists(relativePath: asset.relativePath)
-                || captureFileExists(
-                    relativePath: AudioCapturePath.publishedRelativePath(
-                        directory: audioRelative, channel: asset.channel))
-        }
-    }
-
-    private func captureFileExists(relativePath: String) -> Bool {
-        FileManager.default.fileExists(
-            atPath: AppServices.audioRoot.appendingPathComponent(relativePath).path)
     }
 
 }
@@ -722,55 +558,14 @@ private extension RecordingController {
     }
 }
 
-@available(macOS 14.4, *)
-extension RecordingController {
-    /// Builds the system-audio tap for the chosen capture mode (Settings ▸
-    /// Audio). Tapping the meeting app's PROCESS reads its audio upstream of
-    /// device routing, so the call is captured even when a Bluetooth output
-    /// (AirPods) is in the narrowband HFP profile that silences the global
-    /// tap. The app-level PID misses a browser's audio-rendering helper, so
-    /// currently-producing helpers whose bundle IDs belong to a recognized
-    /// meeting app are included too. Unrelated apps stay out. Falls back to
-    /// the global tap when the mode is "system", or app capture finds nothing.
-    ///
-    /// - `auto` (default): global tap, or the app tap when the output is
-    ///   Bluetooth — the historical smart behavior.
-    /// - `app`: always tap the meeting app(s), regardless of output — this is
-    ///   how you record a browser/Zoom call without AirPods.
-    /// - `system`: always the global tap.
-    func makeSystemTapSource() async -> ProcessTapSource {
-        let mode = UserDefaults.standard.string(forKey: "captureMode") ?? "auto"
-        let useAppTap: Bool
-        switch mode {
-        case "app": useAppTap = true
-        case "system": useAppTap = false
-        default: useAppTap = AudioDeviceCatalog.defaultOutputIsBluetooth()
-        }
-        let meetingApps = useAppTap ? MeetingAppDetector.running() : []
-        tappedMeetingApps = meetingApps.map(\.name)
-        // Enumerating Core Audio's process list runs a property query PER
-        // process — off the main actor so the UI never hitches as a recording
-        // starts (field finding: it froze the window for a beat).
-        let selfPID = ProcessInfo.processInfo.processIdentifier
-        let allowedBundleIDs = Set(meetingApps.map(\.bundleID))
-        let helperPIDs =
-            useAppTap
-            ? await Task.detached {
-                AudioProcessCatalog.outputProducingPIDs(
-                    excluding: selfPID, matchingBundleIDs: allowedBundleIDs)
-            }.value
-            : []
-        return ProcessTapSource(processIDs: Array(Set(meetingApps.map(\.pid) + helperPIDs)))
-    }
-}
-
 // MARK: - Live user actions during a recording
 
 extension RecordingController {
     /// Mute/unmute your mic for Portavoz only. Takes effect on the next buffer.
     func setMicMuted(_ value: Bool) {
         micMuted = value
-        micSource?.setMuted(value)
+        guard let session else { return }
+        session.setMicrophoneMuted(value)
     }
 
     func dismissCompanionCard(_ id: UUID) {

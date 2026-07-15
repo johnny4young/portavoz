@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy).
 
 ## Channel model (D5)
 
@@ -34,14 +34,24 @@ Two SEPARATE streams, never mixed before diarization:
 
 Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: published files, `PublishedCaptureFile` evidence, seconds written, peak/RMS amplitudes, errors, and `driftSeconds`.
 
-Startup is transactional at both levels. Before a source starts,
-`RecordingController` atomically inserts a `recording` meeting shell and one
-pending `AudioAsset` reservation per selected channel. It then starts
-`RecordingSession`, which stops partially started sources on failure; the
-controller finishes Parakeet/diarization feeds, cancels their tasks, stops mic
-warm-up, and schedules idle engine release. If startup wrote no channel file,
-the empty provisional shell is rolled back. If any reserved file exists, the
-shell is retained as `needsAttention` for recovery (D37).
+Startup is transactional at both levels. `ApplicationKit.StartRecording`
+samples title/language/vocabulary/capture preferences once, asks a private app
+runtime to warm the microphone while loading recording engines, and receives
+the structurally selected channels. Before any source starts, the use case
+atomically inserts a `recording` meeting shell and one pending `AudioAsset`
+reservation per selected channel. The runtime then starts `RecordingSession`,
+which stops partially started sources on failure, closes its direct live
+Parakeet feeds, and stops mic warm-up. The use case inspects both reserved
+staging paths and their published counterparts: any file retains the shell as
+`needsAttention`; only an untouched empty shell can pass D37's guarded discard.
+Every failed attempt schedules idle engine release (D49).
+
+The successful runtime returns an opaque `StartRecordingSession` that owns the
+concrete microphone, process tap, `RecordingSession`, live feeds, and one
+voiceprint future. `RecordingController` owns the live UI callbacks, streaming
+diarization, and rolling summary without importing concrete capture state.
+Local mic mute crosses the opaque session synchronously so it affects the next
+buffer before a following Stop can overtake it.
 
 Each reservation and writer uses `<channel>.partial.caf`. On stop, all writers
 are released, each non-empty mono CAF is reopened for validation, SHA-256 is
@@ -62,13 +72,14 @@ launch. Missing files remain explicit missing evidence. Staging plus final, or
 duplicate candidates across roots, is `capture.recovery.ambiguous`: every copy
 is preserved and Portavoz neither overwrites nor guesses (D40).
 
-The controller installs `captured`, finalized/missing assets, provisional live
-cast/transcript, notes, and Companion cards in one StorageKit Unit of Work
-before diarization or summary work, then records `processing` and finally
-`ready`. Batch attribution atomically replaces the provisional cast. Audio
-with no captions is retained as `needsAttention`; a later required-write
-failure does the same. `stop` schedules engine release with `defer`, even when
-there was not enough audio to keep.
+`ApplicationKit.StopRecording` installs `captured`, finalized/missing assets,
+provisional live cast/transcript, notes, Companion cards, and the exact first
+job in one StorageKit Unit of Work before diarization or summary work, then the
+worker records `processing` and finally `ready`. Batch attribution atomically
+replaces the provisional cast. Audio with no captions is retained as
+`needsAttention`; a later required-write failure does the same. Stop schedules
+engine release on every accepted outcome, even when there was not enough audio
+to keep.
 
 `CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 

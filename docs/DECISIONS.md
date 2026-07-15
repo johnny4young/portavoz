@@ -810,3 +810,44 @@ capture into ApplicationKit. One application owner makes success, rollback,
 recovery, release, and ordering independently testable. Keeping live teardown
 above the boundary avoids a reverse dependency on AudioCaptureKit and keeps
 the application layer free of platform sessions and filesystem APIs.
+
+## D49 — Recording Start owns reservation policy, not platform capture objects (Jul 2026)
+
+**Context:** D36/D37 require the meeting shell and pending channel assets to
+exist before any source writes, but `RecordingController` still combined that
+durability policy with model warm-up, preference sampling, microphone fallback,
+process-tap selection, direct live Parakeet setup, concrete session ownership,
+voiceprint acquisition, UI state, and localized errors. A source-start failure
+can also leave either staging evidence or a file already published while
+stopping a partially started `RecordingSession`. Keeping these decisions in a
+presentation controller made ordering and evidence preservation difficult to
+prove independently.
+
+**Decision:** `ApplicationKit.StartRecording` samples an immutable preference
+snapshot once, asks an injected runtime to prepare capture, derives the title
+and same-day sequence, atomically reserves the `recording` shell and one pending
+asset per selected channel, and only then invokes source start. If source start
+fails, the use case checks both staging and published paths, preserves any
+evidence as `needsAttention`, and hard-deletes only an untouched empty shell
+through D37's guarded operation. Preparation, reservation, and source failures
+all schedule the existing idle release; successful capture transfers ownership
+to an opaque `StartRecordingSession` instead.
+
+The private macOS runtime owns `MicrophoneSource`, app/global
+`ProcessTapSource` selection, AEC warm-up, preferred-input fallback,
+`RecordingSession`, direct per-channel Parakeet streams, their teardown, and
+one recording-scoped voiceprint future shared by live diarization and durable
+Stop. Direct live streams preserve the released D7 live lane; the serial batch
+scheduler remains for file work and is not inserted into this path.
+`RecordingController` retains visual state, caption filtering/coalescing,
+streaming diarization, rolling summary, and exact localized result mapping.
+Mic mute remains a synchronous opaque-session command because it must affect
+the next audio buffer before an immediately following Stop can overtake it.
+
+**Rationale:** this is the narrowest Strangler slice that gives pre-source
+reservation and start-failure recovery one testable application owner without
+introducing an `ApplicationKit → AudioCaptureKit` dependency. Platform capture
+objects and real-time feed mechanics remain replaceable adapters, while the
+business invariants from D36/D37 become independent of SwiftUI and model or
+hardware availability. The split preserves every released live feature and
+leaves launch recovery as the next bounded workflow.

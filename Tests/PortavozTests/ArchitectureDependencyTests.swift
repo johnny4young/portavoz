@@ -136,6 +136,20 @@ final class ArchitectureDependencyTests: XCTestCase {
             "PostCaptureProcessingCoordinator.initialDiarizationRequest"))
     }
 
+    func testAppRecordingStartEntersThroughApplicationKit() throws {
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+StartRecording.swift")
+
+        XCTAssertTrue(controller.contains("services.startRecording.execute"))
+        XCTAssertTrue(adapter.contains("var startRecording: StartRecording"))
+        XCTAssertFalse(controller.contains("services.store.beginRecording"))
+        XCTAssertFalse(controller.contains("MicrophoneSource("))
+        XCTAssertFalse(controller.contains("RecordingSession("))
+        XCTAssertFalse(controller.contains("makeSystemTapSource"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

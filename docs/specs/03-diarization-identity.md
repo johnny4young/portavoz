@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -49,6 +49,13 @@ Field request: two remote voices speaking one after the other were merged into a
 - Best-effort: if the models fail to load, the feed closes (an entire meeting is not accumulated in memory), and captions remain "Ellos" as before.
 - **Verified with a real meeting** (Jul 2026): the streaming path found ≥2 voices in the first 4 min of the system channel and processed them in 2.4 s (~100× real time) — gated test `testLiveStreamingPathFindsMultipleVoices`.
 
+The private `StartRecordingRuntime` creates exactly one recording-scoped
+voiceprint task after reservation and keeps it inside the opaque active
+session. `RecordingController` awaits that same future for live diarization;
+`ApplicationKit.StopRecording` receives the same value for the exact durable
+operation. Stop cancels the read only after the handoff completes, so live and
+batch identity cannot accidentally sample different enrollment state (D49).
+
 ## Voiceprint — `VoiceprintStore` (D8/D21)
 
 - 256-dim WeSpeaker embedding from ~12 s of voice alone (the source audio is NOT retained). AES-GCM encrypted; the key is ONLY in Keychain (service `app.portavoz.voiceprint-key`, injectable for tests). `delete()` destroys the file + key in one action. It is never synchronized (reenrollment per device).
@@ -92,10 +99,10 @@ turns. Model load/inference failure retains the released best-effort behavior
 and publishes honest unattributed system segments; a finalized audio path that
 has disappeared is a durable retryable failure. `SpeakerAttributor` output,
 homogeneous language, transcript revision increment, job success, and the exact
-dependent summary enqueue share one StorageKit transaction. D43 makes normal
-`ApplicationKit.StopRecordingJobFactory` produces the first exact job and Stop
-admits it atomically with captured content, using the same recording-scoped
-voiceprint value that seeded live diarization (D48).
+dependent summary enqueue share one StorageKit transaction. For normal capture,
+`ApplicationKit.StopRecordingJobFactory` produces the first exact job and
+`StopRecording` admits it atomically with captured content, using the same
+recording-scoped voiceprint future that seeded live diarization (D48/D49).
 
 ## Known limits
 

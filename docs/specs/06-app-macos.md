@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D48 (application dependency and workflow ownership).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D49 (application dependency and workflow ownership).
 
 ## Structure
 
@@ -54,10 +54,24 @@ publication/reservation reconciliation, provisional attribution and language,
 transcript/no-audio recovery, atomic captured snapshot plus exact first-job
 admission, worker kick, and recording-engine release through private filesystem
 and lifecycle adapters plus `MeetingStore`. The durable worker still owns
-diarization, optional summary, and terminal-aware Shortcut timing. Recording
-start and launch recovery remain later Band 2 extractions (D48).
+diarization, optional summary, and terminal-aware Shortcut timing. At that
+slice, recording start and launch recovery remained later extractions (D48).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StopRecording` schedules the recording-engine policy after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+Slice 2I moves start policy through `ApplicationKit.StartRecording`.
+`AppServices` composes private preference, filesystem, Store, and capture
+runtime adapters. The use case owns once-sampled preferences, title/sequence,
+atomic pre-source shell/asset reservation, source-start invocation,
+staging/published evidence reconciliation, guarded discard or
+`needsAttention`, and failure-time release. The private runtime owns preferred
+mic fallback, AEC warm-up, meeting-app/global process-tap selection, concrete
+`RecordingSession`, direct per-channel live Parakeet streams, and one
+recording-scoped voiceprint future. `RecordingController` receives only live
+callbacks and an opaque active session; it retains visual state, caption
+filtering, live diarization, rolling summary, exact localized result mapping,
+session Stop, and synchronous mic mute. Launch recovery remains the next Band
+2 extraction (D49).
+
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed preparation/reservation/source-start attempt, while ownership transfers to the active session on success; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
@@ -103,12 +117,16 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 **LibraryView**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings via `openActionItems` — checkbox completes in-place and bumps `libraryVersion`; click navigates to meeting; UITests use `firstMatch` because meeting title appears also as caption in these rows), and a list with `Rename`/`Delete` context-menu actions. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing navigation, degradable filesystem behavior, and broad reload semantics remain while scoped observations are pending.
 
 **RecordingView + RecordingController** (full live pipeline):
-1. `start`: warm-up of mic (AEC converges during "Preparing…"), engines, then
-   one atomic `MeetingStore.beginRecording` write for the `recording` shell and
-   pending `<channel>.partial.caf` source assets before `RecordingSession` starts mic (+system tap on
-   14.4+). Feeds by channel → Parakeet live → **CaptionCoalescer** (one row per
-   intervention). A no-file startup failure rolls back only the empty shell;
-   any written channel preserves it as `needsAttention` (D37).
+1. `start`: `RecordingController` resets live visual state and sends callbacks
+   to `ApplicationKit.StartRecording`. The use case samples settings, asks the
+   private runtime to warm the mic while engines load, atomically calls
+   `MeetingStore.beginRecording` for the `recording` shell and pending
+   `<channel>.partial.caf` assets, then invokes source start. The runtime owns
+   the concrete mic (+system tap on 14.4+), `RecordingSession`, and direct
+   Parakeet stream per channel; captions return through the callback to
+   **CaptionCoalescer**. A no-file startup failure rolls back only the empty
+   shell; staging or published evidence preserves it as `needsAttention`
+   (D37/D49).
 2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint.
 3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
    rename staging files without overwrite → one `installCapturedSnapshot`
@@ -125,9 +143,9 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
    collision keeps its staging file and also becomes `needsAttention` for
    launch recovery.
 
-Normal Stop now uses the durable process path (D39–D43). A utility-priority
-voiceprint read begins after capture reservation and feeds both live
-diarization and the exact initial operation. After files publish,
+Normal Stop now uses the durable process path (D39–D43). The active Start
+session owns one utility-priority voiceprint future after reservation and feeds
+that same value to both live diarization and the exact initial operation. After files publish,
 `installCapturedSnapshot(..., enqueue:)` atomically installs captured
 assets/live transcript/notes/cards and that first job. Stop enters `done`
 immediately after the commit and kicks `PostCaptureProcessingSupervisor`, so
