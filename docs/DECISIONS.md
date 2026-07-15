@@ -429,6 +429,15 @@ is terminal. Repeat-safe expired-lease recovery performs the same retry-or-
 exhaust decision and can run on every launch. Deleted meetings expose no jobs
 and cannot be claimed.
 
+The first 1D-b2b control-plane unit adds two worker primitives without changing
+app execution yet. Optional or superseded work may transition from an owned,
+unexpired lease to terminal `cancelled` with a stable reason; cancellation does
+not claim an artifact exists and does not make the aggregate fail. A
+capability-filtered query returns the earliest future `notBefore` among live,
+non-exhausted jobs so a process worker can schedule one wake instead of polling.
+Both operations exclude deleted meeting roots, and idempotent enqueue never
+resurrects a cancellation.
+
 All jobs enqueued for a meeting participate in aggregate completion: active
 work keeps `processing`; after active work ends, any failed job yields
 `needsAttention` with its stable error code; otherwise terminal work yields
@@ -436,8 +445,8 @@ work keeps `processing`; after active work ends, any failed job yields
 should participate in the meeting lifecycle. Slice 1D-a implements this Core
 and StorageKit contract while retaining the released synchronous
 `RecordingController` path. Slice 1D-b1 owns launch reconciliation of meetings,
-leases, and staging files; slice 1D-b2a owns atomic artifact completion and
-slice 1D-b2b owns concrete app enqueue/execution.
+leases, and staging files; slice 1D-b2a owns atomic artifact completion and the
+remaining 1D-b2b work owns concrete app enqueue/execution.
 
 **Rationale:** immutable operation identity makes retries idempotent, leases
 fence stale workers, and deriving aggregate state in StorageKit prevents UI or

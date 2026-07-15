@@ -491,6 +491,96 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         XCTAssertEqual(attentionDetail.meeting.lastProcessingError, "diarization.exhausted")
     }
 
+    func testCancellationIsOwnerBoundTerminalAndNonFailing() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        let request = ProcessingJobRequest(
+            kind: .summary, inputFingerprint: "summary:optional")
+        let enqueued = try await store.enqueueProcessingJobs(
+            for: captured.id, requests: [request], at: now)
+        let jobID = try XCTUnwrap(enqueued.first?.id)
+        _ = try await store.claimNextProcessingJob(
+            kinds: [.summary], owner: "worker-a", leaseDuration: 30, at: now)
+
+        do {
+            _ = try await store.cancelProcessingJob(
+                jobID,
+                owner: "worker-b",
+                reason: ProcessingJobFailure(code: "summary.unavailable"),
+                at: now.addingTimeInterval(1))
+            XCTFail("another worker cannot cancel the owned attempt")
+        } catch StorageError.processingJobLeaseLost(let id) {
+            XCTAssertEqual(id, jobID)
+        }
+
+        let cancelled = try await store.cancelProcessingJob(
+            jobID,
+            owner: "worker-a",
+            reason: ProcessingJobFailure(
+                code: "summary.unavailable", message: "No configured provider."),
+            at: now.addingTimeInterval(2))
+        XCTAssertEqual(cancelled.state, .cancelled)
+        XCTAssertEqual(cancelled.errorCode, "summary.unavailable")
+        XCTAssertEqual(cancelled.errorMessage, "No configured provider.")
+        XCTAssertNil(cancelled.leaseOwner)
+        XCTAssertEqual(cancelled.finishedAt, now.addingTimeInterval(2))
+
+        let readyDetail = try await detail(captured.id, in: store)
+        XCTAssertEqual(readyDetail.meeting.lifecycleState, .ready)
+        XCTAssertNil(readyDetail.meeting.lastProcessingError)
+        let repeated = try await store.enqueueProcessingJobs(
+            for: captured.id, requests: [request], at: now.addingTimeInterval(3))
+        XCTAssertEqual(repeated.map(\.id), [jobID])
+        XCTAssertEqual(repeated.first?.state, .cancelled)
+    }
+
+    func testNextScheduledDateFiltersByCapabilityAndLiveMeeting() async throws {
+        let store = try MeetingStore.inMemory()
+        let live = meeting()
+        let deleted = meeting()
+        try await store.save(live)
+        try await store.save(deleted)
+        let summaryDate = now.addingTimeInterval(30)
+        let diarizationDate = now.addingTimeInterval(10)
+        _ = try await store.enqueueProcessingJobs(
+            for: live.id,
+            requests: [
+                ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "summary:scheduled",
+                    notBefore: summaryDate),
+                ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "summary:already-due",
+                    notBefore: now.addingTimeInterval(-1)),
+                ProcessingJobRequest(
+                    kind: .diarization,
+                    inputFingerprint: "diarization:scheduled",
+                    notBefore: diarizationDate),
+            ],
+            at: now)
+        _ = try await store.enqueueProcessingJobs(
+            for: deleted.id,
+            requests: [ProcessingJobRequest(
+                kind: .summary,
+                inputFingerprint: "summary:deleted",
+                notBefore: now.addingTimeInterval(1))],
+            at: now)
+        try await store.delete(deleted.id)
+
+        let summaryWake = try await store.nextScheduledProcessingDate(
+            kinds: [.summary], after: now)
+        let anyWake = try await store.nextScheduledProcessingDate(
+            kinds: [.summary, .diarization], after: now)
+        let unsupportedWake = try await store.nextScheduledProcessingDate(
+            kinds: [.index], after: now)
+
+        XCTAssertEqual(summaryWake, summaryDate)
+        XCTAssertEqual(anyWake, diarizationDate)
+        XCTAssertNil(unsupportedWake)
+    }
+
     func testExpiredLeaseRecoveryIsRepeatSafeAndExhaustsAttempts() async throws {
         let store = try MeetingStore.inMemory()
         let captured = meeting()

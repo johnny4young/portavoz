@@ -60,6 +60,14 @@ expired-lease recovery either returns work to pending or exhausts it. Active
 jobs keep the meeting `processing`; after active work ends, failure yields
 `needsAttention` and otherwise terminal work yields `ready`.
 
+The first 1D-b2b control-plane unit adds owner-leased cancellation and scheduled
+wake discovery. Cancellation records a terminal reason without claiming an
+artifact exists; because it represents intentionally degradable or superseded
+work, it does not make the aggregate fail. `nextScheduledProcessingDate`
+returns the earliest future `notBefore` for explicit worker capabilities while
+excluding deleted meetings and exhausted attempts, allowing workers to sleep
+without polling.
+
 Slice 1D-b1 adds `installRecoveredCaptureAssets`, a repeat-safe transaction
 for the filesystem/SQLite Saga. It replaces the exact pending reservation set
 with fully validated published/missing evidence, preserves immutable asset
@@ -124,7 +132,8 @@ Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `processingJobs(for:)`, `claimNextProcessingJob(kinds:owner:leaseDuration:at:)`,
 `heartbeatProcessingJob`, `completeProcessingJob`,
 `completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
-`recoverExpiredProcessingJobs`. Claims are capability-filtered and
+`cancelProcessingJob`, `nextScheduledProcessingDate`, and
+`recoverExpiredProcessingJobs`. Claims and scheduled wakes are capability-filtered and
 owner-fenced; generated work must use its artifact completion API, while the
 generic completion path remains available only to non-content jobs. Storage
 derives meeting lifecycle rather than asking callers to save a second,
@@ -173,9 +182,10 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
    StorageKit atomically commits the artifact, job success, and optional
    dependent enqueue. Summary cache identity remains separate because D25
    excludes output language. Generic completion rejects generated-content
-   jobs, and lifecycle derivation cannot hide pending capture publication.
-   Concrete producers/workers remain slice 1D-b2b; process-launch capture and
-   lease recovery shipped in 1D-b1.
+   jobs, lifecycle derivation cannot hide pending capture publication, and
+   owner-fenced cancellation can settle degradable work without fabricating an
+   artifact or failing the meeting. Concrete app producers/executors remain the
+   next 1D-b2b unit; process-launch capture and lease recovery shipped in 1D-b1.
 
 ## Trash (Jul 2026)
 

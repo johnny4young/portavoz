@@ -29,7 +29,9 @@ adds the typed, idempotent, owner-leased StorageKit job queue while leaving the
 released synchronous app workflow in place. Slice 1D-b1 adds process-launch
 reconciliation for interrupted capture files, meeting lifecycle, and expired
 leases without running ML. Slice 1D-b2a adds stale-safe atomic diarization and
-summary artifact completion; concrete app job producers/workers remain 1D-b2b.
+summary artifact completion. The first 1D-b2b control-plane unit adds
+owner-fenced cancellation for degradable work and durable scheduled-wake
+discovery; concrete app job producers/executors remain the next unit.
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -51,7 +53,7 @@ the capabilities directly today.
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker through FluidAudio) over system/room channels; `SpeakerAttributor` (structural who-said-what); `Voiceprint` (biometric: on-device only, encrypted, never synced, erasable) |
 | `IntelligenceKit` | Summary providers for Foundation Models, OpenAI-compatible BYOK/Ollama, and embedded MLX; structured summaries, Recipes, fingerprint caching, Companion/RAG intelligence, schedulers, embeddings, and bilingual output policy |
 | `ContextFeedKit` | Placeholder-scale compatibility target; timestamped note behavior is implemented through Core/app/storage rather than a substantial standalone Kit |
-| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording reserves assets and installs the captured meeting/assets/live content in one Unit of Work; recovery installs revalidated assets through a repeat-safe Unit of Work that protects ready meetings. The typed job queue enforces idempotent enqueue, owner-bound leases, retries, terminal states, and lifecycle derivation; generated diarization/summary artifacts have stale-safe atomic completion boundaries, but the app does not enqueue the queue yet. Provenance, outbox, and per-meeting preferences remain unconsumed. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
+| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording reserves assets and installs the captured meeting/assets/live content in one Unit of Work; recovery installs revalidated assets through a repeat-safe Unit of Work that protects ready meetings. The typed job queue enforces idempotent enqueue, owner-bound leases, retries, scheduled wake discovery, success/failure/cancellation terminal states, and lifecycle derivation; generated diarization/summary artifacts have stale-safe atomic completion boundaries, but the app does not enqueue the queue yet. Provenance, outbox, and per-meeting preferences remain unconsumed. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
 | `AudioPlaybackKit` | Synchronized playback, channel-aware waveform data, clips, silence skipping, and AAC transcoding |
 | `SyncKit` | Placeholder-scale `Visibility` model. CKSyncEngine and CloudKit sync are planned, not implemented |
 | `IntegrationsKit` | Export and external-system adapters plus several cross-cutting read/product policies. It is the only cross-Kit layer under D31; narrowing it is part of Band 2 |
@@ -218,8 +220,18 @@ workers adopt it (D41):
   successful derived work cannot hide `capture.publication.failed`, while
   completed job history does not block later capture recovery.
 
+The first 1D-b2b control-plane unit completes the queue behavior required by a
+non-polling app worker:
+
+- `cancelProcessingJob` is owner- and lease-fenced, records one terminal reason,
+  never fabricates a generated artifact, and lets optional or superseded work
+  settle without turning the meeting into `needsAttention`;
+- `nextScheduledProcessingDate` returns the earliest future `notBefore` for the
+  worker's explicit capabilities, excluding tombstoned meetings and exhausted
+  work, so a process can sleep until durable work is due instead of polling.
+
 The released synchronous `RecordingController` Stop path remains unchanged.
-Slice 1D-b2b owns concrete producers/workers and app queue adoption; the
+The next 1D-b2b unit owns concrete producers/executors and app queue adoption; the
 schema-v6 `generationRun` provenance envelope remains Band 3 work.
 
 The v6 migration still never reads the filesystem or synthesizes assets for
@@ -228,7 +240,7 @@ read path for all meetings. New `audioAsset` rows move from a staging path to
 the current final CAF path only after publication; finalized rows carry media,
 checksum, level, and health evidence. Missing channels remain metadata-free,
 and an unpublished staging file remains pending until the launch reconciler
-classifies it. Concrete app job producers/workers remain slice 1D-b2b.
+classifies it. Concrete app job producers/executors remain the next 1D-b2b unit.
 Global UserDefaults remain the active language
 defaults. Slice 1B crosses D36's behavioral-adoption boundary: an older binary
 may open the additive schema but cannot reconcile new lifecycle/assets, so any
@@ -372,8 +384,8 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 440-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
-| 1 — Indestructible recording | In progress — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, captured/recovery Units of Work, typed idempotent owner-leased jobs, evidence-first launch reconciliation, and stale-safe atomic diarization/summary artifact completion (D39/D40/D41) | Next: 1D-b2b concrete app producers/workers and queue adoption; playback remains on `Meeting.audioDirectory` until asset-reader parity is proven |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 442-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 1 — Indestructible recording | In progress — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a plus the first 1D-b2b control-plane unit: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, captured/recovery Units of Work, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic diarization/summary artifact completion, degradable cancellation, and scheduled wake discovery (D39/D40/D41) | Next: 1D-b2b concrete app producers/executors and queue adoption; playback remains on `Meeting.audioDirectory` until asset-reader parity is proven |
 | 2 — Application layer | Not started | `ApplicationKit`, composition-only `AppServices`, feature models, scoped GRDB observations |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |

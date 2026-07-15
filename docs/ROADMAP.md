@@ -6,15 +6,25 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement Band 1 slice 1D-b2b of the approved
+**Next concrete step:** continue Band 1 slice 1D-b2b of the approved
 architecture-hardening program in
 [refactor-20260714.md](refactor-20260714.md): make the app enqueue/execute
 concrete durable post-capture jobs through the artifact completion boundaries
-landed in slice 1D-b2a. Band 0 is complete and Band 1 slices
-1A/1B/1C/1D-a/1D-b1/1D-b2a are complete. Every slice
+landed in slice 1D-b2a and the cancellation/scheduled-wake control plane now in
+StorageKit. Band 0 is complete and Band 1 slices
+1A/1B/1C/1D-a/1D-b1/1D-b2a plus the first 1D-b2b control-plane unit are
+complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
 commit (D33/D34/D36/D37/D38/D39/D40/D41).
+
+- **Architecture Band 1 slice 1D-b2 control plane advanced (Jul 15, 2026)**:
+  optional or superseded work now has an owner-leased terminal cancellation
+  transition that does not turn the meeting into `needsAttention`, and workers
+  can query the earliest future `notBefore` for their explicit capabilities
+  without polling or observing tombstoned meetings. Two focused tests bring the
+  package baseline to 442. The released synchronous Stop path remains unchanged;
+  concrete app producers/executors are the next 1D-b2b unit.
 
 - **Architecture Band 1 slice 1D-b2a complete (Jul 15, 2026)**: StorageKit now
   commits diarization cast replacement/transcript revision or one immutable
