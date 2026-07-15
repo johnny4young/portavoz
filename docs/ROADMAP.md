@@ -6,15 +6,25 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement Band 1 slice 1D-b2 of the approved
+**Next concrete step:** implement Band 1 slice 1D-b2b of the approved
 architecture-hardening program in
 [refactor-20260714.md](refactor-20260714.md): make the app enqueue/execute
-concrete durable post-capture jobs and commit each generated artifact with its
-job outcome through one StorageKit Unit of Work. Band 0 is complete and Band 1
-slices 1A/1B/1C/1D-a/1D-b1 are complete. Every slice
+concrete durable post-capture jobs through the artifact completion boundaries
+landed in slice 1D-b2a. Band 0 is complete and Band 1 slices
+1A/1B/1C/1D-a/1D-b1/1D-b2a are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40).
+commit (D33/D34/D36/D37/D38/D39/D40/D41).
+
+- **Architecture Band 1 slice 1D-b2a complete (Jul 15, 2026)**: StorageKit now
+  commits diarization cast replacement/transcript revision or one immutable
+  summary snapshot together with owner-leased job success and optional
+  dependent enqueue (D41). Exact operation fingerprints, source revisions,
+  live ownership, and current speaker references fence stale output. Generic
+  completion cannot mark generated work successful without its artifact, and
+  lifecycle derivation preserves unresolved capture publication. Five focused
+  tests bring the package baseline to 440. The released synchronous Stop path
+  remains unchanged; slice 1D-b2b owns app queue adoption.
 
 - **Architecture Band 1 slice 1D-b1 complete (Jul 15, 2026)**: a process-level
   `RecordingRecoveryCoordinator` now recovers expired leases and reconciles
@@ -25,7 +35,7 @@ commit (D33/D34/D36/D37/D38/D39/D40).
   deletion. A repeat-safe StorageKit Unit of Work protects ready meetings and
   installs recovered evidence atomically (D40). Three focused package tests
   bring the baseline to 435, and a new disposable XCUITest proves a recovered
-  meeting is visible and playable. The launch pass invokes no ML; slice 1D-b2
+  meeting is visible and playable. The launch pass invokes no ML; slice 1D-b2b
   owns concrete durable job producers/workers.
 
 - **Architecture Band 1 slice 1D-a complete (Jul 15, 2026)**: the schema-v6
@@ -36,7 +46,7 @@ commit (D33/D34/D36/D37/D38/D39/D40).
   work derives the meeting lifecycle repeat-safely (D39). Seven focused tests
   bring the package baseline to 432. The released synchronous post-capture
   path remains unchanged; slice 1D-b1 subsequently added launch recovery and
-  slice 1D-b2 owns app queue adoption.
+  slice 1D-b2b owns app queue adoption.
 
 - **Architecture Band 1 slice 1C complete (Jul 15, 2026)**: channels now write
   to `<channel>.partial.caf`, then Stop validates a readable non-empty mono

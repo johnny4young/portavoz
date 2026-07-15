@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 435 package tests passing (13 gated) + 16 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Status: 440 package tests passing (13 gated) + 16 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -20,7 +20,7 @@ Status: 435 package tests passing (13 gated) + 16 XCUITest UI tests. CI on GitHu
 | MeetingHealthTests | 6 cases: talk-time/share, ES/EN questions, thresholded interruptions, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
-| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36/D37/D38/D39/D40 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration, lifecycle/path/language/idempotency constraints, atomic pre-capture reservations, all-or-nothing captured/recovered snapshot installation, ready-state protection, and owner-leased durable jobs |
+| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36/D37/D38/D39/D40/D41 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration, lifecycle/path/language/idempotency constraints, atomic pre-capture reservations, all-or-nothing captured/recovered snapshot installation, ready-state protection, owner-leased durable jobs, and stale-safe atomic diarization/summary artifact completion |
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
@@ -68,6 +68,15 @@ shell becomes a captured `needsAttention` aggregate with its audio intact.
 The same 16-case XCUITest suite passes in default, forced-English, and
 forced-Spanish launches (48 UI executions); the recovery case opens the
 restored meeting and observes the real player controls.
+
+Slice 1D-b2a adds five focused durable-artifact tests. They prove that
+diarization replacement, transcript revision, job success, and dependent
+enqueue commit together; an injected SQLite failure rolls the cast and job
+back together; a changed transcript revision rejects a stale summary without
+writing; summary snapshot and job success commit once; and generated-content
+jobs cannot bypass their artifact boundary through generic completion. The
+existing capture-recovery test now also proves successful job history neither
+hides unresolved publication nor blocks a later return to `ready`.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

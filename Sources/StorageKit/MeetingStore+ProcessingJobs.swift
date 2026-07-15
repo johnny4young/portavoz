@@ -121,19 +121,84 @@ extension MeetingStore {
         try Self.validateOwner(owner)
         return try await database.write { db in
             var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
-            record.state = ProcessingJobState.succeeded.rawValue
-            record.progress = 1
-            record.notBefore = nil
-            record.leaseOwner = nil
-            record.leaseExpiresAt = nil
-            record.errorCode = nil
-            record.errorMessage = nil
-            record.finishedAt = timestamp
-            record.updatedAt = timestamp
-            try record.update(db)
-            let job = try record.job
+            guard !Self.requiresArtifactCommit(record.kind) else {
+                throw StorageError.invalidProcessingJob(
+                    "generated-content jobs require their domain artifact completion API")
+            }
+            let job = try Self.succeed(&record, at: timestamp, in: db)
             try Self.reconcileLifecycle(for: job.meetingID, at: timestamp, in: db)
             return job
+        }
+    }
+
+    /// Publishes an attributed transcript, advances its revision, completes
+    /// the owned diarization attempt, and optionally creates dependent work
+    /// in one transaction. A changed source revision rejects the whole write.
+    public func completeDiarizationJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        artifact: DiarizationArtifact,
+        enqueue followUpRequests: [ProcessingJobRequest] = [],
+        at timestamp: Date = Date()
+    ) async throws -> ProcessingArtifactCommit {
+        try Self.validateOwner(owner)
+        try Self.validateDiarizationArtifact(artifact)
+        try Self.validateFollowUps(followUpRequests)
+        return try await database.write { db in
+            var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            try Self.validateArtifactJob(
+                record, kind: .diarization, meetingID: artifact.meetingID,
+                fingerprint: artifact.inputFingerprint)
+            var meeting = try Self.liveMeeting(artifact.meetingID, in: db)
+            try Self.requireRevision(
+                artifact.sourceTranscriptRevision, for: record, meeting: meeting)
+            try Self.requireDiarizationIdentities(artifact, in: db)
+            try Self.writeDiarizationArtifact(
+                artifact, meeting: &meeting, at: timestamp, in: db)
+            let enqueued = try Self.enqueueFollowUps(
+                followUpRequests, after: record, at: timestamp, in: db)
+            let completed = try Self.succeed(&record, at: timestamp, in: db)
+            try Self.reconcileLifecycle(for: artifact.meetingID, at: timestamp, in: db)
+            return ProcessingArtifactCommit(
+                completedJob: completed,
+                enqueuedJobs: enqueued,
+                artifactVersion: meeting.transcriptRevision)
+        }
+    }
+
+    /// Inserts an immutable summary snapshot and completes its owned job in
+    /// one transaction. The material-cache fingerprint on `SummaryDraft` is
+    /// preserved, while the separate operation fingerprint fences the job.
+    public func completeSummaryJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        artifact: SummaryArtifact,
+        enqueue followUpRequests: [ProcessingJobRequest] = [],
+        at timestamp: Date = Date()
+    ) async throws -> ProcessingArtifactCommit {
+        try Self.validateOwner(owner)
+        try Self.validateSummaryArtifact(artifact)
+        try Self.validateFollowUps(followUpRequests)
+        return try await database.write { db in
+            var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            try Self.validateArtifactJob(
+                record, kind: .summary, meetingID: artifact.draft.meetingID,
+                fingerprint: artifact.inputFingerprint)
+            let meeting = try Self.liveMeeting(artifact.draft.meetingID, in: db)
+            try Self.requireRevision(
+                artifact.sourceTranscriptRevision, for: record, meeting: meeting)
+            try Self.requireSummaryOwners(artifact.draft, in: db)
+            let version = try Self.insertSummarySnapshot(
+                artifact.draft, at: timestamp, in: db)
+            let enqueued = try Self.enqueueFollowUps(
+                followUpRequests, after: record, at: timestamp, in: db)
+            let completed = try Self.succeed(&record, at: timestamp, in: db)
+            try Self.reconcileLifecycle(
+                for: artifact.draft.meetingID, at: timestamp, in: db)
+            return ProcessingArtifactCommit(
+                completedJob: completed,
+                enqueuedJobs: enqueued,
+                artifactVersion: version)
         }
     }
 
@@ -289,6 +354,12 @@ extension MeetingStore {
         let jobs = try ProcessingJobRecord
             .filter(Column("meetingID") == key)
             .fetchAll(db)
+        let pendingCaptureCount = try AudioAssetRecord
+            .filter(Column("meetingID") == key)
+            .filter(Column("role") == AudioAssetRole.capture.rawValue)
+            .filter(Column("deletedAt") == nil)
+            .filter(Column("healthStatus") == AudioAssetHealthStatus.pending.rawValue)
+            .fetchCount(db)
         if jobs.contains(where: { $0.state == ProcessingJobState.pending.rawValue
             || $0.state == ProcessingJobState.running.rawValue }) {
             meeting.lifecycleState = MeetingLifecycleState.processing.rawValue
@@ -298,6 +369,9 @@ extension MeetingStore {
             .max(by: { $0.updatedAt < $1.updatedAt }) {
             meeting.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
             meeting.lastProcessingError = failure.errorCode ?? "processing.failed"
+        } else if pendingCaptureCount > 0 {
+            meeting.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
+            meeting.lastProcessingError = "capture.publication.failed"
         } else if !jobs.isEmpty {
             meeting.lifecycleState = MeetingLifecycleState.ready.rawValue
             meeting.lastProcessingError = nil
@@ -327,6 +401,17 @@ extension MeetingStore {
         }
     }
 
+    private static func validateFollowUps(_ requests: [ProcessingJobRequest]) throws {
+        guard !requests.isEmpty else { return }
+        try validate(requests)
+    }
+
+    private static func requiresArtifactCommit(_ kind: String) -> Bool {
+        kind == ProcessingJobKind.refine.rawValue
+            || kind == ProcessingJobKind.diarization.rawValue
+            || kind == ProcessingJobKind.summary.rawValue
+    }
+
     private static func validateWorker(
         _ owner: String,
         leaseDuration: TimeInterval
@@ -345,5 +430,202 @@ extension MeetingStore {
 
     fileprivate static func isCanonical(_ value: String) -> Bool {
         !value.isEmpty && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+extension MeetingStore {
+    private static func validateDiarizationArtifact(
+        _ artifact: DiarizationArtifact
+    ) throws {
+        let speakerIDs = Set(artifact.speakers.map(\.id))
+        let segmentIDs = Set(artifact.segments.map(\.id))
+        guard isCanonical(artifact.inputFingerprint),
+            artifact.sourceTranscriptRevision >= 0,
+            artifact.language.map(isCanonical) ?? true,
+            !artifact.segments.isEmpty,
+            speakerIDs.count == artifact.speakers.count,
+            segmentIDs.count == artifact.segments.count,
+            artifact.speakers.allSatisfy({ speaker in
+                speaker.meetingID == artifact.meetingID
+                    && isCanonical(speaker.label)
+            }),
+            artifact.segments.allSatisfy({ segment in
+                segment.meetingID == artifact.meetingID
+                    && (segment.speakerID.map(speakerIDs.contains) ?? true)
+                    && hasContent(segment.text)
+                    && segment.startTime.isFinite
+                    && segment.endTime.isFinite
+                    && segment.startTime >= 0
+                    && segment.endTime >= segment.startTime
+                    && (segment.confidence.map { $0.isFinite && (0...1).contains($0) } ?? true)
+            })
+        else {
+            throw StorageError.invalidProcessingJob(
+                "diarization artifact must be canonical, unique, and meeting-owned")
+        }
+    }
+
+    private static func validateSummaryArtifact(_ artifact: SummaryArtifact) throws {
+        let draft = artifact.draft
+        guard isCanonical(artifact.inputFingerprint),
+            artifact.sourceTranscriptRevision >= 0,
+            isCanonical(draft.recipeID),
+            isCanonical(draft.language),
+            hasContent(draft.markdown),
+            draft.fingerprint.map(isCanonical) == true,
+            Set(draft.actionItems.map(\.id)).count == draft.actionItems.count,
+            draft.actionItems.allSatisfy({ hasContent($0.text) })
+        else {
+            throw StorageError.invalidProcessingJob(
+                "summary artifact must include canonical identity, content, and cache evidence")
+        }
+    }
+
+    private static func validateArtifactJob(
+        _ record: ProcessingJobRecord,
+        kind: ProcessingJobKind,
+        meetingID: MeetingID,
+        fingerprint: String
+    ) throws {
+        guard record.kind == kind.rawValue,
+            record.meetingID == meetingID.rawValue.uuidString,
+            record.inputFingerprint == fingerprint
+        else {
+            throw StorageError.invalidProcessingJob(
+                "artifact kind, meeting, and fingerprint must match the owned job")
+        }
+    }
+
+    private static func liveMeeting(
+        _ meetingID: MeetingID,
+        in db: Database
+    ) throws -> MeetingRecord {
+        guard let meeting = try MeetingRecord
+            .filter(Column("id") == meetingID.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .fetchOne(db)
+        else { throw StorageError.meetingNotFound(meetingID) }
+        return meeting
+    }
+
+    private static func requireRevision(
+        _ expected: Int,
+        for job: ProcessingJobRecord,
+        meeting: MeetingRecord
+    ) throws {
+        guard meeting.transcriptRevision == expected else {
+            let id = ProcessingJobID(rawValue: try PersistedIdentity.required(
+                job.id, table: ProcessingJobRecord.databaseTableName, column: "id"))
+            throw StorageError.processingJobInputChanged(id)
+        }
+    }
+
+    private static func requireDiarizationIdentities(
+        _ artifact: DiarizationArtifact,
+        in db: Database
+    ) throws {
+        let meetingKey = artifact.meetingID.rawValue.uuidString
+        for speaker in artifact.speakers {
+            if let existing = try SpeakerRecord.fetchOne(
+                db, key: speaker.id.rawValue.uuidString),
+                existing.meetingID != meetingKey {
+                throw StorageError.invalidProcessingJob(
+                    "diarization cannot move an existing speaker between meetings")
+            }
+        }
+        for segment in artifact.segments {
+            if let existing = try SegmentRecord.fetchOne(db, key: segment.id.uuidString),
+                existing.meetingID != meetingKey {
+                throw StorageError.invalidProcessingJob(
+                    "diarization cannot move an existing segment between meetings")
+            }
+        }
+    }
+
+    private static func requireSummaryOwners(
+        _ draft: SummaryDraft,
+        in db: Database
+    ) throws {
+        let owners = Set(draft.actionItems.compactMap(\.ownerSpeakerID))
+        guard !owners.isEmpty else { return }
+        let liveSpeakerIDs = try SpeakerRecord
+            .filter(Column("meetingID") == draft.meetingID.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .fetchAll(db)
+            .map { try $0.speaker.id }
+        guard owners.isSubset(of: Set(liveSpeakerIDs)) else {
+            throw StorageError.invalidProcessingJob(
+                "summary action owners must belong to the current live cast")
+        }
+    }
+
+    private static func writeDiarizationArtifact(
+        _ artifact: DiarizationArtifact,
+        meeting: inout MeetingRecord,
+        at timestamp: Date,
+        in db: Database
+    ) throws {
+        let key = artifact.meetingID.rawValue.uuidString
+        try db.execute(
+            sql: "UPDATE segment SET deletedAt = ?, updatedAt = ? "
+                + "WHERE meetingID = ? AND deletedAt IS NULL",
+            arguments: [timestamp, timestamp, key])
+        try db.execute(
+            sql: "UPDATE speaker SET deletedAt = ?, updatedAt = ? "
+                + "WHERE meetingID = ? AND deletedAt IS NULL",
+            arguments: [timestamp, timestamp, key])
+        for speaker in artifact.speakers {
+            let record = SpeakerRecord(
+                speaker, createdAt: timestamp, updatedAt: timestamp)
+            try record.save(db)
+        }
+        for segment in artifact.segments {
+            let record = SegmentRecord(
+                segment, createdAt: timestamp, updatedAt: timestamp)
+            try record.save(db)
+        }
+        meeting.language = artifact.language
+        meeting.transcriptRevision += 1
+        meeting.updatedAt = timestamp
+        try meeting.update(db)
+    }
+
+    private static func enqueueFollowUps(
+        _ requests: [ProcessingJobRequest],
+        after current: ProcessingJobRecord,
+        at timestamp: Date,
+        in db: Database
+    ) throws -> [ProcessingJob] {
+        let currentJob = try current.job
+        for request in requests where request.kind == currentJob.kind
+            && request.inputFingerprint == currentJob.inputFingerprint {
+            throw StorageError.invalidProcessingJob(
+                "a job cannot enqueue itself as dependent work")
+        }
+        return try requests.map {
+            try enqueue($0, meetingID: currentJob.meetingID, timestamp: timestamp, in: db)
+        }
+    }
+
+    private static func succeed(
+        _ record: inout ProcessingJobRecord,
+        at timestamp: Date,
+        in db: Database
+    ) throws -> ProcessingJob {
+        record.state = ProcessingJobState.succeeded.rawValue
+        record.progress = 1
+        record.notBefore = nil
+        record.leaseOwner = nil
+        record.leaseExpiresAt = nil
+        record.errorCode = nil
+        record.errorMessage = nil
+        record.finishedAt = timestamp
+        record.updatedAt = timestamp
+        try record.update(db)
+        return try record.job
+    }
+
+    private static func hasContent(_ value: String) -> Bool {
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

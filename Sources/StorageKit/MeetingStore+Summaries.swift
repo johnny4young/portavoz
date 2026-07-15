@@ -16,41 +16,52 @@ extension MeetingStore {
             guard try MeetingRecord.exists(db, key: meetingKey) else {
                 throw StorageError.meetingNotFound(draft.meetingID)
             }
-            let now = Date()
-            let version =
-                (try Int.fetchOne(
-                    db,
-                    sql: "SELECT MAX(version) FROM summary WHERE meetingID = ? AND recipeID = ?",
-                    arguments: [meetingKey, draft.recipeID]) ?? 0) + 1
-
-            let summaryID = UUID().uuidString
-            var summary = SummaryRecord(
-                id: summaryID,
-                meetingID: meetingKey,
-                recipeID: draft.recipeID,
-                language: draft.language,
-                markdown: draft.markdown,
-                version: version,
-                fingerprint: draft.fingerprint,
-                createdAt: now,
-                deletedAt: nil)
-            try summary.insert(db)
-
-            for item in draft.actionItems {
-                var record = ActionItemRecord(
-                    id: item.id.uuidString,
-                    summaryID: summaryID,
-                    meetingID: meetingKey,
-                    text: item.text,
-                    ownerSpeakerID: item.ownerSpeakerID?.rawValue.uuidString,
-                    isDone: item.isDone,
-                    createdAt: now,
-                    updatedAt: now,
-                    deletedAt: nil)
-                try record.insert(db)
-            }
-            return version
+            return try Self.insertSummarySnapshot(draft, at: Date(), in: db)
         }
+    }
+
+    /// Transaction-scoped primitive shared by direct saves and durable job
+    /// completion. Callers must first prove that the meeting is live and that
+    /// any processing lease/input guards still hold.
+    static func insertSummarySnapshot(
+        _ draft: SummaryDraft,
+        at timestamp: Date,
+        in db: Database
+    ) throws -> Int {
+        let meetingKey = draft.meetingID.rawValue.uuidString
+        let version =
+            (try Int.fetchOne(
+                db,
+                sql: "SELECT MAX(version) FROM summary WHERE meetingID = ? AND recipeID = ?",
+                arguments: [meetingKey, draft.recipeID]) ?? 0) + 1
+
+        let summaryID = UUID().uuidString
+        let summary = SummaryRecord(
+            id: summaryID,
+            meetingID: meetingKey,
+            recipeID: draft.recipeID,
+            language: draft.language,
+            markdown: draft.markdown,
+            version: version,
+            fingerprint: draft.fingerprint,
+            createdAt: timestamp,
+            deletedAt: nil)
+        try summary.insert(db)
+
+        for item in draft.actionItems {
+            let record = ActionItemRecord(
+                id: item.id.uuidString,
+                summaryID: summaryID,
+                meetingID: meetingKey,
+                text: item.text,
+                ownerSpeakerID: item.ownerSpeakerID?.rawValue.uuidString,
+                isDone: item.isDone,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+                deletedAt: nil)
+            try record.insert(db)
+        }
+        return version
     }
 
     /// Loads a snapshot: the latest version by default, or an exact one.

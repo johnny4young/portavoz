@@ -56,6 +56,74 @@ public struct ProcessingJobFailure: Sendable, Equatable {
     }
 }
 
+/// A diarization result tied to the exact transcript state that produced it.
+/// `inputFingerprint` is the durable operation identity, not a display or
+/// cache key; StorageKit rejects a result if either it or the source revision
+/// no longer matches the owned job.
+public struct DiarizationArtifact: Sendable {
+    public let meetingID: MeetingID
+    public let inputFingerprint: String
+    public let sourceTranscriptRevision: Int
+    public let language: String?
+    public let speakers: [Speaker]
+    public let segments: [TranscriptSegment]
+
+    public init(
+        meetingID: MeetingID,
+        inputFingerprint: String,
+        sourceTranscriptRevision: Int,
+        language: String?,
+        speakers: [Speaker],
+        segments: [TranscriptSegment]
+    ) {
+        self.meetingID = meetingID
+        self.inputFingerprint = inputFingerprint
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.language = language
+        self.speakers = speakers
+        self.segments = segments
+    }
+}
+
+/// An immutable summary result tied to the transcript revision and full
+/// operation fingerprint claimed by its worker. `draft.fingerprint` keeps its
+/// existing material-cache semantics and is deliberately separate because it
+/// excludes output language (D25).
+public struct SummaryArtifact: Sendable {
+    public let inputFingerprint: String
+    public let sourceTranscriptRevision: Int
+    public let draft: SummaryDraft
+
+    public init(
+        inputFingerprint: String,
+        sourceTranscriptRevision: Int,
+        draft: SummaryDraft
+    ) {
+        self.inputFingerprint = inputFingerprint
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.draft = draft
+    }
+}
+
+/// Result of one atomic artifact publication. `artifactVersion` is the new
+/// transcript revision for diarization and the immutable snapshot version for
+/// summary generation.
+public struct ProcessingArtifactCommit: Sendable {
+    public let completedJob: ProcessingJob
+    public let enqueuedJobs: [ProcessingJob]
+    public let artifactVersion: Int
+
+    public init(
+        completedJob: ProcessingJob,
+        enqueuedJobs: [ProcessingJob],
+        artifactVersion: Int
+    ) {
+        self.completedJob = completedJob
+        self.enqueuedJobs = enqueuedJobs
+        self.artifactVersion = artifactVersion
+    }
+}
+
 /// Durable job state. Workers mutate it only through an owner-bound lease;
 /// callers use `(meetingID, kind, inputFingerprint)` as the idempotency key.
 public struct ProcessingJob: Sendable, Identifiable, Equatable {

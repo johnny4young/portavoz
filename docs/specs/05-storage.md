@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion).
 
 ## Database
 
@@ -122,10 +122,13 @@ ready aggregates and are exact-repeat safe (D40).
 
 Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `processingJobs(for:)`, `claimNextProcessingJob(kinds:owner:leaseDuration:at:)`,
-`heartbeatProcessingJob`, `completeProcessingJob`, `failProcessingJob`, and
+`heartbeatProcessingJob`, `completeProcessingJob`,
+`completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
 `recoverExpiredProcessingJobs`. Claims are capability-filtered and
-owner-fenced; storage derives meeting lifecycle rather than asking callers to
-save a second, potentially inconsistent aggregate state.
+owner-fenced; generated work must use its artifact completion API, while the
+generic completion path remains available only to non-content jobs. Storage
+derives meeting lifecycle rather than asking callers to save a second,
+potentially inconsistent aggregate state.
 
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id)` (latest live-meeting snapshot + version), `latestSummary(id:fingerprint:language:)` (D25 — with `language`, it is the exact cache hit; without it, returns the translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
@@ -163,9 +166,16 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
    semantic-search budgets are planned in the refactor program.
-5. The durable job queue is not yet the app's post-capture execution path;
-   concrete producers/workers and artifact-plus-job completion remain Band 1
-   slice 1D-b2. Process-launch capture and lease recovery shipped in 1D-b1.
+5. The durable job queue is not yet the app's post-capture execution path.
+   Slice 1D-b2a adds typed `DiarizationArtifact`/`SummaryArtifact` completion:
+   an owned unexpired lease, exact operation fingerprint, live meeting-owned
+   identities, and unchanged source transcript revision are required before
+   StorageKit atomically commits the artifact, job success, and optional
+   dependent enqueue. Summary cache identity remains separate because D25
+   excludes output language. Generic completion rejects generated-content
+   jobs, and lifecycle derivation cannot hide pending capture publication.
+   Concrete producers/workers remain slice 1D-b2b; process-launch capture and
+   lease recovery shipped in 1D-b1.
 
 ## Trash (Jul 2026)
 

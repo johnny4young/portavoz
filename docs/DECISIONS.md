@@ -436,7 +436,8 @@ work keeps `processing`; after active work ends, any failed job yields
 should participate in the meeting lifecycle. Slice 1D-a implements this Core
 and StorageKit contract while retaining the released synchronous
 `RecordingController` path. Slice 1D-b1 owns launch reconciliation of meetings,
-leases, and staging files; slice 1D-b2 owns concrete app enqueue/execution.
+leases, and staging files; slice 1D-b2a owns atomic artifact completion and
+slice 1D-b2b owns concrete app enqueue/execution.
 
 **Rationale:** immutable operation identity makes retries idempotent, leases
 fence stale workers, and deriving aggregate state in StorageKit prevents UI or
@@ -478,10 +479,46 @@ interrupted recording without transcript becomes `needsAttention` with
 `transcription.empty`; a publication-only error may return to `ready` when the
 aggregate already has transcript content and no active jobs. Slice 1D-b1 runs
 no transcription, diarization, or summary engine; concrete durable producers
-and workers remain slice 1D-b2.
+and workers remain slice 1D-b2b; slice 1D-b2a subsequently establishes their
+atomic artifact completion boundary.
 
 **Rationale:** recovery has incomplete intent but durable evidence. Explicit
 precedence, off-main remeasurement, and conservative ambiguity handling make
 the filesystem/SQLite Saga safe after arbitrary termination while preserving
 audio and keeping launch responsive. Separating reconciliation from ML worker
 adoption keeps the Strangler step independently testable and reversible.
+
+## D41 — Generated artifacts commit with their leased job outcome (Jul 2026)
+
+**Context:** an owner-bound job lease prevents an expired worker from mutating
+the queue row, but separate artifact and success transactions still leave two
+crash gaps: a committed artifact with a retryable job, or a succeeded job with
+no artifact. A transcript may also change while a worker is computing. The
+existing `SummaryDraft.fingerprint` cannot be the full job key because D25
+deliberately excludes output language for cache/pivot reuse.
+
+**Decision:** generated-content jobs complete only through domain-specific
+StorageKit Units of Work. `DiarizationArtifact` and `SummaryArtifact` carry the
+full operation fingerprint and source `transcriptRevision`; summary drafts keep
+their separate material-cache fingerprint. Completion requires a live meeting,
+an owned unexpired lease, matching kind/meeting/fingerprint, and the unchanged
+source revision. Diarization additionally enforces meeting-owned speaker and
+segment identities before atomically replacing the cast, updating homogeneous
+language, incrementing the revision, succeeding the job, and enqueuing optional
+dependent work. Summary completion validates immutable snapshot content and
+current action-item speaker ownership before inserting the summary/items,
+succeeding the job, and enqueuing optional dependents in one transaction.
+
+The generic completion primitive rejects `refine`, `diarization`, and `summary`
+jobs. Any validation, constraint, lease, or job-write failure rolls back the
+artifact. Aggregate reconciliation also treats a pending capture asset as
+`capture.publication.failed`; historical succeeded jobs do not block later
+asset recovery. Slice 1D-b2a establishes these boundaries without changing the
+released synchronous Stop path. Slice 1D-b2b owns app producers/workers;
+`generationRun` provenance remains Band 3.
+
+**Rationale:** idempotency requires the operation outcome and its durable
+artifact to share one commit boundary. Separating operation identity from cache
+identity preserves D25, revision fencing prevents stale overwrite, and typed
+completion APIs make an artifact-free success unrepresentable for generated
+work.

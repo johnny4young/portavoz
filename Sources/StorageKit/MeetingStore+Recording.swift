@@ -661,10 +661,15 @@ extension MeetingStore {
             .filter(Column("meetingID") == key)
             .filter(Column("deletedAt") == nil)
             .fetchCount(db)
-        let jobCount = try ProcessingJobRecord
+        let blockingJobCount = try ProcessingJobRecord
             .filter(Column("meetingID") == key)
+            .filter([
+                ProcessingJobState.pending.rawValue,
+                ProcessingJobState.running.rawValue,
+                ProcessingJobState.failed.rawValue
+            ].contains(Column("state")))
             .fetchCount(db)
-        guard pendingCount == 0, segmentCount > 0, jobCount == 0 else { return }
+        guard pendingCount == 0, segmentCount > 0, blockingJobCount == 0 else { return }
         meeting.lifecycleState = MeetingLifecycleState.ready.rawValue
         meeting.lastProcessingError = nil
         meeting.updatedAt = timestamp

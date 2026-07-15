@@ -91,9 +91,11 @@ there was not enough audio to keep.
 
 ## Planned (not implemented)
 
-Band 1 slice 1D-b2 adopts concrete durable jobs for post-capture
-transcription, diarization, and generated artifacts. Launch reconciliation for
-interrupted capture assets and meetings is implemented in slice 1D-b1.
+Band 1 slice 1D-b2b adopts concrete durable jobs for post-capture
+transcription, diarization, and generated artifacts. The stale-safe atomic
+artifact completion boundary is implemented in slice 1D-b2a; launch
+reconciliation for interrupted capture assets and meetings is implemented in
+slice 1D-b1.
 
 Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).

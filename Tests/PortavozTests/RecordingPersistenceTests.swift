@@ -450,6 +450,21 @@ final class RecordingPersistenceTests: XCTestCase {
         meeting.lifecycleState = .needsAttention
         meeting.lastProcessingError = "capture.publication.failed"
         try await store.save(meeting)
+        _ = try await store.enqueueProcessingJobs(
+            for: meeting.id,
+            requests: [ProcessingJobRequest(
+                kind: .index, inputFingerprint: "captured-index")],
+            at: capturedAt)
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.index], owner: "worker", leaseDuration: 30, at: capturedAt)
+        let claimed = try XCTUnwrap(claimedValue)
+        _ = try await store.completeProcessingJob(
+            claimed.id, owner: "worker", at: capturedAt.addingTimeInterval(0.5))
+        let publicationFailure = try await store.detail(meeting.id)
+        XCTAssertEqual(publicationFailure?.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(
+            publicationFailure?.meeting.lastProcessingError,
+            "capture.publication.failed")
 
         var recoveredSystem = reservations[1]
         recoveredSystem.healthStatus = .missing

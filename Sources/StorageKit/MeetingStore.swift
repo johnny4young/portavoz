@@ -10,6 +10,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidProcessingJob(String)
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
+    case processingJobInputChanged(ProcessingJobID)
     /// Persisted identity is immutable. Corrupt rows must fail loudly rather
     /// than being assigned a fresh UUID and silently becoming another entity.
     case invalidPersistedUUID(table: String, column: String, value: String)
@@ -29,6 +30,8 @@ public enum StorageError: Error, LocalizedError {
             return "no such processing job: \(id.rawValue.uuidString)"
         case .processingJobLeaseLost(let id):
             return "processing job lease is no longer owned: \(id.rawValue.uuidString)"
+        case .processingJobInputChanged(let id):
+            return "processing job input changed before completion: \(id.rawValue.uuidString)"
         case .invalidPersistedUUID(let table, let column, let value):
             return "invalid persisted UUID in \(table).\(column): \(value)"
         case .invalidPersistedValue(let table, let column, let value):
