@@ -53,6 +53,17 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 - **Regenerar (detail)**: same fingerprint + same language already saved → "ya está al día" notice without a model call (greedy would reproduce the same result); same fingerprint in ANOTHER language → `translate(pivot)`; otherwise → full summary.
 - **`translate(_:to:glossary:)`**: parses the pivot markdown back into a structure (`StructuredSummary.parse` — invertible because EVERY snapshot comes from our renderer; round-trip tested) and translates **piece by piece: one call for the overview, one per section, one for the action items**. Piecewise because when given the whole thing — even with a guided schema — the 3B invented sections (2 failed iterations of the gated test: opaque markdown → truncated at the first paragraph; one-call mirrored schema → 3 sections of 1). The structure survives by construction; any bullet/item mismatch throws, and the caller falls back to a full resummary. Item owners travel positionally; the result retains the pivot's fingerprint. **Measured: constant 2.4 s vs 10.9 s for resummarizing the long synthetic meeting** (the savings scale with the meeting).
 
+`SummaryOperationFingerprint` is deliberately separate from that cache key.
+It length-prefixes and hashes D25 material identity plus provider, requested
+output language, and source transcript revision, so a durable worker cannot
+publish a summary produced for a stale cast, provider, or language. Ollama's
+identity exactly mirrors the provider's `localhost/<model>` cache identity.
+After successful diarization, D42 atomically enqueues this exact operation. The
+process worker recomputes it before generation and completes through the D41
+summary Unit of Work. Transient provider failure retries durably; exhausted
+summary work cancels without failing the meeting because the released product
+already treats a transcript without a summary as valid.
+
 ## Local RAG (D22) — `SentenceEmbedder` + `RAGAnswerer` + storage
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.

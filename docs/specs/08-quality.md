@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 442 package tests passing (13 gated) + 16 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Status: 446 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest local executor-slice UI attempts were blocked before assertions by the documented macOS automation-mode harness flake; the disposable direct-app runtime smoke passed.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -13,6 +13,7 @@ Status: 442 package tests passing (13 gated) + 16 XCUITest UI tests. CI on GitHu
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
 | CaptionCoalescerTests | 13 coalescer cases (merge, identity, channels, pauses, limits, loose punctuation, early split of `system` after sentence) |
 | DiarizationTests | Catalog, SpeakerAttributor (multi-turn), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (units), live streaming (gated) |
+| ProcessingOperationFingerprintTests | Length-framed SHA-256 identity, diarization segment-order stability and material/revision sensitivity, finalized audio/voiceprint/model evidence, and summary provider/language/revision separation |
 | LiveSpeakerLabelerTests | 7 cases: row split with two voices, last row untouched, idempotency, mic never relabeled, "Me" by voiceprint |
 | IntelligenceTests | PromptFactory, naming filters, **NamingExcerpt**, **LiveSummaryPolicy** |
 | ChapterExtractorTests / TranscriptNoiseFilterTests | chapter boundaries/labels and conservative fragment filtering without losing sentences/acronyms |
@@ -83,11 +84,25 @@ cancellation is owner-fenced, terminal, non-resurrecting, and non-failing for th
 meeting aggregate; and that scheduled-wake discovery returns the earliest future
 deadline only for supported kinds rooted in live meetings.
 
+The second 1D-b2b unit adds four focused operation-fingerprint tests and the
+concrete process-scoped executor. The tests prove delimiter-safe generic
+identity; stable segment-order handling with sensitivity to material and source
+revision changes; refusal to run with incomplete audio evidence; and distinct
+summary operations for provider, output-language, and transcript-revision
+changes. A direct app launch against fresh disposable database/audio roots
+reached `ready` at transcript revision 1 with both jobs succeeded and the
+original Spanish transcript unchanged. A 17th XCUITest characterizes the same
+launch-resume chain with a deterministic fake summary provider. Its
+`-seed-processing` fixture is legal only with `-use-temp-store` and bypasses
+real audio, models, biometric files, and Keychain. Four local XCUITest attempts
+ended before assertions with `Timed out while enabling automation mode`; this
+is the harness flake documented below, not a product assertion failure.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
-XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain), `-seed-demo` (deterministic meeting with transcript, summary, coauthorship bullet "▸", and **audio**), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), and `-portavoz-open-settings` (deterministic Settings sheet for automation). Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 16 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, interrupted staging recovery to a playable detail, heatmap/interlocutors, first listen, summary/transcript/player/rail/clip, Settings navigation, independent transcript/summary language controls, custom structures, audio capture, mirror, and live locale. `make test-ui-en` and `make test-ui-es` force `-AppleLanguages`/`-AppleLocale`. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
+XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain), `-seed-demo` (deterministic meeting with transcript, summary, coauthorship bullet "▸", and **audio**), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model/audio/Keychain-free durable-processing fixture, also temp-store-only), and `-portavoz-open-settings` (deterministic Settings sheet for automation). Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 17 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, interrupted staging recovery to a playable detail, durable processing resume, heatmap/interlocutors, first listen, summary/transcript/player/rail/clip, Settings navigation, independent transcript/summary language controls, custom structures, audio capture, mirror, and live locale. `make test-ui-en` and `make test-ui-es` force `-AppleLanguages`/`-AppleLocale`. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
 
 ## Measurement harnesses
 

@@ -53,6 +53,10 @@ final class AppServices {
     /// Quality re-passes keyed by meeting — they outlive the detail view,
     /// so navigating away never loses a draft (field bug, Jul 10).
     let refines = RefineService()
+    /// Process-scoped ownership of the durable post-capture worker and its
+    /// single scheduled retry wake. The supervisor deduplicates launch and
+    /// producer kicks without polling SQLite.
+    let postCaptureProcessing = PostCaptureProcessingSupervisor()
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()
@@ -320,7 +324,7 @@ final class AppServices {
 
     /// The model directory is deterministic (root + folderName), so this
     /// stays off the ModelStore actor.
-    private static func modelDir(_ descriptor: ModelDescriptor) -> URL {
+    static func modelDir(_ descriptor: ModelDescriptor) -> URL {
         ModelStore.defaultRootDirectory.appendingPathComponent(
             descriptor.folderName, isDirectory: true)
     }

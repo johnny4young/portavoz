@@ -446,7 +446,8 @@ should participate in the meeting lifecycle. Slice 1D-a implements this Core
 and StorageKit contract while retaining the released synchronous
 `RecordingController` path. Slice 1D-b1 owns launch reconciliation of meetings,
 leases, and staging files; slice 1D-b2a owns atomic artifact completion and the
-remaining 1D-b2b work owns concrete app enqueue/execution.
+first 1D-b2b units own the worker control plane and concrete execution. Normal
+Stop enqueue remains the final 1D-b2b producer cutover.
 
 **Rationale:** immutable operation identity makes retries idempotent, leases
 fence stale workers, and deriving aggregate state in StorageKit prevents UI or
@@ -487,9 +488,9 @@ no-op. It may not downgrade or mutate an already-ready meeting. A usable
 interrupted recording without transcript becomes `needsAttention` with
 `transcription.empty`; a publication-only error may return to `ready` when the
 aggregate already has transcript content and no active jobs. Slice 1D-b1 runs
-no transcription, diarization, or summary engine; concrete durable producers
-and workers remain slice 1D-b2b; slice 1D-b2a subsequently establishes their
-atomic artifact completion boundary.
+no transcription, diarization, or summary engine. Slice 1D-b2a subsequently
+establishes the atomic artifact completion boundary, and D42 starts the worker
+only after this recovery pass; normal Stop remains the pending producer.
 
 **Rationale:** recovery has incomplete intent but durable evidence. Explicit
 precedence, off-main remeasurement, and conservative ambiguity handling make
@@ -523,11 +524,51 @@ jobs. Any validation, constraint, lease, or job-write failure rolls back the
 artifact. Aggregate reconciliation also treats a pending capture asset as
 `capture.publication.failed`; historical succeeded jobs do not block later
 asset recovery. Slice 1D-b2a establishes these boundaries without changing the
-released synchronous Stop path. Slice 1D-b2b owns app producers/workers;
-`generationRun` provenance remains Band 3.
+released synchronous Stop path. D42 adopts them in a process-scoped executor;
+normal Stop enqueue remains the next 1D-b2b unit, and `generationRun`
+provenance remains Band 3.
 
 **Rationale:** idempotency requires the operation outcome and its durable
 artifact to share one commit boundary. Separating operation identity from cache
 identity preserves D25, revision fencing prevents stale overwrite, and typed
 completion APIs make an artifact-free success unrepresentable for generated
 work.
+
+## D42 — Post-capture execution is process-scoped, exact, and non-polling (Jul 2026)
+
+**Context:** D39 and D41 make durable work claimable and artifact publication
+atomic, but they do not define the concrete app executor. A view-owned task can
+disappear during navigation, a fixed timer wastes energy, and a broad
+"meeting changed" key can either reuse stale work or duplicate an expensive
+local model operation. The existing synchronous Stop path must remain intact
+until the replacement executor has independent runtime evidence.
+
+**Decision:** `PostCaptureProcessingSupervisor` is process-scoped under
+`AppServices`. Process launch first completes D40 capture/lease recovery, then
+kicks one serial drain for the explicitly supported diarization and summary
+kinds. Repeated kicks coalesce. Each attempt holds a 120-second lease,
+heartbeats every 30 seconds, drains due work, and schedules at most one future
+wake from StorageKit's earliest supported `notBefore`; it never polls.
+
+Durable operation identities are exact and versioned. Diarization hashes
+length-prefixed components containing meeting ID, transcript revision and full
+segment identity, the pinned model ID/revision, clustering threshold,
+finalized system-audio evidence, and enrolled voiceprint. Summary operation
+identity adds provider, target output language, and transcript revision over
+D25's language-independent material fingerprint. A changed identity cancels
+as superseded. Successful diarization atomically installs attribution and
+enqueues the exact dependent summary. Required diarization exhausts retries to
+`needsAttention`; optional summary exhausts to non-failing cancellation, which
+preserves the released "transcript without summary is valid" contract.
+
+The deterministic `-seed-processing` characterization path is accepted only
+with `-use-temp-store`. It uses a mic-only transcript and fake local summary
+provider, and bypasses real audio, models, voiceprint files, and Keychain.
+Normal `RecordingController.stop` still runs synchronously and does not enqueue;
+its producer cutover is the next Strangler unit.
+
+**Rationale:** process ownership survives window churn, exact identities make
+retry and supersession honest, one durable wake minimizes idle cost, and
+landing the executor before its producer keeps feature parity and rollback
+small. Separating fixture adapters from biometric/Keychain state also makes the
+end-to-end characterization safe rather than merely database-isolated.

@@ -64,4 +64,33 @@ final class LibraryUITests: XCTestCase {
             app.control(withIdentifier: "detail-refine").exists,
             "the recovered meeting must retain its explicit transcript recovery action")
     }
+
+    @MainActor
+    func testLaunchResumesDurablePostCaptureProcessing() {
+        let app = XCUIApplication.portavoz(seedProcessing: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.staticTexts["Durable processing recovery"]
+                .firstMatch.waitForExistence(timeout: 15),
+            "the durable processing fixture must remain discoverable while work resumes")
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(meeting.waitForExistence(timeout: 5))
+        let settled = expectation(
+            for: NSPredicate(format: "isHittable == true"), evaluatedWith: meeting)
+        wait(for: [settled], timeout: 10)
+        meeting.click()
+
+        XCTAssertTrue(
+            app.staticTexts["El procesamiento durable conserva este texto."]
+                .waitForExistence(timeout: 10),
+            "diarization completion must atomically preserve the original transcript")
+        XCTAssertTrue(
+            app.staticTexts["Durable processing finished."]
+                .waitForExistence(timeout: 15),
+            "the resumed worker must publish its dependent summary and refresh the detail")
+    }
 }

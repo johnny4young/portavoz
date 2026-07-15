@@ -91,11 +91,13 @@ there was not enough audio to keep.
 
 ## Planned (not implemented)
 
-The remaining Band 1 slice 1D-b2b work adopts concrete durable jobs for
-post-capture diarization and summary generation. The stale-safe atomic artifact
-completion boundary is implemented in slice 1D-b2a; owner-fenced cancellation
-and scheduled-wake discovery are also implemented, and launch reconciliation
-for interrupted capture assets and meetings shipped in slice 1D-b1.
+The process-scoped Band 1D-b2b executor now resumes already-enqueued
+post-capture diarization and summary jobs after launch recovery, with exact
+input fingerprints, leased heartbeats/retries, atomic dependent enqueue, and a
+single scheduled wake. Normal `RecordingController.stop` still runs that work
+synchronously; switching Stop to enqueue and kick the executor is the remaining
+1D-b2b producer cutover. The stale-safe artifact boundary shipped in 1D-b2a,
+and interrupted capture reconciliation shipped in 1D-b1.
 
 Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).

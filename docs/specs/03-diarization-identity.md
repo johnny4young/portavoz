@@ -54,6 +54,26 @@ Field request: remember a participant's voice across meetings to autosuggest the
 - `parseRTTM` + scoring with FluidAudio's `DiarizationDER`. **Units**: miss/falseAlarm/confusion arrive in SECONDS and `der` as a ratio → normalize by total reference speech.
 - Measured: **AMI 7.6%** (miss 3.7 / FA 1.3 / conf 2.6, collar 0.25 s) — M3 criterion < 15% ✓.
 
+## Durable post-capture execution (D42)
+
+`DiarizationOperationFingerprint` is the exact versioned identity of one
+post-capture attribution attempt. It length-prefixes and hashes the meeting and
+transcript revision, sorted full segment identity (including original per-turn
+language), pinned diarization model/revision, clustering threshold, finalized
+system-audio health/hash/duration evidence, and enrolled voiceprint. Pending or
+incomplete runnable audio evidence cannot produce a job identity; no system
+asset and terminal missing/corrupt evidence are explicit stable states.
+
+After launch recovery, the process worker claims a matching diarization job,
+keeps its lease alive, and checks the identity again. It runs only finalized
+system audio longer than one second. Silent or absent remote audio produces no
+turns. Model load/inference failure retains the released best-effort behavior
+and publishes honest unattributed system segments; a finalized audio path that
+has disappeared is a durable retryable failure. `SpeakerAttributor` output,
+homogeneous language, transcript revision increment, job success, and the exact
+dependent summary enqueue share one StorageKit transaction. Normal Stop does
+not produce these jobs yet.
+
 ## Known limits
 
 1. Formal DER for a real meeting pending (draft RTTM awaiting user correction in `~/Desktop/portavoz-verificacion/`).

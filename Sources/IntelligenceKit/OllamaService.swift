@@ -71,4 +71,11 @@ public enum OllamaService {
         OpenAICompatibleSummaryProvider(
             endpoint: openAIEndpoint, model: model, apiKey: "ollama")
     }
+
+    /// Stable identity used by both the summary material cache and durable
+    /// operation fingerprints. It mirrors the provider's endpoint-host/model
+    /// identity instead of inventing a second Ollama-specific key.
+    public static func providerID(model: String) -> String {
+        "\(openAIEndpoint.host ?? "localhost")/\(model)"
+    }
 }

@@ -28,6 +28,8 @@ struct PortavozApp: App {
         let appServices = services
         Task { @MainActor in
             await RecordingRecoveryCoordinator.runIfNeeded(services: appServices)
+            await PostCaptureProcessingCoordinator.resumeAfterRecovery(
+                services: appServices)
         }
         // Global feature, not a window feature: ⌥⌘D must work even with
         // the library window closed.

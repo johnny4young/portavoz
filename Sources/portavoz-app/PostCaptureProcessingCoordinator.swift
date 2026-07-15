@@ -1,0 +1,574 @@
+import DiarizationKit
+import Foundation
+import IntelligenceKit
+import ModelStoreKit
+import OSLog
+import PortavozCore
+import StorageKit
+import TranscriptionKit
+
+struct SummaryProviderSelection: Sendable {
+    let provider: any SummaryProvider
+    let providerID: String
+}
+
+/// Owns one process-level drain plus one future retry wake. Producers may
+/// kick repeatedly; due work is drained serially and SQLite is never polled.
+@MainActor
+final class PostCaptureProcessingSupervisor {
+    private var drainTask: Task<Void, Never>?
+    private var wakeTask: Task<Void, Never>?
+    private var rerunRequested = false
+    private var kickGeneration = 0
+    private let owner = "post-capture-\(UUID().uuidString.lowercased())"
+
+    func kick(services: AppServices) {
+        kickGeneration += 1
+        wakeTask?.cancel()
+        wakeTask = nil
+        guard drainTask == nil else {
+            rerunRequested = true
+            return
+        }
+
+        rerunRequested = false
+        drainTask = Task { @MainActor [weak self, weak services] in
+            guard let self, let services else { return }
+            await PostCaptureProcessingCoordinator.drain(
+                services: services, owner: self.owner)
+            await self.finishedDrain(services: services)
+        }
+    }
+
+    private func finishedDrain(services: AppServices) async {
+        drainTask = nil
+        if rerunRequested {
+            rerunRequested = false
+            kick(services: services)
+            return
+        }
+
+        let generation = kickGeneration
+        do {
+            let next = try await services.store.nextScheduledProcessingDate(
+                kinds: PostCaptureProcessingCoordinator.supportedKinds)
+            guard generation == kickGeneration, drainTask == nil, let next else { return }
+            scheduleWake(at: next, services: services)
+        } catch {
+            PostCaptureProcessingCoordinator.logSchedulingFailure(error)
+        }
+    }
+
+    private func scheduleWake(at date: Date, services: AppServices) {
+        let delay = max(0, date.timeIntervalSinceNow)
+        wakeTask = Task { @MainActor [weak self, weak services] in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self, let services else { return }
+            self.wakeTask = nil
+            self.kick(services: services)
+        }
+    }
+}
+
+/// Concrete Band 1 worker for the already-durable diarization and summary
+/// operations. Capture recovery always runs first; Stop remains on the legacy
+/// synchronous path until the following Strangler commit starts enqueueing.
+@MainActor
+enum PostCaptureProcessingCoordinator {
+    static let supportedKinds: Set<ProcessingJobKind> = [.diarization, .summary]
+
+    private static let logger = Logger(
+        subsystem: "app.portavoz.mac", category: "post-capture-processing")
+    private static let leaseDuration: TimeInterval = 120
+    private static let heartbeatInterval: Duration = .seconds(30)
+
+    static func resumeAfterRecovery(services: AppServices) async {
+        do {
+            if try await seedFixtureIfRequested(services: services) {
+                services.libraryVersion += 1
+            }
+        } catch {
+            logger.error("Could not prepare processing fixture: \(error.localizedDescription)")
+        }
+        services.postCaptureProcessing.kick(services: services)
+    }
+
+    static func drain(services: AppServices, owner: String) async {
+        while !Task.isCancelled {
+            let job: ProcessingJob?
+            do {
+                job = try await services.store.claimNextProcessingJob(
+                    kinds: supportedKinds,
+                    owner: owner,
+                    leaseDuration: leaseDuration)
+            } catch {
+                logger.error("Could not claim processing work: \(error.localizedDescription)")
+                return
+            }
+            guard let job else { return }
+
+            let changed = await execute(job, owner: owner, services: services)
+            if changed { services.libraryVersion += 1 }
+        }
+    }
+
+    static func logSchedulingFailure(_ error: Error) {
+        logger.error("Could not schedule processing wake: \(error.localizedDescription)")
+    }
+
+    private static func execute(
+        _ job: ProcessingJob,
+        owner: String,
+        services: AppServices
+    ) async -> Bool {
+        let heartbeat = heartbeatTask(for: job, owner: owner, store: services.store)
+        defer { heartbeat.cancel() }
+
+        do {
+            switch job.kind {
+            case .diarization:
+                try await processDiarization(job, owner: owner, services: services)
+            case .summary:
+                try await processSummary(job, owner: owner, services: services)
+            default:
+                throw WorkerError.unsupportedKind(job.kind.rawValue)
+            }
+            return true
+        } catch is CancellationError {
+            return false
+        } catch let error as StorageError where error.isLeaseLoss {
+            return false
+        } catch {
+            return await preserveFailure(
+                error, for: job, owner: owner, store: services.store)
+        }
+    }
+
+    private static func heartbeatTask(
+        for job: ProcessingJob,
+        owner: String,
+        store: MeetingStore
+    ) -> Task<Void, Never> {
+        Task {
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: heartbeatInterval)
+                    _ = try await store.heartbeatProcessingJob(
+                        job.id,
+                        owner: owner,
+                        progress: 0.25,
+                        leaseDuration: leaseDuration)
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private static func processDiarization(
+        _ job: ProcessingJob,
+        owner: String,
+        services: AppServices
+    ) async throws {
+        guard let detail = try await services.store.detail(job.meetingID) else {
+            throw WorkerError.meetingUnavailable
+        }
+        guard !detail.segments.isEmpty else { throw WorkerError.emptyTranscript }
+
+        let assets = try await services.store.audioAssets(for: job.meetingID)
+        let systemAsset = currentSystemCapture(in: assets)
+        let voiceprint: Voiceprint?
+        if isSafeProcessingFixture {
+            voiceprint = nil
+        } else {
+            voiceprint = await Task.detached(priority: .utility) {
+                try? VoiceprintStore().load()
+            }.value
+        }
+        guard let fingerprint = DiarizationOperationFingerprint.compute(
+            meetingID: job.meetingID,
+            transcriptRevision: detail.meeting.transcriptRevision,
+            segments: detail.segments,
+            systemAsset: systemAsset,
+            voiceprint: voiceprint)
+        else { throw WorkerError.inputNotReady }
+        guard fingerprint == job.inputFingerprint else {
+            throw WorkerError.inputSuperseded
+        }
+
+        let turns = try await speakerTurns(
+            from: systemAsset, services: services)
+        let attribution = SpeakerAttributor.attribute(
+            segments: detail.segments,
+            turns: turns,
+            meetingID: job.meetingID)
+        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
+            in: attribution.segments)
+        let nextRevision = detail.meeting.transcriptRevision + 1
+        let followUps = try await summaryFollowUp(
+            meeting: detail.meeting,
+            segments: attribution.segments,
+            speakers: attribution.speakers,
+            spokenLanguage: spokenLanguage,
+            transcriptRevision: nextRevision,
+            services: services)
+
+        _ = try await services.store.completeDiarizationJob(
+            job.id,
+            owner: owner,
+            artifact: DiarizationArtifact(
+                meetingID: job.meetingID,
+                inputFingerprint: fingerprint,
+                sourceTranscriptRevision: detail.meeting.transcriptRevision,
+                language: spokenLanguage,
+                speakers: attribution.speakers,
+                segments: attribution.segments),
+            enqueue: followUps)
+        services.scheduleRecordingEnginesRelease()
+    }
+
+    private static func processSummary(
+        _ job: ProcessingJob,
+        owner: String,
+        services: AppServices
+    ) async throws {
+        guard let detail = try await services.store.detail(job.meetingID) else {
+            throw WorkerError.meetingUnavailable
+        }
+        guard !detail.segments.isEmpty else { throw WorkerError.emptyTranscript }
+        guard let selection = services.processingSummaryProviderSelection() else {
+            throw WorkerError.summaryProviderUnavailable
+        }
+
+        let request = try await summaryRequest(
+            meeting: detail.meeting,
+            segments: detail.segments,
+            speakers: detail.speakers,
+            spokenLanguage: detail.meeting.language,
+            services: services)
+        let fingerprint = SummaryOperationFingerprint.compute(
+            request: request,
+            providerID: selection.providerID,
+            transcriptRevision: detail.meeting.transcriptRevision)
+        guard fingerprint == job.inputFingerprint else {
+            throw WorkerError.inputSuperseded
+        }
+
+        let draft = try await selection.provider.summarize(request)
+        _ = try await services.store.completeSummaryJob(
+            job.id,
+            owner: owner,
+            artifact: SummaryArtifact(
+                inputFingerprint: fingerprint,
+                sourceTranscriptRevision: detail.meeting.transcriptRevision,
+                draft: draft))
+    }
+
+    private static func speakerTurns(
+        from asset: AudioAsset?,
+        services: AppServices
+    ) async throws -> [SpeakerTurn] {
+        guard let asset,
+            [.healthy, .silent, .clipped].contains(asset.healthStatus),
+            (asset.durationSeconds ?? 0) > 1
+        else { return [] }
+
+        let url = RecordingsLocation.shared.resolve(asset.relativePath)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw WorkerError.audioUnavailable
+        }
+        guard asset.healthStatus != .silent else { return [] }
+
+        // Preserve the released best-effort attribution semantics: model
+        // preparation/inference failure degrades to an unattributed system
+        // channel, while missing finalized audio remains a durable failure.
+        try? await services.loadEnginesIfNeeded()
+        guard let diarizer = services.diarizer else { return [] }
+        return (try? await diarizer.diarizeFile(at: url)) ?? []
+    }
+
+    private static func summaryFollowUp(
+        meeting: Meeting,
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        spokenLanguage: String?,
+        transcriptRevision: Int,
+        services: AppServices
+    ) async throws -> [ProcessingJobRequest] {
+        guard let selection = services.processingSummaryProviderSelection() else { return [] }
+        let request = try await summaryRequest(
+            meeting: meeting,
+            segments: segments,
+            speakers: speakers,
+            spokenLanguage: spokenLanguage,
+            services: services)
+        let fingerprint = SummaryOperationFingerprint.compute(
+            request: request,
+            providerID: selection.providerID,
+            transcriptRevision: transcriptRevision)
+        return [ProcessingJobRequest(
+            kind: .summary,
+            inputFingerprint: fingerprint,
+            priority: 10,
+            maxAttempts: 3)]
+    }
+
+    private static func summaryRequest(
+        meeting: Meeting,
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        spokenLanguage: String?,
+        services: AppServices
+    ) async throws -> SummaryRequest {
+        let language = MeetingLanguagePreferences.resolvedSummaryLanguage(
+            spokenLanguage: spokenLanguage).identifier
+        let vocabulary = VocabularyPrompt.parse(
+            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+        return SummaryRequest(
+            meetingID: meeting.id,
+            segments: segments,
+            speakers: speakers,
+            recipe: .general,
+            targetLanguage: language,
+            glossary: vocabulary,
+            contextItems: try await services.store.contextItems(for: meeting.id))
+    }
+
+    private static func preserveFailure(
+        _ error: Error,
+        for job: ProcessingJob,
+        owner: String,
+        store: MeetingStore
+    ) async -> Bool {
+        do {
+            if error.isSupersededProcessingInput {
+                _ = try await store.cancelProcessingJob(
+                    job.id,
+                    owner: owner,
+                    reason: ProcessingJobFailure(
+                        code: "processing.input.superseded",
+                        message: error.localizedDescription))
+            } else if job.kind == .summary, job.attempt >= job.maxAttempts {
+                _ = try await store.cancelProcessingJob(
+                    job.id,
+                    owner: owner,
+                    reason: ProcessingJobFailure(
+                        code: "processing.summary.unavailable",
+                        message: error.localizedDescription))
+            } else {
+                _ = try await store.failProcessingJob(
+                    job.id,
+                    owner: owner,
+                    failure: ProcessingJobFailure(
+                        code: failureCode(for: job.kind),
+                        message: error.localizedDescription),
+                    retryAt: retryDate(after: job.attempt))
+            }
+            return true
+        } catch let storageError as StorageError where storageError.isLeaseLoss {
+            return false
+        } catch {
+            logger.error(
+                "Could not preserve job \(job.id.rawValue.uuidString): \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private static func retryDate(after attempt: Int) -> Date {
+        let delays: [TimeInterval] = [5, 30, 120]
+        let index = min(max(attempt - 1, 0), delays.count - 1)
+        return Date().addingTimeInterval(delays[index])
+    }
+
+    private static func failureCode(for kind: ProcessingJobKind) -> String {
+        switch kind {
+        case .diarization: "processing.diarization.failed"
+        case .summary: "processing.summary.failed"
+        default: "processing.worker.failed"
+        }
+    }
+
+    private static func currentSystemCapture(in assets: [AudioAsset]) -> AudioAsset? {
+        assets
+            .filter {
+                $0.channel == .system && $0.role == .capture
+                    && $0.supersededAt == nil && $0.deletedAt == nil
+            }
+            .max { $0.updatedAt < $1.updatedAt }
+    }
+
+    private static func seedFixtureIfRequested(
+        services: AppServices
+    ) async throws -> Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-seed-processing") else { return false }
+        guard arguments.contains("-use-temp-store") else {
+            throw WorkerError.fixtureRequiresTemporaryStore
+        }
+        guard try await services.store.meetings().isEmpty else { return false }
+
+        let meetingID = MeetingID(rawValue: UUID(
+            uuidString: "51515151-5151-5151-5151-515151515151")!)
+        let meeting = Meeting(
+            id: meetingID,
+            title: "Durable processing recovery",
+            startedAt: Date(timeIntervalSince1970: 1_783_699_200),
+            endedAt: Date(timeIntervalSince1970: 1_783_699_260),
+            language: "es",
+            lifecycleState: .captured)
+        let provisional = TranscriptSegment(
+            id: UUID(uuidString: "61616161-6161-6161-6161-616161616161")!,
+            meetingID: meetingID,
+            channel: .microphone,
+            text: "El procesamiento durable conserva este texto.",
+            language: "es",
+            startTime: 0,
+            endTime: 4,
+            confidence: 0.95,
+            isFinal: true)
+        let attribution = SpeakerAttributor.attribute(
+            segments: [provisional], turns: [], meetingID: meetingID)
+
+        try await services.store.save(meeting)
+        try await services.store.save(attribution.speakers)
+        try await services.store.save(attribution.segments)
+        let fingerprint = DiarizationOperationFingerprint.compute(
+            meetingID: meetingID,
+            transcriptRevision: meeting.transcriptRevision,
+            segments: attribution.segments,
+            systemAsset: nil,
+            voiceprint: nil)!
+        _ = try await services.store.enqueueProcessingJobs(
+            for: meetingID,
+            requests: [ProcessingJobRequest(
+                kind: .diarization,
+                inputFingerprint: fingerprint,
+                priority: 20,
+                maxAttempts: 3)])
+        return true
+    }
+
+    private static var isSafeProcessingFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-seed-processing")
+            && arguments.contains("-use-temp-store")
+    }
+}
+
+@MainActor
+extension AppServices {
+    func kickPostCaptureProcessing() {
+        postCaptureProcessing.kick(services: self)
+    }
+
+    func processingSummaryProviderSelection() -> SummaryProviderSelection? {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-seed-processing"), arguments.contains("-use-temp-store") {
+            return SummaryProviderSelection(
+                provider: ProcessingFixtureSummaryProvider(),
+                providerID: ProcessingFixtureSummaryProvider.providerID)
+        }
+
+        switch summaryEngine {
+        case .ollama:
+            if let model = ollamaModel {
+                return SummaryProviderSelection(
+                    provider: OllamaService.summaryProvider(model: model),
+                    providerID: OllamaService.providerID(model: model))
+            }
+        case .mlx:
+            if mlxDownloaded {
+                return SummaryProviderSelection(
+                    provider: MLXSummaryProvider(
+                        modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35)),
+                    providerID: MLXSummaryProvider.providerID)
+            }
+        case .appleOnDevice:
+            break
+        }
+
+        if #available(macOS 26.0, *),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil {
+            return SummaryProviderSelection(
+                provider: FoundationModelSummaryProvider(),
+                providerID: FoundationModelSummaryProvider.providerID)
+        }
+        return nil
+    }
+}
+
+private struct ProcessingFixtureSummaryProvider: SummaryProvider {
+    static let providerID = "uitest-summary"
+
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        SummaryDraft(
+            meetingID: request.meetingID,
+            recipeID: request.recipe.id,
+            language: request.targetLanguage,
+            markdown: """
+                Durable processing finished.
+
+                ## Result
+                - The original transcript survived the resumed worker.
+                """,
+            actionItems: [],
+            fingerprint: SummaryFingerprint.compute(
+                request: request, providerID: Self.providerID))
+    }
+}
+
+private enum WorkerError: LocalizedError {
+    case audioUnavailable
+    case emptyTranscript
+    case fixtureRequiresTemporaryStore
+    case inputNotReady
+    case inputSuperseded
+    case meetingUnavailable
+    case summaryProviderUnavailable
+    case unsupportedKind(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .audioUnavailable:
+            "The finalized system audio is no longer available."
+        case .emptyTranscript:
+            "The captured meeting has no transcript to process."
+        case .fixtureRequiresTemporaryStore:
+            "The processing fixture requires -use-temp-store."
+        case .inputNotReady:
+            "The processing input does not have final durable evidence."
+        case .inputSuperseded:
+            "The processing input changed before execution."
+        case .meetingUnavailable:
+            "The meeting is no longer available."
+        case .summaryProviderUnavailable:
+            "No configured local summary provider is currently available."
+        case .unsupportedKind(let kind):
+            "The process worker does not support \(kind)."
+        }
+    }
+}
+
+private extension Error {
+    var isSupersededProcessingInput: Bool {
+        if let worker = self as? WorkerError, case .inputSuperseded = worker {
+            return true
+        }
+        if let storage = self as? StorageError,
+            case .processingJobInputChanged = storage {
+            return true
+        }
+        return false
+    }
+}
+
+private extension StorageError {
+    var isLeaseLoss: Bool {
+        if case .processingJobLeaseLost = self { return true }
+        return false
+    }
+}

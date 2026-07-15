@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution).
 
 ## Database
 
@@ -80,7 +80,9 @@ transcript content and no jobs to `ready`; usable audio without transcript is
 retained as `needsAttention` with `transcription.empty`.
 `markMeetingNeedsAttention` is repeat-safe and accepts only incomplete live
 states. The app invokes expired-lease recovery and these boundaries at process
-launch, but it still does not enqueue or execute concrete queue workers.
+launch, then runs the concrete D42 diarization/summary executor. Normal Stop
+still does not enqueue work; only already-durable jobs and the isolated
+characterization fixture reach the executor in this slice.
 Generation runs, outbox events, and per-meeting preferences are also not
 consumed yet.
 
@@ -133,8 +135,8 @@ Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `heartbeatProcessingJob`, `completeProcessingJob`,
 `completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
 `cancelProcessingJob`, `nextScheduledProcessingDate`, and
-`recoverExpiredProcessingJobs`. Claims and scheduled wakes are capability-filtered and
-owner-fenced; generated work must use its artifact completion API, while the
+`recoverExpiredProcessingJobs`. Claims and scheduled wakes are capability-
+filtered and owner-fenced; generated work must use its artifact completion API, while the
 generic completion path remains available only to non-content jobs. Storage
 derives meeting lifecycle rather than asking callers to save a second,
 potentially inconsistent aggregate state.
@@ -175,7 +177,7 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
    semantic-search budgets are planned in the refactor program.
-5. The durable job queue is not yet the app's post-capture execution path.
+5. The durable job queue is not yet the normal Stop path.
    Slice 1D-b2a adds typed `DiarizationArtifact`/`SummaryArtifact` completion:
    an owned unexpired lease, exact operation fingerprint, live meeting-owned
    identities, and unchanged source transcript revision are required before
@@ -184,8 +186,12 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
    excludes output language. Generic completion rejects generated-content
    jobs, lifecycle derivation cannot hide pending capture publication, and
    owner-fenced cancellation can settle degradable work without fabricating an
-   artifact or failing the meeting. Concrete app producers/executors remain the
-   next 1D-b2b unit; process-launch capture and lease recovery shipped in 1D-b1.
+   artifact or failing the meeting. A process-scoped executor now resumes
+   already-enqueued diarization/summary jobs after launch recovery with exact
+   fingerprints, heartbeats, bounded retries, stale cancellation, and one
+   scheduled wake (D42). Making normal Stop produce and kick the initial job is
+   the final 1D-b2b unit; process-launch capture and lease recovery shipped in
+   1D-b1.
 
 ## Trash (Jul 2026)
 
