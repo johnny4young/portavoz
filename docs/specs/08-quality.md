@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 473 package tests passing (13 gated) + 18 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 18 cases after the known interrupting Gancho window was closed; earlier automation-mode harness failures remain documented below.
+Status: 487 package tests passing (13 gated) + 18 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 18 cases after the known interrupting Gancho window was closed; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -8,10 +8,11 @@ Status: 473 package tests passing (13 gated) + 18 XCUITest UI cases. CI on GitHu
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write and Meeting Detail regeneration bypass prevention, and the Sendable async use-case contract |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, and audio-import bypass prevention, and the Sendable async use-case contract |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, and real MeetingStore note/snapshot adaptation |
+| ImportMeetingUseCaseTests | Required preparation/transcription order, typed progress, mixed-language preservation, best-effort diarization/summary, exact idle release, staged-audio rollback, atomic imported aggregate persistence, and real MeetingStore adaptation |
 | MeetingStoreTests summary history | Per-recipe immutable versions, deterministic newest-across-recipe selection for Meeting Detail, retained older structures, and recipe-scoped fingerprint cache/pivot reads |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, Downmix, **Resample.linear**, startup cleanup |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
@@ -154,6 +155,19 @@ the visible state through the real app/store boundary without invoking a model,
 while the storage test proves the older General snapshot remains addressable.
 The focused newest-recipe case and the complete 18-case local XCUITest suite
 both pass.
+
+Band 2 slice 2F adds thirteen import tests and an eighth architecture rule. Port
+fakes characterize exact progress/order, automatic mixed-language recognition,
+required first model preparation and transcription, degradable second
+diarizer reload/inference (including reuse of an existing engine after reload
+failure), optional summary generation/persistence, and the
+released idle-release boundary. Failure cases prove every required precommit
+error attempts staged-audio cleanup without masking its original error. A real
+in-memory MeetingStore case persists the aggregate and summary through the
+ports; ownership validation rejects foreign children, and an injected SQLite
+segment failure proves meeting, cast, and transcript roll back together. The
+source rule permits one app wrapper only and rejects a return to direct import
+orchestration. Strict SwiftLint remains clean across 206 source files.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

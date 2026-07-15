@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -17,6 +17,17 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
 - Mic channel → "Me" (hardware truth, D5). System channel → turn with the greatest temporal overlap.
 - Multi-turn segments are split at turn boundaries with proportional word distribution. No turn → unattributed (honest, editable in the UI).
 - Turns labeled "Me" (voiceprint on the system channel) are merged with the user's identity.
+
+For external audio, `ApplicationKit.ImportMeeting` requires the initial shared
+recording-engine preparation before transcription, preserving the released
+model-readiness contract. Immediately before attribution it asks the app
+processor to reload the diarizer because another idle-release task may have
+dropped the shared reference during the Whisper pass. The second reload is
+best-effort and does not suppress the inference attempt: if an already-loaded
+shared diarizer remains usable, attribution can still succeed. If no usable
+diarizer remains or inference fails, the workflow installs the full transcript
+with no invented speakers or speaker IDs. Storage then commits the meeting,
+any attributed cast, and all segments atomically (D46).
 
 ## LIVE diarization — `LiveSpeakerLabeler` (Jul 2026)
 

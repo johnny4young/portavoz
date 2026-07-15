@@ -54,11 +54,14 @@ let package = Package(
 
         // Application workflows enter through this boundary. Dependencies
         // are added one capability at a time with each extracted use case;
-        // trash lifecycle and summary regeneration are the first ratcheted
-        // StorageKit/IntelligenceKit vertical slices.
+        // trash lifecycle, summary regeneration, and audio import are the
+        // first ratcheted capability slices.
         .target(
             name: "ApplicationKit",
-            dependencies: ["PortavozCore", "IntelligenceKit", "StorageKit"]),
+            dependencies: [
+                "PortavozCore", "TranscriptionKit", "DiarizationKit",
+                "IntelligenceKit", "StorageKit",
+            ]),
 
         // Curated model registry + sha256-verified downloads, shared by every
         // Kit that loads ML models (transcription, diarization, summaries).

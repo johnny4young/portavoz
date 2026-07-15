@@ -6,6 +6,7 @@ public enum StorageError: Error, LocalizedError {
     /// D4: the database never stores invalid paths or escapes the audio root.
     case absolutePathRejected(String)
     case meetingNotFound(MeetingID)
+    case invalidImportedMeeting(String)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
     case processingJobNotFound(ProcessingJobID)
@@ -22,6 +23,8 @@ public enum StorageError: Error, LocalizedError {
             return "audio paths must be relative to the audio root, got: \(path)"
         case .meetingNotFound(let id):
             return "no such meeting: \(id.rawValue.uuidString)"
+        case .invalidImportedMeeting(let reason):
+            return "invalid imported meeting: \(reason)"
         case .invalidRecordingReservation(let reason):
             return "invalid recording reservation: \(reason)"
         case .invalidProcessingJob(let reason):

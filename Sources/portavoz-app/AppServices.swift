@@ -152,7 +152,8 @@ final class AppServices {
     /// shared. The variant follows the "Whisper compacto" preference (turbo
     /// 1.6 GB vs. 626 MB for low disk, M12); switching it reloads.
     func loadWhisperIfNeeded(
-        progress: @escaping @MainActor (String) -> Void
+        progress: @escaping @MainActor (String) -> Void,
+        downloadProgress: (@MainActor (String, Int) -> Void)? = nil
     ) async throws -> WhisperEngine {
         let compact = UserDefaults.standard.bool(forKey: "whisperCompact")
         let descriptor =
@@ -167,6 +168,7 @@ final class AppServices {
             guard update.totalBytes > 0 else { return }
             let percent = Int(update.fraction * 100)
             Task { @MainActor in
+                downloadProgress?(size, percent)
                 progress(L10n.format("Downloading Whisper (%@, one time only)… %d%%", size, percent))
             }
         }
@@ -260,27 +262,6 @@ final class AppServices {
         return false
     }
 
-    /// The configured provider, or nil to use Apple Foundation Models (the
-    /// map-reduce + priority-scheduled path). Ollama
-    /// gives a 100% local summary on Macs without Apple Intelligence
-    /// (GAPS #7); a chosen model that's gone falls back to Apple.
-    ///
-    func configuredSummaryProvider() -> (any SummaryProvider)? {
-        switch summaryEngine {
-        case .appleOnDevice:
-            return nil
-        case .ollama:
-            guard let model = ollamaModel else { return nil }
-            return OllamaService.summaryProvider(model: model)
-        case .mlx:
-            // Only when the verified weights are on disk — otherwise fall
-            // back to Apple rather than failing mid-summary.
-            guard mlxDownloaded else { return nil }
-            return MLXSummaryProvider(
-                modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35))
-        }
-    }
-
     // MARK: - Embedded MLX model (D25 last mile)
 
     var mlxDownloaded: Bool {
@@ -356,89 +337,6 @@ final class AppServices {
             total += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
         }
         return total
-    }
-
-    /// Summarizes with the configured engine, falling back to Apple FM.
-    /// Throws when neither is usable (14.x + Apple engine).
-    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
-        if let provider = configuredSummaryProvider() {
-            return try await provider.summarize(request)
-        }
-        guard #available(macOS 26.0, *) else {
-            throw IntelligenceError.modelUnavailable(
-                L10n.text("Apple Intelligence requires macOS 26 — choose Ollama in Settings."))
-        }
-        return try await FoundationModelSummaryProvider().summarize(request)
-    }
-
-    /// Imports an external audio file as a new meeting (M11/D27): copies it
-    /// in as the system channel (all speakers diarized — no "Me"), runs the
-    /// quality Whisper pass + diarization + summary, and returns the new id.
-    func importMeeting(
-        from source: URL,
-        progress: @escaping @MainActor (String) -> Void
-    ) async throws -> MeetingID {
-        let meetingID = MeetingID()
-        let relative = "Audio/\(meetingID.rawValue.uuidString)"
-        let audioDir = Self.audioRoot.appendingPathComponent(relative, isDirectory: true)
-        try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
-        let ext = source.pathExtension.isEmpty ? "m4a" : source.pathExtension.lowercased()
-        let dest = audioDir.appendingPathComponent("system.\(ext)")
-        try FileManager.default.copyItem(at: source, to: dest)
-
-        progress(L10n.text("Preparing models…"))
-        let whisper = try await loadWhisperIfNeeded { progress($0) }
-        defer {
-            scheduleWhisperRelease()
-            scheduleRecordingEnginesRelease()
-        }
-        try await loadEnginesIfNeeded()
-
-        let vocabulary = VocabularyPrompt.parse(
-            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-        let hints = TranscriptionHints(
-            language: MeetingLanguagePreferences.transcript().languageHint,
-            vocabulary: vocabulary,
-            meetingID: meetingID)
-
-        progress(L10n.text("Transcribing audio (Whisper)…"))
-        let result = try await whisper.transcribeFile(at: dest, hints: hints, channel: .system)
-
-        progress(L10n.text("Identifying speakers…"))
-        // Reload rather than trust the shared reference: an idle release
-        // scheduled elsewhere may have dropped it during the Whisper pass.
-        try? await loadEnginesIfNeeded()
-        let turns = (try? await diarizer?.diarizeFile(at: dest)) ?? []
-        let attribution = SpeakerAttributor.attribute(
-            segments: result.segments.sorted { $0.startTime < $1.startTime },
-            turns: turns, meetingID: meetingID)
-        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
-            in: attribution.segments)
-
-        let meeting = Meeting(
-            id: meetingID,
-            title: "Imported · " + source.deletingPathExtension().lastPathComponent,
-            startedAt: Date(),
-            endedAt: Date().addingTimeInterval(result.audioDuration),
-            language: spokenLanguage,
-            audioDirectory: relative)
-        try await store.save(meeting)
-        try await store.save(attribution.speakers)
-        try await store.save(attribution.segments)
-
-        progress(L10n.text("Generating summary…"))
-        let summaryLanguage = MeetingLanguagePreferences.resolvedSummaryLanguage(
-            spokenLanguage: spokenLanguage)
-        let request = SummaryRequest(
-            meetingID: meetingID, segments: attribution.segments,
-            speakers: attribution.speakers, recipe: .general,
-            targetLanguage: summaryLanguage.identifier,
-            glossary: vocabulary)
-        if let draft = try? await summarize(request) {
-            try? await store.saveSummary(draft)
-        }
-        libraryVersion += 1
-        return meetingID
     }
 
     /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),

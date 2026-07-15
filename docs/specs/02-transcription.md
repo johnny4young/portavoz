@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines — planned).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary).
 
 ## Roles and engines (D7)
 
@@ -49,6 +49,19 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
 - Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.
 - `timings.inputAudioSeconds` under-reports with VAD → duration comes from the file.
+
+### External audio import (D46)
+
+`ApplicationKit.ImportMeeting` owns the external-file workflow without
+constructing model objects itself. The app processor prepares the shared
+Whisper engine as a required step, reports verified model-download progress,
+and transcribes the copied system-channel file with the once-sampled
+`TranscriptLanguagePolicy` and vocabulary. Automatic mode leaves the hint nil,
+so a mixed Spanish/English recording keeps each segment's detected language;
+the independently configured summary language never becomes a recognition
+fallback. A required transcription failure rolls back the staged copy before
+the aggregate exists. Once Whisper was prepared, the same idle release policy
+as the released import path is scheduled on every later exit.
 
 ## SpeechAnalyzer spike (M12/D25) — status and findings (Jul 2026)
 

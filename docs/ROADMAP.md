@@ -8,12 +8,24 @@ Single source of truth for progress — it previously lived in a session HANDOFF
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
 program in [refactor-20260714.md](refactor-20260714.md): extract
-`ImportMeeting` from AppServices with its copied-audio rollback, language,
-engine-release, diarization, summary-degradation, invalidation, and navigation
-contract. T16 is closed; Bands 0 and 1 are complete. Every slice
+`RefineMeeting` from the app with draft/compare/apply, cancellation, language,
+Companion, engine-release, and immutable-history parity. `ImportMeeting` and
+T16 are complete; Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46).
+
+- **Architecture Band 2 slice 2F complete — imported audio has one owner (Jul
+  15, 2026)**: `ApplicationKit.ImportMeeting` now coordinates typed file,
+  preference, processor, store, summary, and progress ports. Meeting-length
+  copies and rollback run off the main actor; copied audio remains staged until
+  one StorageKit transaction commits the meeting, cast, and transcript. A
+  required precommit failure removes staged audio best-effort, while the
+  released required transcription, degradable second diarizer pass, optional
+  summary, independent language policies, idle engine release, Library
+  invalidation, and navigation timing remain unchanged. Thirteen import tests
+  plus an eighth architecture rule bring the package baseline to 487 tests
+  (D46).
 
 - **Architecture Band 2 slice 2E complete — summary structures survive reload
   (Jul 15, 2026)**: regeneration cache/pivot reads now include the selected

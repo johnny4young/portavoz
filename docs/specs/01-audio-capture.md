@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership).
 
 ## Channel model (D5)
 
@@ -100,6 +100,18 @@ worker; relaunch resumes the same owner-leased work after capture recovery.
 Job-admission failure cannot expose a half-installed captured snapshot, and the
 controller attempts an explicit `needsAttention` snapshot fallback without
 deleting audio.
+
+## External-audio ownership (D46)
+
+External import is separate from live capture but follows the same
+audio-first ownership rule. `ApplicationKit.ImportMeeting` asks an app-owned
+filesystem adapter to copy the source as the system channel on a
+utility-priority task. That copied directory is staged ownership: it does not
+become a library asset until StorageKit atomically commits the meeting, cast,
+and transcript. Any required preparation, transcription, or aggregate-write
+failure before that commit attempts to remove the staged directory without
+masking the original error. Once the aggregate commits, optional diarization
+or summary failure never removes its audio.
 
 ## Planned (not implemented)
 

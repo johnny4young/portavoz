@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate).
 
 ## Database
 
@@ -152,6 +152,16 @@ potentially inconsistent aggregate state.
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
+External audio uses the dedicated
+`saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the
+meeting's relative audio path, requires every speaker and segment to belong to
+that meeting, and rejects segment references outside the supplied cast with
+`StorageError.invalidImportedMeeting`. One GRDB transaction inserts the
+meeting root, speakers, and segments; a duplicate or injected child failure
+rolls back the complete aggregate, so the Library never observes a meeting
+without its required transcript (D46). The optional summary remains a later
+immutable `saveSummary` operation and cannot roll the aggregate back.
+
 All cross-library projections are live-rooted. `libraryFacts`, `findingInputs`,
 `openActionItems`, `summary`/`latestSummary`, `voiceMixes`, and `voiceBalance`
 join or validate a non-deleted meeting before exposing data. Deleting a meeting
@@ -215,3 +225,10 @@ Slice 2E keeps cache/pivot reads recipe-scoped and adds
 `createdAt DESC, rowid DESC` across recipes. The rowid tie-breaker makes
 same-timestamp insertions deterministic; recipe-specific versions and every
 older immutable row remain unchanged (D45).
+Slice 2F adds `saveImportedMeeting` as the production implementation of
+ApplicationKit's imported-aggregate store port. The app treats the copied
+audio directory as staged until this transaction succeeds and removes it
+best-effort after any earlier required failure. Database and filesystem are
+not one distributed transaction; the explicit staged ownership and
+compensating delete form the bounded local Saga without changing the schema or
+turning import into a durable background job (D46).

@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44 (application dependency ratchet).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D46 (application dependency and workflow ownership).
 
 ## Structure
 
@@ -17,24 +17,28 @@ DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` 
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
-StorageKit for its first characterized workflows: `DeleteMeeting` and
-`RestoreMeeting` over a narrow `MeetingLifecycleStore` port. `AppServices`
-composes both with the real MeetingStore; Library, Meeting Detail, and
-Recently Deleted call them instead of writing lifecycle state through the
-store. Manual and launch-time purge also use ApplicationKit, coordinating a
-pure storage projection with the private app `MeetingAudioFiles` adapter over
-RecordingsLocation/FileManager. Slice 2D admits IntelligenceKit only with
-`RegenerateSummary`: AppServices composes storage, glossary-preference, and
-provider-resolution adapters; Meeting Detail submits one request and maps the
-typed completion/cache/unavailability/failure result. Import, refine, and
-remaining recording workflows still coordinate capabilities directly until
-their own Band 2 slices are characterized and adopted (D44).
-Slice 2E closes the associated recipe-state gap: regeneration reuse is scoped
-to the chosen structure, and reload displays the newest persisted snapshot
-across structures instead of silently returning to General. The badge exposes
-the active recipe; all older immutable recipe versions remain stored (D45).
+capability dependencies only with characterized vertical workflows.
+`DeleteMeeting` and `RestoreMeeting` use a narrow `MeetingLifecycleStore` port;
+manual and launch-time purge coordinate a pure storage projection with the
+private app `MeetingAudioFiles` adapter over RecordingsLocation and the local
+filesystem. `RegenerateSummary` receives storage, glossary-preference, and
+provider-resolution adapters; Meeting Detail submits one request and maps its
+typed completion/cache/unavailability/failure result. Regeneration reuse is
+recipe-scoped, reload selects the newest immutable snapshot across structures,
+and all older per-recipe versions remain stored (D44/D45).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and `importMeeting` reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
+`AppServices` now only samples platform preferences, constructs private
+filesystem/model/provider adapters, localizes typed progress, increments
+`libraryVersion` once after success, and returns the ID used by the existing
+Library navigation. The use case owns required transcription, degradable
+diarization and summary, independent transcript/summary languages, idle
+release, staged-audio rollback, and atomic meeting/cast/transcript installation.
+File copy and compensating deletion run at utility priority instead of on the
+MainActor. Refine and remaining recording orchestration await their own Band 2
+slices (D46).
+
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
@@ -136,7 +140,7 @@ temp-store launches suppress real host Shortcuts.
 
 ## Additional as-built note
 
-**Audio first-class (M11/D27) complete**: player synchronized with **Spotify-style lyrics transcript** (`FocusedTranscriptView`: spoken line stays CENTERED in fixed-height viewport, others fade/shrink/blur towards edges — cylinder effect with `.visualEffect`; no scroll bar; search in timeline moves transcript INSIDE its box, never page), click-to-jump, **waveform-scrubber** (colored by channel: accent=you, gray=them; dimmed after playhead; clip region shaded) and **clips** (mark in/out at playhead → `AudioClipExporter` exports mixed range to m4a/AAC via `AVAssetExportSession`, measured well below 2 s) — all in `AudioPlaybackKit`. Without audio, transcript is normal list. The **same carousel runs in live recording** (`FocusedTranscriptView` parametrized with `anchor`: during recording new line focuses at lower third `y≈0.82` — boundary — and old ones rise and fade; `followSignal` re-centers when live line GROWS, not just appears; replaced pausable follow-live). Also: **skip-silence** (toggle; skips gaps ≥1.2 s detected from waveform), **transcode AAC** ("Comprimir audio (AAC)" → `AudioTranscoder`, deletes original after verified write, rebuilds player from m4a) and **import** (library: "Importar audio…" button + drag-drop → `AppServices.importMeeting`: copies as system channel, applies the transcript recognition policy to Whisper, diarizes, summarizes with the independent output policy, and navigates to the new meeting). **M11 complete.** `make test-ui` covers player, highlight and clip export button; preflight closes Portavoz before XCUITest to avoid automation mode failures from stale instances.
+**Audio first-class (M11/D27) complete**: player synchronized with **Spotify-style lyrics transcript** (`FocusedTranscriptView`: spoken line stays CENTERED in fixed-height viewport, others fade/shrink/blur towards edges — cylinder effect with `.visualEffect`; no scroll bar; search in timeline moves transcript INSIDE its box, never page), click-to-jump, **waveform-scrubber** (colored by channel: accent=you, gray=them; dimmed after playhead; clip region shaded) and **clips** (mark in/out at playhead → `AudioClipExporter` exports mixed range to m4a/AAC via `AVAssetExportSession`, measured well below 2 s) — all in `AudioPlaybackKit`. Without audio, transcript is normal list. The **same carousel runs in live recording** (`FocusedTranscriptView` parametrized with `anchor`: during recording new line focuses at lower third `y≈0.82` — boundary — and old ones rise and fade; `followSignal` re-centers when live line GROWS, not just appears; replaced pausable follow-live). Also: **skip-silence** (toggle; skips gaps ≥1.2 s detected from waveform), **transcode AAC** ("Comprimir audio (AAC)" → `AudioTranscoder`, deletes original after verified write, rebuilds player from m4a) and **import** (library: "Importar audio…" button + drag-drop → the `AppServices` wrapper around `ApplicationKit.ImportMeeting`; it copies as system channel off the MainActor, applies the transcript recognition policy to Whisper, keeps mixed-language evidence automatic, degrades diarization and summary honestly, commits the required aggregate atomically, then preserves the existing success invalidation and navigation timing). **M11 complete.** `make test-ui` covers player, highlight and clip export button; preflight closes Portavoz before XCUITest to avoid automation mode failures from stale instances.
 
 
 ## UI verification — XCUITest first (Jul 12)

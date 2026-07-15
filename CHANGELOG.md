@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 15, 2026
 
+- **📥 Audio imports stay responsive and clean** — Drag in a long recording without freezing the Library while Portavoz copies it. If required preparation, transcription, or saving fails, the incomplete meeting and its private staged audio are rolled back together instead of leaving hidden files or a partial entry.
 - **🧩 Your chosen summary structure stays put** — Regenerate a meeting as a Standup, 1:1, Planning note, or your own custom structure and Portavoz now keeps that newest version on screen after every refresh. Older structures remain safely preserved in history, and cache hits stay scoped to the structure you selected.
 - **⚡ Stop recording, open it now** — Your meeting opens as soon as its local audio and transcript are safely stored; speaker cleanup and the summary continue durably in the background and resume after a restart instead of keeping you on the recording screen.
 - **🛟 Interrupted recordings come back on launch** — If Portavoz or your Mac stops between capture and saving, Portavoz now revalidates the local CAF and restores it to the library without waiting for AI. Ambiguous copies are preserved instead of overwritten or deleted.

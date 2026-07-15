@@ -41,7 +41,7 @@ private struct AppSummaryRegenerationPreferences: SummaryRegenerationPreferences
     }
 }
 
-private struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolver {
+struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolver {
     let defaultEngine: SummaryEngine
     let ollamaModel: String?
     let mlxModelDirectory: URL?

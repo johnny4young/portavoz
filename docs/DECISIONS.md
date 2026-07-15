@@ -696,3 +696,34 @@ detail representation, while immutable history and consumers that explicitly
 expect General remain stable. A read policy plus explicit recipe key closes
 the gap without schema churn, global mutable "selected recipe" state, or a
 cross-recipe version number.
+
+## D46 — Imported audio is staged until its aggregate commits (Jul 2026)
+
+**Context:** audio import was a single MainActor method that synchronously
+copied a potentially large file, loaded shared models, transcribed, diarized,
+saved the meeting/speakers/segments through three independent transactions,
+attempted a summary, and mutated global invalidation. A failure after the copy
+could leave invisible audio without a meeting, while a child storage failure
+could expose a partial aggregate. The method also mixed platform preferences,
+localized progress, concrete engines, filesystem policy, and business failure
+semantics.
+
+**Decision:** `ApplicationKit.ImportMeeting` coordinates narrow file,
+preference, processor, store, and summarizer ports. The app adapter copies on a
+utility task and owns all platform/model/localization details. The copied
+system-channel file remains staged until `MeetingStore.saveImportedMeeting`
+atomically inserts the meeting, speakers, and segments. Any required failure
+before that commit triggers best-effort deletion of the staged directory; a
+child insert failure rolls back the SQLite transaction. Whisper and initial
+recording-engine preparation plus transcription remain required. The second
+diarizer reload and diarization remain degradable to honest unattributed
+segments. Summary generation and immutable snapshot persistence remain
+best-effort after the aggregate commits. Idle release is scheduled after every
+path that successfully prepared Whisper, and transcript/summary policies are
+sampled independently once per import.
+
+**Rationale:** this is the smallest Strangler slice that makes file and
+database ownership explicit, prevents partial imported meetings, and keeps the
+Library responsive without redesigning import as a durable background job.
+The Library still shows the same localized phases, invalidates once on success,
+and navigates only after the optional summary attempt, preserving v0.6.0 UX.

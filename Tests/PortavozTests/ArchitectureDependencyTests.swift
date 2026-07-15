@@ -15,7 +15,10 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertEqual(
             application.dependencies,
-            ["IntelligenceKit", "PortavozCore", "StorageKit"])
+            [
+                "DiarizationKit", "IntelligenceKit", "PortavozCore", "StorageKit",
+                "TranscriptionKit",
+            ])
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-app"]).dependencies.contains(
             "ApplicationKit"))
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-cli"]).dependencies.contains(
@@ -100,6 +103,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(
             violations.isEmpty,
             "App summary regeneration must enter through ApplicationKit: \(violations)")
+    }
+
+    func testAppAudioImportEntersThroughApplicationKit() throws {
+        let definitions = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\bfunc\s+importMeeting\s*\("#)
+
+        XCTAssertEqual(
+            definitions,
+            ["AppServices+ImportMeeting.swift"],
+            "Audio import orchestration must not return to AppServices or a view")
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
