@@ -27,6 +27,12 @@ struct MeetingDetailView: View {
     @Binding var route: Route?
 
     @State private var detail: MeetingDetail?
+    /// The live Companion's answer cards, persisted (D26) so the meeting can
+    /// be reviewed afterward. Loaded lazily; empty hides the rail section.
+    @State private var companionCards: [CompanionCard] = []
+    /// AI topic headings per chapter, keyed by the chapter's start time. Filled
+    /// lazily; a chapter with no entry falls back to its real-excerpt title.
+    @State private var chapterTitles: [TimeInterval: String] = [:]
     @State private var summary: (draft: SummaryDraft, version: Int)?
     @State private var player: MeetingPlayer?
     @State private var waveform: [Waveform.Bucket] = []
@@ -84,6 +90,11 @@ struct MeetingDetailView: View {
     @State private var rememberOffer: Speaker?
     @State private var rememberingVoice = false
 
+    private struct ReloadID: Hashable {
+        let meetingID: MeetingID
+        let libraryVersion: Int
+    }
+
     /// The post-meeting mirror (6a-2): opt-in, shown once right after a
     /// qualifying recording. `mirrorAverageShare` is the user's usual talk
     /// share across recent meetings, loaded lazily so the card can compare.
@@ -99,7 +110,9 @@ struct MeetingDetailView: View {
                 ProgressView()
             }
         }
-        .task(id: services.libraryVersion) { await reload() }
+        .task(id: ReloadID(meetingID: meetingID, libraryVersion: services.libraryVersion)) {
+            await reload()
+        }
         .onDisappear { player?.invalidate() }
     }
 
@@ -245,21 +258,27 @@ extension MeetingDetailView {
         }
     }
 
-    /// The right rail: meeting health + ✦ chapters — the at-a-glance column
-    /// beside the transcript. Hidden entirely when it would be empty (no
-    /// attributed speech and no chapters) so the page doesn't carry a void.
+    /// The right rail: meeting health + ✦ chapters + the Companion's answers —
+    /// the at-a-glance column beside the transcript. Hidden entirely when it
+    /// would be empty. SCROLLS on its own so a long Companion list (many
+    /// cards) never grows the page and pushes the header or docked player
+    /// off-screen — the rail stays within its column, everything else stays put.
     @ViewBuilder
     private func detailRail(_ detail: MeetingDetail) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
-        if hasHealth || hasChapters {
-            VStack(alignment: .leading, spacing: 12) {
-                if hasHealth {
-                    MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
+        if hasHealth || hasChapters || !companionCards.isEmpty {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if hasHealth {
+                        MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
+                    }
+                    chaptersSection(detail)
+                    companionCardsSection
                 }
-                chaptersSection(detail)
             }
             .frame(width: 260)
+            .frame(maxHeight: .infinity)
         }
     }
 
@@ -321,12 +340,12 @@ extension MeetingDetailView {
         }
     }
 
-    @ViewBuilder
     /// The .portavoz interchange file (M15 L0): transcript + cast +
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
     private func exportBundle(_ detail: MeetingDetail, includeAudio: Bool) async {
         let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
+        let cards = (try? await services.store.companionCards(for: meetingID)) ?? []
         var audio: [MeetingBundle.AudioAttachment]?
         if includeAudio, let relative = detail.meeting.audioDirectory {
             let base = RecordingsLocation.shared.resolve(relative)
@@ -345,6 +364,7 @@ extension MeetingDetailView {
             segments: detail.segments,
             summary: summary?.draft,
             contextItems: notes,
+            companionCards: cards,
             audioFiles: audio)
         guard let data = try? bundle.encoded() else {
             gistError = L10n.text("Could not encode the meeting file.")
@@ -1103,6 +1123,7 @@ extension MeetingDetailView {
                     for: meetingID,
                     speakers: draft.speakers,
                     segments: draft.segments)
+                await refreshCompanionCards(from: draft.segments)
                 await reload()
                 services.libraryVersion += 1
                 regenerate(
@@ -1111,6 +1132,30 @@ extension MeetingDetailView {
             } catch {
                 actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
             }
+        }
+    }
+
+    /// Re-runs the Companion over the refined transcript so its answer cards
+    /// improve with it (D26/D7). Gated on the Companion being enabled and
+    /// available. An interrupted/failed pass preserves the old cards; a fully
+    /// successful pass replaces them, including with an empty clean result.
+    private func refreshCompanionCards(from segments: [TranscriptSegment]) async {
+        guard #available(macOS 26.0, *) else { return }
+        guard
+            UserDefaults.standard.bool(forKey: "companionEnabled"),
+            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        else { return }
+        applying = L10n.text("Re-checking the Companion's answers…")
+        let refresh = await CompanionRefresh.regenerate(from: segments, meetingID: meetingID)
+        // An incomplete pass means at least one model call failed/cancelled;
+        // preserve the old snapshot. A COMPLETE empty pass is meaningful: the
+        // refined transcript contains no card-worthy questions, so stale live
+        // cards should be removed.
+        guard refresh.completed else { return }
+        do {
+            try await services.store.replaceCompanionCards(refresh.cards, for: meetingID)
+        } catch {
+            actionError = L10n.text("The transcript was refined, but Companion cards could not be refreshed.")
         }
     }
 
@@ -1311,9 +1356,26 @@ extension MeetingDetailView {
     }
 
     private func reload() async {
-        detail = try? await services.store.detail(meetingID)
-        summary = try? await services.store.summary(meetingID)
+        if detail?.meeting.id != meetingID {
+            player?.invalidate()
+            player = nil
+            waveform = []
+            channelURLs = []
+            chapterTitles = [:]
+            companionCards = []
+            summary = nil
+        }
+        let loadedDetail = try? await services.store.detail(meetingID)
+        guard !Task.isCancelled else { return }
+        detail = loadedDetail
+        let loadedCards = (try? await services.store.companionCards(for: meetingID)) ?? []
+        guard !Task.isCancelled else { return }
+        companionCards = loadedCards
+        let loadedSummary = try? await services.store.summary(meetingID)
+        guard !Task.isCancelled else { return }
+        summary = loadedSummary
         await loadPlayerIfNeeded()
+        guard !Task.isCancelled else { return }
         // A palette citation navigated here: jump to the cited moment.
         if let seek = services.pendingSeek {
             services.pendingSeek = nil
@@ -1322,6 +1384,30 @@ extension MeetingDetailView {
         await suggestRecipeIfUseful()
         await suggestTitleIfUseful()
         await suggestFromVoicesIfUseful()
+        await titleChaptersIfNeeded()
+    }
+
+    /// Generates a short topic heading for each chapter (Apple Intelligence),
+    /// keyed by start time so re-renders reuse it. Self-healing: only the
+    /// chapters missing a title are generated, so a refine that shifts the
+    /// breaks re-titles just the new ones. Silent no-op without the model —
+    /// the rail then shows the real-excerpt titles.
+    private func titleChaptersIfNeeded() async {
+        guard #available(macOS 26.0, *) else { return }
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil else { return }
+        guard let detail else { return }
+        let chapters = ChapterExtractor.chapters(from: detail.segments)
+        for (index, chapter) in chapters.enumerated() where chapterTitles[chapter.startTime] == nil {
+            let end = index + 1 < chapters.count ? chapters[index + 1].startTime : .infinity
+            let text = detail.segments
+                .filter { $0.startTime >= chapter.startTime && $0.startTime < end && !$0.text.isEmpty }
+                .prefix(24)
+                .map(\.text)
+                .joined(separator: " ")
+            if let title = await ChapterTitler.title(forChapterText: text) {
+                chapterTitles[chapter.startTime] = title
+            }
+        }
     }
 
     /// Content-based title chip: only while the title still looks like the
@@ -1422,27 +1508,39 @@ extension MeetingDetailView {
     /// Builds the synchronized player + waveform once (M11). Audio survives
     /// refine, so there's no reason to rebuild when the library version bumps.
     private func loadPlayerIfNeeded() async {
-        guard player == nil, let relative = detail?.meeting.audioDirectory else { return }
+        guard player == nil, let loadedDetail = detail,
+            let relative = loadedDetail.meeting.audioDirectory
+        else { return }
         let base = RecordingsLocation.shared.resolve(relative)
         let system = MeetingAudioLayout.channelFile(named: "system", in: base)
         let mic = MeetingAudioLayout.channelFile(named: "microphone", in: base)
         let files = [system, mic].compactMap { $0 }
         guard !files.isEmpty else { return }
-        channelURLs = files
-        player = await MeetingPlayer.make(channelFiles: files)
+        let loadedPlayer = await MeetingPlayer.make(channelFiles: files)
+        guard !Task.isCancelled else {
+            loadedPlayer?.invalidate()
+            return
+        }
         // Off the main actor: a long meeting reads a lot of frames.
-        waveform = await Task.detached {
+        let loadedWaveform = await Task.detached {
             Waveform.generate(micFile: mic, systemFile: system, buckets: 600)
         }.value
-        player?.setSilentRanges(
-            Waveform.silentRanges(waveform, duration: player?.duration ?? 0))
+        guard !Task.isCancelled else {
+            loadedPlayer?.invalidate()
+            return
+        }
+        channelURLs = files
+        player = loadedPlayer
+        waveform = loadedWaveform
+        loadedPlayer?.setSilentRanges(
+            Waveform.silentRanges(loadedWaveform, duration: loadedPlayer?.duration ?? 0))
         // "Solo mi voz": skip everything that isn't the user's mic turns.
-        if let player, let detail {
-            let voiceRanges = detail.segments
+        if let loadedPlayer {
+            let voiceRanges = loadedDetail.segments
                 .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
                 .map { $0.startTime...$0.endTime }
-            player.setNonVoiceRanges(
-                PlaybackRanges.complement(of: voiceRanges, within: player.duration))
+            loadedPlayer.setNonVoiceRanges(
+                PlaybackRanges.complement(of: voiceRanges, within: loadedPlayer.duration))
         }
     }
 
@@ -1508,7 +1606,7 @@ extension MeetingDetailView {
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(PVDesign.accent)
                                 .frame(width: 44, alignment: .leading)
-                            Text(chapter.title)
+                            Text(chapterTitles[chapter.startTime] ?? chapter.title)
                                 .font(.callout)
                                 .lineLimit(1)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1527,6 +1625,108 @@ extension MeetingDetailView {
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    /// The live Companion's answers, kept for review (D26): each card seeks
+    /// the player to the moment the question was asked, and can be copied or
+    /// removed. Hidden when the meeting had none.
+    @ViewBuilder
+    private var companionCardsSection: some View {
+        if !companionCards.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Companion", systemImage: "sparkles")
+                    .font(.headline)
+                    .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("detail-companion")
+                ForEach(companionCards) { card in
+                    companionCardRow(card)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private func companionCardRow(_ card: CompanionCard) -> some View {
+        let tint: Color = card.directed ? .orange : PVDesign.accent
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Button {
+                    player?.seek(to: card.askedAt)
+                    player?.play()
+                } label: {
+                    Text(timestamp(card.askedAt))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(tint)
+                }
+                .buttonStyle(.plain)
+                .disabled(player == nil)
+                Text(card.question)
+                    .font(.callout.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !card.answer.isEmpty {
+                Text(card.answer)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Text(companionCardTag(card))
+                    .font(.caption2)
+                    .foregroundStyle(card.directed ? tint : Color.secondary)
+                Spacer()
+                if !card.answer.isEmpty {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(card.answer, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.plain)
+                    .controlSize(.small)
+                    .help(L10n.text("Copy answer"))
+                }
+                Button {
+                    Task { await removeCompanionCard(card.id) }
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .controlSize(.small)
+                .accessibilityLabel(L10n.text("Remove card"))
+                .help(L10n.text("Remove card"))
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8).strokeBorder(tint.opacity(0.25), lineWidth: 1)
+        )
+        .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
+    }
+
+    private func companionCardTag(_ card: CompanionCard) -> String {
+        let base = card.kind == .context
+            ? L10n.text("from this meeting")
+            : L10n.format("knowledge · %@", card.source)
+        if card.directed {
+            return card.answer.isEmpty ? L10n.text("asked you") : "\(L10n.text("asked you")) · \(base)"
+        }
+        return base
+    }
+
+    private func removeCompanionCard(_ id: UUID) async {
+        // Drop from the UI only after the tombstone lands — a failed delete
+        // leaves the card in place instead of stranding a phantom removal.
+        do {
+            try await services.store.deleteCompanionCard(id)
+            companionCards.removeAll { $0.id == id }
+        } catch {
+            actionError = L10n.text("Could not remove the card.")
         }
     }
 }

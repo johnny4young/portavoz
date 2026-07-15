@@ -261,7 +261,8 @@ public final class MeetingStore: Sendable {
                 let record = try MeetingRecord.fetchOne(db, key: key),
                 record.deletedAt != nil
             else { return }
-            for table in ["actionItem", "summary", "contextItem", "segment", "speaker"] {
+            let tables = ["actionItem", "summary", "contextItem", "companionCard", "segment", "speaker"]
+            for table in tables {
                 try db.execute(
                     sql: "DELETE FROM \(table) WHERE meetingID = ?", arguments: [key])
             }
@@ -300,6 +301,61 @@ public final class MeetingStore: Sendable {
             try db.execute(
                 sql: "UPDATE contextItem SET deletedAt = ?, updatedAt = ? WHERE id = ?",
                 arguments: [Date(), Date(), id.uuidString])
+        }
+    }
+
+    // MARK: - Companion cards (D26: the live assistant's answers, kept for review)
+
+    public func save(_ cards: [CompanionCard], for meetingID: MeetingID) async throws {
+        try await database.write { db in
+            let now = Date()
+            for card in cards {
+                let existing = try CompanionCardRecord.fetchOne(db, key: card.id.uuidString)
+                var record = CompanionCardRecord(
+                    card, meetingID: meetingID, createdAt: existing?.createdAt ?? now, updatedAt: now)
+                record.deletedAt = existing?.deletedAt
+                try record.save(db)
+            }
+        }
+    }
+
+    public func companionCards(for id: MeetingID) async throws -> [CompanionCard] {
+        try await database.read { db in
+            try CompanionCardRecord
+                .filter(Column("meetingID") == id.rawValue.uuidString)
+                .filter(Column("deletedAt") == nil)
+                .order(Column("askedAt"))
+                .fetchAll(db)
+                .compactMap(\.card)
+        }
+    }
+
+    public func deleteCompanionCard(_ id: UUID) async throws {
+        try await database.write { db in
+            try db.execute(
+                sql: "UPDATE companionCard SET deletedAt = ?, updatedAt = ? WHERE id = ?",
+                arguments: [Date(), Date(), id.uuidString])
+        }
+    }
+
+    /// Replaces a meeting's Companion cards wholesale: tombstones the live
+    /// snapshot and inserts the freshly re-derived ones (refine re-runs the
+    /// Companion over the clean transcript). One transaction, mirroring
+    /// `replaceCast`.
+    public func replaceCompanionCards(_ cards: [CompanionCard], for id: MeetingID) async throws {
+        let key = id.rawValue.uuidString
+        try await database.write { db in
+            let now = Date()
+            try db.execute(
+                sql: """
+                    UPDATE companionCard SET deletedAt = ?, updatedAt = ? \
+                    WHERE meetingID = ? AND deletedAt IS NULL
+                    """,
+                arguments: [now, now, key])
+            for card in cards {
+                var record = CompanionCardRecord(card, meetingID: id, createdAt: now, updatedAt: now)
+                try record.save(db)
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ enum MeetingAppDetector {
     struct App {
         let pid: pid_t
         let name: String
+        let bundleID: String
     }
 
     /// Bundle ids of native meeting apps and the browsers that host web
@@ -36,6 +37,12 @@ enum MeetingAppDetector {
                 guard let id = app.bundleIdentifier else { return false }
                 return bundleIDs.contains(id) && app.processIdentifier > 0
             }
-            .map { App(pid: $0.processIdentifier, name: $0.localizedName ?? "app") }
+            .compactMap { app in
+                guard let bundleID = app.bundleIdentifier else { return nil }
+                return App(
+                    pid: app.processIdentifier,
+                    name: app.localizedName ?? "app",
+                    bundleID: bundleID)
+            }
     }
 }

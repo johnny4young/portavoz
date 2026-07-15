@@ -16,11 +16,21 @@ final class MeetingDetailUITests: XCTestCase {
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
         app.launchPortavoz()
-        // firstMatch: the title also shows as the caption of the sidebar's
-        // To-dos rows; both rows route to the same meeting.
-        let meeting = app.staticTexts["Test meeting"].firstMatch
+        // Select the real library row by structure, not the duplicated title
+        // text (it also appears under To-dos and can point at a stale scroll
+        // snapshot during rapid relaunches).
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
         XCTAssertTrue(
             meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
+        // Existing isn't enough on the coldest launch: seeding bumps
+        // libraryVersion, the list re-renders, and `click` re-resolves this
+        // query — against a snapshot that can already be stale ("Failed to get
+        // matching snapshot"). Waiting for hittable re-resolves until it settles.
+        let settled = expectation(
+            for: NSPredicate(format: "isHittable == true"), evaluatedWith: meeting)
+        wait(for: [settled], timeout: 10)
         meeting.click()
         return app
     }
@@ -71,6 +81,16 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "chapter-200").exists,
             "a chapter must mark the later turn the seed placed at 200 s")
+        // The persisted Companion cards (D26) render in the rail: the seed
+        // has an answered card (askedAt 6) and an "asked you" ping (200).
+        // These WAIT: the cards are fetched separately from the meeting
+        // detail, so the section lands a beat after the rest of the rail.
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-companion").waitForExistence(timeout: 5),
+            "the right rail must show the persisted Companion answers")
+        XCTAssertTrue(
+            app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
+            "the answered Companion card must render for review")
     }
 
     @MainActor

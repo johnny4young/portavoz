@@ -980,3 +980,48 @@ final class ThinSummaryPolicyTests: XCTestCase {
             summaryCharacters: 1_500, actionItems: 0, meetingSeconds: 25 * 60))
     }
 }
+
+final class CompanionAnswerTests: XCTestCase {
+    func testKeepsARealAnswer() {
+        XCTAssertEqual(
+            CompanionAnswer.usable("The endpoint is the callback URL that Gian is posting."),
+            "The endpoint is the callback URL that Gian is posting.")
+    }
+
+    func testStripsInlineCitationMarkers() {
+        XCTAssertEqual(
+            CompanionAnswer.usable("It takes about media hora de latencia [2]."),
+            "It takes about media hora de latencia.")
+    }
+
+    func testStripsTrailingPassageReference() {
+        // Field case: the RAG answerer verbalizes the citation.
+        XCTAssertEqual(
+            CompanionAnswer.usable(
+                "Yes, the endpoint is the lab vision location API that they are no longer using. "
+                    + "This is confirmed in passage 14."),
+            "Yes, the endpoint is the lab vision location API that they are no longer using.")
+    }
+
+    func testKeepsPassageWordsThatArePartOfTheAnswer() {
+        let answer = "Passage 3 of the migration plan owns the rollback procedure."
+        XCTAssertEqual(CompanionAnswer.usable(answer), answer)
+    }
+
+    func testDropsEnglishHedges() {
+        XCTAssertNil(CompanionAnswer.usable(
+            "No, the VBD84 is not the one. The VBD84 is not mentioned in the context."))
+        XCTAssertNil(CompanionAnswer.usable(
+            "I apologize, but I cannot determine the answer. Could you provide more context?"))
+    }
+
+    func testDropsSpanishHedges() {
+        XCTAssertNil(CompanionAnswer.usable("No se menciona el presupuesto en el contexto."))
+        XCTAssertNil(CompanionAnswer.usable("Lo siento, no puedo determinar la respuesta."))
+    }
+
+    func testDropsEmptyOrCitationOnly() {
+        XCTAssertNil(CompanionAnswer.usable(""))
+        XCTAssertNil(CompanionAnswer.usable("   [3]   "))
+    }
+}

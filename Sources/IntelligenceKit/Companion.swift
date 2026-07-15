@@ -54,43 +54,44 @@ public enum QuestionHeuristic {
     }
 }
 
-/// One answered question, ready for the recording side panel. `source`
-/// names who produced the answer ("on-device" today; the BYOK provider
-/// when it exists) — the disclosure D26 demands.
-public struct CompanionCard: Identifiable, Sendable, Equatable {
-    public enum Kind: String, Sendable {
-        case knowledge
-        case context
-    }
+// `CompanionCard` (the persisted answer-card model) lives in PortavozCore so
+// StorageKit can save it, mirroring `ContextItem`. The pipeline that produces
+// cards stays here.
 
-    public let id: UUID
-    public let question: String
-    /// Empty on a pure "asked you" ping — the question itself is the
-    /// whole value; the UI hides the answer block.
-    public let answer: String
-    public let kind: Kind
-    public let source: String
-    /// True when the caption addressed the device owner BY NAME (D26's
-    /// "asked you"): the card doubles as an attention ping.
-    public let directed: Bool
-    public let askedAt: TimeInterval
-
-    public init(
-        id: UUID = UUID(),
-        question: String,
-        answer: String,
-        kind: Kind,
-        source: String,
-        directed: Bool = false,
-        askedAt: TimeInterval
-    ) {
-        self.id = id
-        self.question = question
-        self.answer = answer
-        self.kind = kind
-        self.source = source
-        self.directed = directed
-        self.askedAt = askedAt
+/// Turns a raw model answer into a card-worthy one — pure, so it runs and is
+/// tested without the model. A companion card only earns its place when the
+/// model actually answered: filler is worse than nothing on a glanceable panel.
+public enum CompanionAnswer {
+    /// The answer if it's a real one, else nil. Strips the citation markers the
+    /// RAG answerer is told to add ("[2]", "… in passage 3") — meaningless on a
+    /// card — and treats a hedge / non-answer ("not in the context", "I
+    /// apologize…") as no answer, so the card is dropped instead of showing it.
+    public static func usable(_ raw: String) -> String? {
+        // A trailing clause that only cites a passage ("… in passage 14.",
+        // "… se confirma en el pasaje 3."). No accents in the pattern — the
+        // "English source" gate scans this file. swiftlint:disable line_length
+        let enPassage =
+            #"(?i)[,;]?\s*(this is |as )?\b(confirmed|mentioned|stated|shown|noted)?\b\s*(in|en el|en los|en)?\s*passages?\s+\d+(\s*(,|and|y)\s*\d+)*\.?\s*$"#
+        let esPassage =
+            #"(?i)[,;]?\s*(esto se |como se |lo )?(confirma|menciona|indica|ve|dice)?\s*(en el|en los|en)?\s*pasajes?\s+\d+(\s*(,|y)\s*\d+)*\)?\.?\s*$"#
+        // swiftlint:enable line_length
+        let text = raw
+            .replacingOccurrences(of: #"\s*\[\d+\]"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: enPassage, with: "", options: .regularExpression)
+            .replacingOccurrences(of: esPassage, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let low = text.folding(options: .diacriticInsensitive, locale: nil).lowercased()
+        let hedges = [
+            "not mentioned in the context", "not in the context", "not in the passages",
+            "does not mention", "doesn't mention", "no mention of", "not provided in",
+            "cannot determine", "can't determine", "unable to determine", "unable to answer",
+            "i apologize", "need more information", "provide more context", "clarify your question",
+            "no se menciona", "no aparece", "no puedo determinar", "no puedo responder",
+            "necesito mas informacion", "mas contexto", "aclara tu pregunta", "no encuentro"
+        ]
+        if hedges.contains(where: { low.contains($0) }) { return nil }
+        return text
     }
 }
 
@@ -144,43 +145,65 @@ public struct LiveCompanion: Sendable {
 
         switch detected.kind.lowercased() {
         case "knowledge":
+            let rawAnswer: String
+            let source: String
             if let byok,
                 let answer = try? await byok.complete(
                     system: Self.knowledgeInstructions,
                     user: detected.question,
                     maxTokens: 400) {
-                return CompanionCard(
-                    question: detected.question,
-                    answer: answer.trimmingCharacters(in: .whitespacesAndNewlines),
-                    kind: .knowledge, source: byok.providerLabel,
-                    directed: directed, askedAt: askedAt)
+                rawAnswer = answer
+                source = byok.providerLabel
+            } else {
+                // No BYOK — or the cloud call failed (network, quota, endpoint
+                // down): the card falls back on-device and says so in `source`.
+                rawAnswer = try await answerKnowledge(detected.question)
+                source = "on-device"
             }
-            // No BYOK — or the cloud call failed (network, quota, endpoint
-            // down): the card falls back on-device and says so in `source`.
-            let answer = try await answerKnowledge(detected.question)
-            return CompanionCard(
-                question: detected.question, answer: answer,
-                kind: .knowledge, source: "on-device",
-                directed: directed, askedAt: askedAt)
+            return Self.card(
+                question: detected.question, rawAnswer: rawAnswer, kind: .knowledge,
+                source: source, directed: directed, askedAt: askedAt)
         case "context":
-            guard !recentTranscript.isEmpty else { return nil }
+            guard !recentTranscript.isEmpty else {
+                return directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
+            }
             let answer = try await RAGAnswerer().answer(
                 question: detected.question, passages: recentTranscript)
-            return CompanionCard(
-                question: detected.question, answer: answer,
-                kind: .context, source: "on-device",
-                directed: directed, askedAt: askedAt)
+            return Self.card(
+                question: detected.question, rawAnswer: answer, kind: .context,
+                source: "on-device", directed: directed, askedAt: askedAt)
         default:
             // Logistics/small talk: a card here is noise, the classic
             // failure mode of this feature class — UNLESS it was aimed at
             // the owner by name ("Johnny, ¿nos acompañas mañana?"). Then
             // the ping IS the value: question only, no invented answer.
             guard directed else { return nil }
-            return CompanionCard(
-                question: detected.question, answer: "",
-                kind: .context, source: "on-device",
-                directed: true, askedAt: askedAt)
+            return Self.pingCard(detected.question, askedAt: askedAt)
         }
+    }
+
+    /// Builds a card from a raw model answer: keeps it only if the model
+    /// actually answered. `usableAnswer` strips the RAG citation markers and
+    /// rejects a hedge ("not in the context", "I apologize…") — a NON-directed
+    /// question with no real answer produces NO card (filler is worse than
+    /// nothing), while a directed "asked you" keeps its ping regardless.
+    static func card(
+        question: String, rawAnswer: String, kind: CompanionCard.Kind,
+        source: String, directed: Bool, askedAt: TimeInterval
+    ) -> CompanionCard? {
+        if let answer = CompanionAnswer.usable(rawAnswer) {
+            return CompanionCard(
+                question: question, answer: answer, kind: kind, source: source,
+                directed: directed, askedAt: askedAt)
+        }
+        return directed ? pingCard(question, askedAt: askedAt) : nil
+    }
+
+    /// A directed "asked you" ping: the question is the whole value, no answer.
+    static func pingCard(_ question: String, askedAt: TimeInterval) -> CompanionCard {
+        CompanionCard(
+            question: question, answer: "", kind: .context, source: "on-device",
+            directed: true, askedAt: askedAt)
     }
 
     /// Pure so the prompt shape is pinned by tests. The owner block only

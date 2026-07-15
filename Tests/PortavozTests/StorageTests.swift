@@ -395,4 +395,50 @@ extension MeetingStoreTests {
         let remaining = try await store.contextItems(for: meeting.id)
         XCTAssertEqual(remaining.map(\.content), ["https://x.test"])
     }
+
+    func testCompanionCardsRoundTripAndTombstone() async throws {
+        try await store.save(meeting)
+
+        let first = CompanionCard(
+            question: "¿Qué framework usamos?", answer: "SwiftUI", kind: .knowledge,
+            source: "on-device", askedAt: 90)
+        let second = CompanionCard(
+            question: "¿Te acuerdas del presupuesto?", answer: "", kind: .context,
+            source: "on-device", directed: true, askedAt: 40)
+        try await store.save([first, second], for: meeting.id)
+
+        let cards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(cards.map(\.question), [second.question, first.question])  // por askedAt
+        XCTAssertEqual(cards.map(\.kind), [.context, .knowledge])
+        XCTAssertEqual(cards.first?.directed, true)
+        XCTAssertEqual(cards.last?.answer, "SwiftUI")
+
+        try await store.deleteCompanionCard(first.id)
+        let remaining = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(remaining.map(\.question), [second.question])
+    }
+
+    func testReplaceCompanionCardsTombstonesTheOldSnapshot() async throws {
+        try await store.save(meeting)
+        try await store.save(
+            [
+                CompanionCard(
+                    question: "vieja 1", answer: "a", kind: .knowledge, source: "on-device",
+                    askedAt: 10),
+                CompanionCard(
+                    question: "vieja 2", answer: "b", kind: .context, source: "on-device",
+                    askedAt: 20)
+            ], for: meeting.id)
+
+        // Refine re-derives a different set from the clean transcript.
+        try await store.replaceCompanionCards(
+            [
+                CompanionCard(
+                    question: "nueva", answer: "c", kind: .knowledge, source: "on-device",
+                    askedAt: 15)
+            ], for: meeting.id)
+
+        let cards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(cards.map(\.question), ["nueva"])  // the old snapshot is gone
+    }
 }

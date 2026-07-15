@@ -321,6 +321,16 @@
         }
       }
     },
+    "All system audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo el audio del sistema"
+          }
+        }
+      }
+    },
     "Allow": {
       "localizations": {
         "es": {
@@ -521,6 +531,16 @@
         }
       }
     },
+    "Automatic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático"
+          }
+        }
+      }
+    },
     "Automatically skip silence during playback": {
       "localizations": {
         "es": {
@@ -641,12 +661,22 @@
         }
       }
     },
-    "Capturing %@ directly so the call is recorded on AirPods.": {
+    "Capture the other side": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Capturando %@ directamente para grabar la llamada con AirPods."
+            "value": "Capturar el otro lado"
+          }
+        }
+      }
+    },
+    "Capturing %@ directly; unrelated app audio stays out.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturando %@ directamente; el audio de otras apps queda fuera."
           }
         }
       }
@@ -901,6 +931,16 @@
         }
       }
     },
+    "Copy answer": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar respuesta"
+          }
+        }
+      }
+    },
     "Copy answer with citations (Markdown)": {
       "localizations": {
         "es": {
@@ -1037,6 +1077,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo recordar la voz: %@"
+          }
+        }
+      }
+    },
+    "Could not remove the card.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo quitar la tarjeta."
           }
         }
       }
@@ -2361,6 +2411,16 @@
         }
       }
     },
+    "Mute your mic for Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Silenciar tu mic para Portavoz"
+          }
+        }
+      }
+    },
     "My voice": {
       "localizations": {
         "es": {
@@ -2951,6 +3011,16 @@
         }
       }
     },
+    "Re-checking the Companion's answers…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando las respuestas del Companion…"
+          }
+        }
+      }
+    },
     "Re-transcribe in English": {
       "localizations": {
         "es": {
@@ -3257,6 +3327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aviso · Atajo al terminar · plantilla de títulos"
+          }
+        }
+      }
+    },
+    "Remove card": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar tarjeta"
           }
         }
       }
@@ -3841,6 +3921,16 @@
         }
       }
     },
+    "System default": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Predeterminado del sistema"
+          }
+        }
+      }
+    },
     "System language · English/Spanish · menu bar": {
       "localizations": {
         "es": {
@@ -3911,6 +4001,16 @@
         }
       }
     },
+    "The meeting app": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La app de la reunión"
+          }
+        }
+      }
+    },
     "The other participants. macOS will ask on your first recording.": {
       "localizations": {
         "es": {
@@ -3957,6 +4057,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El transcript no prueba ningún nombre — puedes renombrar las etiquetas manualmente."
+          }
+        }
+      }
+    },
+    "The transcript was refined, but Companion cards could not be refreshed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Companion."
           }
         }
       }
@@ -4221,6 +4331,16 @@
         }
       }
     },
+    "Unavailable — using system default": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No disponible — usando el predeterminado del sistema"
+          }
+        }
+      }
+    },
     "Use default folder": {
       "localizations": {
         "es": {
@@ -4337,6 +4457,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bienvenido a Portavoz"
+          }
+        }
+      }
+    },
+    "What Portavoz records besides your mic. Automatic captures your system audio, switching to recognized meeting apps on AirPods. Pick “The meeting app” to always record recognized call apps (Zoom, Meet, Teams, supported browsers) even without AirPods; their audio helpers are included, unrelated apps are not. If none is found, Portavoz falls back to all system audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué graba Portavoz además de tu mic. Automático captura el audio del sistema y cambia a las apps de reunión reconocidas con AirPods. Elige “La app de la reunión” para grabar siempre apps de llamadas reconocidas (Zoom, Meet, Teams y navegadores compatibles), incluso sin AirPods; incluye sus procesos auxiliares de audio, pero no otras apps. Si no encuentra ninguna, Portavoz usa todo el audio del sistema."
           }
         }
       }
@@ -4461,6 +4591,16 @@
         }
       }
     },
+    "Your mic is muted for Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu mic está silenciado para Portavoz"
+          }
+        }
+      }
+    },
     "Your mirror": {
       "localizations": {
         "es": {
@@ -4537,6 +4677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "pendientes"
+          }
+        }
+      }
+    },
+    "asked you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "te preguntó"
           }
         }
       }
@@ -4641,12 +4791,32 @@
         }
       }
     },
+    "from this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de esta reunión"
+          }
+        }
+      }
+    },
     "interruptions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "interrupciones"
+          }
+        }
+      }
+    },
+    "knowledge · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conocimiento · %@"
           }
         }
       }

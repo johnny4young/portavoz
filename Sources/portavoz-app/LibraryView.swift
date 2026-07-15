@@ -429,6 +429,7 @@ extension LibraryView {
         }
         .listRowBackground(meetingRowBackground(selected))
         .tag(Route.meeting(meeting.id))
+        .accessibilityIdentifier("library-meeting-\(meeting.id.rawValue.uuidString)")
         .contextMenu {
             Button("Rename…") {
                 renamingMeeting = meeting

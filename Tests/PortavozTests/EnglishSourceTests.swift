@@ -66,6 +66,9 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("El equipo revisó")
                 || line.contains("Se revisará")
                 || line.contains("Cerremos con los próximos")
+                // Seeded Companion cards (D26) — Spanish demo Q&A.
+                || line.contains("¿Cuándo es el rollout")
+                || line.contains("te encargas del presupuesto")
         }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional
@@ -109,6 +112,12 @@ final class EnglishSourceTests: XCTestCase {
             line.contains("resumen sobre el presupuesto") {
             // Intentional Spanish few-shot example: titles must come out in
             // the summary's language, so the prompt shows both languages.
+            return true
+        }
+        if relative == "Sources/IntelligenceKit/ChapterTitler.swift",
+            line.contains("presupuesto de transcripción") {
+            // Intentional Spanish few-shot: chapter titles must come out in
+            // the transcript's language, so the prompt shows both.
             return true
         }
         if relative == "Sources/portavoz-cli/CLIAsk.swift", line.contains("qué") {

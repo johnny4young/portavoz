@@ -102,11 +102,17 @@ final class RefineService {
                         L10n.text("Re-transcribing your channel (Whisper)…"))
                     let result = try await whisper.transcribeFile(
                         at: microphoneURL, hints: hints, channel: .microphone)
+                    // Drop the stray letters / low-confidence fragments a
+                    // far-field mic emits when the user isn't speaking.
+                    let voiced = result.segments.filter {
+                        !TranscriptNoiseFilter.isLikelyNoise(
+                            text: $0.text, confidence: $0.confidence)
+                    }
                     // The mic hears the room through the speakers; whatever
                     // the system channel already says at the same instant is
                     // bleed, not the user (field bug: 52% fake "Me" talk).
                     segments.append(contentsOf: MicBleedFilter.filter(
-                        microphone: result.segments, system: segments))
+                        microphone: voiced, system: segments))
                 }
                 segments.sort { $0.startTime < $1.startTime }
 
