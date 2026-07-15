@@ -86,6 +86,101 @@ extension MeetingStore {
         }
     }
 
+    /// Replaces pending capture rows with filesystem evidence recovered after
+    /// the captured snapshot was already installed. Identity and ownership are
+    /// immutable, and repeating the exact recovery is a no-op.
+    public func installRecoveredCaptureAssets(
+        _ assets: [AudioAsset],
+        for meetingID: MeetingID,
+        at timestamp: Date = Date()
+    ) async throws {
+        guard !assets.isEmpty,
+            Set(assets.map(\.id)).count == assets.count,
+            Set(assets.map(\.channel)).count == assets.count
+        else {
+            throw StorageError.invalidRecordingReservation(
+                "recovery requires unique assets and channels")
+        }
+        let key = meetingID.rawValue.uuidString
+        try await database.write { db in
+            guard
+                let meetingRecord = try MeetingRecord
+                    .filter(Column("id") == key)
+                    .filter(Column("deletedAt") == nil)
+                    .fetchOne(db)
+            else { throw StorageError.meetingNotFound(meetingID) }
+            let meeting = try meetingRecord.meeting
+            let isCompletedCapture = meeting.lifecycleState == .captured
+                || meeting.lifecycleState == .processing
+                || meeting.lifecycleState == .needsAttention
+                || meeting.lifecycleState == .ready
+            guard isCompletedCapture,
+                let directory = meeting.audioDirectory
+            else {
+                throw StorageError.invalidRecordingReservation(
+                    "only a completed live capture can reconcile recovered assets")
+            }
+            try StoredAudioPath.validate(directory)
+            for asset in assets {
+                try Self.installRecoveredAsset(
+                    asset,
+                    meetingID: meetingID,
+                    directory: directory,
+                    timestamp: timestamp,
+                    allowPendingUpdate: meeting.lifecycleState != .ready,
+                    in: db)
+            }
+            try Self.reconcileLifecycleAfterCaptureRecovery(
+                meetingID, timestamp: timestamp, in: db)
+        }
+    }
+
+    /// Repeat-safe lifecycle transition used when launch recovery cannot
+    /// resume work automatically. Only incomplete live aggregates may move to
+    /// `needsAttention`; a ready meeting is never downgraded by a stale scan.
+    @discardableResult
+    public func markMeetingNeedsAttention(
+        _ meetingID: MeetingID,
+        errorCode: String,
+        endedAt: Date? = nil,
+        at timestamp: Date = Date()
+    ) async throws -> Meeting {
+        guard Self.isCanonicalRecoveryCode(errorCode) else {
+            throw StorageError.invalidRecordingReservation(
+                "recovery error code must be canonical and non-empty")
+        }
+        let key = meetingID.rawValue.uuidString
+        return try await database.write { db in
+            guard var record = try MeetingRecord
+                .filter(Column("id") == key)
+                .filter(Column("deletedAt") == nil)
+                .fetchOne(db)
+            else { throw StorageError.meetingNotFound(meetingID) }
+            guard record.lifecycleState == MeetingLifecycleState.recording.rawValue
+                || record.lifecycleState == MeetingLifecycleState.captured.rawValue
+                || record.lifecycleState == MeetingLifecycleState.processing.rawValue
+                || record.lifecycleState == MeetingLifecycleState.needsAttention.rawValue
+            else {
+                throw StorageError.invalidRecordingReservation(
+                    "a ready meeting cannot be downgraded by launch recovery")
+            }
+            if record.lifecycleState == MeetingLifecycleState.recording.rawValue {
+                let recoveredEnd = max(endedAt ?? record.startedAt, record.startedAt)
+                record.endedAt = record.endedAt ?? recoveredEnd
+            }
+            let alreadyMarked =
+                record.lifecycleState == MeetingLifecycleState.needsAttention.rawValue
+                && record.lastProcessingError == errorCode
+            if !alreadyMarked {
+                record.lifecycleState = MeetingLifecycleState.needsAttention.rawValue
+                record.lastProcessingError = errorCode
+                record.updatedAt = timestamp
+                try record.update(db)
+            }
+            return try record.meeting
+        }
+    }
+
     /// Rolls back a reservation that never became a user meeting. Hard delete
     /// is intentionally limited to a `recording` shell with no persisted user
     /// or generated content; normal meetings continue to use tombstones (D4).
@@ -192,11 +287,17 @@ extension MeetingStore {
             record.deletedAt == nil
         else { throw StorageError.meetingNotFound(snapshot.meeting.id) }
         let meeting = try record.meeting
-        guard meeting.lifecycleState == .recording,
-            meeting.endedAt == nil,
+        let isUntouchedRecording = meeting.lifecycleState == .recording
+            && meeting.lastProcessingError == nil
+        let isInterruptedRecording = meeting.lifecycleState == .needsAttention
+            && meeting.lastProcessingError?.hasPrefix("capture.") == true
+        let completionMatches = isUntouchedRecording
+            ? meeting.endedAt == nil
+            : snapshot.meeting.endedAt != nil
+        guard isUntouchedRecording || isInterruptedRecording,
+            completionMatches,
             meeting.language == nil,
             meeting.transcriptRevision == 0,
-            meeting.lastProcessingError == nil,
             meeting.title == snapshot.meeting.title,
             meeting.startedAt == snapshot.meeting.startedAt,
             meeting.audioDirectory == snapshot.meeting.audioDirectory,
@@ -307,11 +408,15 @@ extension MeetingStore {
         _ snapshot: CapturedMeetingSnapshot
     ) throws {
         let meeting = snapshot.meeting
-        guard meeting.lifecycleState == .captured,
+        let isCaptured = meeting.lifecycleState == .captured
+            && meeting.lastProcessingError == nil
+        let isRecovered = meeting.lifecycleState == .needsAttention
+            && (meeting.lastProcessingError == "transcription.empty"
+                || meeting.lastProcessingError?.hasPrefix("capture.") == true)
+        guard isCaptured || isRecovered,
             let endedAt = meeting.endedAt,
             endedAt >= meeting.startedAt,
             meeting.transcriptRevision == 0,
-            meeting.lastProcessingError == nil,
             let directory = meeting.audioDirectory
         else {
             throw StorageError.invalidRecordingReservation(
@@ -411,5 +516,158 @@ extension MeetingStore {
 
     private static func isPublished(_ health: AudioAssetHealthStatus) -> Bool {
         health == .healthy || health == .silent || health == .clipped
+    }
+
+    private static func installRecoveredAsset(
+        _ asset: AudioAsset,
+        meetingID: MeetingID,
+        directory: String,
+        timestamp: Date,
+        allowPendingUpdate: Bool,
+        in db: Database
+    ) throws {
+        try StoredAudioPath.validate(asset.relativePath)
+        guard asset.meetingID == meetingID,
+            asset.role == .capture,
+            asset.sourceAssetID == nil,
+            asset.supersededAt == nil,
+            asset.deletedAt == nil
+        else {
+            throw StorageError.invalidRecordingReservation(
+                "recovered assets must preserve capture ownership")
+        }
+        if isPublished(asset.healthStatus) {
+            try validatePublished(asset, directory: directory)
+        } else {
+            try validateRecoveredMissing(asset, directory: directory)
+        }
+
+        let assetKey = asset.id.rawValue.uuidString
+        guard var stored = try AudioAssetRecord.fetchOne(db, key: assetKey),
+            stored.meetingID == meetingID.rawValue.uuidString,
+            stored.channel == asset.channel.rawValue,
+            stored.role == AudioAssetRole.capture.rawValue,
+            stored.createdAt == asset.createdAt,
+            stored.deletedAt == nil
+        else {
+            throw StorageError.invalidRecordingReservation(
+                "recovered asset does not match its persisted identity")
+        }
+        if stored.healthStatus != AudioAssetHealthStatus.pending.rawValue {
+            guard try recoveryEvidenceMatches(stored, asset: asset) else {
+                throw StorageError.invalidRecordingReservation(
+                    "recovery cannot replace finalized asset evidence")
+            }
+            return
+        }
+        guard allowPendingUpdate else {
+            throw StorageError.invalidRecordingReservation(
+                "recovery cannot mutate pending evidence on a ready meeting")
+        }
+        guard stored.relativePath == AudioCapturePath.stagingRelativePath(
+            directory: directory, channel: asset.channel),
+            stored.container == nil,
+            stored.codec == nil,
+            stored.sampleRate == nil,
+            stored.channelCount == nil,
+            stored.durationSeconds == nil,
+            stored.byteCount == nil,
+            stored.sha256 == nil,
+            stored.peakDBFS == nil,
+            stored.rmsDBFS == nil,
+            stored.sourceAssetID == nil,
+            stored.supersededAt == nil
+        else {
+            throw StorageError.invalidRecordingReservation(
+                "only an intact pending reservation can be recovered")
+        }
+        stored = AudioAssetRecord(asset)
+        stored.updatedAt = timestamp
+        try stored.update(db)
+    }
+
+    private static func validateRecoveredMissing(
+        _ asset: AudioAsset,
+        directory: String
+    ) throws {
+        guard asset.healthStatus == .missing,
+            asset.relativePath == AudioCapturePath.stagingRelativePath(
+                directory: directory, channel: asset.channel),
+            asset.container == nil,
+            asset.codec == nil,
+            asset.sampleRate == nil,
+            asset.channelCount == nil,
+            asset.durationSeconds == nil,
+            asset.byteCount == nil,
+            asset.sha256 == nil,
+            asset.peakDBFS == nil,
+            asset.rmsDBFS == nil
+        else {
+            throw StorageError.invalidRecordingReservation(
+                "a recovered missing asset must remain metadata-free")
+        }
+    }
+
+    private static func recoveryEvidenceMatches(
+        _ stored: AudioAssetRecord,
+        asset: AudioAsset
+    ) throws -> Bool {
+        let persisted = try stored.asset
+        return persisted.id == asset.id
+            && persisted.meetingID == asset.meetingID
+            && persisted.channel == asset.channel
+            && persisted.role == asset.role
+            && persisted.relativePath == asset.relativePath
+            && persisted.container == asset.container
+            && persisted.codec == asset.codec
+            && persisted.sampleRate == asset.sampleRate
+            && persisted.channelCount == asset.channelCount
+            && persisted.durationSeconds == asset.durationSeconds
+            && persisted.byteCount == asset.byteCount
+            && persisted.sha256 == asset.sha256
+            && persisted.healthStatus == asset.healthStatus
+            && persisted.peakDBFS == asset.peakDBFS
+            && persisted.rmsDBFS == asset.rmsDBFS
+            && persisted.sourceAssetID == asset.sourceAssetID
+            && persisted.createdAt == asset.createdAt
+            && persisted.supersededAt == asset.supersededAt
+            && persisted.deletedAt == asset.deletedAt
+    }
+
+    private static func isCanonicalRecoveryCode(_ value: String) -> Bool {
+        let isKnown = value.hasPrefix("capture.")
+            || value == "transcription.empty"
+            || value == "processing.interrupted"
+        return isKnown
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func reconcileLifecycleAfterCaptureRecovery(
+        _ meetingID: MeetingID,
+        timestamp: Date,
+        in db: Database
+    ) throws {
+        let key = meetingID.rawValue.uuidString
+        guard var meeting = try MeetingRecord.fetchOne(db, key: key),
+            meeting.lifecycleState == MeetingLifecycleState.needsAttention.rawValue,
+            meeting.lastProcessingError == "capture.publication.failed"
+        else { return }
+        let pendingCount = try AudioAssetRecord
+            .filter(Column("meetingID") == key)
+            .filter(Column("deletedAt") == nil)
+            .filter(Column("healthStatus") == AudioAssetHealthStatus.pending.rawValue)
+            .fetchCount(db)
+        let segmentCount = try SegmentRecord
+            .filter(Column("meetingID") == key)
+            .filter(Column("deletedAt") == nil)
+            .fetchCount(db)
+        let jobCount = try ProcessingJobRecord
+            .filter(Column("meetingID") == key)
+            .fetchCount(db)
+        guard pendingCount == 0, segmentCount > 0, jobCount == 0 else { return }
+        meeting.lifecycleState = MeetingLifecycleState.ready.rawValue
+        meeting.lastProcessingError = nil
+        meeting.updatedAt = timestamp
+        try meeting.update(db)
     }
 }

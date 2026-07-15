@@ -191,6 +191,52 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(clipped.peakDBFS, 0, accuracy: 0.001)
         XCTAssertEqual(clipped.rmsDBFS, 0, accuracy: 0.001)
     }
+
+    func testCrashRecoveryMeasuresPersistedPCMAndPublishesWithoutMemoryState() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stagingURL = directory.appendingPathComponent(
+            AudioCapturePath.stagingFilename(for: .microphone))
+        let finalURL = directory.appendingPathComponent(
+            AudioCapturePath.publishedFilename(for: .microphone))
+        try autoreleasepool {
+            let writer = try CaptureFileWriter(url: stagingURL, sampleRate: 48_000)
+            try writer.append([Float](repeating: 0.25, count: 4_800))
+        }
+
+        let recovered = try CaptureFileRecovery.publish(
+            stagingURL: stagingURL, finalURL: finalURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagingURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: finalURL.path))
+        XCTAssertEqual(recovered.healthStatus, .healthy)
+        XCTAssertEqual(recovered.durationSeconds, 0.1, accuracy: 0.0001)
+        XCTAssertEqual(recovered.peakDBFS, -12.041, accuracy: 0.02)
+        XCTAssertEqual(recovered.rmsDBFS, -12.041, accuracy: 0.02)
+
+        let revalidated = try CaptureFileRecovery.inspectPublishedFile(at: finalURL)
+        XCTAssertEqual(revalidated.sha256, recovered.sha256)
+        XCTAssertEqual(revalidated.byteCount, recovered.byteCount)
+        XCTAssertEqual(revalidated.peakDBFS, recovered.peakDBFS, accuracy: 0.0001)
+        XCTAssertEqual(revalidated.rmsDBFS, recovered.rmsDBFS, accuracy: 0.0001)
+
+        let floatURL = directory.appendingPathComponent("float.caf")
+        try autoreleasepool {
+            let format = try XCTUnwrap(AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: 16_000,
+                channels: 1,
+                interleaved: false))
+            let writer = try AVAudioFile(forWriting: floatURL, settings: format.settings)
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(
+                pcmFormat: format, frameCapacity: 1_600))
+            buffer.frameLength = 1_600
+            for index in 0..<1_600 { buffer.floatChannelData?[0][index] = 0.25 }
+            try writer.write(from: buffer)
+        }
+        XCTAssertThrowsError(try CaptureFileRecovery.inspectPublishedFile(at: floatURL))
+    }
 }
 
 private enum FakeCaptureError: Error {

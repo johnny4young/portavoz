@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no Xcode project), D23 (packaging), D10 (distribution).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery).
 
 ## Structure
 
@@ -82,12 +82,17 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
    `needsAttention` rather than being deleted. A publication collision keeps
    its staging file and also becomes `needsAttention` for launch recovery.
 
-Band 1 slice 1D-a deliberately does not change this released app path:
-StorageKit now provides the typed idempotent/leased queue and repeat-safe
-expired-lease primitive (D39), but `RecordingController` still performs the
-post-capture work synchronously and saves lifecycle directly. App worker
-adoption plus launch reconciliation of interrupted meeting/staging state are
-the next independent slice.
+The released normal Stop path remains synchronous after Band 1 slice 1D-b1:
+`RecordingController` still performs post-capture work and saves lifecycle
+directly. Process launch now creates `RecordingRecoveryCoordinator` outside
+the view hierarchy. It recovers expired leases, scans non-ready meetings in
+the configured and fallback recordings roots, revalidates staging-only or
+final-only CAF evidence off the main actor, and commits recovered assets and
+lifecycle through StorageKit. Missing files are explicit; staging plus final
+or duplicate-root evidence is preserved as `capture.recovery.ambiguous`
+without overwrite or deletion. The pass skips benchmark launches, defers while
+the live recording pipeline is active, and invokes no ML. Concrete durable job
+producers/workers remain slice 1D-b2 (D39/D40).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
 - **Refine (D7/D35 in-app)**: re-transcribe both channels with Whisper (+vocabulary). `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither the app UI nor summary language is ever a transcript fallback. Refine then re-diarizes (merge micro-clusters) and presents a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) — **nothing is applied without "Aplicar"** (a faulty refine replaced a real meeting; draft flow and tombstones are double defense). On apply, the app replaces `Meeting.language` with the homogeneous language recomputed from refined segments, including `nil` for mixed/unknown output, then calls `replaceCast` and regenerates the summary under its independent policy. **Runs in `RefineService` (Jul 2026), keyed by MeetingID and OUTSIDE view hierarchy**: switching meetings does not lose a draft (the view is recreated with `.id(id)`; previously the Task kept burning ANE and the sheet was lost) — the draft waits for that meeting to be visited again; one refine runs at a time; `MicBleedFilter` discards room echo from the microphone channel. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
@@ -106,4 +111,4 @@ the next independent slice.
 
 ## UI verification — XCUITest first (Jul 12)
 
-`make test-ui` (XcodeGen → Portavoz.xcodeproj → xcodebuild test) runs 15 XCUITest in `Tests/PortavozUITests`: Library (record button + chips + time grouping), Insights (heatmap + interlocutors), Onboarding (first listen + advance), MeetingDetail (summary tabs reveal ▸, right rail health+chapters, player skip+only-my-voice, clip export), Settings (all categories, independent transcript/summary language controls, custom structures, capture controls, mirror and live language switch via ⌘,). Seed-demo includes 3rd segment at 200s (mic channel) so there are 2 chapters and solo-audio. Convention: ALL new interactive controls carry `accessibilityIdentifier` (`area-cosa`: settings-category-intelligence, settings-summary-language, summary-tab-N, chapter-<seg>, player-only-my-voice, settings-export-all-button) + assertion in corresponding `*UITests.swift`. computer-use last resort. **Real bug caught by XCUITest (not computer-use)**: `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and CRASHED when a voice segment starts after audio duration (transcript timestamp > shorter recording) — fix: clamp with compactMap before forming range (+ test).
+`make test-ui` (XcodeGen → Portavoz.xcodeproj → xcodebuild test) runs 16 XCUITest in `Tests/PortavozUITests`: Library (record button + chips + time grouping + interrupted staging recovery), Insights (heatmap + interlocutors), Onboarding (first listen + advance), MeetingDetail (summary tabs reveal ▸, right rail health+chapters, player skip+only-my-voice, clip export), Settings (all categories, independent transcript/summary language controls, custom structures, capture controls, mirror and live language switch via ⌘,). Every launch receives a unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so neither SQLite nor audio can touch the user's library. `-seed-recovery` is accepted only with the temp store and creates one interrupted staging CAF; the test proves launch recovery makes it visible and playable. Seed-demo includes 3rd segment at 200s (mic channel) so there are 2 chapters and solo-audio. Convention: ALL new interactive controls carry `accessibilityIdentifier` (`area-cosa`: settings-category-intelligence, settings-summary-language, summary-tab-N, chapter-<seg>, player-only-my-voice, settings-export-all-button) + assertion in corresponding `*UITests.swift`. computer-use last resort. **Real bug caught by XCUITest (not computer-use)**: `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and CRASHED when a voice segment starts after audio duration (transcript timestamp > shorter recording) — fix: clamp with compactMap before forming range (+ test).

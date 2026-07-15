@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery).
 
 ## Database
 
@@ -58,10 +58,23 @@ heartbeat/success/failure write requires the same unexpired owner lease.
 Progress is monotonic, retry delay is durable in `notBefore`, and repeat-safe
 expired-lease recovery either returns work to pending or exhausts it. Active
 jobs keep the meeting `processing`; after active work ends, failure yields
-`needsAttention` and otherwise terminal work yields `ready`. The app does not
-enqueue or execute this queue yet, and launch reconciliation of meeting/staging
-state remains slice 1D-b. Generation runs, outbox events, and per-meeting
-preferences are also not consumed yet.
+`needsAttention` and otherwise terminal work yields `ready`.
+
+Slice 1D-b1 adds `installRecoveredCaptureAssets`, a repeat-safe transaction
+for the filesystem/SQLite Saga. It replaces the exact pending reservation set
+with fully validated published/missing evidence, preserves immutable asset
+identity and ownership, rolls the entire update back on any conflict, and
+allows an exact finalized repeat as a no-op. An interrupted `capture.*`
+`needsAttention` shell can install the recovered captured snapshot directly;
+an already-ready meeting can validate exact evidence but cannot be downgraded
+or mutated. Publication-only recovery returns an aggregate with existing
+transcript content and no jobs to `ready`; usable audio without transcript is
+retained as `needsAttention` with `transcription.empty`.
+`markMeetingNeedsAttention` is repeat-safe and accepts only incomplete live
+states. The app invokes expired-lease recovery and these boundaries at process
+launch, but it still does not enqueue or execute concrete queue workers.
+Generation runs, outbox events, and per-meeting preferences are also not
+consumed yet.
 
 The migration is verified both by a deterministic v5 fixture and by migrating
 a scratch copy of the real release database: legacy logical rows and meeting
@@ -101,7 +114,11 @@ reservations), `audioAssets(for:)` (strict, live-rooted read), and
 `installCapturedSnapshot(_:)` is the D38 Unit of Work for the first durable
 post-capture projection; it accepts only an untouched `recording` shell with
 the exact pending reservation set and at least one published healthy, silent,
-or clipped channel.
+or clipped channel. Recovery uses
+`installRecoveredCaptureAssets(_:for:at:)`, the same captured Unit of Work for
+an interrupted `capture.*` shell, and
+`markMeetingNeedsAttention(_:errorCode:endedAt:at:)`; these operations protect
+ready aggregates and are exact-repeat safe (D40).
 
 Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `processingJobs(for:)`, `claimNextProcessingJob(kinds:owner:leaseDuration:at:)`,
@@ -147,7 +164,8 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
    semantic-search budgets are planned in the refactor program.
 5. The durable job queue is not yet the app's post-capture execution path;
-   launch recovery and concrete workers remain Band 1 slice 1D-b.
+   concrete producers/workers and artifact-plus-job completion remain Band 1
+   slice 1D-b2. Process-launch capture and lease recovery shipped in 1D-b1.
 
 ## Trash (Jul 2026)
 

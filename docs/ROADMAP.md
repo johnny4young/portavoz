@@ -6,15 +6,27 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement Band 1 slice 1D-b of the approved
+**Next concrete step:** implement Band 1 slice 1D-b2 of the approved
 architecture-hardening program in
-[refactor-20260714.md](refactor-20260714.md): make the app enqueue/execute the
-new durable jobs and reconcile interrupted `recording`/`processing` meetings,
-expired leases, and staging files on launch. Band 0 is complete and Band 1
-slices 1A/1B/1C/1D-a are complete. Every slice
+[refactor-20260714.md](refactor-20260714.md): make the app enqueue/execute
+concrete durable post-capture jobs and commit each generated artifact with its
+job outcome through one StorageKit Unit of Work. Band 0 is complete and Band 1
+slices 1A/1B/1C/1D-a/1D-b1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39).
+commit (D33/D34/D36/D37/D38/D39/D40).
+
+- **Architecture Band 1 slice 1D-b1 complete (Jul 15, 2026)**: a process-level
+  `RecordingRecoveryCoordinator` now recovers expired leases and reconciles
+  interrupted capture state before any view is required. It scans the current
+  and fallback audio roots, remeasures persisted PCM off the main actor,
+  publishes staging-only CAFs, revalidates final-only CAFs, records missing
+  channels explicitly, and preserves ambiguous copies without overwrite or
+  deletion. A repeat-safe StorageKit Unit of Work protects ready meetings and
+  installs recovered evidence atomically (D40). Three focused package tests
+  bring the baseline to 435, and a new disposable XCUITest proves a recovered
+  meeting is visible and playable. The launch pass invokes no ML; slice 1D-b2
+  owns concrete durable job producers/workers.
 
 - **Architecture Band 1 slice 1D-a complete (Jul 15, 2026)**: the schema-v6
   job row now has strict `PortavozCore` domain types and a StorageKit queue.
@@ -23,7 +35,8 @@ commit (D33/D34/D36/D37/D38/D39).
   leases, progress is monotonic, retries use `notBefore`, and terminal/expired
   work derives the meeting lifecycle repeat-safely (D39). Seven focused tests
   bring the package baseline to 432. The released synchronous post-capture
-  path remains unchanged; slice 1D-b owns app adoption and launch recovery.
+  path remains unchanged; slice 1D-b1 subsequently added launch recovery and
+  slice 1D-b2 owns app queue adoption.
 
 - **Architecture Band 1 slice 1C complete (Jul 15, 2026)**: channels now write
   to `<channel>.partial.caf`, then Stop validates a readable non-empty mono
@@ -34,7 +47,7 @@ commit (D33/D34/D36/D37/D38/D39).
   cast/transcript/notes/Companion cards before derived processing. Atomic
   collision/rollback, signal-classification, metadata, and untouched-shell
   tests brought the package baseline to 425 tests. Slice 1D-a subsequently
-  added the durable queue contract; launch recovery remains in 1D-b.
+  added the durable queue contract and slice 1D-b1 added launch recovery.
 
 - **Architecture Band 1 slice 1B complete (Jul 15, 2026)**: every new live
   recording now atomically persists a `recording` meeting shell and one typed

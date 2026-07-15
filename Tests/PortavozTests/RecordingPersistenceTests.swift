@@ -421,4 +421,126 @@ final class RecordingPersistenceTests: XCTestCase {
         XCTAssertEqual(touchedAssets.map(\.healthStatus), [.pending])
         XCTAssertEqual(touchedAssets.map(\.relativePath), [touchedReservation.relativePath])
     }
+
+    func testRecoveredCaptureAssetsCommitAtomicallyAndRepeatSafely() async throws {
+        let store = try MeetingStore.inMemory()
+        var meeting = shell()
+        let reservations = assets(for: meeting, channels: [.microphone, .system])
+        let capturedAssets = [published(reservations[0]), reservations[1]]
+        meeting.endedAt = meeting.startedAt.addingTimeInterval(2)
+        let capturedAt = try XCTUnwrap(meeting.endedAt)
+        meeting.lifecycleState = .captured
+        try await store.beginRecording(shell(id: meeting.id), assets: reservations)
+        try await store.installCapturedSnapshot(CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: capturedAssets,
+            speakers: [],
+            segments: [],
+            contextItems: [],
+            companionCards: []))
+        try await store.save([
+            TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .microphone,
+                text: "Recovered publication must preserve this transcript.",
+                startTime: 0,
+                endTime: 2,
+                isFinal: true)
+        ])
+        meeting.lifecycleState = .needsAttention
+        meeting.lastProcessingError = "capture.publication.failed"
+        try await store.save(meeting)
+
+        var recoveredSystem = reservations[1]
+        recoveredSystem.healthStatus = .missing
+        recoveredSystem.updatedAt = capturedAt.addingTimeInterval(1)
+        var conflictingMicrophone = capturedAssets[0]
+        conflictingMicrophone.sha256 = String(repeating: "b", count: 64)
+        do {
+            try await store.installRecoveredCaptureAssets(
+                [recoveredSystem, conflictingMicrophone],
+                for: meeting.id,
+                at: capturedAt.addingTimeInterval(1))
+            XCTFail("a conflicting finalized asset must roll back every recovered row")
+        } catch {
+            guard case StorageError.invalidRecordingReservation = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+        var stored = try await store.audioAssets(for: meeting.id)
+        XCTAssertEqual(stored.map(\.healthStatus), [.healthy, .pending])
+        let failedDetail = try await store.detail(meeting.id)
+        XCTAssertEqual(failedDetail?.meeting.lifecycleState, .needsAttention)
+
+        try await store.installRecoveredCaptureAssets(
+            [recoveredSystem, capturedAssets[0]],
+            for: meeting.id,
+            at: capturedAt.addingTimeInterval(2))
+        try await store.installRecoveredCaptureAssets(
+            [recoveredSystem, capturedAssets[0]],
+            for: meeting.id,
+            at: capturedAt.addingTimeInterval(3))
+        stored = try await store.audioAssets(for: meeting.id)
+        XCTAssertEqual(stored.map(\.healthStatus), [.healthy, .missing])
+        XCTAssertNil(stored[1].sha256)
+        let recoveredDetail = try await store.detail(meeting.id)
+        XCTAssertEqual(recoveredDetail?.meeting.lifecycleState, .ready)
+        XCTAssertNil(recoveredDetail?.meeting.lastProcessingError)
+    }
+
+    func testInterruptedShellInstallsRecoveredSnapshotDirectlyIntoAttention() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = shell()
+        let reservation = assets(for: meeting, channels: [.microphone])[0]
+        try await store.beginRecording(meeting, assets: [reservation])
+        let interruptedEnd = meeting.startedAt.addingTimeInterval(2)
+        let interrupted = try await store.markMeetingNeedsAttention(
+            meeting.id,
+            errorCode: "capture.publication.failed",
+            endedAt: interruptedEnd,
+            at: interruptedEnd)
+
+        var recovered = interrupted
+        recovered.lifecycleState = .needsAttention
+        recovered.lastProcessingError = "transcription.empty"
+        try await store.installCapturedSnapshot(CapturedMeetingSnapshot(
+            meeting: recovered,
+            assets: [published(reservation)],
+            speakers: [],
+            segments: [],
+            contextItems: [],
+            companionCards: []))
+
+        let loaded = try await store.detail(meeting.id)
+        let detail = try XCTUnwrap(loaded)
+        XCTAssertEqual(detail.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(detail.meeting.endedAt, interruptedEnd)
+        XCTAssertEqual(detail.meeting.lastProcessingError, "transcription.empty")
+        let storedAssets = try await store.audioAssets(for: meeting.id)
+        XCTAssertEqual(storedAssets.map(\.healthStatus), [.healthy])
+
+        do {
+            _ = try await store.markMeetingNeedsAttention(
+                meeting.id, errorCode: "arbitrary caller text")
+            XCTFail("recovery errors must use stable machine-readable codes")
+        } catch {
+            guard case StorageError.invalidRecordingReservation = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+
+        var ready = detail.meeting
+        ready.lifecycleState = .ready
+        ready.lastProcessingError = nil
+        try await store.save(ready)
+        do {
+            _ = try await store.markMeetingNeedsAttention(
+                meeting.id, errorCode: "processing.interrupted")
+            XCTFail("launch recovery must not downgrade a ready meeting")
+        } catch {
+            guard case StorageError.invalidRecordingReservation = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+    }
 }

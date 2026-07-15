@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery).
 
 ## Channel model (D5)
 
@@ -53,6 +53,15 @@ paths, then one same-directory rename publishes `<channel>.caf`. Missing
 channels stay metadata-free; a staging file that could not publish remains for
 recovery.
 
+At process launch, `RecordingRecoveryCoordinator` scans pending assets in both
+the configured recordings root and the default fallback. Staging-only CAFs are
+reopened, remeasured from persisted PCM, hashed, classified, and published;
+final-only CAFs receive the same full validation. File inspection runs off the
+main actor because meeting-length hashing and signal measurement must not block
+launch. Missing files remain explicit missing evidence. Staging plus final, or
+duplicate candidates across roots, is `capture.recovery.ambiguous`: every copy
+is preserved and Portavoz neither overwrites nor guesses (D40).
+
 The controller installs `captured`, finalized/missing assets, provisional live
 cast/transcript, notes, and Companion cards in one StorageKit Unit of Work
 before diarization or summary work, then records `processing` and finally
@@ -61,7 +70,7 @@ with no captions is retained as `needsAttention`; a later required-write
 failure does the same. `stop` schedules engine release with `defer`, even when
 there was not enough audio to keep.
 
-`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers for older meetings (.wav) continue to work through `MeetingAudioLayout.channelFile` (prefers .caf, falls back to .wav). `verify_drift.py` converts CAF with afconvert.
+`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 
 ## Verified synchronization (M1)
 
@@ -82,8 +91,9 @@ there was not enough audio to keep.
 
 ## Planned (not implemented)
 
-Band 1 slice 1D adds launch reconciliation for interrupted `recording` and
-`processing` meetings, pending staging files, and idempotent durable jobs.
+Band 1 slice 1D-b2 adopts concrete durable jobs for post-capture
+transcription, diarization, and generated artifacts. Launch reconciliation for
+interrupted capture assets and meetings is implemented in slice 1D-b1.
 
 Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).

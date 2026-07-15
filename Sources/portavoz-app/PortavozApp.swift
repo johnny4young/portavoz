@@ -23,6 +23,12 @@ struct PortavozApp: App {
         // from a script) may never mount the window, and the T4 RAM bench
         // must still run.
         BenchMode.runRecordBenchIfRequested(services: services, recording: services.recording)
+        // Recovery belongs to process launch, not a window: interrupted audio
+        // and expired leases are reconciled even when only the menu bar opens.
+        let appServices = services
+        Task { @MainActor in
+            await RecordingRecoveryCoordinator.runIfNeeded(services: appServices)
+        }
         // Global feature, not a window feature: ⌥⌘D must work even with
         // the library window closed.
         services.dictation.syncHotkey(services: services)

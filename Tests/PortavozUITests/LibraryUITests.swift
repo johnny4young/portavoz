@@ -42,4 +42,26 @@ final class LibraryUITests: XCTestCase {
             app.staticTexts["Earlier"].exists || app.staticTexts["Antes"].exists,
             "an old meeting must sit under the Earlier bucket")
     }
+
+    @MainActor
+    func testLaunchRecoversInterruptedStagingAudio() {
+        let app = XCUIApplication.portavoz(seedRecovery: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.staticTexts["Recovered recording"].firstMatch.waitForExistence(timeout: 15),
+            "launch recovery must return interrupted audio to the library")
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(meeting.waitForExistence(timeout: 5))
+        meeting.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "player-play-pause").waitForExistence(timeout: 10),
+            "the recovered CAF must be playable without loading an ML model")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-refine").exists,
+            "the recovered meeting must retain its explicit transcript recovery action")
+    }
 }

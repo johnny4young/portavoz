@@ -435,11 +435,53 @@ work keeps `processing`; after active work ends, any failed job yields
 `ready`. Producers therefore enqueue only operations whose requested outcome
 should participate in the meeting lifecycle. Slice 1D-a implements this Core
 and StorageKit contract while retaining the released synchronous
-`RecordingController` path. Slice 1D-b owns concrete app enqueue/execution and
-launch reconciliation of meetings, leases, and staging files.
+`RecordingController` path. Slice 1D-b1 owns launch reconciliation of meetings,
+leases, and staging files; slice 1D-b2 owns concrete app enqueue/execution.
 
 **Rationale:** immutable operation identity makes retries idempotent, leases
 fence stale workers, and deriving aggregate state in StorageKit prevents UI or
 workflow callers from inventing conflicting lifecycle truth. Separating queue
 correctness from app adoption preserves a small, independently reversible
 Strangler slice.
+
+## D40 — Launch recovery prefers persisted evidence over guesses (Jul 2026)
+
+**Context:** SQLite and captured audio cannot share one transaction. A process
+or machine can stop after a staging CAF was closed, after it was published, or
+after only some channel rows were finalized. On the next launch, both the
+configured recordings root and the default fallback may contain evidence, and
+the peak/RMS values held in memory during capture no longer exist. Treating one
+path as authoritative without inspecting every candidate risks overwriting or
+deleting the only usable copy.
+
+**Decision:** `RecordingRecoveryCoordinator` runs from app composition at
+process launch, never from a view. It skips benchmark launches and defers while
+`RecordingController` is preparing, recording, or processing so it cannot race
+an active writer. The pass first recovers expired job leases, then scans every
+non-ready meeting and pending asset across the configured and default roots.
+
+Evidence precedence is conservative and repeat-safe:
+
+- staging only: reopen the CAF, reread persisted PCM, reconstruct media,
+  duration, size, SHA-256, finite peak/RMS dBFS, and health, then publish by the
+  same no-overwrite rename used by normal Stop;
+- final only: perform the same full validation without renaming;
+- no candidate: install an explicit missing asset state;
+- staging plus final, or duplicate candidates across roots: preserve every file
+  and mark `capture.recovery.ambiguous`; never overwrite, delete, or choose one.
+
+File inspection and hashing run off the main actor. One StorageKit Unit of Work
+installs the complete recovered asset set, preserves immutable asset identity
+and ownership, accepts an interrupted `capture.*` shell, and is an exact-repeat
+no-op. It may not downgrade or mutate an already-ready meeting. A usable
+interrupted recording without transcript becomes `needsAttention` with
+`transcription.empty`; a publication-only error may return to `ready` when the
+aggregate already has transcript content and no active jobs. Slice 1D-b1 runs
+no transcription, diarization, or summary engine; concrete durable producers
+and workers remain slice 1D-b2.
+
+**Rationale:** recovery has incomplete intent but durable evidence. Explicit
+precedence, off-main remeasurement, and conservative ambiguity handling make
+the filesystem/SQLite Saga safe after arbitrary termination while preserving
+audio and keeping launch responsive. Separating reconciliation from ML worker
+adoption keeps the Strangler step independently testable and reversible.
