@@ -16,15 +16,19 @@ Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Acce
 DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` for UI downloads; `libraryVersion` invalidates lists/detail (views reload with `.task(id:)`).
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
-Sendable async `ApplicationUseCase<Request, Response>` contract and now admits
+Sendable async `ApplicationUseCase<Request, Response>` contract and admits
 StorageKit for its first characterized workflows: `DeleteMeeting` and
 `RestoreMeeting` over a narrow `MeetingLifecycleStore` port. `AppServices`
 composes both with the real MeetingStore; Library, Meeting Detail, and
 Recently Deleted call them instead of writing lifecycle state through the
 store. Manual and launch-time purge also use ApplicationKit, coordinating a
 pure storage projection with the private app `MeetingAudioFiles` adapter over
-RecordingsLocation/FileManager. Other workflows still coordinate capabilities
-directly until their own Band 2 slices are characterized and adopted (D44).
+RecordingsLocation/FileManager. Slice 2D admits IntelligenceKit only with
+`RegenerateSummary`: AppServices composes storage, glossary-preference, and
+provider-resolution adapters; Meeting Detail submits one request and maps the
+typed completion/cache/unavailability/failure result. Import, refine, and
+remaining recording workflows still coordinate capabilities directly until
+their own Band 2 slices are characterized and adopted (D44).
 
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and `importMeeting` reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 

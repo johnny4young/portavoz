@@ -656,3 +656,20 @@ Storage failure still propagates to the existing best-effort presentation
 boundary. Expiry receives an explicit cutoff, keeps the released strict
 `deletedAt < cutoff` rule, continues after one damaged entry, and returns its
 attempt count so `libraryVersion` retains the previous net change.
+
+**Third vertical slice (slice 2D):** `ApplicationKit` now admits
+IntelligenceKit only with `RegenerateSummary`. The use case coordinates a
+narrow summary store, app-owned glossary preferences, and a provider resolver;
+MeetingStore plus private app adapters implement those ports. Meeting Detail
+supplies one immutable request and maps a typed outcome rather than selecting
+providers, loading notes, computing cache identity, translating pivots, or
+persisting snapshots itself. The app retains platform preference storage,
+model paths, provider construction, availability checks, and localized copy.
+
+The Strangler move preserves the released asymmetries deliberately: configured
+Ollama/MLX providers generate directly and report failure; Apple FM checks the
+same-language fingerprint first, attempts a different-language translation
+pivot, falls back to full generation, and leaves generation failure silent.
+Unreadable notes remain an empty context, failed snapshot persistence is now
+explicit in the result but presentation keeps its existing broad invalidation,
+and a source rule prevents the old Meeting Detail bypass from returning.

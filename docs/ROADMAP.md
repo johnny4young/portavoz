@@ -7,14 +7,27 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): characterize and
-extract `RegenerateSummary` from Meeting Detail, retaining provider override,
-fingerprint cache, translation pivot, recipe, language, notes, and error UX,
-before moving higher-risk recording/import workflows. Bands 0 and 1 are
-complete. Every slice
+program in [refactor-20260714.md](refactor-20260714.md): close T16 as one
+user-visible parity slice before import extraction. Make summary fingerprint
+lookup recipe-aware and keep the selected/latest recipe visible after
+regeneration, with unit/UI proof and no loss of immutable history. Then extract
+`ImportMeeting` from AppServices with its copy/language/engine/summary/navigation
+contract. Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
 commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44).
+
+- **Architecture Band 2 slice 2D complete — regeneration is one application
+  workflow (Jul 15, 2026)**: Meeting Detail now sends `RegenerateSummary` one
+  immutable request and maps its typed result. ApplicationKit admits
+  IntelligenceKit only for this vertical slice and coordinates narrow
+  storage, preferences, and provider ports; private app adapters retain global
+  versus per-meeting engine selection, local model construction, Apple
+  availability, and platform preferences. Provider override, recipe/language,
+  persisted notes, glossary, direct-provider behavior, Apple fingerprint hit,
+  translation pivot/fallback, and the released visible/silent error policies
+  are unchanged. Nine use-case tests plus a new source ratchet bring the
+  package baseline to 472 tests.
 
 - **Architecture Band 2 slice 2C complete — purge crosses explicit ports (Jul
   15, 2026)**: manual permanent deletion and launch-time 30-day cleanup now
@@ -24,7 +37,7 @@ commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44).
   propagate to the presentation boundary, strict cutoff and continue-after-failure behavior are preserved,
   and the existing `libraryVersion` net change is unchanged. Four tests cover
   port behavior, failures, expiry, and real scratch audio/database removal. The
-  package baseline is 462 tests.
+  package baseline at that slice was 462 tests.
 
 - **Architecture Band 2 slice 2B complete — trash mutations enter through use
   cases (Jul 15, 2026)**: ApplicationKit now admits StorageKit for the first

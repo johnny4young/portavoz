@@ -13,7 +13,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         let targets = try TargetManifestParser.declarations(in: manifest)
         let application = try XCTUnwrap(targets["ApplicationKit"])
 
-        XCTAssertEqual(application.dependencies, ["PortavozCore", "StorageKit"])
+        XCTAssertEqual(
+            application.dependencies,
+            ["IntelligenceKit", "PortavozCore", "StorageKit"])
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-app"]).dependencies.contains(
             "ApplicationKit"))
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-cli"]).dependencies.contains(
@@ -88,6 +90,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(
             violations.isEmpty,
             "App MeetingStore lifecycle writes must enter through ApplicationKit: \(violations)")
+    }
+
+    func testAppSummaryRegenerationEntersThroughApplicationKit() throws {
+        let violations = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"services\.store\.latestSummary\s*\(|services\.configuredSummaryProvider\s*\("#)
+
+        XCTAssertTrue(
+            violations.isEmpty,
+            "App summary regeneration must enter through ApplicationKit: \(violations)")
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

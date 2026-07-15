@@ -205,4 +205,8 @@ MeetingStore remains the production adapter and its storage semantics are
 unchanged. Slice 2C routes manual and expired purge through a separate
 `MeetingPurgeStore` projection. ApplicationKit receives pure candidates rather
 than StorageKit records, preserves the strict `deletedAt < cutoff` comparison,
-and continues to later tombstones when one purge fails.
+and continues to later tombstones when one purge fails. Slice 2D adds the
+narrow `SummaryRegenerationStore`: MeetingStore adapts note reads, D25
+fingerprint lookups, and immutable snapshot saves without exposing GRDB records
+to the use case. Read/save failures retain the released best-effort behavior,
+but persistence success is explicit in the application result.

@@ -976,7 +976,7 @@ extension MeetingDetailView {
 
     /// The engine that is NOT the global default, offered as a per-meeting
     /// override in the regenerate menu — only when it can actually run here (M12).
-    private var alternateEngine: (engine: AppServices.SummaryEngine, label: String)? {
+    private var alternateEngine: (engine: SummaryEngine, label: String)? {
         switch services.summaryEngine {
         case .appleOnDevice:
             if let model = services.ollamaModel {
@@ -999,7 +999,7 @@ extension MeetingDetailView {
 
     private func regenerate(
         language: LanguageCode,
-        engine: AppServices.SummaryEngine? = nil,
+        engine: SummaryEngine? = nil,
         recipe: Recipe? = nil
     ) {
         guard let detail, !regenerating else { return }
@@ -1010,66 +1010,32 @@ extension MeetingDetailView {
             recipe ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) } ?? .general
         Task {
             defer { regenerating = false }
-            let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
-            let request = SummaryRequest(
+            let request = RegenerateSummaryRequest(
                 meetingID: meetingID,
                 segments: detail.segments,
                 speakers: detail.speakers,
                 recipe: activeRecipe,
                 targetLanguage: language.identifier,
-                glossary: VocabularyPrompt.parse(
-                    UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
-                contextItems: notes
-            )
-
-            // A configured non-Apple engine (Ollama) summarizes directly —
-            // the fingerprint cache + translation pivot are FM-only. `engine`
-            // overrides the global default for this one meeting (M12).
-            if let provider = services.configuredSummaryProvider(override: engine) {
-                if let draft = try? await provider.summarize(request) {
-                    _ = try? await services.store.saveSummary(draft)
-                    services.libraryVersion += 1
-                } else {
-                    gistError = L10n.text("The local model could not generate the summary.")
-                }
-                return
-            }
-
-            guard #available(macOS 26.0, *) else {
-                gistError = L10n.text("On-device summaries require macOS 26 (or choose Ollama in Settings).")
-                return
-            }
-            if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
-                gistError = reason
-                return
-            }
-            let provider = FoundationModelSummaryProvider()
-            let fingerprint = SummaryFingerprint.compute(
-                request: request, providerID: FoundationModelSummaryProvider.providerID)
-
-            // D25 cache: same material + same stored language — with greedy
-            // decoding the model would reproduce the same result.
-            if let hit = try? await services.store.latestSummary(
-                meetingID, fingerprint: fingerprint, language: language.identifier) {
+                providerOverride: engine)
+            let result = await services.regenerateSummary.execute(request)
+            switch result {
+            case .completed:
+                // Keep the released broad invalidation until the scoped-state
+                // slice replaces libraryVersion.
+                services.libraryVersion += 1
+            case .unchanged(let version):
                 summaryNotice =
                     // One-line UI notice.
                     // swiftlint:disable:next line_length
-                    L10n.format("Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.", hit.version)
-                return
-            }
-            // D25 pivot: same material in another language → translating that
-            // snapshot costs a fraction of summarizing the transcript again.
-            if let pivot = try? await services.store.latestSummary(
-                meetingID, fingerprint: fingerprint),
-                let translated = try? await provider.translate(
-                    pivot.draft, to: language.identifier, glossary: request.glossary) {
-                _ = try? await services.store.saveSummary(translated)
-                services.libraryVersion += 1
-                return
-            }
-            if let draft = try? await provider.summarize(request) {
-                _ = try? await services.store.saveSummary(draft)
-                services.libraryVersion += 1
+                    L10n.format("Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.", version)
+            case .unavailable(.requiresMacOS26):
+                gistError = L10n.text("On-device summaries require macOS 26 (or choose Ollama in Settings).")
+            case .unavailable(.appleOnDevice(let reason)):
+                gistError = reason
+            case .generationFailed(.localModelNotice):
+                gistError = L10n.text("The local model could not generate the summary.")
+            case .generationFailed(.silent):
+                break
             }
         }
     }

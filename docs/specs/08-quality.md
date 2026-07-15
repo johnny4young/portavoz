@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 462 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest local executor-slice UI attempts were blocked before assertions by the documented macOS automation-mode harness flake; the disposable direct-app runtime smoke passed.
+Status: 472 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest local executor-slice UI attempts were blocked before assertions by the documented macOS automation-mode harness flake; the disposable direct-app runtime smoke passed.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -8,9 +8,10 @@ Status: 462 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHu
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, capability dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write bypass prevention, and the Sendable async use-case contract |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write and Meeting Detail regeneration bypass prevention, and the Sendable async use-case contract |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
+| SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, and real MeetingStore note/snapshot adaptation |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, Downmix, **Resample.linear**, startup cleanup |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
@@ -134,6 +135,15 @@ strictly before its injected cutoff while continuing after one failed entry.
 The integration case removes both a real in-memory tombstone and its scratch
 audio directory. The existing source rule now also rejects direct app
 `store.purge` writes; FileManager stays confined to the private app adapter.
+
+Band 2 slice 2D adds nine regeneration tests and a seventh architecture rule.
+The tests characterize the complete Meeting Detail decision tree without real
+models: per-meeting override plus recipe/language/glossary/notes, direct local
+generation, Apple exact cache, translated pivot, translation fallback to full
+generation, unavailable engines, visible versus silent provider failure, and
+the released best-effort note/save policy. A real in-memory MeetingStore case
+proves note loading and immutable snapshot persistence through the port. The
+source rule rejects the former direct provider/cache coordination in the app.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

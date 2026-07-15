@@ -1,3 +1,4 @@
+import ApplicationKit
 import AVFoundation
 import DiarizationKit
 import Foundation
@@ -237,13 +238,6 @@ final class AppServices {
 
     // MARK: - Summary engine (D25/M12)
 
-    enum SummaryEngine: String, CaseIterable {
-        case appleOnDevice
-        case ollama
-        /// Embedded MLX model (D25 last mile, D32) — in-process, no installs.
-        case mlx
-    }
-
     var summaryEngine: SummaryEngine {
         SummaryEngine(rawValue: UserDefaults.standard.string(forKey: "summaryEngine") ?? "")
             ?? .appleOnDevice
@@ -267,14 +261,12 @@ final class AppServices {
     }
 
     /// The configured provider, or nil to use Apple Foundation Models (the
-    /// map-reduce + priority-scheduled + fingerprint-cache path). Ollama
+    /// map-reduce + priority-scheduled path). Ollama
     /// gives a 100% local summary on Macs without Apple Intelligence
     /// (GAPS #7); a chosen model that's gone falls back to Apple.
     ///
-    /// `override` forces a specific engine for one meeting (M12 per-meeting
-    /// override) instead of the global default; nil keeps the default.
-    func configuredSummaryProvider(override: SummaryEngine? = nil) -> (any SummaryProvider)? {
-        switch override ?? summaryEngine {
+    func configuredSummaryProvider() -> (any SummaryProvider)? {
+        switch summaryEngine {
         case .appleOnDevice:
             return nil
         case .ollama:

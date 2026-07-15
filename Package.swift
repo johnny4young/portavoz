@@ -54,8 +54,11 @@ let package = Package(
 
         // Application workflows enter through this boundary. Dependencies
         // are added one capability at a time with each extracted use case;
-        // meeting lifecycle mutations are the first StorageKit-backed slice.
-        .target(name: "ApplicationKit", dependencies: ["PortavozCore", "StorageKit"]),
+        // trash lifecycle and summary regeneration are the first ratcheted
+        // StorageKit/IntelligenceKit vertical slices.
+        .target(
+            name: "ApplicationKit",
+            dependencies: ["PortavozCore", "IntelligenceKit", "StorageKit"]),
 
         // Curated model registry + sha256-verified downloads, shared by every
         // Kit that loads ML models (transcription, diarization, summaries).
