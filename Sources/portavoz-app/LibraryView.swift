@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationKit
 import IntegrationsKit
 import PortavozCore
 import StorageKit
@@ -437,7 +438,7 @@ extension LibraryView {
             }
             Button("Delete", role: .destructive) {
                 Task {
-                    try? await services.store.delete(meeting.id)
+                    try? await services.meetingLifecycle.delete(meeting.id)
                     if route == .meeting(meeting.id) { route = nil }
                     services.libraryVersion += 1
                 }

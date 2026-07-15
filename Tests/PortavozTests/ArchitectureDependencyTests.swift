@@ -8,12 +8,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    func testApplicationKitManifestBoundaryStartsDomainOnly() throws {
+    func testApplicationKitManifestBoundaryAdmitsOnlyExtractedCapabilities() throws {
         let manifest = try Self.contents(of: "Package.swift")
         let targets = try TargetManifestParser.declarations(in: manifest)
         let application = try XCTUnwrap(targets["ApplicationKit"])
 
-        XCTAssertEqual(application.dependencies, ["PortavozCore"])
+        XCTAssertEqual(application.dependencies, ["PortavozCore", "StorageKit"])
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-app"]).dependencies.contains(
             "ApplicationKit"))
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-cli"]).dependencies.contains(
@@ -74,6 +74,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "ApplicationKit imported presentation/platform/database APIs: \(violations)")
     }
 
+    func testAppMeetingLifecycleWritesEnterThroughApplicationKit() throws {
+        let violations = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\b(?:services\.)?store\.(?:delete|restore)\s*\("#)
+
+        XCTAssertTrue(
+            violations.isEmpty,
+            "App MeetingStore lifecycle writes must enter through ApplicationKit: \(violations)")
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")
@@ -118,6 +128,26 @@ private extension ArchitectureDependencyTests {
                 return SourceImport(file: file, module: String(source[moduleRange]))
             }
         }
+    }
+
+    static func sourceMatches(
+        under relativeDirectory: String,
+        pattern: String
+    ) throws -> [String] {
+        let root = repoRoot.appendingPathComponent(relativeDirectory)
+        guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+        let regex = try NSRegularExpression(pattern: pattern)
+        return try enumerator.compactMap { $0 as? String }
+            .filter { $0.hasSuffix(".swift") }
+            .sorted()
+            .compactMap { file in
+                let source = try String(
+                    contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+                let range = NSRange(source.startIndex..., in: source)
+                return regex.firstMatch(in: source, range: range) == nil ? nil : file
+            }
     }
 }
 

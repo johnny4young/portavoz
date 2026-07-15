@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationKit
 import AudioPlaybackKit
 import DiarizationKit
 import IntegrationsKit
@@ -563,7 +564,7 @@ extension MeetingDetailView {
                 help: "Move this meeting to Recently deleted"
             ) {
                 Task {
-                    try? await services.store.delete(meetingID)
+                    try? await services.meetingLifecycle.delete(meetingID)
                     services.libraryVersion += 1
                     route = nil
                 }

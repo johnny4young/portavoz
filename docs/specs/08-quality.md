@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 454 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest local executor-slice UI attempts were blocked before assertions by the documented macOS automation-mode harness flake; the disposable direct-app runtime smoke passed.
+Status: 458 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest local executor-slice UI attempts were blocked before assertions by the documented macOS automation-mode harness flake; the disposable direct-app runtime smoke passed.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -8,7 +8,8 @@ Status: 454 package tests passing (13 gated) + 17 XCUITest UI cases. CI on GitHu
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, Core-only initial edge, no capability reverse dependencies, approved application imports, the one-file Core Security debt baseline, and the Sendable async use-case contract |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, capability dependency ratchet, no capability reverse dependencies, approved application imports, the one-file Core Security debt baseline, app delete/restore bypass prevention, and the Sendable async use-case contract |
+| MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, Downmix, **Resample.linear**, startup cleanup |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
@@ -115,6 +116,15 @@ verify the XcodeGen product edge, exercise the generic use-case boundary, and
 scan source imports. The dependency ratchet begins with ApplicationKit → Core;
 the existing `PortavozCore/SecretStore.swift → Security` edge is the only
 allowlisted target violation and cannot spread while it awaits extraction.
+
+Band 2 slice 2B adds three lifecycle use-case tests and one architecture rule.
+The unit boundary records the exact requested delete/restore operations through
+a database-free actor port and proves persistence errors remain typed failures
+instead of being swallowed. The real-store characterization verifies a deleted
+meeting disappears from live lists, detail, and voice mix while remaining in
+trash, then returns with the same meeting, speaker, segment, and mix identities.
+The source rule rejects direct `store.delete/restore` writes in the
+app, covering the Library, Meeting Detail, and Recently Deleted adoption.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

@@ -1,3 +1,4 @@
+import ApplicationKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -38,7 +39,7 @@ struct TrashSection: View {
             Spacer()
             Button {
                 Task {
-                    try? await services.store.restore(entry.meeting.id)
+                    try? await services.meetingLifecycle.restore(entry.meeting.id)
                     services.libraryVersion += 1
                 }
             } label: {

@@ -36,10 +36,11 @@ and summary executor, exact operation fingerprints, heartbeat/retry ownership,
 and a single non-polling wake. The final 1D-b2b unit atomically installs the
 captured snapshot plus initial exact job, makes normal Stop navigate immediately
 and kick the executor, and preserves terminal-aware Shortcut delivery (D43).
-Band 2 slice 2A now adds the Core-only `ApplicationKit` product, a Sendable
-async use-case boundary, and source/manifest architecture tests without moving
-runtime orchestration (D44). The app and CLI link the new module, but their
-existing direct workflows remain unchanged until each vertical extraction.
+Band 2 slice 2A added the Core-only `ApplicationKit` product, a Sendable async
+use-case boundary, and source/manifest architecture tests without moving
+runtime orchestration. Slice 2B admits the first ratcheted capability edge,
+`ApplicationKit → StorageKit`, and moves all three app delete/restore call sites
+behind characterized `DeleteMeeting` and `RestoreMeeting` use cases (D44).
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -48,15 +49,16 @@ while the matching as-built spec records runtime behavior.
 
 `PortavozCore` contains shared domain types. The package currently exposes
 eleven Kit libraries. Most depend on Core only; verified exceptions are
-`TranscriptionKit → ModelStoreKit`, `DiarizationKit → ModelStoreKit`, and
-`IntegrationsKit → IntelligenceKit + StorageKit` (D31). The app and CLI compose
-the capabilities directly at runtime today, while both now link the Core-only
-`ApplicationKit` shell that will receive one use case per Strangler slice.
+`ApplicationKit → StorageKit`, `TranscriptionKit → ModelStoreKit`,
+`DiarizationKit → ModelStoreKit`, and
+`IntegrationsKit → IntelligenceKit + StorageKit` (D31/D44). The app and CLI
+still compose most capabilities directly at runtime; meeting delete/restore is
+the first production workflow behind ApplicationKit.
 
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types, typed IDs, length-prefixed SHA-256 operation identity, canonical `LanguageCode`, and independent transcript/summary language policies. It currently also contains the concrete Keychain-backed `SecretStore`; moving that implementation to a platform adapter is a target, not current behavior |
-| `ApplicationKit` | Band 2 application boundary. It currently depends only on Core and defines `ApplicationUseCase<Request, Response>` as a Sendable async workflow contract. No production workflow has moved yet; capability dependencies are admitted only with the vertical use case that consumes them (D44) |
+| `ApplicationKit` | Band 2 application boundary. It defines `ApplicationUseCase<Request, Response>` as a Sendable async workflow contract and currently depends on Core plus StorageKit. `DeleteMeeting`/`RestoreMeeting` use a narrow `MeetingLifecycleStore` port; `MeetingStore` is the production adapter. Further capability dependencies are admitted only with the characterized vertical use case that consumes them (D44) |
 | `ModelStoreKit` | Curated registry (`ModelCatalog`, routing **by task** through `ModelTask`) + `ModelStore`: downloads verified by sha256/pinned commit. Shared by every Kit that loads models |
 | `AudioCaptureKit` | Mic (AVAudioEngine) + per-app process taps (Core Audio, macOS 14.4+); `RecordingSession` (with `onChunk` tap); crash-safe staged CAF writer; validated SHA-256/health metadata and same-directory atomic publication; persisted-PCM recovery inspection/publication; retention policies |
 | `TranscriptionKit` | `TranscriptionEngine` protocol; `ParakeetEngine` (live sliding window + batch long-form); `TranscriptionScheduler` (D7 slots) |
@@ -67,22 +69,24 @@ the capabilities directly at runtime today, while both now link the Core-only
 | `AudioPlaybackKit` | Synchronized playback, channel-aware waveform data, clips, silence skipping, and AAC transcoding |
 | `SyncKit` | Placeholder-scale `Visibility` model. CKSyncEngine and CloudKit sync are planned, not implemented |
 | `IntegrationsKit` | Export and external-system adapters plus several cross-cutting read/product policies. It is the only cross-Kit layer under D31; narrowing it is part of Band 2 |
-| `portavoz-app` | SwiftUI macOS application. `AppServices` currently composes dependencies and carries application orchestration, including the process-scoped post-capture worker supervisor; feature extraction into `ApplicationKit` is planned |
+| `portavoz-app` | SwiftUI macOS application. `AppServices` composes dependencies and still carries most application orchestration, including the process-scoped post-capture worker supervisor. Meeting delete/restore now enter through ApplicationKit; the remaining feature extraction continues incrementally |
 | `portavoz-cli` | Executable development harness (`record --seconds N --pid X --system --out dir`) |
 
-Band 2 slice 2A establishes a dependency ratchet rather than a broad empty
-layer. Package and XcodeGen manifests expose `ApplicationKit`; app, CLI, and
-tests link it; only `PortavozCore` is currently below it. Five architecture
-tests parse the real target declarations and source imports. They prevent
-capability Kits from depending back on ApplicationKit, reject presentation or
-platform imports in the application layer, and freeze Core's existing
-`SecretStore.swift → Security` exception so it cannot spread before that
-adapter is extracted. No runtime call site imports ApplicationKit yet.
+Band 2 slices 2A–2B establish and exercise a dependency ratchet rather than a
+broad empty layer. Package and XcodeGen manifests expose `ApplicationKit`; app,
+CLI, and tests link it. StorageKit is the first admitted capability because the
+same commit adds real lifecycle use cases. Six architecture tests parse the
+real target declarations and source imports. They prevent capability Kits from
+depending back on ApplicationKit, reject presentation or platform imports in
+the application layer, freeze Core's existing `SecretStore.swift → Security`
+exception, and forbid app delete/restore writes from bypassing the use cases.
+Three use-case tests prove exact port delegation, failure propagation, and full
+aggregate/voice-mix conservation through the real store.
 
 ## Target modular-monolith architecture (partially implemented)
 
-Portavoz remains a single local SwiftPM product. The Core-only
-`ApplicationKit` shell now exists, but its workflows and the remaining target
+Portavoz remains a single local SwiftPM product. `ApplicationKit` and its first
+StorageKit-backed workflows now exist, but the remaining workflows and target
 edges below are not implemented yet. The target does not introduce a backend,
 microservices, full CQRS, full event sourcing, or a state-management framework.
 
@@ -433,7 +437,7 @@ until a later Band 1 adoption slice.
 8. **Documentation is part of the change:** all explanatory content under `docs/` is English. Every refactor commit updates this file and every other source-of-truth document whose facts changed. User-visible changes update CHANGELOG; internal plumbing does not create misleading release notes.
 9. **Persisted identity is strict:** storage decoding never invents UUIDs or silently changes aggregate identity.
 10. **Capture outranks derivation:** usable captured audio remains discoverable even when captions, diarization, refine, summaries, indexing, or integrations fail.
-11. **Application dependencies ratchet inward:** `ApplicationKit` starts Core-only. A capability dependency is added only in the same commit as a characterized use case that needs it; capability Kits never depend back on the application layer (D44).
+11. **Application dependencies ratchet inward:** `ApplicationKit` started Core-only and now admits StorageKit solely for the characterized meeting-lifecycle use cases. Every later capability dependency must arrive with the use case that needs it; capability Kits never depend back on the application layer (D44).
 
 ## Refactor migration status
 
@@ -444,9 +448,9 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 454-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 458-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, atomic captured-state/initial-job handoff, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, exact operation fingerprints, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43) | Valid audio is durable before derivation; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
-| 2 — Application layer | In progress — slice 2A adds the Core-only `ApplicationKit` product/use-case contract and five executable dependency/import rules without moving runtime behavior (D44) | Next: extract `DeleteMeeting` and `RestoreMeeting` as the first StorageKit-backed vertical use cases, then adopt them at every app call site |
+| 2 — Application layer | In progress — slice 2A adds the dependency shell/rules; slice 2B adds the StorageKit edge, narrow lifecycle port, `DeleteMeeting`/`RestoreMeeting`, three app adoptions, and bypass/conservation tests (D44) | Next: extract permanent and expired-trash purge so every trash mutation crosses the application boundary before higher-risk recording workflows move |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |

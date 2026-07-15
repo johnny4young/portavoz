@@ -1,3 +1,4 @@
+import ApplicationKit
 import AVFoundation
 import DiarizationKit
 import Foundation
@@ -38,6 +39,9 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// First ApplicationKit vertical slice. Views invoke these use cases
+    /// instead of reaching through the composition root for lifecycle writes.
+    var meetingLifecycle: MeetingLifecycleUseCases { .init(store: store) }
     var modelsState: ModelsState = .unknown
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?

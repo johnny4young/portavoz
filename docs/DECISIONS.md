@@ -637,3 +637,12 @@ removed when SecretStore moves to its platform adapter.
 commit behavior-neutral. Dependencies become evidence of a real workflow
 instead of speculative permission, and the documented exception model lets
 tests improve the graph immediately without pretending existing debt is gone.
+
+**First ratchet (slice 2B):** `ApplicationKit` now admits StorageKit only for
+`DeleteMeeting` and `RestoreMeeting`. Both depend on the minimal Sendable
+`MeetingLifecycleStore` port, with `MeetingStore` as the production adapter.
+Library, Meeting Detail, and Recently Deleted invoke those use cases through
+the composition root; an architecture test forbids regression to direct app
+`store.delete/restore` writes. The presentation layer retains its
+existing best-effort error handling, navigation, and `libraryVersion` behavior,
+so this is a feature-parity move rather than a UX change.

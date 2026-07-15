@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet).
 
 ## Database
 
@@ -198,4 +198,8 @@ The app exposes a collapsed "Recently deleted" section, one-click restore,
 purge, and cross-library projection-conservation paths are covered by storage
 and voice-mix tests plus E2E verification. Since Band 0 slice 0A, trash cannot
 affect live summaries, findings, participants, actions, voice mixes, or talk
-balance; restoring a meeting exposes its untouched children again.
+balance; restoring a meeting exposes its untouched children again. Since Band
+2 slice 2B, app delete and restore mutations enter through ApplicationKit's
+`DeleteMeeting`/`RestoreMeeting` and narrow `MeetingLifecycleStore` port;
+MeetingStore remains the production adapter and its storage semantics are
+unchanged.
