@@ -55,7 +55,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Capture & transcribe**
 - **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, a low-mic nudge, and a heads-up when the incoming channel goes silent. A channel that captured nothing stays empty — never filled with invented text.
-- **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. If transcription or later processing fails after audio was written, the recording remains discoverable in your library for playback or export.
+- **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. If transcription or later processing fails, the recording remains discoverable for playback or export.
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
 - **Whisper refine** — a maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Force a language per meeting to recover one that came out wrong.

@@ -4001,6 +4001,16 @@
         }
       }
     },
+    "The audio could not be finalized, but its recovery file was preserved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo finalizar el audio, pero se conservó su archivo de recuperación."
+          }
+        }
+      }
+    },
     "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it.": {
       "localizations": {
         "es": {

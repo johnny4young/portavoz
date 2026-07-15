@@ -22,6 +22,34 @@ public enum AudioAssetHealthStatus: String, Codable, CaseIterable, Sendable {
     case missing
 }
 
+/// Canonical names for the two filesystem phases of a captured channel.
+/// Staging keeps `.caf` as the terminal extension because `AVAudioFile`
+/// selects its container from that extension; readers only discover the
+/// published name.
+public enum AudioCapturePath {
+    public static func stagingFilename(for channel: AudioChannel) -> String {
+        "\(channel.rawValue).partial.caf"
+    }
+
+    public static func publishedFilename(for channel: AudioChannel) -> String {
+        "\(channel.rawValue).caf"
+    }
+
+    public static func stagingRelativePath(
+        directory: String,
+        channel: AudioChannel
+    ) -> String {
+        "\(directory)/\(stagingFilename(for: channel))"
+    }
+
+    public static func publishedRelativePath(
+        directory: String,
+        channel: AudioChannel
+    ) -> String {
+        "\(directory)/\(publishedFilename(for: channel))"
+    }
+}
+
 /// First-class durable audio metadata. Capture reserves a pending row before
 /// a source starts; later workflow slices inspect and finalize its metadata.
 public struct AudioAsset: Codable, Sendable, Identifiable {

@@ -63,21 +63,24 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: warm-up of mic (AEC converges during "Preparing…"), engines, then
    one atomic `MeetingStore.beginRecording` write for the `recording` shell and
-   pending source assets before `RecordingSession` starts mic (+system tap on
+   pending `<channel>.partial.caf` source assets before `RecordingSession` starts mic (+system tap on
    14.4+). Feeds by channel → Parakeet live → **CaptionCoalescer** (one row per
    intervention). A no-file startup failure rolls back only the empty shell;
    any written channel preserves it as `needsAttention` (D37).
 2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint.
-3. `stop`: flush capture → persist `captured` before derived work → persist
-   `processing` → diarize system channel → `SpeakerAttributor` → detect
-   homogeneous spoken language → save cast/context/Companion → final summary
-   (with vocabulary as glossary) in the independently configured summary
-   language → persist `ready` → detail. The title (configurable
+3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
+   rename staging files without overwrite → one `installCapturedSnapshot`
+   transaction for `captured` + finalized/missing assets + provisional live
+   cast/transcript/context/Companion → persist `processing` → diarize system
+   channel → atomically replace the provisional cast through
+   `SpeakerAttributor` → final summary (with vocabulary as glossary) in the
+   independently configured summary language → persist `ready` → detail. The title (configurable
    `TitleTemplate`: `{date} {time} {seq} {weekday}`, ISO-first) is assigned at
    start, so sequence follows start order. `Meeting.language` is set only when
    all segments are homogeneous; mixed/unknown remains nil. Audio with no
    captions or a later required-write failure remains discoverable as
-   `needsAttention` rather than being deleted.
+   `needsAttention` rather than being deleted. A publication collision keeps
+   its staging file and also becomes `needsAttention` for launch recovery.
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
 - **Refine (D7/D35 in-app)**: re-transcribe both channels with Whisper (+vocabulary). `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither the app UI nor summary language is ever a transcript fallback. Refine then re-diarizes (merge micro-clusters) and presents a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) — **nothing is applied without "Aplicar"** (a faulty refine replaced a real meeting; draft flow and tombstones are double defense). On apply, the app replaces `Meeting.language` with the homogeneous language recomputed from refined segments, including `nil` for mixed/unknown output, then calls `replaceCast` and regenerates the summary under its independent policy. **Runs in `RefineService` (Jul 2026), keyed by MeetingID and OUTSIDE view hierarchy**: switching meetings does not lose a draft (the view is recreated with `.id(id)`; previously the Task kept burning ANE and the sheet was lost) — the draft waits for that meeting to be visited again; one refine runs at a time; `MicBleedFilter` discards room echo from the microphone channel. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).

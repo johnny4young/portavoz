@@ -23,9 +23,30 @@ final class RecordingPersistenceTests: XCTestCase {
             AudioAsset.pendingCapture(
                 meetingID: meeting.id,
                 channel: channel,
-                relativePath: "\(meeting.audioDirectory!)/\(channel.rawValue).caf",
+                relativePath: AudioCapturePath.stagingRelativePath(
+                    directory: meeting.audioDirectory!, channel: channel),
                 at: meeting.startedAt)
         }
+    }
+
+    private func published(_ reservation: AudioAsset) -> AudioAsset {
+        var asset = reservation
+        let directory = reservation.relativePath
+            .split(separator: "/").dropLast().joined(separator: "/")
+        asset.relativePath = AudioCapturePath.publishedRelativePath(
+            directory: directory, channel: asset.channel)
+        asset.container = "caf"
+        asset.codec = "pcm-s16le"
+        asset.sampleRate = 48_000
+        asset.channelCount = 1
+        asset.durationSeconds = 2
+        asset.byteCount = 192_128
+        asset.sha256 = String(repeating: "a", count: 64)
+        asset.healthStatus = .healthy
+        asset.peakDBFS = -6
+        asset.rmsDBFS = -18
+        asset.updatedAt = asset.createdAt.addingTimeInterval(2)
+        return asset
     }
 
     private func assertReservationRejected(
@@ -224,5 +245,180 @@ final class RecordingPersistenceTests: XCTestCase {
 
         let persistedMeetings = try await store.meetings()
         XCTAssertTrue(persistedMeetings.isEmpty)
+    }
+
+    func testCapturedSnapshotInstallsFinalAssetsAndLiveContentAtomically() async throws {
+        let store = try MeetingStore.inMemory()
+        var meeting = shell()
+        let reservations = assets(for: meeting, channels: [.microphone, .system])
+        try await store.beginRecording(meeting, assets: reservations)
+
+        var finalized = [published(reservations[0]), reservations[1]]
+        finalized[1].healthStatus = .missing
+        finalized[1].updatedAt = finalized[1].createdAt.addingTimeInterval(2)
+        let speaker = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: speaker.id,
+            channel: .microphone,
+            text: "The live transcript survives later processing.",
+            startTime: 0,
+            endTime: 2,
+            isFinal: true)
+        let note = ContextItem(
+            meetingID: meeting.id, kind: .note, content: "Follow up", timestamp: 1)
+        let card = CompanionCard(
+            question: "What changed?",
+            answer: "The captured snapshot is atomic.",
+            kind: .context,
+            source: "on-device",
+            askedAt: 1.5)
+        meeting.endedAt = meeting.startedAt.addingTimeInterval(2)
+        meeting.language = "en"
+        meeting.lifecycleState = .captured
+
+        try await store.installCapturedSnapshot(CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: finalized,
+            speakers: [speaker],
+            segments: [segment],
+            contextItems: [note],
+            companionCards: [card]))
+
+        let loadedDetail = try await store.detail(meeting.id)
+        let storedDetail = try XCTUnwrap(loadedDetail)
+        let storedAssets = try await store.audioAssets(for: meeting.id)
+        let storedNotes = try await store.contextItems(for: meeting.id)
+        let storedCards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(storedDetail.meeting.lifecycleState, .captured)
+        XCTAssertEqual(storedDetail.meeting.language, "en")
+        XCTAssertEqual(storedDetail.speakers.map(\.id), [speaker.id])
+        XCTAssertEqual(storedDetail.segments.map(\.id), [segment.id])
+        XCTAssertEqual(storedAssets.map(\.healthStatus), [.healthy, .missing])
+        XCTAssertEqual(storedAssets.first?.relativePath, AudioCapturePath.publishedRelativePath(
+            directory: meeting.audioDirectory!, channel: .microphone))
+        XCTAssertEqual(storedAssets.first?.sha256, String(repeating: "a", count: 64))
+        XCTAssertEqual(storedNotes.map(\.id), [note.id])
+        XCTAssertEqual(storedCards.map(\.id), [card.id])
+    }
+
+    func testCapturedSnapshotRollsBackEveryWriteWhenAssetPublicationConflicts() async throws {
+        let store = try MeetingStore.inMemory()
+        let directory = "Audio/shared-finalization"
+        let owner = shell(directory: directory)
+        let ownerReservation = assets(for: owner, channels: [.microphone])[0]
+        try await store.beginRecording(owner, assets: [ownerReservation])
+        try await store.database.write { db in
+            try db.execute(
+                sql: "UPDATE audioAsset SET relativePath = ? WHERE id = ?",
+                arguments: [
+                    AudioCapturePath.publishedRelativePath(
+                        directory: directory, channel: .microphone),
+                    ownerReservation.id.rawValue.uuidString,
+                ])
+        }
+
+        var candidate = shell(directory: directory)
+        let candidateReservation = assets(for: candidate, channels: [.microphone])[0]
+        try await store.beginRecording(candidate, assets: [candidateReservation])
+        let speaker = Speaker(meetingID: candidate.id, label: "Me", isMe: true)
+        let segment = TranscriptSegment(
+            meetingID: candidate.id,
+            speakerID: speaker.id,
+            channel: .microphone,
+            text: "This transaction must roll back.",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        candidate.endedAt = candidate.startedAt.addingTimeInterval(1)
+        candidate.lifecycleState = .captured
+
+        do {
+            try await store.installCapturedSnapshot(CapturedMeetingSnapshot(
+                meeting: candidate,
+                assets: [published(candidateReservation)],
+                speakers: [speaker],
+                segments: [segment],
+                contextItems: [],
+                companionCards: []))
+            XCTFail("the final path collision must reject the whole snapshot")
+        } catch {
+            XCTAssertTrue(error is DatabaseError, "wrong error: \(error)")
+        }
+
+        let loadedDetail = try await store.detail(candidate.id)
+        let detail = try XCTUnwrap(loadedDetail)
+        let candidateAssets = try await store.audioAssets(for: candidate.id)
+        XCTAssertEqual(detail.meeting.lifecycleState, .recording)
+        XCTAssertTrue(detail.speakers.isEmpty)
+        XCTAssertTrue(detail.segments.isEmpty)
+        XCTAssertEqual(candidateAssets.map(\.healthStatus), [.pending])
+        XCTAssertEqual(candidateAssets.map(\.relativePath), [candidateReservation.relativePath])
+    }
+
+    func testCapturedSnapshotRejectsInvalidMetadataAndTouchedShell() async throws {
+        let metadataStore = try MeetingStore.inMemory()
+        var metadataMeeting = shell()
+        let metadataReservation = assets(
+            for: metadataMeeting, channels: [.microphone])[0]
+        try await metadataStore.beginRecording(
+            metadataMeeting, assets: [metadataReservation])
+        var invalidAsset = published(metadataReservation)
+        invalidAsset.sha256 = String(repeating: "A", count: 64)
+        metadataMeeting.endedAt = metadataMeeting.startedAt.addingTimeInterval(2)
+        metadataMeeting.lifecycleState = .captured
+
+        do {
+            try await metadataStore.installCapturedSnapshot(CapturedMeetingSnapshot(
+                meeting: metadataMeeting,
+                assets: [invalidAsset],
+                speakers: [],
+                segments: [],
+                contextItems: [],
+                companionCards: []))
+            XCTFail("uppercase checksums must not become finalized evidence")
+        } catch {
+            XCTAssertTrue(error is StorageError, "wrong error: \(error)")
+        }
+        let loadedMetadataDetail = try await metadataStore.detail(metadataMeeting.id)
+        let metadataDetail = try XCTUnwrap(loadedMetadataDetail)
+        XCTAssertEqual(metadataDetail.meeting.lifecycleState, .recording)
+        let metadataAssets = try await metadataStore.audioAssets(for: metadataMeeting.id)
+        XCTAssertEqual(metadataAssets.map(\.id), [metadataReservation.id])
+        XCTAssertEqual(metadataAssets.map(\.healthStatus), [.pending])
+        XCTAssertEqual(metadataAssets.map(\.relativePath), [metadataReservation.relativePath])
+
+        let shellStore = try MeetingStore.inMemory()
+        var touchedMeeting = shell()
+        let touchedReservation = assets(for: touchedMeeting, channels: [.microphone])[0]
+        try await shellStore.beginRecording(touchedMeeting, assets: [touchedReservation])
+        let touchedMeetingKey = touchedMeeting.id.rawValue.uuidString
+        try await shellStore.database.write { db in
+            try db.execute(
+                sql: "UPDATE meeting SET language = 'en' WHERE id = ?",
+                arguments: [touchedMeetingKey])
+        }
+        touchedMeeting.endedAt = touchedMeeting.startedAt.addingTimeInterval(2)
+        touchedMeeting.lifecycleState = .captured
+        do {
+            try await shellStore.installCapturedSnapshot(CapturedMeetingSnapshot(
+                meeting: touchedMeeting,
+                assets: [published(touchedReservation)],
+                speakers: [],
+                segments: [],
+                contextItems: [],
+                companionCards: []))
+            XCTFail("a shell changed after reservation must not be replaced")
+        } catch {
+            XCTAssertTrue(error is StorageError, "wrong error: \(error)")
+        }
+        let loadedTouchedDetail = try await shellStore.detail(touchedMeeting.id)
+        let touchedDetail = try XCTUnwrap(loadedTouchedDetail)
+        XCTAssertEqual(touchedDetail.meeting.lifecycleState, .recording)
+        XCTAssertEqual(touchedDetail.meeting.language, "en")
+        let touchedAssets = try await shellStore.audioAssets(for: touchedMeeting.id)
+        XCTAssertEqual(touchedAssets.map(\.id), [touchedReservation.id])
+        XCTAssertEqual(touchedAssets.map(\.healthStatus), [.pending])
+        XCTAssertEqual(touchedAssets.map(\.relativePath), [touchedReservation.relativePath])
     }
 }

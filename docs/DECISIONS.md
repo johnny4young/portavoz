@@ -248,8 +248,9 @@ independently shippable. The full plan and decision gates are recorded in
 `refactor-20260714.md`.
 
 **Status:** accepted target under incremental adoption. Band 0 established its
-truth boundaries; Band 1 slices 1A/1B installed schema v6 and the first durable
-pre-capture shell/assets workflow. `ApplicationKit`, jobs, recovery, outbox,
+truth boundaries; Band 1 slices 1A–1C installed schema v6, durable pre-capture
+state, validated atomic file publication, and the captured Unit of Work.
+`ApplicationKit`, jobs, recovery, outbox,
 and scoped observations remain targets. `ARCHITECTURE.md` must always
 distinguish current behavior from this target.
 
@@ -362,11 +363,44 @@ channel file exists, startup failure preserves the meeting as
 `needsAttention`. Once capture has produced a file or persisted content, normal
 tombstone and recovery rules apply; error cleanup never deletes the audio.
 
-Slice 1B reserves the as-built final `channel.caf` paths. Slice 1C will move
-publication through `.partial` files and finalize metadata without weakening
-this preservation rule.
+Slice 1B initially reserved the as-built final `channel.caf` paths. Slice 1C
+now reserves `<channel>.partial.caf`, publishes only validated files, and
+checks both staging and final names before allowing this rollback.
 
 **Rationale:** this keeps the library free of attempts that never became user
 data while making the conservative choice whenever potentially useful audio
 exists. The narrow two-sided guard prevents a convenience rollback from
 becoming a data-loss path.
+
+## D38 — Publish validated audio before installing one captured snapshot (Jul 2026)
+
+**Context:** SQLite cannot atomically commit an audio-file rename, but readers
+must never discover a half-written channel and the database must not expose a
+captured meeting without its matching assets and live content. Overwriting an
+existing final path during error recovery would be worse than surfacing the
+collision.
+
+**Decision:** capture writes `<channel>.partial.caf`; CAF remains the terminal
+extension because `AVAudioFile` selects the container from it. Stop releases
+the writer, verifies a readable non-empty mono CAF, streams SHA-256, records
+actual format/duration/size plus finite peak/RMS dBFS from successfully written,
+signed-PCM-clamped samples and signal health, and publishes through a
+same-directory rename to `<channel>.caf`. An existing final file is never
+replaced. The app then calls one
+`MeetingStore.installCapturedSnapshot` Unit of Work that advances the untouched
+shell to `captured`, finalizes every asset, and inserts the provisional live
+cast/transcript, notes, and Companion cards. A changed shell, preexisting
+content or summary, and incomplete finalized evidence are rejected before any
+write. Batch diarization replaces that provisional cast atomically; optional
+summary work follows.
+
+A missing channel is explicit and metadata-free. A staging file whose
+publication failed remains pending for launch recovery. If no channel was
+published but either staging or final data exists, the meeting becomes
+`needsAttention` and D37 hard rollback is forbidden. The filesystem/SQLite gap
+is a deliberate Saga boundary; slice 1D owns idempotent launch reconciliation.
+
+**Rationale:** readers observe only validated final names, checksum and health
+evidence become durable truth, and one SQLite transaction prevents partial
+aggregate installation. Conservative collision handling and retained staging
+files prefer recoverability over silent data loss.

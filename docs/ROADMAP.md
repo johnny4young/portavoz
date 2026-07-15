@@ -6,14 +6,25 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement Band 1 slice 1C of the approved
+**Next concrete step:** implement Band 1 slice 1D of the approved
 architecture-hardening program in
-[refactor-20260714.md](refactor-20260714.md): atomically publish and finalize
-channel files, then install the captured meeting snapshot through one Unit of
-Work. Band 0 is complete and Band 1 slices 1A/1B are complete. Every slice
+[refactor-20260714.md](refactor-20260714.md): adopt idempotent processing jobs
+and reconcile interrupted `recording`/`processing` meetings plus staging files
+on launch. Band 0 is complete and Band 1 slices 1A/1B/1C are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37).
+commit (D33/D34/D36/D37/D38).
+
+- **Architecture Band 1 slice 1C complete (Jul 15, 2026)**: channels now write
+  to `<channel>.partial.caf`, then Stop validates a readable non-empty mono
+  CAF, streams its SHA-256, records duration/size/format, finite peak/RMS dBFS,
+  and signal health before a same-directory no-overwrite rename publishes
+  `<channel>.caf`. One `installCapturedSnapshot` transaction advances the
+  shell, finalizes assets, and installs the provisional live
+  cast/transcript/notes/Companion cards before derived processing. Atomic
+  collision/rollback, signal-classification, metadata, and untouched-shell
+  tests bring the package baseline to 425 tests. Slice 1D owns jobs and launch
+  recovery.
 
 - **Architecture Band 1 slice 1B complete (Jul 15, 2026)**: every new live
   recording now atomically persists a `recording` meeting shell and one typed
@@ -22,9 +33,8 @@ commit (D33/D34/D36/D37).
   written channel is preserved as `needsAttention`. Stop advances the durable
   lifecycle through `captured`, `processing`, and `ready`, while empty captions
   or later required-write failures keep the audio discoverable. Four focused
-  reservation/rollback tests bring the package baseline to 419 tests. Playback
-  still reads `Meeting.audioDirectory`, and assets still use the current final
-  CAF paths pending slice 1C finalization.
+  reservation/rollback tests brought the package baseline to 419 tests. Slice
+  1C subsequently replaced direct final-path writes with staged publication.
 
 - **Architecture Band 1 slice 1A complete (Jul 15, 2026)**: one atomic,
   additive schema-v6 migration establishes meeting lifecycle/revision fields,

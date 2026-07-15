@@ -6,6 +6,7 @@ import IntelligenceKit
 import ModelStoreKit
 import Observation
 import PortavozCore
+import StorageKit
 import SwiftUI
 import TranscriptionKit
 
@@ -242,7 +243,8 @@ final class RecordingController {
             AudioAsset.pendingCapture(
                 meetingID: meetingID,
                 channel: source.channel,
-                relativePath: "\(audioRelative)/\(source.channel.rawValue).caf",
+                relativePath: AudioCapturePath.stagingRelativePath(
+                    directory: audioRelative, channel: source.channel),
                 at: startedAt)
         }
         do {
@@ -526,6 +528,22 @@ extension RecordingController {
         }
 
         guard !capture.files.isEmpty else {
+            if hasReservedCaptureFile() {
+                meeting.endedAt = Date()
+                meeting.lifecycleState = .needsAttention
+                meeting.lastProcessingError = "capture.publication.failed"
+                do {
+                    try await services.store.save(meeting)
+                    recordingShell = meeting
+                    services.libraryVersion += 1
+                    phase = .failed(L10n.text(
+                        "The audio could not be finalized, but its recovery file was preserved."))
+                } catch {
+                    phase = .failed(L10n.format(
+                        "Processing failed: %@", error.localizedDescription))
+                }
+                return
+            }
             do {
                 guard try await services.store.discardUnstartedRecording(meeting.id) else {
                     phase = .failed(L10n.text(
@@ -546,15 +564,28 @@ extension RecordingController {
             return
         }
 
-        // The audio is now discoverable regardless of every derived step
-        // below. Captions, diarization, and summaries may fail without
-        // deleting or hiding the aggregate (Band 1 durable state machine).
+        // Publishable audio and the live meeting projection become visible in
+        // one DB Unit of Work. Later diarization can replace this provisional
+        // cast, but a failure can no longer erase the captured transcript.
         meeting.endedAt = Date()
         meeting.lifecycleState = .captured
         meeting.lastProcessingError = nil
+        let provisionalAttribution = SpeakerAttributor.attribute(
+            segments: captions, turns: [], meetingID: meetingID)
+        meeting.language = SpokenLanguageDetector.homogeneousLanguage(
+            in: provisionalAttribution.segments)
+        let capturedAssets = reconciledAssets(from: capture, at: meeting.endedAt ?? Date())
+        let hasPendingPublication = capturedAssets.contains { $0.healthStatus == .pending }
         do {
-            try await services.store.save(meeting)
+            try await services.store.installCapturedSnapshot(CapturedMeetingSnapshot(
+                meeting: meeting,
+                assets: capturedAssets,
+                speakers: provisionalAttribution.speakers,
+                segments: provisionalAttribution.segments,
+                contextItems: contextItems,
+                companionCards: companionCards))
             recordingShell = meeting
+            reservedAssets = capturedAssets
             services.libraryVersion += 1
         } catch {
             phase = .failed(L10n.format(
@@ -604,10 +635,10 @@ extension RecordingController {
 
             phase = .processing(L10n.text("Saving…"))
             meeting.language = spokenLanguage
-            try await services.store.save(attribution.speakers)
-            try await services.store.save(attribution.segments)
-            try await services.store.save(contextItems)
-            try await services.store.save(companionCards, for: meeting.id)
+            try await services.store.replaceCast(
+                for: meeting.id,
+                speakers: attribution.speakers,
+                segments: attribution.segments)
 
             var savedSummary: SummaryDraft?
             do {
@@ -634,8 +665,9 @@ extension RecordingController {
                 }
             }
 
-            meeting.lifecycleState = .ready
-            meeting.lastProcessingError = nil
+            meeting.lifecycleState = hasPendingPublication ? .needsAttention : .ready
+            meeting.lastProcessingError = hasPendingPublication
+                ? "capture.publication.failed" : nil
             try await services.store.save(meeting)
             recordingShell = meeting
             services.libraryVersion += 1
@@ -681,10 +713,7 @@ extension RecordingController {
     /// launch recovery instead of deleting potentially useful audio.
     private func reconcileCaptureStartFailure(services: AppServices) async -> String? {
         guard var meeting = recordingShell else { return nil }
-        let hasCapturedFile = reservedAssets.contains { asset in
-            FileManager.default.fileExists(
-                atPath: AppServices.audioRoot.appendingPathComponent(asset.relativePath).path)
-        }
+        let hasCapturedFile = hasReservedCaptureFile()
         do {
             if hasCapturedFile {
                 meeting.endedAt = Date()
@@ -704,6 +733,56 @@ extension RecordingController {
         } catch {
             return error.localizedDescription
         }
+    }
+
+    /// Maps publication evidence onto the stable reservation identities. A
+    /// source that produced no file becomes `missing`; a staging file that
+    /// failed publication remains `pending` for the recovery slice.
+    private func reconciledAssets(
+        from capture: RecordingSession.Summary,
+        at timestamp: Date
+    ) -> [AudioAsset] {
+        reservedAssets.map { reservation in
+            var asset = reservation
+            asset.updatedAt = timestamp
+            guard let published = capture.publishedFiles[asset.channel] else {
+                if !captureFileExists(
+                    relativePath: AudioCapturePath.stagingRelativePath(
+                        directory: audioRelative, channel: asset.channel)) {
+                    asset.healthStatus = .missing
+                }
+                return asset
+            }
+            asset.relativePath = AudioCapturePath.publishedRelativePath(
+                directory: audioRelative, channel: asset.channel)
+            asset.container = published.container
+            asset.codec = published.codec
+            asset.sampleRate = published.sampleRate
+            asset.channelCount = published.channelCount
+            asset.durationSeconds = published.durationSeconds
+            asset.byteCount = published.byteCount
+            asset.sha256 = published.sha256
+            asset.healthStatus = published.healthStatus
+            asset.peakDBFS = published.peakDBFS
+            asset.rmsDBFS = published.rmsDBFS
+            return asset
+        }
+    }
+
+    /// D37's filesystem half checks both staging and published names because
+    /// a crash or failed rename may leave either side of the capture saga.
+    private func hasReservedCaptureFile() -> Bool {
+        reservedAssets.contains { asset in
+            captureFileExists(relativePath: asset.relativePath)
+                || captureFileExists(
+                    relativePath: AudioCapturePath.publishedRelativePath(
+                        directory: audioRelative, channel: asset.channel))
+        }
+    }
+
+    private func captureFileExists(relativePath: String) -> Bool {
+        FileManager.default.fileExists(
+            atPath: AppServices.audioRoot.appendingPathComponent(relativePath).path)
     }
 
 }

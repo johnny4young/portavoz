@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication).
 
 ## Channel model (D5)
 
@@ -32,7 +32,7 @@ Two SEPARATE streams, never mixed before diarization:
 
 ## RecordingSession — `Sources/AudioCaptureKit/RecordingSession.swift`
 
-Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: files, secondsWritten, peaks, errors, `driftSeconds`.
+Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: published files, `PublishedCaptureFile` evidence, seconds written, peak/RMS amplitudes, errors, and `driftSeconds`.
 
 Startup is transactional at both levels. Before a source starts,
 `RecordingController` atomically inserts a `recording` meeting shell and one
@@ -43,11 +43,23 @@ warm-up, and schedules idle engine release. If startup wrote no channel file,
 the empty provisional shell is rolled back. If any reserved file exists, the
 shell is retained as `needsAttention` for recovery (D37).
 
-On stop, the controller persists `captured` before diarization or summary work,
-then `processing`, and finally `ready`. Audio with no captions is retained as a
-discoverable `needsAttention` meeting rather than discarded. A later required
-write failure does the same. `stop` schedules engine release with `defer`, even
-when there was not enough audio to keep.
+Each reservation and writer uses `<channel>.partial.caf`. On stop, all writers
+are released, each non-empty mono CAF is reopened for validation, SHA-256 is
+streamed in 1 MiB chunks, and actual sample rate/channel count/duration/size,
+finite peak/RMS dBFS from successfully written, signed-PCM-clamped samples, and
+`healthy`/`silent`/`clipped` health are captured.
+`CaptureFilePublisher` refuses cross-directory publication and existing final
+paths, then one same-directory rename publishes `<channel>.caf`. Missing
+channels stay metadata-free; a staging file that could not publish remains for
+recovery.
+
+The controller installs `captured`, finalized/missing assets, provisional live
+cast/transcript, notes, and Companion cards in one StorageKit Unit of Work
+before diarization or summary work, then records `processing` and finally
+`ready`. Batch attribution atomically replaces the provisional cast. Audio
+with no captions is retained as `needsAttention`; a later required-write
+failure does the same. `stop` schedules engine release with `defer`, even when
+there was not enough audio to keep.
 
 `CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers for older meetings (.wav) continue to work through `MeetingAudioLayout.channelFile` (prefers .caf, falls back to .wav). `verify_drift.py` converts CAF with afconvert.
 
@@ -70,11 +82,8 @@ when there was not enough audio to keep.
 
 ## Planned (not implemented)
 
-Band 1 slice 1C will write through `.partial` channel paths, atomically publish
-validated files, persist finalized duration/size/checksum/health metadata, and
-install the captured snapshot through one Unit of Work. Slice 1B deliberately
-reserves the current final `channel.caf` paths so database truth matches the
-as-built writer until that cutover. Launch recovery follows in a later slice.
+Band 1 slice 1D adds launch reconciliation for interrupted `recording` and
+`processing` meetings, pending staging files, and idempotent durable jobs.
 
 Other planned work: room channel; −23 LUFS normalization in the capture
 pipeline (today only peak-normalize before Whisper, spec 02).

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 15, 2026
 
+- **🔒 Audio appears only when it is whole** — Each channel now records behind a recovery filename, verifies its CAF structure, duration, size, checksum, signal levels, and health, then appears for playback in one atomic step. Portavoz preserves the recovery file instead of overwriting an existing recording or exposing a half-written channel.
 - **🛟 Your recording exists before AI does** — Portavoz now creates the meeting and reserves each audio channel before capture starts. If transcription or processing fails after audio was written, the recording stays discoverable in your library instead of disappearing with the error.
 - **🌍 Every voice keeps its language** — Auto-detect now preserves the language each person actually spoke in mixed meetings and after Refine. A separate Summary language setting consistently controls generated output for recordings, imports, live summaries, and regeneration without translating the transcript.
 
