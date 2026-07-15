@@ -673,3 +673,26 @@ pivot, falls back to full generation, and leaves generation failure silent.
 Unreadable notes remain an empty context, failed snapshot persistence is now
 explicit in the result but presentation keeps its existing broad invalidation,
 and a source rule prevents the old Meeting Detail bypass from returning.
+
+## D45 — The active detail summary is the newest immutable snapshot (Jul 2026)
+
+**Context:** summary versions increment independently per `(meeting, recipe)`.
+Meeting Detail nevertheless loaded `summary(meetingID)`, whose default recipe
+is `general`. Regenerating as Standup, Planning, 1:1, or a custom recipe saved
+the correct immutable snapshot and then incremented `libraryVersion`; the
+resulting reload could replace it on screen with an older General snapshot.
+The regeneration cache port also omitted recipe identity even though the D25
+fingerprint includes it, so a valid non-General hit or pivot could not be read.
+
+**Decision:** `RegenerateSummary` always passes `request.recipe.id` into exact
+and pivot storage lookups. Meeting Detail reads `mostRecentSummary`, defined as
+the latest live snapshot across recipes by `createdAt`, with SQLite `rowid` as
+the deterministic insertion-order tie-breaker. The existing recipe-specific
+`summary` API and per-recipe version sequence remain unchanged; no row is
+updated, deleted, or migrated.
+
+**Rationale:** the user's last successful structure choice should be the active
+detail representation, while immutable history and consumers that explicitly
+expect General remain stable. A read policy plus explicit recipe key closes
+the gap without schema churn, global mutable "selected recipe" state, or a
+cross-recipe version number.

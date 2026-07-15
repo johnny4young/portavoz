@@ -828,9 +828,7 @@ extension MeetingDetailView {
             HStack {
                 Text("Summary")
                     .font(.headline)
-                Text(summaryBadge(summary))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                summaryBadgeText(summary)
                 Spacer()
                 recipeSuggestionChip(summary)
                 thinSummaryChip(summary)
@@ -1361,7 +1359,7 @@ extension MeetingDetailView {
         let loadedCards = (try? await services.store.companionCards(for: meetingID)) ?? []
         guard !Task.isCancelled else { return }
         companionCards = loadedCards
-        let loadedSummary = try? await services.store.summary(meetingID)
+        let loadedSummary = try? await services.store.mostRecentSummary(meetingID)
         guard !Task.isCancelled else { return }
         summary = loadedSummary
         await loadPlayerIfNeeded()
@@ -1488,6 +1486,18 @@ extension MeetingDetailView {
     }
 
     /// "v3 · en" plus the structure when it is not the default one.
+    private func summaryBadgeText(
+        _ summary: (draft: SummaryDraft, version: Int)
+    ) -> some View {
+        let badge = summaryBadge(summary)
+        return Text(badge)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(badge)
+            .accessibilityValue(badge)
+            .accessibilityIdentifier("summary-badge")
+    }
+
     private func summaryBadge(_ summary: (draft: SummaryDraft, version: Int)) -> String {
         var badge = "v\(summary.version) · \(summary.draft.language)"
         if summary.draft.recipeID != Recipe.general.id,

@@ -85,23 +85,30 @@ extension MeetingStore {
                 request = request.order(Column("version").desc)
             }
             guard let record = try request.fetchOne(db) else { return nil }
-            _ = try PersistedIdentity.required(
-                record.id, table: SummaryRecord.databaseTableName, column: "id")
+            return try Self.summarySnapshot(record, meetingID: id, in: db)
+        }
+    }
 
-            let items = try ActionItemRecord
-                .filter(Column("summaryID") == record.id)
+    /// Loads the most recently created live snapshot across every recipe.
+    /// Meeting Detail uses this as its active structure after regeneration;
+    /// recipe-specific history remains addressable through `summary`.
+    public func mostRecentSummary(
+        _ id: MeetingID
+    ) async throws -> (draft: SummaryDraft, version: Int)? {
+        let meetingKey = id.rawValue.uuidString
+        return try await database.read { db in
+            guard try MeetingRecord
+                .filter(Column("id") == meetingKey)
                 .filter(Column("deletedAt") == nil)
-                .order(Column("createdAt"))
-                .fetchAll(db).map { try $0.actionItem }
-
-            let draft = SummaryDraft(
-                meetingID: id,
-                recipeID: record.recipeID,
-                language: record.language,
-                markdown: record.markdown,
-                actionItems: items,
-                fingerprint: record.fingerprint)
-            return (draft, record.version)
+                .fetchCount(db) > 0
+            else { return nil }
+            guard let record = try SummaryRecord
+                .filter(Column("meetingID") == meetingKey)
+                .filter(Column("deletedAt") == nil)
+                .order(Column("createdAt").desc, Column("rowid").desc)
+                .fetchOne(db)
+            else { return nil }
+            return try Self.summarySnapshot(record, meetingID: id, in: db)
         }
     }
 
@@ -132,24 +139,30 @@ extension MeetingStore {
                 request = request.filter(Column("language") == language)
             }
             guard let record = try request.fetchOne(db) else { return nil }
-            _ = try PersistedIdentity.required(
-                record.id, table: SummaryRecord.databaseTableName, column: "id")
-
-            let items = try ActionItemRecord
-                .filter(Column("summaryID") == record.id)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("createdAt"))
-                .fetchAll(db).map { try $0.actionItem }
-
-            let draft = SummaryDraft(
-                meetingID: id,
-                recipeID: record.recipeID,
-                language: record.language,
-                markdown: record.markdown,
-                actionItems: items,
-                fingerprint: record.fingerprint)
-            return (draft, record.version)
+            return try Self.summarySnapshot(record, meetingID: id, in: db)
         }
+    }
+
+    private static func summarySnapshot(
+        _ record: SummaryRecord,
+        meetingID: MeetingID,
+        in db: Database
+    ) throws -> (draft: SummaryDraft, version: Int) {
+        _ = try PersistedIdentity.required(
+            record.id, table: SummaryRecord.databaseTableName, column: "id")
+        let items = try ActionItemRecord
+            .filter(Column("summaryID") == record.id)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("createdAt"))
+            .fetchAll(db).map { try $0.actionItem }
+        let draft = SummaryDraft(
+            meetingID: meetingID,
+            recipeID: record.recipeID,
+            language: record.language,
+            markdown: record.markdown,
+            actionItems: items,
+            fingerprint: record.fingerprint)
+        return (draft, record.version)
     }
 
     /// A pending commitment with the meeting it came from.

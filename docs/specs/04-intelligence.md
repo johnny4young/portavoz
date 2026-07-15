@@ -50,7 +50,7 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 ## Fingerprint cache + translation pivot (D25) — `SummaryFingerprint` + `translate`
 
 - **`SummaryFingerprint.compute(request:providerID:)`**: SHA-256 of the MATERIAL and method — formatted transcript (with speaker names: renaming `S1` to `José` invalidates it because it changes attributions), D28 notes block, glossary, recipe, providerID, and `promptVersion` (constant to bump when prompts change substantially). **Intentionally excludes the output language** — that is what enables the pivot. Each provider stamps the fingerprint onto the draft it produces.
-- **Regenerar (detail)**: same fingerprint + same language already saved → "ya está al día" notice without a model call (greedy would reproduce the same result); same fingerprint in ANOTHER language → `translate(pivot)`; otherwise → full summary.
+- **Regenerate (detail)**: same recipe + fingerprint + language already saved → "already up to date" notice without a model call (greedy would reproduce the same result); same recipe + fingerprint in another language → `translate(pivot)`; otherwise → full summary. Recipe identity is explicit at the storage port as well as inside the fingerprint, so Standup/custom reuse cannot be filtered through General.
 - **`translate(_:to:glossary:)`**: parses the pivot markdown back into a structure (`StructuredSummary.parse` — invertible because EVERY snapshot comes from our renderer; round-trip tested) and translates **piece by piece: one call for the overview, one per section, one for the action items**. Piecewise because when given the whole thing — even with a guided schema — the 3B invented sections (2 failed iterations of the gated test: opaque markdown → truncated at the first paragraph; one-call mirrored schema → 3 sections of 1). The structure survives by construction; any bullet/item mismatch throws, and the caller falls back to a full resummary. Item owners travel positionally; the result retains the pivot's fingerprint. **Measured: constant 2.4 s vs 10.9 s for resummarizing the long synthetic meeting** (the savings scale with the meeting).
 
 Since Band 2 slice 2D, Meeting Detail regeneration executes as
@@ -63,6 +63,9 @@ fallback, and full-generation order. Provider construction, model paths,
 platform preference storage, availability, and localized UI copy remain in
 the macOS app. A typed result preserves the released error asymmetry and makes
 best-effort snapshot persistence explicit without changing broad invalidation.
+Slice 2E adds D45 active-snapshot semantics: after successful regeneration,
+Meeting Detail reloads the newest live immutable snapshot across recipes rather
+than defaulting to General. Per-recipe version history is unchanged.
 
 `SummaryOperationFingerprint` is deliberately separate from that cache key.
 It length-prefixes and hashes D25 material identity plus provider, requested

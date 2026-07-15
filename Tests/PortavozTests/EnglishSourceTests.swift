@@ -136,6 +136,12 @@ final class EnglishSourceTests: XCTestCase {
             // prose: the bilingual transcript is what the screenshot shows.
             return true
         }
+        if relative == "Sources/portavoz-app/AppServices+UITestFixtures.swift" {
+            // Recipe-history UI fixture: a newer Standup snapshot must
+            // remain visible instead of reverting to the General one.
+            return line.contains("resumen de standup sigue visible")
+                || line.contains("presupuesto de transcripción ya fue revisado")
+        }
         if relative == "Sources/portavoz-app/BenchMode.swift" {
             // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
             return line.contains("Revisemos el presupuesto")

@@ -29,6 +29,10 @@ provider-resolution adapters; Meeting Detail submits one request and maps the
 typed completion/cache/unavailability/failure result. Import, refine, and
 remaining recording workflows still coordinate capabilities directly until
 their own Band 2 slices are characterized and adopted (D44).
+Slice 2E closes the associated recipe-state gap: regeneration reuse is scoped
+to the chosen structure, and reload displays the newest persisted snapshot
+across structures instead of silently returning to General. The badge exposes
+the active recipe; all older immutable recipe versions remain stored (D45).
 
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and `importMeeting` reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
@@ -138,11 +142,11 @@ temp-store launches suppress real host Shortcuts.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 17 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 18 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume), Insights (heatmap + interlocutors), Onboarding (first listen +
-advance), MeetingDetail (summary tabs reveal ▸, right rail health+chapters,
-player skip+only-my-voice, clip export), and Settings (all categories,
+advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
+rail health+chapters, player skip+only-my-voice, clip export), and Settings (all categories,
 independent transcript/summary language controls, custom structures, capture
 controls, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so

@@ -10,8 +10,10 @@ final class MeetingDetailUITests: XCTestCase {
     /// PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
     /// (Audio/<uuid>/…) to exercise the player on real audio instead.
     @MainActor
-    private func launchOnSeededMeeting() -> XCUIApplication {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+    private func launchOnSeededMeeting(latestRecipe: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedLatestRecipe: latestRecipe)
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
@@ -58,6 +60,25 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["▸"].waitForExistence(timeout: 5),
             "the Decisiones tab must reveal the ▸ coauthored bullet (D28)")
+    }
+
+    @MainActor
+    func testMostRecentRecipeRemainsVisibleAfterReload() {
+        let app = launchOnSeededMeeting(latestRecipe: true)
+        defer { app.terminate() }
+
+        let badge = app.control(withIdentifier: "summary-badge")
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 10),
+            "the active summary must expose its recipe-aware badge")
+        XCTAssertEqual(
+            badge.value as? String,
+            "v1 · es · Standup",
+            "the latest Standup snapshot must remain selected after Meeting Detail reloads")
+        XCTAssertTrue(
+            app.staticTexts["El resumen de standup sigue visible después de recargar."]
+                .waitForExistence(timeout: 5),
+            "reload must not replace the latest structured summary with the older General one")
     }
 
     @MainActor

@@ -266,6 +266,35 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertEqual(original?.draft.actionItems.count, 1)
     }
 
+    func testMostRecentSummarySelectsLatestRecipeWithoutDeletingHistory() async throws {
+        _ = try await seedMeetingWithTranscript()
+        let general = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: "# general",
+            actionItems: [])
+        let standup = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.standup.id,
+            language: "es",
+            markdown: "# standup",
+            actionItems: [ActionItem(text: "Unblock rollout")])
+
+        try await store.saveSummary(general)
+        try await store.saveSummary(standup)
+
+        let active = try await store.mostRecentSummary(meeting.id)
+        let retainedGeneral = try await store.summary(
+            meeting.id,
+            recipeID: Recipe.general.id,
+            version: 1)
+        XCTAssertEqual(active?.draft.recipeID, Recipe.standup.id)
+        XCTAssertEqual(active?.draft.markdown, "# standup")
+        XCTAssertEqual(active?.draft.actionItems.first?.text, "Unblock rollout")
+        XCTAssertEqual(retainedGeneral?.draft.markdown, "# general")
+    }
+
     /// D25: the fingerprint round-trips and `latestSummary(fingerprint:)`
     /// finds the cache hit (same language) or the translation pivot (any
     /// language); pre-fingerprint snapshots (NULL) never match.

@@ -61,7 +61,7 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
     }
 
     func testAppleReuseReturnsExactLanguageHitWithoutModelCall() async {
-        let fixture = Fixture(targetLanguage: "es")
+        let fixture = Fixture(recipe: .standup, targetLanguage: "es")
         let request = fixture.summaryRequest(glossary: ["Portavoz"], contextItems: [])
         let fingerprint = SummaryFingerprint.compute(request: request, providerID: "apple-test")
         let exact = SummaryRegenerationSnapshot(
@@ -85,7 +85,9 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
         let summaryRequests = await provider.recordedSummaryRequests()
         let translations = await provider.recordedTranslations()
         XCTAssertEqual(result, .unchanged(version: 7))
-        XCTAssertEqual(lookups, [.init(fingerprint: fingerprint, language: "es")])
+        XCTAssertEqual(
+            lookups,
+            [.init(recipeID: Recipe.standup.id, fingerprint: fingerprint, language: "es")])
         XCTAssertTrue(summaryRequests.isEmpty)
         XCTAssertTrue(translations.isEmpty)
     }
@@ -122,8 +124,14 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
         XCTAssertEqual(
             lookups,
             [
-                .init(fingerprint: fingerprint, language: "es"),
-                .init(fingerprint: fingerprint, language: nil),
+                .init(
+                    recipeID: Recipe.general.id,
+                    fingerprint: fingerprint,
+                    language: "es"),
+                .init(
+                    recipeID: Recipe.general.id,
+                    fingerprint: fingerprint,
+                    language: nil),
             ])
         XCTAssertEqual(translations.map(\.targetLanguage), ["es"])
         XCTAssertEqual(translations.first?.glossary, ["API"])
@@ -406,6 +414,7 @@ private actor SummaryRegenerationStoreSpy: SummaryRegenerationStore {
     struct Failure: Error {}
 
     struct Lookup: Equatable, Sendable {
+        let recipeID: String
         let fingerprint: String
         let language: String?
     }
@@ -439,10 +448,12 @@ private actor SummaryRegenerationStoreSpy: SummaryRegenerationStore {
 
     func regenerationSummary(
         _ meetingID: MeetingID,
+        recipeID: String,
         fingerprint: String,
         language: String?
     ) -> SummaryRegenerationSnapshot? {
-        lookups.append(Lookup(fingerprint: fingerprint, language: language))
+        lookups.append(
+            Lookup(recipeID: recipeID, fingerprint: fingerprint, language: language))
         return language == nil ? pivot : exact
     }
 

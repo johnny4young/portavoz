@@ -150,7 +150,7 @@ derives meeting lifecycle rather than asking callers to save a second,
 potentially inconsistent aggregate state.
 
 The existing aggregate API remains:
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id)` (latest live-meeting snapshot + version), `latestSummary(id:fingerprint:language:)` (D25 — with `language`, it is the exact cache hit; without it, returns the translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
 All cross-library projections are live-rooted. `libraryFacts`, `findingInputs`,
 `openActionItems`, `summary`/`latestSummary`, `voiceMixes`, and `voiceBalance`
@@ -210,3 +210,8 @@ narrow `SummaryRegenerationStore`: MeetingStore adapts note reads, D25
 fingerprint lookups, and immutable snapshot saves without exposing GRDB records
 to the use case. Read/save failures retain the released best-effort behavior,
 but persistence success is explicit in the application result.
+Slice 2E keeps cache/pivot reads recipe-scoped and adds
+`mostRecentSummary`: the active Meeting Detail snapshot is ordered by
+`createdAt DESC, rowid DESC` across recipes. The rowid tie-breaker makes
+same-timestamp insertions deterministic; recipe-specific versions and every
+older immutable row remain unchanged (D45).

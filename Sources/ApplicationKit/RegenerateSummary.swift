@@ -81,6 +81,7 @@ public protocol SummaryRegenerationStore: Sendable {
     func regenerationContextItems(for meetingID: MeetingID) async throws -> [ContextItem]
     func regenerationSummary(
         _ meetingID: MeetingID,
+        recipeID: String,
         fingerprint: String,
         language: String?
     ) async throws -> SummaryRegenerationSnapshot?
@@ -94,11 +95,13 @@ extension MeetingStore: SummaryRegenerationStore {
 
     public func regenerationSummary(
         _ meetingID: MeetingID,
+        recipeID: String,
         fingerprint: String,
         language: String?
     ) async throws -> SummaryRegenerationSnapshot? {
         guard let stored = try await latestSummary(
             meetingID,
+            recipeID: recipeID,
             fingerprint: fingerprint,
             language: language)
         else { return nil }
@@ -195,12 +198,14 @@ public struct RegenerateSummary: ApplicationUseCase {
             request: request, providerID: provider.providerID)
         if let exact = try? await store.regenerationSummary(
             request.meetingID,
+            recipeID: request.recipe.id,
             fingerprint: fingerprint,
             language: request.targetLanguage) {
             return .unchanged(version: exact.version)
         }
         if let pivot = try? await store.regenerationSummary(
             request.meetingID,
+            recipeID: request.recipe.id,
             fingerprint: fingerprint,
             language: nil),
             let translated = try? await provider.translate(

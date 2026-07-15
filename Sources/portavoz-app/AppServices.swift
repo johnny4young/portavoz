@@ -495,6 +495,7 @@ final class AppServices {
                     - Se revisará el presupuesto de transcripción.
                     """,
                 actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
+        await seedLatestRecipeSummaryIfRequested(for: meeting.id)
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])

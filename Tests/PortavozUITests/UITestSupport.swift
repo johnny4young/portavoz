@@ -20,6 +20,7 @@ extension XCUIApplication {
     @MainActor
     static func portavoz(
         seedDemo: Bool = false,
+        seedLatestRecipe: Bool = false,
         seedRecovery: Bool = false,
         seedProcessing: Bool = false,
         openSettings: Bool = false,
@@ -29,6 +30,7 @@ extension XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-NSTreatUnknownArgumentsAsOpen", "NO", "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language"]
         if seedDemo { app.launchArguments.append("-seed-demo") }
+        if seedLatestRecipe { app.launchArguments.append("-seed-latest-recipe") }
         if seedRecovery { app.launchArguments.append("-seed-recovery") }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
