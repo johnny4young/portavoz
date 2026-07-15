@@ -6,14 +6,24 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** begin Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): add the
-`ApplicationKit` dependency shell plus architecture rule tests, without moving
-runtime behavior yet. Then extract one use case at a time behind that boundary.
-Bands 0 and 1 are complete. Every slice
+**Next concrete step:** continue Band 2 of the approved architecture-hardening
+program in [refactor-20260714.md](refactor-20260714.md): extract
+`DeleteMeeting` and `RestoreMeeting` into the new ApplicationKit boundary,
+characterize their StorageKit behavior, and adopt them at all three app call
+sites before removing the direct calls. Bands 0 and 1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44).
+
+- **Architecture Band 2 slice 2A complete — dependencies are executable (Jul
+  15, 2026)**: SwiftPM and XcodeGen now expose a Core-only `ApplicationKit`,
+  linked by app, CLI, and tests, with a Sendable async use-case contract. Five
+  architecture tests parse the real manifests and source imports: they freeze
+  the Core-only starting edge, forbid capability-to-application dependencies,
+  reject presentation/platform imports in ApplicationKit, and keep Core's one
+  existing Security exception from spreading (D44). No production call path
+  changed. The package baseline is 454 tests; delete/restore is the first
+  low-risk vertical extraction.
 
 - **Architecture Band 1 complete — normal Stop is durable (Jul 15, 2026)**:
   Stop now publishes audio, installs captured assets/live transcript/notes/cards,

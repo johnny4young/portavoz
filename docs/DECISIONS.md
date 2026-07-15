@@ -117,6 +117,7 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 **Context:** M5 needs the first UI target. A `.app` with TCC permissions (microphone + system audio recording) normally pushes toward an Xcode project.
 **Decision:** `portavoz-app` is a normal SPM `executableTarget` (SwiftUI + Observation, all heavy work in the Kits), and `scripts/make-app.sh` wraps it in `dist/Portavoz.app`: Info.plist with `NSMicrophoneUsageDescription` + `NSAudioCaptureUsageDescription`, bundle id `app.portavoz.mac`, minimum macOS 14.4, ad-hoc signature. No `.xcodeproj` or XcodeGen until something forces it — known candidates are iOS (M7), Sparkle/notarization (final M5 packaging), and complex assets/entitlements. Migrating later is cheap: the SwiftUI files move unchanged into an Xcode app target.
 **App structure:** `AppServices` (composition root on MainActor: `MeetingStore` + engines loaded once) → `NavigationSplitView` with `LibraryView` (list + FTS search), `MeetingDetailView` (transcript with **editable speaker pills** — closes the M3 pending item —, summary snapshot, checkable action items), and `RecordingView`/`RecordingController` (state machine: prepare models → live captions per channel → on stop: diarize system.wav → attribute → persist → FM summary if Apple Intelligence is available). `MarkdownLite` renders summaries until the polish pass.
+**Current migration:** the paragraph above records the original M5 app shell. D43 now hands Stop to durable process-scoped diarization/summary, and D44 begins the incremental `ApplicationKit` extraction; the SPM/script packaging decision remains in force.
 **Verified (2026-07-07):** the bundle builds, signs, launches, and renders; a meeting saved by the CLI appears in the app library (same SQLite). The in-app recording flow remains pending interactive testing (TCC requests permissions the first time).
 **Rationale:** keeps `swift build`/`swift test` as the only workflow (D13), the repo 100% text, and allows the development harness (human or agent) to build and verify the app headlessly.
 
@@ -607,3 +608,32 @@ during capture keeps Stop responsive and gives live/batch paths the same
 speaker-identity input. Immediate handoff improves UX without weakening
 recovery, while terminal-aware Shortcut timing preserves released automation
 and the valid transcript-without-summary contract.
+
+## D44 — Application dependencies grow only with vertical use cases (Jul 2026)
+
+**Context:** adding every capability Kit to a new `ApplicationKit` before any
+workflow moves would create another broad composition target without proving a
+boundary. Conversely, moving orchestration before app/CLI manifests and tests
+recognize the layer would make dependency direction conventional rather than
+enforceable. Core also still contains one known platform exception:
+`SecretStore.swift` imports Security.
+
+**Decision:** Band 2 begins with a separately shippable dependency shell.
+`ApplicationKit` initially depends only on `PortavozCore` and exposes one
+Sendable async `ApplicationUseCase<Request, Response>` contract. The app, CLI,
+XcodeGen project, and package tests link the product, but no runtime workflow
+moves in this slice. Each later vertical extraction adds only the capability
+dependency required by that use case in the same commit; capability Kits must
+never depend back on ApplicationKit.
+
+Architecture tests parse the real SwiftPM target declarations and source
+imports. They enforce the initial Core-only edge, app/CLI/test visibility,
+reverse-dependency prohibition, and the approved import surface. Core's
+existing Security import is an explicit one-file baseline, not an accepted
+target state: no second forbidden import may appear, and the exception is
+removed when SecretStore moves to its platform adapter.
+
+**Rationale:** a ratchet makes architecture executable while keeping the first
+commit behavior-neutral. Dependencies become evidence of a real workflow
+instead of speculative permission, and the documented exception model lets
+tests improve the graph immediately without pretending existing debt is gone.

@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PortavozCore", targets: ["PortavozCore"]),
+        .library(name: "ApplicationKit", targets: ["ApplicationKit"]),
         .library(name: "ModelStoreKit", targets: ["ModelStoreKit"]),
         .library(name: "AudioCaptureKit", targets: ["AudioCaptureKit"]),
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
@@ -50,6 +51,11 @@ let package = Package(
     targets: [
         // Shared domain primitives every Kit builds on.
         .target(name: "PortavozCore"),
+
+        // Application workflows enter through this boundary. Dependencies
+        // are added one capability at a time with each extracted use case;
+        // the initial shell deliberately knows only the domain.
+        .target(name: "ApplicationKit", dependencies: ["PortavozCore"]),
 
         // Curated model registry + sha256-verified downloads, shared by every
         // Kit that loads ML models (transcription, diarization, summaries).
@@ -111,7 +117,7 @@ let package = Package(
         .executableTarget(
             name: "portavoz-app",
             dependencies: [
-                "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "Sparkle", package: "Sparkle"),
@@ -121,7 +127,7 @@ let package = Package(
         .executableTarget(
             name: "portavoz-cli",
             dependencies: [
-                "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit",
             ]
@@ -130,6 +136,7 @@ let package = Package(
         .testTarget(
             name: "PortavozTests",
             dependencies: [
+                "ApplicationKit",
                 "PortavozCore",
                 "ModelStoreKit",
                 "AudioCaptureKit",

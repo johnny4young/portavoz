@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44 (application dependency ratchet).
 
 ## Structure
 
@@ -15,7 +15,14 @@ Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Acce
 
 DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` for UI downloads; `libraryVersion` invalidates lists/detail (views reload with `.task(id:)`).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust shared reference after a long await: `RecordingController.stop` and `importMeeting` reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+SwiftPM and the XcodeGen UI-test project now link a Core-only
+`ApplicationKit`. Its first as-built API is the Sendable async
+`ApplicationUseCase<Request, Response>` contract. Five architecture tests
+enforce the package/import direction, but no app or CLI runtime workflow uses
+the module yet; `AppServices` and existing views still coordinate capabilities
+directly until each Band 2 vertical slice is characterized and adopted (D44).
+
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and `importMeeting` reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
@@ -71,16 +78,17 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
    rename staging files without overwrite → one `installCapturedSnapshot`
    transaction for `captured` + finalized/missing assets + provisional live
-   cast/transcript/context/Companion → persist `processing` → diarize system
-   channel → atomically replace the provisional cast through
-   `SpeakerAttributor` → final summary (with vocabulary as glossary) in the
-   independently configured summary language → persist `ready` → detail. The title (configurable
+   cast/transcript/context/Companion + the exact initial diarization job →
+   enter `done` and open detail → process-scoped worker diarizes and atomically
+   replaces the provisional cast → optional summary in the independently
+   configured language → persist `ready`. The title (configurable
    `TitleTemplate`: `{date} {time} {seq} {weekday}`, ISO-first) is assigned at
    start, so sequence follows start order. `Meeting.language` is set only when
    all segments are homogeneous; mixed/unknown remains nil. Audio with no
-   captions or a later required-write failure remains discoverable as
-   `needsAttention` rather than being deleted. A publication collision keeps
-   its staging file and also becomes `needsAttention` for launch recovery.
+   captions, a failed job admission, or later required-work failure remains
+   discoverable as `needsAttention` rather than being deleted. A publication
+   collision keeps its staging file and also becomes `needsAttention` for
+   launch recovery.
 
 Normal Stop now uses the durable process path (D39–D43). A utility-priority
 voiceprint read begins after capture reservation and feeds both live

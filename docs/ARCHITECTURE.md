@@ -36,21 +36,27 @@ and summary executor, exact operation fingerprints, heartbeat/retry ownership,
 and a single non-polling wake. The final 1D-b2b unit atomically installs the
 captured snapshot plus initial exact job, makes normal Stop navigate immediately
 and kick the executor, and preserves terminal-aware Shortcut delivery (D43).
+Band 2 slice 2A now adds the Core-only `ApplicationKit` product, a Sendable
+async use-case boundary, and source/manifest architecture tests without moving
+runtime orchestration (D44). The app and CLI link the new module, but their
+existing direct workflows remain unchanged until each vertical extraction.
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
 
 ## SPM workspace (a single package)
 
-`PortavozCore` contains shared domain types. The package currently exposes ten
-Kit libraries. Most depend on Core only; verified exceptions are
+`PortavozCore` contains shared domain types. The package currently exposes
+eleven Kit libraries. Most depend on Core only; verified exceptions are
 `TranscriptionKit → ModelStoreKit`, `DiarizationKit → ModelStoreKit`, and
 `IntegrationsKit → IntelligenceKit + StorageKit` (D31). The app and CLI compose
-the capabilities directly today.
+the capabilities directly at runtime today, while both now link the Core-only
+`ApplicationKit` shell that will receive one use case per Strangler slice.
 
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types, typed IDs, length-prefixed SHA-256 operation identity, canonical `LanguageCode`, and independent transcript/summary language policies. It currently also contains the concrete Keychain-backed `SecretStore`; moving that implementation to a platform adapter is a target, not current behavior |
+| `ApplicationKit` | Band 2 application boundary. It currently depends only on Core and defines `ApplicationUseCase<Request, Response>` as a Sendable async workflow contract. No production workflow has moved yet; capability dependencies are admitted only with the vertical use case that consumes them (D44) |
 | `ModelStoreKit` | Curated registry (`ModelCatalog`, routing **by task** through `ModelTask`) + `ModelStore`: downloads verified by sha256/pinned commit. Shared by every Kit that loads models |
 | `AudioCaptureKit` | Mic (AVAudioEngine) + per-app process taps (Core Audio, macOS 14.4+); `RecordingSession` (with `onChunk` tap); crash-safe staged CAF writer; validated SHA-256/health metadata and same-directory atomic publication; persisted-PCM recovery inspection/publication; retention policies |
 | `TranscriptionKit` | `TranscriptionEngine` protocol; `ParakeetEngine` (live sliding window + batch long-form); `TranscriptionScheduler` (D7 slots) |
@@ -64,12 +70,21 @@ the capabilities directly today.
 | `portavoz-app` | SwiftUI macOS application. `AppServices` currently composes dependencies and carries application orchestration, including the process-scoped post-capture worker supervisor; feature extraction into `ApplicationKit` is planned |
 | `portavoz-cli` | Executable development harness (`record --seconds N --pid X --system --out dir`) |
 
-## Target modular-monolith architecture (not implemented yet)
+Band 2 slice 2A establishes a dependency ratchet rather than a broad empty
+layer. Package and XcodeGen manifests expose `ApplicationKit`; app, CLI, and
+tests link it; only `PortavozCore` is currently below it. Five architecture
+tests parse the real target declarations and source imports. They prevent
+capability Kits from depending back on ApplicationKit, reject presentation or
+platform imports in the application layer, and freeze Core's existing
+`SecretStore.swift → Security` exception so it cannot spread before that
+adapter is extracted. No runtime call site imports ApplicationKit yet.
 
-Portavoz remains a single local SwiftPM product. The target adds one
-`ApplicationKit` for use cases and durable workflows; it does not introduce a
-backend, microservices, full CQRS, full event sourcing, or a state-management
-framework.
+## Target modular-monolith architecture (partially implemented)
+
+Portavoz remains a single local SwiftPM product. The Core-only
+`ApplicationKit` shell now exists, but its workflows and the remaining target
+edges below are not implemented yet. The target does not introduce a backend,
+microservices, full CQRS, full event sourcing, or a state-management framework.
 
 ```mermaid
 flowchart TB
@@ -418,6 +433,7 @@ until a later Band 1 adoption slice.
 8. **Documentation is part of the change:** all explanatory content under `docs/` is English. Every refactor commit updates this file and every other source-of-truth document whose facts changed. User-visible changes update CHANGELOG; internal plumbing does not create misleading release notes.
 9. **Persisted identity is strict:** storage decoding never invents UUIDs or silently changes aggregate identity.
 10. **Capture outranks derivation:** usable captured audio remains discoverable even when captions, diarization, refine, summaries, indexing, or integrations fail.
+11. **Application dependencies ratchet inward:** `ApplicationKit` starts Core-only. A capability dependency is added only in the same commit as a characterized use case that needs it; capability Kits never depend back on the application layer (D44).
 
 ## Refactor migration status
 
@@ -428,9 +444,9 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 449-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 454-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, atomic captured-state/initial-job handoff, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, exact operation fingerprints, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43) | Valid audio is durable before derivation; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
-| 2 — Application layer | Next — begin with the `ApplicationKit` dependency shell and architecture rule tests before extracting one use case | `ApplicationKit`, composition-only `AppServices`, feature models, scoped GRDB observations |
+| 2 — Application layer | In progress — slice 2A adds the Core-only `ApplicationKit` product/use-case contract and five executable dependency/import rules without moving runtime behavior (D44) | Next: extract `DeleteMeeting` and `RestoreMeeting` as the first StorageKit-backed vertical use cases, then adopt them at every app call site |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |

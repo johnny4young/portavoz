@@ -59,6 +59,7 @@ targets:
     dependencies:
       - package: Portavoz
         products:
+          - ApplicationKit
           - AudioCaptureKit
           - PortavozCore
           - ModelStoreKit
