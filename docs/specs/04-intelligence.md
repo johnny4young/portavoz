@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D46 (application workflows and immutable summary ownership).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -75,6 +75,19 @@ and attempts both generation and immutable persistence only after the required
 meeting/cast/transcript aggregate commits. Either summary failure is
 best-effort: the imported meeting and its audio remain available, exactly as in
 the released path (D46).
+
+Slice 2G routes post-refine Companion work through
+`ApplicationKit.ApplyRefinedMeeting` and an app-owned availability/model
+adapter. Companion runs only after the revision-fenced transcript transaction
+commits. An unavailable provider skips refresh, and an incomplete or canceled
+refresh preserves the prior cards; a complete pass replaces the snapshot,
+including with an empty set when the refined transcript contains no
+card-worthy questions. Card persistence failure is reported as a degradable
+outcome and never converts an accepted transcript into failure. Existing
+summary rows remain untouched by that transaction. After successful apply,
+Meeting Detail invokes the existing `RegenerateSummary` workflow with the
+current recipe/output-language policy, producing a new immutable snapshot
+without rewriting history (D47).
 
 `SummaryOperationFingerprint` is deliberately separate from that cache key.
 It length-prefixes and hashes D25 material identity plus provider, requested

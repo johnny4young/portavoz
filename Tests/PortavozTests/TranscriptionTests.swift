@@ -816,6 +816,7 @@ final class RefineDraftLossyGuardTests: XCTestCase {
             meetingID: id, speakerID: nil, channel: .system,
             text: "x", startTime: 0, endTime: newSpeech, isFinal: true)
         return RefineDraft(
+            sourceTranscriptRevision: 0,
             language: nil, speakers: [], segments: [segment],
             oldSegmentCount: 1, oldSpeakerCount: 1,
             oldSpeechSeconds: oldSpeech, meetingSeconds: meeting)

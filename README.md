@@ -58,7 +58,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. On launch, staging-only or final-only files are revalidated and restored; ambiguous copies are preserved rather than guessed at. If transcription or later processing fails, the recording remains discoverable for playback or export.
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
-- **Whisper refine** — a maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Force a language per meeting to recover one that came out wrong.
+- **Whisper refine** — a cancellable maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting to recover one that came out wrong.
 - **Import any audio** — drag in a file (or a `.portavoz` bundle) and it transcribes, diarizes and summarizes like a live recording. Large copies stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
 
 **Understand the meeting**
@@ -132,7 +132,7 @@ architecture migration is tracked in
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized application workflows for meeting lifecycle, trash purge, summary regeneration, and external-audio import over narrow capability ports |
+| `ApplicationKit` | Characterized application workflows for meeting lifecycle, trash purge, summary regeneration, external-audio import, and reviewable/revision-fenced meeting refinement over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |

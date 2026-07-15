@@ -521,22 +521,22 @@
         }
       }
     },
-    "Auto-detect preserves each speaker's language in mixed meetings. Pin one language only when quiet or noisy audio was detected incorrectly.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La detección automática conserva el idioma de cada persona en reuniones mixtas. Fija un solo idioma únicamente cuando el audio bajo o ruidoso se haya detectado mal."
-          }
-        }
-      }
-    },
     "Auto-detect": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Detección automática"
+          }
+        }
+      }
+    },
+    "Auto-detect preserves each speaker's language in mixed meetings. Pin one language only when quiet or noisy audio was detected incorrectly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección automática conserva el idioma de cada persona en reuniones mixtas. Fija un solo idioma únicamente cuando el audio bajo o ruidoso se haya detectado mal."
           }
         }
       }
@@ -667,6 +667,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cancelar el dictado"
+          }
+        }
+      }
+    },
+    "Cancel refine": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar refine"
+          }
+        }
+      }
+    },
+    "Canceling refine…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelando refine…"
           }
         }
       }
@@ -2281,22 +2301,22 @@
         }
       }
     },
-    "Meeting language": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Idioma de la reunión"
-          }
-        }
-      }
-    },
     "Meeting health": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Salud de la reunión"
+          }
+        }
+      }
+    },
+    "Meeting language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la reunión"
           }
         }
       }
@@ -4081,16 +4101,6 @@
         }
       }
     },
-    "The refine covers much less speech than the current transcript — it probably failed. Do not apply it.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El refine cubre mucha menos voz que el transcript actual — probablemente falló. No lo apliques."
-          }
-        }
-      }
-    },
     "The recording could not be saved because its local state was unavailable.": {
       "localizations": {
         "es": {
@@ -4101,12 +4111,32 @@
         }
       }
     },
+    "The refine covers much less speech than the current transcript — it probably failed. Do not apply it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El refine cubre mucha menos voz que el transcript actual — probablemente falló. No lo apliques."
+          }
+        }
+      }
+    },
     "The rest of the text is preserved as written. Putting the ISO date first makes the library sort meetings automatically.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "El resto del texto se conserva tal cual. Poner la fecha ISO primero hace que la biblioteca ordene las reuniones automáticamente."
+          }
+        }
+      }
+    },
+    "The transcript changed while you reviewed this draft. Run refine again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El transcript cambió mientras revisabas este borrador. Ejecuta Refine de nuevo."
           }
         }
       }

@@ -7,6 +7,8 @@ public enum StorageError: Error, LocalizedError {
     case absolutePathRejected(String)
     case meetingNotFound(MeetingID)
     case invalidImportedMeeting(String)
+    case invalidRefinedMeeting(String)
+    case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
     case processingJobNotFound(ProcessingJobID)
@@ -25,6 +27,11 @@ public enum StorageError: Error, LocalizedError {
             return "no such meeting: \(id.rawValue.uuidString)"
         case .invalidImportedMeeting(let reason):
             return "invalid imported meeting: \(reason)"
+        case .invalidRefinedMeeting(let reason):
+            return "invalid refined meeting: \(reason)"
+        case .staleRefineDraft(let meetingID, let expected, let actual):
+            return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
+                + "\(expected), current revision is \(actual)"
         case .invalidRecordingReservation(let reason):
             return "invalid recording reservation: \(reason)"
         case .invalidProcessingJob(let reason):

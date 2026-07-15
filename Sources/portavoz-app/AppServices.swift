@@ -407,6 +407,7 @@ final class AppServices {
                 question: "Ana, ¿te encargas del presupuesto?", answer: "",
                 kind: .context, source: "on-device", directed: true, askedAt: 200)
         ], for: meeting.id)
+        seedRunningRefineIfRequested(for: meeting.id)
         libraryVersion += 1
     }
 

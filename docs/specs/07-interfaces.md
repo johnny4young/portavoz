@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -23,6 +23,12 @@ SPM binary (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`
 | `issues` | `--meeting <uuid> (--github <owner/repo> \| --linear-team <id>)` |
 | `models` | `download \| verify \| path` — complete sha256 catalog |
 | `bench-m2` | M2 acceptance harness (live lag + concurrent batch) |
+
+`meetings refine` still owns its CLI/model presentation pipeline, but accepted
+results now persist through the same `MeetingStore.applyRefinedCast` Unit of
+Work as the app boundary. Language, cast, transcript, and
+`transcriptRevision` therefore commit atomically, and a concurrent transcript
+change rejects the stale CLI result instead of overwriting newer truth (D47).
 
 ## MCP server — `portavoz-cli mcp`
 

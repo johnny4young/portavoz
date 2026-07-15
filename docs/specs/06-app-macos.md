@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D46 (application dependency and workflow ownership).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D47 (application dependency and workflow ownership).
 
 ## Structure
 
@@ -35,10 +35,19 @@ Library navigation. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
 File copy and compensating deletion run at utility priority instead of on the
-MainActor. Refine and remaining recording orchestration await their own Band 2
-slices (D46).
+MainActor (D46).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+Slice 2G moves quality re-passes through `ApplicationKit.RefineMeeting` and
+`ApplyRefinedMeeting`. `AppServices` composes private audio, preference,
+processor, Store, and Companion adapters; `RefineService` now retains only
+per-meeting presentation/task state, explicit cancellation, and run-identity
+fencing. Draft generation never writes. Accepted language, cast, transcript,
+and revision commit atomically behind the source revision; stale drafts are
+rejected; summaries remain immutable; and Companion refresh is post-commit
+optional work. Remaining recording/recovery orchestration awaits later Band 2
+slices (D47).
+
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
@@ -129,7 +138,7 @@ derived work, including transcript-only completion when summary is unavailable;
 temp-store launches suppress real host Shortcuts.
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
-- **Refine (D7/D35 in-app)**: re-transcribe both channels with Whisper (+vocabulary). `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither the app UI nor summary language is ever a transcript fallback. Refine then re-diarizes (merge micro-clusters) and presents a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) — **nothing is applied without "Aplicar"** (a faulty refine replaced a real meeting; draft flow and tombstones are double defense). On apply, the app replaces `Meeting.language` with the homogeneous language recomputed from refined segments, including `nil` for mixed/unknown output, then calls `replaceCast` and regenerates the summary under its independent policy. **Runs in `RefineService` (Jul 2026), keyed by MeetingID and OUTSIDE view hierarchy**: switching meetings does not lose a draft (the view is recreated with `.id(id)`; previously the Task kept burning ANE and the sheet was lost) — the draft waits for that meeting to be visited again; one refine runs at a time; `MicBleedFilter` discards room echo from the microphone channel. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
+- **Refine (D7/D35/D47 in-app)**: `ApplicationKit.RefineMeeting` re-transcribes retained non-silent channels with Whisper (+vocabulary), then applies microphone noise/bleed filtering and best-effort diarization. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. On acceptance, `ApplyRefinedMeeting` atomically installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale draft is rejected. Companion refresh runs only afterward and preserves prior cards on incomplete work; persistence failure warns without failing the transcript. Meeting Detail reloads and invokes the existing `RegenerateSummary` use case under the independent current recipe/output policy, preserving older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
 - Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation.
 
 **SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · External model BYOK (endpoint/model in defaults, key in Keychain, Companion opt-in toggle disabled until all configured; deleting key turns it off — spec 04) · GitHub (token in Keychain).
@@ -146,16 +155,17 @@ temp-store launches suppress real host Shortcuts.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 18 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 19 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
-rail health+chapters, player skip+only-my-voice, clip export), and Settings (all categories,
+rail health+chapters, player skip+only-my-voice, clip export, refine cancel), and Settings (all categories,
 independent transcript/summary language controls, custom structures, capture
 controls, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
-neither SQLite nor audio can touch the user's library. `-seed-recovery` and
-`-seed-processing` are accepted only with the temp store. The processing
+neither SQLite nor audio can touch the user's library. `-seed-recovery`,
+`-seed-processing`, and `-seed-refine-running` are accepted only with the temp
+store. The processing
 fixture uses a deterministic fake local provider and no real audio, models,
 biometric files, Keychain, or host Shortcut; it uses the normal exact request
 factory and observes the original transcript and dependent summary after launch

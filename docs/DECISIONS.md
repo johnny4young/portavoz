@@ -727,3 +727,49 @@ database ownership explicit, prevents partial imported meetings, and keeps the
 Library responsive without redesigning import as a durable background job.
 The Library still shows the same localized phases, invalidates once on success,
 and navigates only after the optional summary attempt, preserving v0.6.0 UX.
+
+## D47 — Accepted refine drafts are revision-fenced aggregate replacements (Jul 2026)
+
+**Context:** the in-app quality pass already protected users with a review
+sheet, but the draft did not identify the transcript revision it was derived
+from. Apply saved `Meeting.language` and then replaced the cast/transcript in a
+second transaction. A child failure could therefore leave partially updated
+metadata, and a draft left open while another workflow changed the transcript
+could overwrite newer truth. The generic `replaceCast` transaction also did
+not advance `transcriptRevision`. Refine additionally combined filesystem,
+preferences, concrete engines, storage, Companion, localization, and long-lived
+task state inside the app layer.
+
+**Decision:** `ApplicationKit.RefineMeeting` creates a reviewable `RefineDraft`
+through narrow audio, preference, processor, and progress ports. The draft
+carries its source `transcriptRevision`; automatic policy keeps mixed-language
+recognition unhinted, digitally silent channels are skipped, mic noise and
+bleed filters remain in force, diarization is degradable, cancellation always
+propagates, and every model-owning exit schedules the existing idle release.
+`ApplyRefinedMeeting` rejects an empty draft and calls
+`MeetingStore.applyRefinedCast`, which validates ownership and atomically
+tombstones the old cast, inserts the accepted cast/transcript, replaces the
+aggregate language (including `nil`), and increments the revision only when the
+stored revision still matches the draft. Existing summary snapshots are not
+mutated. The CLI uses the same StorageKit Unit of Work.
+
+Companion remains an optional post-commit derivation. An unavailable or
+incomplete refresh preserves the existing card snapshot; a complete refresh
+replaces it, including with an empty set. Companion persistence failure is a
+typed degradable outcome and can never turn the already committed transcript
+into a failed apply. Meeting Detail then invokes the existing
+`RegenerateSummary` application workflow, which creates a new immutable
+summary snapshot under its independent output-language policy. `RefineService`
+retains only keyed presentation/task state: explicit cancel is exposed through
+the existing control, and per-run identity prevents an older completion from
+overwriting state or a replacement model run from starting before cancellation
+has unwound.
+
+**Rationale:** revision fencing turns the review sheet into optimistic
+concurrency control rather than a best-effort warning, while one aggregate
+transaction eliminates partial accepted transcripts. Keeping Companion and
+summary after the transcript boundary preserves the product's valid
+transcript-without-derived-content contract. The split is a Strangler move:
+the same language, filtering, comparison, draft approval, navigation, and
+summary UX remain, but business failure policy is now testable without SwiftUI,
+real models, or platform storage.

@@ -8,12 +8,28 @@ Single source of truth for progress — it previously lived in a session HANDOFF
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
 program in [refactor-20260714.md](refactor-20260714.md): extract
-`RefineMeeting` from the app with draft/compare/apply, cancellation, language,
-Companion, engine-release, and immutable-history parity. `ImportMeeting` and
-T16 are complete; Bands 0 and 1 are complete. Every slice
+`StopRecording` from `RecordingController` while preserving immediate detail
+navigation, the atomic captured-snapshot/job handoff, degradable derived work,
+engine release, terminal-aware Shortcut timing, and the transcript/no-audio
+fallbacks. `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and
+1 are complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47).
+
+- **Architecture Band 2 slice 2G complete — reviewed refine cannot overwrite
+  newer truth (Jul 15, 2026)**: `ApplicationKit.RefineMeeting` owns the typed
+  audio/preference/processor/progress workflow and produces a draft carrying
+  its source transcript revision. Automatic recognition remains unhinted for
+  mixed ES/EN evidence; silent channels, microphone noise, and bleed remain
+  suppressed; diarization remains degradable; cancellation is explicit; and
+  engine release is guaranteed after every model-owning exit.
+  `ApplyRefinedMeeting` commits language, cast, transcript, and the next
+  revision atomically, rejects a stale draft, preserves immutable summaries,
+  and treats Companion refresh as post-commit optional work. The CLI uses the
+  same StorageKit Unit of Work. Sixteen use-case/storage tests, a ninth
+  architecture rule, and a 19th XCUITest bring the verified baseline to 504
+  package tests (13 gated) plus 19 UI cases (D47).
 
 - **Architecture Band 2 slice 2F complete — imported audio has one owner (Jul
   15, 2026)**: `ApplicationKit.ImportMeeting` now coordinates typed file,

@@ -64,8 +64,8 @@ struct MeetingDetailView: View {
     private var refineDraft: RefineDraft? {
         if case .draft(let draft) = refinePhase { return draft } else { return nil }
     }
-    /// Applying a draft (and other row actions) stays view-local: it is a
-    /// short DB write, not a long re-pass.
+    /// Applying a draft stays view-local as presentation state while the
+    /// atomic mutation and optional Companion refresh cross ApplicationKit.
     @State private var applying: String?
     @State private var actionError: String?
     @State private var editingTitle = false
@@ -1050,39 +1050,57 @@ extension MeetingDetailView {
     /// language (or honoring the Settings pin); the chevron offers a per-meeting
     /// language override, the fix for a meeting whose transcript came out in
     /// the wrong language on weak audio.
+    @ViewBuilder
     private func refineMenu(_ detail: MeetingDetail) -> some View {
-        let disabled = refining != nil || detail.meeting.audioDirectory == nil
-        return Menu {
-            Button("Re-transcribe in Spanish") {
-                refine(detail, languagePolicy: .fixed(.spanish))
+        let isRefining = refining != nil
+        let disabled = !isRefining && detail.meeting.audioDirectory == nil
+        if isRefining {
+            Button(role: .destructive) {
+                services.refines.cancel(meetingID)
+            } label: {
+                refineControlLabel(isRefining: true)
             }
-            Button("Re-transcribe in English") {
-                refine(detail, languagePolicy: .fixed(.english))
-            }
-        } label: {
-            Group {
-                if refining != nil {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: "wand.and.stars").font(.system(size: 13))
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityIdentifier("detail-refine")
+            .accessibilityValue("cancel")
+            .help(L10n.text("Cancel refine"))
+        } else {
+            Menu {
+                Button("Re-transcribe in Spanish") {
+                    refine(detail, languagePolicy: .fixed(.spanish))
                 }
+                Button("Re-transcribe in English") {
+                    refine(detail, languagePolicy: .fixed(.english))
+                }
+            } label: {
+                refineControlLabel(isRefining: false)
+            } primaryAction: {
+                refine(detail)
             }
-            .foregroundStyle(.secondary)
-            .frame(width: 30, height: 30)
-            .background(Circle().fill(.quaternary.opacity(0.5)))
-        } primaryAction: {
-            refine(detail)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .disabled(disabled)
-        .accessibilityIdentifier("detail-refine")
-        .help(
-            L10n.text(
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(disabled)
+            .accessibilityIdentifier("detail-refine")
+            .accessibilityValue("refine")
+            .help(L10n.text(
                 // swiftlint:disable:next line_length
-                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."
-            ))
+                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."))
+        }
+    }
+
+    private func refineControlLabel(isRefining: Bool) -> some View {
+        Group {
+            if isRefining {
+                Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+            } else {
+                Image(systemName: "wand.and.stars").font(.system(size: 13))
+            }
+        }
+        .foregroundStyle(.secondary)
+        .frame(width: 30, height: 30)
+        .background(Circle().fill(.quaternary.opacity(0.5)))
     }
 
     private func refine(
@@ -1092,7 +1110,7 @@ extension MeetingDetailView {
         services.refines.start(
             meetingID: meetingID,
             detail: detail,
-            services: services,
+            useCase: services.refineMeeting.draft,
             languagePolicy: languagePolicy)
     }
 
@@ -1102,48 +1120,32 @@ extension MeetingDetailView {
         Task {
             defer { applying = nil }
             do {
-                if var meeting = detail?.meeting {
-                    // Always replace the aggregate metadata, including with
-                    // nil when the refined meeting is mixed/unknown.
-                    meeting.language = draft.language
-                    try await services.store.save(meeting)
+                let result = try await services.refineMeeting.apply(
+                    ApplyRefinedMeetingRequest(
+                        meetingID: meetingID,
+                        draft: draft
+                    ) { phase in
+                        if phase == .refreshingCompanion {
+                            await MainActor.run {
+                                applying = L10n.text(
+                                    "Re-checking the Companion's answers…")
+                            }
+                        }
+                    })
+                if result.companion == .persistenceFailed {
+                    actionError = L10n.text(
+                        "The transcript was refined, but Companion cards could not be refreshed.")
                 }
-                try await services.store.replaceCast(
-                    for: meetingID,
-                    speakers: draft.speakers,
-                    segments: draft.segments)
-                await refreshCompanionCards(from: draft.segments)
                 await reload()
                 services.libraryVersion += 1
                 regenerate(
                     language: summaryLanguage(summary?.draft.language))
+            } catch StorageError.staleRefineDraft(_, _, _) {
+                actionError = L10n.text(
+                    "The transcript changed while you reviewed this draft. Run refine again.")
             } catch {
                 actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
             }
-        }
-    }
-
-    /// Re-runs the Companion over the refined transcript so its answer cards
-    /// improve with it (D26/D7). Gated on the Companion being enabled and
-    /// available. An interrupted/failed pass preserves the old cards; a fully
-    /// successful pass replaces them, including with an empty clean result.
-    private func refreshCompanionCards(from segments: [TranscriptSegment]) async {
-        guard #available(macOS 26.0, *) else { return }
-        guard
-            UserDefaults.standard.bool(forKey: "companionEnabled"),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        else { return }
-        applying = L10n.text("Re-checking the Companion's answers…")
-        let refresh = await CompanionRefresh.regenerate(from: segments, meetingID: meetingID)
-        // An incomplete pass means at least one model call failed/cancelled;
-        // preserve the old snapshot. A COMPLETE empty pass is meaningful: the
-        // refined transcript contains no card-worthy questions, so stale live
-        // cards should be removed.
-        guard refresh.completed else { return }
-        do {
-            try await services.store.replaceCompanionCards(refresh.cards, for: meetingID)
-        } catch {
-            actionError = L10n.text("The transcript was refined, but Companion cards could not be refreshed.")
         }
     }
 

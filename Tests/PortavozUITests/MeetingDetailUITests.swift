@@ -10,10 +10,14 @@ final class MeetingDetailUITests: XCTestCase {
     /// PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
     /// (Audio/<uuid>/…) to exercise the player on real audio instead.
     @MainActor
-    private func launchOnSeededMeeting(latestRecipe: Bool = false) -> XCUIApplication {
+    private func launchOnSeededMeeting(
+        latestRecipe: Bool = false,
+        refineRunning: Bool = false
+    ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
             seedDemo: true,
-            seedLatestRecipe: latestRecipe)
+            seedLatestRecipe: latestRecipe,
+            seedRefineRunning: refineRunning)
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
@@ -112,6 +116,24 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
             "the answered Companion card must render for review")
+    }
+
+    @MainActor
+    func testRunningRefineCanBeCanceledWithoutChangingTheTranscript() {
+        let app = launchOnSeededMeeting(refineRunning: true)
+        defer { app.terminate() }
+
+        let refine = app.control(withIdentifier: "detail-refine")
+        XCTAssertEqual(refine.value as? String, "cancel")
+        refine.click()
+
+        let returnedToRefine = expectation(
+            for: NSPredicate(format: "value == 'refine'"),
+            evaluatedWith: refine)
+        wait(for: [returnedToRefine], timeout: 5)
+        XCTAssertTrue(
+            app.staticTexts["Revisemos el presupuesto de transcripción."].exists,
+            "canceling a quality pass must leave the current transcript visible")
     }
 
     @MainActor

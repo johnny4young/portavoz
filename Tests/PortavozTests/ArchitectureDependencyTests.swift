@@ -116,6 +116,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Audio import orchestration must not return to AppServices or a view")
     }
 
+    func testAppMeetingRefineEntersThroughApplicationKit() throws {
+        let violations = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"services\.store\.(?:applyRefinedCast|replaceCast|replaceCompanionCards)\s*\("#)
+
+        XCTAssertTrue(
+            violations.isEmpty,
+            "App refine mutations must enter through ApplicationKit: \(violations)")
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

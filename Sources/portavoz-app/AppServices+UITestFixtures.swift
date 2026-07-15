@@ -19,4 +19,8 @@ extension AppServices {
                     """,
                 actionItems: []))
     }
+
+    func seedRunningRefineIfRequested(for meetingID: MeetingID) {
+        refines.seedRunningForUITest(meetingID)
+    }
 }

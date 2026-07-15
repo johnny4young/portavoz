@@ -150,12 +150,11 @@ enum RefineCommand {
             let attribution = SpeakerAttributor.attribute(
                 segments: segments, turns: turns, meetingID: meetingID)
 
-            var updatedMeeting = detail.meeting
-            updatedMeeting.language = SpokenLanguageDetector.homogeneousLanguage(
-                in: attribution.segments)
-            try await store.save(updatedMeeting)
-            try await store.replaceCast(
+            try await store.applyRefinedCast(
                 for: meetingID,
+                expectedTranscriptRevision: detail.meeting.transcriptRevision,
+                language: SpokenLanguageDetector.homogeneousLanguage(
+                    in: attribution.segments),
                 speakers: attribution.speakers,
                 segments: attribution.segments)
 

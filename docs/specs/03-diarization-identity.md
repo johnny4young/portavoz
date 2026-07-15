@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -28,6 +28,16 @@ shared diarizer remains usable, attribution can still succeed. If no usable
 diarizer remains or inference fails, the workflow installs the full transcript
 with no invented speakers or speaker IDs. Storage then commits the meeting,
 any attributed cast, and all segments atomically (D46).
+
+For the in-app quality pass, `ApplicationKit.RefineMeeting` asks its processor
+port to diarize only a non-silent system channel after Whisper succeeds. A
+diarizer error is degradable and publishes a review draft with the full honest
+transcript but no invented speakers or speaker IDs; `CancellationError` is
+explicitly rethrown so a canceled quality pass cannot surface a draft. The
+draft carries the transcript revision used for attribution. If accepted,
+StorageKit validates every speaker/segment identity and speaker reference,
+then replaces cast, transcript, language, and revision atomically; a stale
+draft or invalid child preserves the current aggregate (D47).
 
 ## LIVE diarization — `LiveSpeakerLabeler` (Jul 2026)
 

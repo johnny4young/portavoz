@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate).
 
 ## Database
 
@@ -150,7 +150,7 @@ derives meeting lifecycle rather than asking callers to save a second,
 potentially inconsistent aggregate state.
 
 The existing aggregate API remains:
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:)` (validated, revision-fenced refined aggregate replacement — D47), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
 External audio uses the dedicated
 `saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the
@@ -161,6 +161,20 @@ meeting root, speakers, and segments; a duplicate or injected child failure
 rolls back the complete aggregate, so the Library never observes a meeting
 without its required transcript (D46). The optional summary remains a later
 immutable `saveSummary` operation and cannot roll the aggregate back.
+
+Accepted refine drafts use the dedicated
+`applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:)`
+Unit of Work. Before writing, it requires a nonnegative source revision, a
+nonempty transcript, unique children owned by the meeting, speaker references
+inside the proposed cast, and no attempt to move an existing speaker/segment
+from another meeting. Inside one GRDB transaction it reloads the live meeting,
+rejects a stale revision with `StorageError.staleRefineDraft`, tombstones the
+old live cast/transcript, inserts the accepted children, replaces language
+including `nil`, increments `transcriptRevision`, and updates the aggregate
+timestamp. Immutable summaries are untouched. Validation, a stale draft, or
+an injected child failure leaves language, cast, transcript, revision, and
+summary history unchanged. The app enters this Unit of Work through
+ApplicationKit; CLI refine calls the same StorageKit API (D47).
 
 All cross-library projections are live-rooted. `libraryFacts`, `findingInputs`,
 `openActionItems`, `summary`/`latestSummary`, `voiceMixes`, and `voiceBalance`
@@ -232,3 +246,9 @@ best-effort after any earlier required failure. Database and filesystem are
 not one distributed transaction; the explicit staged ownership and
 compensating delete form the bounded local Saga without changing the schema or
 turning import into a durable background job (D46).
+Slice 2G adds `applyRefinedCast` as the production implementation of
+ApplicationKit's refine store port. Draft generation performs no writes;
+acceptance uses optimistic revision fencing and one aggregate transaction.
+Companion cards are a separate optional post-commit replacement, and summaries
+remain immutable history. A source rule prevents the macOS app from bypassing
+the use case through direct refine mutations (D47).

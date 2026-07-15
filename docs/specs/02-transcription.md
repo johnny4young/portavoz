@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary).
 
 ## Roles and engines (D7)
 
@@ -62,6 +62,28 @@ the independently configured summary language never becomes a recognition
 fallback. A required transcription failure rolls back the staged copy before
 the aggregate exists. Once Whisper was prepared, the same idle release policy
 as the released import path is scheduled on every later exit.
+
+### Meeting refinement (D47)
+
+`ApplicationKit.RefineMeeting` owns the quality re-pass without constructing
+model objects or reading platform settings/files itself. The app adapter
+resolves retained system/microphone channels off the MainActor, samples the
+global transcript policy and vocabulary once, and maps typed progress while the
+use case prepares the shared engines, transcribes, attributes, and builds the
+reviewable `RefineDraft`. A per-meeting fixed Spanish/English recovery choice
+overrides the sampled policy; automatic mixed-language evidence leaves the
+Whisper hint `nil`, and the aggregate language is recomputed only when the
+result is homogeneous. Summary/UI language never enters recognition.
+
+Digitally silent channels never reach Whisper. Microphone results pass through
+`TranscriptNoiseFilter` and then `MicBleedFilter`, preserving the released
+anti-hallucination and echo behavior. Required preparation/transcription errors
+propagate; diarization degrades to honest unattributed segments; cancellation
+is never swallowed. Every exit after model ownership begins schedules both
+Whisper and recording-engine idle release. The draft carries the source
+`transcriptRevision`; acceptance is a separate ApplicationKit use case and
+StorageKit transaction that rejects stale drafts rather than overwriting a
+newer transcript.
 
 ## SpeechAnalyzer spike (M12/D25) — status and findings (Jul 2026)
 

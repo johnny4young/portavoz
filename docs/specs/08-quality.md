@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 487 package tests passing (13 gated) + 18 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 18 cases after the known interrupting Gancho window was closed; earlier automation-mode harness failures remain documented below.
+Status: 504 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -8,11 +8,12 @@ Status: 487 package tests passing (13 gated) + 18 XCUITest UI cases. CI on GitHu
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, and audio-import bypass prevention, and the Sendable async use-case contract |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import bypass prevention, direct app refine-mutation prevention, and the Sendable async use-case contract |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, and real MeetingStore note/snapshot adaptation |
 | ImportMeetingUseCaseTests | Required preparation/transcription order, typed progress, mixed-language preservation, best-effort diarization/summary, exact idle release, staged-audio rollback, atomic imported aggregate persistence, and real MeetingStore adaptation |
+| RefineMeetingUseCaseTests | Draft order/progress/language, silence/noise/bleed hygiene, required versus degradable failures, cancellation/release, revision-fenced apply, Companion outcomes, immutable summaries, stale rejection, and injected transactional rollback through real MeetingStore adaptation |
 | MeetingStoreTests summary history | Per-recipe immutable versions, deterministic newest-across-recipe selection for Meeting Detail, retained older structures, and recipe-scoped fingerprint cache/pivot reads |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, Downmix, **Resample.linear**, startup cleanup |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
@@ -169,11 +170,27 @@ segment failure proves meeting, cast, and transcript roll back together. The
 source rule permits one app wrapper only and rejects a return to direct import
 orchestration. Strict SwiftLint remains clean across 206 source files.
 
+Band 2 slice 2G adds sixteen refine tests and a ninth architecture rule. Port
+fakes characterize exact progress/order, fixed-language recovery versus
+automatic mixed-language evidence, silent-channel skipping, microphone
+noise/bleed filtering, required preparation/transcription failures,
+best-effort diarization, cancellation propagation, and exact idle release.
+Apply cases prove the source revision reaches storage, empty drafts never write,
+Companion unavailable/incomplete/complete-empty/persistence-failure outcomes
+preserve the transcript contract, and real MeetingStore acceptance increments
+the revision while retaining immutable summaries. Stale drafts preserve the
+newer aggregate, while an injected SQLite child failure rolls language, cast,
+transcript, and revision back together. The architecture rule rejects direct
+app `applyRefinedCast`, `replaceCast`, or `replaceCompanionCards` bypasses. A
+temp-store-only running-refine fixture adds the 19th XCUITest: cancel returns
+the existing control to idle and leaves the visible Spanish transcript intact.
+Strict SwiftLint remains clean across 209 source files.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
-XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain and completion does not invoke host Shortcuts), `-seed-demo` (deterministic meeting with transcript, summary, coauthorship bullet "▸", and **audio**), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model/audio/Keychain-free durable-processing fixture, also temp-store-only), and `-portavoz-open-settings` (deterministic Settings sheet for automation). Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 18 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, interrupted staging recovery to a playable detail, durable processing resume, heatmap/interlocutors, first listen, summary/transcript/player/rail/clip, newest-recipe reload, Settings navigation, independent transcript/summary language controls, custom structures, audio capture, mirror, and live locale. `make test-ui-en` and `make test-ui-es` force `-AppleLanguages`/`-AppleLocale`. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
+XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain and completion does not invoke host Shortcuts), `-seed-demo` (deterministic meeting with transcript, summary, coauthorship bullet "▸", and **audio**), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model/audio/Keychain-free durable-processing fixture, also temp-store-only), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), and `-portavoz-open-settings` (deterministic Settings sheet for automation). Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 19 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, interrupted staging recovery to a playable detail, durable processing resume, heatmap/interlocutors, first listen, summary/transcript/player/rail/clip, newest-recipe reload, refine cancellation, Settings navigation, independent transcript/summary language controls, custom structures, audio capture, mirror, and live locale. `make test-ui-en` and `make test-ui-es` force `-AppleLanguages`/`-AppleLocale`. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
 
 ## Measurement harnesses
 
