@@ -57,6 +57,83 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertEqual(detail?.segments.first?.channel, .microphone)
     }
 
+    func testInvalidPersistedUUIDFailsInsteadOfMintingIdentity() throws {
+        var record = try MeetingRecord(
+            meeting, createdAt: Date(), updatedAt: Date())
+        record.id = "corrupt-meeting-id"
+
+        XCTAssertThrowsError(try record.meeting) { error in
+            guard case StorageError.invalidPersistedUUID(
+                table: "meeting", column: "id", value: "corrupt-meeting-id") = error
+            else { return XCTFail("wrong error: \(error)") }
+        }
+
+        XCTAssertThrowsError(
+            try PersistedIdentity.optional(
+                "corrupt-speaker-id", table: "segment", column: "speakerID")
+        ) { error in
+            guard case StorageError.invalidPersistedUUID(
+                table: "segment", column: "speakerID", value: "corrupt-speaker-id") = error
+            else { return XCTFail("wrong error: \(error)") }
+        }
+    }
+
+    func testCorruptDatabaseIdentityFailsThroughPublicRead() async throws {
+        try await store.save(meeting)
+        let meetingKey = meeting.id.rawValue.uuidString
+        try await store.database.write { db in
+            try db.execute(
+                sql: "UPDATE meeting SET id = ? WHERE id = ?",
+                arguments: ["corrupt-meeting-id", meetingKey])
+        }
+
+        do {
+            _ = try await store.meetings()
+            XCTFail("corrupt persisted identity should fail the public read")
+        } catch {
+            guard case StorageError.invalidPersistedUUID(
+                table: "meeting", column: "id", value: "corrupt-meeting-id") = error
+            else { return XCTFail("wrong error: \(error)") }
+        }
+    }
+
+    func testInvalidPersistedEnumFailsInsteadOfChangingMeaning() throws {
+        let segment = TranscriptSegment(
+            meetingID: meeting.id, channel: .microphone, text: "hola",
+            startTime: 0, endTime: 1)
+        var record = SegmentRecord(segment, createdAt: Date(), updatedAt: Date())
+        record.channel = "corrupt-channel"
+
+        XCTAssertThrowsError(try record.segment) { error in
+            guard case StorageError.invalidPersistedValue(
+                table: "segment", column: "channel", value: "corrupt-channel") = error
+            else { return XCTFail("wrong error: \(error)") }
+        }
+    }
+
+    func testStorageSourceNeverUsesRandomUUIDDecodeFallbacks() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/StorageKit")
+        let files = try XCTUnwrap(FileManager.default.enumerator(atPath: root.path))
+            .compactMap { $0 as? String }
+            .filter { $0.hasSuffix(".swift") }
+        var offenders: [String] = []
+        for file in files {
+            let source = try String(
+                contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+            for (index, line) in source.components(separatedBy: .newlines).enumerated()
+            where line.contains("?? UUID()") {
+                offenders.append("\(file):\(index + 1)")
+            }
+        }
+        XCTAssertTrue(
+            offenders.isEmpty,
+            "Persisted UUID decoding must throw or diagnose; random fallbacks found: \(offenders)")
+    }
+
     func testSaveIsUpsertKeepingIdentity() async throws {
         try await store.save(meeting)
         var renamed = meeting!
@@ -237,6 +314,51 @@ final class MeetingStoreTests: XCTestCase {
         let open = try await store.openActionItems()
         XCTAssertEqual(open.map(\.item.text), ["tarea vigente"])
         XCTAssertEqual(open.first?.meetingTitle, "Planning semanal")
+    }
+
+    func testDeleteAndRestoreScopeEveryLibraryAggregateThroughLiveMeetings() async throws {
+        _ = try await seedMeetingWithTranscript()
+        try await store.saveSummary(
+            SummaryDraft(
+                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                markdown: "# resumen",
+                actionItems: [
+                    ActionItem(text: "tarea abierta"),
+                    ActionItem(text: "tarea hecha", isDone: true),
+                ]))
+
+        let before = try await store.libraryFacts()
+        let beforeOpen = try await store.openActionItems()
+        let beforeSummary = try await store.summary(meeting.id)
+        let beforeFindings = try await store.findingInputs(for: [meeting.id])
+        XCTAssertEqual(before.topParticipants.map(\.name), ["Ana"])
+        XCTAssertEqual(before.openActionItems, 1)
+        XCTAssertEqual(before.doneActionItems, 1)
+        XCTAssertEqual(beforeOpen.count, 1)
+        XCTAssertNotNil(beforeSummary)
+        XCTAssertNotNil(beforeFindings[meeting.id])
+
+        try await store.delete(meeting.id)
+        let deleted = try await store.libraryFacts()
+        let deletedOpen = try await store.openActionItems()
+        let deletedSummary = try await store.summary(meeting.id)
+        let deletedFindings = try await store.findingInputs(for: [meeting.id])
+        XCTAssertTrue(deleted.topParticipants.isEmpty)
+        XCTAssertEqual(deleted.openActionItems, 0)
+        XCTAssertEqual(deleted.doneActionItems, 0)
+        XCTAssertTrue(deletedOpen.isEmpty)
+        XCTAssertNil(deletedSummary)
+        XCTAssertNil(deletedFindings[meeting.id])
+
+        try await store.restore(meeting.id)
+        let restored = try await store.libraryFacts()
+        let restoredOpen = try await store.openActionItems()
+        let restoredSummary = try await store.summary(meeting.id)
+        let restoredFindings = try await store.findingInputs(for: [meeting.id])
+        XCTAssertEqual(restored, before)
+        XCTAssertEqual(restoredOpen.count, 1)
+        XCTAssertNotNil(restoredSummary)
+        XCTAssertNotNil(restoredFindings[meeting.id])
     }
 
     func testActionItemsToggle() async throws {

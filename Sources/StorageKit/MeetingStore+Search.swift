@@ -34,11 +34,13 @@ extension MeetingStore {
                     LIMIT ?
                     """,
                 arguments: [match, limit])
-            return rows.map { row in
+            return try rows.map { row in
                 SearchHit(
-                    meetingID: MeetingID(rawValue: UUID(uuidString: row["meetingID"]) ?? UUID()),
+                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                        row["meetingID"], table: "segment", column: "meetingID")),
                     meetingTitle: row["title"],
-                    segmentID: UUID(uuidString: row["segmentID"]) ?? UUID(),
+                    segmentID: try PersistedIdentity.required(
+                        row["segmentID"], table: "segment", column: "id"),
                     snippet: row["snippet"],
                     startTime: row["startTime"])
             }
@@ -70,8 +72,9 @@ extension MeetingStore {
                     LIMIT ?
                     """,
                 arguments: [limit])
-            return rows.compactMap { row in
-                guard let id = UUID(uuidString: row["id"]) else { return nil }
+            return try rows.map { row in
+                let id = try PersistedIdentity.required(
+                    row["id"], table: "segment", column: "id")
                 return (id, row["text"])
             }
         }
@@ -107,16 +110,18 @@ extension MeetingStore {
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.embedding IS NOT NULL AND segment.deletedAt IS NULL
                     """)
-            let scored: [(Float, SearchHit)] = rows.compactMap { row in
+            let scored: [(Float, SearchHit)] = try rows.compactMap { row in
                 guard let blob = row["embedding"] as Data? else { return nil }
                 let vector = Self.floats(from: blob)
                 guard vector.count == query.count else { return nil }
                 var dot: Float = 0
                 for index in 0..<vector.count { dot += vector[index] * query[index] }
                 let hit = SearchHit(
-                    meetingID: MeetingID(rawValue: UUID(uuidString: row["meetingID"]) ?? UUID()),
+                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                        row["meetingID"], table: "segment", column: "meetingID")),
                     meetingTitle: row["title"],
-                    segmentID: UUID(uuidString: row["segmentID"]) ?? UUID(),
+                    segmentID: try PersistedIdentity.required(
+                        row["segmentID"], table: "segment", column: "id"),
                     snippet: row["text"],
                     startTime: row["startTime"])
                 return (dot, hit)

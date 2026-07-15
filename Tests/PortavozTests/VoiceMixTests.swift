@@ -70,6 +70,26 @@ final class VoiceMixTests: XCTestCase {
         XCTAssertEqual(marta.myShareWithThem, 6.0 / 9.0, accuracy: 0.0001)
     }
 
+    func testDeleteAndRestoreRemoveAndReturnVoiceAggregates() async throws {
+        let meeting = try await seed()
+        let beforeMixes = try await store.voiceMixes(for: [meeting.id])
+        let beforeMix = try XCTUnwrap(beforeMixes[meeting.id])
+        let beforeBalance = try await store.voiceBalance()
+
+        try await store.delete(meeting.id)
+        let deletedMixes = try await store.voiceMixes(for: [meeting.id])
+        XCTAssertNil(deletedMixes[meeting.id])
+        let deletedBalance = try await store.voiceBalance()
+        XCTAssertFalse(deletedBalance.hasData)
+        XCTAssertTrue(deletedBalance.participants.isEmpty)
+
+        try await store.restore(meeting.id)
+        let restoredMixes = try await store.voiceMixes(for: [meeting.id])
+        let restoredBalance = try await store.voiceBalance()
+        XCTAssertEqual(restoredMixes[meeting.id], beforeMix)
+        XCTAssertEqual(restoredBalance, beforeBalance)
+    }
+
     func testVoiceBalanceEmptyWhenNoAttributedSpeech() async throws {
         let balance = try await store.voiceBalance()
         XCTAssertFalse(balance.hasData)

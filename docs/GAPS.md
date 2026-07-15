@@ -1,63 +1,72 @@
-# GAPS — Análisis de brechas para talla mundial
+# GAPS — Gap analysis for world-class quality
 
-Qué le falta a Portavoz (jul 2026) comparado contra el estado del arte medido en las dos rondas de análisis competitivo (PRODUCT.md). Ordenado por impacto. Cada brecha dice **qué existe hoy**, **qué falta** y **dónde está planeado** — si no está planeado, lo dice.
+What Portavoz lacks (Jul 2026) compared with the state of the art measured in the two rounds of competitive analysis (PRODUCT.md). Ordered by impact. Each gap states **what exists today**, **what is missing**, and **where it is planned** — if it is not planned, it says so.
 
-## Brechas de producto (el usuario las siente)
+## Product gaps (users feel them)
 
-| # | Brecha | Hoy | Falta | Plan |
+| # | Gap | Today | Missing | Plan |
 |---|---|---|---|---|
-| 1 | ~~**Distribución cero**~~ | **RESUELTO (10 jul 2026)**: repo público + release v0.1.0 (DMG notarizado, appcast Sparkle) + tap Homebrew con audit limpio — `brew install --cask portavoz` funciona | crecimiento (stars, discoverability) | ✅ M9 |
-| 2 | ~~**El audio no se puede escuchar**~~ | **RESUELTO (jul 2026)**: player sincronizado + highlight/auto-scroll + waveform coloreado + clips m4a, skip-silencio, transcode AAC e import (`AudioPlaybackKit`, M11) | — | ✅ |
-| 3 | ~~**No se puede escribir durante la reunión**~~ | **RESUELTO (jul 2026)**: panel de notas durante grabación, persistencia, tejido notas→prompt, render de coautoría con marca ▸ (M10/D28) | verificación de campo: 5 notas reales → resumen que las expande sin contradecirlas | ✅ código / campo pendiente |
-| 4 | ~~**Grabar exige la ventana completa**~~ | **RESUELTO (jul 2026)**: botón "Vista compacta" en grabación → HUD flotante (NSPanel `.nonactivatingPanel` + `.borderless`, level floating, todas las Spaces) con timer, última caption, medidor de mic y stop; la ventana principal se minimiza al Dock y el HUD vuelve a expandirse solo al salir de `.recording`. Los clicks no roban foco de Zoom/Meet | verificación de campo (menu bar item HECHO jul 2026: MenuBarExtra con estado + start/stop + dictado + launch-at-login) | ✅ código / campo pendiente |
-| 5 | ~~**UI solo en español**~~ | **RESUELTO (jul 2026)**: source strings en inglés, `Localizable.xcstrings` + `InfoPlist.xcstrings`, traducción ES completa, export a `en.lproj`/`es.lproj` en `make-app.sh`, `CFBundleDevelopmentRegion=en`, `CFBundleLocalizations=[en, es]`, selector Settings **System / English / Español** con locale SwiftUI en vivo | — | ✅ |
-| 6 | ~~**Onboarding inexistente**~~ | **RESUELTO (jul 2026)**: flujo primera-vez de 4 pasos (`OnboardingView`): bienvenida local-first, permisos guiados (mic ahora / system audio explicado / calendario opcional), descarga de modelos con progreso + recomendación por hardware, enrolar voz opcional. Se muestra una vez (`hasOnboarded`); bibliotecas existentes lo saltan; `-show-onboarding` lo fuerza | verificación visual pendiente | ✅ código |
-| 7 | ~~**Macs sin Apple Intelligence = sin resumen local**~~ | **RESUELTO (jul 2026)**: Ollama de primera clase — Ajustes → Motor de resúmenes detecta Ollama, lista modelos, resume 100% local sin key (`OllamaService` + `OpenAICompatibleSummaryProvider`). Verificado E2E con gpt-oss:20b (resumen ES en 24 s). **MLX embebido también hecho (D32, jul 2026)**: Qwen3-4B 4-bit en GPU, cero instalaciones, verificado en reunión real de 40 min | ✅ |
-| 8 | ~~**Import de audio externo sin UI**~~ | **RESUELTO (jul 2026)**: botón "Importar audio…" + drag-drop en la biblioteca → transcribe (Whisper) + diariza + resume como reunión nueva (M11) | — | ✅ |
-| 9 | Sin recap email (brief ✅) | **Brief pre-reunión HECHO (jul 2026)**: agenda colapsable hoy/mañana, brief con relevancia + citas + grabar desde el brief + banner proactivo (M13b) | borrador de recap post-reunión (email/Slack) | M16 |
-| 10 | Sin App Intents/Shortcuts/Spotlight | — | automatizaciones post-reunión | M16 |
+| 1 | ~~**Zero distribution**~~ | **RESOLVED (10 Jul 2026)**: public repo + v0.1.0 release (notarized DMG, Sparkle appcast) + Homebrew tap with a clean audit — `brew install --cask portavoz` works | growth (stars, discoverability) | ✅ M9 |
+| 2 | ~~**Audio cannot be played**~~ | **RESOLVED (Jul 2026)**: synchronized player + highlighting/auto-scroll + colored waveform + m4a clips, silence skipping, AAC transcoding, and import (`AudioPlaybackKit`, M11) | — | ✅ |
+| 3 | ~~**Cannot write during the meeting**~~ | **RESOLVED (Jul 2026)**: notes panel during recording, persistence, notes→prompt weaving, co-authored rendering with a ▸ marker (M10/D28) | field verification: 5 real notes → a summary that expands them without contradicting them | ✅ code / field pending |
+| 4 | ~~**Recording requires the full window**~~ | **RESOLVED (Jul 2026)**: "Vista compacta" button while recording → floating HUD (NSPanel `.nonactivatingPanel` + `.borderless`, floating level, all Spaces) with timer, latest caption, mic meter, and stop; the main window minimizes to the Dock and the HUD expands it again only when leaving `.recording`. Clicks do not steal focus from Zoom/Meet | field verification (menu bar item DONE Jul 2026: MenuBarExtra with status + start/stop + dictation + launch-at-login) | ✅ code / field pending |
+| 5 | ~~**Spanish-only UI**~~ | **RESOLVED (Jul 2026)**: English source strings, `Localizable.xcstrings` + `InfoPlist.xcstrings`, complete ES translation, export to `en.lproj`/`es.lproj` in `make-app.sh`, `CFBundleDevelopmentRegion=en`, `CFBundleLocalizations=[en, es]`, Settings selector **System / English / `Español`** with live SwiftUI locale | — | ✅ |
+| 6 | ~~**No onboarding**~~ | **RESOLVED (Jul 2026)**: 4-step first-run flow (`OnboardingView`): local-first welcome, guided permissions (mic now / system audio explained / optional calendar), model download with progress + hardware recommendation, optional voice enrollment. Shown once (`hasOnboarded`); existing libraries skip it; `-show-onboarding` forces it | visual verification pending | ✅ code |
+| 7 | ~~**Macs without Apple Intelligence = no local summary**~~ | **RESOLVED (Jul 2026)**: first-class Ollama plus embedded MLX. The shipped MLX path uses Qwen3.5-4B 4-bit on GPU and has been verified on a real 40-minute meeting | — | ✅ D32 |
+| 8 | ~~**External audio import without UI**~~ | **RESOLVED (Jul 2026)**: "Importar audio…" button + drag-and-drop in the library → transcribes (Whisper) + diarizes + summarizes as a new meeting (M11) | — | ✅ |
+| 9 | No recap email (brief ✅) | **Pre-meeting brief DONE (Jul 2026)**: collapsible today/tomorrow agenda, brief with relevance + citations + recording from the brief + proactive banner (M13b) | post-meeting recap draft (email/Slack) | M16 |
+| 10 | Native App Intents and Quick Look remain absent | Post-meeting Shortcut hook, `portavoz://record`, and Spotlight indexing are implemented | AppIntents/Siri metadata requires the future Xcode app target; Quick Look remains planned | M14a/M16 |
 
-## Brechas técnicas (deuda y riesgo)
+## Technical gaps (debt and risk)
 
-| # | Brecha | Riesgo | Plan |
+| # | Gap | Risk | Plan |
 |---|---|---|---|
-| T1 | ~~Crash-safety del WAV~~ | **RESUELTO**: verificado que WAV+kill -9 = 0 bytes legibles; captura migrada a CAF (kill -9 → 5.23 s de 6 s conservados); lectores con fallback a .wav legado | ✅ jul 2026 |
-| T2 | **Taps + VPIO en el mismo proceso** | MacParakeet los declaró incompatibles "confiablemente"; tenemos 1 muestra OK | Vigilancia activa (ver verificación de campo, abajo) + plan B offline echo-cancel (D27) |
-| T3 | ~~FM sin política de prioridad~~ | **RESUELTO (D29)**: `IntelligenceScheduler` single-flight con prioridades, latest-wins por key, 7 tests | ✅ jul 2026 |
-| T4 | **Números de perf sin medir**: cold start, RAM grabando, FTS a 1k reuniones, batería | targets publicados sin evidencia — inaceptable para el README de M9 | `portavoz-cli bench --suite full` + corpus sintético (M9) |
-| T5 | RAG brute-force O(n) | a 1,000+ reuniones el `ask` se degrada | medir primero (T4); sqlite-vec si falla el target |
-| T6 | ~~Storage de audio 126 MB/canal/22 min~~ | **RESUELTO (jul 2026)**: botón "Comprimir audio (AAC)" en el detalle → transcode a m4a (`AudioTranscoder`), borra el original solo tras escritura verificada; `MeetingAudioLayout` prefiere m4a | ✅ |
-| T7 | CI no corre los tests gated de modelos | regresiones de integración invisibles en CI | runner self-hosted o job manual mensual — NO PLANEADO |
-| T8 | ~~Sin SwiftLint/format en CI~~ | **RESUELTO (jul 2026)**: `.swiftlint.yml` calibrado a cero errores + job `lint` en CI (M9 prep) | ✅ |
-| T9 | ~~FluidAudio pineado a revisión~~ | **RESUELTO (jul 2026)**: 0.15.5 incluye el fix #732; re-pineado a `.upToNextMinor(from: "0.15.5")` | ✅ |
-| T10 | Sin telemetría de crashes (opt-in) | bugs de campo invisibles post-publicación | decidir en M9 (¿solo GitHub issues? ¿MetricKit local?) |
+| T1 | ~~WAV crash safety~~ | **RESOLVED**: verified that WAV+kill -9 = 0 readable bytes; capture migrated to CAF (kill -9 → 5.23 s of 6 s preserved); readers with fallback to legacy .wav | ✅ Jul 2026 |
+| T2 | **Taps + VPIO in the same process** | MacParakeet declared them "reliably" incompatible; we have 1 OK sample | Active monitoring (see field verification below) + offline echo-cancel plan B (D27) |
+| T3 | ~~FM without a priority policy~~ | **RESOLVED (D29)**: single-flight `IntelligenceScheduler` with priorities, latest-wins per key, 7 tests | ✅ Jul 2026 |
+| T4 | ~~**Unmeasured Mac performance numbers**~~ | **RESOLVED for cold start, recording RAM, FTS at 1k meetings/80k segments, drift, DER, refine, and summary; battery remains an iOS-phase measurement** | ✅ spec 08; expand to 100k segments in refactor Band 4 |
+| T5 | Brute-force O(n) RAG | at 1,000+ meetings, `ask` degrades | measure first (T4); sqlite-vec if it misses the target |
+| T6 | ~~Audio storage 126 MB/channel/22 min~~ | **RESOLVED (Jul 2026)**: "Comprimir audio (AAC)" button in the detail view → transcodes to m4a (`AudioTranscoder`), deletes the original only after verified writing; `MeetingAudioLayout` prefers m4a | ✅ |
+| T7 | CI does not run model-gated tests | integration regressions are invisible in CI | self-hosted runner or monthly manual job — NOT PLANNED |
+| T8 | ~~No SwiftLint/format in CI~~ | **RESOLVED (Jul 2026)**: `.swiftlint.yml` calibrated to zero errors + `lint` job in CI (M9 prep) | ✅ |
+| T9 | ~~FluidAudio pinned to a revision~~ | **RESOLVED (Jul 2026)**: 0.15.5 includes fix #732; re-pinned to `.upToNextMinor(from: "0.15.5")` | ✅ |
+| T10 | No unified local diagnostics/provenance surface | field failures and generated artifacts are harder to explain | refactor Band 3: signposts, local diagnostics export, generation provenance, explicit opt-in for any transfer |
+| T11 | Post-recording workflow is not durable | audio and partial work can become undiscoverable when stop-time derivation fails | refactor Band 1 |
+| T12 | ~~Persisted UUID read fallbacks create random identities~~ | **RESOLVED (Band 0 slice 0A):** malformed persisted IDs and enums now fail with typed `StorageError` integrity errors instead of minting, omitting, or changing entity meaning | ✅ strict-decoding + source-guard tests |
+| T13 | ~~Some library aggregates include soft-deleted meetings~~ | **RESOLVED (Band 0 slice 0A):** every summary, finding, participant, action, voice-mix, and talk-balance projection scopes through a live meeting; restore returns the prior values | ✅ delete/restore conservation tests |
+| T14 | Summary-language defaults differ by entry path | recording, import, and regeneration can choose different output defaults | refactor Band 0 |
+| T15 | Broad app invalidation and orchestration concentration | unrelated screens reload and workflows remain difficult to isolate/test | refactor Band 2 |
 
-## Brechas de posicionamiento (contra el mapa competitivo)
+## Positioning gaps (against the competitive map)
 
-- **Velocidad de publicación**: Meetily 20.5K stars / Anarlog 8.8K / MacParakeet 451 en 5 meses — cada semana privada regala terreno. El nicho "Swift nativo + MIT" está VACÍO (MacParakeet es GPL).
-- **Companion con reloj**: Teams "Facilitator" llega ~ago-sep 2026. Ser primeros en meeting-notes local importa (M13).
-- **Benchmarks públicos**: MacParakeet publica WER/velocidad/memoria reproducibles en el README — es el estándar de credibilidad del nicho. Tenemos los harnesses; falta la disciplina de publicarlos (M9).
-- **La historia del archivo**: Granola cobra por acceder a tus notas de >30 días. Nuestro pitch inverso — "tu historial jamás es rehén" — no está escrito en ningún README todavía.
+- **OSS growth after publication**: distribution is solved; discoverability,
+  adoption, and trust in a native Swift + MIT product remain ongoing work.
+- **Watch companion**: Teams "Facilitator" arrives ~Aug-Sep 2026. Being first in local meeting notes matters (M13).
+- **Public benchmarks**: reproducible latency, drift, DER, summary, refine,
+  startup, FTS, and memory numbers are published. The next credibility step is
+  retaining those baselines through the refactor and adding large-library
+  results.
+- **The archive story**: Granola charges for access to your >30-day-old notes. Our inverse pitch — "your history is never held hostage" — is not written in any README yet.
 
-## Verificación de campo pendiente (necesita al usuario, no es deuda de código)
+## Pending field verification (requires the user, not code debt)
 
-Features implementadas y testeadas cuyo criterio final solo se cierra con una reunión real:
+Implemented and tested features whose final criterion can be closed only with a real meeting:
 
-- **Companion < 5 s** (D26): en una reunión real, una pregunta de conocimiento debe producir tarjeta en < 5 s; validar también el detector "te preguntaron" (mención de tu nombre → ping) y, si configuraste BYOK, la ruta externa con disclosure.
-- **Taps + VPIO conviviendo** (T2): vigilar el canal system con AEC activo (glitches, dropouts, silencio). 1 reunión OK no es evidencia. Si aparece, plan B en D27.
-- **AirPods mudan el canal system** (C, campo 13 jul 2026, ABIERTO): con AirPods conectados una reunión salió con **solo el mic** — el canal `system.caf` quedó mudo. Confirmado midiendo el audio copiado de la reunión "Mita": mic −24.9 dBFS / 91% activo (español limpio), system −51.2 dBFS / 2% activo. Hipótesis: cuando los AirPods son a la vez salida y entrada, macOS conmuta a HFP/SCO y el `CATap` sobre el default-output deja de leer la mezcla; o el rebuild del grafo (`ProcessTapSource.installOutputDeviceListener`) se re-liga a un device transitorio. Confirmado 2ª vez (13 jul, grabación 9014F3AE con AirPods + video por el Mac): system.caf a −∞ dBFS (todo ceros, 0% activo) mientras el mic tenía voz — y el canal mudo produjo un segment alucinado en cirílico (`<unk>ПРИК САКТО`), el origen del "empezó a tomar el Russian". Mitigado: (a) `AudioSilence.fileIsSilent` salta canales de silencio digital en el refine, (b) supresión en vivo de captions del canal system cuando `systemAudioMissing`, (c) B (aviso en vivo), (d) override de idioma del refine. Con eso un canal mudo queda VACÍO en vez de inventar texto. CAUSA RAÍZ en el código: `MicrophoneSource(voiceProcessing:)` abre el input por defecto (AirPods) con `setVoiceProcessingEnabled(true)`, y abrir el mic de los AirPods los fuerza a HFP → el tap del output enmudece. El fix del mic integrado (forzar built-in) se DESCARTÓ: rompe la MOVILIDAD del usuario (si se aleja del Mac, el mic integrado no lo capta). Requisito del usuario: grabar con el input/output del sistema, reactivo. **EXPERIMENTO shipeado (local, PENDIENTE verificación en vivo)**: cuando el default output es Bluetooth, en vez del tap GLOBAL se tapea el PROCESO de la app de reunión (`MeetingAppDetector` → PIDs de Zoom/Teams/Slack/Discord/Webex/FaceTime/browsers; `ProcessTapSource(processIDs:)` con `CATapDescription(stereoMixdownOfProcesses:)`). Un process tap lee lo que la app renderiza ANTES del routing al device → PODRÍA capturar la llamada en HFP manteniendo el mic de los AirPods. Fallback: sin app detectada → tap global (igual que hoy). Fuera de Bluetooth → tap global (proven). Nudge en RecordingView nombra las apps tapeadas. A/B a verificar: con AirPods + Zoom/Meet, el canal system debe capturar la llamada. Si NO lo hace, el process tap tampoco lee en HFP y hay que aceptar el límite (voz siempre capturada, llamada limitada).
-- **AEC con parlantes**: grabar por parlantes y hablar — tus palabras salen como "Yo", los demás NO se duplican. Si el mic suena raro, Ajustes → desactivar "Cancelación de eco".
-- **Cambio de dispositivo**: conectar/desconectar audífonos a mitad — el canal mic sobrevive (hueco de silencio, no muerte).
-- **DER formal M3**: corregir la columna Speaker del RTTM borrador en `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → medir con `portavoz-cli der --file system.wav --reference <rttm corregido>`.
-- **Pivote de traducción** (D25): regenerar un resumen en otro idioma debe traducir el snapshot existente (rápido) en vez de re-resumir; verificar que conserva estructura y action items.
-- **Captions traducidos**: grabar con el picker "Traducir → …" (la 1ª vez macOS puede pedir descargar el par de idiomas).
-- **Nombres por calendario**: evento con asistentes alrededor de una grabación → "Sugerir nombres ✦" (pide TCC de calendario).
-- **Export real**: `export --gist` / "Publicar como Gist" con token; `issues --github/--linear` con tokens contra un repo de prueba.
+- **Companion < 5 s** (D26): in a real meeting, a knowledge question must produce a card in < 5 s; also validate the "you were asked" detector (mention of your name → ping) and, if you configured BYOK, the external path with disclosure.
+- **Taps + VPIO coexisting** (T2): monitor the system channel with AEC active (glitches, dropouts, silence). 1 OK meeting is not evidence. If it appears, plan B in D27.
+- **AirPods mute the system channel** (C, field 13 Jul 2026, OPEN): with AirPods connected, one meeting produced **mic only** — the `system.caf` channel was silent. Confirmed by measuring audio copied from the "Mita" meeting: mic −24.9 dBFS / 91% active (clean Spanish), system −51.2 dBFS / 2% active. Hypothesis: when AirPods are both output and input, macOS switches to HFP/SCO and the `CATap` on the default output stops reading the mix; or the graph rebuild (`ProcessTapSource.installOutputDeviceListener`) rebinds to a transient device. Confirmed a 2nd time (13 Jul, recording 9014F3AE with AirPods + video on the Mac): system.caf at −∞ dBFS (all zeros, 0% active) while the mic contained speech — and the silent channel produced a hallucinated Cyrillic segment (`<unk>ПРИК САКТО`), the source of "empezó a tomar el Russian". Mitigated: (a) `AudioSilence.fileIsSilent` skips digitally silent channels during refine, (b) live suppression of system-channel captions when `systemAudioMissing`, (c) B (live warning), (d) refine language override. With that, a silent channel remains EMPTY instead of inventing text. ROOT CAUSE in the code: `MicrophoneSource(voiceProcessing:)` opens the default input (AirPods) with `setVoiceProcessingEnabled(true)`, and opening the AirPods mic forces them into HFP → the output tap goes silent. The built-in mic fix (forcing built-in) was REJECTED: it breaks user MOBILITY (if the user moves away from the Mac, the built-in mic cannot capture them). User requirement: record with the system input/output, reactively. **SHIPPED EXPERIMENT (local, PENDING live verification)**: when the default output is Bluetooth, instead of tapping GLOBALLY, tap the meeting app PROCESS (`MeetingAppDetector` → PIDs for Zoom/Teams/Slack/Discord/Webex/FaceTime/browsers; `ProcessTapSource(processIDs:)` with `CATapDescription(stereoMixdownOfProcesses:)`). A process tap reads what the app renders BEFORE routing to the device → it MIGHT capture the call in HFP while retaining the AirPods mic. Fallback: no app detected → global tap (same as today). Outside Bluetooth → global tap (proven). A nudge in RecordingView names the tapped apps. A/B to verify: with AirPods + Zoom/Meet, the system channel must capture the call. If it does NOT, the process tap also cannot read in HFP and the limitation must be accepted (voice always captured, call limited).
+- **AEC with speakers**: record through speakers and speak — your words appear as "Yo", others are NOT duplicated. If the mic sounds strange, Ajustes → disable "Cancelación de eco".
+- **Device change**: connect/disconnect headphones midway — the mic channel survives (gap of silence, not termination).
+- **Formal M3 DER**: correct the Speaker column of the draft RTTM in `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → measure with `portavoz-cli der --file system.wav --reference <rttm corregido>`.
+- **Translation pivot** (D25): regenerating a summary in another language must translate the existing snapshot (fast) instead of summarizing again; verify that it preserves structure and action items.
+- **Translated captions**: record with the "Traducir → …" picker (the 1st time, macOS may ask to download the language pair).
+- **Names from calendar**: event with attendees around a recording → "Sugerir nombres ✦" (requests calendar TCC).
+- **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
 
-## Lo que NO son brechas (decisiones deliberadas — no "arreglar")
+## What are NOT gaps (deliberate decisions — do not "fix")
 
-- Sin backend propio ni cuentas (D12: cero servidores hasta demanda probada).
-- Sin captura de llamadas en iOS (D11: imposible; grabadora presencial + companion).
-- Sin bot que se une a la llamada (todo el mercado bot-free nativo lo evita; nuestra captura es local).
-- Threshold de diarización en 0.45 (subirlo rompe AMI; la fragmentación se resuelve post-clustering).
-- XCTest en vez de Swift Testing (D13, por el entorno de build sin Xcode completo).
+- No proprietary backend or accounts (D12: zero servers until demand is proven).
+- No call capture on iOS (D11: impossible; in-person recorder + companion).
+- No bot that joins the call (the entire native bot-free market avoids it; our capture is local).
+- Diarization threshold at 0.45 (raising it breaks AMI; fragmentation is resolved post-clustering).
+- XCTest instead of Swift Testing (D13, because of the build environment without full Xcode).

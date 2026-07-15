@@ -1,79 +1,79 @@
-# 6a — Especificación de implementación (para Claude Code)
+# 6a — Implementation specification (for Claude Code)
 
-Specs de las 4 ideas de la ronda 6a del canvas `explorations/UI Refresh Proposals.html`.
-Contexto: app macOS Swift 6 + SwiftUI, repo https://github.com/johnny4young/portavoz.
-Todo corre on-device; ninguna feature puede introducir tráfico de red.
+Specifications for the 4 ideas from round 6a of the `explorations/UI Refresh Proposals.html` canvas.
+Context: macOS app built with Swift 6 + SwiftUI, repo https://github.com/johnny4young/portavoz.
+Everything runs on-device; no feature may introduce network traffic.
 
 ---
 
 ## 1 · ⌘K «Pregúntale a tu semana»
 
-**Qué es:** paleta de comandos global (estilo Spotlight/Raycast) sobre cualquier vista de la app, que responde preguntas en lenguaje natural sobre el historial usando el RAG local existente.
+**What it is:** a global command palette (Spotlight/Raycast style) over any app view that answers natural-language questions about the user's history using the existing local RAG.
 
-**Dónde engancha en el código:**
-- Reusar `RAGAnswerer` (IntelligenceKit) y `MeetingStore.search` (FTS5) — el pipeline ya existe en `AskView.swift`; esto es una superficie nueva sobre el mismo motor.
-- Hotkey global: patrón de `GlobalHotkey.swift` (hoy registra ⌥⌘D para dictado). Default: ⌘K dentro de la app; opcional global en Settings.
-- Panel: `NSPanel` no-activante flotante (mismo recipe de `RecordingHUD.swift` / `DictationPanel.swift`), 620pt de ancho, radio 16, `.regularMaterial`.
+**Where it connects to the code:**
+- Reuse `RAGAnswerer` (IntelligenceKit) and `MeetingStore.search` (FTS5) — the pipeline already exists in `AskView.swift`; this is a new surface over the same engine.
+- Global hotkey: follow the `GlobalHotkey.swift` pattern (currently registers ⌥⌘D for dictation). Default: ⌘K within the app; optional global hotkey in Settings.
+- Panel: floating nonactivating `NSPanel` (same recipe as `RecordingHUD.swift` / `DictationPanel.swift`), 620pt wide, radius 16, `.regularMaterial`.
 
-**Comportamiento:**
-1. ⌘K abre el panel con focus en el input. `esc` cierra. Estado se descarta al cerrar.
-2. Mientras se escribe: FTS5 instantáneo (títulos + snippets, <25 ms). Enter: respuesta RAG completa.
-3. Respuesta = síntesis breve (2-3 frases, negritas en los hechos) + chips de cita `↗ {título} · {mm:ss}` — click navega a `Route.meeting(id)` y hace seek del player a ese timestamp.
-4. `tab` limita el scope a la reunión abierta. `⌘C` copia la respuesta con citas en Markdown.
-5. Bilingüe: responder en el idioma de la pregunta.
+**Behavior:**
+1. ⌘K opens the panel with focus in the input. `esc` closes it. State is discarded on close.
+2. While typing: instant FTS5 (titles + snippets, <25 ms). Enter: full RAG answer.
+3. Answer = brief synthesis (2-3 sentences, facts in bold) + citation chips `↗ {título} · {mm:ss}` — clicking navigates to `Route.meeting(id)` and seeks the player to that timestamp.
+4. `tab` limits the scope to the open meeting. `⌘C` copies the answer with citations in Markdown.
+5. Bilingual: answer in the language of the question.
 
-**Criterios de aceptación:** primera respuesta < 4 s con FM; cada afirmación de la respuesta tiene ≥1 cita; funciona con la ventana principal cerrada (panel independiente); cero red.
+**Acceptance criteria:** first answer < 4 s with FM; every claim in the answer has ≥1 citation; works with the main window closed (independent panel); zero network traffic.
 
 ---
 
-## 2 · Modo espejo (coach honesto post-reunión)
+## 2 · Mirror mode (honest post-meeting coach)
 
-**Qué es:** tarjeta opt-in que aparece al terminar de procesar una reunión, con las métricas del usuario contadas con la voz de la marca — «medido, no juzgado». Nunca lenguaje evaluativo («mal», «demasiado»); solo números + comparación con la propia media.
+**What it is:** an opt-in card that appears when meeting processing finishes, presenting the user's metrics in the brand voice — «medido, no juzgado». Never evaluative language («mal», «demasiado»); only numbers + comparison with the user's own average.
 
-**Dónde engancha:**
-- Datos: `MeetingHealth.compute(segments:)` ya calcula talk-time, preguntas e interrupciones por speaker — filtrar `isMe`.
-- Media personal: agregar sobre `LibraryStats` (IntegrationsKit) un promedio de share de habla de las últimas N reuniones (persistir nada nuevo: computar de la librería).
-- Presentación: sheet/tarjeta al completarse el resumen post-reunión (hook donde `RecordingController` pasa a fase terminada), no bloqueante.
+**Where it connects:**
+- Data: `MeetingHealth.compute(segments:)` already calculates talk time, questions, and interruptions by speaker — filter on `isMe`.
+- Personal average: add to `LibraryStats` (IntegrationsKit) an average talk share over the last N meetings (persist nothing new: compute from the library).
+- Presentation: sheet/card when the post-meeting summary completes (the hook where `RecordingController` enters the completed phase), nonblocking.
 - Setting: `Settings › Mi voz y Companion › «Espejo al terminar» (off por defecto)`.
 
-**Contenido de la tarjeta:** 3 tiles (`% hablaste` vs tu media resaltado en ámbar si difiere >10pts; `preguntas hiciste`; `interrupciones` con a-quién y timestamp clicable) + 1 línea ✦ de síntesis FM (máx 2 frases, template con hechos: escuchaste más/menos de lo habitual, qué quedó abierto tuyo) + acciones: «Ver mi tendencia» (→ Insights) y «No mostrar tras cada reunión».
+**Card content:** 3 tiles (`% hablaste` versus your average, highlighted in amber if it differs by >10pts; `preguntas hiciste`; `interrupciones` with whom and a clickable timestamp) + 1 ✦ line of FM synthesis (max 2 sentences, fact-based template: you listened more/less than usual, what remained open for you) + actions: «Ver mi tendencia» (→ Insights) and «No mostrar tras cada reunión».
 
-**Criterios:** solo aparece con ≥2 speakers y ≥5 min; nunca aparece si el setting está off; el texto ✦ jamás usa adjetivos valorativos.
+**Criteria:** appears only with ≥2 speakers and ≥5 min; never appears if the setting is off; the ✦ text never uses evaluative adjectives.
 
 ---
 
-## 3 · Puente de idiomas en vivo
+## 3 · Live language bridge
 
-**Qué es:** durante la grabación, bajo cada caption final en idioma A se muestra su traducción al idioma preferido del usuario, en un carril secundario menor y en ámbar. El original manda; el puente acompaña.
+**What it is:** during recording, beneath each final caption in language A, its translation into the user's preferred language appears in a smaller secondary track in amber. The original leads; the bridge accompanies it.
 
-**Dónde engancha:**
-- Ya existe `LiveTranslation.swift` (portavoz-app) y el picker «Translate» en `RecordingView` — esto es un rediseño de presentación, no un motor nuevo.
-- Traducir SOLO segmentos finalizados (no volátiles) para no parpadear; cola con `IntelligenceScheduler` en lane de fondo.
-- Glosario: pasar `VocabularyPrompt.parse(customVocabulary)` para que la jerga (deploy, PR, QVTL…) quede intacta.
+**Where it connects:**
+- `LiveTranslation.swift` (portavoz-app) and the «Translate» picker in `RecordingView` already exist — this is a presentation redesign, not a new engine.
+- Translate ONLY finalized (nonvolatile) segments to avoid flicker; queue them with `IntelligenceScheduler` in a background lane.
+- Glossary: pass `VocabularyPrompt.parse(customVocabulary)` so jargon (deploy, PR, QVTL…) remains intact.
 
-**Presentación (patrón lyrics):** línea original = estilo actual del carrusel; debajo, indentada al inicio del texto (no del pill), 15px, color `--brand-amber`/`.orange` al 90%, misma alineación. Si la traducción llega >2 s tarde, aparece con fade, nunca reordena líneas.
+**Presentation (lyrics pattern):** original line = current carousel style; below it, indented to the start of the text (not the pill), 15px, `--brand-amber`/`.orange` color at 90%, same alignment. If the translation arrives >2 s late, it fades in and never reorders lines.
 
-**Criterios:** latencia del puente < 3 s p95; toggle en la barra de grabación («Traducir: off / ES / EN»); jerga del vocabulario nunca traducida; off = cero costo.
+**Criteria:** bridge latency < 3 s p95; toggle in the recording bar («Traducir: off / ES / EN»); vocabulary jargon is never translated; off = zero cost.
 
 ---
 
 ## 4 · Onboarding «primera escucha»
 
-**Qué es:** reemplaza los 4 pasos actuales de `OnboardingView.swift` por una demo en primera persona: el usuario dice una frase y ve en vivo transcripción → separación de su voz → mini-resumen, ANTES de pedir permisos.
+**What it is:** replaces the current 4 steps in `OnboardingView.swift` with a first-person demo: the user says a sentence and sees live transcription → voice separation → mini-summary, BEFORE permissions are requested.
 
-**Flujo:**
-1. Pantalla única: waveform breathe + «Di una frase — mira lo que pasa.» Botón único «Escuchar 10 s». (Pedir permiso de mic aquí, inline, con una línea de por qué.)
-2. Captura 10 s con `MicrophoneSource` + Parakeet live (si el modelo no está, usar SpeechAnalyzer del sistema para no bloquear la demo con una descarga).
-3. Mostrar en vivo: caption apareciendo (patrón lyrics) → pill «Tu voz» ámbar → tarjeta con ✓ transcrita en X s · ✓ voz separada · ✦ resumen de una línea, cerrando con «todo sin red, como acabas de ver».
-4. Recién entonces: permisos restantes (system audio se pide en la primera grabación real, como hoy), calendario opcional, y oferta de enrolar la voz reutilizando el audio que ACABA de grabar (un click, no otros 12 s).
-5. `hasOnboarded` se mantiene como flag; «Saltar» siempre visible (voz de marca: sin fricción, sin dark patterns).
+**Flow:**
+1. Single screen: breathing waveform + «Di una frase — mira lo que pasa.» Single button «Escuchar 10 s». (Request mic permission here, inline, with one line explaining why.)
+2. Capture 10 s with `MicrophoneSource` + live Parakeet (if the model is unavailable, use the system SpeechAnalyzer so a download does not block the demo).
+3. Show live: caption appearing (lyrics pattern) → amber «Tu voz» pill → card with the localized status «✓ transcrita en X s · ✓ voz separada · ✦ resumen de una línea», ending with «todo sin red, como acabas de ver».
+4. Only then: remaining permissions (system audio is requested on the first real recording, as it is today), optional calendar, and an offer to enroll the voice by reusing the audio JUST recorded (one click, not another 12 s).
+5. `hasOnboarded` remains as a flag; «Saltar» is always visible (brand voice: frictionless, no dark patterns).
 
-**Criterios:** de app abierta a demo completada < 60 s; funciona sin descargar modelos (fallback SpeechAnalyzer); el audio de la demo se descarta salvo que el usuario acepte enrolar su voz; ES/EN según idioma del sistema.
+**Criteria:** from app launch to completed demo < 60 s; works without downloading models (SpeechAnalyzer fallback); demo audio is discarded unless the user agrees to enroll their voice; ES/EN according to system language.
 
 ---
 
-## Notas transversales
+## Cross-cutting notes
 
-- Toda UI nueva usa los tokens del design system (`tokens/colors.css` como referencia de valores; en SwiftUI: indigo accent, ámbar = solo la voz del usuario, verde/naranja/rojo semánticos).
-- Números siempre `monospacedDigit`. Copy bilingüe vía `L10n`.
-- Los chips ✦ mantienen el contrato: proponen, un click aplica, jamás actúan solos.
+- All new UI uses the design system tokens (`tokens/colors.css` as the value reference; in SwiftUI: indigo accent, amber = the user's voice only, semantic green/orange/red).
+- Numbers always use `monospacedDigit`. Bilingual copy via `L10n`.
+- ✦ chips preserve the contract: they propose, one click applies, they never act alone.

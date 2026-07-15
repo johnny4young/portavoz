@@ -1,40 +1,42 @@
-# Specs técnicos — cómo leer esta carpeta
+# Technical specs — how to read this folder
 
-Documentación **as-built** de Portavoz: describe lo que el código hace HOY, verificable contra `Sources/` y `Tests/`. Escrita para que cualquier agente o humano pueda trabajar en el proyecto sin contexto de conversaciones previas.
+Portavoz **as-built** documentation: it describes what the code does TODAY, verifiable against `Sources/` and `Tests/`. Written so that any agent or human can work on the project without context from previous conversations.
 
-## Convenciones (sin ambigüedad)
+## Conventions (unambiguous)
 
-- Todo lo descrito en las secciones normales **está implementado y testeado** (`swift test`, 401 tests, 13 gated por `PORTAVOZ_MODEL_TESTS=1` u otras variables de integración).
-- Lo NO implementado vive solo en subsecciones tituladas **"Planeado (no implementado)"**, con referencia a la decisión (Dxx) o milestone (Mxx) que lo define.
-- Cada número de performance citado fue **medido** en la máquina de referencia (MacBook Pro M4 Max, 36 GB, macOS 26) — la fecha y condición acompañan al número.
-- Los "límites conocidos" son fallas o riesgos reales observados, no hipótesis.
+- Everything described in the regular sections **is implemented and tested** (`swift test`, 409 tests, 13 gated by `PORTAVOZ_MODEL_TESTS=1` or other integration variables).
+- Anything NOT implemented appears only in subsections titled **"Planned (not implemented)"**, with a reference to the decision (Dxx) or milestone (Mxx) that defines it.
+- Every performance figure cited was **measured** on the reference machine (MacBook Pro M4 Max, 36 GB, macOS 26) — the date and conditions accompany the figure.
+- "Known limitations" are actual observed failures or risks, not hypotheses.
 
-## Índice
+## Index
 
-| Spec | Cubre | Kits |
+| Spec | Covers | Kits |
 |---|---|---|
-| [01-audio-capture.md](01-audio-capture.md) | Captura dual-canal, AEC, resiliencia, formatos, carpeta configurable | AudioCaptureKit |
-| [02-transcription.md](02-transcription.md) | STT vivo (Parakeet), refine (Whisper), coalescer, vocabulario, registry de modelos | TranscriptionKit, ModelStoreKit |
-| [03-diarization-identity.md](03-diarization-identity.md) | Diarización, atribución, voiceprint, nombres | DiarizationKit, IntelligenceKit (naming) |
-| [04-intelligence.md](04-intelligence.md) | Resúmenes FM/BYOK, resumen rodante, RAG local, embeddings | IntelligenceKit |
-| [05-storage.md](05-storage.md) | Schema SQLite, contrato de datos, FTS, retención, carpeta de grabaciones | StorageKit, PortavozCore |
-| [06-app-macos.md](06-app-macos.md) | App SwiftUI, vistas, flujos, empaquetado, firma, updates | portavoz-app, scripts/ |
-| [07-interfaces.md](07-interfaces.md) | CLI completo, servidor MCP, exportadores | portavoz-cli, IntegrationsKit |
-| [08-quality.md](08-quality.md) | Suite de tests, harnesses, números medidos, bugs encontrados | Tests/, scripts/ |
+| [01-audio-capture.md](01-audio-capture.md) | Dual-channel capture, AEC, resilience, formats, configurable folder | AudioCaptureKit |
+| [02-transcription.md](02-transcription.md) | Live STT (Parakeet), refine (Whisper), coalescer, vocabulary, model registry | TranscriptionKit, ModelStoreKit |
+| [03-diarization-identity.md](03-diarization-identity.md) | Diarization, attribution, voiceprint, names | DiarizationKit, IntelligenceKit (naming) |
+| [04-intelligence.md](04-intelligence.md) | FM/BYOK summaries, rolling summary, local RAG, embeddings | IntelligenceKit |
+| [05-storage.md](05-storage.md) | SQLite schema, data contract, FTS, retention, recordings folder | StorageKit, PortavozCore |
+| [06-app-macos.md](06-app-macos.md) | SwiftUI app, views, flows, packaging, signing, updates | portavoz-app, scripts/ |
+| [07-interfaces.md](07-interfaces.md) | Complete CLI, MCP server, exporters | portavoz-cli, IntegrationsKit |
+| [08-quality.md](08-quality.md) | Test suite, harnesses, measured figures, bugs found | Tests/, scripts/ |
 
-## Documentos hermanos (fuera de specs/)
+## Related documents (outside specs/)
 
-- [../DECISIONS.md](../DECISIONS.md) — decisiones vinculantes D1–D30 con su porqué. Los specs las citan por número.
-- [../ARCHITECTURE.md](../ARCHITECTURE.md) — reglas de ingeniería y diseño de alto nivel.
-- [../ROADMAP.md](../ROADMAP.md) — fases y milestones con criterios de aceptación.
-- [../PRODUCT.md](../PRODUCT.md) — visión, mapa competitivo, FREE/PRO.
-- [../IOS.md](../IOS.md) — aterrizaje técnico de la fase iOS.
-- [../GAPS.md](../GAPS.md) — análisis de brechas + verificación de campo pendiente.
-- [../ROADMAP.md](../ROADMAP.md) abre con **"Estado actual y siguiente paso"** — el estado del proyecto se lee ahí (no hay archivo de traspaso de sesión).
+- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D34 and their rationale. The specs cite them by number.
+- [../ARCHITECTURE.md](../ARCHITECTURE.md) — high-level engineering and design rules.
+- [../refactor-20260714.md](../refactor-20260714.md) — approved target architecture, migration bands, commit protocol, and acceptance criteria. It is a plan; this folder remains as-built truth.
+- [../ROADMAP.md](../ROADMAP.md) — phases and milestones with acceptance criteria.
+- [../PRODUCT.md](../PRODUCT.md) — vision, competitive map, FREE/PRO.
+- [../IOS.md](../IOS.md) — technical breakdown of the iOS phase.
+- [../GAPS.md](../GAPS.md) — gap analysis + pending field verification.
+- [../ROADMAP.md](../ROADMAP.md) opens with **"Current state and next step"** — project state is read there (there is no session handoff file).
 
-## Reglas del repo (para agentes)
+## Repository rules (for agents)
 
-- Swift 6 estricto; los Kits solo dependen de PortavozCore (excepción: IntegrationsKit→IntelligenceKit); infra compartida va a ModelStoreKit/PortavozCore.
-- MIT; jamás portar código GPL (Meetily en `../meetily` y MacParakeet son SOLO referencia de patrones).
-- `swift test` verde antes de cerrar cualquier tarea (si falla con "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test`).
-- Conventional Commits. Modelos siempre pineados por sha256 (D15).
+- Strict Swift 6; current dependency exceptions and the target graph are documented exactly in `ARCHITECTURE.md`.
+- MIT; never port GPL code (Meetily in `../meetily` and MacParakeet are ONLY pattern references).
+- Keep `swift test` green before closing any task (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test`).
+- Conventional Commits. Models are always pinned by sha256 (D15).
+- All explanatory project documentation under `docs/` is English (D34). Literal localized UI copy and bilingual language-quality fixtures may remain quoted as evidence.

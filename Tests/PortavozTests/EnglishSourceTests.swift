@@ -21,6 +21,38 @@ final class EnglishSourceTests: XCTestCase {
         XCTAssertTrue(failures.isEmpty, "Spanish prose outside approved resources/fixtures:\n" + failures.joined(separator: "\n"))
     }
 
+    func testDocumentationProseIsEnglish() throws {
+        let root = Self.repoRoot.appendingPathComponent("docs")
+        guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
+            return XCTFail("Unable to enumerate docs/")
+        }
+        let files = enumerator.compactMap { $0 as? String }
+            .filter { $0.hasSuffix(".md") }
+            .sorted()
+        var failures: [String] = []
+        for item in files {
+            let url = root.appendingPathComponent(item)
+            let lines = try String(contentsOf: url, encoding: .utf8)
+                .components(separatedBy: .newlines)
+            var insideFence = false
+            for (index, line) in lines.enumerated() {
+                if line.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                    insideFence.toggle()
+                    continue
+                }
+                guard !insideFence else { continue }
+                let prose = Self.documentationProse(in: line)
+                if Self.looksLikeSpanishDocumentation(prose) {
+                    failures.append("docs/\(item):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))")
+                }
+            }
+        }
+        XCTAssertTrue(
+            failures.isEmpty,
+            "Spanish explanatory prose under docs/. Quote intentional localized literals:\n"
+                + failures.joined(separator: "\n"))
+    }
+
     private static func filesToScan() throws -> [String] {
         var files = ["README.md", "CLAUDE.md", "Makefile", "Package.swift", "project.yml", ".swiftlint.yml"]
         let scannedSuffixes = [".swift", ".sh", ".py", ".yml", ".yaml", ".md", ".rb", ".entitlements"]
@@ -47,6 +79,35 @@ final class EnglishSourceTests: XCTestCase {
             " te preguntaron", " Texto de UI", " línea", "Pausar", "Reproducir"
         ]
         return needles.contains { line.contains($0) }
+    }
+
+    /// Removes code and quoted literals before applying the docs-language
+    /// policy. Localized UI labels and bilingual fixtures are allowed only
+    /// when they are clearly represented as literals rather than prose.
+    private static func documentationProse(in line: String) -> String {
+        var result = line
+        let literalPatterns = [
+            #"`[^`]*`"#,
+            #"\"[^\"]*\""#,
+            #"“[^”]*”"#,
+            #"«[^»]*»"#,
+            #"\]\([^)]*\)"#,
+        ]
+        for pattern in literalPatterns {
+            result = result.replacingOccurrences(
+                of: pattern, with: "", options: .regularExpression)
+        }
+        return result
+    }
+
+    private static func looksLikeSpanishDocumentation(_ line: String) -> Bool {
+        if line.range(of: #"[¿¡áéíóúñÁÉÍÓÚÑ]"#, options: .regularExpression) != nil {
+            return true
+        }
+        let pattern = #"(?i)\b(el|la|los|las|una|para|con|sin|que|del|estado|actual|siguiente|fase|hecho|pendiente|implementado|captura|usuario|archivo|carpeta|modelo|prueba|objetivo|interfaz|calidad|versión|fecha)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+        let range = NSRange(line.startIndex..., in: line)
+        return regex.numberOfMatches(in: line, range: range) >= 3
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {

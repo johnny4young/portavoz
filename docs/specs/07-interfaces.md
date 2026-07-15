@@ -1,53 +1,56 @@
-# Spec 07 — Interfaces: CLI, MCP y exportadores
+# Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Estado: implementado; MCP verificado E2E con un agente real. Decisiones: D12 (escalera de compartir), D22 (RAG).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG).
 
-## CLI — `portavoz-cli` (dispatch en `Sources/portavoz-cli/CLI.swift`)
+## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
-Binario SPM (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`). Comparte DB y modelos con la app (incluida la carpeta de grabaciones configurable, vía `RecordingsLocation`).
+SPM binary (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`). Shares the DB and models with the app (including the configurable recordings folder, via `RecordingsLocation`).
 
-| Comando | Usage (del código) |
+| Command | Usage (from the code) |
 |---|---|
-| `devices` | Lista inputs (incluye iPhones vía Continuity) |
+| `devices` | Lists inputs (including iPhones via Continuity) |
 | `record` | `[--seconds N] [--mic <name-or-uid>] [--pid <pid> …] [--system] [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>] [--no-aec]` |
 | `transcribe` | `--file <wav> [--engine parakeet\|whisper] [--vocab "a,b,c"] [--language es] [--models-dir <dir>]` |
 | `diarize` | `--file <wav> [--attribute] [--threshold t] [--language es] [--models-dir <dir>]` |
-| `summarize` | `--file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]` — pipeline completo wav→transcript→diarización→resumen |
+| `summarize` | `--file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]` — full wav→transcript→diarization→summary pipeline |
 | `meetings` | `list \| show <uuid> \| search <texto> \| refine <uuid> [--file <wav>] [--language es] [--vocab "…"] [--db] [--models-dir]` |
 | `export` | `--meeting <uuid> [--format md\|pdf] [--out <path>] [--gist [--public]]` |
-| `secrets` | `set-github-token <token> \| clear-github-token` (Keychain; equivalentes para Linear) |
+| `secrets` | `set-github-token <token> \| clear-github-token` (Keychain; equivalents for Linear) |
 | `voice` | `enroll [--file <wav>] \| status \| delete` |
-| `der` | `--file <wav> --reference <rttm> [--threshold t] [--collar s]` — harness DER |
-| `mcp` | Servidor MCP por stdio (ver abajo) |
-| `ask` | `"<pregunta>" [--db <path>] [--limit n]` — RAG local con citas |
+| `der` | `--file <wav> --reference <rttm> [--threshold t] [--collar s]` — DER harness |
+| `mcp` | MCP server over stdio (see below) |
+| `ask` | `"<pregunta>" [--db <path>] [--limit n]` — local RAG with citations |
 | `issues` | `--meeting <uuid> (--github <owner/repo> \| --linear-team <id>)` |
-| `models` | `download \| verify \| path` — catálogo completo sha256 |
-| `bench-m2` | Harness de aceptación M2 (lag vivo + batch concurrente) |
+| `models` | `download \| verify \| path` — complete sha256 catalog |
+| `bench-m2` | M2 acceptance harness (live lag + concurrent batch) |
 
-## Servidor MCP — `portavoz-cli mcp`
+## MCP server — `portavoz-cli mcp`
 
-- Transporte: **JSON-RPC 2.0 por stdio, newline-delimited**; protocolVersion `2024-11-05`. Capa de protocolo storage-agnostic en IntegrationsKit (`MCPServer`, `MCPTool` con handlers Data→String, schemas JSON crudos); el toolbox se arma en el CLI (`MeetingToolbox`).
-- Registro con un agente: `claude mcp add portavoz -- portavoz-cli mcp`.
-- **6 tools**: `list_meetings` · `search_meetings` (FTS con snippets+ids+timestamps) · `get_transcript` (atribuido) · `get_summary` (último snapshot + action items) · `get_action_items` (pendientes globales) · `ask` (RAG híbrido on-device con citas).
-- Verificado E2E: un agente MCP respondió "what did we agree about the transcription budget?" con fuentes correctas.
+- Transport: **JSON-RPC 2.0 over stdio, newline-delimited**; protocolVersion `2024-11-05`. Storage-agnostic protocol layer in IntegrationsKit (`MCPServer`, `MCPTool` with Data→String handlers, raw JSON schemas); the toolbox is assembled in the CLI (`MeetingToolbox`).
+- Registration with an agent: `claude mcp add portavoz -- portavoz-cli mcp`.
+- **6 tools**: `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest snapshot + action items) · `get_action_items` (global pending items) · `ask` (hybrid on-device RAG with citations).
+- Verified E2E: an MCP agent answered "what did we agree about the transcription budget?" with the correct sources.
 
-## Exportadores — IntegrationsKit
+## Exporters — IntegrationsKit
 
-- `MeetingExporter`: markdown canónico (título/metadata/resumen con headings degradados/pendientes/transcript atribuido) y **PDF por CoreText puro** (sin AppKit — compila para iOS; paginación US Letter verificada con CGPDFDocument).
-- `GistPublisher`: `api.github.com/gists`, secreto por defecto, `--public` explícito; token del Keychain.
-- `GitHubIssuesExporter` (REST) y `LinearExporter` (GraphQL; **el token va pelado en Authorization, SIN prefijo Bearer**): action items → issues. Testeados offline; publish real pendiente de tokens del usuario.
-- Salida al exterior SIEMPRE con confirmación explícita (D8): la UI confirma antes del gist; el CLI es opt-in por naturaleza.
+- `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
+- `GistPublisher`: `api.github.com/gists`, secret by default, explicit `--public`; token from Keychain.
+- `GitHubIssuesExporter` (REST) and `LinearExporter` (GraphQL; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Tested offline; real publishing pending the user's tokens.
+- Output to external services ALWAYS requires explicit confirmation (D8): the UI confirms before the gist; the CLI is opt-in by nature.
 
-## Límites conocidos
+## Known limitations
 
-1. MCP sin auth (proceso local por stdio — aceptable; el plan de seguridad exige localhost+token si algún día hay transporte de red).
-2. `issues` y `export --gist` verificados offline, publish real con tokens del usuario pendiente.
-3. Sin App Intents/Shortcuts (M16).
+1. MCP without auth (local process over stdio — acceptable; the security plan requires localhost+token if a network transport is ever added).
+2. `issues` and `export --gist` verified offline; real publishing with the user's tokens pending.
+3. Native AppIntents/Siri phrases are not registered because the shipping app
+   remains an SPM-built bundle; the post-meeting Shortcut hook, URL scheme,
+   and Spotlight are implemented. Native intents are deferred to M14a's Xcode
+   app target.
 
-## Automatización M16 (jul 2026)
+## M16 automation (Jul 2026)
 
-- **Hook post-reunión**: `PostMeetingShortcut.runIfConfigured(markdown:)` — al `.done` del stop, si Ajustes → Automation tiene un nombre de Atajo, corre `/usr/bin/shortcuts run <name> --input-path <tmp.md>` con el export Markdown completo (MeetingExporter). Fire-and-forget deliberado: jamás bloquea ni retrasa el pipeline; los fallos del Atajo se ven en Shortcuts (la reunión ya está guardada igual).
-- **URL scheme** `portavoz://record` (CFBundleURLTypes en make-app.sh): abre la app y ARRANCA una grabación — visible siempre (ventana + indicador de mic; nada graba oculto). Verificado E2E: `open "portavoz://record"` lanza, navega y graba. Combinado con automatizaciones de Shortcuts (hora/calendario) da auto-grabación programada.
-- **AppIntents/Siri**: diferido a M14a — el appintentsmetadataprocessor solo corre en builds Xcode; el bundle SPM de make-app.sh no registra intents.
-- **Spotlight** (`SpotlightIndexer`, jul 2026): CSSearchableIndex local — rebuild completo (delete dominio + insert) al launch y con cada `libraryVersion` (barato: solo metadata; inmune al drift de borrados; `-use-temp-store` lo suprime). Cada item: título + fecha + resumen/primeras 40 líneas (cap 4000 chars) con el UUID de la reunión como identifier; el hit navega vía `onContinueUserActivity(CSSearchableItemActionType)` → `Route.meeting`. **GOTCHA doble (campo jul 2026)**: (1) sin `NSUserActivityTypes: [com.apple.corespotlightitem]` en el Info.plist, macOS descarta la continuación; (2) aún con eso, el `onContinueUserActivity` de SwiftUI NO se dispara en macOS — la activity llega al `NSApplicationDelegate` clásico. `PortavozAppDelegate.application(_:continue:)` (vía `@NSApplicationDelegateAdaptor`) parsea el identifier y navega por `AppServices.pendingRoute` (el canal del banner); ContentView además aplica el `pendingRoute` presente AL MONTAR (cold start: la activity puede llegar antes de la ventana y `onChange` no dispara para el valor inicial).
-- **Bundle `.portavoz`** (`MeetingBundle`, IntegrationsKit, jul 2026 — M15 L0): JSON versionado (ISO8601, sortedKeys) con meeting+speakers+segments+resumen+notas; sin audio en v1 y `audioDirectory` SIEMPRE se anula al exportar (D4). Lectores rechazan `formatVersion` futuro con error claro; campos futuros desconocidos se ignoran (additive). `remappedForImport()` acuña IDs frescos en TODO preservando relaciones (speaker→segments, owner→action items) — importar dos veces = dos reuniones. UI: export en el menú del detalle (sin audio / **con audio**), import por el open panel (UTI `app.portavoz.meeting-bundle`, ext `.portavoz`, declarado en make-app.sh) y doble-click (delegate `application(_:open:)` → pendingRoute). **Audio (jul 2026)**: `audioFiles: [AudioAttachment]?` (name+ext+Data; base64 nativo de Codable) — campo ADITIVO sin bump de versión: los lectores 0.3.0 ignoran el campo e importan solo texto; los nuevos materializan los canales en `Audio/<uuid>/` y enganchan `audioDirectory` (el import queda con player/waveform/clips). Para archivos tamaño-mail: comprimir con AAC antes de exportar.
+- **Post-meeting hook**: `PostMeetingShortcut.runIfConfigured(markdown:)` — when stop reaches `.done`, if Ajustes → Automation has a Shortcut name, runs `/usr/bin/shortcuts run <name> --input-path <tmp.md>` with the complete Markdown export (MeetingExporter). Deliberately fire-and-forget: it never blocks or delays the pipeline; Shortcut failures are visible in Shortcuts (the meeting is saved regardless).
+- **URL scheme** `portavoz://record` (CFBundleURLTypes in make-app.sh): opens the app and STARTS a recording — always visible (window + mic indicator; nothing records while hidden). Verified E2E: `open "portavoz://record"` launches, navigates, and records. Combined with Shortcuts automations (time/calendar), this provides scheduled auto-recording.
+- **AppIntents/Siri**: deferred to M14a — appintentsmetadataprocessor only runs in Xcode builds; the make-app.sh SPM bundle does not register intents.
+- **Spotlight** (`SpotlightIndexer`, Jul 2026): local CSSearchableIndex — full rebuild (delete domain + insert) at launch and with every `libraryVersion` (inexpensive: metadata only; immune to deletion drift; `-use-temp-store` suppresses it). Each item: title + date + summary/first 40 lines (cap 4000 chars), with the meeting UUID as identifier; the hit navigates via `onContinueUserActivity(CSSearchableItemActionType)` → `Route.meeting`. **Double GOTCHA (field, Jul 2026)**: (1) without `NSUserActivityTypes: [com.apple.corespotlightitem]` in Info.plist, macOS discards the continuation; (2) even with it, SwiftUI's `onContinueUserActivity` does NOT fire on macOS — the activity reaches the classic `NSApplicationDelegate`. `PortavozAppDelegate.application(_:continue:)` (via `@NSApplicationDelegateAdaptor`) parses the identifier and navigates through `AppServices.pendingRoute` (the banner channel); ContentView also applies any `pendingRoute` present WHEN MOUNTING (cold start: the activity may arrive before the window, and `onChange` does not fire for the initial value).
+- **`.portavoz` bundle** (`MeetingBundle`, IntegrationsKit, Jul 2026 — M15 L0): versioned JSON (ISO8601, sortedKeys) with meeting+speakers+segments+summary+action items+notes+Companion cards and optional audio; `audioDirectory` is ALWAYS cleared on export (D4). Readers reject a future `formatVersion` with a clear error; unknown future fields are ignored. All later fields remain optional/additive under formatVersion 1, so older readers import the subset they understand. `remappedForImport()` mints fresh IDs for every imported entity while preserving relationships — importing twice creates two independent meetings. UI: export from the detail menu (without audio / **with audio**), import through the open panel (UTI `app.portavoz.meeting-bundle`, extension `.portavoz`), and double-click routing. `audioFiles: [AudioAttachment]?` materializes channels in `Audio/<uuid>/`; optional `companionCards` are remapped and persisted with the imported meeting. For email-sized files, compress with AAC before exporting.

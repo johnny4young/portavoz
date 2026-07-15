@@ -34,6 +34,8 @@ extension MeetingStore {
                            speaker.displayName AS displayName,
                            SUM(segment.endTime - segment.startTime) AS seconds
                     FROM segment
+                    JOIN meeting ON meeting.id = segment.meetingID
+                        AND meeting.deletedAt IS NULL
                     JOIN speaker ON speaker.id = segment.speakerID
                         AND speaker.deletedAt IS NULL
                     WHERE segment.deletedAt IS NULL
@@ -47,7 +49,8 @@ extension MeetingStore {
 
             var byMeeting: [MeetingID: [(isMe: Bool, name: String?, seconds: Double)]] = [:]
             for row in rows {
-                guard let uuid = UUID(uuidString: row["meetingID"]) else { continue }
+                let uuid = try PersistedIdentity.required(
+                    row["meetingID"], table: "segment", column: "meetingID")
                 let id = MeetingID(rawValue: uuid)
                 byMeeting[id, default: []].append(
                     (isMe: row["isMe"], name: row["displayName"], seconds: row["seconds"]))
@@ -107,6 +110,8 @@ extension MeetingStore {
                            speaker.displayName AS displayName,
                            SUM(segment.endTime - segment.startTime) AS seconds
                     FROM segment
+                    JOIN meeting ON meeting.id = segment.meetingID
+                        AND meeting.deletedAt IS NULL
                     JOIN speaker ON speaker.id = segment.speakerID
                         AND speaker.deletedAt IS NULL
                     WHERE segment.deletedAt IS NULL

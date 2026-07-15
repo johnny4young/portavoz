@@ -99,7 +99,7 @@ Measured on a MacBook Pro **M4 Max, 36 GB, macOS 26** (July 2026). Everything be
 | **Summary** | Foundation Models (on-device, 3B) | structured summary **3.8 s** after meeting end | `portavoz-cli summarize --file meeting.wav` |
 | **Dual-channel drift** | AVAudioEngine + Core Audio tap | **4 ms** over 30 min (target < 50 ms) | 30-min `portavoz-cli record --system` |
 
-An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked head-to-head against Parakeet in [docs/specs/02-transcription.md](docs/specs/02-transcription.md#spike-speechanalyzer-m12d25--estado-y-hallazgos-jul-2026): both stay under 1 s p95; Parakeet keeps the finalization-latency crown, SpeechAnalyzer wins on zero-download and rich volatile captions.
+An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked head-to-head against Parakeet in [docs/specs/02-transcription.md](docs/specs/02-transcription.md#speechanalyzer-spike-m12d25--status-and-findings-jul-2026): both stay under 1 s p95; Parakeet keeps the finalization-latency crown, SpeechAnalyzer wins on zero-download and rich volatile captions.
 
 > Reproduce a live run yourself (`--engine speech` must run inside the app bundle — the Speech daemon won't answer an unbundled process):
 > ```sh
@@ -117,10 +117,16 @@ Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz
 | Whisper large-v3-turbo | refine (quality) | ~1.6 GB | 8 GB |
 | Whisper large-v3 (626 MB variant) | refine on low disk | ~626 MB | 6 GB |
 | pyannote + WeSpeaker | diarization | ~14 MB | 2 GB |
+| Qwen3.5 4B (MLX, 4-bit) | optional embedded summaries | ~3 GB | 8 GB |
 
 ## Architecture
 
-Swift 6 (strict concurrency), SwiftUI, modular SPM workspace. Kits depend on `PortavozCore`, never on each other (one documented exception). Full engineering rules in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); as-built specs per domain in [docs/specs/](docs/specs/README.md).
+Swift 6 (strict concurrency), SwiftUI, modular SPM workspace. Most Kits depend
+on `PortavozCore`; the few verified cross-Kit dependencies are documented in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). As-built behavior lives in
+[docs/specs/](docs/specs/README.md). The approved, feature-parity-preserving
+architecture migration is tracked in
+[docs/refactor-20260714.md](docs/refactor-20260714.md).
 
 | Module | Responsibility |
 |---|---|
@@ -131,10 +137,10 @@ Swift 6 (strict concurrency), SwiftUI, modular SPM workspace. Kits depend on `Po
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `ContextFeedKit` | Links, notes, and snippets dropped into a live meeting (co-authoring) |
+| `ContextFeedKit` | Placeholder compatibility target; co-authored notes currently span Core, StorageKit, IntelligenceKit, and the app |
 | `StorageKit` | GRDB/SQLite, FTS5 search, versioned snapshots, local vector index |
 | `IntegrationsKit` | GitHub/Linear export, Gist sharing, MCP server |
-| `SyncKit` | CloudKit sync and sharing (later milestone) |
+| `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 
 ## Build from source
 

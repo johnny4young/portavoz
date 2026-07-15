@@ -6,6 +6,10 @@ public enum StorageError: Error, LocalizedError {
     /// D4: the database never stores absolute paths (nor escapes the root).
     case absolutePathRejected(String)
     case meetingNotFound(MeetingID)
+    /// Persisted identity is immutable. Corrupt rows must fail loudly rather
+    /// than being assigned a fresh UUID and silently becoming another entity.
+    case invalidPersistedUUID(table: String, column: String, value: String)
+    case invalidPersistedValue(table: String, column: String, value: String)
 
     public var errorDescription: String? {
         switch self {
@@ -13,6 +17,10 @@ public enum StorageError: Error, LocalizedError {
             return "audioDirectory must be relative to the audio root, got: \(path)"
         case .meetingNotFound(let id):
             return "no such meeting: \(id.rawValue.uuidString)"
+        case .invalidPersistedUUID(let table, let column, let value):
+            return "invalid persisted UUID in \(table).\(column): \(value)"
+        case .invalidPersistedValue(let table, let column, let value):
+            return "invalid persisted value in \(table).\(column): \(value)"
         }
     }
 }
@@ -153,12 +161,12 @@ public final class MeetingStore: Sendable {
             let speakers = try SpeakerRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
-                .fetchAll(db).map(\.speaker)
+                .fetchAll(db).map { try $0.speaker }
             let segments = try SegmentRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
                 .order(Column("startTime"))
-                .fetchAll(db).map(\.segment)
+                .fetchAll(db).map { try $0.segment }
             let summaries = try SummaryRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
@@ -292,7 +300,7 @@ public final class MeetingStore: Sendable {
                 .filter(Column("deletedAt") == nil)
                 .order(Column("timestamp"))
                 .fetchAll(db)
-                .compactMap(\.item)
+                .map { try $0.item }
         }
     }
 
@@ -326,7 +334,7 @@ public final class MeetingStore: Sendable {
                 .filter(Column("deletedAt") == nil)
                 .order(Column("askedAt"))
                 .fetchAll(db)
-                .compactMap(\.card)
+                .map { try $0.card }
         }
     }
 

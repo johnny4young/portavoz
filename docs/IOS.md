@@ -1,53 +1,53 @@
-# iOS/iPadOS — aterrizaje técnico (fase 3, M14)
+# iOS/iPadOS — technical implementation plan (phase 3, M14)
 
-Complementa D11 (estrategia) y el ROADMAP (M14a–d). Este documento existe para que la fase 3 empiece con cero fantasías: **qué es técnicamente realizable en iOS, con qué APIs, y qué presupuesto de recursos tiene cada pieza**.
+Complements D11 (strategy) and the ROADMAP (M14a–d). This document exists so that phase 3 starts with zero wishful thinking: **what is technically feasible on iOS, with which APIs, and what resource budget each component has**.
 
-## La verdad de la captura (por qué iOS ≠ Mac)
+## The truth about capture (why iOS ≠ Mac)
 
-| Capacidad | macOS | iOS | API/razón |
+| Capability | macOS | iOS | API/reason |
 |---|---|---|---|
-| Audio del sistema (otras apps) | ✅ process taps | ❌ imposible | Sandbox; no existe equivalente a `CATapDescription` |
-| Grabación de llamadas de terceros (Zoom/Meet/Teams) | ✅ vía tap | ❌ imposible | Ninguna API pública; la grabación de llamadas iOS 18.1+ es exclusiva de la app Teléfono |
-| Mic en background | ✅ | ✅ con `UIBackgroundModes: audio` | Grabación continua legítima; el indicador naranja siempre visible |
-| Broadcast de pantalla | n/a | ⚠️ ReplayKit `RPBroadcastSampleHandler` | Solo audio DE APPS QUE LO PERMITEN, límite 50 MB de RAM en la extensión, la llamada de Zoom NO entrega su audio — sirve como importador experimental, jamás como promesa |
+| System audio (other apps) | ✅ process taps | ❌ impossible | Sandbox; there is no equivalent to `CATapDescription` |
+| Recording third-party calls (Zoom/Meet/Teams) | ✅ via tap | ❌ impossible | No public API; iOS 18.1+ call recording is exclusive to the Phone app |
+| Mic in background | ✅ | ✅ with `UIBackgroundModes: audio` | Legitimate continuous recording; orange indicator always visible |
+| Screen broadcast | n/a | ⚠️ ReplayKit `RPBroadcastSampleHandler` | Audio only FROM APPS THAT ALLOW IT, 50 MB RAM limit in the extension, a Zoom call does NOT provide its audio — useful as an experimental importer, never as a promise |
 
-Conclusión D11 (se mantiene): el iPhone es **grabadora presencial + companion**. Todo lo demás es honestidad de producto.
+D11 conclusion (unchanged): the iPhone is an **in-person recorder + companion**. Everything else is product honesty.
 
-## Qué compila hoy y qué hay que tocar (M14a)
+## What builds today and what must be changed (M14a)
 
-- `Package.swift` ya declara `.iOS(.v17)`. Auditoría por Kit:
-  - **PortavozCore, StorageKit, IntelligenceKit, IntegrationsKit, ContextFeedKit**: portables tal cual (GRDB, FM y NLContextualEmbedding existen en iOS; FM requiere iOS 26).
-  - **AudioCaptureKit**: `ProcessTapSource` es macOS-only (ya está tras `#if os(macOS)`); `MicrophoneSource` necesita rama iOS: `AVAudioSession` (categoría `.playAndRecord`, modo `.measurement` o `.voiceChat` para AEC — en iOS el voice processing viene por el modo de sesión), interrupciones (llamada entrante → pausa + gap de silencio, la misma maquinaria del device-change de macOS aplica), ruta Bluetooth: `AVAudioSession.CategoryOptions.bluetoothHighQualityRecording` **verificado (iOS 26)** con caveats — solo funciona con el modo default de la sesión (¿choca con el modo AEC? validar), añade latencia de input (no para live captions con AirPods), requiere AirPods compatibles (chequeable en runtime) y **no está soportado en la UE** — siempre acompañarlo de `allowBluetoothHFP` como fallback.
-  - **TranscriptionKit**: Parakeet TDT v3 int8 (~483 MB) corre en ANE de iPhone 12+ (FluidAudio soporta iOS). **Whisper large-v3-turbo fp16 (1.6 GB) NO cabe razonablemente en iPhone** → opciones verificadas: cuantizada `large-v3-v20240930_626MB` de argmax (recomendada para multilingüe), `SpeechAnalyzer` (iOS 26, gratis, es_MX/es_US soportados, calidad clase whisper-base/small — suficiente para móvil), o diferir a la Mac vía sync ("refine donde haya vatios").
-  - **DiarizationKit**: pyannote+WeSpeaker (~14 MB) corre en iOS sin drama. El voiceprint se sincroniza JAMÁS (D8): se re-enrola por dispositivo.
-- **La app iOS requiere proyecto Xcode** (fin de la era D20-solo-SPM): target app iOS + extensiones (share, broadcast experimental, widgets/Live Activity). El package SPM sigue siendo la única fuente de los Kits.
+- `Package.swift` already declares `.iOS(.v17)`. Audit by Kit:
+  - **PortavozCore, StorageKit, IntelligenceKit, IntegrationsKit, ContextFeedKit**: portable as-is (GRDB, FM, and NLContextualEmbedding exist on iOS; FM requires iOS 26).
+  - **AudioCaptureKit**: `ProcessTapSource` is macOS-only (already behind `#if os(macOS)`); `MicrophoneSource` needs an iOS branch: `AVAudioSession` (category `.playAndRecord`, mode `.measurement` or `.voiceChat` for AEC — on iOS, voice processing comes from the session mode), interruptions (incoming call → pause + silence gap, the same machinery used for macOS device changes applies), Bluetooth path: `AVAudioSession.CategoryOptions.bluetoothHighQualityRecording` **verified (iOS 26)** with caveats — works only with the session's default mode (does it conflict with AEC mode? validate), adds input latency (not for live captions with AirPods), requires compatible AirPods (checkable at runtime), and **is not supported in the EU** — always pair it with `allowBluetoothHFP` as a fallback.
+  - **TranscriptionKit**: Parakeet TDT v3 int8 (~483 MB) runs on the ANE in iPhone 12+ (FluidAudio supports iOS). **Whisper large-v3-turbo fp16 (1.6 GB) does NOT reasonably fit on iPhone** → verified options: argmax's quantized `large-v3-v20240930_626MB` (recommended for multilingual use), `SpeechAnalyzer` (iOS 26, free, es_MX/es_US supported, whisper-base/small-class quality — sufficient for mobile), or defer to the Mac via sync ("refine where there are watts").
+  - **DiarizationKit**: pyannote+WeSpeaker (~14 MB) runs on iOS without difficulty. The voiceprint is NEVER synced (D8): it is re-enrolled per device.
+- **The iOS app requires an Xcode project** (end of the D20-SPM-only era): iOS app target + extensions (share, experimental broadcast, widgets/Live Activity). The SPM package remains the sole source of the Kits.
 
-## Presupuestos por dispositivo (a validar en M14a con `bench` móvil)
+## Budgets by device (to be validated in M14a with mobile `bench`)
 
-| Dispositivo | STT vivo | Refine local | LLM resumen |
+| Device | Live STT | Local refine | Summary LLM |
 |---|---|---|---|
-| iPhone 12–14 (4–6 GB) | Parakeet int8 ✅ | whisper-small o diferir a Mac | FM si iOS 26+AI; si no, diferir/BYOK |
-| iPhone 15 Pro+ (8 GB) | Parakeet int8 ✅ | SpeechAnalyzer ✅ | FM on-device ✅ |
-| iPad M-series | = Mac (sin taps) | Whisper turbo viable | FM ✅ |
+| iPhone 12–14 (4–6 GB) | Parakeet int8 ✅ | whisper-small or defer to Mac | FM if iOS 26+AI; otherwise, defer/BYOK |
+| iPhone 15 Pro+ (8 GB) | Parakeet int8 ✅ | SpeechAnalyzer ✅ | On-device FM ✅ |
+| M-series iPad | = Mac (without taps) | Whisper turbo viable | FM ✅ |
 
-Reglas: STT vivo se degrada ANTES de tirar la grabación (guardar WAV siempre es barato); `ProcessInfo.thermalState` ≥ `.serious` → apagar captions vivas, seguir grabando; batería < 20% → ofrecer "solo grabar".
+Rules: live STT degrades BEFORE dropping the recording (saving WAV is always inexpensive); `ProcessInfo.thermalState` ≥ `.serious` → disable live captions, continue recording; battery < 20% → offer "record only".
 
-## Sync (M14c): CKSyncEngine, no servidor propio
+## Sync (M14c): CKSyncEngine, no proprietary server
 
-- **Qué sincroniza**: meetings/speakers/segments/summaries (el schema D4 ya es sync-ready: UUIDs, tombstones, `updatedAt`). Audio NO por defecto (grande); opt-in por reunión con asset CKAsset.
-- **Cifrado**: `encryptedValues` en todos los campos de contenido; con Advanced Data Protection del usuario, E2E real.
-- **Conflictos**: last-writer-wins por campo con `updatedAt` (los summaries son snapshots inmutables — jamás conflicto); tombstones ganan siempre.
-- **Voiceprint y llaves: nunca** (D8/D21).
-- Companion: control remoto de la grabación de la Mac vía CloudKit push (record de "comando" efímero) — cero infraestructura propia.
+- **What it syncs**: meetings/speakers/segments/summaries (the D4 schema is already sync-ready: UUIDs, tombstones, `updatedAt`). Audio is NOT synced by default (large); opt-in per meeting with a CKAsset asset.
+- **Encryption**: `encryptedValues` for all content fields; with the user's Advanced Data Protection, true E2E.
+- **Conflicts**: last-writer-wins per field using `updatedAt` (summaries are immutable snapshots — never a conflict); tombstones always win.
+- **Voiceprint and keys: never** (D8/D21).
+- Companion: remote control of Mac recording via CloudKit push (ephemeral "command" record) — zero proprietary infrastructure.
 
 ## Live Activity + Dynamic Island (M14c)
 
-- ActivityKit: timer + última caption coalescida (el coalescer ya da la línea estable) + botón detener. Update budget: ActivityKit limita frecuencia → actualizar por FRASE cerrada, no por delta (otra vez el coalescer paga).
-- Long-press/botón = "marcar momento" (timestamp → clip candidato en M9).
+- ActivityKit: timer + latest coalesced caption (the coalescer already provides the stable line) + stop button. Update budget: ActivityKit limits frequency → update per FINALIZED SENTENCE, not per delta (once again, the coalescer pays off).
+- Long-press/button = "mark moment" (timestamp → candidate clip in M9).
 
-## Lo que NO haremos en iOS (anti-promesas)
+## What we will NOT do on iOS (anti-promises)
 
-- Grabar llamadas de otras apps (imposible).
-- Whisper large en iPhone (presupuesto de RAM/térmico irreal).
-- Sync propietario con backend nuestro antes de L2 (D12).
-- Voiceprint sincronizado (biometría se queda donde nació).
+- Record calls from other apps (impossible).
+- Whisper large on iPhone (unrealistic RAM/thermal budget).
+- Proprietary sync with our own backend before L2 (D12).
+- Synchronized voiceprint (biometrics remain where they were created).

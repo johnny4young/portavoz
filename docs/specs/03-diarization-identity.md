@@ -1,61 +1,61 @@
-# Spec 03 — Diarización e identidad (DiarizationKit + naming)
+# Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Estado: implementado; DER verificado contra AMI real; reunión real procesada. Decisiones: D5 (Me estructural), D17 (threshold), D21 (voiceprint + nombres verificados).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
-- pyannote community-1 (segmentación) + WeSpeaker v2 (embeddings) vía FluidAudio; 10 artefactos sha256-pineados (~14 MB). `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` carga por paths explícitos y **jamás descarga** (a diferencia de `AsrModels.load`).
-- Streaming por ventanas de 10 s con `atTime` (el `SpeakerManager` interno mantiene S1/S2… estables entre ventanas) + `diarizeFile` batch.
-- **`clusteringThreshold = 0.45` (D17) — NO SUBIR**: el wiring interno de FluidAudio multiplica ×1.2 (efectivo 0.54 de distancia coseno). Calibración medida: a 0.50 el sample AMI ya fusiona sus 2 speakers reales (DER 7.6% → 49.8%); pero en reunión remota real 0.45 fragmenta (11 clusters donde había ~4; distancias 0.55–0.64). La fragmentación se ataca post-clustering, no con el threshold.
-- **`sanitizeTurns`**: labels que solo aparecen en la última ventana (zero-padded por el modelo) con quality < 0.35 se descartan — la ventana final rutinariamente pare un speaker fantasma (q ≈ 0.2). "Me" nunca se toca.
-- **`mergeMicroClusters`** (solo batch/`diarizeFile`): labels con < 15 s de habla total ceden cada turno al label mayor temporalmente más cercano. Verificado: reunión real 11 → 4 speakers; AMI intacto (7.6%). Reglas biométricas: "Me" nunca absorbe ni es absorbido (un Me fantasma contaminaría owners de action items); sin majors disponibles los turnos quedan intactos (reunión corta ≠ fragmentación). 6 tests.
-- Una instancia = una sesión (el SpeakerManager acumula la base de voces): reuniones distintas NO comparten diarizer.
-- **No calibrar con TTS**: las voces de `say` comparten vocoder y son casi indistinguibles para WeSpeaker. Fixture de calibración: `sample.wav` + `sample.rttm` de pyannote-audio (AMI real, 2 speakers, ground truth público).
+- pyannote community-1 (segmentation) + WeSpeaker v2 (embeddings) via FluidAudio; 10 sha256-pinned artifacts (~14 MB). `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` loads from explicit paths and **never downloads** (unlike `AsrModels.load`).
+- Streaming in 10 s windows with `atTime` (the internal `SpeakerManager` keeps S1/S2… stable across windows) + batch `diarizeFile`.
+- **`clusteringThreshold = 0.45` (D17) — DO NOT RAISE**: FluidAudio's internal wiring multiplies by ×1.2 (effective cosine distance 0.54). Measured calibration: at 0.50 the AMI sample already merges its 2 real speakers (DER 7.6% → 49.8%); but in a real remote meeting 0.45 fragments (11 clusters where there were ~4; distances 0.55–0.64). Fragmentation is addressed post-clustering, not with the threshold.
+- **`sanitizeTurns`**: labels that appear only in the last window (zero-padded by the model) with quality < 0.35 are discarded — the final window routinely produces a phantom speaker (q ≈ 0.2). "Me" is never touched.
+- **`mergeMicroClusters`** (batch/`diarizeFile` only): labels with < 15 s of total speech yield each turn to the temporally nearest major label. Verified: real meeting 11 → 4 speakers; AMI unchanged (7.6%). Biometric rules: "Me" never absorbs or is absorbed (a phantom Me would contaminate action item owners); with no majors available, turns remain unchanged (short meeting ≠ fragmentation). 6 tests.
+- One instance = one session (SpeakerManager accumulates the voice base): different meetings do NOT share a diarizer.
+- **Do not calibrate with TTS**: `say` voices share a vocoder and are nearly indistinguishable to WeSpeaker. Calibration fixture: `sample.wav` + `sample.rttm` from pyannote-audio (real AMI, 2 speakers, public ground truth).
 
-## Atribución — `SpeakerAttributor` (funciones puras)
+## Attribution — `SpeakerAttributor` (pure functions)
 
-- Canal mic → "Me" (verdad de hardware, D5). Canal system → turno con mayor overlap temporal.
-- Segmentos multi-turno se parten en los límites de turnos con reparto proporcional de palabras. Sin turno → sin atribuir (honesto, editable en UI).
-- Turnos etiquetados "Me" (voiceprint en canal system) se fusionan con la identidad del usuario.
+- Mic channel → "Me" (hardware truth, D5). System channel → turn with the greatest temporal overlap.
+- Multi-turn segments are split at turn boundaries with proportional word distribution. No turn → unattributed (honest, editable in the UI).
+- Turns labeled "Me" (voiceprint on the system channel) are merged with the user's identity.
 
-## Diarización EN VIVO — `LiveSpeakerLabeler` (jul 2026)
+## LIVE diarization — `LiveSpeakerLabeler` (Jul 2026)
 
-Pedido de campo: dos voces remotas hablando seguido se fundían en una sola fila "Ellos" en vivo — no se veía que eran dos personas. Pipeline:
+Field request: two remote voices speaking one after the other were merged into a single live "Ellos" row — it was not apparent that they were two people. Pipeline:
 
-- `RecordingController` alimenta el canal system a una **instancia DEDICADA** de `PyannoteDiarizer` (SpeakerManager fresco por sesión — el pase batch al stop queda sin contaminar) vía `diarize(AsyncStream)`, ventanas de 10 s; la inferencia corre en el actor del diarizer (~14 MB, ms por ventana — nunca compite con el lane vivo de Parakeet).
-- Con cada turno, `LiveSpeakerLabeler.relabel` (puro, idempotente, 7 tests) re-etiqueta las filas CERRADAS del system: una fila que cruza dos voces se **parte** en los límites de turnos (reusa `SpeakerAttributor`, reparto proporcional de palabras) y cada pieza muestra su pill **S1/S2** (o "Me"→"Yo" vía voiceprint). La última fila (aún creciendo, invariante del coalescer) jamás se toca; las filas sin ventana que las cubra siguen "Ellos". Las filas partidas obtienen ids nuevos → la traducción en vivo las recoge sola (traduce filas cerradas sin traducción).
-- Las etiquetas vivas son **pistas efímeras**: al stop, el pase batch (`diarizeFile` + merge de micro-clusters + atribución) sigue siendo la verdad y re-atribuye todo desde el archivo; los S-números vivos no tienen por qué coincidir con los finales.
-- Best-effort: si los modelos no cargan, el feed se cierra (no se acumula una reunión entera en memoria) y las captions quedan "Ellos" como antes.
-- **Verificado con reunión real** (jul 2026): el path streaming encontró ≥2 voces en los primeros 4 min del canal system y los procesó en 2.4 s (~100× tiempo real) — test gated `testLiveStreamingPathFindsMultipleVoices`.
+- `RecordingController` feeds the system channel to a **DEDICATED instance** of `PyannoteDiarizer` (fresh SpeakerManager per session — the batch pass at stop remains uncontaminated) via `diarize(AsyncStream)`, in 10 s windows; inference runs on the diarizer actor (~14 MB, ms per window — it never competes with Parakeet's live lane).
+- With each turn, `LiveSpeakerLabeler.relabel` (pure, idempotent, 7 tests) relabels CLOSED system rows: a row that crosses two voices is **split** at turn boundaries (reuses `SpeakerAttributor`, proportional word distribution), and each piece shows its **S1/S2** pill (or "Me"→"Yo" via voiceprint). The last row (still growing, a coalescer invariant) is never touched; rows without a covering window remain "Ellos". Split rows receive new IDs → live translation picks them up automatically (it translates closed rows without a translation).
+- Live labels are **ephemeral hints**: at stop, the batch pass (`diarizeFile` + micro-cluster merge + attribution) remains the truth and reattributes everything from the file; live S-numbers do not have to match the final ones.
+- Best-effort: if the models fail to load, the feed closes (an entire meeting is not accumulated in memory), and captions remain "Ellos" as before.
+- **Verified with a real meeting** (Jul 2026): the streaming path found ≥2 voices in the first 4 min of the system channel and processed them in 2.4 s (~100× real time) — gated test `testLiveStreamingPathFindsMultipleVoices`.
 
 ## Voiceprint — `VoiceprintStore` (D8/D21)
 
-- Embedding WeSpeaker 256-dim de ~12 s de voz sola (el audio fuente NO se conserva). Cifrado AES-GCM; la llave SOLO en Keychain (service `app.portavoz.voiceprint-key`, inyectable para tests). `delete()` destruye archivo + llave en una acción. Jamás se sincroniza (se re-enrola por dispositivo).
-- Enrolamiento: app (Ajustes → "Enrolar mi voz", 12 s) o CLI `voice enroll --file <wav>`. El diarizer lo carga con `initializeKnownSpeakers(isPermanent: true)` → label reservado "Me" cross-canal (reuniones híbridas: tu voz llegando por la sala/system también es tuya).
+- 256-dim WeSpeaker embedding from ~12 s of voice alone (the source audio is NOT retained). AES-GCM encrypted; the key is ONLY in Keychain (service `app.portavoz.voiceprint-key`, injectable for tests). `delete()` destroys the file + key in one action. It is never synchronized (reenrollment per device).
+- Enrollment: app (Ajustes → "Enrolar mi voz", 12 s) or CLI `voice enroll --file <wav>`. The diarizer loads it with `initializeKnownSpeakers(isPermanent: true)` → reserved cross-channel "Me" label (hybrid meetings: your voice arriving through the room/system is also yours).
 
-## Voces recordadas de participantes (jul 2026) — cross-meeting naming
+## Remembered participant voices (Jul 2026) — cross-meeting naming
 
-Pedido de campo: recordar la voz de un participante entre reuniones para autosugerir su nombre. Reglas MÁS estrictas que el voiceprint propio (guardar biometría de terceros es más sensible, D8):
+Field request: remember a participant's voice across meetings to autosuggest their name. STRICTER rules than for the user's own voiceprint (storing third-party biometrics is more sensitive, D8):
 
-- **`VoiceGallery`** (`voice-gallery.enc`, mismo patrón que VoiceprintStore: AES-GCM, llave solo en Keychain service `app.portavoz.voice-gallery-key`, jamás sync). Una voz entra SOLO por gesto explícito: el chip "Remember X's voice?" que aparece tras confirmar un nombre (rename manual o chip aplicado). Re-recordar a alguien REEMPLAZA su embedding (uno por persona, case-insensitive). Individual removible (context menu en Ajustes → "Remembered voices") y "Forget all voices" destruye archivo + llave en una acción.
-- **`PyannoteDiarizer.extractVoiceprints(fromFile:rangesBySpeaker:minimumSeconds:maximumSeconds:)`**: un embedding por speaker desde sus spans del canal system — resamplea el archivo UNA vez, corta por rangos (los más largos primero hasta 20 s; < 5 s se descarta: un embedding corto matchearía ruido). Los embeddings son transitorios: NADA se persiste aquí.
-- **`VoiceMatcher`** (puro, 5 tests): distancia coseno propia (fuera de FluidAudio — el clustering interno no sirve cross-meeting), umbral `maxCosineDistance = 0.54` (la misma vara efectiva del clustering D17; pendiente calibración de campo). Cada speaker recibe a lo sumo su voz más cercana y cada voz de la galería se sugiere a lo sumo a un speaker (dos speakers no pueden ser ambos "Marta"). Embeddings degenerados (norma 0, dims distintas) jamás matchean.
-- **UI (MeetingDetailView)**: al abrir un detalle con speakers sin nombre + galería no vacía, un diarizer EFÍMERO (~14 MB; los engines pesados NO se cargan) extrae y matchea una vez por visita → chips "S1 → ¿Marta?" con icono waveform (la evidencia es la voz, no el transcript — por eso NO pasa por `NameSuggestionFilter`). Mismo contrato D21: chip, click, jamás se aplica solo.
+- **`VoiceGallery`** (`voice-gallery.enc`, same pattern as VoiceprintStore: AES-GCM, key only in Keychain service `app.portavoz.voice-gallery-key`, never sync). A voice is added ONLY through an explicit gesture: the "Remember X's voice?" chip that appears after confirming a name (manual rename or applied chip). Rerecording someone REPLACES their embedding (one per person, case-insensitive). Individually removable (context menu in Ajustes → "Remembered voices"), and "Forget all voices" destroys the file + key in one action.
+- **`PyannoteDiarizer.extractVoiceprints(fromFile:rangesBySpeaker:minimumSeconds:maximumSeconds:)`**: one embedding per speaker from their system-channel spans — resamples the file ONCE, slices by ranges (longest first up to 20 s; < 5 s is discarded: a short embedding would match noise). Embeddings are transient: NOTHING is persisted here.
+- **`VoiceMatcher`** (pure, 5 tests): its own cosine distance (outside FluidAudio — internal clustering does not work cross-meeting), threshold `maxCosineDistance = 0.54` (the same effective yardstick as D17 clustering; pending field calibration). Each speaker receives at most their closest voice, and each gallery voice is suggested for at most one speaker (two speakers cannot both be "Marta"). Degenerate embeddings (norm 0, different dimensions) never match.
+- **UI (MeetingDetailView)**: when opening a detail with unnamed speakers + a nonempty gallery, an EPHEMERAL diarizer (~14 MB; heavy engines are NOT loaded) extracts and matches once per visit → "S1 → ¿Marta?" chips with a waveform icon (the evidence is the voice, not the transcript — therefore it does NOT pass through `NameSuggestionFilter`). Same D21 contract: chip, click, never applied automatically.
 
-## Nombres automáticos (D21) — IntelligenceKit
+## Automatic names (D21) — IntelligenceKit
 
-- `SpeakerNamer.suggestNames`: propone label→nombre SOLO con evidencia. `NamingExcerpt` arma el contexto: primeras 3 intervenciones sustanciales (≥25 chars) por speaker + líneas que mencionan candidatos del calendario, cronológico, cap 2000 chars (un prefix ciego desbordaba la ventana de 4096 y solo veía el inicio). Retry con extracto a la mitad si aún desborda.
-- **Never-trust-verify** (`NameSuggestionFilter`, puro y testeado): el nombre propuesto debe aparecer LITERALMENTE en el transcript completo O entre los asistentes del calendario (el modelo fabrica nombres con evidencia fabricada — observado: "John" de la nada).
-- `CalendarAttendeeSource` (IntegrationsKit): asistentes de eventos EventKit alrededor de la reunión como candidatos (pide TCC de calendario).
-- UI: chips "S1 → ¿Ana?" con evidencia en tooltip; un click aplica; nada se aplica solo.
+- `SpeakerNamer.suggestNames`: proposes label→name ONLY with evidence. `NamingExcerpt` builds the context: first 3 substantial interventions (≥25 chars) per speaker + lines that mention calendar candidates, chronological, capped at 2000 chars (a blind prefix overflowed the 4096 window and saw only the beginning). Retry with an excerpt half the size if it still overflows.
+- **Never-trust-verify** (`NameSuggestionFilter`, pure and tested): the proposed name must appear LITERALLY in the full transcript OR among the calendar attendees (the model fabricates names with fabricated evidence — observed: "John" from nowhere).
+- `CalendarAttendeeSource` (IntegrationsKit): attendees of EventKit events around the meeting as candidates (requests calendar TCC).
+- UI: "S1 → ¿Ana?" chips with evidence in a tooltip; one click applies; nothing is applied automatically.
 
-## Evaluación — `DiarizationEvaluation` + `portavoz-cli der`
+## Evaluation — `DiarizationEvaluation` + `portavoz-cli der`
 
-- `parseRTTM` + score con `DiarizationDER` de FluidAudio. **Unidades**: miss/falseAlarm/confusion llegan en SEGUNDOS y `der` en ratio → normalizar por el habla total de referencia.
-- Medido: **AMI 7.6%** (miss 3.7 / FA 1.3 / conf 2.6, collar 0.25 s) — criterio M3 < 15% ✓.
+- `parseRTTM` + scoring with FluidAudio's `DiarizationDER`. **Units**: miss/falseAlarm/confusion arrive in SECONDS and `der` as a ratio → normalize by total reference speech.
+- Measured: **AMI 7.6%** (miss 3.7 / FA 1.3 / conf 2.6, collar 0.25 s) — M3 criterion < 15% ✓.
 
-## Límites conocidos
+## Known limits
 
-1. DER formal de reunión real pendiente (borrador RTTM esperando corrección del usuario en `~/Desktop/portavoz-verificacion/`).
-2. Sortformer (mejor para diálogo rápido, según humla) no evaluado; SpeakerKit de Argmax (mismo paquete que WhisperKit) es alternativa a benchmarkear.
-3. La atribución con filas coalescidas largas depende más del reparto proporcional (aceptable, no medido por separado).
+1. Formal DER for a real meeting pending (draft RTTM awaiting user correction in `~/Desktop/portavoz-verificacion/`).
+2. Sortformer (better for fast dialogue, according to humla) not evaluated; Argmax's SpeakerKit (same package as WhisperKit) is an alternative to benchmark.
+3. Attribution with long coalesced rows relies more on proportional distribution (acceptable, not measured separately).

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 14, 2026
 
+- **🗑️ Trash stays out of Insights** — Deleted meetings no longer influence talk balance, frequent people, findings, summaries, or action-item totals. Restore one and those exact library projections return with it.
 - **📦 The Companion travels with the meeting** — Exporting a `.portavoz` meeting now includes its saved Companion answers and “asked you” pings. Import it on another Mac and the review rail arrives intact, with fresh internal IDs just like the rest of the meeting.
 - **🔒 Meeting-app capture means the meeting app** — Direct capture now includes recognized call apps and their audio helpers without quietly pulling in music, notifications, or other unrelated apps. If no supported call app is running, Portavoz tells you that it falls back to system audio.
 - **🧹 Clean noise without losing quiet sentences** — Low confidence still removes tiny mic fragments, but it no longer throws away a full sentence just because the speaker was quiet. Confident acronyms such as “ML” survive too.

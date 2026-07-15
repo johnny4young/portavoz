@@ -59,6 +59,11 @@ extension MeetingStore {
     ) async throws -> (draft: SummaryDraft, version: Int)? {
         let meetingKey = id.rawValue.uuidString
         return try await database.read { db in
+            guard try MeetingRecord
+                .filter(Column("id") == meetingKey)
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db) > 0
+            else { return nil }
             var request = SummaryRecord
                 .filter(Column("meetingID") == meetingKey)
                 .filter(Column("recipeID") == recipeID)
@@ -69,12 +74,14 @@ extension MeetingStore {
                 request = request.order(Column("version").desc)
             }
             guard let record = try request.fetchOne(db) else { return nil }
+            _ = try PersistedIdentity.required(
+                record.id, table: SummaryRecord.databaseTableName, column: "id")
 
             let items = try ActionItemRecord
                 .filter(Column("summaryID") == record.id)
                 .filter(Column("deletedAt") == nil)
                 .order(Column("createdAt"))
-                .fetchAll(db).map(\.actionItem)
+                .fetchAll(db).map { try $0.actionItem }
 
             let draft = SummaryDraft(
                 meetingID: id,
@@ -99,6 +106,11 @@ extension MeetingStore {
     ) async throws -> (draft: SummaryDraft, version: Int)? {
         let meetingKey = id.rawValue.uuidString
         return try await database.read { db in
+            guard try MeetingRecord
+                .filter(Column("id") == meetingKey)
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db) > 0
+            else { return nil }
             var request = SummaryRecord
                 .filter(Column("meetingID") == meetingKey)
                 .filter(Column("recipeID") == recipeID)
@@ -109,12 +121,14 @@ extension MeetingStore {
                 request = request.filter(Column("language") == language)
             }
             guard let record = try request.fetchOne(db) else { return nil }
+            _ = try PersistedIdentity.required(
+                record.id, table: SummaryRecord.databaseTableName, column: "id")
 
             let items = try ActionItemRecord
                 .filter(Column("summaryID") == record.id)
                 .filter(Column("deletedAt") == nil)
                 .order(Column("createdAt"))
-                .fetchAll(db).map(\.actionItem)
+                .fetchAll(db).map { try $0.actionItem }
 
             let draft = SummaryDraft(
                 meetingID: id,
@@ -172,8 +186,11 @@ extension MeetingStore {
                 sql: """
                     SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
                     FROM segment
-                    WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))
-                    GROUP BY meetingID
+                    JOIN meeting ON meeting.id = segment.meetingID
+                        AND meeting.deletedAt IS NULL
+                    WHERE segment.deletedAt IS NULL
+                      AND segment.meetingID IN (\(placeholders))
+                    GROUP BY segment.meetingID
                     """,
                 arguments: StatementArguments(ids))
             var byMeeting: [String: (String, String?, Int)] = [:]
@@ -189,6 +206,8 @@ extension MeetingStore {
                            (SELECT COUNT(*) FROM actionItem ai
                             WHERE ai.summaryID = s.id AND ai.deletedAt IS NULL) AS items
                     FROM summary s
+                    JOIN meeting ON meeting.id = s.meetingID
+                        AND meeting.deletedAt IS NULL
                     WHERE s.deletedAt IS NULL
                       AND s.meetingID IN (\(placeholders))
                       AND s.version = (
@@ -204,7 +223,8 @@ extension MeetingStore {
 
             var result: [MeetingID: FindingInput] = [:]
             for (key, value) in byMeeting {
-                guard let uuid = UUID(uuidString: key) else { continue }
+                let uuid = try PersistedIdentity.required(
+                    key, table: "meeting", column: "id")
                 result[MeetingID(rawValue: uuid)] = FindingInput(
                     transcript: value.0, summaryMarkdown: value.1, actionItemCount: value.2)
             }
@@ -218,14 +238,16 @@ extension MeetingStore {
                 db,
                 sql: """
                     SELECT displayName AS name,
-                           COUNT(DISTINCT meetingID) AS meetings
+                           COUNT(DISTINCT speaker.meetingID) AS meetings
                     FROM speaker
-                    WHERE deletedAt IS NULL
-                      AND isMe = 0
-                      AND displayName IS NOT NULL
-                      AND TRIM(displayName) != ''
-                    GROUP BY LOWER(TRIM(displayName))
-                    ORDER BY meetings DESC, LOWER(TRIM(displayName)) ASC
+                    JOIN meeting ON meeting.id = speaker.meetingID
+                        AND meeting.deletedAt IS NULL
+                    WHERE speaker.deletedAt IS NULL
+                      AND speaker.isMe = 0
+                      AND speaker.displayName IS NOT NULL
+                      AND TRIM(speaker.displayName) != ''
+                    GROUP BY LOWER(TRIM(speaker.displayName))
+                    ORDER BY meetings DESC, LOWER(TRIM(speaker.displayName)) ASC
                     LIMIT ?
                     """,
                 arguments: [topLimit])
@@ -239,6 +261,8 @@ extension MeetingStore {
                     FROM actionItem
                     JOIN summary ON summary.id = actionItem.summaryID
                         AND summary.deletedAt IS NULL
+                    JOIN meeting ON meeting.id = actionItem.meetingID
+                        AND meeting.deletedAt IS NULL
                     WHERE actionItem.deletedAt IS NULL
                       AND summary.version = (
                           SELECT MAX(version) FROM summary latest
@@ -284,15 +308,19 @@ extension MeetingStore {
                     LIMIT ?
                     """,
                 arguments: [limit])
-            return rows.map { row in
+            return try rows.map { row in
                 OpenActionItem(
-                    meetingID: MeetingID(rawValue: UUID(uuidString: row["meetingID"]) ?? UUID()),
+                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                        row["meetingID"], table: "actionItem", column: "meetingID")),
                     meetingTitle: row["title"],
                     item: ActionItem(
-                        id: UUID(uuidString: row["id"]) ?? UUID(),
+                        id: try PersistedIdentity.required(
+                            row["id"], table: "actionItem", column: "id"),
                         text: row["text"],
-                        ownerSpeakerID: (row["ownerSpeakerID"] as String?)
-                            .flatMap { UUID(uuidString: $0) }.map { SpeakerID(rawValue: $0) },
+                        ownerSpeakerID: try PersistedIdentity.optional(
+                            row["ownerSpeakerID"] as String?,
+                            table: "actionItem", column: "ownerSpeakerID"
+                        ).map { SpeakerID(rawValue: $0) },
                         isDone: false)
                 )
             }
