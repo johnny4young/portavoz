@@ -202,4 +202,7 @@ balance; restoring a meeting exposes its untouched children again. Since Band
 2 slice 2B, app delete and restore mutations enter through ApplicationKit's
 `DeleteMeeting`/`RestoreMeeting` and narrow `MeetingLifecycleStore` port;
 MeetingStore remains the production adapter and its storage semantics are
-unchanged.
+unchanged. Slice 2C routes manual and expired purge through a separate
+`MeetingPurgeStore` projection. ApplicationKit receives pure candidates rather
+than StorageKit records, preserves the strict `deletedAt < cutoff` comparison,
+and continues to later tombstones when one purge fails.

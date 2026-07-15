@@ -21,8 +21,10 @@ StorageKit for its first characterized workflows: `DeleteMeeting` and
 `RestoreMeeting` over a narrow `MeetingLifecycleStore` port. `AppServices`
 composes both with the real MeetingStore; Library, Meeting Detail, and
 Recently Deleted call them instead of writing lifecycle state through the
-store. Other workflows still coordinate capabilities directly until their own
-Band 2 slices are characterized and adopted (D44).
+store. Manual and launch-time purge also use ApplicationKit, coordinating a
+pure storage projection with the private app `MeetingAudioFiles` adapter over
+RecordingsLocation/FileManager. Other workflows still coordinate capabilities
+directly until their own Band 2 slices are characterized and adopted (D44).
 
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and `importMeeting` reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
@@ -67,7 +69,7 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 
 ## Views and flows
 
-**LibraryView**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings via `openActionItems` — checkbox completes in-place and bumps `libraryVersion`; click navigates to meeting; UITests use `firstMatch` because meeting title appears also as caption in these rows), and a list with `Rename`/`Delete` context-menu actions. Library and Meeting Detail deletion plus Recently Deleted restoration enter through ApplicationKit use cases; their existing navigation and broad reload behavior is retained while scoped observations remain pending.
+**LibraryView**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings via `openActionItems` — checkbox completes in-place and bumps `libraryVersion`; click navigates to meeting; UITests use `firstMatch` because meeting title appears also as caption in these rows), and a list with `Rename`/`Delete` context-menu actions. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing navigation, degradable filesystem behavior, and broad reload semantics remain while scoped observations are pending.
 
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: warm-up of mic (AEC converges during "Preparing…"), engines, then

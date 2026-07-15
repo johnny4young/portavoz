@@ -646,3 +646,13 @@ the composition root; an architecture test forbids regression to direct app
 `store.delete/restore` writes. The presentation layer retains its
 existing best-effort error handling, navigation, and `libraryVersion` behavior,
 so this is a feature-parity move rather than a UX change.
+
+**Second vertical slice (slice 2C):** permanent deletion and 30-day cleanup now
+enter through `PurgeMeeting` and `PurgeExpiredTrash`. The application layer
+coordinates a narrow storage port with `MeetingAudioFiles`; the concrete
+FileManager/RecordingsLocation adapter stays private to the macOS app. Audio
+removal remains intentionally best-effort and cannot block the database purge.
+Storage failure still propagates to the existing best-effort presentation
+boundary. Expiry receives an explicit cutoff, keeps the released strict
+`deletedAt < cutoff` rule, continues after one damaged entry, and returns its
+attempt count so `libraryVersion` retains the previous net change.

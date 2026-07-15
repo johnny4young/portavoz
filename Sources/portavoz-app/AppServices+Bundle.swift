@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import IntegrationsKit
 import PortavozCore
@@ -48,14 +49,13 @@ extension AppServices {
 }
 
 extension AppServices {
-    /// Permanently removes a trashed meeting: its rows (store.purge — FTS
-    /// cleans via triggers) AND its audio folder on disk.
+    /// Permanently removes a trashed meeting: its stored rows (FTS cleans via
+    /// triggers) AND its audio folder on disk.
     func purgeMeeting(_ entry: MeetingStore.DeletedMeeting) async {
-        if let relative = entry.meeting.audioDirectory {
-            let dir = RecordingsLocation.shared.resolve(relative)
-            try? FileManager.default.removeItem(at: dir)
-        }
-        try? await store.purge(entry.meeting.id)
+        let request = PurgeMeetingRequest(
+            meetingID: entry.meeting.id,
+            audioDirectory: entry.meeting.audioDirectory)
+        _ = try? await meetingPurge.purge(request)
         libraryVersion += 1
     }
 
@@ -63,10 +63,7 @@ extension AppServices {
     /// at launch. The trash is a safety net, not an archive.
     func purgeExpiredTrash() async {
         let cutoff = Date().addingTimeInterval(-30 * 86_400)
-        let expired = ((try? await store.deletedMeetings()) ?? [])
-            .filter { $0.deletedAt < cutoff }
-        for entry in expired {
-            await purgeMeeting(entry)
-        }
+        let attempted = (try? await meetingPurge.expired(cutoff)) ?? 0
+        libraryVersion += attempted
     }
 }

@@ -68,16 +68,22 @@ final class ArchitectureDependencyTests: XCTestCase {
             .filter { !allowed.contains($0.module) }
             .map { "\($0.file): \($0.module)" }
             .sorted()
+        let platformSymbols = try Self.sourceMatches(
+            under: "Sources/ApplicationKit",
+            pattern: #"\b(?:FileManager|UserDefaults|URLSession)\b"#)
 
         XCTAssertTrue(
             violations.isEmpty,
             "ApplicationKit imported presentation/platform/database APIs: \(violations)")
+        XCTAssertTrue(
+            platformSymbols.isEmpty,
+            "ApplicationKit used a platform adapter directly: \(platformSymbols)")
     }
 
     func testAppMeetingLifecycleWritesEnterThroughApplicationKit() throws {
         let violations = try Self.sourceMatches(
             under: "Sources/portavoz-app",
-            pattern: #"\b(?:services\.)?store\.(?:delete|restore)\s*\("#)
+            pattern: #"\b(?:services\.)?store\.(?:delete|restore|purge)\s*\("#)
 
         XCTAssertTrue(
             violations.isEmpty,
