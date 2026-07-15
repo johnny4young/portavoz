@@ -165,7 +165,7 @@ struct MeetingDetailView: View {
             .sheet(isPresented: $showingNewStructure) {
                 CustomStructureSheet(existing: nil) { recipe in
                     CustomRecipeStore.upsert(recipe)
-                    regenerate(language: summary?.draft.language ?? "en", recipe: recipe)
+                    regenerate(language: summaryLanguage(summary?.draft.language), recipe: recipe)
                 }
             }
             .alert("Rename speaker", isPresented: renameBinding) {
@@ -306,7 +306,7 @@ extension MeetingDetailView {
             }
         } else if !detail.segments.isEmpty {
             Button {
-                regenerate(language: Locale.current.language.languageCode?.identifier ?? "en")
+                regenerate(language: summaryLanguage())
             } label: {
                 Label("Generate summary", systemImage: "sparkles")
             }
@@ -847,12 +847,14 @@ extension MeetingDetailView {
                     ProgressView().controlSize(.small)
                 } else {
                     Menu {
-                        Button("Regenerate in Spanish") { regenerate(language: "es") }
-                        Button("Regenerate in English") { regenerate(language: "en") }
+                        Button("Regenerate in Spanish") { regenerate(language: .spanish) }
+                        Button("Regenerate in English") { regenerate(language: .english) }
                         Menu("Structure") {
                             ForEach(CustomRecipeStore.all()) { recipe in
                                 Button(recipe.displayName) {
-                                    regenerate(language: summary.draft.language, recipe: recipe)
+                                    regenerate(
+                                        language: summaryLanguage(summary.draft.language),
+                                        recipe: recipe)
                                 }
                             }
                             Divider()
@@ -861,8 +863,12 @@ extension MeetingDetailView {
                         if let alt = alternateEngine {
                             Divider()
                             Menu(alt.label) {
-                                Button("Español") { regenerate(language: "es", engine: alt.engine) }
-                                Button("English") { regenerate(language: "en", engine: alt.engine) }
+                                Button("Español") {
+                                    regenerate(language: .spanish, engine: alt.engine)
+                                }
+                                Button("English") {
+                                    regenerate(language: .english, engine: alt.engine)
+                                }
                             }
                         }
                     } label: {
@@ -984,8 +990,14 @@ extension MeetingDetailView {
         }
     }
 
+    private func summaryLanguage(_ stored: String? = nil) -> LanguageCode {
+        LanguageCode(stored)
+            ?? MeetingLanguagePreferences.resolvedSummaryLanguage(
+                spokenLanguage: detail?.meeting.language)
+    }
+
     private func regenerate(
-        language: String,
+        language: LanguageCode,
         engine: AppServices.SummaryEngine? = nil,
         recipe: Recipe? = nil
     ) {
@@ -1003,7 +1015,7 @@ extension MeetingDetailView {
                 segments: detail.segments,
                 speakers: detail.speakers,
                 recipe: activeRecipe,
-                targetLanguage: language,
+                targetLanguage: language.identifier,
                 glossary: VocabularyPrompt.parse(
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
                 contextItems: notes
@@ -1037,7 +1049,7 @@ extension MeetingDetailView {
             // D25 cache: same material + same stored language — with greedy
             // decoding the model would reproduce the same result.
             if let hit = try? await services.store.latestSummary(
-                meetingID, fingerprint: fingerprint, language: language) {
+                meetingID, fingerprint: fingerprint, language: language.identifier) {
                 summaryNotice =
                     // One-line UI notice.
                     // swiftlint:disable:next line_length
@@ -1049,7 +1061,7 @@ extension MeetingDetailView {
             if let pivot = try? await services.store.latestSummary(
                 meetingID, fingerprint: fingerprint),
                 let translated = try? await provider.translate(
-                    pivot.draft, to: language, glossary: request.glossary) {
+                    pivot.draft, to: language.identifier, glossary: request.glossary) {
                 _ = try? await services.store.saveSummary(translated)
                 services.libraryVersion += 1
                 return
@@ -1076,8 +1088,12 @@ extension MeetingDetailView {
     private func refineMenu(_ detail: MeetingDetail) -> some View {
         let disabled = refining != nil || detail.meeting.audioDirectory == nil
         return Menu {
-            Button("Re-transcribe in Spanish") { refine(detail, language: "es") }
-            Button("Re-transcribe in English") { refine(detail, language: "en") }
+            Button("Re-transcribe in Spanish") {
+                refine(detail, languagePolicy: .fixed(.spanish))
+            }
+            Button("Re-transcribe in English") {
+                refine(detail, languagePolicy: .fixed(.english))
+            }
         } label: {
             Group {
                 if refining != nil {
@@ -1104,9 +1120,15 @@ extension MeetingDetailView {
             ))
     }
 
-    private func refine(_ detail: MeetingDetail, language: String? = nil) {
+    private func refine(
+        _ detail: MeetingDetail,
+        languagePolicy: TranscriptLanguagePolicy? = nil
+    ) {
         services.refines.start(
-            meetingID: meetingID, detail: detail, services: services, language: language)
+            meetingID: meetingID,
+            detail: detail,
+            services: services,
+            languagePolicy: languagePolicy)
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
@@ -1115,8 +1137,10 @@ extension MeetingDetailView {
         Task {
             defer { applying = nil }
             do {
-                if let language = draft.language, var meeting = detail?.meeting {
-                    meeting.language = language
+                if var meeting = detail?.meeting {
+                    // Always replace the aggregate metadata, including with
+                    // nil when the refined meeting is mixed/unknown.
+                    meeting.language = draft.language
                     try await services.store.save(meeting)
                 }
                 try await services.store.replaceCast(
@@ -1127,8 +1151,7 @@ extension MeetingDetailView {
                 await reload()
                 services.libraryVersion += 1
                 regenerate(
-                    language: summary?.draft.language
-                        ?? Locale.current.language.languageCode?.identifier ?? "en")
+                    language: summaryLanguage(summary?.draft.language))
             } catch {
                 actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
             }
@@ -1453,7 +1476,9 @@ extension MeetingDetailView {
         if let suggested = suggestedRecipe, !regenerating {
             Button {
                 suggestedRecipe = nil
-                regenerate(language: summary.draft.language, recipe: suggested)
+                regenerate(
+                    language: summaryLanguage(summary.draft.language),
+                    recipe: suggested)
             } label: {
                 ChipLabel(
                     kind: .ai,
@@ -1483,7 +1508,7 @@ extension MeetingDetailView {
                 actionItems: summary.draft.actionItems.count,
                 meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt)) {
             Button {
-                regenerate(language: summary.draft.language, engine: .mlx)
+                regenerate(language: summaryLanguage(summary.draft.language), engine: .mlx)
             } label: {
                 Label("Summary looks thin — retry with Built-in?", systemImage: "sparkles")
             }

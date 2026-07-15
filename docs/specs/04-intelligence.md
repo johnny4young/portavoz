@@ -22,6 +22,15 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 
 ## Language and glossary — `PromptFactory` (pure, tested)
 
+- **Output policy is independent from recognition (D35):**
+  `SummaryLanguagePolicy.followSpokenLanguage` uses a homogeneous
+  `Meeting.language`, then the selected app locale for mixed/unknown meetings;
+  `.fixed` consistently produces English or Spanish. The persisted
+  `summaryLanguage` UserDefaults value is resolved by one app adapter for final
+  recording summaries, rolling summaries, audio import, and regeneration. An
+  explicit regeneration language is retained by the immutable summary
+  snapshot. None of these choices changes transcript text or the separate
+  transcription policy.
 - **The 3B ignores weak directives**: "BCP-47 tag es" comes out in English. What works: human-readable name ("Spanish (español)", `languageName(for:)` via Locale) + repeat the instruction AT THE END of the user prompt.
 - Verbatim glossary (terms that are never translated) — comes from the user's vocabulary and/or `--glossary`.
 - The real FoundationModels API is verified in the local SDK's `.swiftinterface` — a better source than any documentation.

@@ -15,14 +15,14 @@ executable migration plan, rationale, bands, target schemas, and acceptance
 criteria live in [refactor-20260714.md](refactor-20260714.md).
 
 The rearchitecture direction is approved and execution is active on
-`codex/refactor-20260717`. Band 0 slice 0A has landed its first runtime
-invariants: persisted identities and record enums fail with typed integrity
-errors instead of changing meaning, and library/Insights projections scope
-through live meetings with delete/restore conservation coverage. The typed
-transcript/summary language policy remains the next Band 0 slice. Every
-refactor commit must update this file to reflect the dependency graph and
-migration status that actually exist in that commit, while the matching
-as-built spec records runtime behavior.
+`codex/refactor-20260717`. Band 0 is complete in two independently shippable
+slices. Slice 0A made persisted identity/enum decoding strict and scoped
+library/Insights projections through live meetings. Slice 0B separated
+transcript recognition policy from generated-output language and made
+recording, rolling summary, import, refine, and regeneration use the same typed
+policy boundary. Every refactor commit must update this file to reflect the
+dependency graph and migration status that actually exist in that commit,
+while the matching as-built spec records runtime behavior.
 
 ## SPM workspace (a single package)
 
@@ -34,7 +34,7 @@ the capabilities directly today.
 
 | Module | Responsibility |
 |---|---|
-| `PortavozCore` | Shared domain types and typed IDs. It currently also contains the concrete Keychain-backed `SecretStore`; moving that implementation to a platform adapter is a target, not current behavior |
+| `PortavozCore` | Shared domain types, typed IDs, canonical `LanguageCode`, and independent transcript/summary language policies. It currently also contains the concrete Keychain-backed `SecretStore`; moving that implementation to a platform adapter is a target, not current behavior |
 | `ModelStoreKit` | Curated registry (`ModelCatalog`, routing **by task** through `ModelTask`) + `ModelStore`: downloads verified by sha256/pinned commit. Shared by every Kit that loads models |
 | `AudioCaptureKit` | Mic (AVAudioEngine) + per-app process taps (Core Audio, macOS 14.4+); `RecordingSession` (with `onChunk` tap); crash-safe CAF `CaptureFileWriter`; retention policies |
 | `TranscriptionKit` | `TranscriptionEngine` protocol; `ParakeetEngine` (live sliding window + batch long-form); `TranscriptionScheduler` (D7 slots) |
@@ -200,11 +200,18 @@ The goal: support heterogeneous hardware (from 8 GB without Apple Intelligence t
 - **Layered configuration**: hardware default → global Settings by role → per-meeting override → per-language override (Humla pattern). Global settings currently use UserDefaults; durable typed per-meeting policy is a refactor target.
 - **Audio is already first-class in the product flow (D27)**: dual CAF capture feeds transcription, diarization, playback, waveform, clips, compression, and import through `MeetingAudioLayout`. **Current storage still exposes only `Meeting.audioDirectory`; there is no implemented `AudioAsset` type/table or durable waveform cache.** The target `AudioAsset` record, health metadata, checksums, and content-addressable caches are specified in [refactor-20260714.md](refactor-20260714.md).
 
-Transcript language and generated-output language are separate policies. Refine
-preserves the language actually spoken per segment; summaries and other
-generated artifacts use their configured output language. A single persisted
-global default plus per-meeting override is a Band 0 target and is not yet
-consistent across recording, import, and regeneration paths.
+Transcript recognition and generated-output language are separate as-built
+policies (D35). `TranscriptLanguagePolicy.automatic` leaves mixed meetings
+unhinted so each segment remains in the language actually spoken; `.fixed` is
+an explicit recovery choice for weak or noisy audio. `SummaryLanguagePolicy`
+either follows homogeneous speech or fixes output to English/Spanish, with the
+selected app locale as the mixed/unknown fallback. The app adapter reads two
+independent UserDefaults keys and applies the same rules to recording, rolling
+summary, import, and regeneration. Explicit regeneration language is captured
+by the immutable summary snapshot. Refine recalculates `Meeting.language` from
+the resulting segments and clears it for mixed/unknown meetings. Schema remains
+v5; durable per-meeting defaults through `meetingPreference` remain a schema-v6
+Band 1 target.
 
 ## Engineering rules (non-negotiable)
 
@@ -228,7 +235,7 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | In progress — slice 0A complete: strict record decoding and live-meeting aggregate scope; language policy remains | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; 413 package tests, SwiftLint zero, and 15 EN/ES XCUITests green | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Not started | Meeting shell, `AudioAsset`, durable jobs, recovery, Unit of Work and outbox foundations |
 | 2 — Application layer | Not started | `ApplicationKit`, composition-only `AppServices`, feature models, scoped GRDB observations |
 | 3 — Provenance and privacy | Not started | `generationRun`, egress gateway, privacy receipt, typed errors and diagnostics |

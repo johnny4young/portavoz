@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 409 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Status: 413 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -10,7 +10,7 @@ Status: 409 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHu
 |---|---|
 | AudioCaptureTests | CaptureFileWriter CAF, drift summary, Downmix, **Resample.linear**, startup cleanup |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
-| TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector**, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
+| TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
 | CaptionCoalescerTests | 13 coalescer cases (merge, identity, channels, pauses, limits, loose punctuation, early split of `system` after sentence) |
 | DiarizationTests | Catalog, SpeakerAttributor (multi-turn), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (units), live streaming (gated) |
 | LiveSpeakerLabelerTests | 7 cases: row split with two voices, last row untouched, idempotency, mic never relabeled, "Me" by voiceprint |
@@ -22,7 +22,7 @@ Status: 409 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHu
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
 | StorageTests / VoiceMixTests | Complete D4 contract (strict persisted IDs/enums, tombstones, versioning, hostile FTS, retention, paths) plus delete/restore conservation for summaries, findings, participants, actions, voice mixes, and talk balance |
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
-| CoreTypesTests | Types + **TitleTemplate** |
+| CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | RAG fusion, MCP protocol, encrypted voiceprint, offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
@@ -31,7 +31,7 @@ Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applicat
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
-XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain), `-seed-demo` (deterministic meeting with transcript, summary, coauthorship bullet "▸", and **audio**), and `-portavoz-open-settings` (deterministic Settings sheet for automation). Audio is isolated with the `PORTAVOZ_AUDIO_ROOT` env; the seed synthesizes a two-tone clip (mic/system) or adopts a real recording left in the root — point `PORTAVOZ_TEST_AUDIO_ROOT` to a real copy to exercise the player with real audio. Covers 15 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, heatmap/interlocutors, first listen, summary/transcript/player/rail/clip, Settings navigation, custom structures, audio capture, mirror, and live locale. `make test-ui-en` and `make test-ui-es` force `-AppleLanguages`/`-AppleLocale`. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
+XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain), `-seed-demo` (deterministic meeting with transcript, summary, coauthorship bullet "▸", and **audio**), and `-portavoz-open-settings` (deterministic Settings sheet for automation). Audio is isolated with the `PORTAVOZ_AUDIO_ROOT` env; the seed synthesizes a two-tone clip (mic/system) or adopts a real recording left in the root — point `PORTAVOZ_TEST_AUDIO_ROOT` to a real copy to exercise the player with real audio. Covers 15 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, heatmap/interlocutors, first listen, summary/transcript/player/rail/clip, Settings navigation, independent transcript/summary language controls, custom structures, audio capture, mirror, and live locale. `make test-ui-en` and `make test-ui-es` force `-AppleLanguages`/`-AppleLocale`. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
 
 ## Measurement harnesses
 

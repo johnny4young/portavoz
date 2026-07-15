@@ -17,9 +17,11 @@ public enum SpokenLanguageDetector {
     /// or uncertain meetings so multilingual audio remains auto-detected.
     public static func transcriptionLanguageHint(
         for meeting: Meeting,
-        segments: [TranscriptSegment]
+        segments: [TranscriptSegment],
+        policy: TranscriptLanguagePolicy = .automatic
     ) -> String? {
-        homogeneousLanguage(in: segments)
+        policy.languageHint
+            ?? homogeneousLanguage(in: segments)
             ?? (segments.isEmpty ? canonicalLanguageCode(meeting.language) : nil)
     }
 
@@ -39,12 +41,7 @@ public enum SpokenLanguageDetector {
     }
 
     public static func canonicalLanguageCode(_ raw: String?) -> String? {
-        let normalized = (raw ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "_", with: "-")
-            .lowercased()
-        guard !normalized.isEmpty, normalized != "und" else { return nil }
-        return normalized.split(separator: "-").first.map(String.init)
+        LanguageCode(raw)?.identifier
     }
 
     private static func segmentLanguages(in segments: [TranscriptSegment]) -> [String] {

@@ -35,7 +35,16 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
 2. **Peak-normalize before transcription** (`AudioLevel.normalizePeak`, target 0.9, gain cap 20x): WhisperKit's EnergyVAD gates on ABSOLUTE energy (0.02 threshold), and a low-volume meeting falls below it → "no hay voz."
 3. **Coverage retry based on CLEAN segments**: if transcribed speech < 20% of file duration (audio > 60 s), decode again sequentially (`chunkingStrategy: nil` — that path DOES propagate errors) and WITHOUT promptTokens. Two covered traps: poisoned chunks return valid timespans with text that `cleanSegmentText` empties (raw coverage is misleading), and the vocabulary prompt derails windows that do not mention the terms (verified: with 12 terms, only the chunk that said them survived). Verified: 3 → 82 segments with vocabulary.
 4. **Anti-silence hygiene**: segments without lexical content (for example, `.` alone) do not enter the final result; in addition, if the mic channel produces the same short Whisper boilerplate on a VAD cadence (real case: `Me: Thank you.` every ~30 s without the user speaking), post-processing removes it. An isolated occurrence of "Thank you" is preserved.
-5. **Spoken language preserved per segment**: Refine sets `hints.language` only when transcript evidence is homogeneous (`Meeting.language` with no prior segments, per-segment tags, or local `NLLanguageRecognizer`). If the meeting is mixed — for example, one person speaks Spanish and another English — it leaves `nil` so Whisper auto-detects and preserves the language of each speaker/segment. The UI/summary language is never used as a transcript fallback.
+5. **Spoken language preserved per segment (D35)**:
+   `TranscriptLanguagePolicy.automatic` sets `hints.language` only when
+   transcript evidence is homogeneous (`Meeting.language` with no prior
+   segments, per-segment tags, or local `NLLanguageRecognizer`). If the meeting
+   is mixed — for example, one person speaks Spanish and another English — it
+   leaves the hint `nil` so Whisper auto-detects each speaker/segment. A fixed
+   transcript policy is an explicit recovery tool for weak/noisy audio; summary
+   and UI language never become recognition fallbacks. Refine recomputes
+   `Meeting.language` from the attributed result and clears stale aggregate
+   metadata when the result is mixed or unknown.
 
 - Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.

@@ -59,7 +59,8 @@ struct SettingsView: View {
 
     // Internal (not private) so the intelligence-pane extension in
     // SettingsView+Intelligence.swift can reach them.
-    @AppStorage("transcriptionLanguage") var transcriptionLanguage = "auto"
+    @AppStorage(MeetingLanguagePreferences.transcriptKey) var transcriptionLanguage = "auto"
+    @AppStorage(MeetingLanguagePreferences.summaryKey) var summaryLanguage = "spoken"
     @State var customStructures: [Recipe] = CustomRecipeStore.custom()
     @State var editingStructure: Recipe?
     @State var showingStructureSheet = false
@@ -104,6 +105,7 @@ struct SettingsView: View {
                     DictationSection()
                 case .intelligence:
                     transcriptionLanguageSection
+                    summaryLanguageSection
                     summaryEngineSection
                     customStructuresSection
                     vocabularySection
@@ -172,9 +174,11 @@ extension SettingsView {
             .pickerStyle(.segmented)
             .disabled(AppLanguage.fromStorage(appLanguageRaw) == .system)
             .accessibilityIdentifier("settings-language-picker")
-            // One-line UI copy.
-            // swiftlint:disable:next line_length
-            Text("This changes the Portavoz interface only. Meeting transcription and summary languages stay controlled by each meeting.")
+            Text(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "This changes the Portavoz interface only. Transcript and summary language policies stay in Intelligence settings and each meeting's overrides."
+            )
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

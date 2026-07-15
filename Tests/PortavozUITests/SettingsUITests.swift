@@ -23,6 +23,9 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-engine-picker").waitForExistence(timeout: 5),
             "the Intelligence pane must show the summary-engine picker")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-summary-language").waitForExistence(timeout: 5),
+            "the Intelligence pane must separate summary output from spoken language")
 
         // Your data shows the export action.
         app.control(withIdentifier: "settings-category-data").click()

@@ -1,8 +1,8 @@
 import PortavozCore
 import SwiftUI
 
-// The Intelligence pane's transcription-language pin and the custom-structure
-// manager — split out to keep SettingsView.swift under the length limit.
+// The Intelligence pane's transcript/output language policies and the
+// custom-structure manager — split out to keep SettingsView.swift small.
 extension SettingsView {
     var transcriptionLanguageSection: some View {
         Section("Transcription language") {
@@ -16,7 +16,26 @@ extension SettingsView {
             Text(
                 // One-line UI help.
                 // swiftlint:disable:next line_length
-                "Pin the language you speak so a quiet or noisy recording is never transcribed in the wrong language. Auto-detect works well with clear audio."
+                "Auto-detect preserves each speaker's language in mixed meetings. Pin one language only when quiet or noisy audio was detected incorrectly."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    var summaryLanguageSection: some View {
+        Section("Summary language") {
+            Picker("Write summaries in", selection: $summaryLanguage) {
+                Text("Meeting language").tag(SummaryLanguagePolicy.followSpokenLanguage.persistedValue)
+                Text("English").tag(SummaryLanguagePolicy.fixed(.english).persistedValue)
+                Text("Español").tag(SummaryLanguagePolicy.fixed(.spanish).persistedValue)
+            }
+            .pickerStyle(.radioGroup)
+            .accessibilityIdentifier("settings-summary-language")
+            Text(
+                // One-line UI help.
+                // swiftlint:disable:next line_length
+                "This changes generated summaries only. Transcript language is controlled separately above and is never changed by this setting."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

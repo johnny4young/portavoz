@@ -130,13 +130,12 @@ final class RecordingController {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
-    /// Pinned transcription language (Settings → Intelligence): `nil` = auto,
-    /// else "en"/"es". Forcing it stops the multilingual model from
+    /// Transcription-only policy (Settings → Intelligence). A fixed hint
+    /// stops the multilingual model from
     /// hallucinating a wrong language on weak/low-SNR audio — field bug
     /// jul 2026: quiet English (far AirPods mic) decoded as Russian.
-    private var pinnedLanguage: String? {
-        let raw = UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "auto"
-        return raw == "auto" ? nil : raw
+    private var transcriptLanguagePolicy: TranscriptLanguagePolicy {
+        MeetingLanguagePreferences.transcript()
     }
 
     /// Returns the shared session to `.idle` once a finished recording has
@@ -232,7 +231,9 @@ final class RecordingController {
             let segments = engine.transcribe(
                 stream,
                 hints: TranscriptionHints(
-                    language: pinnedLanguage, vocabulary: vocabulary, meetingID: meetingID))
+                    language: transcriptLanguagePolicy.languageHint,
+                    vocabulary: vocabulary,
+                    meetingID: meetingID))
             consumers.append(Task { @MainActor [weak self] in
                 do {
                     for try await segment in segments {
@@ -516,11 +517,11 @@ final class RecordingController {
             var savedSummary: SummaryDraft?
             do {
                 phase = .processing(L10n.text("Generating summary…"))
-                // Summarize in the meeting's real language (pinned, else what
-                // was detected), not the Mac's UI locale — a Spanish meeting
-                // no longer comes back as an English summary.
-                let language = pinnedLanguage ?? spokenLanguage
-                    ?? Locale.current.language.languageCode?.identifier ?? "en"
+                // Transcript recognition and generated-output language are
+                // independent policies. The default follows homogeneous
+                // speech; a fixed summary preference never changes captions.
+                let language = MeetingLanguagePreferences.resolvedSummaryLanguage(
+                    spokenLanguage: spokenLanguage).identifier
                 let request = SummaryRequest(
                     meetingID: meetingID,
                     segments: attribution.segments,
@@ -575,7 +576,9 @@ private extension RecordingController {
             copy.speakerID = segment.channel == .microphone ? me.id : them.id
             return copy
         }
-        let language = pinnedLanguage ?? Locale.current.language.languageCode?.identifier ?? "en"
+        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(in: labeled)
+        let language = MeetingLanguagePreferences.resolvedSummaryLanguage(
+            spokenLanguage: spokenLanguage).identifier
         let provider = FoundationModelSummaryProvider()
         do {
             // Map: one dense note for the new window; the rest is already noted.

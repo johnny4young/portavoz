@@ -521,6 +521,16 @@
         }
       }
     },
+    "Auto-detect preserves each speaker's language in mixed meetings. Pin one language only when quiet or noisy audio was detected incorrectly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección automática conserva el idioma de cada persona en reuniones mixtas. Fija un solo idioma únicamente cuando el audio bajo o ruidoso se haya detectado mal."
+          }
+        }
+      }
+    },
     "Auto-detect": {
       "localizations": {
         "es": {
@@ -2271,6 +2281,16 @@
         }
       }
     },
+    "Meeting language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la reunión"
+          }
+        }
+      }
+    },
     "Meeting health": {
       "localizations": {
         "es": {
@@ -3891,6 +3911,16 @@
         }
       }
     },
+    "Summary language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma del resumen"
+          }
+        }
+      }
+    },
     "Summary looks thin — retry with Built-in?": {
       "localizations": {
         "es": {
@@ -4111,12 +4141,22 @@
         }
       }
     },
-    "This changes the Portavoz interface only. Meeting transcription and summary languages stay controlled by each meeting.": {
+    "This changes generated summaries only. Transcript language is controlled separately above and is never changed by this setting.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esto cambia solo la interfaz de Portavoz. Los idiomas de transcripción y resumen siguen controlados por cada reunión."
+            "value": "Esto solo cambia los resúmenes generados. El idioma de transcripción se controla por separado arriba y este ajuste nunca lo cambia."
+          }
+        }
+      }
+    },
+    "This changes the Portavoz interface only. Transcript and summary language policies stay in Intelligence settings and each meeting's overrides.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto solo cambia la interfaz de Portavoz. Las políticas de transcripción y resumen permanecen en los ajustes de Inteligencia y en las opciones de cada reunión."
           }
         }
       }
@@ -4517,6 +4557,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Con tu voz enrolada, Portavoz también te reconoce cuando llegas por el audio del sistema (reuniones híbridas). Solo se guarda una huella numérica cifrada en este equipo — nunca audio, nunca datos en la nube; se borra con un clic."
+          }
+        }
+      }
+    },
+    "Write summaries in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir resúmenes en"
           }
         }
       }

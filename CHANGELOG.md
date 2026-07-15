@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 15, 2026
+
+- **🌍 Every voice keeps its language** — Auto-detect now preserves the language each person actually spoke in mixed meetings and after Refine. A separate Summary language setting consistently controls generated output for recordings, imports, live summaries, and regeneration without translating the transcript.
+
 ## July 14, 2026
 
 - **🗑️ Trash stays out of Insights** — Deleted meetings no longer influence talk balance, frequent people, findings, summaries, or action-item totals. Restore one and those exact library projections return with it.

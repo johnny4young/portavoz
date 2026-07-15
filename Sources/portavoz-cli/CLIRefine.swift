@@ -108,10 +108,12 @@ enum RefineCommand {
             }
             print("")
 
-            let spokenLanguage = language
-                ?? SpokenLanguageDetector.transcriptionLanguageHint(
-                    for: detail.meeting,
-                    segments: detail.segments)
+            let transcriptPolicy = TranscriptLanguagePolicy(
+                persistedValue: language ?? "auto")
+            let spokenLanguage = SpokenLanguageDetector.transcriptionLanguageHint(
+                for: detail.meeting,
+                segments: detail.segments,
+                policy: transcriptPolicy)
             let hints = TranscriptionHints(
                 language: spokenLanguage, vocabulary: vocabulary, meetingID: meetingID)
             var segments: [TranscriptSegment] = []
@@ -148,11 +150,10 @@ enum RefineCommand {
             let attribution = SpeakerAttributor.attribute(
                 segments: segments, turns: turns, meetingID: meetingID)
 
-            if let spokenLanguage {
-                var updatedMeeting = detail.meeting
-                updatedMeeting.language = spokenLanguage
-                try await store.save(updatedMeeting)
-            }
+            var updatedMeeting = detail.meeting
+            updatedMeeting.language = SpokenLanguageDetector.homogeneousLanguage(
+                in: attribution.segments)
+            try await store.save(updatedMeeting)
             try await store.replaceCast(
                 for: meetingID,
                 speakers: attribution.speakers,

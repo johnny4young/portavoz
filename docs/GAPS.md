@@ -34,7 +34,7 @@ What Portavoz lacks (Jul 2026) compared with the state of the art measured in th
 | T11 | Post-recording workflow is not durable | audio and partial work can become undiscoverable when stop-time derivation fails | refactor Band 1 |
 | T12 | ~~Persisted UUID read fallbacks create random identities~~ | **RESOLVED (Band 0 slice 0A):** malformed persisted IDs and enums now fail with typed `StorageError` integrity errors instead of minting, omitting, or changing entity meaning | ✅ strict-decoding + source-guard tests |
 | T13 | ~~Some library aggregates include soft-deleted meetings~~ | **RESOLVED (Band 0 slice 0A):** every summary, finding, participant, action, voice-mix, and talk-balance projection scopes through a live meeting; restore returns the prior values | ✅ delete/restore conservation tests |
-| T14 | Summary-language defaults differ by entry path | recording, import, and regeneration can choose different output defaults | refactor Band 0 |
+| T14 | ~~Summary-language defaults differ by entry path~~ | **RESOLVED (Band 0 slice 0B):** independent typed transcript/summary policies now drive recording, rolling summary, import, and regeneration through one resolver; mixed/unknown follow-spoken summaries use the selected app locale | ✅ D35 + policy/unit/EN-ES UI tests |
 | T15 | Broad app invalidation and orchestration concentration | unrelated screens reload and workflows remain difficult to isolate/test | refactor Band 2 |
 
 ## Positioning gaps (against the competitive map)

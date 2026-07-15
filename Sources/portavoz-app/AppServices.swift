@@ -400,7 +400,10 @@ final class AppServices {
 
         let vocabulary = VocabularyPrompt.parse(
             UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-        let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID)
+        let hints = TranscriptionHints(
+            language: MeetingLanguagePreferences.transcript().languageHint,
+            vocabulary: vocabulary,
+            meetingID: meetingID)
 
         progress(L10n.text("Transcribing audio (Whisper)…"))
         let result = try await whisper.transcribeFile(at: dest, hints: hints, channel: .system)
@@ -428,10 +431,12 @@ final class AppServices {
         try await store.save(attribution.segments)
 
         progress(L10n.text("Generating summary…"))
+        let summaryLanguage = MeetingLanguagePreferences.resolvedSummaryLanguage(
+            spokenLanguage: spokenLanguage)
         let request = SummaryRequest(
             meetingID: meetingID, segments: attribution.segments,
             speakers: attribution.speakers, recipe: .general,
-            targetLanguage: Locale.current.language.languageCode?.identifier ?? "en",
+            targetLanguage: summaryLanguage.identifier,
             glossary: vocabulary)
         if let draft = try? await summarize(request) {
             try? await store.saveSummary(draft)

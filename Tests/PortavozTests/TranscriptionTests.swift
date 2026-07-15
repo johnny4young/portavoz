@@ -610,6 +610,23 @@ final class SpokenLanguageDetectorTests: XCTestCase {
         XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments))
     }
 
+    func testExplicitTranscriptPolicyOverridesMixedAutoDetection() {
+        let meeting = Meeting(
+            title: "Mixed call",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let segments = [
+            languageSegment("uno dos tres", language: "es"),
+            languageSegment("one two three", language: "en"),
+        ]
+
+        XCTAssertEqual(
+            SpokenLanguageDetector.transcriptionLanguageHint(
+                for: meeting,
+                segments: segments,
+                policy: .fixed(.spanish)),
+            "es")
+    }
+
     func testDetectsHomogeneousSpanishTextLocally() {
         let segments = [
             languageSegment(

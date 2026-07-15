@@ -41,6 +41,38 @@ final class CoreTypesTests: XCTestCase {
         XCTAssertTrue(AudioChannel.allCases.contains(.microphone))
         XCTAssertTrue(AudioChannel.allCases.contains(.system))
     }
+
+    func testLanguageCodeCanonicalizesBCP47PrimaryLanguage() {
+        XCTAssertEqual(LanguageCode(" ES_CO ")?.identifier, "es")
+        XCTAssertEqual(LanguageCode("en-US")?.identifier, "en")
+        XCTAssertNil(LanguageCode("und"))
+        XCTAssertNil(LanguageCode(""))
+    }
+
+    func testTranscriptPolicySeparatesAutomaticFromExplicitHint() {
+        XCTAssertEqual(TranscriptLanguagePolicy(persistedValue: nil), .automatic)
+        XCTAssertNil(TranscriptLanguagePolicy(persistedValue: "auto").languageHint)
+        XCTAssertEqual(TranscriptLanguagePolicy.automatic.persistedValue, "auto")
+        XCTAssertEqual(
+            TranscriptLanguagePolicy(persistedValue: "es-CO").languageHint,
+            "es")
+    }
+
+    func testSummaryPolicyFollowsSpeechOrUsesIndependentFixedLanguage() {
+        let following = SummaryLanguagePolicy(persistedValue: nil)
+        XCTAssertEqual(following.persistedValue, "spoken")
+        XCTAssertEqual(
+            following.resolve(spokenLanguage: "es-CO", fallbackLanguage: "en").identifier,
+            "es")
+        XCTAssertEqual(
+            following.resolve(spokenLanguage: nil, fallbackLanguage: "es-MX").identifier,
+            "es")
+
+        let fixed = SummaryLanguagePolicy(persistedValue: "en")
+        XCTAssertEqual(
+            fixed.resolve(spokenLanguage: "es", fallbackLanguage: "es").identifier,
+            "en")
+    }
 }
 
 final class IntelligenceTypesTests: XCTestCase {

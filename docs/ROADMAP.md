@@ -6,14 +6,22 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue Band 0 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): introduce typed
-transcript and summary language policies with one persisted default and a
-per-meeting override. Strict persisted-record decoding and live-meeting
-aggregate conservation are complete in slice 0A. The migration is incremental;
-every slice preserves all v0.6.0 features and updates
+**Next concrete step:** begin Band 1 slice 1A of the approved
+architecture-hardening program in
+[refactor-20260714.md](refactor-20260714.md): add the schema-v6 lifecycle,
+audio-asset, and durable meeting-preference foundation with migration fixtures
+and an explicit rollback boundary. Band 0 is complete. The migration remains
+incremental; every slice preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34).
+commit (D33/D34/D35).
+
+- **Architecture Band 0 slice 0B complete (Jul 15, 2026)**: transcript
+  recognition and generated-summary language now use independent typed
+  policies. Auto mode keeps mixed ES/EN evidence unforced, while a separate
+  persisted Summary language setting consistently controls recording, rolling
+  summary, import, and regeneration. Refine recalculates homogeneous language
+  from its output and clears stale aggregate metadata for mixed/unknown
+  meetings. Schema remains v5; durable per-meeting defaults enter with Band 1.
 
 - **Architecture Band 0 slice 0A complete (Jul 14, 2026)**: StorageKit no
   longer mints random identities, silently drops malformed contextual rows, or

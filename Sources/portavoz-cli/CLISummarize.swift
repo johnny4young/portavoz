@@ -162,7 +162,8 @@ enum SummarizeCommand {
                     title: url.deletingPathExtension().lastPathComponent,
                     startedAt: now.addingTimeInterval(-transcription.audioDuration),
                     endedAt: now,
-                    language: language
+                    language: SpokenLanguageDetector.homogeneousLanguage(
+                        in: attribution.segments)
                 )
                 try await storeDB.save(record)
                 try await storeDB.save(attribution.speakers)

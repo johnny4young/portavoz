@@ -35,7 +35,7 @@ final class RefineService {
     // swiftlint:disable:next function_body_length
     func start(
         meetingID: MeetingID, detail: MeetingDetail, services: AppServices,
-        language: String? = nil
+        languagePolicy: TranscriptLanguagePolicy? = nil
     ) {
         if case .running = phases[meetingID] { return }
         // One refine at a time: Whisper and the diarizer are heavy enough
@@ -68,19 +68,18 @@ final class RefineService {
 
                 let vocabulary = VocabularyPrompt.parse(
                     UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-                // A pinned transcription language (Settings ▸ Intelligence)
-                // wins here. Otherwise the refine inherits the language the
+                // An explicit per-meeting override wins; otherwise the global
+                // transcription-only policy applies. Auto mode inherits the language the
                 // current segments were detected as — and if those were
                 // hallucinated on weak audio (field bug: a Spanish meeting
                 // mislabeled Russian), Whisper re-transcribes the same wrong
                 // language. The pin is the escape hatch that fixes such a meeting.
-                let pinned = UserDefaults.standard.string(forKey: "transcriptionLanguage")
-                let pinnedLanguage = (pinned == nil || pinned == "auto") ? nil : pinned
+                let transcriptPolicy = languagePolicy ?? MeetingLanguagePreferences.transcript()
                 let hints = TranscriptionHints(
-                    language: language  // explicit per-meeting override wins
-                        ?? pinnedLanguage
-                        ?? SpokenLanguageDetector.transcriptionLanguageHint(
-                            for: detail.meeting, segments: detail.segments),
+                    language: SpokenLanguageDetector.transcriptionLanguageHint(
+                        for: detail.meeting,
+                        segments: detail.segments,
+                        policy: transcriptPolicy),
                     vocabulary: vocabulary,
                     meetingID: meetingID)
 
@@ -129,7 +128,8 @@ final class RefineService {
                     $0.timeIntervalSince(detail.meeting.startedAt)
                 }
                 phases[meetingID] = .draft(RefineDraft(
-                    language: hints.language,
+                    language: SpokenLanguageDetector.homogeneousLanguage(
+                        in: attribution.segments),
                     speakers: attribution.speakers,
                     segments: attribution.segments,
                     oldSegmentCount: detail.segments.count,

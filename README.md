@@ -32,7 +32,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 - **Who-said-what, structurally.** Microphone and system audio are captured as separate channels: everything on your mic is *you*, by hardware truth. Remote voices are separated on-device with speaker diarization, then mapped to real names automatically.
 - **Local-first, for real.** Transcription, diarization, and summaries run on-device by default. Cloud LLMs — and local ones like Ollama — are an explicit, clearly-labeled opt-in with your own keys.
-- **Bilingual by design.** Attend a meeting in English, get the summary in Spanish (or vice versa) — with technical terms kept intact.
+- **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact.
 - **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, and exports any span as an audio clip.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
 - **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
@@ -55,14 +55,14 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Capture & transcribe**
 - **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, a low-mic nudge, and a heads-up when the incoming channel goes silent. A channel that captured nothing stays empty — never filled with invented text.
-- **Right language, always** — pin the language you speak so a quiet or noisy recording is never transcribed in the wrong one; auto-detect stays the default for clear audio.
+- **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
 - **Whisper refine** — a maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Force a language per meeting to recover one that came out wrong.
 - **Import any audio** — drag in a file (or a `.portavoz` bundle) and it transcribes, diarizes and summarizes like a live recording.
 
 **Understand the meeting**
 - **Every voice, told apart** — on-device diarization; each speaker gets a stable color, mapped to real names automatically (calendar + LLM) or with one click.
-- **Three local summary engines** — Apple Intelligence, Ollama, or a built-in model. Decisions, open questions, and owner-tagged action items, in whichever language you choose. **Tabbed** so a long summary is skimmable.
+- **Three local summary engines** — Apple Intelligence, Ollama, or a built-in model. A separate Summary language setting follows the meeting or consistently writes English/Spanish, without changing the transcript. **Tabbed** so a long summary is skimmable.
 - **Custom structures** — beyond the five built-in shapes (standup, 1:1, planning…), author your own — a Hangout, a Retro — with the sections you want. They appear in every meeting's Structure menu.
 - **✦ Chapters** — Portavoz finds the turning points (a long pause, a stretch that ran long) and lets you jump to them, each labeled with the line that opens it.
 - **Meeting health** — talk-time, interruptions and questions per speaker, computed locally.

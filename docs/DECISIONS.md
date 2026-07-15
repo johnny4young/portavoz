@@ -268,3 +268,37 @@ behavior, and RELEASING for shipping changes. CHANGELOG remains reserved for
 user-visible features and fixes; internal refactors or documentation-only
 changes do not receive a misleading product entry. Documentation accuracy and
 feature parity are part of the commit's definition of done.
+
+## D35 — Transcript truth and generated-output language are independent (Jul 2026)
+
+**Context:** the transcription language pin was also choosing recording
+summary language, while audio import used the system locale and regeneration
+reused a snapshot or the system locale. That coupling produced different
+results for the same meeting and made a recognition recovery control look like
+a translation preference. It also risked forcing one language across a mixed
+Spanish/English meeting.
+
+**Decision:** `PortavozCore` owns canonical `LanguageCode`,
+`TranscriptLanguagePolicy`, and `SummaryLanguagePolicy` values.
+`TranscriptLanguagePolicy.automatic` is the default and leaves mixed meetings
+unhinted so recognition preserves the language of each segment; `.fixed` is an
+explicit recovery choice for weak or noisy audio. `SummaryLanguagePolicy`
+either follows homogeneous spoken language or fixes generated output to one
+language. Mixed or unknown meetings in follow-spoken mode use the selected app
+locale, then English as the final deterministic fallback. The persisted global
+defaults remain separate UserDefaults keys, and one app adapter resolves them
+for recording, rolling summary, import, and regeneration. An explicit
+per-meeting regeneration language is persisted in its immutable summary
+snapshot and does not mutate transcript text. Refine recomputes
+`Meeting.language` from the resulting attributed segments, including clearing
+stale aggregate language when the result is mixed or unknown.
+
+Schema v5 remains unchanged in Band 0. The schema-v6 `meetingPreference` row
+will make durable per-meeting transcript, summary, recipe, and engine defaults
+first-class during Band 1; until then, a transcript recovery override is an
+explicit refine operation rather than a hidden sticky preference.
+
+**Rationale:** recognition truth and generated presentation have different
+jobs. Separating them preserves source evidence, makes all entry paths
+consistent, supports multilingual actors, and permits output-language choices
+without translating or overwriting the source transcript.

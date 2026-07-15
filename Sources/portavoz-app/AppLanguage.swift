@@ -1,8 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// User-facing app UI language. This only affects Portavoz chrome; meeting
-/// transcription and summary languages stay controlled by each meeting flow.
+/// User-facing app UI language. This only affects Portavoz chrome; transcript
+/// and summary policies remain independent in Intelligence settings.
 enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case system
     case english = "en"
