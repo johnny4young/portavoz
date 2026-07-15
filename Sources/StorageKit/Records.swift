@@ -36,6 +36,9 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     var audioDirectory: String?
     var retention: String
     var visibility: String
+    var lifecycleState: String
+    var transcriptRevision: Int
+    var lastProcessingError: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -49,6 +52,9 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
         self.audioDirectory = meeting.audioDirectory
         self.retention = try Self.encode(meeting.retention)
         self.visibility = meeting.visibility
+        self.lifecycleState = meeting.lifecycleState.rawValue
+        self.transcriptRevision = meeting.transcriptRevision
+        self.lastProcessingError = meeting.lastProcessingError
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
@@ -56,7 +62,13 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
 
     var meeting: Meeting {
         get throws {
-            Meeting(
+            guard let lifecycleState = MeetingLifecycleState(rawValue: lifecycleState) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "lifecycleState",
+                    value: self.lifecycleState)
+            }
+            return Meeting(
                 id: MeetingID(rawValue: try PersistedIdentity.required(
                     id, table: Self.databaseTableName, column: "id")),
                 title: title,
@@ -65,7 +77,10 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
                 language: language,
                 audioDirectory: audioDirectory,
                 retention: try Self.decode(retention),
-                visibility: visibility
+                visibility: visibility,
+                lifecycleState: lifecycleState,
+                transcriptRevision: transcriptRevision,
+                lastProcessingError: lastProcessingError
             )
         }
     }

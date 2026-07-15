@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 413 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
+Status: 415 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**).
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -20,12 +20,19 @@ Status: 413 package tests passing (13 gated) + 15 XCUITest UI tests. CI on GitHu
 | MeetingHealthTests | 6 cases: talk-time/share, ES/EN questions, thresholded interruptions, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
-| StorageTests / VoiceMixTests | Complete D4 contract (strict persisted IDs/enums, tombstones, versioning, hostile FTS, retention, paths) plus delete/restore conservation for summaries, findings, participants, actions, voice mixes, and talk balance |
+| StorageTests / StorageSchemaV6Tests / VoiceMixTests | Complete D4 contract (strict persisted IDs/enums, tombstones, versioning, hostile FTS, retention, paths), delete/restore conservation, schema-v6 v5-fixture migration, and lifecycle/path/language/idempotency constraints |
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | RAG fusion, MCP protocol, encrypted voiceprint, offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
+
+Band 1 slice 1A additionally ran a manual storage acceptance smoke: copy the
+real v5 database to `/tmp`, migrate only the scratch file through the current
+CLI, and compare legacy logical rows and meeting fields before/after. The v6
+copy preserved them, left all new workflow tables empty, returned
+`integrity_check = ok`, and had zero foreign-key violations. The live database
+was never opened by v6 code.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

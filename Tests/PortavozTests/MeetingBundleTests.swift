@@ -110,14 +110,22 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNil(decoded.audioFiles)
     }
 
-    func testOlderV1FileDecodesWithoutCompanionCardsField() throws {
+    func testOlderV1FileDecodesWithoutAdditiveMeetingFields() throws {
         let encoded = try sample().encoded()
         var json = try XCTUnwrap(
             JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         json.removeValue(forKey: "companionCards")
+        var meetingJSON = try XCTUnwrap(json["meeting"] as? [String: Any])
+        meetingJSON.removeValue(forKey: "lifecycleState")
+        meetingJSON.removeValue(forKey: "transcriptRevision")
+        meetingJSON.removeValue(forKey: "lastProcessingError")
+        json["meeting"] = meetingJSON
         let decoded = try MeetingBundle.decode(
             JSONSerialization.data(withJSONObject: json, options: [.sortedKeys]))
         XCTAssertNil(decoded.companionCards)
+        XCTAssertEqual(decoded.meeting.lifecycleState, .ready)
+        XCTAssertEqual(decoded.meeting.transcriptRevision, 0)
+        XCTAssertNil(decoded.meeting.lastProcessingError)
     }
 
     func testImportingTwiceYieldsIndependentMeetings() {

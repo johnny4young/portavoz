@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 5
+    public static let version = 6
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -168,6 +168,183 @@ public enum StorageSchema {
                 index: "companionCard_on_meetingID", on: "companionCard", columns: ["meetingID"])
         }
 
+        // v6 (D36/Band 1): one additive durability foundation. Runtime
+        // adoption remains incremental: existing meetings keep their legacy
+        // audioDirectory read path until later Strangler slices create assets.
+        migrator.registerMigration("v6") { db in
+            try addMeetingDurabilityColumns(to: db)
+            try createAudioAssetTable(in: db)
+            try createGenerationRunTable(in: db)
+            try addGenerationRunReferences(to: db)
+            try createProcessingJobTable(in: db)
+            try createOutboxEventTable(in: db)
+            try createMeetingPreferenceTable(in: db)
+        }
+
         return migrator
+    }
+
+    private static func addMeetingDurabilityColumns(to db: Database) throws {
+        try db.alter(table: "meeting") { t in
+            t.add(column: "lifecycleState", .text)
+                .notNull()
+                .defaults(to: "ready")
+                .check(sql: "lifecycleState IN "
+                    + "('recording', 'captured', 'processing', 'ready', 'needsAttention')")
+            t.add(column: "transcriptRevision", .integer)
+                .notNull()
+                .defaults(to: 0)
+                .check(sql: "transcriptRevision >= 0")
+            t.add(column: "lastProcessingError", .text)
+        }
+    }
+
+    private static func createAudioAssetTable(in db: Database) throws {
+        try db.create(table: "audioAsset") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("channel", .text).notNull().check(sql: "length(trim(channel)) > 0")
+            t.column("role", .text).notNull().check(sql: "length(trim(role)) > 0")
+            t.column("relativePath", .text).notNull().unique().check(
+                sql: "relativePath <> '' AND substr(relativePath, 1, 1) <> '/' "
+                    + "AND relativePath <> '..' AND relativePath NOT LIKE '../%' "
+                    + "AND relativePath NOT LIKE '%/../%' AND relativePath NOT LIKE '%/..'")
+            t.column("container", .text)
+            t.column("codec", .text)
+            t.column("sampleRate", .double).check(sql: "sampleRate IS NULL OR sampleRate > 0")
+            t.column("channelCount", .integer).check(
+                sql: "channelCount IS NULL OR channelCount > 0")
+            t.column("durationSeconds", .double).check(
+                sql: "durationSeconds IS NULL OR durationSeconds >= 0")
+            t.column("byteCount", .integer).check(sql: "byteCount IS NULL OR byteCount >= 0")
+            t.column("sha256", .text).check(sql: "sha256 IS NULL OR length(sha256) = 64")
+            t.column("healthStatus", .text).notNull().defaults(to: "pending").check(
+                sql: "healthStatus IN "
+                    + "('pending', 'healthy', 'silent', 'clipped', 'corrupt', 'missing')")
+            t.column("peakDBFS", .double)
+            t.column("rmsDBFS", .double)
+            t.column("sourceAssetID", .text).references("audioAsset", onDelete: .setNull)
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+            t.column("supersededAt", .datetime)
+            t.column("deletedAt", .datetime)
+        }
+        try db.create(
+            index: "audioAsset_on_meetingID", on: "audioAsset", columns: ["meetingID"])
+        try db.create(
+            index: "audioAsset_on_sourceAssetID", on: "audioAsset", columns: ["sourceAssetID"])
+    }
+
+    private static func createGenerationRunTable(in db: Database) throws {
+        try db.create(table: "generationRun") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("kind", .text).notNull().check(sql: "length(trim(kind)) > 0")
+            t.column("providerID", .text).notNull().check(sql: "length(trim(providerID)) > 0")
+            t.column("modelID", .text).notNull().check(sql: "length(trim(modelID)) > 0")
+            t.column("modelRevision", .text)
+            t.column("inputFingerprint", .text).notNull().check(
+                sql: "length(trim(inputFingerprint)) > 0")
+            t.column("configJSON", .text).notNull()
+            t.column("outputLanguage", .text)
+            t.column("startedAt", .datetime).notNull()
+            t.column("finishedAt", .datetime)
+            t.column("outcome", .text).check(
+                sql: "outcome IS NULL OR outcome IN ('succeeded', 'failed', 'cancelled')")
+            t.column("metricsJSON", .text)
+        }
+        try db.create(
+            index: "generationRun_on_meetingID", on: "generationRun", columns: ["meetingID"])
+    }
+
+    private static func addGenerationRunReferences(to db: Database) throws {
+        for table in ["segment", "summary", "companionCard"] {
+            try db.alter(table: table) { t in
+                t.add(column: "generationRunID", .text)
+                    .references("generationRun", onDelete: .setNull)
+            }
+            try db.create(
+                index: "\(table)_on_generationRunID", on: table,
+                columns: ["generationRunID"])
+        }
+    }
+
+    private static func createProcessingJobTable(in db: Database) throws {
+        try db.create(table: "processingJob") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("kind", .text).notNull().check(sql: "length(trim(kind)) > 0")
+            t.column("inputFingerprint", .text).notNull().check(
+                sql: "length(trim(inputFingerprint)) > 0")
+            t.column("state", .text).notNull().defaults(to: "pending").check(
+                sql: "state IN ('pending', 'running', 'succeeded', 'failed', 'cancelled')")
+            t.column("priority", .integer).notNull().defaults(to: 0)
+            t.column("progress", .double).notNull().defaults(to: 0).check(
+                sql: "progress >= 0 AND progress <= 1")
+            t.column("attempt", .integer).notNull().defaults(to: 0).check(
+                sql: "attempt >= 0")
+            t.column("maxAttempts", .integer).notNull().defaults(to: 3).check(
+                sql: "maxAttempts > 0 AND attempt <= maxAttempts")
+            t.column("notBefore", .datetime)
+            t.column("leaseOwner", .text)
+            t.column("leaseExpiresAt", .datetime)
+            t.column("errorCode", .text)
+            t.column("errorMessage", .text)
+            t.column("createdAt", .datetime).notNull()
+            t.column("startedAt", .datetime)
+            t.column("finishedAt", .datetime)
+            t.column("updatedAt", .datetime).notNull()
+            t.uniqueKey(["meetingID", "kind", "inputFingerprint"])
+        }
+        try db.create(
+            index: "processingJob_on_meetingID", on: "processingJob", columns: ["meetingID"])
+        try db.create(
+            index: "processingJob_on_dispatch", on: "processingJob",
+            columns: ["state", "notBefore", "priority"])
+    }
+
+    private static func createOutboxEventTable(in db: Database) throws {
+        try db.create(table: "outboxEvent") { t in
+            t.primaryKey("id", .text)
+            t.column("aggregateID", .text).notNull()
+            t.column("kind", .text).notNull().check(sql: "length(trim(kind)) > 0")
+            t.column("idempotencyKey", .text).notNull().unique()
+            t.column("payloadJSON", .text).notNull()
+            t.column("state", .text).notNull().defaults(to: "pending").check(
+                sql: "state IN ('pending', 'delivering', 'delivered', 'failed')")
+            t.column("attempts", .integer).notNull().defaults(to: 0).check(
+                sql: "attempts >= 0")
+            t.column("nextAttemptAt", .datetime)
+            t.column("createdAt", .datetime).notNull()
+            t.column("deliveredAt", .datetime)
+        }
+        try db.create(
+            index: "outboxEvent_on_dispatch", on: "outboxEvent",
+            columns: ["state", "nextAttemptAt"])
+    }
+
+    private static func createMeetingPreferenceTable(in db: Database) throws {
+        try db.create(table: "meetingPreference") { t in
+            t.primaryKey("meetingID", .text).references("meeting", onDelete: .cascade)
+            t.column("transcriptLanguageMode", .text).notNull().defaults(to: "automatic")
+            t.column("transcriptLanguage", .text)
+            t.column("summaryLanguageMode", .text).notNull().defaults(to: "followSpokenLanguage")
+            t.column("summaryLanguage", .text)
+            t.column("recipeID", .text)
+            t.column("summaryEngineID", .text)
+            t.column("refineEngineID", .text)
+            t.column("updatedAt", .datetime).notNull()
+            t.check(sql: "(transcriptLanguageMode = 'automatic' "
+                + "AND transcriptLanguage IS NULL) OR (transcriptLanguageMode = 'fixed' "
+                + "AND transcriptLanguage IS NOT NULL "
+                + "AND length(trim(transcriptLanguage)) > 0)")
+            t.check(sql: "(summaryLanguageMode = 'followSpokenLanguage' "
+                + "AND summaryLanguage IS NULL) OR (summaryLanguageMode = 'fixed' "
+                + "AND summaryLanguage IS NOT NULL "
+                + "AND length(trim(summaryLanguage)) > 0)")
+        }
     }
 }

@@ -293,12 +293,43 @@ snapshot and does not mutate transcript text. Refine recomputes
 `Meeting.language` from the resulting attributed segments, including clearing
 stale aggregate language when the result is mixed or unknown.
 
-Schema v5 remains unchanged in Band 0. The schema-v6 `meetingPreference` row
-will make durable per-meeting transcript, summary, recipe, and engine defaults
-first-class during Band 1; until then, a transcript recovery override is an
+Schema v5 remained unchanged in Band 0. Band 1 slice 1A subsequently installed
+the schema-v6 `meetingPreference` row shape; app flows do not create or read it
+yet. Until a later adoption slice, a transcript recovery override remains an
 explicit refine operation rather than a hidden sticky preference.
 
 **Rationale:** recognition truth and generated presentation have different
 jobs. Separating them preserves source evidence, makes all entry paths
 consistent, supports multilingual actors, and permits output-language choices
 without translating or overwriting the source transcript.
+
+## D36 — One additive schema v6 contract before workflow adoption (Jul 2026)
+
+**Context:** Band 1 needs meeting lifecycle state, first-class audio assets,
+idempotent work, generation provenance, external-side-effect delivery, and
+durable per-meeting policy. Splitting those mutually related foreign keys
+across provisional migration identifiers would create several intermediate
+database contracts while the released runtime still uses none of them.
+
+**Decision:** ship the complete durability surface atomically as migration
+`v6`: meeting lifecycle/revision/error columns; `audioAsset`, `processingJob`,
+`generationRun`, `outboxEvent`, and `meetingPreference`; and nullable
+generation-run links on generated artifacts. Behavioral adoption remains
+incremental. Migration v6 must not inspect the filesystem or infer assets from
+legacy directories. Existing meetings default to `ready` at transcript
+revision zero, new tables begin empty, and `Meeting.audioDirectory` remains the
+runtime source of truth until a later Strangler slice proves the replacement
+read path.
+
+There is no destructive downgrade migration. Before behavioral adoption, an
+older v1-v5 GRDB migrator ignores the unknown applied `v6` identifier and the
+additive columns/tables do not invalidate its existing reads. A rollback must
+never delete v6 structures or copy data back automatically. Once new workflow
+states or rows become authoritative, binary rollback requires an explicit
+compatibility assessment and a scratch copy of the database; schema rollback
+is not the recovery mechanism.
+
+**Rationale:** one durable contract gives every later Band 1 slice stable
+foreign keys and invariants while keeping runtime risk small. Deferring
+filesystem backfill avoids fabricating metadata, blocking launch on media I/O,
+or changing the released audio path before parity tests exist.

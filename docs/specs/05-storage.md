@@ -1,25 +1,43 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation).
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v5` migrations in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v6` migrations in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
-| `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), createdAt/updatedAt/deletedAt |
+| `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), tombstone |
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — immutable snapshots), **fingerprint** (v4, D25 — language-independent material identity; NULL in old snapshots = never match) |
 | `actionItem` | id, summaryID (FK CASCADE), meetingID, text, ownerSpeakerID?, isDone (the MUTABLE exception), tombstone |
 | `contextItem` (v3) | id, meetingID (FK CASCADE), kind (note/link/codeSnippet/file), content, timestamp (seconds from start), tombstone — user notes (D28) |
 | `companionCard` (v5) | id, meetingID (FK CASCADE), question, answer, kind, source, directed, askedAt, createdAt/updatedAt/deletedAt — reviewable Companion snapshot (D26) |
+| `audioAsset` (v6) | id, meetingID, channel, role, unique relativePath, optional finalized media metadata/checksum/levels, healthStatus, sourceAssetID lineage, createdAt/updatedAt/supersededAt/deletedAt |
+| `processingJob` (v6) | durable job state, priority/progress, retries, scheduling/lease/error timestamps; UNIQUE meetingID+kind+inputFingerprint |
+| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs were added to segment, summary, and companionCard |
+| `outboxEvent` (v6) | idempotent external-side-effect envelope with delivery state, attempts, and retry/delivery timestamps |
+| `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
+
+Schema v6 is an additive foundation (D36), not workflow adoption. Existing
+meetings migrate to `ready`, revision zero, and no processing error. The
+migration does not inspect the filesystem and does not synthesize
+`audioAsset` rows, so `Meeting.audioDirectory` remains the authoritative
+runtime audio reference. The app does not create/read jobs, generation runs,
+outbox events, or per-meeting preferences yet. Their constraints and indexes
+are installed now so later Band 1 slices can migrate one workflow at a time.
+The migration is verified both by a deterministic v5 fixture and by migrating
+a scratch copy of the real release database: legacy logical rows and meeting
+fields were preserved, the new workflow tables remained empty, integrity was
+`ok`, and foreign-key violations remained zero. The live database was never
+opened by v6 code.
 
 ### D4 contract (enforced, not aspirational)
 
@@ -32,6 +50,12 @@ Singular camelCase tables, 1:1 with Codable records:
   changing meaning.
 - **Tombstones, never hard delete** (`deletedAt`; future sync needs them). This made it possible to restore a meeting that a defective refine had replaced.
 - **Relative paths only**: `save(meeting)` REJECTS absolute paths or `..` (`StorageError.absolutePathRejected`).
+- Schema-v6 `audioAsset.relativePath` independently rejects absolute and
+  parent-traversal paths. Reserved assets may leave finalized media metadata
+  NULL, but channel, role, path, health state, and timestamps are mandatory.
+- Meeting lifecycle values, non-negative transcript revisions, bounded job
+  progress/retries, unique job fingerprints, and fixed-language requirements
+  are database constraints rather than caller conventions.
 - Embedding preserved when the text did not change (segment save compares text).
 
 ## MeetingStore — API
@@ -46,7 +70,7 @@ children; restoring the root returns the exact previous projections.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` still decodes; local paths never travel.
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths never travel.
 
 ## Recordings folder — `RecordingsLocation`
 
@@ -65,7 +89,8 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 ## Known limits
 
 1. No SQLCipher (optional and planned, PRODUCT/security).
-2. No `provenance` column (which engine produced each summary/segment) — planned in D25, additive.
+2. The nullable `generationRunID` columns and envelope exist, but no generation
+   producer writes provenance yet; behavioral adoption remains Band 3 work.
 3. `visibility` reserved and unused (sharing D12).
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and

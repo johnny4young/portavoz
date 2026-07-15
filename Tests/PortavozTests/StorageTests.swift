@@ -42,6 +42,9 @@ final class MeetingStoreTests: XCTestCase {
     // MARK: - Roundtrips (UUID PKs, D4)
 
     func testMeetingRoundTripsWithTypedIDsAndRetention() async throws {
+        meeting.lifecycleState = .needsAttention
+        meeting.transcriptRevision = 2
+        meeting.lastProcessingError = "summary.exhausted"
         _ = try await seedMeetingWithTranscript()
 
         let detail = try await store.detail(meeting.id)
@@ -51,6 +54,9 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertEqual(detail?.meeting.language, "es")
         XCTAssertEqual(detail?.meeting.retention, .deleteAfter(days: 7))
         XCTAssertEqual(detail?.meeting.visibility, "private")
+        XCTAssertEqual(detail?.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(detail?.meeting.transcriptRevision, 2)
+        XCTAssertEqual(detail?.meeting.lastProcessingError, "summary.exhausted")
         XCTAssertEqual(detail?.speakers.count, 2)
         XCTAssertEqual(detail?.segments.count, 2)
         XCTAssertEqual(detail?.segments.first?.text, "revisemos el presupuesto de transcripción")
@@ -107,6 +113,15 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertThrowsError(try record.segment) { error in
             guard case StorageError.invalidPersistedValue(
                 table: "segment", column: "channel", value: "corrupt-channel") = error
+            else { return XCTFail("wrong error: \(error)") }
+        }
+
+        var meetingRecord = try MeetingRecord(
+            meeting, createdAt: Date(), updatedAt: Date())
+        meetingRecord.lifecycleState = "corrupt-lifecycle"
+        XCTAssertThrowsError(try meetingRecord.meeting) { error in
+            guard case StorageError.invalidPersistedValue(
+                table: "meeting", column: "lifecycleState", value: "corrupt-lifecycle") = error
             else { return XCTFail("wrong error: \(error)") }
         }
     }

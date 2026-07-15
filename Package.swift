@@ -141,6 +141,7 @@ let package = Package(
                 "AudioPlaybackKit",
                 "SyncKit",
                 "IntegrationsKit",
+                .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
     ]
