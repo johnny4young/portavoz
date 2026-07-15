@@ -82,6 +82,13 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
    `needsAttention` rather than being deleted. A publication collision keeps
    its staging file and also becomes `needsAttention` for launch recovery.
 
+Band 1 slice 1D-a deliberately does not change this released app path:
+StorageKit now provides the typed idempotent/leased queue and repeat-safe
+expired-lease primitive (D39), but `RecordingController` still performs the
+post-capture work synchronously and saves lifecycle directly. App worker
+adoption plus launch reconciliation of interrupted meeting/staging state are
+the next independent slice.
+
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
 - **Refine (D7/D35 in-app)**: re-transcribe both channels with Whisper (+vocabulary). `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither the app UI nor summary language is ever a transcript fallback. Refine then re-diarizes (merge micro-clusters) and presents a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) — **nothing is applied without "Aplicar"** (a faulty refine replaced a real meeting; draft flow and tombstones are double defense). On apply, the app replaces `Meeting.language` with the homogeneous language recomputed from refined segments, including `nil` for mixed/unknown output, then calls `replaceCast` and regenerates the summary under its independent policy. **Runs in `RefineService` (Jul 2026), keyed by MeetingID and OUTSIDE view hierarchy**: switching meetings does not lose a draft (the view is recreated with `.id(id)`; previously the Task kept burning ANE and the sheet was lost) — the draft waits for that meeting to be visited again; one refine runs at a time; `MicBleedFilter` discards room echo from the microphone channel. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
 - Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation.

@@ -131,7 +131,7 @@ architecture migration is tracked in
 
 | Module | Responsibility |
 |---|---|
-| `PortavozCore` | Shared domain types (meetings, segments, speakers, audio), Keychain secret store |
+| `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |
@@ -139,7 +139,7 @@ architecture migration is tracked in
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
 | `ContextFeedKit` | Placeholder compatibility target; co-authored notes currently span Core, StorageKit, IntelligenceKit, and the app |
-| `StorageKit` | GRDB/SQLite, FTS5 search, versioned snapshots, local vector index |
+| `StorageKit` | GRDB/SQLite, FTS5 search, versioned snapshots, durable leased job queue, local vector index |
 | `IntegrationsKit` | GitHub/Linear export, Gist sharing, MCP server |
 | `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 

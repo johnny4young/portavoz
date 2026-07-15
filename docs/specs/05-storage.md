@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency).
 
 ## Database
 
@@ -46,8 +46,23 @@ CAF/checksum/level/health metadata (or explicit metadata-free missing/pending
 state), and inserts the provisional live cast/transcript, notes, and Companion
 cards. A changed shell, preexisting child/summary, malformed finalized
 metadata, final-path uniqueness collision, or child insert failure rolls the
-entire transaction back. The app still does not create/read jobs, generation
-runs, outbox events, or per-meeting preferences; those begin in slice 1D.
+entire transaction back.
+
+Slice 1D-a maps `processingJob` through strict `ProcessingJobID`, open typed
+kinds, states, requests/failures, and `ProcessingJobRecord`. One enqueue
+transaction inserts each `(meetingID, kind, inputFingerprint)` only once and
+derives the aggregate lifecycle; re-enqueue returns the original row without
+changing its execution policy or reviving terminal work. Workers claim only
+supported kinds from live meetings, ordered by priority and due time, and every
+heartbeat/success/failure write requires the same unexpired owner lease.
+Progress is monotonic, retry delay is durable in `notBefore`, and repeat-safe
+expired-lease recovery either returns work to pending or exhausts it. Active
+jobs keep the meeting `processing`; after active work ends, failure yields
+`needsAttention` and otherwise terminal work yields `ready`. The app does not
+enqueue or execute this queue yet, and launch reconciliation of meeting/staging
+state remains slice 1D-b. Generation runs, outbox events, and per-meeting
+preferences are also not consumed yet.
+
 The migration is verified both by a deterministic v5 fixture and by migrating
 a scratch copy of the real release database: legacy logical rows and meeting
 fields were preserved, the new workflow tables remained empty, integrity was
@@ -88,6 +103,13 @@ post-capture projection; it accepts only an untouched `recording` shell with
 the exact pending reservation set and at least one published healthy, silent,
 or clipped channel.
 
+Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
+`processingJobs(for:)`, `claimNextProcessingJob(kinds:owner:leaseDuration:at:)`,
+`heartbeatProcessingJob`, `completeProcessingJob`, `failProcessingJob`, and
+`recoverExpiredProcessingJobs`. Claims are capability-filtered and
+owner-fenced; storage derives meeting lifecycle rather than asking callers to
+save a second, potentially inconsistent aggregate state.
+
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id)` (latest live-meeting snapshot + version), `latestSummary(id:fingerprint:language:)` (D25 — with `language`, it is the exact cache hit; without it, returns the translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (tombstones the live cast and inserts the new one, atomically — D7 refine), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
@@ -124,6 +146,8 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
    semantic-search budgets are planned in the refactor program.
+5. The durable job queue is not yet the app's post-capture execution path;
+   launch recovery and concrete workers remain Band 1 slice 1D-b.
 
 ## Trash (Jul 2026)
 

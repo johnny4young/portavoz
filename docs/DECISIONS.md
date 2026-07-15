@@ -404,3 +404,42 @@ is a deliberate Saga boundary; slice 1D owns idempotent launch reconciliation.
 evidence become durable truth, and one SQLite transaction prevents partial
 aggregate installation. Conservative collision handling and retained staging
 files prefer recoverability over silent data loss.
+
+## D39 — Durable jobs use immutable idempotency keys and owner-bound leases (Jul 2026)
+
+**Context:** schema v6 reserves a durable `processingJob` row, but SQL
+constraints alone do not define who may claim work, how retries survive a
+crash, or how job state drives the meeting aggregate. Re-running an operation
+must not duplicate derived artifacts, and a worker that wakes after its lease
+expires must not overwrite a newer attempt.
+
+**Decision:** `(meetingID, kind, inputFingerprint)` is the immutable logical
+operation key. Enqueue is one transaction: it returns an existing row without
+changing its execution policy or resurrecting terminal work, inserts new rows
+once, and derives `meeting.lifecycleState = processing` whenever active work
+exists. A `recording` meeting cannot enqueue derived work. Job kinds are open
+typed values so adding a local worker does not force a schema migration.
+
+Workers claim only explicitly supported kinds. A claim atomically selects the
+highest-priority due job of a live meeting, increments one attempt, and records
+an owner plus absolute expiry. Heartbeat, success, and failure require that
+same owner and an unexpired lease; progress cannot move backwards. A failed
+attempt becomes pending at `notBefore` only while attempts remain, otherwise it
+is terminal. Repeat-safe expired-lease recovery performs the same retry-or-
+exhaust decision and can run on every launch. Deleted meetings expose no jobs
+and cannot be claimed.
+
+All jobs enqueued for a meeting participate in aggregate completion: active
+work keeps `processing`; after active work ends, any failed job yields
+`needsAttention` with its stable error code; otherwise terminal work yields
+`ready`. Producers therefore enqueue only operations whose requested outcome
+should participate in the meeting lifecycle. Slice 1D-a implements this Core
+and StorageKit contract while retaining the released synchronous
+`RecordingController` path. Slice 1D-b owns concrete app enqueue/execution and
+launch reconciliation of meetings, leases, and staging files.
+
+**Rationale:** immutable operation identity makes retries idempotent, leases
+fence stale workers, and deriving aggregate state in StorageKit prevents UI or
+workflow callers from inventing conflicting lifecycle truth. Separating queue
+correctness from app adoption preserves a small, independently reversible
+Strangler slice.

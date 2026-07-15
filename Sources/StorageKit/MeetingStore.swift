@@ -7,6 +7,9 @@ public enum StorageError: Error, LocalizedError {
     case absolutePathRejected(String)
     case meetingNotFound(MeetingID)
     case invalidRecordingReservation(String)
+    case invalidProcessingJob(String)
+    case processingJobNotFound(ProcessingJobID)
+    case processingJobLeaseLost(ProcessingJobID)
     /// Persisted identity is immutable. Corrupt rows must fail loudly rather
     /// than being assigned a fresh UUID and silently becoming another entity.
     case invalidPersistedUUID(table: String, column: String, value: String)
@@ -20,6 +23,12 @@ public enum StorageError: Error, LocalizedError {
             return "no such meeting: \(id.rawValue.uuidString)"
         case .invalidRecordingReservation(let reason):
             return "invalid recording reservation: \(reason)"
+        case .invalidProcessingJob(let reason):
+            return "invalid processing job: \(reason)"
+        case .processingJobNotFound(let id):
+            return "no such processing job: \(id.rawValue.uuidString)"
+        case .processingJobLeaseLost(let id):
+            return "processing job lease is no longer owned: \(id.rawValue.uuidString)"
         case .invalidPersistedUUID(let table, let column, let value):
             return "invalid persisted UUID in \(table).\(column): \(value)"
         case .invalidPersistedValue(let table, let column, let value):
