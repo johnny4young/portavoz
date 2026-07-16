@@ -191,9 +191,9 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 - **⚠️ Verified risk to monitor**: MacParakeet DISCARDED process taps because they "do not coexist reliably with VPIO in-process" — exactly our D6+D24 combination. Our evidence (1 real meeting with both active) is insufficient. Documented Plan B: OFFLINE post-recording echo cancellation (derive mic-cleaned with delay estimation), which is what they do.
 **Rationale:** audio is the product's source of truth; treating it as a dead file gives the differentiated experience away to Otter. Everything is pure AVFoundation — zero new dependencies.
 
-## D28 — Co-authored notes: Granola's loop over ContextFeedKit
+## D28 — Co-authored notes: Granola's loop over timestamped context
 
-**Context:** the category's most validated pattern is Granola's ($1.5B valuation, Mar 2026): the user writes raw notes during the meeting and AI weaves them together with the transcript — "notes carry intent, the transcript carries facts." That principle has been written LITERALLY in the doc for our `ContextItem` (ContextFeedKit) since M0… and the type remains orphaned: no storage, no UI, no summary integration. Roadmap v2.0 did not schedule it — error corrected here.
+**Context:** the category's most validated pattern is Granola's ($1.5B valuation, Mar 2026): the user writes raw notes during the meeting and AI weaves them together with the transcript — "notes carry intent, the transcript carries facts." That principle had been written LITERALLY in the doc for our Core `ContextItem` since M0, while the type was still orphaned: no storage, no UI, no summary integration. Roadmap v2.0 did not schedule it — error corrected here.
 **Decision:** its own early milestone in phase 2:
 1. **Notes editor in RecordingView** (third panel/tab next to captions and summary — MacParakeet's Notes/Transcript/Ask panel pattern): plain text with automatic per-line timestamps (`ContextItem.timestamp` = seconds since start, already modeled). Pasted links and snippets are typed automatically (`kind`).
 2. **Persistence**: `contextItem` table (additive, D4-compatible) + export in markdown.
@@ -1246,3 +1246,29 @@ two-column review, explicit remember-voice consent, best-effort operations,
 visible errors, delete navigation, summary/refine outcomes, schema v6, local
 privacy, and Spotlight behavior remain unchanged. The seeded action-item UI
 case proves a model-routed write returns through the scoped summary observation.
+
+## D61 — Package boundaries require implemented behavior (Jul 2026)
+
+**Context:** `ContextFeedKit` and `SyncKit` were public SwiftPM products but did
+not define usable capabilities. The former was only a type alias to Core's
+`ContextItem`; the latter contained only an unused `Visibility` enum. No app,
+CLI, test, project, script, or visible public GitHub code imported either
+module. Portavoz ships as an app rather than a package SDK, and remains on a
+pre-1.0 product line, so retaining these targets created a false compatibility
+promise without preserving released behavior.
+
+**Decision:** remove both library products, targets, test dependencies, and
+placeholder source files. `ContextItem` remains in PortavozCore and the
+co-authored-notes behavior remains part of the product and roadmap. A future
+sync boundary must land vertically with its conflict semantics, schema,
+use-case contract, platform adapter, privacy rules, and tests; it must not begin
+as a speculative target. An architecture test rejects either placeholder name
+in the package manifest until such a vertical decision deliberately replaces
+this rule.
+
+**Rationale:** the package now communicates nine real capability boundaries,
+reduces build-graph and public-API surface, and avoids premature abstractions.
+The compatibility audit found no consumer to break, while every released
+capture, transcript, note, export, and review feature remains available through
+its existing Core, ApplicationKit, capability, storage, integration, and app
+owners.

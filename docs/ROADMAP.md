@@ -6,19 +6,31 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** finish Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): audit external package
-compatibility and remove or justify the unused `ContextFeedKit` and `SyncKit`
-placeholder targets in slice 2U. Meeting Detail's scoped read model and
-mutation boundary are complete. Keep Spotlight independent; its incremental
-indexing/outbox adoption belongs with measured Band 4 scale work.
+**Next concrete step:** begin Band 3 of the approved architecture-hardening
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3A: adopt the
+schema-v6 `generationRun` envelope vertically in one characterized summary
+workflow and atomically link the immutable summary to its provenance. Preserve
+provider reuse, pivot translation, failure policy, and visible output before
+expanding provenance to other generated artifacts. Band 2 is complete. Keep
+Spotlight independent; its incremental indexing/outbox adoption belongs with
+measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61).
+
+- **Architecture Band 2 slice 2U complete — package boundaries describe real
+  behavior (Jul 16, 2026)**: a compatibility audit found no app, CLI, test,
+  project, script, or visible external source consumer for `ContextFeedKit` or
+  `SyncKit`. Their public products, targets, test edges, and two placeholder
+  files are removed; Core's `ContextItem`, co-authored notes, and future sync
+  plans remain intact. A twenty-first architecture test prevents either name
+  from returning without a deliberate vertical use case. Band 2 closes at 596
+  package tests (13 gated), 229 linted Swift files, and 20 UI cases; fresh
+  app-window evidence confirms no visible change (D61).
 
 - **Architecture Band 2 slice 2T complete — Meeting Detail writes through one
   owner (Jul 16, 2026)**: `MeetingDetailModel` now owns explicit actions and
@@ -32,9 +44,10 @@ commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/
   bring the verified baseline to 595 package tests (13 gated), 231 linted Swift
   files, and 20 UI cases. The existing summary case now checks that an action
   toggle returns through the scoped summary observation; the rail case retains
-  fresh app-window evidence. The remaining Band 2 decision is the two unused
-  placeholder Kits; audio-path resolution and incremental Spotlight indexing
-  remain measured Band 4 seams (D60).
+  fresh app-window evidence. At this slice boundary, only the two unused
+  package targets remained; slice 2U subsequently removed them. Audio-path
+  resolution and incremental Spotlight indexing remain measured Band 4 seams
+  (D60).
 
 - **Architecture Band 2 slice 2S complete — Meeting Detail reads one meeting,
   not the library (Jul 15, 2026)**: ApplicationKit now owns storage-independent
@@ -436,7 +449,7 @@ Hard constraint D11: iOS does not capture audio from other apps. The iPhone is a
 | **M14a — Xcode project + portable Kits** | iOS target; audit Kits: `#if os(macOS)` in AudioCaptureKit (ScreenCaptureKit/process taps excluded), TranscriptionKit with Parakeet int8 (~483 MB, viable on the iPhone ANE; NO Whisper large — use SpeechAnalyzer/whisper small for mobile refine), FM available on iOS 26 | The Kits compile for iOS; the in-person recorder transcribes live on an iPhone 15+ |
 | **M14b — In-person recorder** | The 6 D11 modes: AirPods studio-quality (`bluetoothHighQualityRecording`), speakerphone calls, importing share extension, overnight BGProcessingTask (refine with `requiresExternalPower`), thermal degradation | Record 1 h in person with < 10%/h battery use; overnight refine when plugged in |
 | **M14c — Companion + sync** | CKSyncEngine E2E (`encryptedValues`), Live Activity + Dynamic Island (timer + latest caption), remote control of Mac recording, Handoff | Record on iPhone → readable summary on the Mac without opening the app; correct Live Activity for 30 min |
-| **M14d — iPad** | PiP live captions (AVPictureInPictureController over Zoom/Meet in Stage Manager), Split View, PencilKit anchored to the timeline (ContextFeedKit) | Floating captions over a real call on iPad |
+| **M14d — iPad** | PiP live captions (AVPictureInPictureController over Zoom/Meet in Stage Manager), Split View, PencilKit anchored to the Core context timeline | Floating captions over a real call on iPad |
 
 ## Phase 4 — Sharing and platform (M15+)
 

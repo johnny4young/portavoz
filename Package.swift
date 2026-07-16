@@ -16,10 +16,8 @@ let package = Package(
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
         .library(name: "DiarizationKit", targets: ["DiarizationKit"]),
         .library(name: "IntelligenceKit", targets: ["IntelligenceKit"]),
-        .library(name: "ContextFeedKit", targets: ["ContextFeedKit"]),
         .library(name: "StorageKit", targets: ["StorageKit"]),
         .library(name: "AudioPlaybackKit", targets: ["AudioPlaybackKit"]),
-        .library(name: "SyncKit", targets: ["SyncKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
         .executable(name: "portavoz-app", targets: ["portavoz-app"]),
@@ -97,7 +95,6 @@ let package = Package(
                 .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
                 .product(name: "Transformers", package: "swift-transformers"),
             ]),
-        .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
         .target(
             name: "StorageKit",
             dependencies: [
@@ -109,7 +106,6 @@ let package = Package(
         // audio into one timeline, generates waveforms, exports clips.
         .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
 
-        .target(name: "SyncKit", dependencies: ["PortavozCore"]),
         // IntegrationsKit is the outbound adapter layer over stored meetings
         // (export, MCP surfaces, RAG retrieval): the ONLY Kit allowed to
         // depend on sibling Kits (IntelligenceKit + StorageKit, D31).
@@ -150,10 +146,8 @@ let package = Package(
                 "TranscriptionKit",
                 "DiarizationKit",
                 "IntelligenceKit",
-                "ContextFeedKit",
                 "StorageKit",
                 "AudioPlaybackKit",
-                "SyncKit",
                 "IntegrationsKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]

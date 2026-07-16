@@ -8,6 +8,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
+    func testPackageExposesOnlyImplementedKitBoundaries() throws {
+        let manifest = try Self.contents(of: "Package.swift")
+        let targets = try TargetManifestParser.declarations(in: manifest)
+
+        for name in ["ContextFeedKit", "SyncKit"] {
+            XCTAssertNil(
+                targets[name],
+                "Speculative package target \(name) must not return without a vertical use case")
+            XCTAssertFalse(
+                manifest.contains(#".library(name: "\#(name)""#),
+                "Speculative package product \(name) must not return without a vertical use case")
+        }
+    }
+
     func testApplicationKitManifestBoundaryAdmitsOnlyExtractedCapabilities() throws {
         let manifest = try Self.contents(of: "Package.swift")
         let targets = try TargetManifestParser.declarations(in: manifest)

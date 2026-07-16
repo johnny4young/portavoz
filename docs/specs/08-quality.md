@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 595 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 20 cases and retained Meeting Detail, Library, Insights, and post-meeting mirror screenshots; earlier automation-mode harness failures remain documented below.
+Status: 596 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 20 cases and retained Meeting Detail, Library, Insights, and post-meeting mirror screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 231 Swift files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 229 Swift files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -367,6 +367,16 @@ and all 20 XCUITest cases pass. The existing tabbed-summary case now toggles a
 seeded action item through the model and waits for the scoped summary stream to
 publish `1/1`; the rail case retains fresh app-window-only evidence. No control,
 localized copy, schema, or visible review behavior changed (D60).
+
+Band 2 slice 2U adds the twenty-first architecture rule after a package and
+public-source compatibility audit found no consumer for `ContextFeedKit` or
+`SyncKit`. The two placeholder products, targets, test edges, and source files
+are removed while Core's `ContextItem` and all released behavior remain. The
+manifest regression test prevents either speculative boundary from silently
+returning. The complete baseline is 596 package tests (13 gated), strict
+SwiftLint is clean across 229 Swift files, and all 20 XCUITest cases pass. A
+fresh Meeting Detail app-window attachment confirms the package simplification
+does not change visible behavior (D61).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

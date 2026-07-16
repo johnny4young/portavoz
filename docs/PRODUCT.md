@@ -96,7 +96,10 @@ capabilities; current and deferred status is authoritative in
 
 ## Future (research, not committed)
 
-- **Context feed** (ContextFeedKit already exists): timestamped links/notes/stack traces that enrich the summary.
+- **Context feed**: timestamped links/notes/stack traces that enrich the summary.
+  The existing Core `ContextItem` and note persistence flow are the foundation;
+  a dedicated package boundary is unnecessary until the capability has a
+  distinct vertical use case.
 - **Synthesized voice**: Apple's Personal Voice (iOS 17+) to speak for the user; requires a virtual audio driver (virtual microphone) on macOS + mandatory disclosure to participants. Phase 4+.
 
 ## Standout UX (signature moments)

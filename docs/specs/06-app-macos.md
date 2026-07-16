@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only).
 
 ## Structure
 

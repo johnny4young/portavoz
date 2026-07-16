@@ -127,7 +127,9 @@ on `PortavozCore`; the few verified cross-Kit dependencies are documented in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). As-built behavior lives in
 [docs/specs/](docs/specs/README.md). The approved, feature-parity-preserving
 architecture migration is tracked in
-[docs/refactor-20260714.md](docs/refactor-20260714.md).
+[docs/refactor-20260714.md](docs/refactor-20260714.md). The package exposes nine
+implemented Kit libraries; speculative package targets are added only with a
+real vertical use case.
 
 | Module | Responsibility |
 |---|---|
@@ -139,10 +141,8 @@ architecture migration is tracked in
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `ContextFeedKit` | Placeholder compatibility target; co-authored notes currently span Core, StorageKit, IntelligenceKit, and the app |
 | `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, durable leased job queue, local vector index |
 | `IntegrationsKit` | GitHub/Linear/Gist, EventKit calendar, RAG, bundle/export, and MCP adapters |
-| `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
 SwiftUI views render and present native controls; app composition adapters map
