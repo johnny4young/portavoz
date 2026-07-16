@@ -44,6 +44,24 @@ change rejects the stale CLI result instead of overwriting newer truth (D47).
 - `GitHubIssuesExporter` (REST) and `LinearExporter` (GraphQL; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Tested offline; real publishing pending the user's tokens.
 - Output to external services ALWAYS requires explicit confirmation (D8): the UI confirms before the gist; the CLI is opt-in by nature.
 
+### Shared data-egress adapter (D67)
+
+IntegrationsKit now implements `URLSessionDataEgressGateway`, the concrete
+adapter for Core's content-free `DataEgressGateway` port. Before sending it
+requires an HTTP(S) destination with a host to equal the request URL and
+validates the operation-specific provider, classification, consent, and
+meeting metadata.
+Companion BYOK is the first production consumer: it declares only a classified
+knowledge question, distinguishes provable loopback from conservative remote
+scope, and never sends recent transcript passages. The adapter carries payload
+bytes separately from metadata so future privacy receipts and diagnostics do
+not duplicate meeting content.
+
+This slice does not claim universal enforcement. `GistPublisher`,
+`GitHubIssuesExporter`, `LinearExporter`, the direct OpenAI-compatible summary
+client, Shortcuts, and remaining outbound operations retain their existing
+explicit invocation paths until operation-specific gateway contracts land.
+
 ## Known limitations
 
 1. MCP without auth (local process over stdio — acceptable; the security plan requires localhost+token if a network transport is ever added).
@@ -52,6 +70,8 @@ change rejects the stale CLI result instead of overwriting newer truth (D47).
    remains an SPM-built bundle; the post-meeting Shortcut hook, URL scheme,
    and Spotlight are implemented. Native intents are deferred to M14a's Xcode
    app target.
+4. Shared egress enforcement currently covers Companion BYOK only; summary and
+   publishing/export adapters are the next Band 3 migration slice.
 
 ## M16 automation (Jul 2026)
 

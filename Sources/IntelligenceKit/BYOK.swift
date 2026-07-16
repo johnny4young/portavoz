@@ -8,10 +8,10 @@ extension SecretStore {
 
 /// Minimal client for any OpenAI-compatible `/chat/completions` endpoint
 /// (OpenAI, Groq, OpenRouter, Ollama, LM Studio…): one system + one user
-/// message in, the assistant's text out. It is the BYOK building block
-/// shared by the summary provider and the companion — D8 applies to every
-/// caller: using it is an explicit, visibly-labeled user choice, never a
-/// silent default.
+/// message in, the assistant's text out. Summary providers use this client
+/// directly; the gateway-backed Companion client reuses only its pure request
+/// and response shapes. D8 applies to every caller: external use is an
+/// explicit, visibly-labeled user choice, never a silent default.
 public struct OpenAICompatibleChatClient: Sendable {
     public let endpoint: URL
     public let model: String
@@ -41,14 +41,8 @@ public struct OpenAICompatibleChatClient: Sendable {
             system: system, user: user,
             temperature: temperature, maxTokens: maxTokens)
         let (data, response) = try await session.data(for: request)
-
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode)
-        else {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let body = String(data: data.prefix(300), encoding: .utf8) ?? ""
-            throw IntelligenceError.providerFailed("HTTP \(status): \(body)")
-        }
-        return try Self.parseContent(data)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        return try Self.responseContent(data: data, statusCode: status)
     }
 
     // MARK: - Request/response shapes (static + pure for tests)
@@ -97,6 +91,75 @@ public struct OpenAICompatibleChatClient: Sendable {
         }
         return content
     }
+
+    static func responseContent(data: Data, statusCode: Int) throws -> String {
+        guard (200..<300).contains(statusCode) else {
+            let body = String(data: data.prefix(300), encoding: .utf8) ?? ""
+            throw IntelligenceError.providerFailed("HTTP \(statusCode): \(body)")
+        }
+        return try parseContent(data)
+    }
+}
+
+struct CompanionDataEgressContext: Sendable {
+    let meetingID: MeetingID?
+    let consentSource: DataEgressConsentSource
+}
+
+/// Companion's OpenAI-compatible adapter. Unlike the general summary client,
+/// it cannot perform transport without the shared egress policy gateway.
+public struct CompanionBYOKClient: Sendable {
+    public let endpoint: URL
+    public let model: String
+    private let apiKey: String
+    private let gateway: any DataEgressGateway
+
+    public init(
+        endpoint: URL,
+        model: String,
+        apiKey: String,
+        gateway: any DataEgressGateway
+    ) {
+        self.endpoint = endpoint
+        self.model = model
+        self.apiKey = apiKey
+        self.gateway = gateway
+    }
+
+    public var providerLabel: String { endpoint.host ?? "BYOK" }
+
+    var destination: DataEgressDestination {
+        DataEgressDestination(url: endpoint.appendingPathComponent("chat/completions"))
+    }
+
+    func completeCompanionQuestion(
+        system: String,
+        user: String,
+        maxTokens: Int,
+        context: CompanionDataEgressContext
+    ) async throws -> String {
+        let networkRequest = try OpenAICompatibleChatClient.urlRequest(
+            endpoint: endpoint,
+            model: model,
+            apiKey: apiKey,
+            system: system,
+            user: user,
+            temperature: 0.3,
+            maxTokens: maxTokens)
+        let metadata = DataEgressRequest(
+            operation: .companionKnowledgeAnswer,
+            destination: destination,
+            dataClassification: .meetingQuestionOnly,
+            meetingID: context.meetingID,
+            consentSource: context.consentSource,
+            providerDisclosure: DataEgressProviderDisclosure(
+                providerID: providerLabel,
+                modelID: model))
+        let response = try await gateway.perform(networkRequest, metadata: metadata)
+        return try OpenAICompatibleChatClient.responseContent(
+            data: response.data,
+            statusCode: response.statusCode)
+    }
 }
 
 /// Where the BYOK choice lives. Endpoint and model are plain preferences;
@@ -136,20 +199,30 @@ public enum BYOKSettings {
     /// endpoint+model+key AND flipped the companion opt-in (D26). Missing
     /// pieces degrade to on-device, never to an error.
     public static func companionClient(
-        defaults: UserDefaults = .standard
-    ) -> OpenAICompatibleChatClient? {
+        defaults: UserDefaults = .standard,
+        gateway: any DataEgressGateway
+    ) -> CompanionBYOKClient? {
         companionClient(
             defaults: defaults,
-            apiKey: (try? SecretStore.get(service: SecretStore.byokAPIKeyService)))
+            apiKey: (try? SecretStore.get(service: SecretStore.byokAPIKeyService)),
+            gateway: gateway)
     }
 
     static func companionClient(
-        defaults: UserDefaults, apiKey: String?
-    ) -> OpenAICompatibleChatClient? {
+        defaults: UserDefaults,
+        apiKey: String?,
+        gateway: any DataEgressGateway
+    ) -> CompanionBYOKClient? {
         guard defaults.bool(forKey: companionEnabledKey) else { return nil }
-        return client(
-            endpoint: defaults.string(forKey: endpointKey) ?? "",
-            model: defaults.string(forKey: modelKey) ?? "",
-            apiKey: apiKey)
+        let model = (defaults.string(forKey: modelKey) ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        guard let apiKey, !apiKey.isEmpty, !model.isEmpty,
+              let endpoint = endpointURL(from: defaults.string(forKey: endpointKey) ?? "")
+        else { return nil }
+        return CompanionBYOKClient(
+            endpoint: endpoint,
+            model: model,
+            apiKey: apiKey,
+            gateway: gateway)
     }
 }

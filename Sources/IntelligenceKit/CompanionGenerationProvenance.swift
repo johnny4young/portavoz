@@ -157,6 +157,7 @@ public struct CompanionGenerationAttempt: Sendable {
                 classifierProviderID: Self.foundationProviderID,
                 classifierInvoked: trace.classifierInvoked,
                 contextPassageCount: request.recentTranscript.count,
+                externalDestinationScope: trace.externalDestinationScope?.rawValue,
                 externalModelID: externalProvider?.modelID,
                 externalProviderID: externalProvider?.providerID,
                 externalProviderConfigured: externalProvider != nil,
@@ -194,6 +195,7 @@ public struct CompanionGenerationAttempt: Sendable {
         let classifierProviderID: String
         let classifierInvoked: Bool
         let contextPassageCount: Int
+        let externalDestinationScope: String?
         let externalModelID: String?
         let externalProviderID: String?
         let externalProviderConfigured: Bool
@@ -217,11 +219,13 @@ public struct CompanionGenerationAttempt: Sendable {
 public struct ProvenanceCompanion: Sendable {
     private let companion: LiveCompanion
     private let externalProvider: CompanionExternalProviderIdentity?
+    private let egressConsentSource: DataEgressConsentSource
     private let makeGenerationRunID: @Sendable () -> GenerationRunID
     private let now: @Sendable () -> Date
 
     public init(
-        byok: OpenAICompatibleChatClient? = nil,
+        byok: CompanionBYOKClient? = nil,
+        egressConsentSource: DataEgressConsentSource = .explicitCompanionClient,
         makeGenerationRunID: @escaping @Sendable () -> GenerationRunID = {
             GenerationRunID()
         },
@@ -234,6 +238,7 @@ public struct ProvenanceCompanion: Sendable {
                 modelID: $0.model,
                 destinationIdentity: $0.endpoint.absoluteString)
         }
+        self.egressConsentSource = egressConsentSource
         self.makeGenerationRunID = makeGenerationRunID
         self.now = now
     }
@@ -260,7 +265,12 @@ public struct ProvenanceCompanion: Sendable {
                 candidate: request.candidate,
                 recentTranscript: request.recentTranscript,
                 ownerName: request.ownerName,
-                askedAt: request.askedAt)
+                askedAt: request.askedAt,
+                egressContext: externalProvider.map { _ in
+                    CompanionDataEgressContext(
+                        meetingID: request.meetingID,
+                        consentSource: egressConsentSource)
+                })
             guard let card = result.card else { return .noArtifact }
             let run = attempt.finish(
                 outcome: .succeeded,

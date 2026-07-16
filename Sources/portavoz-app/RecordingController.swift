@@ -375,7 +375,10 @@ final class RecordingController {
         let askedAt = closed.startTime
         // BYOK only if the user configured it AND enabled the opt-in for the
         // Companion (D8/D26); si no, el cliente es nil y todo queda on-device.
-        let companion = ProvenanceCompanion(byok: BYOKSettings.companionClient())
+        let companion = ProvenanceCompanion(
+            byok: BYOKSettings.companionClient(
+                gateway: URLSessionDataEgressGateway()),
+            egressConsentSource: .companionBYOKSettings)
         let language = closed.language.flatMap { LanguageCode($0)?.identifier }
         let sourceMeetingID = meetingID
         Task { @MainActor [weak self] in

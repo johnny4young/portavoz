@@ -1,4 +1,5 @@
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 
@@ -43,7 +44,10 @@ enum CompanionRefresh {
         transcriptRevision: Int
     ) async -> Result {
         let ownerName = RecordingController.companionOwnerName()
-        let companion = ProvenanceCompanion(byok: BYOKSettings.companionClient())
+        let companion = ProvenanceCompanion(
+            byok: BYOKSettings.companionClient(
+                gateway: URLSessionDataEgressGateway()),
+            egressConsentSource: .companionBYOKSettings)
         let ordered = segments
             .filter { $0.endTime > $0.startTime && !$0.text.isEmpty }
             .sorted { $0.startTime < $1.startTime }

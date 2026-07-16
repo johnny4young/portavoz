@@ -7,10 +7,13 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3F: introduce
-the first `DataEgressGateway` vertical path for explicitly enabled Companion
-BYOK, distinguishing localhost from remote transfer and preserving its current
-question-only disclosure and on-device fallback. Slices 3A–3E adopted
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3G: migrate
+the remaining meeting-content network operations through the shared
+`DataEgressGateway`, beginning with OpenAI-compatible summary generation and
+then explicit Gist/GitHub/Linear publishing without changing consent UX.
+Slice 3F established the first enforced vertical for Companion BYOK, including
+conservative local-device/remote scope and question-only classification.
+Slices 3A–3E adopted
 provenance for manual/post-refine summaries, the durable post-capture executor,
 best-effort external-audio import summaries, accepted refined transcripts, and
 durable Companion cards; Band 2 is complete. Keep
@@ -22,7 +25,25 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67).
+
+- **Architecture Band 3 slice 3F complete — Companion BYOK crosses one
+  enforceable, content-free egress boundary (Jul 16, 2026)**: PortavozCore now
+  names outbound operation, destination, conservative scope, classification,
+  meeting identity, consent source, and provider/model disclosure without
+  copying payload content. IntegrationsKit validates those declarations before
+  URLSession observes a request, including HTTP(S)-only exact destination/
+  provider matching,
+  question-only non-empty POST semantics, and a meeting identity for persisted
+  Settings consent. The injected Companion client is the only production BYOK
+  path for live and post-Refine cards; it still sends only the classified
+  knowledge question, never transcript context, falls back on-device after an
+  ordinary provider/policy failure, and does not fall through on cancellation.
+  Provenance records `local-device` only for provable loopback and otherwise
+  records `remote`. Six policy/request cases, strengthened provenance cases,
+  and an architecture bypass guard bring the current gate to 624 package tests
+  (13 gated), 235 linted Swift source files, and 20 UI cases (D67). Remaining
+  summary and explicit integration egress paths are accurately deferred to 3G.
 
 - **Architecture Band 3 slice 3E complete — Companion cards carry exact,
   privacy-safe attempt provenance (Jul 16, 2026)**: each durable live or

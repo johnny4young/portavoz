@@ -102,6 +102,7 @@ public struct CompanionProcessTrace: Equatable, Sendable {
     public internal(set) var classifierInvoked = false
     public internal(set) var answerProviderID: String?
     public internal(set) var answerModelID: String?
+    public internal(set) var externalDestinationScope: DataEgressDestinationScope?
     public internal(set) var externalTransferOccurred = false
     public internal(set) var externalTransferSucceeded = false
 
@@ -109,12 +110,14 @@ public struct CompanionProcessTrace: Equatable, Sendable {
         classifierInvoked: Bool = false,
         answerProviderID: String? = nil,
         answerModelID: String? = nil,
+        externalDestinationScope: DataEgressDestinationScope? = nil,
         externalTransferOccurred: Bool = false,
         externalTransferSucceeded: Bool = false
     ) {
         self.classifierInvoked = classifierInvoked
         self.answerProviderID = answerProviderID
         self.answerModelID = answerModelID
+        self.externalDestinationScope = externalDestinationScope
         self.externalTransferOccurred = externalTransferOccurred
         self.externalTransferSucceeded = externalTransferSucceeded
     }
@@ -143,9 +146,9 @@ public struct LiveCompanion: Sendable {
     /// Non-nil only when the user configured BYOK AND enabled it for the
     /// companion (D8/D26). Only the detected question text ever leaves the
     /// device — never audio, never the rest of the meeting.
-    private let byok: OpenAICompatibleChatClient?
+    private let byok: CompanionBYOKClient?
 
-    public init(byok: OpenAICompatibleChatClient? = nil) {
+    public init(byok: CompanionBYOKClient? = nil) {
         self.byok = byok
     }
 
@@ -168,7 +171,12 @@ public struct LiveCompanion: Sendable {
                 candidate: candidate,
                 recentTranscript: recentTranscript,
                 ownerName: ownerName,
-                askedAt: askedAt).card
+                askedAt: askedAt,
+                egressContext: byok.map { _ in
+                    CompanionDataEgressContext(
+                        meetingID: nil,
+                        consentSource: .explicitCompanionClient)
+                }).card
         } catch let failure as CompanionProcessFailure {
             throw failure.underlying
         }
@@ -178,7 +186,8 @@ public struct LiveCompanion: Sendable {
         candidate: String,
         recentTranscript: [RAGPassage],
         ownerName: String? = nil,
-        askedAt: TimeInterval
+        askedAt: TimeInterval,
+        egressContext: CompanionDataEgressContext? = nil
     ) async throws -> CompanionProcessResult {
         let mentioned = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
         guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else {
@@ -195,8 +204,8 @@ public struct LiveCompanion: Sendable {
                 candidate,
                 recentTranscript: recentTranscript,
                 ownerName: ownerName,
-                mentioned: mentioned,
                 askedAt: askedAt,
+                egressContext: egressContext,
                 trace: &trace)
         } catch {
             let underlying: any Error = error is CancellationError || Task.isCancelled
@@ -212,8 +221,8 @@ public struct LiveCompanion: Sendable {
         _ candidate: String,
         recentTranscript: [RAGPassage],
         ownerName: String?,
-        mentioned: Bool,
         askedAt: TimeInterval,
+        egressContext: CompanionDataEgressContext?,
         trace: inout CompanionProcessTrace
     ) async throws -> CompanionProcessResult {
         guard let detected = try await classify(candidate, ownerName: ownerName),
@@ -222,7 +231,7 @@ public struct LiveCompanion: Sendable {
         // Directed = the DETERMINISTIC name gate, never the model's
         // opinion: asked to flag it, the 3B cleaned "Johnny," out of the
         // question and reported false (caught by the gated test).
-        let directed = mentioned
+        let directed = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
 
         switch detected.kind.lowercased() {
         case "knowledge":
@@ -232,11 +241,15 @@ public struct LiveCompanion: Sendable {
                 trace.externalTransferOccurred = true
                 trace.answerProviderID = byok.providerLabel
                 trace.answerModelID = byok.model
+                trace.externalDestinationScope = byok.destination.scope
                 do {
-                    let answer = try await byok.complete(
+                    let answer = try await byok.completeCompanionQuestion(
                         system: Self.knowledgeInstructions,
                         user: detected.question,
-                        maxTokens: 400)
+                        maxTokens: 400,
+                        context: egressContext ?? CompanionDataEgressContext(
+                            meetingID: nil,
+                            consentSource: .explicitCompanionClient))
                     trace.externalTransferSucceeded = true
                     rawAnswer = answer
                     source = byok.providerLabel

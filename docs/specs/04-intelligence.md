@@ -35,10 +35,11 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 - Verbatim glossary (terms that are never translated) — comes from the user's vocabulary and/or `--glossary`.
 - The real FoundationModels API is verified in the local SDK's `.swiftinterface` — a better source than any documentation.
 
-## BYOK (D8) — `OpenAICompatibleChatClient` + `BYOKSettings` + `OpenAICompatibleSummaryProvider`
+## BYOK (D8/D67) — summary client + gateway-backed Companion client
 
-- **`OpenAICompatibleChatClient`**: minimal client for any `/chat/completions` endpoint (OpenAI/OpenRouter/Groq/Ollama/LM Studio) — one system + one user go in, text comes out. `providerLabel` = endpoint host (the honest name for the disclosure: "api.openai.com" means cloud, "localhost" means nothing left the device). Static, pure request/parse (tested offline). Cloud calls do NOT pass through `IntelligenceScheduler` — single-flight exists because of ANE contention and does not apply to the network.
-- **`BYOKSettings`**: endpoint and model in UserDefaults (`byokEndpoint`/`byokModel`); the key ONLY in Keychain (`SecretStore.byokAPIKeyService`). `client(...)` returns a ready client or nil — no one sees a half-configured state. `companionClient()` additionally requires the explicit `companionBYOKEnabled` opt-in (D26: configuring is not consenting); missing pieces fall back to on-device, never to an error.
+- **`OpenAICompatibleChatClient`**: minimal direct client for summary providers using any `/chat/completions` endpoint (OpenAI/OpenRouter/Groq/Ollama/LM Studio) — one system + one user go in, text comes out. `providerLabel` = endpoint host. Its pure request/response helpers are also reused by the Companion-specific client. Cloud calls do NOT pass through `IntelligenceScheduler` — single-flight exists because of ANE contention and does not apply to the network. This direct summary transport has not yet migrated to the shared egress gateway.
+- **`CompanionBYOKClient`**: accepts the same endpoint/model/key shape but cannot perform transport without an injected `DataEgressGateway`. It builds the provider request, attaches content-free Companion policy metadata, and parses the gateway response. It is intentionally separate from the still-direct summary client so the first egress slice cannot be bypassed accidentally.
+- **`BYOKSettings`**: endpoint and model in UserDefaults (`byokEndpoint`/`byokModel`); the key ONLY in Keychain (`SecretStore.byokAPIKeyService`). `client(...)` returns a ready summary client or nil — no one sees a half-configured state. `companionClient(gateway:)` additionally requires the explicit `companionBYOKEnabled` opt-in (D26: configuring is not consenting) and returns the gateway-backed client; missing pieces fall back to on-device, never to an error.
 - **`OpenAICompatibleSummaryProvider`**: now owns only the summary prompt and JSON→`StructuredSummary` contract; HTTP lives in the chat client. It weaves in user notes (D28) just like on-device — parity tested. Key via `PORTAVOZ_BYOK_API_KEY` in the CLI; in the app, Keychain via Settings.
 
 ## Multiple summary engines (D25/M12) — Apple FM · local Ollama · embedded MLX · cloud BYOK
@@ -181,7 +182,7 @@ the Band 3 outbox.
 3-stage pipeline over closed coalescer rows (a row closes when the next one is created — never partial, never reprocessed):
 1. **Pure gate** (tested, es/en): `looksLikeQuestion` (`?`/`¿`, initial interrogatives, minimum 12 chars) **OR `mentions(ownerName)`** — the "te preguntaron" detector: whole-word, case/diacritic-insensitive match of the first name or full name ("John" does NOT trigger inside "Johnny"). The name comes from Ajustes ("Tu nombre") with default `NSFullUserName()`. The common case (nobody asked) costs zero.
 2. **FM classifier** (`DetectedQuestion` @Generable: isQuestion/question/kind) sent to the scheduler with `.live` + key `companion-detect` (latest-wins: ticks never stack up). `logistics` → no card (the classic failure mode for this class of features), **unless the caption names you**: then the card is a PING ("te preguntaron", question without an invented answer, orange tint). Two lessons from the 3B caught by the gated test: (a) `directed` is ALWAYS the deterministic name gate, never the model's opinion (requesting it as a field → it stripped "Johnny," from the question and reported false); (b) the logistics filter needs literal few-shot examples ("¿nos acompañas mañana…?" is logistics, NOT context) — with only the abstract rule, it leaked through.
-3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (`BYOKSettings.companionClient()`, same instructions as on-device, 400 tokens max, `source` = provider host; if the cloud call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8).
+3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (`BYOKSettings.companionClient(gateway:)`, same instructions as on-device, 400 tokens max, `source` = provider host; if the provider or egress-policy call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8/D67). Explicit cancellation never falls through to the local answer.
 
 App: per-recording opt-in ("Companion" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail reviews them and jumps to the moment asked. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only verbatim `passage N` citations at the end, never legitimate intermediate text. It never answers for you (D26). Settings: "Modelo externo (BYOK)" section with endpoint/model/key + Companion toggle disabled until everything is configured; removing the key turns off the toggle. Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
 
@@ -199,7 +200,8 @@ copied into the run JSON.
 
 A successful durable card receives one `.companion` `GenerationRun` whose
 configuration names the Foundation Models classifier, actual answer provider
-and model, context count, workflow/revision, and whether a BYOK transfer was
+and model, context count, workflow/revision, conservative external destination
+scope when a transfer was attempted, and whether a BYOK transfer was
 configured, attempted, and successful. Metrics contain only question/answer
 UTF-8 byte counts, kind, and directed status. A remote success identifies that
 provider; a remote failure followed by the released local answer identifies
@@ -216,6 +218,28 @@ directed ping is still a generated card and identifies Foundation Models even
 when no answer stage was needed. Live and post-Refine persistence boundaries are
 specified in specs 01, 05, and 06.
 
+### Companion egress enforcement (D67)
+
+The production live and post-Refine paths inject IntegrationsKit's
+`URLSessionDataEgressGateway` into `CompanionBYOKClient`. The request carries a
+content-free operation (`companion-knowledge-answer`), exact destination,
+`local-device`/`remote` scope, `meeting-question-only` classification, source
+meeting ID, Settings consent source, and provider/model disclosure separately
+from its body. The adapter validates those facts before URLSession sees the
+payload and rejects missing-host or non-HTTP(S) destinations. Only provable
+loopback (`localhost`, `*.localhost`, valid `127/8`, or
+`::1`) is local-device; private LAN, `.local`, malformed, and unknown hosts are
+remote. A directly constructed public Companion client uses an explicit-client
+consent marker and remains gateway-mandatory.
+
+The body contains static Companion instructions and the classified knowledge
+question only. No `RAGPassage`, transcript window, owner identity, or stored
+card content enters the transport metadata or body. Offline tests capture and
+decode the exact request, validate loopback classification and metadata
+rejection, and an architecture test prevents Companion, provenance, or app
+composition from restoring a direct network call. Other summary and integration
+egress paths are explicitly not migrated yet.
+
 ## Naming
 
 See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
@@ -226,6 +250,9 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
    configured Ollama/MLX regeneration performs a new direct generation.
 2. Brute-force RAG is O(n) over embeddings and is not measured at 1,000+
    meetings (the < 50 ms target may require sqlite-vec).
+3. `DataEgressGateway` currently enforces only Companion BYOK. Direct
+   OpenAI-compatible summaries and external publishing adapters migrate in
+   later Band 3 slices.
 
 ## Planned (not implemented)
 

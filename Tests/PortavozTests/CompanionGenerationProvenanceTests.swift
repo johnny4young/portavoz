@@ -54,6 +54,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             classifierInvoked: true,
             answerProviderID: "api.example.com",
             answerModelID: "companion-model",
+            externalDestinationScope: .remote,
             externalTransferOccurred: true,
             externalTransferSucceeded: true)
 
@@ -70,6 +71,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
         XCTAssertEqual(run.outputLanguage, "es")
         XCTAssertEqual(run.outcome, .succeeded)
         XCTAssertTrue(run.configJSON.contains(#""externalTransferOccurred":true"#))
+        XCTAssertTrue(run.configJSON.contains(#""externalDestinationScope":"remote""#))
         XCTAssertTrue(run.configJSON.contains(#""workflow":"post-refine""#))
         XCTAssertTrue(run.metricsJSON?.contains(#""answerUTF8Bytes":8"#) == true)
         for privateText in ["Johnny", "¿Cuándo se aprueba?", "El viernes.", "Mañana."] {
@@ -94,6 +96,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             classifierInvoked: true,
             answerProviderID: CompanionGenerationAttempt.foundationProviderID,
             answerModelID: CompanionGenerationAttempt.foundationModelID,
+            externalDestinationScope: .remote,
             externalTransferOccurred: true,
             externalTransferSucceeded: false)
 
@@ -105,6 +108,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
 
         XCTAssertEqual(run.providerID, CompanionGenerationAttempt.foundationProviderID)
         XCTAssertEqual(run.modelID, CompanionGenerationAttempt.foundationModelID)
+        XCTAssertTrue(run.configJSON.contains(#""externalDestinationScope":"remote""#))
         XCTAssertTrue(run.configJSON.contains(#""externalTransferOccurred":true"#))
         XCTAssertTrue(run.configJSON.contains(#""externalTransferSucceeded":false"#))
     }
@@ -119,6 +123,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             classifierInvoked: true,
             answerProviderID: externalProvider.providerID,
             answerModelID: externalProvider.modelID,
+            externalDestinationScope: .remote,
             externalTransferOccurred: true,
             externalTransferSucceeded: false)
 
@@ -131,6 +136,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
         XCTAssertEqual(run.providerID, externalProvider.providerID)
         XCTAssertEqual(run.modelID, externalProvider.modelID)
         XCTAssertEqual(run.outcome, .cancelled)
+        XCTAssertTrue(run.configJSON.contains(#""externalDestinationScope":"remote""#))
         XCTAssertNil(run.metricsJSON)
     }
 

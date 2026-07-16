@@ -513,12 +513,21 @@ final class BYOKSettingsTests: XCTestCase {
         defaults.set("m", forKey: BYOKSettings.modelKey)
 
         defaults.set(false, forKey: BYOKSettings.companionEnabledKey)
-        XCTAssertNil(BYOKSettings.companionClient(defaults: defaults, apiKey: "k"))
+        XCTAssertNil(BYOKSettings.companionClient(
+            defaults: defaults,
+            apiKey: "k",
+            gateway: TestDataEgressGateway()))
 
         defaults.set(true, forKey: BYOKSettings.companionEnabledKey)
-        XCTAssertNotNil(BYOKSettings.companionClient(defaults: defaults, apiKey: "k"))
+        XCTAssertNotNil(BYOKSettings.companionClient(
+            defaults: defaults,
+            apiKey: "k",
+            gateway: TestDataEgressGateway()))
         // Opt-in without a key degrades to nil (on-device), never an error.
-        XCTAssertNil(BYOKSettings.companionClient(defaults: defaults, apiKey: nil))
+        XCTAssertNil(BYOKSettings.companionClient(
+            defaults: defaults,
+            apiKey: nil,
+            gateway: TestDataEgressGateway()))
     }
 }
 

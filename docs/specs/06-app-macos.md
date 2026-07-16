@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D66 (atomic summary, accepted Refine transcript, and Companion-card provenance).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and first enforced data-egress vertical).
 
 ## Structure
 
@@ -65,6 +65,18 @@ and terminal attempts, stores current failed/cancelled attempts best effort,
 and atomically replaces cards plus links only for a complete pass. An incomplete
 pass keeps the prior cards, and a card persistence failure still cannot fail the
 accepted transcript (D47/D65/D66).
+
+D67 makes app composition explicit for the first migrated egress vertical.
+`RecordingController` and `CompanionRefresh` each inject IntegrationsKit's
+`URLSessionDataEgressGateway` when assembling the optional Companion client.
+The client exists only when endpoint/model/Keychain key and the persisted
+Companion opt-in are present. Production generation supplies its source
+`MeetingID`; the adapter validates content-free operation, an HTTP(S)-only exact
+destination, conservative local-device/remote scope, question-only
+classification, consent, and provider/model disclosure before URLSession. No
+SwiftUI control or visible
+fallback changed. The general summary client and explicit publisher/export
+adapters remain on their characterized direct paths for slice 3G.
 
 Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
 `RecordingController` still flushes `RecordingSession`, closes live feeds, and

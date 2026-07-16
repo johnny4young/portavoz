@@ -1488,3 +1488,51 @@ makes fallback honest, while cancellation and transcript-revision fences prevent
 work from crossing a user's Stop or accepted-Refine boundary. The schema,
 visible cards, opt-in, question-only BYOK disclosure, fallback, deduplication,
 dismissal, and degradable Refine behavior remain unchanged.
+
+## D67 — Meeting-derived network egress crosses one policy port (Jul 2026)
+
+**Context:** D66 can record whether Companion attempted an external answer and
+which provider ultimately produced a retained card, but the released Companion
+path still invoked `URLSession` through the general OpenAI-compatible client.
+That made its question-only disclosure a caller convention rather than an
+enforceable transport boundary. It also treated a provider host as a disclosure
+label without a typed distinction between a provably loopback service and a
+destination that may leave the Mac. Moving every integration at once would
+create a broad rewrite and weaken the Strangler/feature-parity discipline.
+
+**Decision:** PortavozCore owns content-free `DataEgressRequest` policy values
+and the `DataEgressGateway` capability port. Metadata carries operation,
+destination and conservative scope, data classification, optional meeting
+identity, consent source, and disclosure-safe provider/model identity. The
+payload remains a separate `URLRequest`; policy, future receipts, and
+diagnostics must not make another copy of meeting material. Only `localhost`,
+its subdomains, valid `127/8` IPv4 addresses, and `::1` are classified as
+`local-device`; private-LAN, `.local`, malformed, and unknown hosts are
+conservatively `remote`.
+
+IntegrationsKit owns `URLSessionDataEgressGateway`. Before transport it verifies
+that the declared destination is HTTP(S) with a host and exactly matches the
+request, provider host/model are non-empty and consistent, and Companion
+knowledge egress is a non-empty POST classified as `meeting-question-only`.
+The persisted Settings consent
+path also requires the source `MeetingID`. IntelligenceKit's
+`CompanionBYOKClient` cannot execute transport without an injected gateway;
+the macOS app composes the concrete adapter for live and post-Refine Companion.
+Only the static system instruction and classified knowledge-question text enter
+the request — recent meeting passages remain on-device. Ordinary provider or
+policy failure retains the released Foundation Models fallback, while explicit
+cancellation still cannot fall through. Companion provenance records the
+actual `local-device`/`remote` destination scope without storing content.
+
+This is the first vertical adoption, not a false claim of universal coverage.
+The general OpenAI-compatible summary client and explicit GitHub, Linear, Gist,
+Shortcut, and other outbound adapters retain their characterized paths until
+later Band 3 slices migrate them through the same port with operation-specific
+classifications and consent contracts.
+
+**Rationale:** a narrow inward policy port makes the privacy promise testable
+before bytes reach `URLSession`, preserves provider-specific request building,
+and gives future receipts and diagnostics one content-free vocabulary. The
+conservative scope prevents a private-network hostname from being mislabeled as
+strictly on-device. Vertical migration preserves every released feature and
+fallback while architecture tests can reject a direct Companion network bypass.

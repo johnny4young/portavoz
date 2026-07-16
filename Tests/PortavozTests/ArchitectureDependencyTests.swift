@@ -77,6 +77,49 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(actual, ["Security": ["SecretStore.swift"]])
     }
 
+    func testCompanionBYOKEgressCannotBypassTheGateway() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/DataEgress.swift")
+        let adapter = try Self.contents(
+            of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
+        let byok = try Self.contents(of: "Sources/IntelligenceKit/BYOK.swift")
+        let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
+        let provenance = try Self.contents(
+            of: "Sources/IntelligenceKit/CompanionGenerationProvenance.swift")
+        let recording = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let refresh = try Self.contents(of: "Sources/portavoz-app/CompanionRefresh.swift")
+
+        XCTAssertTrue(core.contains("public protocol DataEgressGateway"))
+        XCTAssertFalse(core.contains("URLSession.shared"))
+        XCTAssertTrue(adapter.contains("try Self.validate(networkRequest"))
+        XCTAssertTrue(adapter.contains("session.data(for: networkRequest)"))
+        XCTAssertTrue(byok.contains("private let gateway: any DataEgressGateway"))
+        XCTAssertTrue(byok.contains("gateway.perform(networkRequest, metadata: metadata)"))
+        let clientStart = try XCTUnwrap(
+            byok.range(of: "public struct CompanionBYOKClient"))
+        let settingsStart = try XCTUnwrap(byok.range(
+            of: "public enum BYOKSettings",
+            range: clientStart.upperBound..<byok.endIndex))
+        let companionClient = byok[clientStart.lowerBound..<settingsStart.lowerBound]
+        XCTAssertFalse(companionClient.contains("URLSession"))
+        XCTAssertFalse(companionClient.contains("data(for:"))
+        XCTAssertTrue(companion.contains("completeCompanionQuestion"))
+        XCTAssertFalse(companion.contains("byok.complete("))
+        XCTAssertFalse(companion.contains("OpenAICompatibleChatClient("))
+        XCTAssertFalse(companion.contains("session.data(for:"))
+        XCTAssertFalse(provenance.contains("session.data(for:"))
+        XCTAssertTrue(provenance.contains(
+            "egressConsentSource: DataEgressConsentSource = .explicitCompanionClient"))
+        for source in [recording, refresh] {
+            XCTAssertTrue(source.contains(
+                "gateway: URLSessionDataEgressGateway())"))
+            XCTAssertTrue(source.contains(
+                "egressConsentSource: .companionBYOKSettings"))
+            XCTAssertFalse(source.contains("URLSession.shared"))
+            XCTAssertFalse(source.contains("data(for:"))
+        }
+    }
+
     func testApplicationKitImportsStayInsideTheApprovedLayer() throws {
         let allowed = Set([
             "Foundation", "PortavozCore", "TranscriptionKit", "DiarizationKit",
