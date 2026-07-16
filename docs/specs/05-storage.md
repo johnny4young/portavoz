@@ -46,7 +46,10 @@ CAF/checksum/level/health metadata (or explicit metadata-free missing/pending
 state), and inserts the provisional live cast/transcript, notes, and Companion
 cards. A changed shell, preexisting child/summary, malformed finalized
 metadata, final-path uniqueness collision, or child insert failure rolls the
-entire transaction back.
+entire transaction back. GRDB persists `Date` as UTC text with millisecond
+precision; shell `startedAt` and asset `createdAt` therefore match by their
+exact canonical database values. Raw submillisecond `Date` equality is never
+used as a stronger, non-durable identity constraint.
 
 D43 extends this boundary with `installCapturedSnapshot(_:enqueue:at:)`.
 Normal Stop supplies the exact initial diarization request, and the same

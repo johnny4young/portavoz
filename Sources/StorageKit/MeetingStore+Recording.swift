@@ -327,7 +327,8 @@ extension MeetingStore {
             meeting.language == nil,
             meeting.transcriptRevision == 0,
             meeting.title == snapshot.meeting.title,
-            meeting.startedAt == snapshot.meeting.startedAt,
+            Self.samePersistedDate(
+                meeting.startedAt, snapshot.meeting.startedAt),
             meeting.audioDirectory == snapshot.meeting.audioDirectory,
             meeting.retention == snapshot.meeting.retention,
             meeting.visibility == snapshot.meeting.visibility
@@ -362,12 +363,21 @@ extension MeetingStore {
                 reservation.relativePath == AudioCapturePath.stagingRelativePath(
                     directory: snapshot.meeting.audioDirectory ?? "",
                     channel: asset.channel),
-                reservation.createdAt == asset.createdAt
+                Self.samePersistedDate(reservation.createdAt, asset.createdAt)
             else {
                 throw StorageError.invalidRecordingReservation(
                     "captured asset does not match its pending reservation")
             }
         }
+    }
+
+    /// GRDB's default `Date` representation is UTC text with millisecond
+    /// precision. A live reservation still holds the original submillisecond
+    /// `Date`, so raw equality can reject the same value immediately after it
+    /// was persisted. Compare the exact database representations instead: this
+    /// accepts only timestamps that encode to the same durable value.
+    private static func samePersistedDate(_ lhs: Date, _ rhs: Date) -> Bool {
+        lhs.databaseValue == rhs.databaseValue
     }
 
     private static func requireUntouchedShell(

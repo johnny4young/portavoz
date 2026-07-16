@@ -6,11 +6,17 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3H: add a
-local privacy receipt assembled from content-free generation provenance and
-classified egress metadata, without persisting or exposing meeting content in
-diagnostics. Slices 3G-a and 3G-b moved every current meeting-content HTTP path
+**Next concrete step:** complete the Jul 16 Sequoia stabilization interrupt
+before resuming architecture Band 3. The first unit fixed a real Stop failure:
+GRDB's millisecond `Date` representation no longer conflicts with the original
+submillisecond in-memory recording reservation, so normal capture commits
+immediately instead of relying on launch recovery. The remaining units make
+audio capture independent of initial model downloads, expose proactive model
+preparation and honest Summary/Companion capability guidance, and diagnose the
+Homebrew-versus-DMG installation difference. Then resume
+[refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
+privacy receipt from content-free generation provenance and classified egress
+metadata. Slices 3G-a and 3G-b moved every current meeting-content HTTP path
 behind the shared `DataEgressGateway`; slice 3F established the first enforced
 vertical for Companion BYOK.
 Slices 3A–3E adopted
@@ -26,6 +32,15 @@ complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
 commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69).
+
+- **Sequoia stabilization unit 1 complete — Stop uses durable timestamp
+  identity (Jul 16, 2026)**: a real recording exposed that GRDB stores dates at
+  millisecond precision while the live shell retained `Date()` submilliseconds.
+  The captured Unit of Work now compares the exact canonical database values
+  for shell and asset reservation timestamps. The strict title, ownership,
+  channel, path, lifecycle, and reservation-ID fences remain unchanged. One
+  production-shaped regression brings the current gate to 640 package tests
+  (13 gated), 235 linted Swift source files, and 20 UI cases.
 
 - **Architecture Band 3 slice 3G-b complete — explicit publishing crosses the
   shared egress boundary (Jul 16, 2026)**: Gist, GitHub Issue, and Linear Issue

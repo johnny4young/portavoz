@@ -338,6 +338,32 @@ final class RecordingPersistenceTests: XCTestCase {
         XCTAssertEqual(linkedRunID, successfulRun.id.rawValue.uuidString)
     }
 
+    func testCapturedSnapshotAcceptsSubmillisecondReservationDates() async throws {
+        let store = try MeetingStore.inMemory()
+        var meeting = shell()
+        meeting.startedAt = Date(timeIntervalSince1970: 1_783_695_600.123_456)
+        let reservation = assets(for: meeting, channels: [.microphone])[0]
+        try await store.beginRecording(meeting, assets: [reservation])
+
+        meeting.endedAt = meeting.startedAt.addingTimeInterval(2)
+        meeting.lifecycleState = .captured
+        try await store.installCapturedSnapshot(CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: [published(reservation)],
+            speakers: [],
+            segments: [],
+            contextItems: [],
+            companionCards: []))
+
+        let loaded = try await store.detail(meeting.id)
+        let stored = try XCTUnwrap(loaded)
+        XCTAssertEqual(stored.meeting.lifecycleState, .captured)
+        XCTAssertEqual(
+            stored.meeting.startedAt.timeIntervalSince1970,
+            1_783_695_600.123,
+            accuracy: 0.000_1)
+    }
+
     func testCapturedSnapshotAtomicallyAdmitsInitialProcessing() async throws {
         let store = try MeetingStore.inMemory()
         var meeting = shell()

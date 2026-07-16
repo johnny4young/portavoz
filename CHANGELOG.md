@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 16, 2026
+
+- **🛟 Stop means safely saved** — Fresh recordings no longer trip over submillisecond timestamp precision when they close. Audio, transcript, and the durable follow-up job now cross the atomic handoff immediately instead of showing a reservation error and waiting for launch recovery.
+
 ## July 15, 2026
 
 - **⚡ Meeting exports stay responsive** — A `.portavoz` bundle now reads optional full-length audio and builds its JSON away from the interface, from one consistent meeting snapshot. The native save panel, format-v1 compatibility, notes, latest summary, Companion cards, and missing-channel behavior stay intact.

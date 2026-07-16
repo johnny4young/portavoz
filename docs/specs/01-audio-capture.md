@@ -80,7 +80,10 @@ worker records `processing` and finally `ready`. Batch attribution atomically
 replaces the provisional cast. Audio with no captions is retained as
 `needsAttention`; a later required-write failure does the same. Stop schedules
 engine release on every accepted outcome, even when there was not enough audio
-to keep.
+to keep. The handoff compares reservation timestamps through GRDB's canonical
+millisecond representation rather than raw in-memory `Date` equality, so an
+ordinary `Date()` reservation cannot be rejected only because SQLite discarded
+submillisecond precision.
 
 `CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 
