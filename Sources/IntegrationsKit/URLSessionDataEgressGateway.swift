@@ -26,6 +26,15 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
         _ networkRequest: URLRequest,
         metadata: DataEgressRequest
     ) throws {
+        let url = try validateDestination(networkRequest, metadata: metadata)
+        try validateProvider(metadata.providerDisclosure, for: url)
+        try validateOperation(networkRequest, metadata: metadata)
+    }
+
+    private static func validateDestination(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) throws -> URL {
         guard let url = networkRequest.url,
               let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https",
@@ -39,27 +48,79 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
             throw DataEgressGatewayError.invalidMetadata(
                 "destination does not match the network request")
         }
-        let disclosure = metadata.providerDisclosure
-        guard !disclosure.modelID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              disclosure.providerID.caseInsensitiveCompare(url.host ?? "BYOK") == .orderedSame
+        return url
+    }
+
+    private static func validateProvider(
+        _ disclosure: DataEgressProviderDisclosure,
+        for url: URL
+    ) throws {
+        let providerID = disclosure.providerID
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !providerID.isEmpty,
+              providerID.caseInsensitiveCompare(url.host ?? "") == .orderedSame
         else {
             throw DataEgressGatewayError.invalidMetadata(
                 "provider disclosure does not match the destination")
         }
+    }
+
+    private static func validateOperation(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) throws {
         switch metadata.operation {
         case .companionKnowledgeAnswer:
-            guard networkRequest.httpMethod == "POST",
-                  networkRequest.httpBody?.isEmpty == false,
-                  metadata.dataClassification == .meetingQuestionOnly
+            try validateChatRequest(
+                networkRequest,
+                metadata: metadata,
+                classification: .meetingQuestionOnly,
+                label: "Companion")
+            guard metadata.consentSource == .companionBYOKSettings
+                    || metadata.consentSource == .explicitCompanionClient
             else {
                 throw DataEgressGatewayError.invalidMetadata(
-                    "Companion egress requires a classified non-empty POST")
+                    "Companion egress requires Companion-specific consent")
             }
             if metadata.consentSource == .companionBYOKSettings,
                metadata.meetingID == nil {
                 throw DataEgressGatewayError.invalidMetadata(
                     "Settings-approved Companion egress requires a meeting identity")
             }
+        case .summaryGeneration:
+            try validateChatRequest(
+                networkRequest,
+                metadata: metadata,
+                classification: .meetingSummaryMaterial,
+                label: "Summary")
+            guard metadata.meetingID != nil else {
+                throw DataEgressGatewayError.invalidMetadata(
+                    "Summary egress requires a meeting identity")
+            }
+            guard metadata.consentSource == .summaryEngineSettings
+                    || metadata.consentSource == .explicitSummaryProvider
+            else {
+                throw DataEgressGatewayError.invalidMetadata(
+                    "Summary egress requires summary-specific consent")
+            }
+        }
+    }
+
+    private static func validateChatRequest(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest,
+        classification: DataEgressClassification,
+        label: String
+    ) throws {
+        let modelID = metadata.providerDisclosure.modelID?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard networkRequest.httpMethod == "POST",
+              networkRequest.httpBody?.isEmpty == false,
+              metadata.dataClassification == classification,
+              modelID?.isEmpty == false
+        else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "\(label) egress requires a classified non-empty model POST")
         }
     }
 }

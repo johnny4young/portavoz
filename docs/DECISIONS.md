@@ -1536,3 +1536,49 @@ and gives future receipts and diagnostics one content-free vocabulary. The
 conservative scope prevents a private-network hostname from being mislabeled as
 strictly on-device. Vertical migration preserves every released feature and
 fallback while architecture tests can reject a direct Companion network bypass.
+
+## D68 — OpenAI-compatible summaries cannot bypass data-egress policy (Jul 2026)
+
+**Context:** D67 enforced the first meeting-derived network vertical for
+Companion, but `OpenAICompatibleSummaryProvider` still delegated transport to a
+general client that owned `URLSession`. That path serves app-selected local
+Ollama and explicit CLI BYOK. Its request contains substantially more material
+than Companion: formatted transcript and speaker labels, user notes, glossary,
+recipe/output instructions, and the requested language. Treating that transfer
+as an untyped implementation detail would make future privacy receipts
+incomplete and leave a second network bypass in IntelligenceKit.
+
+**Decision:** Core adds `summary-generation`, `meeting-summary-material`,
+`summary-engine-settings`, and `explicit-summary-provider` to the content-free
+egress vocabulary. The provider/model disclosure allows an optional model so
+later non-model integrations can reuse the same envelope, while model-backed
+operations still require a non-empty model during adapter validation.
+
+IntelligenceKit's OpenAI-compatible request/response codec is pure and owns no
+transport. `OpenAICompatibleSummaryClient` requires an injected
+`DataEgressGateway`; `OpenAICompatibleSummaryProvider` and
+`OllamaService.summaryProvider` therefore cannot create a meeting-content
+network path without that capability. The request supplies the source
+`MeetingID`, exact destination and conservative scope, complete-summary
+classification, consent source, and provider/model separately from the body.
+IntegrationsKit rejects a missing meeting, non-summary consent, wrong
+classification, empty/non-POST request, missing model, or destination/provider
+mismatch before invoking URLSession. Consent cases are whitelisted by operation
+so a Companion marker cannot authorize a summary or vice versa.
+
+The macOS app composes the concrete gateway for Ollama regeneration,
+external-audio import, and durable post-capture summary selection with the
+existing Settings-selected engine marker. The CLI composes it only after the
+existing explicit `--byok` warning. Prompt/body shape, structured parsing,
+fingerprints, local/remote provider labels, retry/fallback behavior, and visible
+errors remain unchanged. Ollama version/model discovery remains direct because
+those requests carry no meeting content. Gist, GitHub Issue, and Linear Issue
+publishing remain accurately direct until slice 3G-b.
+
+**Rationale:** capability-specific clients make forbidden transport
+unrepresentable in production composition while retaining provider request
+building in IntelligenceKit and concrete I/O in IntegrationsKit. The explicit
+full-material classification is more honest than reusing Companion's
+question-only label. A separate 3G-a commit keeps rollback narrow and lets an
+architecture test reject future direct summary transport before publishing
+adapters move in 3G-b.

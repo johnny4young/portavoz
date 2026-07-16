@@ -2,6 +2,7 @@ import Foundation
 import PortavozCore
 import XCTest
 
+@testable import IntegrationsKit
 @testable import IntelligenceKit
 
 // MARK: - Prompts
@@ -437,9 +438,9 @@ final class TranslationPromptTests: XCTestCase {
 
 // MARK: - BYOK chat client (offline)
 
-final class OpenAICompatibleChatClientTests: XCTestCase {
+final class OpenAICompatibleChatCodecTests: XCTestCase {
     func testRequestBodyIsOpenAICompatible() throws {
-        let urlRequest = try OpenAICompatibleChatClient.urlRequest(
+        let urlRequest = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
             model: "test-model", apiKey: "sk-123",
             system: "be terse", user: "¿var vs let?",
@@ -460,7 +461,7 @@ final class OpenAICompatibleChatClientTests: XCTestCase {
     }
 
     func testMaxTokensIsOmittedWhenNil() throws {
-        let urlRequest = try OpenAICompatibleChatClient.urlRequest(
+        let urlRequest = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
             model: "m", apiKey: "k",
             system: "s", user: "u", temperature: 0.3, maxTokens: nil)
@@ -473,14 +474,17 @@ final class OpenAICompatibleChatClientTests: XCTestCase {
             {"choices": [{"message": {"content": "Hola."}}]}
             """
         XCTAssertEqual(
-            try OpenAICompatibleChatClient.parseContent(Data(payload.utf8)), "Hola.")
+            try OpenAICompatibleChatCodec.parseContent(Data(payload.utf8)), "Hola.")
         XCTAssertThrowsError(
-            try OpenAICompatibleChatClient.parseContent(Data("{\"error\": \"nope\"}".utf8)))
+            try OpenAICompatibleChatCodec.parseContent(Data("{\"error\": \"nope\"}".utf8)))
     }
 
     func testProviderLabelIsTheHost() {
-        let client = OpenAICompatibleChatClient(
-            endpoint: URL(string: "http://localhost:11434/v1")!, model: "m", apiKey: "k")
+        let client = OpenAICompatibleSummaryClient(
+            endpoint: URL(string: "http://localhost:11434/v1")!,
+            model: "m",
+            apiKey: "k",
+            gateway: TestDataEgressGateway())
         XCTAssertEqual(client.providerLabel, "localhost")
     }
 }
@@ -497,11 +501,17 @@ final class BYOKSettingsTests: XCTestCase {
     }
 
     func testClientRequiresEveryPiece() {
-        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: nil))
-        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: ""))
-        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "  ", apiKey: "k"))
-        XCTAssertNil(BYOKSettings.client(endpoint: "nope", model: "m", apiKey: "k"))
-        XCTAssertNotNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: "k"))
+        let gateway = TestDataEgressGateway()
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "m", apiKey: nil, gateway: gateway))
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "m", apiKey: "", gateway: gateway))
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "  ", apiKey: "k", gateway: gateway))
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "nope", model: "m", apiKey: "k", gateway: gateway))
+        XCTAssertNotNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "m", apiKey: "k", gateway: gateway))
     }
 
     /// The companion only ever gets a client behind the explicit opt-in
@@ -627,7 +637,9 @@ final class OllamaServiceTests: XCTestCase {
             ],
             speakers: [me, ana], recipe: .general, targetLanguage: "es", glossary: ["roadmap"])
 
-        let draft = try await OllamaService.summaryProvider(model: model).summarize(request)
+        let draft = try await OllamaService.summaryProvider(
+            model: model,
+            gateway: URLSessionDataEgressGateway()).summarize(request)
         XCTAssertFalse(draft.markdown.isEmpty, "a local Ollama summary must come back")
         XCTAssertEqual(draft.language, "es")
     }

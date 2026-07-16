@@ -7,12 +7,11 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3G: migrate
-the remaining meeting-content network operations through the shared
-`DataEgressGateway`, beginning with OpenAI-compatible summary generation and
-then explicit Gist/GitHub/Linear publishing without changing consent UX.
-Slice 3F established the first enforced vertical for Companion BYOK, including
-conservative local-device/remote scope and question-only classification.
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3G-b: migrate
+explicit Gist/GitHub/Linear publishing through the shared `DataEgressGateway`
+without changing its confirmation, CLI opt-in, response, or failure UX.
+Slice 3G-a moved every OpenAI-compatible summary-generation path behind the
+gateway; slice 3F established the first enforced vertical for Companion BYOK.
 Slices 3A–3E adopted
 provenance for manual/post-refine summaries, the durable post-capture executor,
 best-effort external-audio import summaries, accepted refined transcripts, and
@@ -25,7 +24,21 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68).
+
+- **Architecture Band 3 slice 3G-a complete — summaries cross the shared
+  egress boundary (Jul 16, 2026)**: the OpenAI-compatible chat codec is now
+  pure and transport-free. Both remote BYOK and local Ollama summary clients
+  require an injected gateway and declare `summary-generation`, complete
+  summary material, source meeting, provider/model, consent source, and
+  conservative destination scope before URLSession. The app composes Settings
+  consent for regeneration, import, and durable post-capture Ollama summaries;
+  the CLI composes explicit-provider consent after its existing `--byok`
+  warning. Ollama discovery remains direct because it carries no meeting
+  content. Three summary policy/request cases plus a 23rd architecture rule
+  bring the current gate to 628 package tests (13 gated), 235 linted Swift
+  source files, and 20 UI cases (D68). Explicit Gist/GitHub/Linear publishing
+  remains accurately deferred to 3G-b.
 
 - **Architecture Band 3 slice 3F complete — Companion BYOK crosses one
   enforceable, content-free egress boundary (Jul 16, 2026)**: PortavozCore now

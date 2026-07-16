@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import PortavozCore
@@ -54,7 +55,10 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
             if let ollamaModel {
                 return .available(
                     AppDirectSummaryRegenerationProvider(
-                        provider: OllamaService.summaryProvider(model: ollamaModel),
+                        provider: OllamaService.summaryProvider(
+                            model: ollamaModel,
+                            gateway: URLSessionDataEgressGateway(),
+                            consentSource: .summaryEngineSettings),
                         providerID: OllamaService.providerID(model: ollamaModel),
                         modelID: ollamaModel,
                         modelRevision: nil))

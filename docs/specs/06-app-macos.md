@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and first enforced data-egress vertical).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D68 (atomic summary, accepted Refine transcript, Companion-card provenance, and enforced Companion/summary data-egress verticals).
 
 ## Structure
 
@@ -74,9 +74,18 @@ Companion opt-in are present. Production generation supplies its source
 `MeetingID`; the adapter validates content-free operation, an HTTP(S)-only exact
 destination, conservative local-device/remote scope, question-only
 classification, consent, and provider/model disclosure before URLSession. No
-SwiftUI control or visible
-fallback changed. The general summary client and explicit publisher/export
-adapters remain on their characterized direct paths for slice 3G.
+SwiftUI control or visible fallback changed.
+
+D68 applies the same composition rule to every app-owned OpenAI-compatible
+summary path. Meeting Detail regeneration, external-audio import, and the
+durable post-capture worker construct Ollama providers only with an injected
+`URLSessionDataEgressGateway` and persisted summary-engine Settings consent.
+Each provider receives the real source `MeetingID`; the adapter validates full
+summary-material classification, exact provider/model/destination, conservative
+local/remote scope, and a non-empty POST before transport. Ollama summary calls
+therefore cross the policy point as `local-device`, while health/model discovery
+remains direct because it carries no meeting content. Explicit Gist, GitHub,
+and Linear publishing remain on their characterized paths for slice 3G-b.
 
 Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
 `RecordingController` still flushes `RecordingSession`, closes live feeds, and

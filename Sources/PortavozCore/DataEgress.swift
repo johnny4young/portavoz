@@ -41,11 +41,15 @@ public struct DataEgressDestination: Equatable, Sendable {
 
 public enum DataEgressOperation: String, Codable, Sendable {
     case companionKnowledgeAnswer = "companion-knowledge-answer"
+    case summaryGeneration = "summary-generation"
 }
 
 public enum DataEgressClassification: String, Codable, Sendable {
     /// Only the classified participant question, never transcript context.
     case meetingQuestionOnly = "meeting-question-only"
+    /// Formatted transcript, speaker labels, user notes, glossary, and recipe
+    /// instructions required to generate one summary.
+    case meetingSummaryMaterial = "meeting-summary-material"
 }
 
 public enum DataEgressConsentSource: String, Codable, Sendable {
@@ -53,13 +57,17 @@ public enum DataEgressConsentSource: String, Codable, Sendable {
     case companionBYOKSettings = "companion-byok-settings"
     /// A caller directly constructed a Companion client with a gateway.
     case explicitCompanionClient = "explicit-companion-client"
+    /// The user selected the configured summary engine in app Settings.
+    case summaryEngineSettings = "summary-engine-settings"
+    /// A caller explicitly constructed an external summary provider.
+    case explicitSummaryProvider = "explicit-summary-provider"
 }
 
 public struct DataEgressProviderDisclosure: Equatable, Sendable {
     public let providerID: String
-    public let modelID: String
+    public let modelID: String?
 
-    public init(providerID: String, modelID: String) {
+    public init(providerID: String, modelID: String? = nil) {
         self.providerID = providerID
         self.modelID = modelID
     }

@@ -1,5 +1,6 @@
 import DiarizationKit
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import PortavozCore
@@ -95,7 +96,10 @@ enum SummarizeCommand {
             }
             print("⚠️ BYOK: the transcript WILL be sent to \(endpoint.host ?? byokEndpoint) (model \(byokModel)).")
             provider = OpenAICompatibleSummaryProvider(
-                endpoint: endpoint, model: byokModel, apiKey: key)
+                endpoint: endpoint,
+                model: byokModel,
+                apiKey: key,
+                gateway: URLSessionDataEgressGateway())
         } else if #available(macOS 26.0, *) {
             if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
                 print("error: \(reason)")

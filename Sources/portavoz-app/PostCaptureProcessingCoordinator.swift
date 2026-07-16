@@ -620,7 +620,10 @@ extension AppServices {
         case .ollama:
             if let model = ollamaModel {
                 return SummaryProviderSelection(
-                    provider: OllamaService.summaryProvider(model: model),
+                    provider: OllamaService.summaryProvider(
+                        model: model,
+                        gateway: URLSessionDataEgressGateway(),
+                        consentSource: .summaryEngineSettings),
                     providerID: OllamaService.providerID(model: model),
                     modelID: model,
                     modelRevision: nil)

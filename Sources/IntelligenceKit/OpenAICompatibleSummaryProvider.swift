@@ -8,20 +8,32 @@ import PortavozCore
 /// choice — never a silent default — and the API key comes from the
 /// caller (the app stores it in the Keychain; the dev CLI reads an env
 /// var and says so out loud). Cloud contexts are large, so the transcript
-/// goes in one pass, no map-reduce. HTTP lives in
-/// `OpenAICompatibleChatClient`; this type owns only the summary prompt
-/// and the JSON → `StructuredSummary` contract.
+/// goes in one pass, no map-reduce. Transport crosses `DataEgressGateway`;
+/// this type owns the summary prompt and JSON → `StructuredSummary` contract.
 public struct OpenAICompatibleSummaryProvider: SummaryProvider {
-    private let client: OpenAICompatibleChatClient
+    private let client: OpenAICompatibleSummaryClient
 
-    public init(endpoint: URL, model: String, apiKey: String, session: URLSession = .shared) {
-        client = OpenAICompatibleChatClient(
-            endpoint: endpoint, model: model, apiKey: apiKey, session: session)
+    public init(
+        endpoint: URL,
+        model: String,
+        apiKey: String,
+        gateway: any DataEgressGateway,
+        consentSource: DataEgressConsentSource = .explicitSummaryProvider
+    ) {
+        client = OpenAICompatibleSummaryClient(
+            endpoint: endpoint,
+            model: model,
+            apiKey: apiKey,
+            gateway: gateway,
+            consentSource: consentSource)
     }
 
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
         let prompt = Self.prompt(for: request)
-        let content = try await client.complete(system: prompt.system, user: prompt.user)
+        let content = try await client.completeSummary(
+            system: prompt.system,
+            user: prompt.user,
+            meetingID: request.meetingID)
         var draft = try Self.parseStructured(content).draft(for: request)
         draft.fingerprint = SummaryFingerprint.compute(
             request: request, providerID: "\(client.providerLabel)/\(client.model)")

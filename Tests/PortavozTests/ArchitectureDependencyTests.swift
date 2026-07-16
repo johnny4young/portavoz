@@ -105,7 +105,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(companionClient.contains("data(for:"))
         XCTAssertTrue(companion.contains("completeCompanionQuestion"))
         XCTAssertFalse(companion.contains("byok.complete("))
-        XCTAssertFalse(companion.contains("OpenAICompatibleChatClient("))
+        XCTAssertFalse(companion.contains("OpenAICompatibleSummaryClient("))
         XCTAssertFalse(companion.contains("session.data(for:"))
         XCTAssertFalse(provenance.contains("session.data(for:"))
         XCTAssertTrue(provenance.contains(
@@ -118,6 +118,42 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(source.contains("URLSession.shared"))
             XCTAssertFalse(source.contains("data(for:"))
         }
+    }
+
+    func testOpenAICompatibleSummaryEgressCannotBypassTheGateway() throws {
+        let byok = try Self.contents(of: "Sources/IntelligenceKit/BYOK.swift")
+        let provider = try Self.contents(
+            of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
+        let ollama = try Self.contents(of: "Sources/IntelligenceKit/OllamaService.swift")
+        let regeneration = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Application.swift")
+        let processing = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
+        let cli = try Self.contents(of: "Sources/portavoz-cli/CLISummarize.swift")
+
+        XCTAssertTrue(byok.contains("public struct OpenAICompatibleSummaryClient"))
+        XCTAssertTrue(byok.contains("private let gateway: any DataEgressGateway"))
+        let summaryStart = try XCTUnwrap(
+            byok.range(of: "public struct OpenAICompatibleSummaryClient"))
+        let companionStart = try XCTUnwrap(byok.range(
+            of: "struct CompanionDataEgressContext",
+            range: summaryStart.upperBound..<byok.endIndex))
+        let summaryClient = byok[summaryStart.lowerBound..<companionStart.lowerBound]
+        XCTAssertTrue(summaryClient.contains("gateway.perform(networkRequest, metadata: metadata)"))
+        XCTAssertFalse(summaryClient.contains("URLSession"))
+        XCTAssertFalse(summaryClient.contains("data(for:"))
+        XCTAssertTrue(provider.contains("client.completeSummary("))
+        XCTAssertFalse(provider.contains("URLSession"))
+        XCTAssertFalse(provider.contains("data(for:"))
+        XCTAssertTrue(ollama.contains("gateway: any DataEgressGateway"))
+
+        for source in [regeneration, processing] {
+            XCTAssertTrue(source.contains("gateway: URLSessionDataEgressGateway()"))
+            XCTAssertTrue(source.contains("consentSource: .summaryEngineSettings"))
+        }
+        XCTAssertTrue(cli.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertFalse(cli.contains("URLSession.shared"))
+        XCTAssertFalse(cli.contains("data(for:"))
     }
 
     func testApplicationKitImportsStayInsideTheApprovedLayer() throws {

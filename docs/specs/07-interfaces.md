@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D68 (enforced Companion and OpenAI-compatible summary egress).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -44,7 +44,7 @@ change rejects the stale CLI result instead of overwriting newer truth (D47).
 - `GitHubIssuesExporter` (REST) and `LinearExporter` (GraphQL; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Tested offline; real publishing pending the user's tokens.
 - Output to external services ALWAYS requires explicit confirmation (D8): the UI confirms before the gist; the CLI is opt-in by nature.
 
-### Shared data-egress adapter (D67)
+### Shared data-egress adapter (D67/D68)
 
 IntegrationsKit now implements `URLSessionDataEgressGateway`, the concrete
 adapter for Core's content-free `DataEgressGateway` port. Before sending it
@@ -55,12 +55,16 @@ Companion BYOK is the first production consumer: it declares only a classified
 knowledge question, distinguishes provable loopback from conservative remote
 scope, and never sends recent transcript passages. The adapter carries payload
 bytes separately from metadata so future privacy receipts and diagnostics do
-not duplicate meeting content.
+not duplicate meeting content. OpenAI-compatible summary generation is the
+second consumer: app-owned Ollama calls and CLI `summarize --byok` require the
+gateway, real source `MeetingID`, full-summary classification, exact provider,
+model, destination and operation-specific consent. Only Ollama discovery stays
+direct because those requests contain no meeting material.
 
 This slice does not claim universal enforcement. `GistPublisher`,
-`GitHubIssuesExporter`, `LinearExporter`, the direct OpenAI-compatible summary
-client, Shortcuts, and remaining outbound operations retain their existing
-explicit invocation paths until operation-specific gateway contracts land.
+`GitHubIssuesExporter`, `LinearExporter`, Shortcuts, and remaining outbound
+operations retain their existing explicit invocation paths until
+operation-specific gateway contracts land.
 
 ## Known limitations
 
@@ -70,8 +74,8 @@ explicit invocation paths until operation-specific gateway contracts land.
    remains an SPM-built bundle; the post-meeting Shortcut hook, URL scheme,
    and Spotlight are implemented. Native intents are deferred to M14a's Xcode
    app target.
-4. Shared egress enforcement currently covers Companion BYOK only; summary and
-   publishing/export adapters are the next Band 3 migration slice.
+4. Shared egress enforcement covers Companion BYOK and OpenAI-compatible
+   summaries; Gist/GitHub/Linear publishing is the next Band 3 migration slice.
 
 ## M16 automation (Jul 2026)
 

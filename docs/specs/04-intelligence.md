@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D68 (enforced Companion and OpenAI-compatible summary egress).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -35,16 +35,17 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 - Verbatim glossary (terms that are never translated) — comes from the user's vocabulary and/or `--glossary`.
 - The real FoundationModels API is verified in the local SDK's `.swiftinterface` — a better source than any documentation.
 
-## BYOK (D8/D67) — summary client + gateway-backed Companion client
+## BYOK (D8/D67/D68) — gateway-backed summary and Companion clients
 
-- **`OpenAICompatibleChatClient`**: minimal direct client for summary providers using any `/chat/completions` endpoint (OpenAI/OpenRouter/Groq/Ollama/LM Studio) — one system + one user go in, text comes out. `providerLabel` = endpoint host. Its pure request/response helpers are also reused by the Companion-specific client. Cloud calls do NOT pass through `IntelligenceScheduler` — single-flight exists because of ANE contention and does not apply to the network. This direct summary transport has not yet migrated to the shared egress gateway.
-- **`CompanionBYOKClient`**: accepts the same endpoint/model/key shape but cannot perform transport without an injected `DataEgressGateway`. It builds the provider request, attaches content-free Companion policy metadata, and parses the gateway response. It is intentionally separate from the still-direct summary client so the first egress slice cannot be bypassed accidentally.
-- **`BYOKSettings`**: endpoint and model in UserDefaults (`byokEndpoint`/`byokModel`); the key ONLY in Keychain (`SecretStore.byokAPIKeyService`). `client(...)` returns a ready summary client or nil — no one sees a half-configured state. `companionClient(gateway:)` additionally requires the explicit `companionBYOKEnabled` opt-in (D26: configuring is not consenting) and returns the gateway-backed client; missing pieces fall back to on-device, never to an error.
-- **`OpenAICompatibleSummaryProvider`**: now owns only the summary prompt and JSON→`StructuredSummary` contract; HTTP lives in the chat client. It weaves in user notes (D28) just like on-device — parity tested. Key via `PORTAVOZ_BYOK_API_KEY` in the CLI; in the app, Keychain via Settings.
+- **`OpenAICompatibleChatCodec`**: internal, transport-free request/response codec shared by the summary and Companion clients for `/chat/completions` endpoints (OpenAI/OpenRouter/Groq/Ollama/LM Studio). One system + one user message go in and text comes out; no URLSession dependency is reachable through this type.
+- **`OpenAICompatibleSummaryClient`**: public summary transport facade that cannot send without an injected `DataEgressGateway`. It declares full meeting-summary material, source meeting identity, exact destination/scope, provider/model, and operation-specific consent separately from the encoded body. Cloud calls do NOT pass through `IntelligenceScheduler` — single-flight exists because of ANE contention and does not apply to the network.
+- **`CompanionBYOKClient`**: accepts the same endpoint/model/key shape and also requires a gateway. Its separate operation declares question-only material so recent transcript context can never be smuggled through summary metadata.
+- **`BYOKSettings`**: endpoint and model in UserDefaults (`byokEndpoint`/`byokModel`); the key ONLY in Keychain (`SecretStore.byokAPIKeyService`). `client(gateway:)` returns a ready gateway-backed summary client or nil — no one sees a half-configured state. `companionClient(gateway:)` additionally requires the explicit `companionBYOKEnabled` opt-in (D26: configuring is not consenting); missing pieces fall back to on-device, never to an error.
+- **`OpenAICompatibleSummaryProvider`**: owns only the summary prompt, JSON→`StructuredSummary` contract, and a gateway-backed summary client. It forwards `SummaryRequest.meetingID`, weaves in user notes (D28) just like on-device, and retains parity tests. Key via `PORTAVOZ_BYOK_API_KEY` in the CLI; in the app, Keychain via Settings.
 
 ## Multiple summary engines (D25/M12) — Apple FM · local Ollama · embedded MLX · cloud BYOK
 
-`AppServices.summaryEngine` (UserDefaults `summaryEngine`: `appleOnDevice` default / `ollama` / `mlx`) is sampled by app-owned provider resolvers. The durable post-capture worker selects Ollama through `OllamaService.summaryProvider(model:)` (an `OpenAICompatibleSummaryProvider` against `localhost:11434/v1`, **without an API key** — Ollama ignores it, nothing leaves the device), verified embedded MLX, or available Apple FM. ApplicationKit's regeneration and import adapters resolve the same fallback order without constructing providers inside the use cases. The **live rolling summary remains FM-only** (it uses the incremental `condenseWindow`/`summarizeNotes` APIs that Ollama/MLX do not have). `OllamaService`: `isRunning()` (GET `/api/version`), `models()` (GET `/api/tags`, pure/tested `parseModels`). Settings → "Summary engine": picker + detection + model list + **"Recommended for your Mac"** (pure `HardwareRecommender.advise(HardwareProfile)`: RAM + Apple Intelligence + Ollama running + free disk space → suggested engine with readable reasons + "Apply" button; `AppServices.currentHardwareProfile()` reads the real hardware). **Closes GAPS #7** (a Mac without Apple Intelligence summarizes 100% locally); verified E2E with gpt-oss:20b (ES summary in 24 s) + UITest of the Settings section. Every provider stamps its own material fingerprint, but the released Meeting Detail path performs cache lookup and translation pivot only for Apple FM; configured Ollama/MLX regenerates directly. **Per-meeting override (M12)**: the `RegenerateSummary` provider resolver forces an engine for one meeting without changing the global default; the detail menu offers language (es/en) and, when there is a real choice, the **alternative engine** (Apple↔Ollama — only the one that is not the default and only if it is usable here: Ollama with a configured model, or Apple with `appleSummaryAvailable`). An Apple override preserves its cache and pivot path.
+`AppServices.summaryEngine` (UserDefaults `summaryEngine`: `appleOnDevice` default / `ollama` / `mlx`) is sampled by app-owned provider resolvers. The durable post-capture worker selects Ollama through `OllamaService.summaryProvider(model:gateway:consent:)` (an `OpenAICompatibleSummaryProvider` against `localhost:11434/v1`, **without an API key** — Ollama ignores it, nothing leaves the device), verified embedded MLX, or available Apple FM. Ollama summary generation still crosses the gateway with `local-device` scope and Settings consent; its content-free health and model-discovery requests remain direct because they contain no meeting material. ApplicationKit's regeneration and import adapters resolve the same fallback order without constructing providers inside the use cases. The **live rolling summary remains FM-only** (it uses the incremental `condenseWindow`/`summarizeNotes` APIs that Ollama/MLX do not have). `OllamaService`: `isRunning()` (GET `/api/version`), `models()` (GET `/api/tags`, pure/tested `parseModels`). Settings → "Summary engine": picker + detection + model list + **"Recommended for your Mac"** (pure `HardwareRecommender.advise(HardwareProfile)`: RAM + Apple Intelligence + Ollama running + free disk space → suggested engine with readable reasons + "Apply" button; `AppServices.currentHardwareProfile()` reads the real hardware). **Closes GAPS #7** (a Mac without Apple Intelligence summarizes 100% locally); verified E2E with gpt-oss:20b (ES summary in 24 s) + UITest of the Settings section. Every provider stamps its own material fingerprint, but the released Meeting Detail path performs cache lookup and translation pivot only for Apple FM; configured Ollama/MLX regenerates directly. **Per-meeting override (M12)**: the `RegenerateSummary` provider resolver forces an engine for one meeting without changing the global default; the detail menu offers language (es/en) and, when there is a real choice, the **alternative engine** (Apple↔Ollama — only the one that is not the default and only if it is usable here: Ollama with a configured model, or Apple with `appleSummaryAvailable`). An Apple override preserves its cache and pivot path.
 
 **Embedded MLX (D32, Jul 2026)**: third engine `summaryEngine = "mlx"` — `MLXSummaryProvider` (IntelligenceKit) runs **Qwen3.5-4B 4-bit** (Apache-2.0, sha256-pinned in `ModelCatalog.mlxQwen35`, 3 GB; `mlxQwen3` remains in the catalog for A/B) in-process on the GPU via `mlx-swift-lm` (exact 3.31.4 — successor to mlx-swift-examples; the tokenizer is provided by `swift-transformers` through the `MLXHuggingFace` macros). **Field A/B (Jul 10, refined 56 min / 852-segment sprint demo)**: Qwen3-4B collapsed into a degenerate loop twice (34k and 68k chars truncated); Qwen3.5-4B with `enable_thinking: false` (additionalContext — the 3.5 family reasons by default and loses the JSON prompt) produced decisions + open questions + 11 action items with owners in clean Spanish in 89 s. `maxTokens` 16384 as a pure anti-runaway safeguard. Reuses the prompt and JSON contract from `OpenAICompatibleSummaryProvider.prompt/parseStructured` — same `StructuredSummary`, same fingerprint. `MLXModelCache` (actor) keeps ONE `ModelContainer` loaded and serializes generation (`container.perform`, temperature 0); it does not pass through `IntelligenceScheduler` (GPU, not ANE). Ajustes → "Built-in (MLX)": `MLXModelRow` row with verified download/status/delete (`AppServices.mlxDownloaded/downloadMLX/deleteMLXModel`); `HardwareRecommender` suggests it with RAM ≥ 8 GB and no Apple Intelligence or Ollama. **Shipping**: SwiftPM does not compile Metal shaders → `scripts/build-mlx-metallib.sh` caches `mlx-swift_Cmlx.bundle` (one-time xcodebuild, keyed by mlx-swift version), and `make-app.sh` copies it to `Contents/Resources`. **E2E verification**: `portavoz-app --mlx-smoke [real]` — synthetic ES in 3 s; with `real`, summarizes the most recent meeting in the library (read-only). Verified with a real meeting of 40 min / 686 segments: 44 s, coherent decisions and action items. There is no test under `swift test` because the CLI runner cannot have a metallib. **Memory (critical)**: without `MLX.GPU.set(cacheLimit:)`, MLX's buffer cache grows without limit on long prompts — 31 GB of RSS was observed on that same meeting before macOS suspended the process. `MLXModelCache` sets 20 MB (the LLMEval value) and `maxTokens: 2048` as the generation cap; with that, the real peak is ~4.5 GB (2.3 GB weights + KV + runtime).
 
@@ -58,7 +59,8 @@ Since Band 2 slice 2D, Meeting Detail regeneration executes as
 ApplicationKit's `RegenerateSummary`. The use case receives one immutable
 meeting/recipe/language/override request, loads notes and glossary through
 narrow ports, resolves a provider through an app adapter, and owns the exact
-reuse policy above. Configured Ollama/MLX remains a direct generation path;
+reuse policy above. Configured Ollama remains gateway-backed while MLX remains
+an in-process generation path;
 Apple FM retains exact-language cache, other-language pivot, translation
 fallback, and full-generation order. Provider construction, model paths,
 platform preference storage, availability, and localized UI copy remain in
@@ -237,8 +239,27 @@ question only. No `RAGPassage`, transcript window, owner identity, or stored
 card content enters the transport metadata or body. Offline tests capture and
 decode the exact request, validate loopback classification and metadata
 rejection, and an architecture test prevents Companion, provenance, or app
-composition from restoring a direct network call. Other summary and integration
-egress paths are explicitly not migrated yet.
+composition from restoring a direct network call.
+
+### Summary egress enforcement (D68)
+
+OpenAI-compatible summaries now use a second operation-specific vertical on
+the same Core port and IntegrationsKit adapter. The app's regeneration, import,
+and durable post-capture resolvers inject `URLSessionDataEgressGateway` and
+declare Settings consent; the CLI's explicit `--byok` invocation declares
+explicit-provider consent. Every call carries its source `MeetingID`,
+`meeting-summary-material` classification, exact provider/model and destination,
+and a conservative local-device/remote scope separately from the request body.
+The adapter requires a non-empty POST and rejects absent meeting identity,
+forged destination/provider/model, wrong material classification, and any
+Companion consent marker used for a summary (or vice versa) before transport.
+
+Only the gateway-backed client is public; the shared chat codec is internal and
+transport-free. Offline tests decode remote and loopback requests, prove exact
+metadata and consent, exercise the real provider response parser, and reject
+cross-operation consent. The 23rd architecture rule prevents IntelligenceKit,
+app composition, or CLI composition from restoring a direct summary network
+path. Explicit Gist/GitHub/Linear publishing remains the next egress slice.
 
 ## Naming
 
@@ -247,12 +268,11 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 ## Known limits
 
 1. Meeting Detail cache lookup and translation pivot are Apple-FM-only;
-   configured Ollama/MLX regeneration performs a new direct generation.
+   configured Ollama/MLX regeneration performs a new generation.
 2. Brute-force RAG is O(n) over embeddings and is not measured at 1,000+
    meetings (the < 50 ms target may require sqlite-vec).
-3. `DataEgressGateway` currently enforces only Companion BYOK. Direct
-   OpenAI-compatible summaries and external publishing adapters migrate in
-   later Band 3 slices.
+3. `DataEgressGateway` enforces Companion BYOK and OpenAI-compatible summaries;
+   explicit Gist/GitHub/Linear publishing migrates in the next Band 3 slice.
 
 ## Planned (not implemented)
 

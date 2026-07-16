@@ -99,8 +99,127 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "localhost")
     }
 
+    func testSummaryProviderRoutesCompleteMaterialWithRemoteMetadata() async throws {
+        let structured = #"{"overview":"Listo","sections":[],"actionItems":[]}"#
+        let response = try JSONSerialization.data(withJSONObject: [
+            "choices": [["message": ["content": structured]]]
+        ])
+        let gateway = CapturingDataEgressGateway(responseData: response)
+        let provider = OpenAICompatibleSummaryProvider(
+            endpoint: URL(string: "https://api.example.com/v1")!,
+            model: "summary-model",
+            apiKey: "secret",
+            gateway: gateway)
+        let speaker = Speaker(meetingID: meetingID, label: "S1", displayName: "Ana")
+        let request = SummaryRequest(
+            meetingID: meetingID,
+            segments: [
+                TranscriptSegment(
+                    meetingID: meetingID,
+                    speakerID: speaker.id,
+                    channel: .system,
+                    text: "El lanzamiento será el viernes.",
+                    startTime: 0,
+                    endTime: 3)
+            ],
+            speakers: [speaker],
+            recipe: .general,
+            targetLanguage: "es",
+            glossary: ["deploy"],
+            contextItems: [
+                ContextItem(
+                    meetingID: meetingID,
+                    kind: .note,
+                    content: "Confirmar el rollout",
+                    timestamp: 2)
+            ])
+
+        let draft = try await provider.summarize(request)
+
+        XCTAssertEqual(draft.markdown, "Listo")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .summaryGeneration)
+        XCTAssertEqual(captured.metadata.destination.scope, .remote)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingSummaryMaterial)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitSummaryProvider)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.example.com")
+        XCTAssertEqual(captured.metadata.providerDisclosure.modelID, "summary-model")
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+
+        let body = try XCTUnwrap(captured.request.httpBody)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let messages = try XCTUnwrap(object["messages"] as? [[String: String]])
+        let transferred = messages.compactMap { $0["content"] }.joined(separator: "\n")
+        for material in ["El lanzamiento será el viernes.", "Confirmar el rollout", "deploy"] {
+            XCTAssertTrue(transferred.contains(material), material)
+        }
+    }
+
+    func testSummaryClientMarksConfiguredOllamaAsLocal() async throws {
+        let gateway = CapturingDataEgressGateway()
+        let client = OpenAICompatibleSummaryClient(
+            endpoint: URL(string: "http://localhost:11434/v1")!,
+            model: "qwen-local",
+            apiKey: "ollama",
+            gateway: gateway,
+            consentSource: .summaryEngineSettings)
+
+        _ = try await client.completeSummary(
+            system: "Static summary instructions",
+            user: "Meeting material",
+            meetingID: meetingID)
+
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.destination.scope, .localDevice)
+        XCTAssertEqual(captured.metadata.consentSource, .summaryEngineSettings)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testGatewayRejectsSummaryWithoutMeetingOrSummaryConsent() throws {
+        let request = try OpenAICompatibleChatCodec.urlRequest(
+            endpoint: URL(string: "https://api.example.com/v1")!,
+            model: "m",
+            apiKey: "k",
+            system: "s",
+            user: "u",
+            temperature: 0.3,
+            maxTokens: nil)
+        let destination = try XCTUnwrap(request.url)
+        let missingMeeting = summaryMetadata(
+            destination: destination,
+            meetingID: nil,
+            consentSource: .explicitSummaryProvider)
+        XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+            request,
+            metadata: missingMeeting)) { error in
+            XCTAssertEqual(
+                error as? DataEgressGatewayError,
+                .invalidMetadata("Summary egress requires a meeting identity"))
+        }
+
+        let wrongConsent = summaryMetadata(
+            destination: destination,
+            meetingID: meetingID,
+            consentSource: .explicitCompanionClient)
+        XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+            request,
+            metadata: wrongConsent)) { error in
+            XCTAssertEqual(
+                error as? DataEgressGatewayError,
+                .invalidMetadata("Summary egress requires summary-specific consent"))
+        }
+    }
+
     func testGatewayRejectsForgedDestinationOrProviderBeforeTransport() throws {
-        let request = try OpenAICompatibleChatClient.urlRequest(
+        let request = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
             model: "m",
             apiKey: "k",
@@ -159,7 +278,7 @@ final class DataEgressGatewayTests: XCTestCase {
     }
 
     func testGatewayRequiresMeetingIdentityForSettingsConsent() throws {
-        let request = try OpenAICompatibleChatClient.urlRequest(
+        let request = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
             model: "m",
             apiKey: "k",
@@ -179,6 +298,21 @@ final class DataEgressGatewayTests: XCTestCase {
                 .invalidMetadata(
                     "Settings-approved Companion egress requires a meeting identity"))
         }
+
+        let wrongConsent = DataEgressRequest(
+            operation: metadata.operation,
+            destination: metadata.destination,
+            dataClassification: metadata.dataClassification,
+            meetingID: meetingID,
+            consentSource: .explicitSummaryProvider,
+            providerDisclosure: metadata.providerDisclosure)
+        XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+            request,
+            metadata: wrongConsent)) { error in
+            XCTAssertEqual(
+                error as? DataEgressGatewayError,
+                .invalidMetadata("Companion egress requires Companion-specific consent"))
+        }
     }
 
     private func egressMetadata(
@@ -194,6 +328,22 @@ final class DataEgressGatewayTests: XCTestCase {
             consentSource: .companionBYOKSettings,
             providerDisclosure: DataEgressProviderDisclosure(
                 providerID: providerID,
+                modelID: "m"))
+    }
+
+    private func summaryMetadata(
+        destination: URL,
+        meetingID: MeetingID?,
+        consentSource: DataEgressConsentSource
+    ) -> DataEgressRequest {
+        DataEgressRequest(
+            operation: .summaryGeneration,
+            destination: DataEgressDestination(url: destination),
+            dataClassification: .meetingSummaryMaterial,
+            meetingID: meetingID,
+            consentSource: consentSource,
+            providerDisclosure: DataEgressProviderDisclosure(
+                providerID: "api.example.com",
                 modelID: "m"))
     }
 }
@@ -215,7 +365,14 @@ private actor CapturingDataEgressGateway: DataEgressGateway {
         let metadata: DataEgressRequest
     }
 
+    private let responseData: Data
     private var capture: Capture?
+
+    init(responseData: Data = Data(
+        #"{"choices":[{"message":{"content":"Use let by default."}}]}"#.utf8
+    )) {
+        self.responseData = responseData
+    }
 
     func perform(
         _ networkRequest: URLRequest,
@@ -223,8 +380,7 @@ private actor CapturingDataEgressGateway: DataEgressGateway {
     ) async throws -> DataEgressResponse {
         capture = Capture(request: networkRequest, metadata: metadata)
         return DataEgressResponse(
-            data: Data(
-                #"{"choices":[{"message":{"content":"Use let by default."}}]}"#.utf8),
+            data: responseData,
             statusCode: 200)
     }
 
