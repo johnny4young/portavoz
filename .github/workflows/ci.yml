@@ -15,7 +15,7 @@ jobs:
       # newest Xcode on the image instead of playing image lottery.
       - name: Select newest Xcode
         run: |
-          NEWEST="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
           echo "Selecting $NEWEST"
           sudo xcode-select -s "$NEWEST"
       - name: Swift version
@@ -23,6 +23,28 @@ jobs:
       - name: Build
         run: swift build
       - name: Test
+        run: swift test
+
+  sequoia-compatibility:
+    # The product floor is Sonoma 14.4, but Sequoia is the oldest supported
+    # release lane. Run the complete package suite on that OS instead of only
+    # compiling against an old deployment target from the latest runner.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode available on Sequoia
+        run: |
+          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
+          echo "Selecting $NEWEST"
+          sudo xcode-select -s "$NEWEST"
+      - name: Runtime and SDK evidence
+        run: |
+          sw_vers
+          swift --version
+          xcrun --show-sdk-version
+      - name: Build on Sequoia
+        run: swift build
+      - name: Test on Sequoia
         run: swift test
 
   lint:

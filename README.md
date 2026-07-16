@@ -4,7 +4,7 @@
 
 Portavoz records your meetings, transcribes them live, and tells apart every voice — including yours. Built natively in Swift for Apple platforms, running entirely on-device: Neural Engine transcription, local diarization, local summaries.
 
-**[portavoz.app](https://portavoz.app)** · `brew install --cask portavoz` (after `brew tap johnny4young/tap`)
+**[portavoz.app](https://portavoz.app)** · `brew install --cask johnny4young/tap/portavoz`
 
 [![CI](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml/badge.svg)](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -43,9 +43,12 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 **Shipping and self-updating on macOS Sequoia and later.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
-brew tap johnny4young/tap
-brew install --cask portavoz
+brew install --cask johnny4young/tap/portavoz
 ```
+
+Both the app bundle and its disk image are independently signed, notarized,
+and stapled, so Homebrew extraction and direct DMG installation cross the same
+Gatekeeper boundary on Sequoia and later.
 
 Capture, live + refine transcription, on-device diarization, bilingual summaries (three local engines), audio playback, co-authoring notes, pre-meeting briefs, and the live companion are all built and measured (see below). Every feature that ships lands in the [changelog](CHANGELOG.md).
 

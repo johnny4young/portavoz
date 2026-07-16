@@ -140,7 +140,7 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 ## D23 — M5 packaging: Sparkle 2 embedded by script, DMG + appcast + cask with one command
 
 **Context:** D10 established the channel: notarized DMG + Sparkle + Homebrew cask. The app is an SPM executable packaged by script (D20), so packaging is also 100% scripted.
-**Decision:** (1) **Sparkle 2.9+** as an SPM dependency of the app target (`SPUStandardUpdaterController` + "Buscar actualizaciones…" menu); `make-app.sh` embeds `Sparkle.framework` in `Contents/Frameworks`, adds the `@executable_path/../Frameworks` rpath, signs the internal XPC/Autoupdate components, and writes `SUFeedURL` (appcast in the GitHub release) + `SUPublicEDKey`. (2) **Dedicated EdDSA key** in the Keychain under account `portavoz` (NOT the default — this machine already had one from another project); the public key lives in `assets/sparkle-public-key`; `generate_appcast --account portavoz` signs each release. (3) `make-dmg.sh`: release bundle → UDZO DMG with symlink to /Applications; ad-hoc signature by default, `PORTAVOZ_SIGN_IDENTITY` and `PORTAVOZ_NOTARY_PROFILE` (notarytool + staple) for real distribution. (4) `make-release.sh <version>`: stamps version, DMG, signed appcast, and cask (`packaging/portavoz.rb` with placeholders) → `dist/release/` ready for `gh release create`; publication checklist in the script header.
+**Decision:** (1) **Sparkle 2.9+** as an SPM dependency of the app target (`SPUStandardUpdaterController` + "Buscar actualizaciones…" menu); `make-app.sh` embeds `Sparkle.framework` in `Contents/Frameworks`, adds the `@executable_path/../Frameworks` rpath, signs the internal XPC/Autoupdate components, and writes `SUFeedURL` (appcast in the GitHub release) + `SUPublicEDKey`. (2) **Dedicated EdDSA key** in the Keychain under account `portavoz` (NOT the default — this machine already had one from another project); the public key lives in `assets/sparkle-public-key`; `generate_appcast --account portavoz` signs each release. (3) `make-dmg.sh`: release bundle → UDZO DMG with symlink to /Applications; ad-hoc signature by default, `PORTAVOZ_SIGN_IDENTITY` and `PORTAVOZ_NOTARY_PROFILE` for real distribution. D74 strengthens that path by notarizing/stapling the inner app before separately notarizing/stapling the outer DMG. (4) `make-release.sh <version>`: stamps version, DMG, signed appcast, and cask (`packaging/portavoz.rb` with placeholders) → `dist/release/` ready for `gh release create`; publication checklist in the script header.
 **Verified (2026-07-07, ad-hoc E2E):** app with embedded Sparkle launches (rpath ✓); `make-release.sh 0.1.0` produced a mountable 7.9 MB DMG (models download on demand — lightweight installer), appcast with `edSignature`, and cask with real version+sha256.
 **Completed (10 Jul 2026):** Developer ID + notarization (`portavoz-notary`), public repo, and cask in the centralized `johnny4young/homebrew-tap` tap.
 **Rationale:** the entire release pipeline is one reproducible command without Xcode; the Apple credentials are the only part that cannot be automated.
@@ -1770,3 +1770,37 @@ optional failures from blocking valid work, while per-capability task sharing
 still prevents duplicate model loads. The change preserves Refine review,
 language, attribution degradation, Import, Dictation, recording recovery, and
 memory-release behavior without introducing a second scheduler or model owner.
+
+## D74 — App and disk image carry independent notarization evidence (Jul 2026)
+
+**Context:** the published v0.6.0 Homebrew cask and direct download reference
+the same signed DMG. Reproducing the cask in an isolated app directory proved
+that the outer DMG was notarized, stapled, and Gatekeeper-accepted, while the
+`Portavoz.app` copied out by Homebrew had no stapled ticket. Apple had issued a
+nested-app ticket — stapling a scratch copy succeeded — but the release script
+never attached it. Opening the stapled DMG could therefore succeed while a
+package-manager extraction depended on Gatekeeper reaching Apple's ticket
+service. The original field report did not preserve the exact Homebrew error,
+so that network-dependent boundary is the proven defect rather than a claim
+about one specific alert string.
+
+**Decision:** a distributable build has two ordered trust boundaries. First,
+`make-dmg.sh` archives the Developer-ID-signed app, submits it to notarytool,
+staples and validates `dist/Portavoz.app`, and strictly verifies its nested code
+signatures. Only then may it copy the app into a new DMG. Second, it signs,
+submits, and staples that final DMG.
+
+`verify-distribution.sh` is a mandatory post-notarization gate. It verifies the
+DMG signature, ticket, and Gatekeeper assessment; mounts it read-only; copies
+the app to a scratch directory to mirror Homebrew Cask; and independently
+requires deep/strict codesign, a stapled app ticket, and Gatekeeper acceptance.
+The packaging architecture test locks that order. CI additionally runs the full
+package suite on GitHub's `macos-15` runner, the oldest supported release lane,
+while the normal latest-macOS lane remains.
+
+**Rationale:** package managers erase the outer container as a runtime trust
+boundary. Trust evidence must travel with the artifact that Gatekeeper will
+actually assess, and release verification must reproduce that extraction
+instead of checking only the convenient direct-download path. Dual notarization
+costs one additional Apple submission per release but makes Homebrew and DMG
+behavior deterministic, offline-friendlier, and independently auditable.

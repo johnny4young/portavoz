@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 16, 2026
 
+- **🍺 Homebrew that opens like the DMG** — The app inside every release now carries its own notarization ticket before the disk image is built. Package-manager installs no longer depend on Gatekeeper finding an online ticket that only the outer DMG had, and every release verifies the extracted app before publication.
 - **✨ Refine loads only what Refine needs** — The quality pass no longer waits for or fails with the unrelated live-caption model. Whisper starts the draft, speaker separation joins only when needed, and a diarization problem still leaves an honest reviewable transcript instead of losing the whole pass.
 - **🧭 Intelligence that fits your Mac** — Sequoia now gets a feasible local summary choice instead of an impossible Apple default. Generate Summary takes you straight to the right setup, your selected provider never changes behind your back, and Companion clearly explains when macOS 26 is required.
 - **⬇️ Whisper ready before Refine** — Prepare Turbo or Compact directly from Settings, keep the verified download running after that window closes, and let Refine or Import reuse it instead of making the first quality pass feel stuck.

@@ -114,6 +114,15 @@ External-audio Import requests pyannote alone, while durable first-pass
 recovery and Dictation request Parakeet alone. Explicit onboarding/benchmark
 preparation may still request both. A failure in an optional capability can no
 longer block an otherwise valid transcript path (D73).
+Distribution now treats the app bundle and disk image as two independent trust
+boundaries. A Developer ID app is archived, submitted to Apple, stapled, and
+validated before it is copied into the DMG; the completed DMG is then signed,
+submitted, stapled, and validated separately. The final release gate mounts the
+image, copies `Portavoz.app` into a scratch directory exactly as Homebrew Cask
+does, and independently requires codesign, stapler, and Gatekeeper acceptance.
+This prevents direct-DMG trust from masking an inner app that becomes dependent
+on an online ticket lookup after package-manager extraction. CI also executes
+the full package suite on a macOS 15 Sequoia runner (D74).
 Slice 2J moves launch reconciliation into
 `ApplicationKit.RecoverInterruptedMeetings`. The use case recovers expired
 leases first, loads non-ready candidates, rechecks the live-writer gate before
@@ -458,7 +467,9 @@ policy cases and the 21st XCUITest across both locales. Role-specific speech
 readiness adds the 26th architecture rule: Refine preparation cannot acquire
 the broad live-model bundle, Parakeet and pyannote loaders cannot construct one
 another, Import requests diarization only, and durable first-pass recovery
-requests transcription only. The current gate is 653 package tests (13 gated),
+requests transcription only. Distribution adds a 27th architecture rule that
+locks app-before-DMG notarization order and the extracted-app verification
+boundary. The current gate is 654 package tests (13 gated),
 zero strict-lint violations across 244 Swift source files, and 21 XCUITest
 cases passing in both default and forced-Spanish runs.
 
@@ -882,6 +893,7 @@ until a later Band 1 adoption slice.
 16. **Quality-model preparation outlives its view:** Settings, Refine, and Import join one app-scoped serialized Whisper preparation task. Only ModelStore may download/verify, only TranscriptionKit may mint the opaque prepared-model token, and only that token may allocate the runtime. Closing Settings never cancels preparation; completion retains evidence rather than the heavy runtime, and deleting a variant invalidates both evidence and runtime (D71).
 17. **Selected capabilities never change silently:** OS/model availability is sampled by one app-owned adapter and injected into provider composition and presentation. A selected summary engine either runs exactly or returns a typed setup state; it never falls through to another provider. Clean-install defaults may choose only an actually available or explicitly downloadable local path. Controls whose required classifier cannot run stay hidden or disabled with an exact explanation and recovery route (D72).
 18. **Model readiness follows the workflow role:** app-scoped Parakeet, pyannote, and Whisper preparation is independently deduplicated. A workflow requests only the capability it executes: Refine requires Whisper and treats later pyannote attribution as degradable; Import requests its diarizer without live Parakeet; durable first-pass recovery and Dictation request Parakeet without pyannote. Only explicit all-model setup or measurement paths may acquire both (D73).
+19. **Every distribution boundary carries its own trust evidence:** a release app is Developer-ID signed, notarized, and stapled before packaging; the final DMG is then separately signed, notarized, and stapled. Release verification must copy the app out of the mounted image and independently pass strict codesign, stapler, and Gatekeeper assessment, because Homebrew does not launch within the outer DMG trust boundary. CI runs the package suite on the oldest supported release lane, macOS 15 Sequoia (D74).
 
 ## Refactor migration status
 
@@ -892,7 +904,7 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 653-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 654-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b plus Jul 16 field hardening: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, millisecond-canonical reservation matching, model-independent audio start, exact Parakeet-only durable first-pass transcript recovery for missing/failed live lanes, atomic captured-state/initial-job and recovered-transcript/dependent handoffs, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43/D70/D73) | Valid audio starts and remains durable before derivation or model readiness; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
 | 2 — Application layer | Complete — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import; 2L moves read-consistent `.portavoz` export; 2M gives each window one explicit Library state/action/effect owner; 2N scopes Library reads; 2O moves four meeting-review policies inward; 2P moves three Insights read policies inward; 2Q completes local policy ownership and moves the neutral event value to Core; 2R gives each window one Insights read owner; 2S gives each selected meeting one review read owner; 2T routes its persistence mutations through model actions and adapters; 2U removes two unimplemented package promises after a compatibility audit. Jul 16 capability hardening adds exact summary-provider setup states, one app-owned Foundation Models adapter, and role-specific speech-model readiness without broadening ApplicationKit's platform edge (D44–D61/D72/D73) | Nine implemented Kit libraries; no speculative boundary remains. Spotlight indexing and detail audio-path resolution stay measured Band 4 seams |
 | 3 — Provenance and privacy | In progress — 3A gives manual/post-refine regeneration typed attempt provenance; 3B makes durable post-capture provenance part of the existing job/artifact fence; 3C adds external-audio import summaries without weakening the required aggregate; 3D links accepted refined transcripts without weakening review or the source-revision fence; 3E links durable Companion cards and records actual BYOK fallback facts; 3F enforces content-free egress policy for Companion BYOK and records conservative destination scope; 3G-a enforces the same boundary for OpenAI-compatible summary generation; 3G-b completes explicit Gist/GitHub/Linear meeting-content network migration (D62–D69) | Privacy receipt, typed errors, diagnostics/signposts, and sandbox evidence |

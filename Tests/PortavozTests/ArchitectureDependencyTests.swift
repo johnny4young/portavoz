@@ -606,6 +606,34 @@ final class ArchitectureDependencyTests: XCTestCase {
             "regions: [Table(\"meeting\"), Table(\"companionCard\")]"))
     }
 
+    func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
+        let builder = try Self.contents(of: "scripts/make-dmg.sh")
+        let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
+
+        let archive = try XCTUnwrap(builder.range(of: "ditto -c -k --sequesterRsrc"))
+        let appSubmission = try XCTUnwrap(builder.range(
+            of: "notarytool submit \"$APP_ARCHIVE\"", range: archive.upperBound..<builder.endIndex))
+        let appStaple = try XCTUnwrap(builder.range(
+            of: "stapler staple dist/Portavoz.app",
+            range: appSubmission.upperBound..<builder.endIndex))
+        let package = try XCTUnwrap(builder.range(
+            of: "cp -a dist/Portavoz.app \"$STAGE/\"",
+            range: appStaple.upperBound..<builder.endIndex))
+        let imageSubmission = try XCTUnwrap(builder.range(
+            of: "notarytool submit \"$DMG\"", range: package.upperBound..<builder.endIndex))
+        let imageStaple = try XCTUnwrap(builder.range(
+            of: "stapler staple \"$DMG\"",
+            range: imageSubmission.upperBound..<builder.endIndex))
+        XCTAssertNotNil(builder.range(
+            of: "scripts/verify-distribution.sh \"$DMG\"",
+            range: imageStaple.upperBound..<builder.endIndex))
+
+        XCTAssertTrue(verifier.contains("cp -a \"$MOUNT/Portavoz.app\" \"$APP_COPY\""))
+        XCTAssertTrue(verifier.contains("codesign --verify --deep --strict"))
+        XCTAssertTrue(verifier.contains("stapler validate \"$APP_COPY\""))
+        XCTAssertTrue(verifier.contains("spctl -a -vvv -t exec \"$APP_COPY\""))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

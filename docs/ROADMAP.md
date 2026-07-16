@@ -6,8 +6,8 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue the Jul 16 Sequoia stabilization interrupt
-before resuming architecture Band 3. The first unit fixed a real Stop failure:
+**Next concrete step:** resume architecture Band 3 after completing the Jul 16
+Sequoia stabilization interrupt. The first unit fixed a real Stop failure:
 GRDB's millisecond `Date` representation no longer conflicts with the original
 submillisecond in-memory recording reservation, so normal capture commits
 immediately instead of relying on launch recovery. The second unit makes audio
@@ -19,8 +19,8 @@ Companion capability-aware on Sequoia, honors the selected summary engine
 exactly, and routes setup failures directly to Intelligence Settings. The
 fifth unit isolates speech-model readiness so Refine no longer depends on live
 Parakeet and durable first-pass recovery no longer depends on optional
-diarization. The only remaining stabilization unit is the reported Homebrew-
-versus-DMG installation difference. Then resume
+diarization. The sixth unit makes notarization self-contained across both
+direct DMG and Homebrew extraction. Resume
 [refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
 privacy receipt from content-free generation provenance and classified egress
 metadata. Slices 3G-a and 3G-b moved every current meeting-content HTTP path
@@ -38,7 +38,21 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74).
+
+- **Sequoia stabilization unit 6 complete — Homebrew carries its own trust
+  evidence (Jul 16, 2026)**: the published v0.6.0 cask was reproduced in an
+  isolated app directory. Its shared DMG was signed, notarized, and stapled,
+  but the extracted `Portavoz.app` had no stapled ticket; a direct DMG launch
+  retained outer-image trust while a package manager had to obtain the inner
+  ticket online. Distribution now submits and staples the signed app before
+  creating the DMG, then separately notarizes and staples the DMG. The release
+  gate mounts the final image, copies the app out exactly as Homebrew does, and
+  requires independent codesign, stapler, and Gatekeeper acceptance. CI also
+  runs the complete package suite on a `macos-15` Sequoia runner. One packaging
+  architecture case brings the package gate to 654 tests (13 gated), with 244
+  linted Swift sources and 21 UI cases (D74). A clean-machine Homebrew check of
+  the next public artifact remains release evidence, not implementation work.
 
 - **Sequoia stabilization unit 5 complete — model readiness follows the job
   (Jul 16, 2026)**: Refine prepares only its required Whisper runtime and

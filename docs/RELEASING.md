@@ -2,7 +2,7 @@
 
 The end-to-end recipe for cutting a public release: a notarized DMG that
 updates existing users via **Sparkle** and new users via **Homebrew**. Written
-from the real flow (v0.1.0 → v0.5.1, six releases). Follow it top to bottom.
+from the real flow (v0.1.0 → v0.6.0, seven releases). Follow it top to bottom.
 
 Distribution is direct-download only (no App Store) — decision D10/D20.
 
@@ -57,7 +57,10 @@ scripts/make-release.sh <version>      # e.g. 0.5.1
 
 `scripts/make-release.sh` (see its header) does, in order:
 1. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — version-stamps + builds + signs the `.app`.
-2. `make-dmg.sh --skip-build` — packages the DMG, **notarizes** it (waits for Apple `Accepted`), and staples.
+2. `make-dmg.sh --skip-build` — archives and notarizes the signed app, staples
+   and verifies it, packages that app into the DMG, then independently
+   notarizes/staples the DMG. It mounts the result and verifies a copied-out
+   app exactly as Homebrew will consume it.
 3. Generates the **EdDSA-signed `appcast.xml`** (`generate_appcast --account portavoz`).
 4. Renders the Homebrew **cask** with the real version + sha256.
 
@@ -69,10 +72,15 @@ in the background and wait for `Release <version> ready in dist/release/`.
 ### Verify the artifacts before publishing
 
 ```sh
-spctl -a -vvv -t install dist/release/Portavoz-<version>.dmg   # → accepted, source=Notarized Developer ID
+scripts/verify-distribution.sh dist/release/Portavoz-<version>.dmg # DMG + extracted app both accepted/stapled
 grep -E 'sparkle:version|edSignature' dist/release/appcast.xml # version + signature present
 grep -E 'version |sha256 ' dist/release/portavoz.rb            # match the DMG
 ```
+
+The distribution verifier is intentionally stricter than opening the DMG. A
+stapled outer image can open while a cask-extracted app has no embedded ticket
+and must reach Apple's service at first launch. Never publish unless both
+boundaries pass.
 
 ## 4. Publish (outward-facing — get an explicit OK first)
 
@@ -124,6 +132,26 @@ curl -sIL https://github.com/johnny4young/portavoz/releases/download/v<version>/
 
 Existing users now see Sparkle's "Update available"; Homebrew users can
 `brew upgrade --cask portavoz`.
+
+### Reproduce the Homebrew extraction boundary
+
+After the cask workflow is live, install to a disposable app directory instead
+of replacing the maintainer's release app:
+
+```sh
+APPDIR="$(mktemp -d)"
+brew install --cask --appdir="$APPDIR" johnny4young/tap/portavoz
+codesign --verify --deep --strict --verbose=2 "$APPDIR/Portavoz.app"
+xcrun stapler validate "$APPDIR/Portavoz.app"
+spctl -a -vvv -t exec "$APPDIR/Portavoz.app"
+brew uninstall --cask --force portavoz
+```
+
+The release criterion is one additional clean-machine launch on macOS 15
+Sequoia with no previous Portavoz app or Homebrew receipt. If it fails, preserve
+the exact output from
+`brew install --verbose --debug --cask johnny4young/tap/portavoz`; do not infer
+a packaging cause from a paraphrased alert.
 
 ## Undo a bad release
 
