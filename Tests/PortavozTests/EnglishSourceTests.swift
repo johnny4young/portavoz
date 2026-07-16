@@ -122,24 +122,23 @@ final class EnglishSourceTests: XCTestCase {
         if relative == "Sources/portavoz-app/MeetingDetailView.swift", line.contains("Español") {
             return true
         }
-        if relative == "Sources/portavoz-app/AppServices.swift" {
-            return line.contains("Revisemos el presupuesto")
-                || line.contains("El equipo revisó")
-                || line.contains("Se revisará")
-                || line.contains("Cerremos con los próximos")
-                // Seeded Companion cards (D26) — Spanish demo Q&A.
-                || line.contains("¿Cuándo es el rollout")
-                || line.contains("te encargas del presupuesto")
-        }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional
             // prose: the bilingual transcript is what the screenshot shows.
             return true
         }
         if relative == "Sources/portavoz-app/AppServices+UITestFixtures.swift" {
-            // Recipe-history UI fixture: a newer Standup snapshot must
-            // remain visible instead of reverting to the General one.
-            return line.contains("resumen de standup sigue visible")
+            // The deterministic Meeting Detail fixture deliberately carries
+            // Spanish transcript, summary, and Companion evidence.
+            return line.contains("Revisemos el presupuesto")
+                || line.contains("El equipo revisó")
+                || line.contains("Se revisará")
+                || line.contains("Cerremos con los próximos")
+                || line.contains("¿Cuándo es el rollout")
+                || line.contains("te encargas del presupuesto")
+                // Recipe-history UI fixture: a newer Standup snapshot must
+                // remain visible instead of reverting to the General one.
+                || line.contains("resumen de standup sigue visible")
                 || line.contains("presupuesto de transcripción ya fue revisado")
         }
         if relative == "Sources/portavoz-app/BenchMode.swift" {

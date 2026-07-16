@@ -130,7 +130,6 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
             downloadProgress: { size, percent in
                 Task { await progress(.downloadingWhisper(size: size, percent: percent)) }
             })
-        try await services.loadEnginesIfNeeded()
     }
 
     func transcribe(
@@ -148,9 +147,8 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
     }
 
     func diarize(fileURL: URL) async throws -> [SpeakerTurn] {
-        guard let diarizer = services?.diarizer else {
-            throw AppRefineMeetingError.diarizerUnavailable
-        }
+        guard let services else { throw AppRefineMeetingError.servicesUnavailable }
+        let diarizer = try await services.loadDiarizerIfNeeded()
         return try await diarizer.diarizeFile(at: fileURL)
     }
 
@@ -191,5 +189,4 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
 private enum AppRefineMeetingError: Error {
     case servicesUnavailable
     case transcriberUnavailable
-    case diarizerUnavailable
 }

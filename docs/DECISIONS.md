@@ -1633,7 +1633,9 @@ captions would make the later transcript look complete when it is not.
 structural capture channels before reserving and starting audio. The app runtime
 may attach direct live Parakeet streams only when a verified engine is already
 resident. Otherwise it starts or joins one process-wide verified engine task
-after audio is active and exposes a visible deferred-transcript state. Any
+after audio is active and exposes a visible deferred-transcript state. D73
+later splits that preparation into independently deduplicated Parakeet and
+pyannote tasks so recovery joins only Parakeet. Any
 missing or failed live lane marks the recording as requiring complete recovery;
 it never stops audio or its peer lane.
 
@@ -1734,3 +1736,37 @@ adapter keeps Sequoia and macOS 26 behavior consistent, exact provider selection
 makes provenance and user intent trustworthy, and setup failures become a clear
 next action instead of a dead end. The design preserves all three local summary
 engines while honestly limiting only the Foundation-Models-dependent Companion.
+
+## D73 — Speech-model readiness follows the workflow role (Jul 2026)
+
+**Context:** a real Refine request failed after Whisper had downloaded but
+before any transcript generation attempt was persisted. The meeting retained
+two healthy audio channels and zero segments. Replaying copies of the same
+audio and installed Whisper/pyannote models through the CLI succeeded. The app
+adapter nevertheless called the broad live-engine loader during Refine
+preparation, making unrelated Parakeet plus pyannote readiness a prerequisite
+for the Whisper quality pass. The durable first-pass worker similarly loaded
+pyannote before it could publish a Parakeet transcript, so optional attribution
+could block recording recovery.
+
+**Decision:** `AppServices` owns independently serialized Parakeet and pyannote
+load tasks in addition to the existing Whisper preparation task. Concurrent
+callers join the exact capability task. Broad `loadEnginesIfNeeded()` remains
+only as explicit composition for workflows that intentionally require both.
+
+Refine preparation requires only its selected verified Whisper runtime. It
+requests pyannote only after required channel transcription succeeds, and the
+existing ApplicationKit contract degrades that stage to honest unattributed
+segments. Refine never loads Parakeet. External-audio Import requests pyannote
+directly; durable first-pass recovery and Dictation request Parakeet directly;
+voice enrollment requests pyannote directly. Recording background preparation,
+onboarding's explicit model setup, and the recording benchmark may still
+request both. Idle release waits for both independent load tasks and preserves
+the existing hot-window policy.
+
+**Rationale:** a model is a capability, not an all-or-nothing application
+phase. Role-specific readiness prevents unrelated downloads, compilation, or
+optional failures from blocking valid work, while per-capability task sharing
+still prevents duplicate model loads. The change preserves Refine review,
+language, attribution degradation, Import, Dictation, recording recovery, and
+memory-release behavior without introducing a second scheduler or model owner.

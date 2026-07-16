@@ -337,8 +337,7 @@ struct OnboardingView: View {
         Task { @MainActor in
             defer { enrolling = false }
             do {
-                try await services.loadEnginesIfNeeded()
-                guard let diarizer = services.diarizer else { return }
+                let diarizer = try await services.loadDiarizerIfNeeded()
                 let samples: [Float]
                 let sampleRate: Double
                 if reusingFirstListen {

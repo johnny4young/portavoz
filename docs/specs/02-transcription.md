@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness).
 
 ## Roles and engines (D7)
 
@@ -31,8 +31,8 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 
 Recording does not await `ModelStore` downloads or Core ML compilation. The
 app runtime snapshots the currently resident Parakeet instance, starts durable
-mic/system capture, and then joins or starts one process-wide verified engine
-preparation task. The recording UI states that audio is active and the complete
+mic/system capture, and then joins or starts independently deduplicated
+Parakeet and pyannote preparation tasks. The recording UI states that audio is active and the complete
 transcript will appear after local preparation when live captions are deferred.
 
 If no live transcriber existed at Start, or either direct stream throws, the
@@ -43,7 +43,7 @@ mode, no vocabulary, and the current finalized channel IDs, health, checksums,
 durations, and byte counts. Pending evidence, missing-only evidence, and purely
 silent audio cannot produce runnable work.
 
-The process worker revalidates that fingerprint, joins verified model loading,
+The process worker revalidates that fingerprint, joins only verified Parakeet loading,
 and transcribes healthy/clipped system and microphone files through the serial
 batch scheduler while preserving their real `AudioChannel`. Automatic mode
 uses no fixed language and no vocabulary so a mixed Spanish/English meeting is
@@ -97,12 +97,30 @@ pinned model and tokenizer artifact must exist at its exact expected size;
 actual preparation always re-enters `ModelStore` verification/repair before a
 new token can be produced.
 
+### Role-specific speech readiness (D73)
+
+Parakeet, pyannote, and Whisper are independent app-scoped capabilities, not a
+single readiness bundle. Separate retained tasks deduplicate each verified
+load across concurrent callers. Durable first-pass recovery and Dictation ask
+only for Parakeet. Refine prepares only required Whisper before its composite
+transcription attempt and requests only pyannote when best-effort speaker
+attribution begins. External-audio Import also requests pyannote directly and
+never loads Parakeet as an incidental dependency. Explicit onboarding/model
+setup and the recording benchmark remain the only paths that intentionally
+request both live models.
+
+This keeps optional attribution failure from blocking transcript recovery and
+prevents an unrelated live-model compile/download from failing a Whisper
+quality pass. A pyannote failure during Refine still follows the application
+contract below: the draft succeeds with honest unattributed system segments.
+
 ### External audio import (D46)
 
 `ApplicationKit.ImportMeeting` owns the external-file workflow without
 constructing model objects itself. The app processor prepares the shared
 Whisper engine as a required step, reports verified model-download progress,
-and transcribes the copied system-channel file with the once-sampled
+loads only pyannote for its separately degradable attribution step, and
+transcribes the copied system-channel file with the once-sampled
 `TranscriptLanguagePolicy` and vocabulary. Automatic mode leaves the hint nil,
 so a mixed Spanish/English recording keeps each segment's detected language;
 the independently configured summary language never becomes a recognition
@@ -116,7 +134,8 @@ as the released import path is scheduled on every later exit.
 model objects or reading platform settings/files itself. The app adapter
 resolves retained system/microphone channels off the MainActor, samples the
 global transcript policy and vocabulary once, and maps typed progress while the
-use case prepares the shared engines, transcribes, attributes, and builds the
+use case prepares required Whisper, transcribes, requests pyannote only for
+best-effort attribution, and builds the
 reviewable `RefineDraft`. A per-meeting fixed Spanish/English recovery choice
 overrides the sampled policy; automatic mixed-language evidence leaves the
 Whisper hint `nil`, and the aggregate language is recomputed only when the

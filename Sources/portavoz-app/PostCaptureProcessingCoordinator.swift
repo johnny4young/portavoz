@@ -404,8 +404,7 @@ enum PostCaptureProcessingCoordinator {
         // Preserve the released best-effort attribution semantics: model
         // preparation/inference failure degrades to an unattributed system
         // channel, while missing finalized audio remains a durable failure.
-        try? await services.loadEnginesIfNeeded()
-        guard let diarizer = services.diarizer else { return [] }
+        guard let diarizer = try? await services.loadDiarizerIfNeeded() else { return [] }
         return (try? await diarizer.diarizeFile(at: url)) ?? []
     }
 

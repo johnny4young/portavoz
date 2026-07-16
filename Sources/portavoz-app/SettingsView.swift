@@ -577,11 +577,7 @@ extension SettingsView {
         enrolling = true
         defer { enrolling = false }
         do {
-            try await services.loadEnginesIfNeeded()
-            guard let diarizer = services.diarizer else {
-                voiceMessage = L10n.text("The diarizer is not available.")
-                return
-            }
+            let diarizer = try await services.loadDiarizerIfNeeded()
             let microphone = MicrophoneSource()
             let stream = try await microphone.start()
             var samples: [Float] = []

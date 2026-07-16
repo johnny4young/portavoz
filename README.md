@@ -110,7 +110,7 @@ An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked 
 
 ### Models
 
-Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. Whisper Turbo and Compact can also be prepared explicitly in Settings before the first Refine; one app-scoped task keeps running when Settings closes, and Refine/Import join or reuse its verified result. None of the models phone home after download.
+Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. Readiness is role-specific: durable first-pass transcription and dictation load Parakeet only; Refine prepares Whisper only and acquires pyannote later as degradable speaker attribution; external-audio Import also never loads Parakeet as a side effect. Whisper Turbo and Compact can also be prepared explicitly in Settings before the first Refine; one app-scoped task keeps running when Settings closes, and Refine/Import join or reuse its verified result. None of the models phone home after download.
 
 | Model | Role | On-disk | Min RAM |
 |---|---|---|---|

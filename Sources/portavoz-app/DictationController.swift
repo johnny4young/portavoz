@@ -118,10 +118,7 @@ final class DictationController {
         session = Task { [weak self, weak services] in
             guard let self, let services else { return }
             do {
-                try await services.loadEnginesIfNeeded()
-                guard let engine = services.transcriber else {
-                    throw IntelligenceUnavailable()
-                }
+                let engine = try await services.loadTranscriberIfNeeded()
                 let microphone = MicrophoneSource()
                 self.microphone = microphone
                 await microphone.warmUp()

@@ -1,5 +1,4 @@
 import ApplicationKit
-import AVFoundation
 import DiarizationKit
 import Foundation
 import IntelligenceKit
@@ -42,7 +41,9 @@ final class AppServices {
     var modelsState: ModelsState = .unknown
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
-    private var recordingEnginesLoadTask: Task<Void, Error>?
+    @ObservationIgnored var transcriberLoadTask: Task<ParakeetEngine, Error>?
+    @ObservationIgnored var diarizerLoadTask: Task<PyannoteDiarizer, Error>?
+    var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
     var whisperVariantID: String?
     var whisperDownloadState: WhisperDownloadState = .idle
@@ -123,38 +124,88 @@ final class AppServices {
         }
     }
 
-    /// Downloads (verified) + loads both engines on first use. The
-    /// diarizer carries the enrolled voiceprint when one exists.
-    func loadEnginesIfNeeded() async throws {
-        // A fresh use cancels any idle release scheduled by the previous one.
+    /// Loads only the live/batch first-pass transcriber. Offline quality
+    /// passes must not acquire this capability as a side effect.
+    func loadTranscriberIfNeeded() async throws -> ParakeetEngine {
         enginesIdleGeneration += 1
-        if transcriber != nil, diarizer != nil {
-            modelsState = .ready
-            return
-        }
-        if let recordingEnginesLoadTask {
-            try await recordingEnginesLoadTask.value
-            return
+        if let transcriber { return transcriber }
+        if let transcriberLoadTask {
+            let engine = try await transcriberLoadTask.value
+            transcriber = engine
+            return engine
         }
 
+        modelsState = .downloading(L10n.text("Preparing models…"))
         let task = Task { @MainActor in
-            try await self.loadRecordingEngines()
+            try await ParakeetEngine.loadRecommended(store: ModelStore()) { progress in
+                let percent = Int(progress.fraction * 100)
+                Task { @MainActor [weak self] in
+                    self?.modelsState = .downloading(
+                        L10n.format("Downloading transcription model… %d%%", percent))
+                }
+            }
         }
-        recordingEnginesLoadTask = task
+        transcriberLoadTask = task
         do {
-            try await task.value
-            recordingEnginesLoadTask = nil
-            modelsState = .ready
+            let engine = try await task.value
+            transcriber = engine
+            transcriberLoadTask = nil
+            settleModelsState()
+            return engine
         } catch {
-            recordingEnginesLoadTask = nil
+            transcriberLoadTask = nil
             modelsState = .failed(error.localizedDescription)
             throw error
         }
     }
 
-    /// Starts verified model preparation without delaying audio capture. Every
-    /// caller joins `recordingEnginesLoadTask`, so Stop recovery, Refine, and a
-    /// second meeting never race duplicate downloads or model loads.
+    /// Loads only speaker diarization. Refine/Import and durable diarization
+    /// share this task without requiring or duplicating Parakeet.
+    func loadDiarizerIfNeeded() async throws -> PyannoteDiarizer {
+        enginesIdleGeneration += 1
+        if let diarizer { return diarizer }
+        if let diarizerLoadTask {
+            let engine = try await diarizerLoadTask.value
+            diarizer = engine
+            return engine
+        }
+
+        modelsState = .downloading(L10n.text("Preparing models…"))
+        let voiceprint = try? VoiceprintStore().load()
+        let task = Task { @MainActor in
+            try await PyannoteDiarizer.loadRecommended(
+                store: ModelStore(), voiceprint: voiceprint
+            ) { progress in
+                let percent = Int(progress.fraction * 100)
+                Task { @MainActor [weak self] in
+                    self?.modelsState = .downloading(
+                        L10n.format("Downloading diarization model… %d%%", percent))
+                }
+            }
+        }
+        diarizerLoadTask = task
+        do {
+            let engine = try await task.value
+            diarizer = engine
+            diarizerLoadTask = nil
+            settleModelsState()
+            return engine
+        } catch {
+            diarizerLoadTask = nil
+            modelsState = .failed(error.localizedDescription)
+            throw error
+        }
+    }
+
+    /// Explicit readiness for workflows that truly need both models.
+    func loadEnginesIfNeeded() async throws {
+        _ = try await loadTranscriberIfNeeded()
+        _ = try await loadDiarizerIfNeeded()
+        modelsState = .ready
+    }
+
+    /// Starts verified preparation without delaying audio capture. Per-model
+    /// tasks deduplicate concurrent recording, recovery, and offline callers.
     func prepareRecordingEnginesInBackground() {
         guard transcriber == nil || diarizer == nil else {
             modelsState = .ready
@@ -165,59 +216,21 @@ final class AppServices {
         }
     }
 
-    private func loadRecordingEngines() async throws {
-        let modelStore = ModelStore()
-        modelsState = .downloading(L10n.text("Preparing models…"))
-        if transcriber == nil {
-            transcriber = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading(
-                        L10n.format("Downloading transcription model… %d%%", percent))
-                }
-            }
-        }
-        if diarizer == nil {
-            let voiceprint = (try? VoiceprintStore().load())
-            diarizer = try await PyannoteDiarizer.loadRecommended(
-                store: modelStore, voiceprint: voiceprint
-            ) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading(
-                        L10n.format("Downloading diarization model… %d%%", percent))
-                }
-            }
-        }
-    }
-
-    /// Called after enrolling/deleting the voiceprint so the next load
-    /// rebuilds the diarizer with the new identity state.
+    /// Rebuilds diarization with the new identity state on its next use.
     func invalidateDiarizer() {
         diarizer = nil
     }
 
-    /// Drops the live-recording engines (Parakeet + pyannote) so their
-    /// weights leave RAM while the app idles; `loadEnginesIfNeeded()`
-    /// restores them on the next recording. Callers must not hold a
-    /// recording open when they call this.
+    /// Drops idle speech-model weights. In-flight preparation owns its result
+    /// until the workflow schedules a later release.
     func releaseRecordingEngines() {
-        guard recordingEnginesLoadTask == nil else { return }
+        guard transcriberLoadTask == nil, diarizerLoadTask == nil else { return }
         transcriber = nil
         diarizer = nil
         modelsState = .unknown
     }
 
-    /// Bumped by every engine use; a scheduled release only fires if no
-    /// newer use arrived while it slept.
-    private var enginesIdleGeneration = 0
-
-    /// Called when a recording (or refine/import) finishes: keeps the
-    /// engines hot for ten minutes — back-to-back meetings never pay the
-    /// reload — then releases them so a single morning meeting doesn't
-    /// hold hundreds of MB all afternoon. A refine still running when the
-    /// timer fires keeps them (it owns the diarizer); its own completion
-    /// reschedules.
+    /// Keeps speech models hot for back-to-back work, then frees their memory.
     func scheduleRecordingEnginesRelease() {
         enginesIdleGeneration += 1
         let generation = enginesIdleGeneration
@@ -226,6 +239,14 @@ final class AppServices {
             guard let self, generation == self.enginesIdleGeneration else { return }
             guard !self.refines.isRunning else { return }
             self.releaseRecordingEngines()
+        }
+    }
+
+    private func settleModelsState() {
+        if transcriber != nil, diarizer != nil {
+            modelsState = .ready
+        } else if transcriberLoadTask == nil, diarizerLoadTask == nil {
+            modelsState = .unknown
         }
     }
 
@@ -290,129 +311,4 @@ final class AppServices {
         try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen35))
     }
 
-    /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),
-    /// including audio (so the player + waveform are testable) and a summary
-    /// with a coauthoring bullet ("▸") so the D28 render is verifiable
-    /// without a real recording. No-op outside UI testing.
-    ///
-    /// Audio: if the (isolated) audio root already holds a recording — a real
-    /// one dropped there for realistic testing — the seed adopts it;
-    /// otherwise it synthesizes a short two-tone clip (mic tone then system
-    /// tone, so the waveform shows both channel colors).
-    func seedDemoIfRequested() async {
-        guard ProcessInfo.processInfo.arguments.contains("-seed-demo") else { return }
-        guard ((try? await store.meetings()) ?? []).isEmpty else { return }
-
-        let audioDirectory = Self.prepareSeedAudio()
-
-        let meeting = Meeting(
-            title: "Test meeting",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            endedAt: Date(timeIntervalSince1970: 1_700_001_800),
-            language: "es",
-            audioDirectory: audioDirectory)
-        try? await store.save(meeting)
-
-        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
-        let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
-        try? await store.save([me, ana])
-        try? await store.save([
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
-                text: "Revisemos el presupuesto de transcripción.",
-                startTime: 0, endTime: 3, isFinal: true),
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: ana.id, channel: .system,
-                text: "El rollout del modelo queda para el viernes.",
-                startTime: 3, endTime: 6, isFinal: true),
-            // A later turn after a long pause — gives the detail a second
-            // chapter (ChapterExtractor) and more of the user's own audio
-            // for the "only my voice" filter. The UI tests rely on both.
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
-                text: "Cerremos con los próximos pasos del rollout.",
-                startTime: 200, endTime: 205, isFinal: true)
-        ])
-        if !ProcessInfo.processInfo.arguments.contains("-seed-without-summary") {
-            _ = try? await store.saveSummary(
-                SummaryDraft(
-                    meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
-                    markdown: """
-                        El equipo revisó el presupuesto y fijó el rollout.
-
-                        ## Decisiones
-                        - ▸ El rollout del modelo queda para el viernes.
-                        - Se revisará el presupuesto de transcripción.
-                        """,
-                    actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
-            await seedLatestRecipeSummaryIfRequested(for: meeting.id)
-        }
-        try? await store.save([
-            ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
-        ])
-        // Persisted Companion cards (D26) — one answered question and one
-        // "asked you" ping — so the detail's Companion review section renders.
-        try? await store.save([
-            CompanionCard(
-                question: "¿Cuándo es el rollout?", answer: "El rollout queda para el viernes.",
-                kind: .context, source: "on-device", askedAt: 6),
-            CompanionCard(
-                question: "Ana, ¿te encargas del presupuesto?", answer: "",
-                kind: .context, source: "on-device", directed: true, askedAt: 200)
-        ], for: meeting.id)
-        seedRunningRefineIfRequested(for: meeting.id)
-        seedJustRecordedIfRequested(for: meeting.id)
-        libraryVersion += 1
-    }
-
-    /// Ensures the seeded meeting has audio, returning its DB-relative
-    /// directory ("Audio/<uuid>") or nil if none could be prepared.
-    private static func prepareSeedAudio() -> String? {
-        let manager = FileManager.default
-        let audioBase = audioRoot.appendingPathComponent("Audio", isDirectory: true)
-
-        // Adopt a real recording already sitting in the (isolated) root.
-        if let existing = try? manager.contentsOfDirectory(
-            at: audioBase, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]),
-            let dir = existing.first(where: { url in
-                ["microphone.caf", "microphone.wav", "system.caf", "system.wav"]
-                    .contains { manager.fileExists(atPath: url.appendingPathComponent($0).path) }
-            }) {
-            return "Audio/\(dir.lastPathComponent)"
-        }
-
-        // Otherwise synthesize a two-tone clip.
-        let uuid = UUID().uuidString
-        let dir = audioBase.appendingPathComponent(uuid, isDirectory: true)
-        guard (try? manager.createDirectory(at: dir, withIntermediateDirectories: true)) != nil
-        else { return nil }
-        let ok =
-            writeTone(dir.appendingPathComponent("microphone.wav"), frequency: 220, activeHalf: .first)
-            && writeTone(dir.appendingPathComponent("system.wav"), frequency: 440, activeHalf: .second)
-        return ok ? "Audio/\(uuid)" : nil
-    }
-
-    private enum ActiveHalf { case first, second }
-
-    /// Writes a 6-second mono WAV: a tone in one half, silence in the other,
-    /// so the two channels take turns leading the waveform.
-    private static func writeTone(_ url: URL, frequency: Double, activeHalf: ActiveHalf) -> Bool {
-        let rate = 16_000.0
-        guard
-            let format = AVAudioFormat(
-                commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false),
-            let file = try? AVAudioFile(forWriting: url, settings: format.settings),
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(rate * 6))
-        else { return false }
-        let frames = Int(rate * 6)
-        buffer.frameLength = AVAudioFrameCount(frames)
-        let samples = buffer.floatChannelData![0]
-        let half = frames / 2
-        for i in 0..<frames {
-            let inActiveHalf = activeHalf == .first ? i < half : i >= half
-            samples[i] =
-                inActiveHalf ? 0.5 * Float(sin(2 * Double.pi * frequency * Double(i) / rate)) : 0
-        }
-        return (try? file.write(from: buffer)) != nil
-    }
 }

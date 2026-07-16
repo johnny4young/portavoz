@@ -275,6 +275,50 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
     }
 
+    func testSpeechModelReadinessIsScopedToTheWorkflowCapability() throws {
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let readiness = services
+        let refine = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+RefineMeeting.swift")
+        let importAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ImportMeeting.swift")
+        let recovery = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureTranscriptionProcessor.swift")
+
+        let refinePrepareStart = try XCTUnwrap(refine.range(of: "func prepare("))
+        let refineTranscribeStart = try XCTUnwrap(refine.range(
+            of: "func transcribe(", range: refinePrepareStart.upperBound..<refine.endIndex))
+        let refinePreparation = refine[
+            refinePrepareStart.lowerBound..<refineTranscribeStart.lowerBound]
+        XCTAssertTrue(refinePreparation.contains("loadWhisperIfNeeded"))
+        XCTAssertFalse(
+            refinePreparation.contains("loadEnginesIfNeeded"),
+            "Refine readiness requires Whisper only; diarization remains degradable")
+        XCTAssertTrue(refine.contains("services.loadDiarizerIfNeeded()"))
+
+        let transcriberStart = try XCTUnwrap(readiness.range(
+            of: "func loadTranscriberIfNeeded()"))
+        let diarizerStart = try XCTUnwrap(readiness.range(
+            of: "func loadDiarizerIfNeeded()", range: transcriberStart.upperBound..<readiness.endIndex))
+        let broadLoaderStart = try XCTUnwrap(readiness.range(
+            of: "func loadEnginesIfNeeded()", range: diarizerStart.upperBound..<readiness.endIndex))
+        let transcriberLoader = readiness[
+            transcriberStart.lowerBound..<diarizerStart.lowerBound]
+        let diarizerLoader = readiness[
+            diarizerStart.lowerBound..<broadLoaderStart.lowerBound]
+        XCTAssertTrue(transcriberLoader.contains("ParakeetEngine.loadRecommended"))
+        XCTAssertFalse(transcriberLoader.contains("PyannoteDiarizer"))
+        XCTAssertTrue(diarizerLoader.contains("PyannoteDiarizer.loadRecommended"))
+        XCTAssertFalse(diarizerLoader.contains("ParakeetEngine"))
+        XCTAssertTrue(services.contains("transcriberLoadTask"))
+        XCTAssertTrue(services.contains("diarizerLoadTask"))
+
+        XCTAssertTrue(importAdapter.contains("services.loadDiarizerIfNeeded()"))
+        XCTAssertFalse(importAdapter.contains("services.loadEnginesIfNeeded()"))
+        XCTAssertTrue(recovery.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertFalse(recovery.contains("services.loadEnginesIfNeeded()"))
+    }
+
     func testSettingsWhisperDownloadUsesAppScopedVerifiedPreparation() throws {
         let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
         let models = try Self.contents(

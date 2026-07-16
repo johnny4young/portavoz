@@ -27,10 +27,7 @@ enum PostCaptureTranscriptionProcessor {
             throw ProcessorError.inputSuperseded
         }
 
-        try await services.loadEnginesIfNeeded()
-        guard let transcriber = services.transcriber else {
-            throw ProcessorError.transcriberUnavailable
-        }
+        let transcriber = try await services.loadTranscriberIfNeeded()
         let segments = try await transcriptionSegments(
             assets: assets,
             meetingID: job.meetingID,
@@ -163,7 +160,6 @@ private enum ProcessorError: LocalizedError {
     case inputNotReady
     case inputSuperseded
     case meetingUnavailable
-    case transcriberUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -177,8 +173,6 @@ private enum ProcessorError: LocalizedError {
             "The transcription input changed before processing completed."
         case .meetingUnavailable:
             "The meeting is no longer available."
-        case .transcriberUnavailable:
-            "The verified local transcription engine is unavailable."
         }
     }
 }

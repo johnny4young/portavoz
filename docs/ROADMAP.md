@@ -17,8 +17,10 @@ third unit exposes proactive app-scoped Whisper preparation that survives
 Settings and is reused by Refine/Import. The fourth unit makes Summary and
 Companion capability-aware on Sequoia, honors the selected summary engine
 exactly, and routes setup failures directly to Intelligence Settings. The
-remaining units diagnose the reported Refine failure and the Homebrew-versus-
-DMG installation difference. Then resume
+fifth unit isolates speech-model readiness so Refine no longer depends on live
+Parakeet and durable first-pass recovery no longer depends on optional
+diarization. The only remaining stabilization unit is the reported Homebrew-
+versus-DMG installation difference. Then resume
 [refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
 privacy receipt from content-free generation provenance and classified egress
 metadata. Slices 3G-a and 3G-b moved every current meeting-content HTTP path
@@ -36,7 +38,18 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73).
+
+- **Sequoia stabilization unit 5 complete — model readiness follows the job
+  (Jul 16, 2026)**: Refine prepares only its required Whisper runtime and
+  acquires only pyannote when speaker attribution begins; the live Parakeet
+  engine is no longer a hidden prerequisite. Per-model tasks deduplicate
+  concurrent users. External-audio Import requests diarization alone, durable
+  first-pass recovery and Dictation request transcription alone, and a failed
+  optional diarizer can no longer block a saved recording's transcript.
+  Existing Refine degradation still returns honest unattributed segments.
+  One architecture characterization brings the gate to 653 package tests (13
+  gated), 244 linted Swift source files, and 21 UI cases (D73).
 
 - **Sequoia stabilization unit 4 complete — intelligence setup is explicit
   (Jul 16, 2026)**: one app-owned Foundation Models capability now drives

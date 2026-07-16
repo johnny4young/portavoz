@@ -141,7 +141,7 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
 
     func prepareDiarizer() async throws {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
-        try await services.loadEnginesIfNeeded()
+        _ = try await services.loadDiarizerIfNeeded()
     }
 
     func transcribe(

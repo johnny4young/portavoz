@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 16, 2026
 
+- **✨ Refine loads only what Refine needs** — The quality pass no longer waits for or fails with the unrelated live-caption model. Whisper starts the draft, speaker separation joins only when needed, and a diarization problem still leaves an honest reviewable transcript instead of losing the whole pass.
 - **🧭 Intelligence that fits your Mac** — Sequoia now gets a feasible local summary choice instead of an impossible Apple default. Generate Summary takes you straight to the right setup, your selected provider never changes behind your back, and Companion clearly explains when macOS 26 is required.
 - **⬇️ Whisper ready before Refine** — Prepare Turbo or Compact directly from Settings, keep the verified download running after that window closes, and let Refine or Import reuse it instead of making the first quality pass feel stuck.
 - **🎙️ Record now, transcribe safely after** — A fresh Mac no longer makes you wait for local speech models before the first recording. Portavoz starts saving audio immediately, prepares verified models in the background, and durably recovers the complete transcript after Stop if live captions were not ready or one caption lane failed.
