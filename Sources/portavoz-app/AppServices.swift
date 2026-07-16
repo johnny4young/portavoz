@@ -43,8 +43,14 @@ final class AppServices {
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
     private var recordingEnginesLoadTask: Task<Void, Error>?
-    private(set) var whisper: WhisperEngine?
-    private var whisperVariantID: String?
+    var whisper: WhisperEngine?
+    var whisperVariantID: String?
+    var whisperDownloadState: WhisperDownloadState = .idle
+    @ObservationIgnored var whisperPreparedModel: WhisperEngine.PreparedModel?
+    @ObservationIgnored var whisperPreparation: WhisperPreparation?
+    @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
+    @ObservationIgnored var whisperProgressObservers: [UUID: WhisperProgressObserver] = [:]
+    var whisperIdleGeneration = 0
 
     /// Compatibility trigger for Spotlight's full local reindex. Library,
     /// Insights, and Meeting Detail reads are scoped observations instead.
@@ -181,41 +187,6 @@ final class AppServices {
         }
     }
 
-    /// The D7 quality re-pass engine — loaded on the first refine, then
-    /// shared. The variant follows the "Whisper compacto" preference (turbo
-    /// 1.6 GB vs. 626 MB for low disk, M12); switching it reloads.
-    func loadWhisperIfNeeded(
-        descriptor requestedDescriptor: ModelDescriptor? = nil,
-        progress: @escaping @MainActor (String) -> Void,
-        downloadProgress: (@MainActor (String, Int) -> Void)? = nil
-    ) async throws -> WhisperEngine {
-        let descriptor = requestedDescriptor ?? Self.preferredWhisperDescriptor()
-        let compact = descriptor.id == ModelCatalog.whisperLargeV3_626MB.id
-        // A fresh use cancels any idle release scheduled by the previous one.
-        whisperIdleGeneration += 1
-        if let whisper, whisperVariantID == descriptor.id { return whisper }
-        let size = compact ? "626 MB" : "1.6 GB"
-        let engine = try await WhisperEngine.loadRecommended(
-            store: ModelStore(), descriptor: descriptor
-        ) { update in
-            guard update.totalBytes > 0 else { return }
-            let percent = Int(update.fraction * 100)
-            Task { @MainActor in
-                downloadProgress?(size, percent)
-                progress(L10n.format("Downloading Whisper (%@, one time only)… %d%%", size, percent))
-            }
-        }
-        whisper = engine
-        whisperVariantID = descriptor.id
-        return engine
-    }
-
-    static func preferredWhisperDescriptor() -> ModelDescriptor {
-        UserDefaults.standard.bool(forKey: "whisperCompact")
-            ? ModelCatalog.whisperLargeV3_626MB
-            : ModelCatalog.whisperLargeV3Turbo
-    }
-
     /// Called after enrolling/deleting the voiceprint so the next load
     /// rebuilds the diarizer with the new identity state.
     func invalidateDiarizer() {
@@ -254,30 +225,6 @@ final class AppServices {
         }
     }
 
-    /// Drops the Whisper quality-pass engine (1.6 GB resident) once the
-    /// refine/import that needed it is done; the next one reloads it.
-    func releaseWhisper() {
-        whisper = nil
-        whisperVariantID = nil
-    }
-
-    /// Bumped by every Whisper use; a scheduled release only fires if no
-    /// newer use arrived while it slept.
-    private var whisperIdleGeneration = 0
-
-    /// Called when a refine/import finishes: keeps Whisper hot for two
-    /// minutes (back-to-back refines skip the reload), then releases it so
-    /// one quality pass never costs 1.6 GB for the rest of the day.
-    func scheduleWhisperRelease() {
-        whisperIdleGeneration += 1
-        let generation = whisperIdleGeneration
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(120))
-            guard let self, generation == self.whisperIdleGeneration else { return }
-            self.releaseWhisper()
-        }
-    }
-
     // MARK: - Summary engine (D25/M12)
 
     var summaryEngine: SummaryEngine {
@@ -304,6 +251,11 @@ final class AppServices {
 
     // MARK: - Embedded MLX model (D25 last mile)
 
+    static func modelDir(_ descriptor: ModelDescriptor) -> URL {
+        ModelStore.defaultRootDirectory.appendingPathComponent(
+            descriptor.folderName, isDirectory: true)
+    }
+
     var mlxDownloaded: Bool {
         FileManager.default.fileExists(
             atPath: Self.modelDir(ModelCatalog.mlxQwen35)
@@ -323,60 +275,6 @@ final class AppServices {
 
     func deleteMLXModel() {
         try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen35))
-    }
-
-    // MARK: - Whisper variants on disk (M12)
-
-    struct WhisperVariant: Identifiable {
-        let id: String
-        let compact: Bool
-        let downloaded: Bool
-        /// On-disk bytes if downloaded, else the catalog's expected size.
-        let bytes: Int64
-    }
-
-    /// The model directory is deterministic (root + folderName), so this
-    /// stays off the ModelStore actor.
-    static func modelDir(_ descriptor: ModelDescriptor) -> URL {
-        ModelStore.defaultRootDirectory.appendingPathComponent(
-            descriptor.folderName, isDirectory: true)
-    }
-
-    func whisperVariants() -> [WhisperVariant] {
-        func make(_ descriptor: ModelDescriptor, compact: Bool) -> WhisperVariant {
-            let dir = Self.modelDir(descriptor)
-            let downloaded = FileManager.default.fileExists(atPath: dir.path)
-            return WhisperVariant(
-                id: descriptor.id, compact: compact, downloaded: downloaded,
-                bytes: downloaded ? Self.directorySize(dir) : Int64(descriptor.totalSizeBytes))
-        }
-        return [
-            make(ModelCatalog.whisperLargeV3Turbo, compact: false),
-            make(ModelCatalog.whisperLargeV3_626MB, compact: true)
-        ]
-    }
-
-    func deleteWhisperVariant(_ id: String) {
-        let descriptor =
-            id == ModelCatalog.whisperLargeV3_626MB.id
-            ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
-        try? FileManager.default.removeItem(at: Self.modelDir(descriptor))
-        if whisperVariantID == id {
-            whisper = nil
-            whisperVariantID = nil
-        }
-    }
-
-    private static func directorySize(_ url: URL) -> Int64 {
-        guard
-            let enumerator = FileManager.default.enumerator(
-                at: url, includingPropertiesForKeys: [.fileSizeKey])
-        else { return 0 }
-        var total: Int64 = 0
-        for case let file as URL in enumerator {
-            total += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
-        }
-        return total
     }
 
     /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),

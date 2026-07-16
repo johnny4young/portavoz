@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation).
 
 ## Roles and engines (D7)
 
@@ -75,6 +75,27 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
 - Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.
 - `timings.inputAudioSeconds` under-reports with VAD → duration comes from the file.
+
+### Proactive verified preparation (D71)
+
+`WhisperEngine.prepare` downloads and verifies the selected Turbo/Compact
+descriptor plus the shared tokenizer through `ModelStore`, reporting one byte
+progress domain across both stores. It returns an opaque `PreparedModel` whose
+directories cannot be constructed outside TranscriptionKit.
+`loadPrepared` is the only runtime-allocation path after that split and still
+sets `download: false`.
+
+The macOS composition root serializes one preparation task across Settings,
+Refine, and external-audio Import. Settings can start it explicitly, and its
+lifetime is independent from the Settings window. Matching consumers join the
+active task; a different variant waits rather than starting a second large
+transfer. Successful verification leaves the opaque token app-scoped so the
+first later quality pass does not hash the full model again, while the loaded
+Whisper runtime still releases after two idle minutes. Deleting that variant
+invalidates its token and runtime. Persisted readiness is conservative: every
+pinned model and tokenizer artifact must exist at its exact expected size;
+actual preparation always re-enters `ModelStore` verification/repair before a
+new token can be produced.
 
 ### External audio import (D46)
 

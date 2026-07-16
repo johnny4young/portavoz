@@ -275,6 +275,21 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
     }
 
+    func testSettingsWhisperDownloadUsesAppScopedVerifiedPreparation() throws {
+        let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
+        let models = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
+        let engine = try Self.contents(of: "Sources/TranscriptionKit/WhisperEngine.swift")
+
+        XCTAssertTrue(settings.contains("services.prepareWhisperVariant(variant.id)"))
+        XCTAssertFalse(settings.contains("ModelStore()"))
+        XCTAssertTrue(models.contains("whisperBackgroundPreparation"))
+        XCTAssertTrue(models.contains("whisperPreparedModel = prepared"))
+        XCTAssertTrue(models.contains("finishWhisperPreparation(active)"))
+        XCTAssertTrue(engine.contains("public struct PreparedModel"))
+        XCTAssertTrue(engine.contains("return try await loadPrepared(prepared)"))
+    }
+
     func testAppLaunchRecoveryEntersThroughApplicationKitBeforeWorkerResume() throws {
         let coordinator = try Self.contents(
             of: "Sources/portavoz-app/RecordingRecoveryCoordinator.swift")

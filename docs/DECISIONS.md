@@ -1656,3 +1656,41 @@ and honest without weakening verified downloads, mixed-language preservation,
 the live-vs-batch scheduling rule, or the existing lease/revision fences. A
 single durable recovery path also handles no-live-model, failed-lane, Stop, and
 relaunch cases instead of creating UI-only retries.
+
+## D71 — Whisper preparation is app-scoped, proactive, and verified (Jul 2026)
+
+**Context:** Settings exposed the Turbo/Compact quality choice but not an
+explicit preparation action. A clean installation discovered the 626 MB or
+1.6 GB transfer only after the user pressed Refine, making a long verified
+download look like a failed meeting operation. A download owned by the
+Settings view would be equally misleading because closing the window could
+cancel it. Discarding successful verification evidence would also force the
+first Refine to hash the full model again after Settings reported it ready.
+
+**Decision:** the app composition root owns one serialized Whisper preparation
+task across Settings, Refine, and external-audio Import. Settings exposes
+separate proactive Download/Try again/Delete actions and observable progress
+for Turbo and Compact. Closing or navigating away from Settings never cancels
+the transfer. Refine and Import join the matching active task; a request for
+the other variant waits for the current preparation to finish before starting
+its own. The UI considers a persisted variant complete only when every pinned
+model and tokenizer artifact exists at its exact catalog size, while the
+preparation path always delegates integrity verification and repair to
+`ModelStore`.
+
+`TranscriptionKit` separates preparation from runtime allocation. Only it can
+construct the opaque `WhisperEngine.PreparedModel` after the selected model and
+shared tokenizer pass the pinned store boundary. `AppServices` retains that
+token after background completion so later Refine/Import can load without a
+second full verification pass; the heavyweight Whisper runtime still follows
+the existing two-minute idle-release policy. Deleting the matching variant
+invalidates both the token and any loaded runtime. XCUITest temp stores force a
+deterministic missing-model state without reading or modifying the user's real
+model directory.
+
+**Rationale:** model transfer is product readiness, not incidental progress
+inside a meeting action. App-scoped ownership makes progress truthful across
+window lifetimes, one task prevents duplicate multi-gigabyte transfers, and an
+opaque verified token makes an unverified runtime load unrepresentable without
+keeping 1.6 GB resident. Refine remains explicit and reviewable; this decision
+changes readiness UX, not transcript language or acceptance semantics.

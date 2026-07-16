@@ -1521,12 +1521,32 @@
         }
       }
     },
+    "Download failed: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La descarga falló: %@"
+          }
+        }
+      }
+    },
     "Downloaded · ": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Descargado · "
+          }
+        }
+      }
+    },
+    "Downloading in background… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando en segundo plano… %d%%"
           }
         }
       }
@@ -2241,6 +2261,16 @@
         }
       }
     },
+    "Loading Whisper…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando Whisper…"
+          }
+        }
+      }
+    },
     "Live captions need macOS 26; your words never left this Mac either way.": {
       "localizations": {
         "es": {
@@ -2647,6 +2677,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ahora no"
+          }
+        }
+      }
+    },
+    "Not downloaded · ": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin descargar · "
           }
         }
       }
@@ -4111,12 +4151,12 @@
         }
       }
     },
-    "The quality re-pass (Refine) uses Whisper. Turbo is the default; the compact variant saves about 1 GB of disk. Choose by selecting a row.": {
+    "Download Whisper here before your first Refine. Preparation continues when Settings closes, and Refine joins the same verified download instead of starting another one. Turbo is the default; Compact saves about 1 GB of disk.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El re-pase de calidad (Refine) usa Whisper. Turbo es el predeterminado; la variante compacta ahorra alrededor de 1 GB de disco. Elige seleccionando una fila."
+            "value": "Descarga Whisper aquí antes de tu primer Refine. La preparación continúa al cerrar Configuración y Refine se une a la misma descarga verificada en lugar de iniciar otra. Turbo es el predeterminado; Compact ahorra cerca de 1 GB de disco."
           }
         }
       }

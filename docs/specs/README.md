@@ -24,7 +24,7 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 ## Related documents (outside specs/)
 
-- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D70 and their rationale. The specs cite them by number.
+- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D71 and their rationale. The specs cite them by number.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) — high-level engineering and design rules.
 - [../refactor-20260714.md](../refactor-20260714.md) — approved target architecture, migration bands, commit protocol, and acceptance criteria. It is a plan; this folder remains as-built truth.
 - [../ROADMAP.md](../ROADMAP.md) — phases and milestones with acceptance criteria.

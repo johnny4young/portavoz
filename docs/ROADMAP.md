@@ -13,8 +13,10 @@ submillisecond in-memory recording reservation, so normal capture commits
 immediately instead of relying on launch recovery. The second unit makes audio
 capture independent of initial Parakeet downloads and durably recovers a full
 transcript after Stop when live captions were unavailable or failed. The
-remaining units expose proactive Whisper preparation and honest Summary/
-Companion capability guidance, and diagnose the
+third unit exposes proactive app-scoped Whisper preparation that survives
+Settings and is reused by Refine/Import. The remaining units add honest
+Summary/Companion capability guidance, diagnose the reported Refine failure,
+and diagnose the
 Homebrew-versus-DMG installation difference. Then resume
 [refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
 privacy receipt from content-free generation provenance and classified egress
@@ -33,7 +35,18 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71).
+
+- **Sequoia stabilization unit 3 complete — Whisper can be ready before
+  Refine (Jul 16, 2026)**: Settings now exposes proactive Download, retry,
+  progress, and safe deletion for Turbo and Compact. One app-scoped serialized
+  task survives the Settings window; Refine and external-audio Import join the
+  matching transfer rather than duplicating it. TranscriptionKit alone creates
+  an opaque token after the pinned model and tokenizer pass ModelStore, and the
+  app retains that evidence without retaining the heavyweight runtime. The
+  clean-install Settings assertion, a 25th architecture rule, and existing
+  ModelStore integrity cases bring the gate to 647 package tests (13 gated),
+  240 linted Swift source files, and 20 UI cases (D71).
 
 - **Sequoia stabilization unit 2 complete — audio starts before models (Jul
   16, 2026)**: Start now warms the microphone, selects channels, reserves the

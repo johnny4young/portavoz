@@ -155,6 +155,11 @@ struct SettingsView: View {
             whisperVariants = services.whisperVariants()
             Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
         }
+        .onChange(of: services.whisperDownloadState) { _, state in
+            if case .ready = state {
+                whisperVariants = services.whisperVariants()
+            }
+        }
     }
 }
 
@@ -660,41 +665,21 @@ extension SettingsView {
             Text("Refine model (Whisper large-v3)")
                 .font(.callout.weight(.medium))
             ForEach(whisperVariants) { variant in
-                let active = variant.compact == whisperCompact
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: active ? "largecircle.fill.circle" : "circle")
-                        .foregroundStyle(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(
-                            variant.compact
-                                ? "Compact — less disk" : "Turbo — best quality"
-                        )
-                        .font(.callout)
-                        Text(
-                            (variant.downloaded ? "Downloaded · " : "Downloads on refine · ")
-                                + ByteCountFormatter.string(
-                                    fromByteCount: variant.bytes, countStyle: .file)
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if variant.downloaded && !active {
-                        Button("Delete") {
-                            services.deleteWhisperVariant(variant.id)
-                            whisperVariants = services.whisperVariants()
-                        }
-                        .controlSize(.small)
-                        .help("Free disk used by the variant you do not use")
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { whisperCompact = variant.compact }
+                WhisperModelRow(
+                    variant: variant,
+                    active: variant.compact == whisperCompact,
+                    downloadState: services.whisperDownloadState,
+                    select: { whisperCompact = variant.compact },
+                    download: { services.prepareWhisperVariant(variant.id) },
+                    delete: {
+                        services.deleteWhisperVariant(variant.id)
+                        whisperVariants = services.whisperVariants()
+                    })
             }
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "The quality re-pass (Refine) uses Whisper. Turbo is the default; the compact variant saves about 1 GB of disk. Choose by selecting a row."
+                "Download Whisper here before your first Refine. Preparation continues when Settings closes, and Refine joins the same verified download instead of starting another one. Turbo is the default; Compact saves about 1 GB of disk."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

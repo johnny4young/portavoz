@@ -58,7 +58,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. A fresh install records immediately instead of waiting for local speech-model downloads; verified models prepare in the background, and Stop admits an exact durable recovery job when live captions were unavailable or a lane failed. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. On launch, staging-only or final-only files are revalidated and restored; ambiguous copies are preserved rather than guessed at.
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
-- **Whisper refine** — a cancellable maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting to recover one that came out wrong.
+- **Whisper refine** — prepare Turbo or Compact proactively in Settings; the verified download continues after Settings closes and Refine/Import reuse it. The cancellable maximum-quality re-pass becomes a draft you approve (never a silent overwrite), at 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting only to recover one that came out wrong.
 - **Import any audio** — drag in a recording or a `.portavoz` bundle. Recordings are transcribed, diarized, and summarized like a live capture; bundles restore the remapped transcript, summary, notes, Companion, and validated optional audio as one all-or-nothing meeting. Large files stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
 
 **Understand the meeting**
@@ -110,7 +110,7 @@ An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked 
 
 ### Models
 
-Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. None of the models phone home after download.
+Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. Whisper Turbo and Compact can also be prepared explicitly in Settings before the first Refine; one app-scoped task keeps running when Settings closes, and Refine/Import join or reuse its verified result. None of the models phone home after download.
 
 | Model | Role | On-disk | Min RAM |
 |---|---|---|---|

@@ -26,6 +26,16 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-language").waitForExistence(timeout: 5),
             "the Intelligence pane must separate summary output from spoken language")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-whisper-turbo").waitForExistence(timeout: 5),
+            "the Intelligence pane must expose the Turbo Whisper variant")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-whisper-download-turbo").exists,
+            "a clean install must offer proactive Whisper preparation before Refine")
+        let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        attachment.name = "sequoia-whisper-background-settings"
+        attachment.lifetime = .keepAlways
+        add(attachment)
 
         // Your data shows the export action.
         app.control(withIdentifier: "settings-category-data").click()

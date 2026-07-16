@@ -1,14 +1,14 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 646 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 20 cases and retained Meeting Detail, Library, Insights, and post-meeting mirror screenshots; earlier automation-mode harness failures remain documented below.
+Status: 647 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 20 cases and retained Meeting Detail, Library, Insights, post-meeting mirror, and proactive Whisper Settings screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 238 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 240 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/bundle-import/bundle-export/refine/Start/Stop/recovery bypass prevention, audio-first Start source guard (no awaited model load before capture), launch ordering, route/window-scoped Library, Insights, and Meeting Detail read ownership without global reload, inward ownership/consumption of local policy clusters, Core ownership of the neutral event value, the Sendable async use-case contract, and no direct Companion BYOK, OpenAI-compatible summary, Gist, GitHub Issue, or Linear Issue network bypass around `DataEgressGateway` |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/bundle-import/bundle-export/refine/Start/Stop/recovery bypass prevention, audio-first Start source guard (no awaited model load before capture), app-scoped verified Whisper preparation with no Settings-owned ModelStore, launch ordering, route/window-scoped Library, Insights, and Meeting Detail read ownership without global reload, inward ownership/consumption of local policy clusters, Core ownership of the neutral event value, the Sendable async use-case contract, and no direct Companion BYOK, OpenAI-compatible summary, Gist, GitHub Issue, or Linear Issue network bypass around `DataEgressGateway` |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
@@ -498,6 +498,16 @@ complete baseline is 646 package tests (13 gated), strict SwiftLint is clean
 across 238 Swift source files, and all 20 XCUITest cases pass. Fresh app-window
 evidence confirms the deterministic Meeting Detail surface remains healthy
 (D70).
+
+The proactive Whisper stabilization adds a 25th architecture dependency rule:
+Settings may request preparation but cannot construct a ModelStore; the app
+composition root owns the background task and retained token; and
+TranscriptionKit exposes an opaque verified preparation/load split. The
+clean-install Settings XCUITest requires a proactive Turbo download action and
+keeps a screenshot of that pane. Existing ModelStore corruption/repair cases
+remain the integrity contract. The complete baseline is 647 package tests (13
+gated), strict SwiftLint is clean across 240 Swift source files, and all 20
+XCUITest cases pass (D71).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
