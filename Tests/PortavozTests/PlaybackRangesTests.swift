@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-@testable import IntegrationsKit
+@testable import ApplicationKit
 
 final class PlaybackRangesTests: XCTestCase {
     func testComplementIsTheGapsAroundVoiceRanges() {

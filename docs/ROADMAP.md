@@ -7,21 +7,34 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): begin narrowing
-`IntegrationsKit` with a characterized meeting-review policy slice. Move the
-pure `ChapterExtractor`, `PlaybackRanges`, `SummarySections`, and `VoiceHue`
-policies to an inward application/domain boundary, update their app and test
-consumers, and add a dependency rule that prevents those
-policies from returning to the outbound-adapter Kit. Preserve every chapter,
-summary-tab, only-my-voice, and speaker-color behavior exactly; external bundle,
-GitHub/Linear/Gist, calendar, and RAG adapters remain in IntegrationsKit.
+program in [refactor-20260714.md](refactor-20260714.md): move the characterized
+Insights read-policy cluster (`InsightsScope`, `LibraryStats`, and
+`InsightsFindings`) from `IntegrationsKit` to `ApplicationKit`. Preserve scope
+cutoffs, rhythm heatmaps, participant/talk-time totals, no-decision findings,
+and recurring-topic behavior exactly; add the matching inward-boundary rule.
+Treat `BriefRelevance`, reminder/mirror policy, and every external bundle,
+GitHub/Linear/Gist, calendar, RAG, and MCP adapter as separate parity slices.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55).
+
+- **Architecture Band 2 slice 2O complete — meeting review policy is inward
+  (Jul 15, 2026)**: `ApplicationKit` now owns the deterministic
+  `ChapterExtractor`, `PlaybackRanges`, `SummarySections`, and `VoiceHue`
+  policies. Meeting Detail, Insights, recording captions, and the app design
+  system consume them through the application boundary; `IntegrationsKit` no
+  longer owns their source files. Sixteen architecture rules prevent the four
+  policies from returning to the outbound layer and require every direct app
+  consumer to import `ApplicationKit`. The existing 18 policy tests preserve
+  chapter boundaries, safe voice-range complements, language-agnostic summary
+  tabs, and stable speaker hues. The verified baseline is 574 package tests
+  (13 gated), 222 linted Swift files, and 19 UI cases; retained XCUITest
+  screenshots cover Meeting Detail review and Library voice mix. No visible
+  behavior, schema, dependency edge, or localized copy changed (D55).
 
 - **Architecture Band 2 slice 2N complete — Library reads only what changed
   (Jul 15, 2026)**: ApplicationKit now owns storage-independent Library row,

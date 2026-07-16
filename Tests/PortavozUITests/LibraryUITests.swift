@@ -42,6 +42,8 @@ final class LibraryUITests: XCTestCase {
             app.staticTexts["Earlier"].exists || app.staticTexts["Antes"].exists,
             "an old meeting must sit under the Earlier bucket")
 
+        attachScreenshot(of: app, named: "band-2o-library-voice-mix")
+
         // Search crosses the SwiftUI binding, feature-model debounce, and
         // real FTS projection before publishing a new Library snapshot.
         let search = app.textFields["library-search-field"]

@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationKit
-import IntegrationsKit
 import PortavozCore
 import SwiftUI
 
@@ -123,7 +122,7 @@ enum VoicePalette {
             colorScheme: colorScheme)
     }
 
-    /// Color for a speaker (index from `VoiceHue.index` — IntegrationsKit,
+    /// Color for a speaker (index from `VoiceHue.index` — ApplicationKit,
     /// pure and tested).
     static func color(index: Int, colorScheme: ColorScheme) -> Color {
         let hues = colorScheme == .dark ? darkHues : lightHues

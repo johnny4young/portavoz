@@ -254,6 +254,31 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(trash.contains("services."))
     }
 
+    func testMeetingReviewPoliciesStayInsideApplicationKit() throws {
+        let policies = [
+            "ChapterExtractor", "PlaybackRanges", "SummarySections", "VoiceHue",
+        ]
+        for policy in policies {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: Self.repoRoot
+                    .appendingPathComponent("Sources/ApplicationKit/\(policy).swift").path),
+                "\(policy) must remain an inward ApplicationKit policy")
+            XCTAssertFalse(
+                FileManager.default.fileExists(atPath: Self.repoRoot
+                    .appendingPathComponent("Sources/IntegrationsKit/\(policy).swift").path),
+                "\(policy) must not return to the outbound integration layer")
+        }
+
+        for consumer in [
+            "InsightsView.swift", "MeetingDetailView.swift", "PVDesign.swift", "RecordingView.swift",
+        ] {
+            XCTAssertTrue(
+                try Self.contents(of: "Sources/portavoz-app/\(consumer)")
+                    .contains("import ApplicationKit"),
+                "\(consumer) must consume meeting-review policy through ApplicationKit")
+        }
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

@@ -1047,3 +1047,32 @@ search to FTS5 shadow-table internals. This is a read-path refactor only:
 schema v6, `DatabaseQueue`, user-visible behavior, and every existing Library
 control remain unchanged. `DatabasePool` still requires measured contention
 evidence before adoption.
+
+## D55 — Meeting-review product policy belongs inward, not with adapters (Jul 2026)
+
+**Context:** `IntegrationsKit` mixed external-system and serialization adapters
+with four deterministic policies used directly by app presentation:
+`ChapterExtractor`, `PlaybackRanges`, `SummarySections`, and `VoiceHue`. None
+performs I/O, depends on GRDB, calls an external service, or translates an
+external format. Their placement made the integration layer appear necessary
+for chaptering, only-my-voice playback, summary tabs, and speaker colors even
+though those behaviors are local product decisions.
+
+**Decision:** ApplicationKit owns the four policies as separate source files.
+Meeting Detail, Insights, recording captions, and the app design system import
+ApplicationKit for them; their unit tests target the same inward boundary. An
+architecture rule requires all four files to exist under ApplicationKit, be
+absent from IntegrationsKit, and have each direct app consumer import
+ApplicationKit. PortavozCore does not absorb them because they are
+cross-feature product/read policy rather than portable entity invariants.
+IntegrationsKit retains external adapters and its remaining Insights, brief,
+reminder, and mirror policy debt until each cluster receives its own
+characterization slice.
+
+**Rationale:** source ownership now follows semantics instead of historical
+convenience, reducing adapter-layer fan-in without creating a new target or
+dependency edge. The existing 18 tests preserve exact chapter boundaries,
+duration-clamped playback complements, language-agnostic section parsing, and
+stable normalized-name hues. Moving the files changes no schema, UI control,
+localized copy, or runtime result, and the rule prevents gradual boundary
+regression while the rest of IntegrationsKit narrows incrementally.

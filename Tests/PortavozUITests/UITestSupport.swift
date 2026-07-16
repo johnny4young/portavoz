@@ -56,3 +56,15 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 }
+
+extension XCTestCase {
+    @MainActor
+    func attachScreenshot(of app: XCUIApplication, named name: String) {
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.exists, "the app window must exist before capturing evidence")
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
