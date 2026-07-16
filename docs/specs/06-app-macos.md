@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62 (atomic summary provenance).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62/D63 (atomic manual and durable summary provenance).
 
 ## Structure
 
@@ -284,6 +284,19 @@ with durable retries and one scheduled wake instead of polling. The user's
 post-meeting Shortcut runs after terminal derived work, including
 transcript-only completion when summary is unavailable; temp-store launches
 suppress real host Shortcuts (D50).
+
+Each actual durable summary model attempt begins only after the worker has
+validated its meeting, request, provider, and recomputed operation fingerprint.
+Immediately before the provider call it snapshots content-free provider/model,
+job ID/attempt, recipe, output-language, and transcript-revision metadata. Its
+successful `GenerationRun` is required by `SummaryArtifact` and commits with the
+summary/actions, job success, and lifecycle reconciliation under the existing
+lease/revision fence. Post-attempt provider/publish failures are recorded as
+failed runs; task cancellation, lease loss, and superseded input are cancelled
+runs. Both are best effort so diagnostics cannot mask durable retry policy.
+Provider unavailability and pre-attempt supersession create no run. The
+temp-store processing fixture identifies its deterministic provider/model and
+exercises this same production path in the durable-resume XCUITest (D63).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
 - **Refine (D7/D35/D47 in-app)**: `ApplicationKit.RefineMeeting` re-transcribes retained non-silent channels with Whisper (+vocabulary), then applies microphone noise/bleed filtering and best-effort diarization. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. On acceptance, `ApplyRefinedMeeting` atomically installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale draft is rejected. Companion refresh runs only afterward and preserves prior cards on incomplete work; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).

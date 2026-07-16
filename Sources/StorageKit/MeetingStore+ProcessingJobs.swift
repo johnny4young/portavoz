@@ -167,9 +167,10 @@ extension MeetingStore {
         }
     }
 
-    /// Inserts an immutable summary snapshot and completes its owned job in
-    /// one transaction. The material-cache fingerprint on `SummaryDraft` is
-    /// preserved, while the separate operation fingerprint fences the job.
+    /// Inserts generation provenance plus an immutable summary snapshot and
+    /// completes its owned job in one transaction. The material-cache
+    /// fingerprint on `SummaryDraft` is preserved, while the separate
+    /// operation fingerprint fences both the job and its generation run.
     public func completeSummaryJob(
         _ id: ProcessingJobID,
         owner: String,
@@ -189,8 +190,11 @@ extension MeetingStore {
             try Self.requireRevision(
                 artifact.sourceTranscriptRevision, for: record, meeting: meeting)
             try Self.requireSummaryOwners(artifact.draft, in: db)
-            let version = try Self.insertSummarySnapshot(
-                artifact.draft, at: timestamp, in: db)
+            let version = try Self.insertGeneratedSummary(
+                artifact.draft,
+                generationRun: artifact.generationRun,
+                at: timestamp,
+                in: db)
             let enqueued = try Self.enqueueFollowUps(
                 followUpRequests, after: record, at: timestamp, in: db)
             let completed = try Self.succeed(&record, at: timestamp, in: db)
@@ -543,6 +547,7 @@ extension MeetingStore {
     private static func validateSummaryArtifact(_ artifact: SummaryArtifact) throws {
         let draft = artifact.draft
         guard isCanonical(artifact.inputFingerprint),
+            artifact.generationRun.inputFingerprint == artifact.inputFingerprint,
             artifact.sourceTranscriptRevision >= 0,
             isCanonical(draft.recipeID),
             isCanonical(draft.language),

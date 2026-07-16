@@ -88,20 +88,24 @@ public struct DiarizationArtifact: Sendable {
 /// An immutable summary result tied to the transcript revision and full
 /// operation fingerprint claimed by its worker. `draft.fingerprint` keeps its
 /// existing material-cache semantics and is deliberately separate because it
-/// excludes output language (D25).
+/// excludes output language (D25). `generationRun` is the successful model
+/// attempt that must cross the same durable publication fence (D63).
 public struct SummaryArtifact: Sendable {
     public let inputFingerprint: String
     public let sourceTranscriptRevision: Int
     public let draft: SummaryDraft
+    public let generationRun: GenerationRun
 
     public init(
         inputFingerprint: String,
         sourceTranscriptRevision: Int,
-        draft: SummaryDraft
+        draft: SummaryDraft,
+        generationRun: GenerationRun
     ) {
         self.inputFingerprint = inputFingerprint
         self.sourceTranscriptRevision = sourceTranscriptRevision
         self.draft = draft
+        self.generationRun = generationRun
     }
 }
 

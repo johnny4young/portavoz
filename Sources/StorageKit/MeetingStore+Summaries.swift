@@ -86,32 +86,47 @@ extension MeetingStore {
         generationRun: GenerationRun
     ) async throws -> Int {
         try await database.write { db in
-            try Self.validateTerminalGenerationRun(generationRun)
-            guard generationRun.meetingID == draft.meetingID else {
-                throw StorageError.invalidGenerationRun(
-                    "summary and run belong to different meetings")
-            }
-            guard generationRun.kind == .summary,
-                  generationRun.outcome == .succeeded
-            else {
-                throw StorageError.invalidGenerationRun(
-                    "a linked summary requires a succeeded summary run")
-            }
-            guard generationRun.outputLanguage == draft.language else {
-                throw StorageError.invalidGenerationRun(
-                    "summary and run output languages differ")
-            }
             let meetingKey = draft.meetingID.rawValue.uuidString
             guard try MeetingRecord.exists(db, key: meetingKey) else {
                 throw StorageError.meetingNotFound(draft.meetingID)
             }
-            try GenerationRunRecord(generationRun).insert(db)
-            return try Self.insertSummarySnapshot(
+            return try Self.insertGeneratedSummary(
                 draft,
+                generationRun: generationRun,
                 at: generationRun.finishedAt ?? generationRun.startedAt,
-                generationRunID: generationRun.id,
                 in: db)
         }
+    }
+
+    /// Transaction-scoped primitive shared by manual regeneration and the
+    /// durable summary worker. The caller owns aggregate/lease/revision guards.
+    static func insertGeneratedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun,
+        at timestamp: Date,
+        in db: Database
+    ) throws -> Int {
+        try validateTerminalGenerationRun(generationRun)
+        guard generationRun.meetingID == draft.meetingID else {
+            throw StorageError.invalidGenerationRun(
+                "summary and run belong to different meetings")
+        }
+        guard generationRun.kind == .summary,
+              generationRun.outcome == .succeeded
+        else {
+            throw StorageError.invalidGenerationRun(
+                "a linked summary requires a succeeded summary run")
+        }
+        guard generationRun.outputLanguage == draft.language else {
+            throw StorageError.invalidGenerationRun(
+                "summary and run output languages differ")
+        }
+        try GenerationRunRecord(generationRun).insert(db)
+        return try insertSummarySnapshot(
+            draft,
+            at: timestamp,
+            generationRunID: generationRun.id,
+            in: db)
     }
 
     /// Transaction-scoped primitive shared by direct saves and durable job
@@ -160,7 +175,7 @@ extension MeetingStore {
         return version
     }
 
-    private static func validateTerminalGenerationRun(_ run: GenerationRun) throws {
+    static func validateTerminalGenerationRun(_ run: GenerationRun) throws {
         let required = [run.providerID, run.modelID, run.inputFingerprint, run.configJSON]
         guard required.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
         else { throw StorageError.invalidGenerationRun("required identity is blank") }

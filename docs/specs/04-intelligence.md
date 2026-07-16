@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62 (atomic summary-generation provenance).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62/D63 (atomic manual and durable summary-generation provenance).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -67,7 +67,7 @@ Slice 2E adds D45 active-snapshot semantics: after successful regeneration,
 Meeting Detail reloads the newest live immutable snapshot across recipes rather
 than defaulting to General. Per-recipe version history is unchanged.
 
-### Manual summary-generation provenance (D62)
+### Summary-generation provenance (D62/D63)
 
 Each actual `RegenerateSummary` provider operation now produces a typed
 `GenerationRun`. Direct Ollama/MLX/Foundation Models generation records a
@@ -88,8 +88,26 @@ immutable summary, and action items commit in one StorageKit transaction. A
 persistence failure still returns the released `completed(persisted: false)`
 result, and provider failures retain their existing silent versus visible
 presentation. Accepted Refine invokes this same regeneration use case after its
-transcript commit, so its follow-up summary is covered. Durable post-capture and
-import summaries remain later Band 3 producers.
+transcript commit, so its follow-up summary is covered.
+
+The durable post-capture executor uses the same envelope with a different
+operation identity. It snapshots the selected provider/model, durable job ID
+and attempt, `generate` operation, General recipe, target language, source
+transcript revision, and exact `SummaryOperationFingerprint` immediately before
+the provider call. Ollama records its configured model; MLX records the pinned
+Qwen 3.5 catalog ID/revision; Apple records `system-language-model`; the
+disposable UI fixture records its deterministic fixture model. Its metrics are
+the same aggregate output byte/action counts and contain no meeting content.
+
+Success is not published independently: the run, immutable summary/actions,
+job success, and lifecycle reconciliation share the existing owner-
+lease/source-revision-fenced transaction. A provider or publish failure after
+model start writes a best-effort failed run; task cancellation, lease loss, or
+superseded input writes a cancelled run. Provider unavailability or input
+supersession before the attempt produces no run. Every retry therefore receives
+its real durable attempt number without changing the worker's released retry,
+optional degradation, provider fallback, immediate-detail, or Shortcut policy.
+External-audio import summaries remain the next Band 3 producer.
 
 Slice 2F routes the optional import summary through
 `ApplicationKit.ImportMeeting` and an app-owned provider resolver. The use case

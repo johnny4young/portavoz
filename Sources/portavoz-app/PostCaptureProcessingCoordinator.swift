@@ -12,6 +12,99 @@ import TranscriptionKit
 struct SummaryProviderSelection: Sendable {
     let provider: any SummaryProvider
     let providerID: String
+    let modelID: String
+    let modelRevision: String?
+}
+
+/// Immutable metadata captured immediately before one durable model attempt.
+/// Its JSON payloads deliberately exclude meeting content.
+struct PostCaptureSummaryGenerationAttempt: Sendable {
+    let jobID: ProcessingJobID
+    let jobAttempt: Int
+    let meetingID: MeetingID
+    let providerID: String
+    let modelID: String
+    let modelRevision: String?
+    let inputFingerprint: String
+    let recipeID: String
+    let outputLanguage: String
+    let sourceTranscriptRevision: Int
+    let startedAt: Date
+
+    init(
+        job: ProcessingJob,
+        request: SummaryRequest,
+        selection: SummaryProviderSelection,
+        sourceTranscriptRevision: Int,
+        startedAt: Date = Date()
+    ) {
+        jobID = job.id
+        jobAttempt = job.attempt
+        meetingID = job.meetingID
+        providerID = selection.providerID
+        modelID = selection.modelID
+        modelRevision = selection.modelRevision
+        inputFingerprint = job.inputFingerprint
+        recipeID = request.recipe.id
+        outputLanguage = request.targetLanguage
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.startedAt = startedAt
+    }
+
+    func finish(
+        outcome: GenerationRunOutcome,
+        draft: SummaryDraft?,
+        at finishedAt: Date = Date(),
+        id: GenerationRunID = GenerationRunID()
+    ) -> GenerationRun {
+        GenerationRun(
+            id: id,
+            meetingID: meetingID,
+            kind: .summary,
+            providerID: providerID,
+            modelID: modelID,
+            modelRevision: modelRevision,
+            inputFingerprint: inputFingerprint,
+            configJSON: Self.json(Configuration(
+                attempt: jobAttempt,
+                jobID: jobID.rawValue.uuidString,
+                operation: "generate",
+                recipeID: recipeID,
+                sourceTranscriptRevision: sourceTranscriptRevision,
+                workflow: "post-capture")),
+            outputLanguage: outputLanguage,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
+            outcome: outcome,
+            metricsJSON: draft.map {
+                Self.json(Metrics(
+                    actionItemCount: $0.actionItems.count,
+                    outputUTF8Bytes: $0.markdown.utf8.count))
+            })
+    }
+
+    private static func json<Value: Encodable>(_ value: Value) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(value),
+              let json = String(data: data, encoding: .utf8)
+        else { return "{}" }
+        return json
+    }
+
+    private struct Configuration: Encodable {
+        let attempt: Int
+        let jobID: String
+        let operation: String
+        let recipeID: String
+        let sourceTranscriptRevision: Int
+        let workflow: String
+    }
+
+    private struct Metrics: Encodable {
+        let actionItemCount: Int
+        let outputUTF8Bytes: Int
+    }
 }
 
 /// Owns one process-level drain plus one future retry wake. Producers may
@@ -256,14 +349,35 @@ enum PostCaptureProcessingCoordinator {
             throw WorkerError.inputSuperseded
         }
 
-        let draft = try await selection.provider.summarize(request)
-        _ = try await services.store.completeSummaryJob(
-            job.id,
-            owner: owner,
-            artifact: SummaryArtifact(
-                inputFingerprint: fingerprint,
-                sourceTranscriptRevision: detail.meeting.transcriptRevision,
-                draft: draft))
+        let attempt = PostCaptureSummaryGenerationAttempt(
+            job: job,
+            request: request,
+            selection: selection,
+            sourceTranscriptRevision: detail.meeting.transcriptRevision)
+        var generatedDraft: SummaryDraft?
+        do {
+            let draft = try await selection.provider.summarize(request)
+            generatedDraft = draft
+            _ = try await services.store.completeSummaryJob(
+                job.id,
+                owner: owner,
+                artifact: SummaryArtifact(
+                    inputFingerprint: fingerprint,
+                    sourceTranscriptRevision: detail.meeting.transcriptRevision,
+                    draft: draft,
+                    generationRun: attempt.finish(
+                        outcome: .succeeded,
+                        draft: draft)))
+        } catch {
+            let outcome: GenerationRunOutcome = error.isCancelledGenerationAttempt
+                ? .cancelled
+                : .failed
+            // Failure provenance is best effort so diagnostics cannot mask
+            // the durable worker's existing lease/retry/cancellation policy.
+            try? await services.store.saveGenerationRun(
+                attempt.finish(outcome: outcome, draft: generatedDraft))
+            throw error
+        }
         await runPostMeetingShortcut(for: job.meetingID, services: services)
     }
 
@@ -497,7 +611,9 @@ extension AppServices {
         if arguments.contains("-seed-processing"), arguments.contains("-use-temp-store") {
             return SummaryProviderSelection(
                 provider: ProcessingFixtureSummaryProvider(),
-                providerID: ProcessingFixtureSummaryProvider.providerID)
+                providerID: ProcessingFixtureSummaryProvider.providerID,
+                modelID: "fixture-summary",
+                modelRevision: "1")
         }
 
         switch summaryEngine {
@@ -505,14 +621,18 @@ extension AppServices {
             if let model = ollamaModel {
                 return SummaryProviderSelection(
                     provider: OllamaService.summaryProvider(model: model),
-                    providerID: OllamaService.providerID(model: model))
+                    providerID: OllamaService.providerID(model: model),
+                    modelID: model,
+                    modelRevision: nil)
             }
         case .mlx:
             if mlxDownloaded {
                 return SummaryProviderSelection(
                     provider: MLXSummaryProvider(
                         modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35)),
-                    providerID: MLXSummaryProvider.providerID)
+                    providerID: MLXSummaryProvider.providerID,
+                    modelID: ModelCatalog.mlxQwen35.id,
+                    modelRevision: ModelCatalog.mlxQwen35.revision)
             }
         case .appleOnDevice:
             break
@@ -522,7 +642,9 @@ extension AppServices {
             FoundationModelSummaryProvider.unavailabilityReason() == nil {
             return SummaryProviderSelection(
                 provider: FoundationModelSummaryProvider(),
-                providerID: FoundationModelSummaryProvider.providerID)
+                providerID: FoundationModelSummaryProvider.providerID,
+                modelID: "system-language-model",
+                modelRevision: nil)
         }
         return nil
     }
@@ -581,6 +703,12 @@ private enum WorkerError: LocalizedError {
 }
 
 private extension Error {
+    var isCancelledGenerationAttempt: Bool {
+        self is CancellationError
+            || isSupersededProcessingInput
+            || (self as? StorageError)?.isLeaseLoss == true
+    }
+
     var isSupersededProcessingInput: Bool {
         if let worker = self as? WorkerError, case .inputSuperseded = worker {
             return true

@@ -1313,3 +1313,41 @@ make pivot fallback and cancellation explainable, and the no-run cache rule
 keeps provenance semantically honest. The provider order, cache behavior,
 failure asymmetry, immutable history, visible summary, schema version, and
 local-first privacy remain unchanged.
+
+## D63 — Durable summary provenance shares the processing fence (Jul 2026)
+
+**Context:** the post-capture summary worker already claimed an owner-bound
+lease, recomputed an exact operation fingerprint, rejected stale transcript
+revisions, and atomically published a summary with job success. Adding
+provenance outside that boundary could record a successful model run whose
+artifact lost its lease or became stale, or publish an artifact without the
+run that explains it. Retries also need attempt-level history without copying
+private meeting material into diagnostics.
+
+**Decision:** `SummaryArtifact` requires a typed successful `GenerationRun`.
+The durable worker creates its immutable attempt only after the meeting,
+request, provider, and exact operation fingerprint have passed preflight, and
+immediately before invoking the provider. Its content-free configuration names
+the durable job and attempt, `generate` operation, recipe, source transcript
+revision, and `post-capture` workflow. Provider and model identity follow the
+actual selection: configured Ollama model, pinned MLX catalog ID/revision,
+Apple's system language model, or the deterministic UI fixture. Metrics contain
+only output UTF-8 bytes and action-item count.
+
+StorageKit inserts that successful run, immutable summary, action items, job
+success, and lifecycle reconciliation inside the existing
+owner-lease/source-revision transaction. Run and artifact fingerprints must
+match. A late transaction failure rolls all of them back. Once a model attempt
+has begun, provider or publish failure records a standalone best-effort failed
+run; task cancellation, lease loss, or superseded input records a cancelled
+run. Provider unavailability or input supersession before model start records
+nothing because no attempt occurred. Retry, optional-summary degradation,
+provider fallback, immediate Meeting Detail availability, and post-meeting
+Shortcut timing keep their released behavior.
+
+**Rationale:** the processing fence is the only authority that can truthfully
+declare both a durable job and its generated artifact successful. Requiring the
+run at the artifact type boundary makes missing provenance unrepresentable,
+while separate terminal attempts explain wasted or cancelled model work without
+weakening retry semantics or creating a second private corpus. The schema,
+visible summary, and local-first behavior remain unchanged.

@@ -48,6 +48,28 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         return (speaker, segment)
     }
 
+    private func summaryRun(
+        meetingID: MeetingID,
+        inputFingerprint: String,
+        language: String = "es",
+        id: GenerationRunID = GenerationRunID()
+    ) -> GenerationRun {
+        GenerationRun(
+            id: id,
+            meetingID: meetingID,
+            kind: .summary,
+            providerID: "durable-test",
+            modelID: "test-model",
+            modelRevision: "test-revision",
+            inputFingerprint: inputFingerprint,
+            configJSON: "{}",
+            outputLanguage: language,
+            startedAt: now,
+            finishedAt: now.addingTimeInterval(0.5),
+            outcome: .succeeded,
+            metricsJSON: "{}")
+    }
+
     func testEnqueueIsAtomicIdempotentAndAdvancesMeeting() async throws {
         let store = try MeetingStore.inMemory()
         let captured = meeting()
@@ -340,7 +362,10 @@ final class ProcessingJobPersistenceTests: XCTestCase {
                         language: "es",
                         markdown: "# Resumen",
                         actionItems: [],
-                        fingerprint: "material-1")),
+                        fingerprint: "material-1"),
+                    generationRun: summaryRun(
+                        meetingID: captured.id,
+                        inputFingerprint: fingerprint)),
                 at: now.addingTimeInterval(1))
             XCTFail("a stale transcript revision must reject the artifact")
         } catch StorageError.processingJobInputChanged(let id) {
@@ -348,7 +373,9 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         }
 
         let absentSummary = try await store.summary(captured.id)
+        let absentRuns = try await store.generationRuns(for: captured.id)
         XCTAssertNil(absentSummary)
+        XCTAssertTrue(absentRuns.isEmpty)
         let jobs = try await store.processingJobs(for: captured.id)
         XCTAssertEqual(jobs.first?.state, .running)
     }
@@ -374,23 +401,6 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             markdown: "# Resumen durable",
             actionItems: [ActionItem(text: "Enviar plan", ownerSpeakerID: cast.speaker.id)],
             fingerprint: "material-2")
-
-        let commit = try await store.completeSummaryJob(
-            claim.id,
-            owner: "worker-a",
-            artifact: SummaryArtifact(
-                inputFingerprint: fingerprint,
-                sourceTranscriptRevision: 2,
-                draft: draft),
-            at: now.addingTimeInterval(1))
-        XCTAssertEqual(commit.completedJob.state, .succeeded)
-        XCTAssertEqual(commit.artifactVersion, 1)
-        XCTAssertTrue(commit.enqueuedJobs.isEmpty)
-        let storedSummary = try await store.summary(captured.id)
-        let readyDetail = try await detail(captured.id, in: store)
-        XCTAssertEqual(storedSummary?.draft.markdown, "# Resumen durable")
-        XCTAssertEqual(readyDetail.meeting.lifecycleState, .ready)
-
         do {
             _ = try await store.completeSummaryJob(
                 claim.id,
@@ -398,7 +408,46 @@ final class ProcessingJobPersistenceTests: XCTestCase {
                 artifact: SummaryArtifact(
                     inputFingerprint: fingerprint,
                     sourceTranscriptRevision: 2,
-                    draft: draft),
+                    draft: draft,
+                    generationRun: summaryRun(
+                        meetingID: captured.id,
+                        inputFingerprint: "another-operation")),
+                at: now.addingTimeInterval(0.75))
+            XCTFail("the run must carry the exact job operation fingerprint")
+        } catch StorageError.invalidProcessingJob(let reason) {
+            XCTAssertTrue(reason.contains("canonical identity"))
+        }
+        let runID = GenerationRunID()
+        let artifact = SummaryArtifact(
+            inputFingerprint: fingerprint,
+            sourceTranscriptRevision: 2,
+            draft: draft,
+            generationRun: summaryRun(
+                meetingID: captured.id,
+                inputFingerprint: fingerprint,
+                id: runID))
+
+        let commit = try await store.completeSummaryJob(
+            claim.id,
+            owner: "worker-a",
+            artifact: artifact,
+            at: now.addingTimeInterval(1))
+        XCTAssertEqual(commit.completedJob.state, .succeeded)
+        XCTAssertEqual(commit.artifactVersion, 1)
+        XCTAssertTrue(commit.enqueuedJobs.isEmpty)
+        let storedSummary = try await store.summary(captured.id)
+        let linkedRun = try await store.generationRun(forSummary: captured.id)
+        let readyDetail = try await detail(captured.id, in: store)
+        XCTAssertEqual(storedSummary?.draft.markdown, "# Resumen durable")
+        XCTAssertEqual(linkedRun?.id, runID)
+        XCTAssertEqual(linkedRun?.inputFingerprint, fingerprint)
+        XCTAssertEqual(readyDetail.meeting.lifecycleState, .ready)
+
+        do {
+            _ = try await store.completeSummaryJob(
+                claim.id,
+                owner: "worker-a",
+                artifact: artifact,
                 at: now.addingTimeInterval(2))
             XCTFail("a committed lease cannot publish the artifact twice")
         } catch StorageError.processingJobLeaseLost(let id) {
@@ -406,6 +455,62 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         }
         let repeatedDetail = try await detail(captured.id, in: store)
         XCTAssertEqual(repeatedDetail.summaries.count, 1)
+    }
+
+    func testSummaryCompletionRollsBackRunAndArtifactWhenJobCommitFails() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        _ = try await seedCast(for: captured.id, in: store)
+        let fingerprint = "summary:rollback"
+        _ = try await store.enqueueProcessingJobs(
+            for: captured.id,
+            requests: [ProcessingJobRequest(kind: .summary, inputFingerprint: fingerprint)],
+            at: now)
+        let claimValue = try await store.claimNextProcessingJob(
+            kinds: [.summary], owner: "worker-a", leaseDuration: 30, at: now)
+        let claim = try XCTUnwrap(claimValue)
+        try await store.database.write { db in
+            try db.execute(sql: """
+                CREATE TRIGGER reject_summary_completion
+                BEFORE UPDATE OF state ON processingJob
+                WHEN NEW.state = 'succeeded'
+                BEGIN
+                    SELECT RAISE(ABORT, 'forced summary completion failure');
+                END
+                """)
+        }
+
+        do {
+            _ = try await store.completeSummaryJob(
+                claim.id,
+                owner: "worker-a",
+                artifact: SummaryArtifact(
+                    inputFingerprint: fingerprint,
+                    sourceTranscriptRevision: 0,
+                    draft: SummaryDraft(
+                        meetingID: captured.id,
+                        recipeID: Recipe.general.id,
+                        language: "es",
+                        markdown: "# Must roll back",
+                        actionItems: [],
+                        fingerprint: "material-rollback"),
+                    generationRun: summaryRun(
+                        meetingID: captured.id,
+                        inputFingerprint: fingerprint)),
+                at: now.addingTimeInterval(1))
+            XCTFail("the injected job failure must abort provenance and artifact")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("forced summary completion failure"))
+        }
+
+        let storedSummary = try await store.summary(captured.id)
+        let runs = try await store.generationRuns(for: captured.id)
+        XCTAssertNil(storedSummary)
+        XCTAssertTrue(runs.isEmpty)
+        let jobs = try await store.processingJobs(for: captured.id)
+        XCTAssertEqual(jobs.first?.state, .running)
+        XCTAssertEqual(jobs.first?.leaseOwner, "worker-a")
     }
 
     func testClaimHonorsWorkerKindsAndSkipsDeletedMeetings() async throws {

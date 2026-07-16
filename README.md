@@ -141,7 +141,7 @@ real vertical use case.
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic summary provenance, durable leased job queue, local vector index |
+| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic manual and durable summary provenance, durable leased job queue, local vector index |
 | `IntegrationsKit` | GitHub/Linear/Gist, EventKit calendar, RAG, bundle/export, and MCP adapters |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.

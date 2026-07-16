@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62 (atomic summary provenance).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62/D63 (atomic manual and durable summary provenance).
 
 ## Database
 
@@ -21,7 +21,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `companionCard` (v5) | id, meetingID (FK CASCADE), question, answer, kind, source, directed, askedAt, createdAt/updatedAt/deletedAt — reviewable Companion snapshot (D26) |
 | `audioAsset` (v6) | id, meetingID, channel, role, unique relativePath, optional finalized media metadata/checksum/levels, healthStatus, sourceAssetID lineage, createdAt/updatedAt/supersededAt/deletedAt |
 | `processingJob` (v6) | durable job state, priority/progress, retries, scheduling/lease/error timestamps; UNIQUE meetingID+kind+inputFingerprint |
-| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine successful summaries now link atomically; failed/cancelled attempts persist separately (D62) |
+| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine and durable post-capture successful summaries now link atomically; failed/cancelled attempts persist separately (D62/D63) |
 | `outboxEvent` (v6) | idempotent external-side-effect envelope with delivery state, attempts, and retry/delivery timestamps |
 | `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
@@ -150,10 +150,14 @@ Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
 `cancelProcessingJob`, `nextScheduledProcessingDate`, and
 `recoverExpiredProcessingJobs`. Claims and scheduled wakes are capability-
-filtered and owner-fenced; generated work must use its artifact completion API, while the
-generic completion path remains available only to non-content jobs. Storage
+filtered and owner-fenced; generated work must use its artifact completion API,
+while the generic completion path remains available only to non-content jobs.
+`SummaryArtifact` requires the successful generation run whose operation
+fingerprint matches the job. `completeSummaryJob` validates that run and inserts
+it with the immutable summary/actions, job success, and lifecycle
+reconciliation inside the same lease/revision-fenced transaction. Storage
 derives meeting lifecycle rather than asking callers to save a second,
-potentially inconsistent aggregate state.
+potentially inconsistent aggregate state (D63).
 
 `meetingExportSnapshot(_:)` is the dedicated read-side aggregate for sharing.
 One GRDB read loads the live meeting, cast, ordered transcript, newest summary
@@ -268,14 +272,16 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 ## Known limits
 
 1. No SQLCipher (optional and planned, PRODUCT/security).
-2. Manual/post-refine regeneration now writes validated terminal
-   `generationRun` records. A succeeded run, immutable summary, and its action
-   items commit atomically; exact cache hits create no run; failed/cancelled
-   attempts persist separately on a best-effort basis. The Store exposes typed
-   run history and summary-link lookup, rejects orphaned success and malformed
-   or mismatched links, and stores no meeting content in config/metrics.
-   Durable post-capture/import summaries, transcript/refine artifacts, and
-   Companion remain later Band 3 producers (D62).
+2. Manual/post-refine regeneration and durable post-capture generation now
+   write validated terminal `generationRun` records. Manual success commits run,
+   immutable summary, and actions together; durable success additionally shares
+   the job's lease/revision-fenced completion and lifecycle transaction. Exact
+   cache hits and pre-attempt durable exits create no run; post-attempt failures
+   and cancellations persist separately on a best-effort basis. The Store
+   exposes typed run history and summary-link lookup, rejects orphaned success
+   and malformed or mismatched links, and stores no meeting content in config/
+   metrics. Import summaries, transcript/refine artifacts, and Companion remain
+   later Band 3 producers (D62/D63).
 3. `visibility` reserved and unused (sharing D12).
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
