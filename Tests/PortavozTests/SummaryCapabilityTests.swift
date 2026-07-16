@@ -47,7 +47,8 @@ final class SummaryCapabilityTests: XCTestCase {
             defaultEngine: .ollama,
             ollamaModel: nil,
             mlxModelDirectory: nil,
-            foundationModelsCapability: .available)
+            foundationModelsCapability: .available,
+            gateway: TestDataEgressGateway())
 
         switch resolver.resolve(override: nil) {
         case .unavailable(.ollamaModelNotSelected):
@@ -62,7 +63,8 @@ final class SummaryCapabilityTests: XCTestCase {
             defaultEngine: .mlx,
             ollamaModel: nil,
             mlxModelDirectory: nil,
-            foundationModelsCapability: .available)
+            foundationModelsCapability: .available,
+            gateway: TestDataEgressGateway())
 
         switch resolver.resolve(override: nil) {
         case .unavailable(.mlxModelNotDownloaded):

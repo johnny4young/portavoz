@@ -11,19 +11,39 @@ final class MeetingDetailObservationTests: XCTestCase {
         var core = store.observeMeetingReviewCore(meeting.id).makeAsyncIterator()
         var summary = store.observeMeetingReviewSummary(meeting.id).makeAsyncIterator()
         var companion = store.observeMeetingReviewCompanionCards(meeting.id).makeAsyncIterator()
+        var privacy = store.observeMeetingReviewPrivacyReceipt(meeting.id).makeAsyncIterator()
 
         let initialCore = try await nextCore(&core)
         let initialSummary = try await nextSummary(&summary)
         let initialCompanion = try await nextCompanion(&companion)
+        let initialPrivacy = try await nextPrivacy(&privacy)
         XCTAssertNil(initialCore)
         XCTAssertNil(initialSummary)
         XCTAssertTrue(initialCompanion.isEmpty)
+        XCTAssertNil(initialPrivacy)
 
         try await store.save(meeting)
         let insertedCore = try await nextCore(&core) { $0?.meeting.id == meeting.id }
         _ = try await nextSummary(&summary)
         _ = try await nextCompanion(&companion)
+        let insertedPrivacy = try await nextPrivacy(&privacy) { $0 != nil }
         XCTAssertEqual(insertedCore?.meeting.title, "Planning")
+        XCTAssertEqual(insertedPrivacy?.status, .allContentStayedOnDevice)
+
+        try await store.recordDataEgressEvent(DataEgressEvent(
+            meetingID: meeting.id,
+            operation: .summaryGeneration,
+            destinationScope: .remote,
+            destinationHost: "api.example.com",
+            dataClassification: .meetingSummaryMaterial,
+            consentSource: .summaryEngineSettings,
+            providerID: "api.example.com",
+            modelID: "summary-model",
+            attemptedAt: Date()))
+        let remotePrivacy = try await nextPrivacy(&privacy) {
+            $0?.status == .remoteTransferAttempted
+        }
+        XCTAssertEqual(remotePrivacy?.remoteEvents.count, 1)
 
         let speaker = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
         let segment = TranscriptSegment(
@@ -73,9 +93,11 @@ final class MeetingDetailObservationTests: XCTestCase {
         let deletedCore = try await nextCore(&core) { $0 == nil }
         let deletedSummary = try await nextSummary(&summary) { $0 == nil }
         let deletedCards = try await nextCompanion(&companion) { $0.isEmpty }
+        let deletedPrivacy = try await nextPrivacy(&privacy) { $0 == nil }
         XCTAssertNil(deletedCore)
         XCTAssertNil(deletedSummary)
         XCTAssertTrue(deletedCards.isEmpty)
+        XCTAssertNil(deletedPrivacy)
 
         try await store.restore(meeting.id)
         let restoredCore = try await nextCore(&core) { $0?.segments.count == 1 }
@@ -83,11 +105,15 @@ final class MeetingDetailObservationTests: XCTestCase {
             $0?.draft.actionItems.count == 1
         }
         let restoredCards = try await nextCompanion(&companion) { $0.isEmpty }
+        let restoredPrivacy = try await nextPrivacy(&privacy) {
+            $0?.status == .remoteTransferAttempted
+        }
         XCTAssertEqual(
             restoredCore?.meeting.id,
             meeting.id)
         XCTAssertEqual(restoredSummary?.version, 1)
         XCTAssertTrue(restoredCards.isEmpty)
+        XCTAssertEqual(restoredPrivacy?.remoteEvents.count, 1)
     }
 
     func testSummaryObservationSelectsNewestSnapshotAcrossRecipes() async throws {
@@ -150,6 +176,17 @@ private func nextCompanion(
         let candidate = try await iterator.next()
         let value = try XCTUnwrap(candidate)
         if predicate(value) { return value }
+    }
+    throw MeetingDetailObservationTestError.expectedValue
+}
+
+private func nextPrivacy(
+    _ iterator: inout AsyncThrowingStream<PrivacyReceipt?, Error>.Iterator,
+    until predicate: (PrivacyReceipt?) -> Bool = { _ in true }
+) async throws -> PrivacyReceipt? {
+    for _ in 0..<12 {
+        let value = try await iterator.next()
+        if predicate(value ?? nil) { return value ?? nil }
     }
     throw MeetingDetailObservationTestError.expectedValue
 }

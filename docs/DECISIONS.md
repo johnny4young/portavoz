@@ -1804,3 +1804,48 @@ actually assess, and release verification must reproduce that extraction
 instead of checking only the convenient direct-download path. Dual notarization
 costs one additional Apple submission per release but makes Homebrew and DMG
 behavior deterministic, offline-friendlier, and independently auditable.
+
+## D75 — Privacy receipts record validated attempts before transport (Jul 2026)
+
+**Context:** D67–D69 centralized every current meeting-content HTTP path behind
+one metadata policy, while D62–D66 preserved content-free generation
+provenance. Neither fact alone could answer a user's practical question:
+whether a particular meeting stayed on the Mac. Generation provenance does not
+prove that no network transfer occurred, and an upgraded database has no
+historical events from before tracking existed. Recording only successful HTTP
+responses would also be false assurance because a failed request may already
+have transmitted its body.
+
+**Decision:** schema v7 adds immutable `dataEgressEvent` rows and a singleton
+`privacyReceiptCoverage` boundary. An event stores only its ID, source meeting,
+operation, conservative destination scope and host, data classification,
+consent source, provider/model identity, and attempted time. It never stores a
+full URL, path, query, request body, transcript, prompt, notes, summary, action
+item, response, fingerprint, or generation configuration. Storage rejects a
+missing/unknown meeting, blank destination/provider, host/provider mismatch,
+or a claimed local/remote scope that contradicts Core's conservative host
+classification.
+
+`URLSessionDataEgressGateway` validates the complete operation-specific policy,
+persists the event, and only then hands bytes to URLSession. Receipt persistence
+failure fails closed. Transport failure keeps the attempt because bytes may
+have left the process. The adapter rejects every HTTP redirect so a canonical
+validated endpoint cannot forward meeting content to an unclassified host.
+Invalid metadata creates neither a receipt nor a transport attempt.
+
+Meeting Detail independently observes a purpose-built `PrivacyReceipt` that
+combines generation provenance with local/remote egress events. A meeting
+created after tracking began may state that all tracked processing stayed on
+this Mac when no remote event exists. An older meeting may only state that no
+remote transfer has been recorded since the persisted coverage date. Any
+remote attempt is shown conservatively as content that may have left the Mac,
+with purpose, host, and time. Saved CLI summary/export/issue operations use the
+same store-backed recorder; transient no-save CLI work cannot claim a durable
+per-meeting receipt.
+
+**Rationale:** a privacy claim is useful only when its evidence boundary is
+explicit. Recording before transport is conservative and auditable;
+fail-closed persistence prevents invisible egress; redirect denial preserves
+the destination policy after validation; and a migration timestamp avoids
+rewriting unknown history as proof. Purpose-built, content-free projection
+keeps diagnostics useful without creating a second sensitive-data store.

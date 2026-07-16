@@ -88,11 +88,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         let recording = try Self.contents(
             of: "Sources/portavoz-app/RecordingController.swift")
         let refresh = try Self.contents(of: "Sources/portavoz-app/CompanionRefresh.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
 
         XCTAssertTrue(core.contains("public protocol DataEgressGateway"))
         XCTAssertFalse(core.contains("URLSession.shared"))
         XCTAssertTrue(adapter.contains("try Self.validate(networkRequest"))
-        XCTAssertTrue(adapter.contains("session.data(for: networkRequest)"))
+        XCTAssertTrue(adapter.contains("delegate: DataEgressRedirectBlocker()"))
         XCTAssertTrue(byok.contains("private let gateway: any DataEgressGateway"))
         XCTAssertTrue(byok.contains("gateway.perform(networkRequest, metadata: metadata)"))
         let clientStart = try XCTUnwrap(
@@ -110,9 +111,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(provenance.contains("session.data(for:"))
         XCTAssertTrue(provenance.contains(
             "egressConsentSource: DataEgressConsentSource = .explicitCompanionClient"))
+        XCTAssertTrue(services.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: store)"))
+        XCTAssertTrue(recording.contains("services?.dataEgressGateway"))
+        XCTAssertTrue(recording.contains("gateway: gateway"))
+        XCTAssertTrue(refresh.contains("gateway: any DataEgressGateway"))
+        XCTAssertTrue(refresh.contains("gateway: gateway"))
         for source in [recording, refresh] {
-            XCTAssertTrue(source.contains(
-                "gateway: URLSessionDataEgressGateway())"))
             XCTAssertTrue(source.contains(
                 "egressConsentSource: .companionBYOKSettings"))
             XCTAssertFalse(source.contains("URLSession.shared"))
@@ -147,11 +152,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(provider.contains("data(for:"))
         XCTAssertTrue(ollama.contains("gateway: any DataEgressGateway"))
 
-        for source in [regeneration, processing] {
-            XCTAssertTrue(source.contains("gateway: URLSessionDataEgressGateway()"))
-            XCTAssertTrue(source.contains("consentSource: .summaryEngineSettings"))
-        }
-        XCTAssertTrue(cli.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(regeneration.contains("gateway: gateway"))
+        XCTAssertTrue(regeneration.contains("consentSource: .summaryEngineSettings"))
+        XCTAssertTrue(processing.contains("gateway: dataEgressGateway"))
+        XCTAssertTrue(processing.contains("consentSource: .summaryEngineSettings"))
+        XCTAssertTrue(cli.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: receiptStore)"))
+        let cliMeetingSave = try XCTUnwrap(cli.range(
+            of: "try await receiptStore.save(record)"))
+        let cliRemoteSummary = try XCTUnwrap(cli.range(
+            of: "let draft = try await provider.summarize(request)"))
+        XCTAssertLessThan(cliMeetingSave.lowerBound, cliRemoteSummary.lowerBound)
         XCTAssertFalse(cli.contains("URLSession.shared"))
         XCTAssertFalse(cli.contains("data(for:"))
     }
@@ -176,12 +187,47 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(publisher.contains("URLSession"))
             XCTAssertFalse(publisher.contains("data(for:"))
         }
-        XCTAssertTrue(detail.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(detail.contains("gateway: services.dataEgressGateway"))
         XCTAssertTrue(detail.contains("meetingID: detail.meeting.id"))
-        XCTAssertTrue(cliExport.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(cliExport.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: store)"))
         XCTAssertTrue(cliExport.contains("meetingID: meetingID"))
-        XCTAssertTrue(cliIssues.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(cliIssues.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: store)"))
         XCTAssertTrue(cliIssues.contains("meetingID: meetingID"))
+    }
+
+    func testMeetingContentEgressPersistsReceiptBeforeTransport() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/DataEgress.swift")
+        let adapter = try Self.contents(
+            of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+PrivacyReceipt.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+
+        XCTAssertTrue(core.contains("public protocol DataEgressEventRecorder"))
+        XCTAssertTrue(core.contains("public struct PrivacyReceipt"))
+        let validation = try XCTUnwrap(adapter.range(of: "try Self.validate(networkRequest"))
+        let receipt = try XCTUnwrap(adapter.range(of: "recordDataEgressEvent"))
+        let transport = try XCTUnwrap(adapter.range(of: "let (data, response) = try await session.data("))
+        XCTAssertLessThan(validation.lowerBound, receipt.lowerBound)
+        XCTAssertLessThan(receipt.lowerBound, transport.lowerBound)
+        XCTAssertTrue(storage.contains("extension MeetingStore: DataEgressEventRecorder"))
+        XCTAssertTrue(storage.contains("guard let meetingID = event.meetingID"))
+        XCTAssertTrue(services.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: store)"))
+
+        let forbiddenReceiptFields = [
+            "transcript", "prompt", "markdown", "question", "answer", "actionItemText",
+        ]
+        let eventStart = try XCTUnwrap(core.range(of: "public struct DataEgressEvent"))
+        let recorderStart = try XCTUnwrap(core.range(
+            of: "public protocol DataEgressEventRecorder",
+            range: eventStart.upperBound..<core.endIndex))
+        let eventSource = core[eventStart.lowerBound..<recorderStart.lowerBound]
+        for field in forbiddenReceiptFields {
+            XCTAssertFalse(eventSource.contains("public let \(field)"), field)
+        }
     }
 
     func testApplicationKitImportsStayInsideTheApprovedLayer() throws {

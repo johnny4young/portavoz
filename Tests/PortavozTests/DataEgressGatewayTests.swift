@@ -469,6 +469,159 @@ final class DataEgressGatewayTests: XCTestCase {
         }
     }
 
+    func testGatewayPersistsContentFreeReceiptBeforeTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset()
+        let recorder = ReceiptRecorderProbe(state: state)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let eventID = DataEgressEventID(rawValue: UUID(
+            uuidString: "E6000000-0000-0000-0000-000000000099")!)
+        let attemptedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder,
+            now: { attemptedAt },
+            makeEventID: { eventID })
+        let (request, metadata) = try receiptSummaryRequest()
+
+        let response = try await gateway.perform(request, metadata: metadata)
+        let events = await recorder.snapshot()
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(state.snapshot().timeline, ["receipt", "transport"])
+        let event = try XCTUnwrap(events.first)
+        XCTAssertEqual(event.id, eventID)
+        XCTAssertEqual(event.meetingID, meetingID)
+        XCTAssertEqual(event.destinationHost, "api.example.com")
+        XCTAssertEqual(event.destinationScope, .remote)
+        XCTAssertEqual(event.attemptedAt, attemptedAt)
+        XCTAssertFalse(event.destinationHost.contains("/v1"))
+    }
+
+    func testReceiptFailurePreventsTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset()
+        let recorder = ReceiptRecorderProbe(state: state, shouldFail: true)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder)
+        let (request, metadata) = try receiptSummaryRequest()
+
+        do {
+            _ = try await gateway.perform(request, metadata: metadata)
+            XCTFail("an unreceipted transfer must fail closed")
+        } catch {
+            XCTAssertEqual(error as? ReceiptRecorderProbe.Failure, .persistence)
+        }
+        XCTAssertEqual(state.snapshot().timeline, ["receipt"])
+        XCTAssertEqual(state.snapshot().requestCount, 0)
+    }
+
+    func testFailedTransportStillRetainsAttemptReceipt() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset(error: URLError(.cannotConnectToHost))
+        let recorder = ReceiptRecorderProbe(state: state)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder)
+        let (request, metadata) = try receiptSummaryRequest()
+
+        do {
+            _ = try await gateway.perform(request, metadata: metadata)
+            XCTFail("the transport fixture must fail")
+        } catch {
+            XCTAssertEqual((error as? URLError)?.code, .cannotConnectToHost)
+        }
+        XCTAssertEqual(state.snapshot().timeline, ["receipt", "transport"])
+        let events = await recorder.snapshot()
+        XCTAssertEqual(events.count, 1)
+    }
+
+    func testInvalidMetadataCreatesNeitherReceiptNorTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset()
+        let recorder = ReceiptRecorderProbe(state: state)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder)
+        let (request, metadata) = try receiptSummaryRequest()
+        let forged = DataEgressRequest(
+            operation: metadata.operation,
+            destination: metadata.destination,
+            dataClassification: .meetingQuestionOnly,
+            meetingID: metadata.meetingID,
+            consentSource: metadata.consentSource,
+            providerDisclosure: metadata.providerDisclosure)
+
+        do {
+            _ = try await gateway.perform(request, metadata: forged)
+            XCTFail("forged metadata must fail")
+        } catch {
+            XCTAssertNotNil(error as? DataEgressGatewayError)
+        }
+        let events = await recorder.snapshot()
+        XCTAssertTrue(events.isEmpty)
+        XCTAssertEqual(state.snapshot().requestCount, 0)
+    }
+
+    func testMeetingContentRedirectsAreNeverFollowed() throws {
+        let blocker = DataEgressRedirectBlocker()
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        let original = URL(string: "https://api.example.com/v1/chat/completions")!
+        let redirected = URLRequest(url: URL(string: "https://collector.example.net/upload")!)
+        let response = try XCTUnwrap(HTTPURLResponse(
+            url: original,
+            statusCode: 307,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Location": redirected.url!.absoluteString]))
+        let task = session.dataTask(with: original)
+        let capture = RedirectCompletionCapture()
+
+        blocker.urlSession(
+            session,
+            task: task,
+            willPerformHTTPRedirection: response,
+            newRequest: redirected
+        ) { request in
+            capture.record(request)
+        }
+
+        let result = capture.snapshot()
+        XCTAssertTrue(result.called)
+        XCTAssertNil(result.request)
+    }
+
+    private func receiptSummaryRequest() throws -> (URLRequest, DataEgressRequest) {
+        let request = try OpenAICompatibleChatCodec.urlRequest(
+            endpoint: URL(string: "https://api.example.com/v1")!,
+            model: "summary-model",
+            apiKey: "secret",
+            system: "static",
+            user: "meeting material",
+            temperature: 0.3,
+            maxTokens: 100)
+        return (
+            request,
+            summaryMetadata(
+                destination: try XCTUnwrap(request.url),
+                meetingID: meetingID,
+                consentSource: .summaryEngineSettings))
+    }
+
+    private func receiptSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ReceiptURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }
+
     private func publishingMetadata(
         operation: DataEgressOperation,
         destination: URL,
@@ -546,6 +699,108 @@ final class DataEgressGatewayTests: XCTestCase {
                 providerID: "api.example.com",
                 modelID: "m"))
     }
+}
+
+private final class ReceiptTransportState: @unchecked Sendable {
+    static let shared = ReceiptTransportState()
+
+    private let lock = NSLock()
+    private var timeline: [String] = []
+    private var requestCount = 0
+    private var error: Error?
+
+    func reset(error: Error? = nil) {
+        lock.lock()
+        timeline = []
+        requestCount = 0
+        self.error = error
+        lock.unlock()
+    }
+
+    func appendReceipt() {
+        lock.lock()
+        timeline.append("receipt")
+        lock.unlock()
+    }
+
+    func beginTransport() -> Error? {
+        lock.lock()
+        timeline.append("transport")
+        requestCount += 1
+        let error = error
+        lock.unlock()
+        return error
+    }
+
+    func snapshot() -> (timeline: [String], requestCount: Int) {
+        lock.lock()
+        let snapshot = (timeline, requestCount)
+        lock.unlock()
+        return snapshot
+    }
+}
+
+private final class RedirectCompletionCapture: @unchecked Sendable {
+    private let lock = NSLock()
+    private var request: URLRequest?
+    private var called = false
+
+    func record(_ request: URLRequest?) {
+        lock.lock()
+        self.request = request
+        called = true
+        lock.unlock()
+    }
+
+    func snapshot() -> (request: URLRequest?, called: Bool) {
+        lock.lock()
+        let snapshot = (request, called)
+        lock.unlock()
+        return snapshot
+    }
+}
+
+private final class ReceiptURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        if let error = ReceiptTransportState.shared.beginTransport() {
+            client?.urlProtocol(self, didFailWithError: error)
+            return
+        }
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(#"{"ok":true}"#.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
+private actor ReceiptRecorderProbe: DataEgressEventRecorder {
+    enum Failure: Error, Equatable { case persistence }
+
+    private let state: ReceiptTransportState
+    private let shouldFail: Bool
+    private var events: [DataEgressEvent] = []
+
+    init(state: ReceiptTransportState, shouldFail: Bool = false) {
+        self.state = state
+        self.shouldFail = shouldFail
+    }
+
+    func recordDataEgressEvent(_ event: DataEgressEvent) throws {
+        state.appendReceipt()
+        if shouldFail { throw Failure.persistence }
+        events.append(event)
+    }
+
+    func snapshot() -> [DataEgressEvent] { events }
 }
 
 struct TestDataEgressGateway: DataEgressGateway {

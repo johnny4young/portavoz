@@ -82,7 +82,7 @@ enum IssuesCommand {
                     url = try await GitHubIssuesExporter(
                         repository: githubRepo,
                         token: token,
-                        gateway: URLSessionDataEgressGateway()
+                        gateway: URLSessionDataEgressGateway(receiptRecorder: store)
                     ).publish(
                         item,
                         meetingID: meetingID,
@@ -99,7 +99,7 @@ enum IssuesCommand {
                     url = try await LinearExporter(
                         teamID: linearTeam!,
                         token: token,
-                        gateway: URLSessionDataEgressGateway()
+                        gateway: URLSessionDataEgressGateway(receiptRecorder: store)
                     ).publish(
                         item,
                         meetingID: meetingID,

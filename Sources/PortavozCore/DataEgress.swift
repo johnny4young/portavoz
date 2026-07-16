@@ -13,11 +13,12 @@ public struct DataEgressDestination: Equatable, Sendable {
 
     public init(url: URL) {
         self.url = url
-        scope = Self.scope(for: url)
+        scope = url.host.map(Self.scope(forHost:)) ?? .remote
     }
 
-    private static func scope(for url: URL) -> DataEgressDestinationScope {
-        guard let rawHost = url.host else { return .remote }
+    /// Shared conservative host classifier for request validation and durable
+    /// receipt validation. Unknown and private-network hosts remain remote.
+    public static func scope(forHost rawHost: String) -> DataEgressDestinationScope {
         var host = rawHost.lowercased()
         if host.hasPrefix("[") && host.hasSuffix("]") {
             host.removeFirst()
@@ -121,6 +122,148 @@ public struct DataEgressResponse: Sendable {
     public init(data: Data, statusCode: Int) {
         self.data = data
         self.statusCode = statusCode
+    }
+}
+
+/// Immutable, content-free evidence that one validated transfer was handed to
+/// the network boundary. It deliberately stores a host instead of the full URL
+/// so paths, queries, and fragments can never copy meeting-derived material
+/// into diagnostics.
+public struct DataEgressEvent: Codable, Equatable, Sendable, Identifiable {
+    public let id: DataEgressEventID
+    public let meetingID: MeetingID?
+    public let operation: DataEgressOperation
+    public let destinationScope: DataEgressDestinationScope
+    public let destinationHost: String
+    public let dataClassification: DataEgressClassification
+    public let consentSource: DataEgressConsentSource
+    public let providerID: String
+    public let modelID: String?
+    public let attemptedAt: Date
+
+    public init(
+        id: DataEgressEventID = DataEgressEventID(),
+        meetingID: MeetingID?,
+        operation: DataEgressOperation,
+        destinationScope: DataEgressDestinationScope,
+        destinationHost: String,
+        dataClassification: DataEgressClassification,
+        consentSource: DataEgressConsentSource,
+        providerID: String,
+        modelID: String?,
+        attemptedAt: Date
+    ) {
+        self.id = id
+        self.meetingID = meetingID
+        self.operation = operation
+        self.destinationScope = destinationScope
+        self.destinationHost = destinationHost
+        self.dataClassification = dataClassification
+        self.consentSource = consentSource
+        self.providerID = providerID
+        self.modelID = modelID
+        self.attemptedAt = attemptedAt
+    }
+
+    public init(
+        id: DataEgressEventID = DataEgressEventID(),
+        request: DataEgressRequest,
+        attemptedAt: Date = Date()
+    ) {
+        self.id = id
+        self.meetingID = request.meetingID
+        self.operation = request.operation
+        self.destinationScope = request.destination.scope
+        self.destinationHost = request.destination.url.host?.lowercased() ?? ""
+        self.dataClassification = request.dataClassification
+        self.consentSource = request.consentSource
+        self.providerID = request.providerDisclosure.providerID
+        self.modelID = request.providerDisclosure.modelID
+        self.attemptedAt = attemptedAt
+    }
+}
+
+/// Durable sink owned by the composition root. A gateway with a recorder must
+/// persist the event before URLSession can observe the request body; recorder
+/// failure therefore fails closed instead of creating an unreceipted transfer.
+public protocol DataEgressEventRecorder: Sendable {
+    func recordDataEgressEvent(_ event: DataEgressEvent) async throws
+}
+
+public enum PrivacyReceiptCoverage: Equatable, Sendable {
+    /// The meeting entered the local store after receipt tracking began.
+    case complete
+    /// The meeting predates tracking, so silence before this date is unknown.
+    case since(Date)
+}
+
+public enum PrivacyReceiptStatus: Equatable, Sendable {
+    case allContentStayedOnDevice
+    case noRemoteTransferRecorded
+    case remoteTransferAttempted
+}
+
+/// Purpose-built projection of model provenance. Configuration JSON, prompts,
+/// fingerprints, metrics, transcript, and generated output are intentionally
+/// absent from the user-facing privacy surface.
+public struct PrivacyReceiptGeneration: Equatable, Sendable {
+    public let kind: GenerationRunKind
+    public let providerID: String
+    public let modelID: String
+    public let modelRevision: String?
+    public let startedAt: Date
+    public let finishedAt: Date?
+    public let outcome: GenerationRunOutcome?
+
+    public init(_ run: GenerationRun) {
+        kind = run.kind
+        providerID = run.providerID
+        modelID = run.modelID
+        modelRevision = run.modelRevision
+        startedAt = run.startedAt
+        finishedAt = run.finishedAt
+        outcome = run.outcome
+    }
+}
+
+/// Local, content-free audit projection for one meeting.
+public struct PrivacyReceipt: Equatable, Sendable {
+    public let meetingID: MeetingID
+    public let coverage: PrivacyReceiptCoverage
+    public let trackingStartedAt: Date
+    public let generation: [PrivacyReceiptGeneration]
+    public let egressEvents: [DataEgressEvent]
+
+    public init(
+        meetingID: MeetingID,
+        meetingStoredAt: Date,
+        trackingStartedAt: Date,
+        generationRuns: [GenerationRun],
+        egressEvents: [DataEgressEvent]
+    ) {
+        self.meetingID = meetingID
+        self.coverage = meetingStoredAt >= trackingStartedAt
+            ? .complete
+            : .since(trackingStartedAt)
+        self.trackingStartedAt = trackingStartedAt
+        self.generation = generationRuns.map(PrivacyReceiptGeneration.init)
+        self.egressEvents = egressEvents
+    }
+
+    public var remoteEvents: [DataEgressEvent] {
+        egressEvents.filter { $0.destinationScope == .remote }
+    }
+
+    public var localDeviceEvents: [DataEgressEvent] {
+        egressEvents.filter { $0.destinationScope == .localDevice }
+    }
+
+    public var status: PrivacyReceiptStatus {
+        if !remoteEvents.isEmpty { return .remoteTransferAttempted }
+        switch coverage {
+        case .complete: return .allContentStayedOnDevice
+        case .since: return .noRemoteTransferRecorded
+        }
     }
 }
 

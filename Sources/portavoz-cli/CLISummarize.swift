@@ -82,6 +82,14 @@ enum SummarizeCommand {
             print("error: no such file: \(url.path)")
             return
         }
+        let meetingID = MeetingID()
+        let receiptStore: MeetingStore?
+        do {
+            receiptStore = save ? try MeetingsCommand.openStore(dbPath: dbPath) : nil
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
+        }
 
         // Resolve the provider before doing any heavy work.
         let provider: any SummaryProvider
@@ -99,7 +107,7 @@ enum SummarizeCommand {
                 endpoint: endpoint,
                 model: byokModel,
                 apiKey: key,
-                gateway: URLSessionDataEgressGateway())
+                gateway: URLSessionDataEgressGateway(receiptRecorder: receiptStore))
         } else if #available(macOS 26.0, *) {
             if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
                 print("error: \(reason)")
@@ -119,7 +127,6 @@ enum SummarizeCommand {
                 store: store, voiceprint: (try? VoiceprintStore().load()))
 
             print("Transcribing \(url.lastPathComponent)…")
-            let meetingID = MeetingID()
             let hints = TranscriptionHints(language: language, meetingID: meetingID)
             let transcription = try await engine.transcribeFile(at: url, hints: hints)
 
@@ -127,6 +134,21 @@ enum SummarizeCommand {
             let turns = try await diarizer.diarizeFile(at: url)
             let attribution = SpeakerAttributor.attribute(
                 segments: transcription.segments, turns: turns, meetingID: meetingID)
+
+            if let receiptStore {
+                let now = Date()
+                let record = Meeting(
+                    id: meetingID,
+                    title: url.deletingPathExtension().lastPathComponent,
+                    startedAt: now.addingTimeInterval(-transcription.audioDuration),
+                    endedAt: now,
+                    language: SpokenLanguageDetector.homogeneousLanguage(
+                        in: attribution.segments)
+                )
+                try await receiptStore.save(record)
+                try await receiptStore.save(attribution.speakers)
+                try await receiptStore.save(attribution.segments)
+            }
 
             print("Summarizing (\(outLanguage))…")
             let request = SummaryRequest(
@@ -158,21 +180,8 @@ enum SummarizeCommand {
                 elapsed, draft.language, attribution.segments.count
             ))
 
-            if save {
-                let storeDB = try MeetingsCommand.openStore(dbPath: dbPath)
-                let now = Date()
-                let record = Meeting(
-                    id: meetingID,
-                    title: url.deletingPathExtension().lastPathComponent,
-                    startedAt: now.addingTimeInterval(-transcription.audioDuration),
-                    endedAt: now,
-                    language: SpokenLanguageDetector.homogeneousLanguage(
-                        in: attribution.segments)
-                )
-                try await storeDB.save(record)
-                try await storeDB.save(attribution.speakers)
-                try await storeDB.save(attribution.segments)
-                let version = try await storeDB.saveSummary(draft)
+            if let receiptStore {
+                let version = try await receiptStore.saveSummary(draft)
                 print("saved meeting \(meetingID.rawValue.uuidString) (summary v\(version))")
                 print("browse it with: portavoz-cli meetings show \(meetingID.rawValue.uuidString)")
             }

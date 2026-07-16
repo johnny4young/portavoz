@@ -2,9 +2,12 @@
 
 ## The promise (one only, for launch)
 
-> **"Record your meeting and know who said what — including you — without anything leaving your Mac."**
+> **"Record your meeting and know who said what — including you — without requiring your audio or meeting content to leave your Mac."**
 
-Everything else arrives across versions. The project's discipline is not to dilute this promise before M5.
+Everything else arrives across versions. The project's discipline is not to
+dilute this promise before M5. Local processing is the default; explicit remote
+providers and publishing are optional, and the per-meeting privacy receipt
+makes tracked exceptions visible instead of weakening the promise silently.
 
 ## Positioning
 
@@ -58,6 +61,7 @@ license gate is implemented today. Current implementation status lives in
 | Voice enrollment + automatic names | — | ✅ |
 | MD/Obsidian/Gist export, FTS search | ✅ | ✅ |
 | Bilingual summary with glossary | ✅ basic | ✅ + live "what did I miss?" |
+| Per-meeting privacy receipt | ✅ | ✅ |
 | Live translated captions | ✅ basic | ✅ continuous |
 | Multi-device sync (CloudKit) | — | ✅ |
 | RAG chat over history | — | ✅ |
@@ -114,6 +118,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 6. **⌘K over your history** (RAG already exists): "what did we agree about the budget?" answers with clickable citations that jump to the audio (M9 connects it).
 7. **Automatic Recipe** (M13): the app detects that it was a 1:1 and proposes the correct format without asking.
 8. **"Recommended for your Mac"** (M10): the app knows which models run well on your hardware and does not make you choose blindly.
+9. **The receipt, not a privacy slogan** (Band 3H): each meeting states whether tracked work stayed local or a remote transfer was attempted, while legacy history shows its honest coverage boundary.
 
 ## Performance targets (world-class = numbers)
 
@@ -134,8 +139,9 @@ The moments that make people say "no one else does this" — each maps to a mile
 Keychain for secrets; `NSFileProtectionComplete` (iOS) / optional SQLCipher
 (macOS); on-device-only, deletable voiceprints; planned CloudKit
 `encryptedValues` (+ADP); sha256-pinned models; Hardened Runtime,
-notarization, signed releases, and SECURITY.md; MCP restricted to
-localhost+token; opt-in telemetry; recording disclosure with jurisdiction
+notarization, signed releases, and SECURITY.md; local MCP over process stdio
+with no network listener; content-free egress receipts persisted before a
+redirect-blocked transport; opt-in telemetry; recording disclosure with jurisdiction
 presets; pinned SPM dependencies. **Current macOS distribution is not App
 Sandbox-enabled.** The architecture program requires a capability spike for
 process taps, global hotkeys, Accessibility paste, custom folders, Sparkle,

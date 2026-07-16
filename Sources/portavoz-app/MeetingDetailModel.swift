@@ -68,6 +68,7 @@ final class MeetingDetailModel {
     private var core: MeetingReviewCore?
     private var summary: MeetingReviewSummary?
     private var companionCards: [CompanionCard] = []
+    private var privacyReceipt: PrivacyReceipt?
 
     init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
         self.meetingID = meetingID
@@ -186,6 +187,9 @@ private extension MeetingDetailModel {
         case .companionCards(let value):
             companionCards = value
             markObserved(.companion)
+        case .privacyReceipt(let value):
+            privacyReceipt = value
+            markObserved(.privacy)
         case .failed(let section):
             failedSections.insert(section)
             observedSections.remove(section)
@@ -212,7 +216,8 @@ private extension MeetingDetailModel {
         state.readModel = MeetingReviewReadModel(
             core: core,
             summary: summary,
-            companionCards: companionCards)
+            companionCards: companionCards,
+            privacyReceipt: privacyReceipt)
     }
 
     func refreshPhase() {

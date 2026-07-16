@@ -117,6 +117,7 @@ final class RecordingController {
     /// from these so each tick only pays for the NEW transcript.
     private var liveNotes: [String] = []
     private var meetingID = MeetingID()
+    private weak var services: AppServices?
     private var audioRelative = ""
     /// Durable aggregate created before capture starts. It remains the source
     /// of lifecycle truth while the existing controller is incrementally
@@ -168,6 +169,7 @@ final class RecordingController {
         guard phase == .idle || isFailed else { return }
 
         resetForRecordingStart()
+        self.services = services
         phase = .preparing
         let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(of: AudioChunk.self)
         let callbacks = StartRecordingLiveCallbacks(
@@ -384,11 +386,12 @@ final class RecordingController {
         let passages = recentPassages()
         let candidate = closed.text
         let askedAt = closed.startTime
+        guard let gateway = services?.dataEgressGateway else { return }
         // BYOK only if the user configured it AND enabled the opt-in for the
         // Companion (D8/D26); si no, el cliente es nil y todo queda on-device.
         let companion = ProvenanceCompanion(
             byok: BYOKSettings.companionClient(
-                gateway: URLSessionDataEgressGateway()),
+                gateway: gateway),
             egressConsentSource: .companionBYOKSettings)
         let language = closed.language.flatMap { LanguageCode($0)?.identifier }
         let sourceMeetingID = meetingID

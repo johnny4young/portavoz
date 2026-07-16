@@ -40,7 +40,8 @@ extension AppServices {
             mlxModelDirectory: mlxDownloaded
                 ? Self.modelDir(ModelCatalog.mlxQwen35)
                 : nil,
-            foundationModelsCapability: foundationModelsCapability)
+            foundationModelsCapability: foundationModelsCapability,
+            gateway: dataEgressGateway)
         return ImportMeeting(
             audioFiles: AppImportMeetingAudioFiles(root: Self.audioRoot),
             preferences: AppImportMeetingPreferences(snapshot: sampledPreferences),

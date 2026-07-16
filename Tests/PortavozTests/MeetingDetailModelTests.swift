@@ -20,6 +20,9 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.summary?.version, 2)
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
+        XCTAssertEqual(
+            model.state.readModel?.privacyReceipt?.status,
+            .allContentStayedOnDevice)
         XCTAssertEqual(client.calls, [.observe(fixture.meeting.id)])
     }
 
@@ -29,6 +32,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .core(fixture.core),
             .failed(.summary),
             .companionCards([fixture.card]),
+            .privacyReceipt(fixture.receipt),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -43,7 +47,7 @@ final class MeetingDetailModelTests: XCTestCase {
     func testMissingMeetingIsDistinctFromReadFailure() async {
         let fixture = MeetingDetailModelFixture()
         let missingClient = MeetingDetailModelClientFake(updates: [
-            .core(nil), .summary(nil), .companionCards([]),
+            .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -84,7 +88,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 4)
+        XCTAssertEqual(model.state.revision, 5)
     }
 
     func testMutationActionsOwnPersistenceEffectsAndSearchInvalidation() async {
@@ -221,7 +225,17 @@ private struct MeetingDetailModelFixture {
     }
 
     var updates: [MeetingReviewUpdate] {
-        [.core(core), .summary(summary), .companionCards([card])]
+        [.core(core), .summary(summary), .companionCards([card]), .privacyReceipt(receipt)]
+    }
+
+    var receipt: PrivacyReceipt {
+        let trackingStartedAt = meeting.startedAt.addingTimeInterval(-1)
+        return PrivacyReceipt(
+            meetingID: meeting.id,
+            meetingStoredAt: meeting.startedAt,
+            trackingStartedAt: trackingStartedAt,
+            generationRuns: [],
+            egressEvents: [])
     }
 }
 

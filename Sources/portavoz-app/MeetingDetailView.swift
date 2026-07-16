@@ -277,7 +277,8 @@ extension MeetingDetailView {
         }
     }
 
-    /// The right rail: meeting health + ✦ chapters + the Companion's answers —
+    /// The right rail: privacy receipt + meeting health + ✦ chapters +
+    /// the Companion's answers —
     /// the at-a-glance column beside the transcript. Hidden entirely when it
     /// would be empty. SCROLLS on its own so a long Companion list (many
     /// cards) never grows the page and pushes the header or docked player
@@ -286,9 +287,10 @@ extension MeetingDetailView {
     private func detailRail(_ detail: MeetingReviewReadModel) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
-        if hasHealth || hasChapters || !companionCards.isEmpty {
+        if detail.privacyReceipt != nil || hasHealth || hasChapters || !companionCards.isEmpty {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    privacyReceiptSection(detail.privacyReceipt)
                     if hasHealth {
                         MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
                     }
@@ -298,6 +300,112 @@ extension MeetingDetailView {
             }
             .frame(width: 260)
             .frame(maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func privacyReceiptSection(_ receipt: PrivacyReceipt?) -> some View {
+        if let receipt {
+            let tint = privacyReceiptTint(receipt.status)
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Privacy receipt", systemImage: privacyReceiptIcon(receipt.status))
+                    .font(.headline)
+                    .foregroundStyle(tint)
+                    .accessibilityIdentifier("detail-privacy-receipt")
+                Text(privacyReceiptHeadline(receipt.status))
+                    .font(.callout.weight(.semibold))
+                Text(privacyReceiptExplanation(receipt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ForEach(Array(receipt.remoteEvents.enumerated()), id: \.element.id) { index, event in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(privacyReceiptOperation(event.operation))
+                            .font(.caption.weight(.semibold))
+                        Text(event.destinationHost)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                        Text(event.attemptedAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("privacy-remote-event-\(index)")
+                }
+
+                if !receipt.generation.isEmpty || !receipt.localDeviceEvents.isEmpty {
+                    Text(L10n.format(
+                        "Model activity: %d · Local transfers: %d",
+                        receipt.generation.count,
+                        receipt.localDeviceEvents.count))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(tint.opacity(0.2), lineWidth: 1)
+            )
+        }
+    }
+
+    private func privacyReceiptTint(_ status: PrivacyReceiptStatus) -> Color {
+        switch status {
+        case .allContentStayedOnDevice: .green
+        case .noRemoteTransferRecorded: .orange
+        case .remoteTransferAttempted: .orange
+        }
+    }
+
+    private func privacyReceiptIcon(_ status: PrivacyReceiptStatus) -> String {
+        switch status {
+        case .allContentStayedOnDevice: "lock.shield.fill"
+        case .noRemoteTransferRecorded: "clock.badge.questionmark"
+        case .remoteTransferAttempted: "arrow.up.right.square.fill"
+        }
+    }
+
+    private func privacyReceiptHeadline(_ status: PrivacyReceiptStatus) -> String {
+        switch status {
+        case .allContentStayedOnDevice:
+            L10n.text("No remote service used")
+        case .noRemoteTransferRecorded:
+            L10n.text("No remote transfer recorded")
+        case .remoteTransferAttempted:
+            L10n.text("Remote transfer attempted")
+        }
+    }
+
+    private func privacyReceiptExplanation(_ receipt: PrivacyReceipt) -> String {
+        switch receipt.status {
+        case .allContentStayedOnDevice:
+            return L10n.text("All tracked meeting processing stayed on this Mac.")
+        case .noRemoteTransferRecorded:
+            return L10n.format(
+                "Tracking began %@; earlier activity is not covered.",
+                receipt.trackingStartedAt.formatted(date: .abbreviated, time: .shortened))
+        case .remoteTransferAttempted:
+            if receipt.remoteEvents.count == 1 {
+                return L10n.text(
+                    "1 remote transfer attempt was recorded. Content may have left this Mac.")
+            }
+            return L10n.format(
+                "%d remote transfer attempts were recorded. Content may have left this Mac.",
+                receipt.remoteEvents.count)
+        }
+    }
+
+    private func privacyReceiptOperation(_ operation: DataEgressOperation) -> String {
+        switch operation {
+        case .companionKnowledgeAnswer: L10n.text("Companion question only")
+        case .summaryGeneration: L10n.text("Summary material")
+        case .publishGitHubGist: L10n.text("Meeting export")
+        case .createGitHubIssue: L10n.text("GitHub action item")
+        case .createLinearIssue: L10n.text("Linear action item")
         }
     }
 
@@ -1252,7 +1360,7 @@ extension MeetingDetailView {
         do {
             gistResult = try await GistPublisher(
                 token: token,
-                gateway: URLSessionDataEgressGateway()
+                gateway: services.dataEgressGateway
             ).publish(
                 meetingID: detail.meeting.id,
                 markdown: markdown,

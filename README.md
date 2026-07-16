@@ -31,7 +31,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ## Why Portavoz
 
 - **Who-said-what, structurally.** Microphone and system audio are captured as separate channels: everything on your mic is *you*, by hardware truth. Remote voices are separated on-device with speaker diarization, then mapped to real names automatically.
-- **Local-first, for real.** Transcription, diarization, and summaries run on-device by default. Cloud LLMs — and local ones like Ollama — are an explicit, clearly-labeled opt-in with your own keys.
+- **Local-first, with receipts.** Transcription, diarization, and summaries run on-device by default. Remote providers require explicit configuration or confirmation, and each meeting shows a content-free privacy receipt for tracked on-device processing and remote-transfer attempts. Local Ollama remains visibly local.
 - **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact.
 - **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, and exports any span as an audio clip.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
@@ -89,6 +89,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Own your data**
 - **Open format** — Markdown + a SQLite file you own. Full-library Markdown backup, per-meeting `.portavoz` bundles (optionally with audio, assembled off the UI thread from one consistent snapshot), and a **trash** with restore (auto-purge after 30 days). No accounts, no lock-in.
+- **Privacy receipt** — every meeting explains whether tracked work stayed on your Mac or a remote transfer was attempted, with purpose, destination host, and time but no copied transcript, prompt, notes, summary, or action-item text. Upgraded libraries state the exact date tracking began instead of guessing about older activity.
 
 ## Benchmarks
 
@@ -136,7 +137,7 @@ real vertical use case.
 
 | Module | Responsibility |
 |---|---|
-| `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, calendar-neutral upcoming events, durable processing jobs, privacy-safe generation provenance and content-free data-egress policy), Keychain secret store |
+| `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, calendar-neutral upcoming events, durable processing jobs, privacy-safe generation provenance, content-free data-egress policy, and per-meeting privacy receipts), Keychain secret store |
 | `ApplicationKit` | Characterized workflows for lifecycle/trash, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library/Insights/Meeting Detail read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
@@ -144,8 +145,8 @@ real vertical use case.
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, durable leased job queue, local vector index |
-| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked outbound network adapter |
+| `StorageKit` | GRDB/SQLite schema v7, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, durable leased job queue, local vector index |
+| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked, receipt-before-transport outbound network adapter |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
 SwiftUI views render and present native controls; app composition adapters map
@@ -153,7 +154,8 @@ independent GRDB observations to storage-independent ApplicationKit updates.
 Library observes meeting rows/voice mix, open items, trash, and active FTS;
 Insights observes meeting chronology, participant/commitment facts, talk
 balance, and scope-bounded finding evidence; Meeting Detail observes its
-transcript/cast, newest immutable summary, and Companion cards independently.
+transcript/cast, newest immutable summary, Companion cards, and privacy receipt
+independently.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume the global invalidation counter for reads.
@@ -179,7 +181,7 @@ Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask
 
 ## Privacy
 
-Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Companion BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
+Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Companion BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. The gateway validates metadata, persists an immutable content-free attempt, blocks redirects, and only then hands bytes to URLSession; if the receipt cannot be stored, the transfer does not start. Meeting Detail renders those attempts beside generation provenance and marks pre-v7 history as only partially covered. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
 
 ## Contributing
 

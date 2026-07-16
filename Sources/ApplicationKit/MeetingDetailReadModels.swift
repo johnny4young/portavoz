@@ -31,21 +31,24 @@ public struct MeetingReviewSummary: Sendable {
 
 /// One coherent presentation projection for Meeting Detail.
 ///
-/// The three sections are observed independently so a degradable summary or
-/// Companion read never hides a healthy transcript/cast root.
+/// Sections are observed independently so degradable summary, Companion, or
+/// privacy evidence never hides a healthy transcript/cast root.
 public struct MeetingReviewReadModel: Sendable {
     public let core: MeetingReviewCore
     public let summary: MeetingReviewSummary?
     public let companionCards: [CompanionCard]
+    public let privacyReceipt: PrivacyReceipt?
 
     public init(
         core: MeetingReviewCore,
         summary: MeetingReviewSummary?,
-        companionCards: [CompanionCard]
+        companionCards: [CompanionCard],
+        privacyReceipt: PrivacyReceipt?
     ) {
         self.core = core
         self.summary = summary
         self.companionCards = companionCards
+        self.privacyReceipt = privacyReceipt
     }
 
     public var meeting: Meeting { core.meeting }
@@ -57,6 +60,7 @@ public enum MeetingReviewSection: CaseIterable, Hashable, Sendable {
     case core
     case summary
     case companion
+    case privacy
 }
 
 /// Independent updates emitted by the Meeting Detail read side.
@@ -65,5 +69,6 @@ public enum MeetingReviewUpdate: Sendable {
     case core(MeetingReviewCore?)
     case summary(MeetingReviewSummary?)
     case companionCards([CompanionCard])
+    case privacyReceipt(PrivacyReceipt?)
     case failed(MeetingReviewSection)
 }

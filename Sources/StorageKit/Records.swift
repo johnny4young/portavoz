@@ -377,6 +377,76 @@ struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+struct DataEgressEventRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "dataEgressEvent"
+
+    var id: String
+    var meetingID: String
+    var operation: String
+    var destinationScope: String
+    var destinationHost: String
+    var dataClassification: String
+    var consentSource: String
+    var providerID: String
+    var modelID: String?
+    var attemptedAt: Date
+
+    init(_ event: DataEgressEvent, meetingID: MeetingID) {
+        id = event.id.rawValue.uuidString
+        self.meetingID = meetingID.rawValue.uuidString
+        operation = event.operation.rawValue
+        destinationScope = event.destinationScope.rawValue
+        destinationHost = event.destinationHost
+        dataClassification = event.dataClassification.rawValue
+        consentSource = event.consentSource.rawValue
+        providerID = event.providerID
+        modelID = event.modelID
+        attemptedAt = event.attemptedAt
+    }
+
+    var event: DataEgressEvent {
+        get throws {
+            guard let operation = DataEgressOperation(rawValue: operation) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "operation", value: self.operation)
+            }
+            guard let destinationScope = DataEgressDestinationScope(rawValue: destinationScope) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "destinationScope",
+                    value: self.destinationScope)
+            }
+            guard let dataClassification = DataEgressClassification(
+                rawValue: dataClassification)
+            else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "dataClassification",
+                    value: self.dataClassification)
+            }
+            guard let consentSource = DataEgressConsentSource(rawValue: consentSource) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "consentSource",
+                    value: self.consentSource)
+            }
+            return DataEgressEvent(
+                id: DataEgressEventID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                operation: operation,
+                destinationScope: destinationScope,
+                destinationHost: destinationHost,
+                dataClassification: dataClassification,
+                consentSource: consentSource,
+                providerID: providerID,
+                modelID: modelID,
+                attemptedAt: attemptedAt)
+        }
+    }
+}
+
 struct ActionItemRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "actionItem"
 

@@ -12,6 +12,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
     case invalidGenerationRun(String)
+    case invalidDataEgressEvent(String)
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
     case processingJobInputChanged(ProcessingJobID)
@@ -39,6 +40,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid processing job: \(reason)"
         case .invalidGenerationRun(let reason):
             return "invalid generation run: \(reason)"
+        case .invalidDataEgressEvent(let reason):
+            return "invalid data egress event: \(reason)"
         case .processingJobNotFound(let id):
             return "no such processing job: \(id.rawValue.uuidString)"
         case .processingJobLeaseLost(let id):
@@ -138,7 +141,7 @@ public final class MeetingStore: Sendable {
             let now = Date()
             let existing = try MeetingRecord.fetchOne(
                 db, key: meeting.id.rawValue.uuidString)
-            var record = try MeetingRecord(
+            let record = try MeetingRecord(
                 meeting, createdAt: existing?.createdAt ?? now, updatedAt: now,
                 deletedAt: existing?.deletedAt)
             try record.save(db)
@@ -238,11 +241,11 @@ public final class MeetingStore: Sendable {
                 sql: "UPDATE speaker SET deletedAt = ?, updatedAt = ? WHERE meetingID = ? AND deletedAt IS NULL",
                 arguments: [now, now, key])
             for speaker in speakers {
-                var record = SpeakerRecord(speaker, createdAt: now, updatedAt: now)
+                let record = SpeakerRecord(speaker, createdAt: now, updatedAt: now)
                 try record.save(db)
             }
             for segment in segments {
-                var record = SegmentRecord(segment, createdAt: now, updatedAt: now)
+                let record = SegmentRecord(segment, createdAt: now, updatedAt: now)
                 try record.save(db)
             }
         }

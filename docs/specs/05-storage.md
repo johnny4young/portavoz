@@ -1,12 +1,12 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage).
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v6` migrations in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v7` migrations in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -24,12 +24,23 @@ Singular camelCase tables, 1:1 with Codable records:
 | `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine, durable post-capture, and external-audio import successful summaries link atomically; accepted Refine links every replacement segment; generated live/post-Refine Companion cards link one current-workflow run and record only conservative external destination scope when transfer is attempted; failed/cancelled attempts persist separately (D62–D67) |
 | `outboxEvent` (v6) | idempotent external-side-effect envelope with delivery state, attempts, and retry/delivery timestamps |
 | `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
+| `dataEgressEvent` (v7) | immutable content-free attempt: meeting, operation, conservative destination scope/host, classification, consent, provider/model, and attemptedAt; indexed by meeting/time |
+| `privacyReceiptCoverage` (v7) | singleton `meeting-content-egress` row with the migration timestamp that bounds trustworthy receipt history |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect
 the filesystem or synthesize `audioAsset` rows, so `Meeting.audioDirectory`
 remains the authoritative product audio reference for legacy and new meetings.
+
+Schema v7 is an additive privacy-evidence migration (D75). It creates no event
+for historical activity and never reads meeting content. Instead, one persisted
+coverage timestamp lets new meetings claim complete tracked history while
+legacy meetings disclose that only later activity is covered. Event constraints
+admit only the known operations/scopes/classifications/consents; the runtime
+additionally requires an existing meeting, non-empty host/provider, and exact
+host/provider equality, then recomputes conservative scope from the host. A
+malformed, falsely local, or unowned event writes nothing.
 
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
@@ -180,6 +191,13 @@ database concern and remain behind the application filesystem port (D52).
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
+Privacy evidence adds `recordDataEgressEvent(_:)`,
+`dataEgressEvents(for:)`, and `privacyReceipt(for:)`. The first is the
+fail-closed `DataEgressEventRecorder` implementation used by production network
+composition. Receipt reads include live generation runs but expose only their
+purpose-built provider/model/time/outcome projection, never raw config,
+fingerprints, metrics, or meeting content.
+
 External audio uses the dedicated
 `saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the
 meeting's relative audio path, requires every speaker and segment to belong to
@@ -254,19 +272,21 @@ helpers with the existing one-shot APIs, so live-root scope, ordering, and
 degradable optional-row behavior cannot drift. The app maps these projections
 to ApplicationKit contracts; no GRDB projection reaches `InsightsView`.
 
-Meeting Detail has three independent observations (D59). Its live root, cast,
+Meeting Detail has four independent observations (D59/D75). Its live root, cast,
 and ordered transcript observe `meeting`, `speaker`, and `segment`; its newest
 immutable summary across recipes plus current action items observe `meeting`,
 `summary`, and `actionItem`; persisted Companion cards observe `meeting` and
-`companionCard`. Every projection is filtered to one live meeting. The core and
+`companionCard`; the privacy receipt observes `meeting`, `generationRun`,
+`dataEgressEvent`, and `privacyReceiptCoverage`. Every projection is filtered to one live meeting. The core and
 Companion helpers are shared with `detail` and `companionCards(for:)`, while
 the summary stream reuses `mostRecentSummarySnapshot`; one-shot and observed
 selection, ordering, tombstone scope, and strict decoding therefore remain
 identical. The app maps these StorageKit edge values into storage-independent
 ApplicationKit review updates.
 
-The database remains a `DatabaseQueue`; these observation slices add no
-migration and schema v6 is unchanged.
+The database remains a `DatabaseQueue`. The original scoped-observation slices
+added no migration; 3H adds only the schema-v7 receipt tables and leaves all
+existing rows and query behavior unchanged.
 
 ## `.portavoz` bundle (M15 L0)
 

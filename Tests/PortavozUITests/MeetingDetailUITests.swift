@@ -4,7 +4,8 @@ import XCTest
 /// the automated stand-in for eyeballing it. Launches with `-seed-demo`
 /// so the library has one deterministic meeting with a transcript, a
 /// tabbed summary (with a coauthoring ▸ bullet under Decisiones), meeting
-/// health and chapters in the right rail, and a player.
+/// health, chapters, a content-free privacy receipt in the right rail, and a
+/// player.
 final class MeetingDetailUITests: XCTestCase {
     /// Launches the app on the seeded meeting with isolated audio. Point
     /// PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
@@ -173,6 +174,12 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-meeting-health").waitForExistence(timeout: 10),
             "the right rail must show meeting health")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-privacy-receipt").waitForExistence(timeout: 10),
+            "the right rail must show the local privacy receipt")
+        XCTAssertTrue(
+            app.control(withIdentifier: "privacy-remote-event-0").exists,
+            "the fixture's content-free remote summary attempt must be auditable")
         // The refine control (now a menu with a per-meeting language override)
         // is present for a meeting that keeps its audio.
         XCTAssertTrue(
@@ -197,7 +204,7 @@ final class MeetingDetailUITests: XCTestCase {
             app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
             "the answered Companion card must render for review")
 
-        attachScreenshot(of: app, named: "band-2t-meeting-detail-mutations")
+        attachScreenshot(of: app, named: "band-3h-privacy-receipt")
     }
 
     @MainActor

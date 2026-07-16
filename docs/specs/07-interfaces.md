@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -54,8 +54,8 @@ meeting metadata.
 Companion BYOK is the first production consumer: it declares only a classified
 knowledge question, distinguishes provable loopback from conservative remote
 scope, and never sends recent transcript passages. The adapter carries payload
-bytes separately from metadata so future privacy receipts and diagnostics do
-not duplicate meeting content. OpenAI-compatible summary generation is the
+bytes separately from metadata so persisted privacy receipts and future
+diagnostics do not duplicate meeting content. OpenAI-compatible summary generation is the
 second consumer: app-owned Ollama calls and CLI `summarize --byok` require the
 gateway, real source `MeetingID`, full-summary classification, exact provider,
 model, destination and operation-specific consent. Only Ollama discovery stays
@@ -78,6 +78,17 @@ Content-free Ollama discovery and model downloads remain direct by design. The
 post-meeting Shortcut is an explicit local `/usr/bin/shortcuts` process surface,
 not a network adapter; its user-configured Shortcut may independently perform
 external actions outside Portavoz's process.
+
+D75 injects the opened `MeetingStore` as `DataEgressEventRecorder` for CLI Gist
+and issue publication. `summarize --save` now commits the meeting, cast, and
+transcript before an external summary call, then uses that same store-backed
+gateway. A failed provider therefore leaves both the expensive transcript and
+the attempted-transfer receipt available. Transient `summarize` without
+`--save` keeps its existing no-database behavior and makes no durable receipt
+claim. The concrete gateway validates first, writes the content-free attempt
+second, blocks every redirect, and transports last. Receipt failure prevents
+the request; HTTP failure retains the attempt because bytes may already have
+been transmitted.
 
 ## Known limitations
 

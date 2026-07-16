@@ -48,6 +48,22 @@ extension MeetingStore {
             })
         return observedStream(observation)
     }
+
+    /// Content-free generation and egress evidence updates independently from
+    /// transcript, summary, and Companion product content.
+    public func observeMeetingReviewPrivacyReceipt(
+        _ id: MeetingID
+    ) -> AsyncThrowingStream<PrivacyReceipt?, Error> {
+        let observation = ValueObservation.tracking(
+            regions: [
+                Table("meeting"), Table("generationRun"),
+                Table("dataEgressEvent"), Table("privacyReceiptCoverage")
+            ],
+            fetch: { database in
+                try Self.fetchPrivacyReceipt(for: id, in: database)
+            })
+        return observedStream(observation)
+    }
 }
 
 extension MeetingStore {

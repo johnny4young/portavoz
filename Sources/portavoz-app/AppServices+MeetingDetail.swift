@@ -30,7 +30,8 @@ extension AppServices: MeetingDetailModelClient {
         makeApplicationMeetingReviewStream(
             core: store.observeMeetingReviewCore(meetingID),
             summary: store.observeMeetingReviewSummary(meetingID),
-            companion: store.observeMeetingReviewCompanionCards(meetingID))
+            companion: store.observeMeetingReviewCompanionCards(meetingID),
+            privacy: store.observeMeetingReviewPrivacyReceipt(meetingID))
     }
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws {
@@ -61,7 +62,8 @@ extension AppServices: MeetingDetailModelClient {
 private func makeApplicationMeetingReviewStream(
     core: AsyncThrowingStream<MeetingStore.MeetingReviewCore?, Error>,
     summary: AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error>,
-    companion: AsyncThrowingStream<[CompanionCard], Error>
+    companion: AsyncThrowingStream<[CompanionCard], Error>,
+    privacy: AsyncThrowingStream<PrivacyReceipt?, Error>
 ) -> AsyncStream<MeetingReviewUpdate> {
     AsyncStream { continuation in
         let task = Task {
@@ -81,6 +83,11 @@ private func makeApplicationMeetingReviewStream(
                 group.addTask {
                     await forwardMeetingReview(companion, to: continuation, section: .companion) {
                         .companionCards($0)
+                    }
+                }
+                group.addTask {
+                    await forwardMeetingReview(privacy, to: continuation, section: .privacy) {
+                        .privacyReceipt($0)
                     }
                 }
             }

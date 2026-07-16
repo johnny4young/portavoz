@@ -61,9 +61,23 @@ extension AppServices {
                 question: "Ana, ¿te encargas del presupuesto?", answer: "",
                 kind: .context, source: "on-device", directed: true, askedAt: 200)
         ], for: meeting.id)
+        await seedPrivacyReceipt(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         libraryVersion += 1
+    }
+
+    private func seedPrivacyReceipt(for meetingID: MeetingID) async {
+        try? await store.recordDataEgressEvent(DataEgressEvent(
+            meetingID: meetingID,
+            operation: .summaryGeneration,
+            destinationScope: .remote,
+            destinationHost: "api.example.com",
+            dataClassification: .meetingSummaryMaterial,
+            consentSource: .summaryEngineSettings,
+            providerID: "api.example.com",
+            modelID: "fixture-summary",
+            attemptedAt: Date(timeIntervalSince1970: 1_700_000_300)))
     }
 
     /// Adopts isolated real audio when supplied; otherwise creates a short

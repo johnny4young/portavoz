@@ -23,7 +23,8 @@ extension AppServices {
                 mlxModelDirectory: mlxDownloaded
                     ? Self.modelDir(ModelCatalog.mlxQwen35)
                     : nil,
-                foundationModelsCapability: foundationModelsCapability))
+                foundationModelsCapability: foundationModelsCapability,
+                gateway: dataEgressGateway))
     }
 }
 
@@ -48,6 +49,7 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
     let ollamaModel: String?
     let mlxModelDirectory: URL?
     let foundationModelsCapability: FoundationModelsCapability
+    let gateway: any DataEgressGateway
 
     func resolve(
         override: SummaryEngine?
@@ -61,7 +63,7 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
                 AppDirectSummaryRegenerationProvider(
                     provider: OllamaService.summaryProvider(
                         model: ollamaModel,
-                        gateway: URLSessionDataEgressGateway(),
+                        gateway: gateway,
                         consentSource: .summaryEngineSettings),
                     providerID: OllamaService.providerID(model: ollamaModel),
                     modelID: ollamaModel,

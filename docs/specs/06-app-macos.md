@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt).
 
 ## Structure
 
@@ -103,6 +103,18 @@ meeting document, GitHub Gist destination, and explicit Gist consent before the
 adapter can send. Request shape, secret-by-default behavior, response parsing,
 and user-visible failure presentation remain unchanged. GitHub/Linear issue
 publishing is CLI-only today and follows the parallel contract in spec 07.
+
+D75 makes `AppServices.dataEgressGateway` the single store-receipted production
+adapter for Companion, summaries, and Gist publication. The Store records the
+validated content-free attempt before URLSession; a recorder error fails the
+operation before transport. Meeting Detail receives a fourth independently
+merged receipt stream and shows a compact right-rail card. Complete new history
+without remote attempts reads “No remote service used”; an upgraded legacy
+meeting shows the tracking start date; any remote attempt shows purpose, host,
+and time plus the conservative warning that content may have left the Mac.
+Accessibility boundaries are `detail-privacy-receipt` and
+`privacy-remote-event-<index>`. English and Spanish catalog entries preserve
+the same evidence meaning.
 
 Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
 `RecordingController` still flushes `RecordingSession`, closes live feeds, and
@@ -219,10 +231,10 @@ and Spotlight retain the broad compatibility counter (D58).
 Slice 2S gives each selected meeting one read owner. `MeetingDetailView` owns
 an `@MainActor @Observable MeetingDetailModel` for the route identity and
 renders one storage-independent `MeetingReviewReadModel`. The model merges
-independent transcript/cast, newest cross-recipe summary/action-item, and
-Companion streams; distinguishes missing from failed state; rejects stale
+independent transcript/cast, newest cross-recipe summary/action-item, Companion,
+and privacy-receipt streams; distinguishes missing from failed state; rejects stale
 observation instances; and preserves healthy sections after a partial failure.
-`AppServices+MeetingDetail` maps the three StorageKit streams at composition.
+`AppServices+MeetingDetail` maps the four StorageKit streams at composition.
 The view no longer performs sequential detail/Companion/summary reads or keys
 its task to `libraryVersion`; player loading, two-column review, chapters,
 newest summary, exports, and visible errors remain unchanged. Accepted Refine

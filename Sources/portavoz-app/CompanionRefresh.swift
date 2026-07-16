@@ -41,12 +41,13 @@ enum CompanionRefresh {
     static func regenerate(
         from segments: [TranscriptSegment],
         meetingID: MeetingID,
-        transcriptRevision: Int
+        transcriptRevision: Int,
+        gateway: any DataEgressGateway
     ) async -> Result {
         let ownerName = RecordingController.companionOwnerName()
         let companion = ProvenanceCompanion(
             byok: BYOKSettings.companionClient(
-                gateway: URLSessionDataEgressGateway()),
+                gateway: gateway),
             egressConsentSource: .companionBYOKSettings)
         let ordered = segments
             .filter { $0.endTime > $0.startTime && !$0.text.isEmpty }

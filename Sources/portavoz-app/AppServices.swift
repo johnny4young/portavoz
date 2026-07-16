@@ -1,6 +1,7 @@
 import ApplicationKit
 import DiarizationKit
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import Observation
@@ -38,6 +39,9 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    var dataEgressGateway: URLSessionDataEgressGateway {
+        URLSessionDataEgressGateway(receiptRecorder: store)
+    }
     var modelsState: ModelsState = .unknown
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?

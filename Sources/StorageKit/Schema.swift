@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 6
+    public static let version = 7
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -179,6 +179,14 @@ public enum StorageSchema {
             try createProcessingJobTable(in: db)
             try createOutboxEventTable(in: db)
             try createMeetingPreferenceTable(in: db)
+        }
+
+        // v7 (D75/Band 3H): content-free privacy receipts. The coverage
+        // boundary prevents an upgraded library from claiming that historical
+        // silence proves old meetings never left the device.
+        migrator.registerMigration("v7") { db in
+            try createDataEgressEventTable(in: db)
+            try createPrivacyReceiptCoverage(in: db)
         }
 
         return migrator
@@ -346,5 +354,47 @@ public enum StorageSchema {
                 + "AND summaryLanguage IS NOT NULL "
                 + "AND length(trim(summaryLanguage)) > 0)")
         }
+    }
+
+    private static func createDataEgressEventTable(in db: Database) throws {
+        try db.create(table: "dataEgressEvent") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("operation", .text).notNull().check(
+                sql: "operation IN ('companion-knowledge-answer', 'summary-generation', "
+                    + "'publish-github-gist', 'create-github-issue', 'create-linear-issue')")
+            t.column("destinationScope", .text).notNull().check(
+                sql: "destinationScope IN ('local-device', 'remote')")
+            t.column("destinationHost", .text).notNull().check(
+                sql: "length(trim(destinationHost)) > 0")
+            t.column("dataClassification", .text).notNull().check(
+                sql: "dataClassification IN ('meeting-question-only', "
+                    + "'meeting-summary-material', 'meeting-export-document', "
+                    + "'meeting-action-item')")
+            t.column("consentSource", .text).notNull().check(
+                sql: "consentSource IN ('companion-byok-settings', "
+                    + "'explicit-companion-client', 'summary-engine-settings', "
+                    + "'explicit-summary-provider', 'explicit-gist-publish', "
+                    + "'explicit-github-issue-publish', 'explicit-linear-issue-publish')")
+            t.column("providerID", .text).notNull().check(
+                sql: "length(trim(providerID)) > 0")
+            t.column("modelID", .text)
+            t.column("attemptedAt", .datetime).notNull()
+        }
+        try db.create(
+            index: "dataEgressEvent_on_meetingID_attemptedAt",
+            on: "dataEgressEvent",
+            columns: ["meetingID", "attemptedAt"])
+    }
+
+    private static func createPrivacyReceiptCoverage(in db: Database) throws {
+        try db.create(table: "privacyReceiptCoverage") { t in
+            t.primaryKey("id", .text).check(sql: "id = 'meeting-content-egress'")
+            t.column("trackingStartedAt", .datetime).notNull()
+        }
+        try db.execute(
+            sql: "INSERT INTO privacyReceiptCoverage (id, trackingStartedAt) VALUES (?, ?)",
+            arguments: ["meeting-content-egress", Date()])
     }
 }

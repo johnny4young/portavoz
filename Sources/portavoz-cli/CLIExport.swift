@@ -80,7 +80,7 @@ enum ExportCommand {
                 print("⚠️ Publishing the transcript OUTSIDE the device as a \(isPublic ? "PUBLIC" : "secret") gist…")
                 let publisher = GistPublisher(
                     token: token,
-                    gateway: URLSessionDataEgressGateway())
+                    gateway: URLSessionDataEgressGateway(receiptRecorder: store))
                 let url = try await publisher.publish(
                     meetingID: meetingID,
                     markdown: markdown,

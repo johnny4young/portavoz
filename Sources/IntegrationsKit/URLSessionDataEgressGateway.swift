@@ -5,9 +5,20 @@ import PortavozCore
 /// validated before URLSession can observe the payload.
 public struct URLSessionDataEgressGateway: DataEgressGateway {
     private let session: URLSession
+    private let receiptRecorder: (any DataEgressEventRecorder)?
+    private let now: @Sendable () -> Date
+    private let makeEventID: @Sendable () -> DataEgressEventID
 
-    public init(session: URLSession = .shared) {
+    public init(
+        session: URLSession = .shared,
+        receiptRecorder: (any DataEgressEventRecorder)? = nil,
+        now: @escaping @Sendable () -> Date = { Date() },
+        makeEventID: @escaping @Sendable () -> DataEgressEventID = { DataEgressEventID() }
+    ) {
         self.session = session
+        self.receiptRecorder = receiptRecorder
+        self.now = now
+        self.makeEventID = makeEventID
     }
 
     public func perform(
@@ -15,7 +26,15 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
         metadata: DataEgressRequest
     ) async throws -> DataEgressResponse {
         try Self.validate(networkRequest, metadata: metadata)
-        let (data, response) = try await session.data(for: networkRequest)
+        if let receiptRecorder {
+            try await receiptRecorder.recordDataEgressEvent(DataEgressEvent(
+                id: makeEventID(),
+                request: metadata,
+                attemptedAt: now()))
+        }
+        let (data, response) = try await session.data(
+            for: networkRequest,
+            delegate: DataEgressRedirectBlocker())
         guard let http = response as? HTTPURLResponse else {
             throw DataEgressGatewayError.nonHTTPResponse
         }
@@ -217,5 +236,20 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
         else { return false }
         return components[2] != "." && components[2] != ".."
             && components[3] != "." && components[3] != ".."
+    }
+}
+
+/// A validated endpoint cannot silently redirect meeting material to another
+/// destination. Provider APIs used by Portavoz have canonical final URLs; a
+/// redirect is returned to the caller as the original 3xx response.
+final class DataEgressRedirectBlocker: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }

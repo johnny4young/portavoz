@@ -627,7 +627,7 @@ extension AppServices {
             return SummaryProviderSelection(
                 provider: OllamaService.summaryProvider(
                     model: model,
-                    gateway: URLSessionDataEgressGateway(),
+                    gateway: dataEgressGateway,
                     consentSource: .summaryEngineSettings),
                 providerID: OllamaService.providerID(model: model),
                 modelID: model,

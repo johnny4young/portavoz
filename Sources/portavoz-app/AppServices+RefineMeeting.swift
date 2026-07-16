@@ -22,7 +22,7 @@ extension AppServices {
                         UserDefaults.standard.string(forKey: "customVocabulary") ?? ""))),
             processor: AppRefineMeetingProcessor(services: self),
             store: store,
-            companion: AppRefineMeetingCompanion())
+            companion: AppRefineMeetingCompanion(services: self))
     }
 }
 
@@ -160,6 +160,12 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
 
 @MainActor
 private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
+    private weak var services: AppServices?
+
+    init(services: AppServices) {
+        self.services = services
+    }
+
     func isRefreshAvailable() -> Bool {
         guard FoundationModelsCapability.current().isAvailable else { return false }
         guard #available(macOS 26.0, *) else { return false }
@@ -174,10 +180,14 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
         guard #available(macOS 26.0, *) else {
             return RefineMeetingCompanionRefresh(cards: [], completed: false)
         }
+        guard let services else {
+            return RefineMeetingCompanionRefresh(cards: [], completed: false)
+        }
         let result = await CompanionRefresh.regenerate(
             from: segments,
             meetingID: meetingID,
-            transcriptRevision: transcriptRevision)
+            transcriptRevision: transcriptRevision,
+            gateway: services.dataEgressGateway)
         return RefineMeetingCompanionRefresh(
             cards: [],
             artifacts: result.artifacts,

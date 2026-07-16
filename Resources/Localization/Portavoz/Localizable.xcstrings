@@ -5480,6 +5480,146 @@
           }
         }
       }
+    },
+    "Privacy receipt": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibo de privacidad"
+          }
+        }
+      }
+    },
+    "No remote service used": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se usó ningún servicio remoto"
+          }
+        }
+      }
+    },
+    "No remote transfer recorded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se registró ninguna transferencia remota"
+          }
+        }
+      }
+    },
+    "Remote transfer attempted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se intentó una transferencia remota"
+          }
+        }
+      }
+    },
+    "All tracked meeting processing stayed on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo el procesamiento registrado de la reunión permaneció en este Mac."
+          }
+        }
+      }
+    },
+    "Tracking began %@; earlier activity is not covered.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El registro comenzó el %@; la actividad anterior no está cubierta."
+          }
+        }
+      }
+    },
+    "1 remote transfer attempt was recorded. Content may have left this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se registró 1 intento de transferencia remota. Es posible que el contenido haya salido de este Mac."
+          }
+        }
+      }
+    },
+    "%d remote transfer attempts were recorded. Content may have left this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se registraron %d intentos de transferencia remota. Es posible que el contenido haya salido de este Mac."
+          }
+        }
+      }
+    },
+    "Companion question only": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo la pregunta para Companion"
+          }
+        }
+      }
+    },
+    "Summary material": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Material para el resumen"
+          }
+        }
+      }
+    },
+    "Meeting export": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportación de la reunión"
+          }
+        }
+      }
+    },
+    "GitHub action item": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendiente de GitHub"
+          }
+        }
+      }
+    },
+    "Linear action item": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendiente de Linear"
+          }
+        }
+      }
+    },
+    "Model activity: %d · Local transfers: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actividad de modelos: %d · Transferencias locales: %d"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

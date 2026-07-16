@@ -6,39 +6,47 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** resume architecture Band 3 after completing the Jul 16
-Sequoia stabilization interrupt. The first unit fixed a real Stop failure:
-GRDB's millisecond `Date` representation no longer conflicts with the original
-submillisecond in-memory recording reservation, so normal capture commits
-immediately instead of relying on launch recovery. The second unit makes audio
-capture independent of initial Parakeet downloads and durably recovers a full
-transcript after Stop when live captions were unavailable or failed. The
-third unit exposes proactive app-scoped Whisper preparation that survives
-Settings and is reused by Refine/Import. The fourth unit makes Summary and
-Companion capability-aware on Sequoia, honors the selected summary engine
-exactly, and routes setup failures directly to Intelligence Settings. The
-fifth unit isolates speech-model readiness so Refine no longer depends on live
-Parakeet and durable first-pass recovery no longer depends on optional
-diarization. The sixth unit makes notarization self-contained across both
-direct DMG and Homebrew extraction. Resume
-[refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
-privacy receipt from content-free generation provenance and classified egress
-metadata. Slices 3G-a and 3G-b moved every current meeting-content HTTP path
-behind the shared `DataEgressGateway`; slice 3F established the first enforced
-vertical for Companion BYOK.
-Slices 3A–3E adopted
-provenance for manual/post-refine summaries, the durable post-capture executor,
-best-effort external-audio import summaries, accepted refined transcripts, and
-durable Companion cards; Band 2 is complete. Keep
-Spotlight independent; its incremental indexing/outbox adoption belongs with
-measured Band 4 scale work.
+**Next concrete step:** continue architecture Band 3 at slice 3I in
+[refactor-20260714.md](refactor-20260714.md): turn the now-trustworthy
+content-free provenance and privacy receipts into actionable local diagnostics
+and processing signposts. The slice must export support evidence without
+meeting text, prompts, output, secrets, full URLs, or local paths; show durable
+processing failures and recovery states where the user can act on them; and
+retain the current privacy receipt as the single user-facing egress truth.
+Typed-error adoption and the App Sandbox capability spike remain later Band 3
+slices. Keep Spotlight independent; its incremental indexing/outbox adoption
+belongs with measured Band 4 scale work.
+
+Slices 3A–3H now cover attempt-level generation provenance, every current
+meeting-content HTTP path, and an honest per-meeting receipt. The Jul 16
+Sequoia stabilization interrupt fixed Stop timestamp identity, audio-first
+capture/recovery, proactive Whisper preparation, exact capability-aware
+Summary/Companion setup, role-specific speech-model readiness, and independent
+app/DMG notarization. Band 2 is complete.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75).
+
+- **Architecture Band 3 slice 3H complete — every meeting has an honest
+  privacy receipt (Jul 16, 2026)**: schema v7 persists immutable content-free
+  egress attempts plus the date receipt tracking began. The shared gateway
+  validates policy, writes that evidence, and only then transports meeting
+  material; a receipt failure prevents transfer, an HTTP failure remains
+  visible, and redirects are rejected. Meeting Detail independently observes
+  generation provenance and egress evidence, then shows one of three truthful
+  states: all tracked work stayed local, no remote transfer has been recorded
+  since tracking began for a legacy meeting, or remote content may have left
+  with its purpose, destination host, and time. Saved app and CLI operations
+  use the same store-backed recorder. Migration, validation, transaction,
+  ordering, failure, redirect, observation, localization, and UI coverage plus
+  the 28th architecture rule protect the boundary. The complete gate is 663
+  package tests (13 gated), zero strict-lint violations across 245 Swift source
+  files, and all 21 XCUITest cases in English and Spanish with inspected
+  `band-3h-privacy-receipt` screenshots (D75).
 
 - **Sequoia stabilization unit 6 complete — Homebrew carries its own trust
   evidence (Jul 16, 2026)**: the published v0.6.0 cask was reproduced in an

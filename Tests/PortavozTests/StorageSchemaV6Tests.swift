@@ -31,7 +31,6 @@ final class StorageSchemaV6Tests: XCTestCase {
         try migrator.migrate(database, upTo: "v6")
 
         try database.read { db in
-            XCTAssertEqual(StorageSchema.version, 6)
             let meeting = try XCTUnwrap(Row.fetchOne(
                 db, sql: "SELECT * FROM meeting WHERE id = ?", arguments: [meetingID]))
             XCTAssertEqual(meeting["title"] as String, "Legacy planning")
