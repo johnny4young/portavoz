@@ -279,6 +279,28 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testInsightsReadPoliciesStayInsideApplicationKit() throws {
+        let policies = [
+            "InsightsScope", "LibraryStats", "InsightsFindings",
+        ]
+        for policy in policies {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: Self.repoRoot
+                    .appendingPathComponent("Sources/ApplicationKit/\(policy).swift").path),
+                "\(policy) must remain an inward ApplicationKit policy")
+            XCTAssertFalse(
+                FileManager.default.fileExists(atPath: Self.repoRoot
+                    .appendingPathComponent("Sources/IntegrationsKit/\(policy).swift").path),
+                "\(policy) must not return to the outbound integration layer")
+        }
+
+        let insights = try Self.contents(of: "Sources/portavoz-app/InsightsView.swift")
+        XCTAssertTrue(insights.contains("import ApplicationKit"))
+        XCTAssertFalse(
+            insights.contains("import IntegrationsKit"),
+            "InsightsView must not regain a broad outbound dependency for local read policy")
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

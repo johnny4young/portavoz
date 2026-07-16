@@ -7,6 +7,8 @@ final class InsightsUITests: XCTestCase {
     @MainActor
     func testInsightsRendersHeatmap() {
         let app = XCUIApplication.portavoz(seedDemo: true)
+        // Keep the retained evidence independent of the user's persisted picker choice.
+        app.launchArguments += ["-insightsScope", "week"]
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -28,6 +30,7 @@ final class InsightsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "insights-balance").exists,
             "Insights must show the talk-balance tile")
+        attachScreenshot(of: app, named: "band-2p-insights")
     }
 
     @MainActor

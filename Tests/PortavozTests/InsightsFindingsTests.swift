@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-@testable import IntegrationsKit
+@testable import ApplicationKit
 @testable import PortavozCore
 
 final class InsightsFindingsTests: XCTestCase {

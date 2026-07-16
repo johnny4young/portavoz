@@ -32,7 +32,7 @@ Everything runs on-device; no feature may introduce network traffic.
 
 **Where it connects:**
 - Data: `MeetingHealth.compute(segments:)` already calculates talk time, questions, and interruptions by speaker — filter on `isMe`.
-- Personal average: add to `LibraryStats` (IntegrationsKit) an average talk share over the last N meetings (persist nothing new: compute from the library).
+- Personal average: add to `LibraryStats` (ApplicationKit) an average talk share over the last N meetings (persist nothing new: compute from the library).
 - Presentation: sheet/card when the post-meeting summary completes (the hook where `RecordingController` enters the completed phase), nonblocking.
 - Setting: `Settings › Mi voz y Companion › «Espejo al terminar» (off por defecto)`.
 

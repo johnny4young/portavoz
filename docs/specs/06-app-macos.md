@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D55 (application workflow, feature-state ownership, scoped Library reads, and inward meeting-review policy).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D56 (application workflow, feature-state ownership, scoped Library reads, and inward product/read policy).
 
 ## Structure
 
@@ -127,6 +127,14 @@ inward application boundary. The move adds no capability dependency, schema,
 control, or localized copy. Eighteen direct policy tests plus a source-ownership
 and consumer-import architecture rule guard the boundary (D55).
 
+Slice 2P moves the deterministic Insights read-policy cluster into
+ApplicationKit. `InsightsScope`, `LibraryStats`, and `InsightsFindings` retain
+their exact public APIs and calculations; `InsightsView` now imports only the
+inward boundary for those decisions. Store-backed facts, voice balance, and the
+existing `libraryVersion` refresh are unchanged. Twenty-one direct policy tests,
+a source-ownership/import architecture rule, and the retained heatmap screenshot
+guard behavior and the visible dashboard (D56).
+
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed preparation/reservation/source-start attempt, while ownership transfers to the active session on success; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
@@ -153,7 +161,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 ## Insights (Jul 2026) — library dashboard
 
-`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), weekly cadence chart (Swift Charts, 12 weeks WITH zeros — a chart without empty weeks lies), frequent people and pending gauge. Calculation in two layers: `LibraryStats.compute(meetings:weeks:calendar:now:)` (IntegrationsKit, pure, calendar/now injected, 7 tests — meetings without `endedAt` count but don't drag average) + `MeetingStore.libraryFacts()` (SQL: named non-Me participants across distinct meetings, and counts open/done of action items with same rule latest-snapshot of `openActionItems` to avoid duplicating superseded versions). 100% local; reloads with `libraryVersion`.
+`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), a 12-week × 7-day rhythm heatmap with zero weeks retained, frequent people, pending gauge, and local findings. Calculation has an inward pure-policy layer — `InsightsScope`, `LibraryStats.compute(meetings:weeks:calendar:now:)`, and `InsightsFindings` in ApplicationKit with injected calendar/now and 21 tests — plus Store-backed `MeetingStore.libraryFacts()` and `voiceBalance()` projections. Meetings without `endedAt` count but do not drag the average; no-decision findings require summarized evidence, and recurring topics exclude participant names. Everything remains 100% local and reloads with `libraryVersion`.
 
 ## Resident menu bar (Jul 2026)
 
@@ -261,7 +269,9 @@ resume. Seed-demo includes a third segment at 200 s (mic
 channel) so there are two chapters and solo audio. Convention: all new
 interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
 assertion in the corresponding `*UITests.swift`; computer-use is the last
-resort. **Real bug caught by XCUITest (not computer-use):**
+resort. Feature-band evidence retains app-window-only screenshots at asserted
+Library, Insights, and Meeting Detail checkpoints so unrelated desktop content
+is never captured. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps
 before forming the range and has unit coverage.

@@ -1065,8 +1065,8 @@ architecture rule requires all four files to exist under ApplicationKit, be
 absent from IntegrationsKit, and have each direct app consumer import
 ApplicationKit. PortavozCore does not absorb them because they are
 cross-feature product/read policy rather than portable entity invariants.
-IntegrationsKit retains external adapters and its remaining Insights, brief,
-reminder, and mirror policy debt until each cluster receives its own
+At slice 2O, IntegrationsKit retained external adapters plus Insights, brief,
+reminder, and mirror policy debt; D56 moves the Insights cluster in its own
 characterization slice.
 
 **Rationale:** source ownership now follows semantics instead of historical
@@ -1076,3 +1076,32 @@ duration-clamped playback complements, language-agnostic section parsing, and
 stable normalized-name hues. Moving the files changes no schema, UI control,
 localized copy, or runtime result, and the rule prevents gradual boundary
 regression while the rest of IntegrationsKit narrows incrementally.
+
+## D56 — Insights read policy belongs to the application boundary (Jul 2026)
+
+**Context:** `InsightsScope`, `LibraryStats`, and `InsightsFindings` remained in
+`IntegrationsKit` even though they only transform local `PortavozCore` values.
+They define feature semantics: current/previous period windows, duration and
+streak aggregates, zero-filled heatmaps, no-decision findings, and recurring
+topic ranking. None performs I/O, knows GRDB, calls an external service, or
+translates an external format. `InsightsView` was their only production
+consumer and imported the broad outbound layer solely for those local rules.
+
+**Decision:** ApplicationKit owns all three policies with their existing public
+APIs and algorithms. Their 21 direct tests target ApplicationKit. A seventeenth
+architecture rule requires each source file to remain in ApplicationKit and
+absent from IntegrationsKit; it also requires `InsightsView` to import
+ApplicationKit without regaining an IntegrationsKit dependency. Store-backed
+facts, participant/voice-balance projections, and the feature's existing
+`libraryVersion` refresh remain unchanged for later read-model and scoped-
+observation slices. IntegrationsKit retains outbound adapters plus the remaining
+brief, reminder, and mirror policies until the next characterized slice.
+
+**Rationale:** Insights calculations are product/read decisions, not outbound
+integration concerns or reusable entity invariants. Moving them inward reduces
+presentation fan-in and narrows IntegrationsKit without adding a capability
+dependency, schema migration, state owner, or alternate execution path. The
+existing characterization suite preserves calendar cutoffs, open-ended meeting
+handling, deterministic ordering, heatmap shape, participant exclusions, and
+topic heuristics; the UI smoke and retained app-window screenshot preserve the
+real dashboard surface.

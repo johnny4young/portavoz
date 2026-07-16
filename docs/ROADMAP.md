@@ -7,20 +7,34 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): move the characterized
-Insights read-policy cluster (`InsightsScope`, `LibraryStats`, and
-`InsightsFindings`) from `IntegrationsKit` to `ApplicationKit`. Preserve scope
-cutoffs, rhythm heatmaps, participant/talk-time totals, no-decision findings,
-and recurring-topic behavior exactly; add the matching inward-boundary rule.
-Treat `BriefRelevance`, reminder/mirror policy, and every external bundle,
-GitHub/Linear/Gist, calendar, RAG, and MCP adapter as separate parity slices.
+program in [refactor-20260714.md](refactor-20260714.md): move the remaining
+characterized local product-policy cluster (`BriefRelevance`, `ReminderPolicy`,
+and `MirrorStats`) from `IntegrationsKit` to `ApplicationKit`, together with the
+calendar-neutral `UpcomingEvent` contract required by reminder policy. Preserve
+brief ranking/reasons, reminder timing and deduplication, mirror qualification
+and bilingual factual synthesis exactly; add the matching inward-boundary rule.
+Keep every EventKit, external bundle, GitHub/Linear/Gist, calendar, RAG, and MCP
+adapter in `IntegrationsKit`.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56).
+
+- **Architecture Band 2 slice 2P complete — Insights policy is inward (Jul 15,
+  2026)**: `ApplicationKit` now owns `InsightsScope`, `LibraryStats`, and
+  `InsightsFindings`, preserving current/previous scope windows, duration and
+  streak aggregates, zero-filled rhythm heatmaps, no-decision findings, and
+  recurring-topic ranking. `InsightsView` consumes those policies without an
+  `IntegrationsKit` import; the Store-backed facts, voice balance, and broad
+  `libraryVersion` refresh remain unchanged. A seventeenth architecture rule
+  locks source ownership and the narrow app import. The existing 21 policy
+  tests remain green, bringing the verified baseline to 575 package tests (13
+  gated), 222 linted Swift files, and 19 UI cases; the Insights heatmap case now
+  retains app-window screenshot evidence. No visible behavior, schema,
+  capability dependency, or localized copy changed (D56).
 
 - **Architecture Band 2 slice 2O complete — meeting review policy is inward
   (Jul 15, 2026)**: `ApplicationKit` now owns the deterministic

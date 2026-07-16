@@ -110,8 +110,8 @@ let package = Package(
         .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
 
         .target(name: "SyncKit", dependencies: ["PortavozCore"]),
-        // IntegrationsKit is the cross-cutting layer over stored meetings
-        // (export, MCP-ish surfaces, RAG retrieval): the ONLY Kit allowed to
+        // IntegrationsKit is the outbound adapter layer over stored meetings
+        // (export, MCP surfaces, RAG retrieval): the ONLY Kit allowed to
         // depend on sibling Kits (IntelligenceKit + StorageKit, D31).
         .target(
             name: "IntegrationsKit",
