@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 541 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
+Status: 551 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -8,11 +8,12 @@ Status: 541 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHu
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/refine/Start/Stop bypass prevention, and the Sendable async use-case contract |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/bundle-import/refine/Start/Stop/recovery bypass prevention, launch ordering, and the Sendable async use-case contract |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, and real MeetingStore note/snapshot adaptation |
 | ImportMeetingUseCaseTests | Required preparation/transcription order, typed progress, mixed-language preservation, best-effort diarization/summary, exact idle release, staged-audio rollback, atomic imported aggregate persistence, and real MeetingStore adaptation |
+| ImportMeetingBundleUseCaseTests | Canonical attachment validation, duplicate rejection, text/audio ordering, machine-path clearing, early-failure isolation, compensation without error masking, full relational conservation, foreign-child rejection, and rollback after an injected final-child failure |
 | RefineMeetingUseCaseTests | Draft order/progress/language, silence/noise/bleed hygiene, required versus degradable failures, cancellation/release, revision-fenced apply, Companion outcomes, immutable summaries, stale rejection, and injected transactional rollback through real MeetingStore adaptation |
 | StartRecordingUseCaseTests | Once-sampled preferences, title/sequence and event-title policy, preparation/reservation/source order, callback forwarding, selected-channel assets, typed preparation failures, staging/published evidence preservation, guarded empty-shell discard, reconciliation failure reporting, release, and real MeetingStore atomic reservation before source invocation |
 | StopRecordingUseCaseTests | Finalized/missing asset reconciliation, provisional attribution, per-turn mixed-language preservation, exact initial-job policy/order, transcript/no-audio/recovery outcomes, admission and fallback failures, unconditional engine release, and atomic real-Store snapshot/job adaptation |
@@ -232,6 +233,20 @@ The architecture rule requires app launch recovery to enter through
 asserts worker resume remains later in launch order. Strict SwiftLint remains
 clean across 215 source files; no UI control or visible copy changed, so the
 existing recovery XCUITest and 19-case suite remain the UI contract.
+
+Band 2 slice 2K adds nine bundle-import tests and a thirteenth architecture
+rule. Port fakes prove that text-only import writes no files, audio stages before
+the Store commit, machine-local paths are cleared, document/stage failures
+cannot reach persistence, and a Store failure attempts compensation without
+masking the original error. Boundary tests reject path-shaped or unknown
+channels, unsupported/path-shaped extensions, and duplicate canonical
+channels. Real in-memory Store cases prove every format-v1 relational child is
+conserved as immutable summary version 1, foreign summary/note ownership is
+rejected before writes, and a trigger rejecting the final Companion card rolls
+the whole aggregate back. The architecture rule keeps bundle import behind
+ApplicationKit and sequential Store writes out of the app adapter. Strict
+SwiftLint remains clean across 216 source files; no interactive UI or localized
+copy changed, so the existing 19-case suite remains the UI contract.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

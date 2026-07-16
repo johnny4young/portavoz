@@ -889,3 +889,41 @@ failure preservation, and invalidation parity one independently testable owner
 without adding `AudioCaptureKit` or OSLog to ApplicationKit. Keeping worker
 adoption after the awaited boundary preserves D42 and prevents derived work
 from racing incomplete audio truth.
+
+## D51 — Bundle import is one aggregate transaction with a local file Saga (Jul 2026)
+
+**Context:** `.portavoz` import decoded and remapped the document, materialized
+optional audio, then wrote the meeting, cast, transcript, summary, notes, and
+Companion cards through up to six independent Store transactions. A failure in
+a late child could expose a partial meeting. The external attachment's decoded
+`name` and `fileExtension` were also interpolated into its destination path,
+so a hand-authored bundle could introduce path separators, duplicate channels,
+or an unsupported file type. JSON and meeting-length data reads ran in an app
+service rather than behind an application workflow.
+
+**Decision:** `ApplicationKit.ImportMeetingBundle` receives a format-neutral,
+already identity-remapped document from a private IntegrationsKit app adapter.
+That adapter reads, decodes, and remaps on a utility task; ApplicationKit does
+not add an IntegrationsKit dependency. The boundary clears every incoming
+machine-local audio path and accepts only one canonical `system` and/or
+`microphone` attachment with a normalized `m4a`, `caf`, or `wav` extension.
+An app filesystem adapter stages those attachments only as
+`Audio/<fresh-meeting-id>/<channel>.<extension>` and removes a partial
+directory if writing fails.
+
+`MeetingStore.saveImportedMeetingBundle` validates ownership and uniqueness,
+then installs the meeting, speakers, transcript, optional immutable summary
+version 1 and action items, notes, and Companion cards in one GRDB transaction.
+If persistence fails after audio staging, the use case attempts a compensating
+directory delete without masking the original failure. `AppServices` increments
+the released Library invalidation exactly once only after success; callers
+retain the existing navigation timing, including double-click routing.
+
+**Rationale:** SQLite can make the relational aggregate atomic, but SQLite and
+the filesystem cannot share a real transaction. A bounded local Saga—stage,
+commit, compensate—makes that limitation explicit and testable. Keeping
+external-format details in a private adapter preserves the dependency ratchet,
+while canonical attachment types turn untrusted metadata into a closed domain
+before any path is constructed. Fresh identity, open-format compatibility,
+optional audio, and the released UX remain unchanged, but partial meetings and
+path-shaped attachment metadata no longer cross the boundary.

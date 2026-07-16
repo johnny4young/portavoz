@@ -59,7 +59,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
 - **Whisper refine** — a cancellable maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting to recover one that came out wrong.
-- **Import any audio** — drag in a file (or a `.portavoz` bundle) and it transcribes, diarizes and summarizes like a live recording. Large copies stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
+- **Import any audio** — drag in a recording or a `.portavoz` bundle. Recordings are transcribed, diarized, and summarized like a live capture; bundles restore the remapped transcript, summary, notes, Companion, and validated optional audio as one all-or-nothing meeting. Large files stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
 
 **Understand the meeting**
 - **Every voice, told apart** — on-device diarization; each speaker gets a stable color, mapped to real names automatically (calendar + LLM) or with one click.
@@ -132,7 +132,7 @@ architecture migration is tracked in
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio import, reviewable/revision-fenced refinement, and durable recording Start/Stop/launch-recovery handoffs over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import, reviewable/revision-fenced refinement, and durable recording Start/Stop/launch-recovery handoffs over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |

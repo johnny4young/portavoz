@@ -86,6 +86,15 @@ invalidation/logging evidence. A private app adapter retains configured plus
 fallback root discovery and off-main CAF validation/publication; the app shell
 still awaits recovery before adopting durable worker work and invokes no ML
 during reconciliation (D50).
+Slice 2K begins explicit composition-root reduction with
+`ApplicationKit.ImportMeetingBundle`. A private IntegrationsKit adapter decodes
+and identity-remaps format v1 on a utility task, then crosses the application
+boundary with only validated canonical attachments. The use case clears
+machine-local paths, stages optional audio, installs the complete relational
+aggregate through one StorageKit Unit of Work, and compensates the staged
+directory after persistence failure without masking the original error.
+AppServices retains one success invalidation and callers retain navigation
+timing (D51).
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -98,30 +107,31 @@ eleven Kit libraries. Most depend on Core only; verified exceptions are
 `DiarizationKit → ModelStoreKit`, and
 `IntegrationsKit → IntelligenceKit + StorageKit` (D31/D44). The app and CLI
 still compose most capabilities directly at runtime; trash mutations, Meeting
-Detail summary regeneration, external-audio import, meeting refinement, and
-durable recording Start/Stop/launch-recovery handoffs now cross ApplicationKit.
+Detail summary regeneration, external-audio and `.portavoz` aggregate import,
+meeting refinement, and durable recording Start/Stop/launch-recovery handoffs
+now cross ApplicationKit.
 
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types, typed IDs, length-prefixed SHA-256 operation identity, canonical `LanguageCode`, and independent transcript/summary language policies. It currently also contains the concrete Keychain-backed `SecretStore`; moving that implementation to a platform adapter is a target, not current behavior |
-| `ApplicationKit` | Band 2 application boundary. It defines `ApplicationUseCase<Request, Response>` as a Sendable async workflow contract and currently depends on Core, TranscriptionKit, DiarizationKit, IntelligenceKit, and StorageKit. Delete/restore use `MeetingLifecycleStore`; manual/expired purge coordinates `MeetingPurgeStore` with `MeetingAudioFiles`; `RegenerateSummary` owns recipe-scoped provider/reuse policy; `ImportMeeting` owns typed progress, language policy, required transcription, best-effort diarization/summary, staged-audio rollback, engine release, and aggregate persistence; `RefineMeeting` creates reviewable quality drafts and `ApplyRefinedMeeting` accepts them through a revision-fenced transcript Unit of Work with degradable Companion refresh; `StartRecording` owns once-sampled start preferences, title/sequence policy, atomic pre-source reservation, source-start invocation, evidence-first start-failure reconciliation, and failure-time release behind runtime/filesystem/store ports; `StopRecording` owns finalized capture reconciliation, audio-first fallbacks, exact initial-job admission, worker kick, and idle release; `RecoverInterruptedMeetings` owns expired-lease-first launch reconciliation, live-writer exclusion, evidence-to-lifecycle policy, and typed invalidation/failure reporting. `MeetingStore` plus private app platform/model/file/provider adapters are the production implementations. Further capability dependencies are admitted only with the characterized vertical use case that consumes them (D44–D50) |
+| `ApplicationKit` | Band 2 application boundary. It defines `ApplicationUseCase<Request, Response>` as a Sendable async workflow contract and currently depends on Core, TranscriptionKit, DiarizationKit, IntelligenceKit, and StorageKit. Delete/restore use `MeetingLifecycleStore`; manual/expired purge coordinates `MeetingPurgeStore` with `MeetingAudioFiles`; `RegenerateSummary` owns recipe-scoped provider/reuse policy; `ImportMeeting` owns typed progress, language policy, required transcription, best-effort diarization/summary, staged-audio rollback, engine release, and aggregate persistence; `ImportMeetingBundle` owns machine-path clearing, canonical attachment admission, staged-directory compensation, and one complete relational aggregate commit; `RefineMeeting` creates reviewable quality drafts and `ApplyRefinedMeeting` accepts them through a revision-fenced transcript Unit of Work with degradable Companion refresh; `StartRecording` owns once-sampled start preferences, title/sequence policy, atomic pre-source reservation, source-start invocation, evidence-first start-failure reconciliation, and failure-time release behind runtime/filesystem/store ports; `StopRecording` owns finalized capture reconciliation, audio-first fallbacks, exact initial-job admission, worker kick, and idle release; `RecoverInterruptedMeetings` owns expired-lease-first launch reconciliation, live-writer exclusion, evidence-to-lifecycle policy, and typed invalidation/failure reporting. `MeetingStore` plus private app platform/model/file/provider/document adapters are the production implementations. Further capability dependencies are admitted only with the characterized vertical use case that consumes them (D44–D51) |
 | `ModelStoreKit` | Curated registry (`ModelCatalog`, routing **by task** through `ModelTask`) + `ModelStore`: downloads verified by sha256/pinned commit. Shared by every Kit that loads models |
 | `AudioCaptureKit` | Mic (AVAudioEngine) + per-app process taps (Core Audio, macOS 14.4+); `RecordingSession` (with `onChunk` tap); crash-safe staged CAF writer; validated SHA-256/health metadata and same-directory atomic publication; persisted-PCM recovery inspection/publication; retention policies |
 | `TranscriptionKit` | `TranscriptionEngine` protocol; `ParakeetEngine` (live sliding window + batch long-form); `TranscriptionScheduler` (D7 slots) |
 | `DiarizationKit` | `PyannoteDiarizer` (pyannote community-1 + WeSpeaker through FluidAudio) over system/room channels; `SpeakerAttributor` (structural who-said-what); exact post-capture operation fingerprints; `Voiceprint` (biometric: on-device only, encrypted, never synced, erasable) |
 | `IntelligenceKit` | Summary providers for Foundation Models, OpenAI-compatible BYOK/Ollama, and embedded MLX; structured summaries, Recipes, material-cache and language/revision-aware operation fingerprints, Companion/RAG intelligence, schedulers, embeddings, and bilingual output policy |
 | `ContextFeedKit` | Placeholder-scale compatibility target; timestamped note behavior is implemented through Core/app/storage rather than a substantial standalone Kit |
-| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording reserves assets and atomically installs the captured meeting/assets/live content plus its initial exact job; recovery installs revalidated assets through a repeat-safe Unit of Work that protects ready meetings. The typed job queue enforces idempotent enqueue, owner-bound leases, retries, scheduled wake discovery, success/failure/cancellation terminal states, and lifecycle derivation; generated diarization/summary artifacts have stale-safe atomic completion boundaries consumed by the process executor. Provenance, outbox, and per-meeting preferences remain unconsumed. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
+| `StorageKit` | `MeetingStore` over GRDB 7 + FTS5, schema v6: the released meeting/transcript/summary/search/trash behavior plus lifecycle, audio-asset, durable-job, generation-run, outbox, and meeting-preference foundations. Recording reserves assets and atomically installs the captured meeting/assets/live content plus its initial exact job; recovery installs revalidated assets through a repeat-safe Unit of Work that protects ready meetings; `.portavoz` import validates and atomically installs meeting, cast, transcript, optional summary/actions, notes, and Companion cards. The typed job queue enforces idempotent enqueue, owner-bound leases, retries, scheduled wake discovery, success/failure/cancellation terminal states, and lifecycle derivation; generated diarization/summary artifacts have stale-safe atomic completion boundaries consumed by the process executor. Provenance, outbox, and per-meeting preferences remain unconsumed. Persisted IDs/enums decode strictly, live library projections join the meeting root, and segment vectors remain plain BLOBs |
 | `AudioPlaybackKit` | Synchronized playback, channel-aware waveform data, clips, silence skipping, and AAC transcoding |
 | `SyncKit` | Placeholder-scale `Visibility` model. CKSyncEngine and CloudKit sync are planned, not implemented |
 | `IntegrationsKit` | Export and external-system adapters plus several cross-cutting read/product policies. It is the only cross-Kit layer under D31; narrowing it is part of Band 2 |
-| `portavoz-app` | SwiftUI macOS application. `AppServices` composes dependencies and still carries the process-scoped post-capture worker supervisor plus broad invalidation. Trash mutations, Meeting Detail summary regeneration, audio import, meeting refinement, and durable Start/Stop/launch recovery enter through ApplicationKit. Private adapters own concrete capture sources/session/live Parakeet feeds, shared voiceprint acquisition, recordings-root discovery, CAF recovery mechanics, fixtures, OSLog, and presentation mapping while the remaining feature extraction continues incrementally |
+| `portavoz-app` | SwiftUI macOS application. `AppServices` composes dependencies and still carries the process-scoped post-capture worker supervisor plus broad invalidation. Trash mutations, Meeting Detail summary regeneration, external-audio and meeting-bundle import, meeting refinement, and durable Start/Stop/launch recovery enter through ApplicationKit. Private adapters own concrete capture sources/session/live Parakeet feeds, shared voiceprint acquisition, recordings-root discovery, CAF recovery mechanics, bundle decoding/remapping and canonical file staging, fixtures, OSLog, and presentation mapping while the remaining feature extraction continues incrementally |
 | `portavoz-cli` | Executable development harness (`record --seconds N --pid X --system --out dir`) |
 
-Band 2 slices 2A–2J establish and exercise a dependency ratchet rather than a
+Band 2 slices 2A–2K establish and exercise a dependency ratchet rather than a
 broad empty layer. Package and XcodeGen manifests expose `ApplicationKit`; app,
 CLI, and tests link it. StorageKit, IntelligenceKit, TranscriptionKit, and
-DiarizationKit are admitted only with real vertical use cases. Twelve architecture tests parse the real target
+DiarizationKit are admitted only with real vertical use cases. Thirteen architecture tests parse the real target
 declarations and source imports. They prevent capability Kits from
 depending back on ApplicationKit, reject presentation or platform imports in
 the application layer, freeze Core's existing `SecretStore.swift → Security`
@@ -131,7 +141,8 @@ forbidden symbols in ApplicationKit. Workflow-specific rules also reject the
 old Meeting Detail provider/cache bypass, any second app import definition,
 direct app refine persistence bypasses, and Start/Stop persistence or capture
 bypasses in `RecordingController`; launch recovery must also enter through its
-use case before worker resume. Seventy-nine application tests prove
+use case before worker resume, and bundle import cannot return to sequential
+Store writes. Eighty-eight application tests prove
 exact port delegation, provider override/material inputs, reuse and pivot
 fallback, released failure policy, strict expiry, aggregate/voice-mix
 conservation, import order/language/degradation/rollback/atomicity, and real
@@ -151,6 +162,10 @@ expired-lease-first order, per-candidate live-writer deferral, captured/
 processing/job-aware lifecycle decisions, guarded empty-shell discard,
 publication-only content preservation, typed canonical failures, released
 invalidation timing, and real-Store ready protection.
+Bundle coverage adds hostile attachment metadata, duplicate-channel rejection,
+text-only and audio-bearing order, machine-path clearing, early-failure
+isolation, original-error-preserving compensation, full-content conservation,
+foreign-child rejection, and rollback when the final relational child fails.
 The T16 parity slice also proves newest-across-recipe selection without
 deleting older immutable snapshots. Slice 2G adds a 19th XCUITest proving a
 running refine can be canceled without changing the visible transcript.
@@ -521,7 +536,7 @@ until a later Band 1 adoption slice.
 8. **Documentation is part of the change:** all explanatory content under `docs/` is English. Every refactor commit updates this file and every other source-of-truth document whose facts changed. User-visible changes update CHANGELOG; internal plumbing does not create misleading release notes.
 9. **Persisted identity is strict:** storage decoding never invents UUIDs or silently changes aggregate identity.
 10. **Capture outranks derivation:** usable captured audio remains discoverable even when captions, diarization, refine, summaries, indexing, or integrations fail.
-11. **Application dependencies ratchet inward:** `ApplicationKit` started Core-only and now admits StorageKit for characterized lifecycle/trash/regeneration/import/refine/recording/recovery persistence, IntelligenceKit for regeneration/import summary and refine Companion contracts, and TranscriptionKit plus DiarizationKit for the characterized import/refine and recording boundaries. Platform settings, filesystem operations, concrete capture/model/provider construction, localization, and availability remain injected adapters above the layer. Every later capability dependency must arrive with the use case that needs it; capability Kits never depend back on the application layer (D44–D50).
+11. **Application dependencies ratchet inward:** `ApplicationKit` started Core-only and now admits StorageKit for characterized lifecycle/trash/regeneration/import/refine/recording/recovery persistence, IntelligenceKit for regeneration/import summary and refine Companion contracts, and TranscriptionKit plus DiarizationKit for the characterized import/refine and recording boundaries. Platform settings, filesystem operations, concrete capture/model/provider construction, external-format decoding, localization, and availability remain injected adapters above the layer. Every later capability dependency must arrive with the use case that needs it; capability Kits never depend back on the application layer (D44–D51).
 
 ## Refactor migration status
 
@@ -532,9 +547,9 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 541-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 551-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, atomic captured-state/initial-job handoff, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, exact operation fingerprints, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43) | Valid audio is durable before derivation; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
-| 2 — Application layer | In progress — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery and evidence-to-lifecycle policy behind store/files/activity ports while retaining CAF mechanics, fixtures, logging, and presentation invalidation in private app adapters (D44–D50) | Next: begin composition-root reduction with `ImportMeetingBundle`, preserving remapped identity, attachments, immutable summaries, and exact Library/navigation behavior while replacing sequential aggregate writes with one characterized boundary |
+| 2 — Application layer | In progress — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import path clearing, validated attachment staging/compensation, and the complete relational aggregate behind document/files/store ports while retaining IntegrationsKit decoding/remapping and presentation invalidation/navigation in private app adapters (D44–D51) | Next: extract `ExportMeetingBundle` from Meeting Detail while preserving format-v1 compatibility, latest summary/notes/cards, optional canonical audio, save-panel behavior, and off-main file reads |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |

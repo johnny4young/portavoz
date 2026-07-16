@@ -171,6 +171,19 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertLessThan(recovery.lowerBound, worker.lowerBound)
     }
 
+    func testAppMeetingBundleImportEntersThroughApplicationKit() throws {
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Bundle.swift")
+
+        XCTAssertTrue(adapter.contains("importMeetingBundleUseCase.execute"))
+        XCTAssertTrue(adapter.contains("MeetingBundle.decode"))
+        XCTAssertTrue(adapter.contains("Task.detached(priority: .utility)"))
+        XCTAssertFalse(adapter.contains("store.save(bundle.meeting)"))
+        XCTAssertFalse(adapter.contains("store.saveSummary"))
+        XCTAssertFalse(adapter.contains("store.save(bundle.contextItems)"))
+        XCTAssertFalse(adapter.contains("store.save(bundle.companionCards"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

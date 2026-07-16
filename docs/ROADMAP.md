@@ -7,17 +7,30 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): begin composition-root
-reduction with `ImportMeetingBundle`. Preserve remapped aggregate identity,
-optional audio attachments, immutable summaries, notes and Companion cards,
-temp-store safety, and exact Library/navigation behavior while replacing the
-current sequence of independent writes with one characterized application/
-storage boundary and explicit staged-file cleanup. `RecoverInterruptedMeetings`,
-`StartRecording`, `StopRecording`, `RefineMeeting`, `ImportMeeting`, and T16
-are complete; Bands 0 and 1 are complete. Every slice
+program in [refactor-20260714.md](refactor-20260714.md): extract
+`ExportMeetingBundle` from `MeetingDetailView`. Preserve format-v1 additive
+compatibility, machine-local path stripping, latest-summary/notes/Companion
+content, optional canonical audio, the native save panel, and visible error
+behavior while moving aggregate assembly and meeting-length file reads behind
+one characterized ApplicationKit boundary. `ImportMeetingBundle`,
+`RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
+`RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
+complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51).
+
+- **Architecture Band 2 slice 2K complete — meeting bundles become one safe
+  aggregate (Jul 15, 2026)**: `ApplicationKit.ImportMeetingBundle` now owns
+  machine-local path clearing, optional attachment staging, one complete Store
+  commit, and compensating cleanup. The private IntegrationsKit adapter still
+  decodes and remaps format v1 off the MainActor; its validated handoff admits
+  only canonical system/microphone channels and m4a/caf/wav extensions. One
+  StorageKit Unit of Work installs meeting, cast, transcript, immutable summary
+  version 1 with action items, notes, and Companion cards, so a failure in the
+  last child rolls everything back. Nine use-case/security/real-Store tests
+  plus a thirteenth architecture rule bring the verified baseline to 551
+  package tests (13 gated) plus 19 UI cases (D51).
 
 - **Architecture Band 2 slice 2J complete — recovery finishes before workers
   begin (Jul 15, 2026)**: `ApplicationKit.RecoverInterruptedMeetings` now owns

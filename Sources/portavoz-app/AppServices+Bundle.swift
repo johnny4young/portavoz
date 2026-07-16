@@ -16,35 +16,91 @@ extension AppServices {
     /// importing the same file twice yields two independent meetings).
     /// Optional audio and Companion cards travel as additive v1 fields.
     func importBundle(from url: URL) async throws -> MeetingID {
-        let data = try Data(contentsOf: url)
-        var bundle = try MeetingBundle.decode(data).remappedForImport()
-        // Materialize traveling audio under a fresh directory so the
-        // imported meeting plays like a recorded one.
-        if let attachments = bundle.audioFiles, !attachments.isEmpty {
-            let relative = "Audio/\(bundle.meeting.id.rawValue.uuidString)"
-            let dir = Self.audioRoot.appendingPathComponent(relative, isDirectory: true)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            for attachment in attachments {
-                let file = dir.appendingPathComponent(
-                    "\(attachment.name).\(attachment.fileExtension)")
-                try attachment.data.write(to: file)
-            }
-            bundle.meeting.audioDirectory = relative
-        }
-        try await store.save(bundle.meeting)
-        try await store.save(bundle.speakers)
-        try await store.save(bundle.segments)
-        if let summary = bundle.summary {
-            try await store.saveSummary(summary)
-        }
-        if !bundle.contextItems.isEmpty {
-            try await store.save(bundle.contextItems)
-        }
-        if let cards = bundle.companionCards, !cards.isEmpty {
-            try await store.save(cards, for: bundle.meeting.id)
-        }
+        let meetingID = try await importMeetingBundleUseCase.execute(
+            ImportMeetingBundleRequest(sourceURL: url))
         libraryVersion += 1
-        return bundle.meeting.id
+        return meetingID
+    }
+
+    private var importMeetingBundleUseCase: ImportMeetingBundle {
+        ImportMeetingBundle(
+            documents: AppImportMeetingBundleDocuments(),
+            files: AppImportMeetingBundleFiles(root: Self.audioRoot),
+            store: store)
+    }
+}
+
+private struct AppImportMeetingBundleDocuments: ImportMeetingBundleDocuments {
+    func readRemappedBundle(
+        from source: URL
+    ) async throws -> ImportedMeetingBundleDocument {
+        try await Task.detached(priority: .utility) {
+            let data = try Data(contentsOf: source, options: .mappedIfSafe)
+            let bundle = try MeetingBundle.decode(data).remappedForImport()
+            let attachments = try (bundle.audioFiles ?? []).map {
+                try ImportedMeetingBundleAttachment(
+                    name: $0.name,
+                    fileExtension: $0.fileExtension,
+                    data: $0.data)
+            }
+            return try ImportedMeetingBundleDocument(
+                meeting: bundle.meeting,
+                speakers: bundle.speakers,
+                segments: bundle.segments,
+                summary: bundle.summary,
+                contextItems: bundle.contextItems,
+                companionCards: bundle.companionCards ?? [],
+                attachments: attachments)
+        }.value
+    }
+}
+
+private struct AppImportMeetingBundleFiles: ImportMeetingBundleFiles {
+    let root: URL
+
+    func stageBundleAudio(
+        _ attachments: [ImportedMeetingBundleAttachment],
+        meetingID: MeetingID
+    ) async throws -> ImportedMeetingBundleAudio {
+        let root = root
+        return try await Task.detached(priority: .utility) {
+            let relativeDirectory = "Audio/\(meetingID.rawValue.uuidString)"
+            let directory = root.appendingPathComponent(
+                relativeDirectory,
+                isDirectory: true)
+            let files = FileManager.default
+            guard !files.fileExists(atPath: directory.path) else {
+                throw ImportMeetingBundleError.audioDirectoryAlreadyExists(
+                    relativeDirectory)
+            }
+            do {
+                try files.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true)
+                for attachment in attachments {
+                    let filename =
+                        "\(attachment.channel.rawValue).\(attachment.fileExtension)"
+                    try attachment.data.write(
+                        to: directory.appendingPathComponent(filename),
+                        options: .atomic)
+                }
+                return ImportedMeetingBundleAudio(
+                    relativeDirectory: relativeDirectory)
+            } catch {
+                try? files.removeItem(at: directory)
+                throw error
+            }
+        }.value
+    }
+
+    func discardBundleAudio(_ audio: ImportedMeetingBundleAudio) async throws {
+        let directory = root.appendingPathComponent(
+            audio.relativeDirectory,
+            isDirectory: true)
+        try await Task.detached(priority: .utility) {
+            guard FileManager.default.fileExists(atPath: directory.path) else { return }
+            try FileManager.default.removeItem(at: directory)
+        }.value
     }
 }
 

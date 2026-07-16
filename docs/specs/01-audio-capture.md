@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga).
 
 ## Channel model (D5)
 
@@ -129,6 +129,15 @@ and transcript. Any required preparation, transcription, or aggregate-write
 failure before that commit attempts to remove the staged directory without
 masking the original error. Once the aggregate commits, optional diarization
 or summary failure never removes its audio.
+
+`.portavoz` attachment import is a separate D51 application workflow. Its
+private format adapter validates the decoded handoff down to at most one
+`system` and one `microphone` attachment with an m4a/caf/wav extension. The
+filesystem adapter constructs only canonical filenames under the freshly
+remapped meeting directory, cleans a partially written directory, and treats
+the completed directory as staged until the full relational bundle aggregate
+commits. A later Store failure triggers best-effort compensation without
+masking the persistence error.
 
 ## Planned (not implemented)
 

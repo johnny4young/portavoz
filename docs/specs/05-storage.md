@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work).
 
 ## Database
 
@@ -168,6 +168,15 @@ rolls back the complete aggregate, so the Library never observes a meeting
 without its required transcript (D46). The optional summary remains a later
 immutable `saveSummary` operation and cannot roll the aggregate back.
 
+Meeting-bundle import uses the superset
+`saveImportedMeetingBundle(_:at:)` Unit of Work (D51). Before writing it
+validates the relative audio directory; unique speaker/segment/note/card/action
+identities; meeting ownership; cast references; and summary/action ownership.
+One transaction rejects an existing meeting ID and inserts the meeting, cast,
+transcript, optional summary as immutable version 1 with its action items,
+notes, and Companion cards. A failure in the last card insert rolls back every
+earlier row, while invalid foreign children are rejected before any write.
+
 Accepted refine drafts use the dedicated
 `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:)`
 Unit of Work. Before writing, it requires a nonnegative source revision, a
@@ -190,7 +199,7 @@ children; restoring the root returns the exact previous projections.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths never travel.
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51).
 
 ## Recordings folder — `RecordingsLocation`
 
@@ -287,3 +296,12 @@ canonical needs-attention transaction. ApplicationKit receives no GRDB record
 or SQL detail. A real in-memory adapter test proves a ready aggregate remains
 untouched while an empty interrupted recording shell is the only hard-deleted
 candidate (D50).
+
+Slice 2K makes `MeetingStore` conform to `ImportMeetingBundleStore` through
+the complete imported-bundle Unit of Work. ApplicationKit supplies one
+validated snapshot and one sampled timestamp; StorageKit validates every
+aggregate relation before entering a single GRDB write. Summary/action rows,
+notes, and Companion cards can no longer commit independently of their meeting,
+cast, and transcript. Focused real-Store tests prove full conservation,
+pre-write rejection of foreign children, and rollback when an injected trigger
+rejects the final Companion card (D51).
