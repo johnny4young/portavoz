@@ -5240,6 +5240,246 @@
           }
         }
       }
+    },
+    "Apple summaries require macOS 26 and Apple Intelligence. On macOS Sequoia, choose Ollama or Built-in (MLX) in Intelligence Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los resúmenes de Apple requieren macOS 26 y Apple Intelligence. En macOS Sequoia, elige Ollama o Integrado (MLX) en Ajustes de Inteligencia."
+          }
+        }
+      }
+    },
+    "Apple summaries are unavailable: %@. Choose Ollama or Built-in (MLX) in Intelligence Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los resúmenes de Apple no están disponibles: %@. Elige Ollama o Integrado (MLX) en Ajustes de Inteligencia."
+          }
+        }
+      }
+    },
+    "Ollama is selected, but no chat model is configured. Open Intelligence Settings, detect your local models, and choose one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama está seleccionado, pero no hay ningún modelo de chat configurado. Abre Ajustes de Inteligencia, detecta tus modelos locales y elige uno."
+          }
+        }
+      }
+    },
+    "The Built-in summary model has not been downloaded. Open Intelligence Settings and download it once (about 3 GB).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo integrado de resúmenes no se ha descargado. Abre Ajustes de Inteligencia y descárgalo una vez (unos 3 GB)."
+          }
+        }
+      }
+    },
+    "The selected local engine could not generate this summary. Open Intelligence Settings to verify its model, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor local seleccionado no pudo generar este resumen. Abre Ajustes de Inteligencia para verificar su modelo y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Summary needs setup": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen necesita configuración"
+          }
+        }
+      }
+    },
+    "Open Intelligence Settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Ajustes de Inteligencia"
+          }
+        }
+      }
+    },
+    "Apple summaries are unavailable on this Mac. Choose Ollama or Built-in (MLX).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los resúmenes de Apple no están disponibles en este Mac. Elige Ollama o Integrado (MLX)."
+          }
+        }
+      }
+    },
+    "Apple summaries are unavailable: %@. Choose Ollama or Built-in (MLX).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los resúmenes de Apple no están disponibles: %@. Elige Ollama o Integrado (MLX)."
+          }
+        }
+      }
+    },
+    "Enable Companion for recordings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar Companion para las grabaciones"
+          }
+        }
+      }
+    },
+    "Turn it on here or from the recording toolbar. Companion detects questions and suggests private answer cards; it never speaks or answers for you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actívalo aquí o desde la barra de grabación. Companion detecta preguntas y sugiere tarjetas privadas con respuestas; nunca habla ni responde por ti."
+          }
+        }
+      }
+    },
+    "Companion is ready on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Companion está listo en este Mac."
+          }
+        }
+      }
+    },
+    "Live Companion requires macOS 26 and Apple Intelligence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Companion en vivo requiere macOS 26 y Apple Intelligence."
+          }
+        }
+      }
+    },
+    "On macOS Sequoia, summaries and Refine still work with Ollama, Built-in (MLX), and Whisper. An external BYOK provider cannot enable Companion yet because question detection still uses Apple's on-device model.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En macOS Sequoia, los resúmenes y Refine siguen funcionando con Ollama, Integrado (MLX) y Whisper. Un proveedor BYOK externo todavía no puede activar Companion porque la detección de preguntas sigue usando el modelo en el dispositivo de Apple."
+          }
+        }
+      }
+    },
+    "Live Companion needs Apple Intelligence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Companion en vivo necesita Apple Intelligence."
+          }
+        }
+      }
+    },
+    "Apple's on-device model is unavailable: %@. Choose another summary engine if needed; BYOK cannot replace Companion's question detector yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo en el dispositivo de Apple no está disponible: %@. Elige otro motor de resúmenes si lo necesitas; BYOK todavía no puede reemplazar el detector de preguntas de Companion."
+          }
+        }
+      }
+    },
+    "Apple Intelligence: on-device summaries, free and fast.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence: resúmenes en el dispositivo, gratis y rápidos."
+          }
+        }
+      }
+    },
+    "Your Mac has Apple Intelligence — the summary runs on the Neural Engine without downloading anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu Mac tiene Apple Intelligence: el resumen se ejecuta en el Neural Engine sin descargar nada."
+          }
+        }
+      }
+    },
+    "Local Ollama: summaries 100% on your Mac, without Apple Intelligence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama local: resúmenes 100 % en tu Mac, sin Apple Intelligence."
+          }
+        }
+      }
+    },
+    "Apple Intelligence is unavailable, but Ollama is running — local summaries with no cloud.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence no está disponible, pero Ollama está ejecutándose: resúmenes locales sin nube."
+          }
+        }
+      }
+    },
+    "Built-in local model: summaries without installing anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelo local integrado: resúmenes sin instalar nada."
+          }
+        }
+      }
+    },
+    "No Apple Intelligence or Ollama, but your Mac can run the embedded model (one 3 GB download, verified, 100% on-device).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay Apple Intelligence ni Ollama, pero tu Mac puede ejecutar el modelo integrado (una descarga verificada de 3 GB, 100 % en el dispositivo)."
+          }
+        }
+      }
+    },
+    "No local summary engine.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ningún motor local de resúmenes."
+          }
+        }
+      }
+    },
+    "No Apple Intelligence or Ollama, and the embedded model needs 8 GB of RAM and 4 GB of disk. Install Ollama (ollama.com) or configure BYOK in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay Apple Intelligence ni Ollama, y el modelo integrado necesita 8 GB de RAM y 4 GB de disco. Instala Ollama (ollama.com) o configura BYOK en Ajustes."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

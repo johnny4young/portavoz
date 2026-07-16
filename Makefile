@@ -38,17 +38,19 @@ test-ui: project
 ## UI smoke with the process launched in English.
 test-ui-en: project
 	@$(MAKE) --no-print-directory test-ui-preflight
-	PORTAVOZ_UI_TEST_LOCALE=en $(XCODE) xcodebuild test \
+	$(XCODE) xcodebuild test \
 		-project Portavoz.xcodeproj -scheme Portavoz \
 		-destination 'platform=macOS,arch=arm64' -configuration Debug \
+		-testLanguage en -testRegion US \
 		-skipPackagePluginValidation -skipMacroValidation
 
 ## UI smoke with the process launched in Spanish.
 test-ui-es: project
 	@$(MAKE) --no-print-directory test-ui-preflight
-	PORTAVOZ_UI_TEST_LOCALE=es $(XCODE) xcodebuild test \
+	$(XCODE) xcodebuild test \
 		-project Portavoz.xcodeproj -scheme Portavoz \
 		-destination 'platform=macOS,arch=arm64' -configuration Debug \
+		-testLanguage es -testRegion ES \
 		-skipPackagePluginValidation -skipMacroValidation
 
 ## XCUITest on macOS is sensitive to stale app instances and interrupting

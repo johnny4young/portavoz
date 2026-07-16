@@ -59,6 +59,10 @@ final class AppServices {
     /// pre-meeting banner): ContentView observes it, applies it to its
     /// route, and clears it.
     var pendingRoute: Route?
+    /// A feature can open the native Settings scene at the exact recovery
+    /// pane. Settings consumes this one-shot route whether its window is new
+    /// or already open.
+    var pendingSettingsCategory: SettingsCategory?
     /// Quality re-passes keyed by meeting — they outlive the detail view,
     /// so navigating away never loses a draft (field bug, Jul 10).
     let refines = RefineService()
@@ -228,8 +232,11 @@ final class AppServices {
     // MARK: - Summary engine (D25/M12)
 
     var summaryEngine: SummaryEngine {
-        SummaryEngine(rawValue: UserDefaults.standard.string(forKey: "summaryEngine") ?? "")
-            ?? .appleOnDevice
+        if let stored = UserDefaults.standard.string(forKey: "summaryEngine"),
+            let engine = SummaryEngine(rawValue: stored) {
+            return engine
+        }
+        return foundationModelsCapability.defaultSummaryEngine
     }
 
     /// The Ollama model chosen in Settings, or nil if none is configured.
@@ -239,14 +246,20 @@ final class AppServices {
         return model.isEmpty ? nil : model
     }
 
-    /// Whether the Apple on-device summary engine can run here (macOS 26 +
-    /// Apple Intelligence enabled). Used to only offer it as a per-meeting
-    /// override when it would actually work.
+    var foundationModelsCapability: FoundationModelsCapability {
+        .current()
+    }
+
+    /// Whether the Apple on-device summary engine can run here. Used to only
+    /// offer it as a per-meeting override when it would actually work.
     var appleSummaryAvailable: Bool {
-        if #available(macOS 26.0, *) {
-            return FoundationModelSummaryProvider.unavailabilityReason() == nil
-        }
-        return false
+        foundationModelsCapability.isAvailable
+    }
+
+    /// Live Companion currently requires the same Apple classifier. BYOK can
+    /// answer a classified knowledge question but cannot replace that gate.
+    var companionAvailable: Bool {
+        foundationModelsCapability.isAvailable
     }
 
     // MARK: - Embedded MLX model (D25 last mile)
@@ -320,18 +333,20 @@ final class AppServices {
                 text: "Cerremos con los próximos pasos del rollout.",
                 startTime: 200, endTime: 205, isFinal: true)
         ])
-        try? await store.saveSummary(
-            SummaryDraft(
-                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
-                markdown: """
-                    El equipo revisó el presupuesto y fijó el rollout.
+        if !ProcessInfo.processInfo.arguments.contains("-seed-without-summary") {
+            _ = try? await store.saveSummary(
+                SummaryDraft(
+                    meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+                    markdown: """
+                        El equipo revisó el presupuesto y fijó el rollout.
 
-                    ## Decisiones
-                    - ▸ El rollout del modelo queda para el viernes.
-                    - Se revisará el presupuesto de transcripción.
-                    """,
-                actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
-        await seedLatestRecipeSummaryIfRequested(for: meeting.id)
+                        ## Decisiones
+                        - ▸ El rollout del modelo queda para el viernes.
+                        - Se revisará el presupuesto de transcripción.
+                        """,
+                    actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
+            await seedLatestRecipeSummaryIfRequested(for: meeting.id)
+        }
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])

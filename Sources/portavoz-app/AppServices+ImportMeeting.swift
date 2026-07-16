@@ -39,7 +39,8 @@ extension AppServices {
             ollamaModel: ollamaModel,
             mlxModelDirectory: mlxDownloaded
                 ? Self.modelDir(ModelCatalog.mlxQwen35)
-                : nil)
+                : nil,
+            foundationModelsCapability: foundationModelsCapability)
         return ImportMeeting(
             audioFiles: AppImportMeetingAudioFiles(root: Self.audioRoot),
             preferences: AppImportMeetingPreferences(snapshot: sampledPreferences),

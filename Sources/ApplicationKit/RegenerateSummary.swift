@@ -5,7 +5,7 @@ import StorageKit
 
 /// User-selectable summary engines. Selection policy remains an app adapter;
 /// application workflows receive only this stable value.
-public enum SummaryEngine: String, CaseIterable, Sendable {
+public enum SummaryEngine: String, CaseIterable, Sendable, Equatable {
     case appleOnDevice
     case ollama
     case mlx
@@ -29,6 +29,8 @@ public enum SummaryRegenerationFailurePresentation: Equatable, Sendable {
 public enum SummaryRegenerationUnavailability: Equatable, Sendable {
     case requiresMacOS26
     case appleOnDevice(reason: String)
+    case ollamaModelNotSelected
+    case mlxModelNotDownloaded
 }
 
 /// Provider capability consumed by the regeneration workflow.

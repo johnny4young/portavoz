@@ -22,7 +22,8 @@ extension AppServices {
                 ollamaModel: ollamaModel,
                 mlxModelDirectory: mlxDownloaded
                     ? Self.modelDir(ModelCatalog.mlxQwen35)
-                    : nil))
+                    : nil,
+                foundationModelsCapability: foundationModelsCapability))
     }
 }
 
@@ -46,41 +47,49 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
     let defaultEngine: SummaryEngine
     let ollamaModel: String?
     let mlxModelDirectory: URL?
+    let foundationModelsCapability: FoundationModelsCapability
 
     func resolve(
         override: SummaryEngine?
     ) -> SummaryRegenerationProviderResolution {
         switch override ?? defaultEngine {
         case .ollama:
-            if let ollamaModel {
-                return .available(
-                    AppDirectSummaryRegenerationProvider(
-                        provider: OllamaService.summaryProvider(
-                            model: ollamaModel,
-                            gateway: URLSessionDataEgressGateway(),
-                            consentSource: .summaryEngineSettings),
-                        providerID: OllamaService.providerID(model: ollamaModel),
-                        modelID: ollamaModel,
-                        modelRevision: nil))
+            guard let ollamaModel else {
+                return .unavailable(.ollamaModelNotSelected)
             }
+            return .available(
+                AppDirectSummaryRegenerationProvider(
+                    provider: OllamaService.summaryProvider(
+                        model: ollamaModel,
+                        gateway: URLSessionDataEgressGateway(),
+                        consentSource: .summaryEngineSettings),
+                    providerID: OllamaService.providerID(model: ollamaModel),
+                    modelID: ollamaModel,
+                    modelRevision: nil))
         case .mlx:
-            if let mlxModelDirectory {
-                return .available(
-                    AppDirectSummaryRegenerationProvider(
-                        provider: MLXSummaryProvider(modelDirectory: mlxModelDirectory),
-                        providerID: MLXSummaryProvider.providerID,
-                        modelID: ModelCatalog.mlxQwen35.id,
-                        modelRevision: ModelCatalog.mlxQwen35.revision))
+            guard let mlxModelDirectory else {
+                return .unavailable(.mlxModelNotDownloaded)
             }
+            return .available(
+                AppDirectSummaryRegenerationProvider(
+                    provider: MLXSummaryProvider(modelDirectory: mlxModelDirectory),
+                    providerID: MLXSummaryProvider.providerID,
+                    modelID: ModelCatalog.mlxQwen35.id,
+                    modelRevision: ModelCatalog.mlxQwen35.revision))
         case .appleOnDevice:
             break
         }
 
+        switch foundationModelsCapability {
+        case .requiresMacOS26:
+            return .unavailable(.requiresMacOS26)
+        case .unavailable(let reason):
+            return .unavailable(.appleOnDevice(reason: reason))
+        case .available:
+            break
+        }
         guard #available(macOS 26.0, *) else {
             return .unavailable(.requiresMacOS26)
-        }
-        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
-            return .unavailable(.appleOnDevice(reason: reason))
         }
         return .available(AppFoundationSummaryRegenerationProvider())
     }

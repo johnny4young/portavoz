@@ -624,31 +624,29 @@ extension AppServices {
 
         switch summaryEngine {
         case .ollama:
-            if let model = ollamaModel {
-                return SummaryProviderSelection(
-                    provider: OllamaService.summaryProvider(
-                        model: model,
-                        gateway: URLSessionDataEgressGateway(),
-                        consentSource: .summaryEngineSettings),
-                    providerID: OllamaService.providerID(model: model),
-                    modelID: model,
-                    modelRevision: nil)
-            }
+            guard let model = ollamaModel else { return nil }
+            return SummaryProviderSelection(
+                provider: OllamaService.summaryProvider(
+                    model: model,
+                    gateway: URLSessionDataEgressGateway(),
+                    consentSource: .summaryEngineSettings),
+                providerID: OllamaService.providerID(model: model),
+                modelID: model,
+                modelRevision: nil)
         case .mlx:
-            if mlxDownloaded {
-                return SummaryProviderSelection(
-                    provider: MLXSummaryProvider(
-                        modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35)),
-                    providerID: MLXSummaryProvider.providerID,
-                    modelID: ModelCatalog.mlxQwen35.id,
-                    modelRevision: ModelCatalog.mlxQwen35.revision)
-            }
+            guard mlxDownloaded else { return nil }
+            return SummaryProviderSelection(
+                provider: MLXSummaryProvider(
+                    modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35)),
+                providerID: MLXSummaryProvider.providerID,
+                modelID: ModelCatalog.mlxQwen35.id,
+                modelRevision: ModelCatalog.mlxQwen35.revision)
         case .appleOnDevice:
             break
         }
 
         if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil {
+            foundationModelsCapability.isAvailable {
             return SummaryProviderSelection(
                 provider: FoundationModelSummaryProvider(),
                 providerID: FoundationModelSummaryProvider.providerID,

@@ -6,7 +6,7 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** complete the Jul 16 Sequoia stabilization interrupt
+**Next concrete step:** continue the Jul 16 Sequoia stabilization interrupt
 before resuming architecture Band 3. The first unit fixed a real Stop failure:
 GRDB's millisecond `Date` representation no longer conflicts with the original
 submillisecond in-memory recording reservation, so normal capture commits
@@ -14,10 +14,11 @@ immediately instead of relying on launch recovery. The second unit makes audio
 capture independent of initial Parakeet downloads and durably recovers a full
 transcript after Stop when live captions were unavailable or failed. The
 third unit exposes proactive app-scoped Whisper preparation that survives
-Settings and is reused by Refine/Import. The remaining units add honest
-Summary/Companion capability guidance, diagnose the reported Refine failure,
-and diagnose the
-Homebrew-versus-DMG installation difference. Then resume
+Settings and is reused by Refine/Import. The fourth unit makes Summary and
+Companion capability-aware on Sequoia, honors the selected summary engine
+exactly, and routes setup failures directly to Intelligence Settings. The
+remaining units diagnose the reported Refine failure and the Homebrew-versus-
+DMG installation difference. Then resume
 [refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
 privacy receipt from content-free generation provenance and classified egress
 metadata. Slices 3G-a and 3G-b moved every current meeting-content HTTP path
@@ -35,7 +36,19 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72).
+
+- **Sequoia stabilization unit 4 complete — intelligence setup is explicit
+  (Jul 16, 2026)**: one app-owned Foundation Models capability now drives
+  clean-install summary selection, exact provider composition, Settings
+  guidance, recording controls, and Companion refresh. Existing preferences
+  are preserved; selected Apple/Ollama/MLX engines no longer fall through to a
+  different provider. Typed setup states open the Intelligence pane directly.
+  Companion is shown only when its Apple classifier can run, and Settings
+  explains why BYOK cannot replace that classifier on Sequoia. Five policy
+  cases plus a full Sequoia summary-to-Settings-to-Companion XCUITest bring the
+  gate to 652 package tests (13 gated), 244 linted Swift source files, and 21 UI
+  cases (D72).
 
 - **Sequoia stabilization unit 3 complete — Whisper can be ready before
   Refine (Jul 16, 2026)**: Settings now exposes proactive Download, retry,

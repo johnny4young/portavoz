@@ -24,6 +24,7 @@ import UniformTypeIdentifiers
 /// summary snapshot, and its checkable action items.
 struct MeetingDetailView: View {
     @Environment(AppServices.self) private var services
+    @Environment(\.openSettings) private var openSettings
     let meetingID: MeetingID
     @Binding var route: Route?
     @State private var model: MeetingDetailModel
@@ -51,6 +52,7 @@ struct MeetingDetailView: View {
     @State private var gistResult: URL?
     @State private var gistError: String?
     @State private var summaryNotice: String?
+    @State private var summarySetupIssue: SummarySetupIssue?
     @State private var nameSuggestions: [NameSuggestion] = []
     @State private var suggestingNames = false
     /// Refine state lives in RefineService (keyed by meeting) so the work
@@ -159,6 +161,17 @@ struct MeetingDetailView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(summaryNotice ?? "")
+            }
+            .alert("Summary needs setup", isPresented: summarySetupBinding) {
+                Button("Open Intelligence Settings") {
+                    services.pendingSettingsCategory = .intelligence
+                    openSettings()
+                }
+                .accessibilityIdentifier("detail-summary-open-settings")
+                Button("Not now", role: .cancel) {}
+                    .accessibilityIdentifier("detail-summary-not-now")
+            } message: {
+                Text(summarySetupIssue?.message ?? "")
             }
             .alert("Couldn’t complete", isPresented: gistErrorBinding) {
                 Button("OK", role: .cancel) {}
@@ -316,6 +329,7 @@ extension MeetingDetailView {
             } label: {
                 Label("Generate summary", systemImage: "sparkles")
             }
+            .accessibilityIdentifier("detail-generate-summary")
         }
     }
 
@@ -454,6 +468,12 @@ extension MeetingDetailView {
 
     private var gistErrorBinding: Binding<Bool> {
         Binding(get: { gistError != nil }, set: { if !$0 { gistError = nil } })
+    }
+
+    private var summarySetupBinding: Binding<Bool> {
+        Binding(
+            get: { summarySetupIssue != nil },
+            set: { if !$0 { summarySetupIssue = nil } })
     }
 
     private var renameBinding: Binding<Bool> {
@@ -1012,11 +1032,15 @@ extension MeetingDetailView {
                     // swiftlint:disable:next line_length
                     L10n.format("Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.", version)
             case .unavailable(.requiresMacOS26):
-                gistError = L10n.text("On-device summaries require macOS 26 (or choose Ollama in Settings).")
+                summarySetupIssue = .appleRequiresMacOS26
             case .unavailable(.appleOnDevice(let reason)):
-                gistError = reason
+                summarySetupIssue = .appleUnavailable(reason)
+            case .unavailable(.ollamaModelNotSelected):
+                summarySetupIssue = .ollamaModelNotSelected
+            case .unavailable(.mlxModelNotDownloaded):
+                summarySetupIssue = .mlxModelNotDownloaded
             case .generationFailed(.localModelNotice):
-                gistError = L10n.text("The local model could not generate the summary.")
+                summarySetupIssue = .localEngineFailed
             case .generationFailed(.silent):
                 break
             }

@@ -25,6 +25,8 @@ extension XCUIApplication {
         seedJustRecorded: Bool = false,
         seedRecovery: Bool = false,
         seedProcessing: Bool = false,
+        seedWithoutSummary: Bool = false,
+        simulateSequoiaCapabilities: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -37,6 +39,10 @@ extension XCUIApplication {
         if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }
         if seedRecovery { app.launchArguments.append("-seed-recovery") }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
+        if seedWithoutSummary { app.launchArguments.append("-seed-without-summary") }
+        if simulateSequoiaCapabilities {
+            app.launchArguments.append("-simulate-sequoia-capabilities")
+        }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }
         // Every UI launch gets an isolated audio root by default. Individual

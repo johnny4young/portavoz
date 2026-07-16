@@ -308,7 +308,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "RecordingRecoveryCoordinator.runIfNeeded"))
         let worker = try XCTUnwrap(launch.range(of:
             "PostCaptureProcessingCoordinator.resumeAfterRecovery"))
+        let recommendation = try XCTUnwrap(launch.range(of:
+            "appServices.configureInitialSummaryEngineIfNeeded"))
         XCTAssertLessThan(recovery.lowerBound, worker.lowerBound)
+        XCTAssertLessThan(worker.lowerBound, recommendation.lowerBound)
     }
 
     func testAppMeetingBundleImportEntersThroughApplicationKit() throws {

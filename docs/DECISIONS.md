@@ -1694,3 +1694,43 @@ window lifetimes, one task prevents duplicate multi-gigabyte transfers, and an
 opaque verified token makes an unverified runtime load unrepresentable without
 keeping 1.6 GB resident. Refine remains explicit and reviewable; this decision
 changes readiness UX, not transcript language or acceptance semantics.
+
+## D72 — Summary and Companion follow explicit device capabilities (Jul 2026)
+
+**Context:** Portavoz retains its macOS 14.4 deployment target and must work on
+Sequoia and later, but a clean installation stored Apple on-device summaries as
+the implicit default even though Foundation Models requires macOS 26 plus an
+available Apple Intelligence model. Pressing Generate Summary therefore ended
+in a generic dead-end alert.
+Selected Ollama or MLX configurations could also fall through silently to Apple,
+so the generated provider did not necessarily match the user's setting.
+Companion exposed configuration without explaining that its question classifier
+still depends on Foundation Models and cannot be unlocked by a BYOK answer
+provider on Sequoia.
+
+**Decision:** the app owns one `FoundationModelsCapability` adapter and samples
+it for initial preference selection, provider composition, Settings guidance,
+recording controls, and Companion refresh. Only a truly absent summary
+preference is initialized: Apple is selected when Foundation Models is usable;
+otherwise the hardware recommendation may select an installed non-OCR Ollama
+chat model or the explicit-download MLX path. Existing preferences are never
+silently migrated.
+
+Every summary workflow honors the selected engine exactly. Missing Ollama model,
+missing MLX download, pre-macOS-26 Apple selection, and unavailable Apple model
+return typed setup states rather than changing provider. Meeting Detail maps
+those states to an actionable alert that opens the native Settings scene at the
+Intelligence pane. Settings explains the selected engine's unavailable state and
+makes its recommendation action prominent. Companion controls are offered only
+when the Apple classifier can run; the Voice pane states the macOS 26 and Apple
+Intelligence requirement and explains that BYOK currently replaces only the
+answer provider, not question detection. A deterministic Sequoia launch fixture
+characterizes the complete setup recovery path without depending on the test
+host OS.
+
+**Rationale:** platform availability is a product capability, not an incidental
+runtime error or permission to substitute a different provider. One capability
+adapter keeps Sequoia and macOS 26 behavior consistent, exact provider selection
+makes provenance and user intent trustworthy, and setup failures become a clear
+next action instead of a dead end. The design preserves all three local summary
+engines while honestly limiting only the Foundation-Models-dependent Companion.

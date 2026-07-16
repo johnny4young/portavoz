@@ -40,7 +40,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Shipping and self-updating.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Shipping and self-updating on macOS Sequoia and later.** Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew tap johnny4young/tap
@@ -63,7 +63,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Understand the meeting**
 - **Every voice, told apart** — on-device diarization; each speaker gets a stable color, mapped to real names automatically (calendar + LLM) or with one click.
-- **Three local summary engines** — Apple Intelligence, Ollama, or a built-in model. A separate Summary language setting follows the meeting or consistently writes English/Spanish, without changing the transcript. **Tabbed** so a long summary is skimmable.
+- **Three local summary engines** — Apple Intelligence on macOS 26, Ollama, or a built-in model. A clean install recommends a path that can run on that Mac, and Portavoz never silently substitutes a different provider when setup is incomplete. Generate Summary opens the exact setup pane when a model still needs attention. A separate Summary language setting follows the meeting or consistently writes English/Spanish, without changing the transcript. **Tabbed** so a long summary is skimmable.
 - **Custom structures** — beyond the five built-in shapes (standup, 1:1, planning…), author your own — a Hangout, a Retro — with the sections you want. They appear in every meeting's Structure menu.
 - **✦ Chapters** — Portavoz finds the turning points (a long pause, a stretch that ran long) and lets you jump to them, each labeled with the line that opens it.
 - **Meeting health** — talk-time, interruptions and questions per speaker, computed locally.
@@ -78,7 +78,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **⌘K — ask your week** — a Spotlight-style palette over any view: instant results as you type, a full on-device answer with citation chips that jump to the exact moment.
 
 **Fits your workflow**
-- **Companion while you talk** (opt-in) — live cards answer a factual question the room just asked, or flag when someone addressed you by name.
+- **Companion while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
 - **Dictate anywhere** — a global hotkey (⌥⌘D) transcribes straight into any app, tap-to-toggle or hold-to-talk.
 - **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.

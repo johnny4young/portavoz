@@ -13,15 +13,23 @@ final class MeetingDetailUITests: XCTestCase {
     private func launchOnSeededMeeting(
         latestRecipe: Bool = false,
         refineRunning: Bool = false,
-        justRecorded: Bool = false
+        justRecorded: Bool = false,
+        withoutSummary: Bool = false,
+        simulateSequoiaCapabilities: Bool = false,
+        summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
             seedDemo: true,
             seedLatestRecipe: latestRecipe,
             seedRefineRunning: refineRunning,
-            seedJustRecorded: justRecorded)
+            seedJustRecorded: justRecorded,
+            seedWithoutSummary: withoutSummary,
+            simulateSequoiaCapabilities: simulateSequoiaCapabilities)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
+        }
+        if let summaryEngine {
+            app.launchArguments += ["-summaryEngine", summaryEngine]
         }
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
@@ -44,6 +52,57 @@ final class MeetingDetailUITests: XCTestCase {
         wait(for: [settled], timeout: 10)
         meeting.click()
         return app
+    }
+
+    @MainActor
+    func testSequoiaSummaryFailureOpensExactSetupAndExplainsCompanion() {
+        let app = launchOnSeededMeeting(
+            withoutSummary: true,
+            simulateSequoiaCapabilities: true,
+            summaryEngine: "appleOnDevice")
+        defer { app.terminate() }
+
+        let generate = app.buttons["detail-generate-summary"]
+        XCTAssertTrue(
+            generate.waitForExistence(timeout: 10),
+            "a meeting without a summary must offer generation")
+        generate.click()
+
+        let openSettings = app.buttons["detail-summary-open-settings"]
+        XCTAssertTrue(
+            openSettings.waitForExistence(timeout: 10),
+            "an unavailable Apple engine must offer an actionable Settings route")
+        openSettings.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-summary-engine-picker")
+                .waitForExistence(timeout: 10),
+            "the recovery action must land directly in Intelligence Settings")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-summary-apple-unavailable").exists,
+            "the selected Apple engine must explain that it cannot run on Sequoia")
+        if Locale.current.identifier.hasPrefix("es") {
+            let localizedRecommendations = [
+                "Apple Intelligence: resúmenes en el dispositivo, gratis y rápidos.",
+                "Ollama local: resúmenes 100 % en tu Mac, sin Apple Intelligence.",
+                "Modelo local integrado: resúmenes sin instalar nada.",
+                "No hay ningún motor local de resúmenes."
+            ]
+            XCTAssertTrue(
+                localizedRecommendations.contains { app.staticTexts[$0].exists },
+                "the recommendation must cross the app localization boundary")
+        }
+        attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
+
+        app.control(withIdentifier: "settings-category-voice").click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-companion-status")
+                .waitForExistence(timeout: 5),
+            "the voice pane must explain Companion's real platform requirement")
+        XCTAssertFalse(
+            app.control(withIdentifier: "settings-companion-enabled").exists,
+            "Sequoia must not expose a toggle that cannot work")
+        attachScreenshot(of: app, named: "sequoia-companion-requirements")
     }
 
     @MainActor

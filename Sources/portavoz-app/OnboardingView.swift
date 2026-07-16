@@ -193,10 +193,10 @@ struct OnboardingView: View {
             }
             if let advice {
                 Divider()
-                Label(advice.headline, systemImage: "wand.and.stars.inverse")
+                Label(L10n.text(advice.headline), systemImage: "wand.and.stars.inverse")
                     .font(.callout.weight(.medium))
                 ForEach(advice.reasons, id: \.self) { reason in
-                    Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+                    Text("• \(L10n.text(reason))").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("You can change the summary engine anytime in Settings.")
                     .font(.caption).foregroundStyle(.secondary)

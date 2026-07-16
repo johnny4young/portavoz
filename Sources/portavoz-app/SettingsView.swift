@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationKit
 import AudioCaptureKit
 import DiarizationKit
 import IntegrationsKit
@@ -64,7 +65,8 @@ struct SettingsView: View {
     @State var customStructures: [Recipe] = CustomRecipeStore.custom()
     @State var editingStructure: Recipe?
     @State var showingStructureSheet = false
-    @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
+    @AppStorage("summaryEngine") private var summaryEngine =
+        FoundationModelsCapability.current().defaultSummaryEngine.rawValue
     @AppStorage("ollamaModel") private var ollamaModel = ""
     @AppStorage("whisperCompact") private var whisperCompact = false
     @State private var ollamaModels: [OllamaService.Model] = []
@@ -139,6 +141,7 @@ struct SettingsView: View {
             }
         }
         .onAppear {
+            applyPendingCategory()
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
                 voiceprint = nil
@@ -160,6 +163,15 @@ struct SettingsView: View {
                 whisperVariants = services.whisperVariants()
             }
         }
+        .onChange(of: services.pendingSettingsCategory) { _, _ in
+            applyPendingCategory()
+        }
+    }
+
+    private func applyPendingCategory() {
+        guard let requested = services.pendingSettingsCategory else { return }
+        category = requested
+        services.pendingSettingsCategory = nil
     }
 }
 
@@ -599,14 +611,16 @@ extension SettingsView {
         Section("Summary engine") {
             if let advice {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(advice.headline, systemImage: "wand.and.stars.inverse")
+                    Label(L10n.text(advice.headline), systemImage: "wand.and.stars.inverse")
                         .font(.callout.weight(.medium))
                     ForEach(advice.reasons, id: \.self) { reason in
-                        Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+                        Text("• \(L10n.text(reason))").font(.caption).foregroundStyle(.secondary)
                     }
                     if advice.engine != .none {
                         Button("Apply recommendation") { applyRecommendation(advice) }
                             .controlSize(.small)
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("settings-apply-summary-recommendation")
                             .padding(.top, 2)
                     }
                 }
@@ -621,6 +635,9 @@ extension SettingsView {
             .onChange(of: summaryEngine) { _, engine in
                 if engine == "ollama" { detectOllama() }
             }
+            SummaryEngineCapabilityNotice(
+                engine: summaryEngine,
+                capability: services.foundationModelsCapability)
             if summaryEngine == "ollama" {
                 HStack {
                     Button {
@@ -701,7 +718,9 @@ extension SettingsView {
             // When applying the recommendation, pick a sensible default
             // (skip OCR-only models, which can't chat).
             if autoSelect, ollamaModel.isEmpty,
-                let first = ollamaModels.first(where: { !$0.name.contains("ocr") }) {
+                let first = ollamaModels.first(where: {
+                    InitialSummaryEnginePolicy.isChatModel($0.name)
+                }) {
                 ollamaModel = first.name
             }
             ollamaStatus =
@@ -734,24 +753,17 @@ extension SettingsView {
     // MARK: - Companion (D26)
 
     private var companionSection: some View {
-        Section("Companion") {
-            TextField("Your name in meetings", text: $companionUserName, prompt: Text(NSFullUserName()))
-                .autocorrectionDisabled()
-            Text(
-                "When someone asks for you by name (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), what do you think?\"), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+        CompanionSettingsSection(
+            capability: services.foundationModelsCapability,
+            companionEnabled: companionEnabledBinding,
+            companionUserName: $companionUserName,
+            mirrorAfterMeeting: $mirrorAfterMeeting)
+    }
 
-            Toggle(isOn: $mirrorAfterMeeting) {
-                Text("Mirror after each meeting")
-            }
-            .accessibilityIdentifier("settings-mirror-after-meeting")
-            // swiftlint:disable:next line_length
-            Text("When a meeting has two or more speakers and runs at least five minutes, show a private card with your own numbers next to your usual average — measured on your Mac, never judged.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
+    private var companionEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { services.recording.companionEnabled },
+            set: { services.recording.companionEnabled = $0 })
     }
 
     // MARK: - BYOK (D8/D26)
@@ -800,7 +812,7 @@ extension SettingsView {
                 "Answer Companion knowledge questions with this provider",
                 isOn: $companionBYOKEnabled
             )
-            .disabled(!byokReady)
+            .disabled(!byokReady || !services.companionAvailable)
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length

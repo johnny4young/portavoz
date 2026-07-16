@@ -30,6 +30,9 @@ struct PortavozApp: App {
             await RecordingRecoveryCoordinator.runIfNeeded(services: appServices)
             await PostCaptureProcessingCoordinator.resumeAfterRecovery(
                 services: appServices)
+            // Optional local-provider discovery must never delay recovery of
+            // finalized audio or resumption of its durable transcript work.
+            await appServices.configureInitialSummaryEngineIfNeeded()
         }
         // Global feature, not a window feature: ⌥⌘D must work even with
         // the library window closed.

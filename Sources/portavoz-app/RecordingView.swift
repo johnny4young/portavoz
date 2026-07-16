@@ -145,7 +145,7 @@ struct RecordingView: View {
                 .fixedSize()
                 .controlSize(.small)
             }
-            if #available(macOS 26.0, *) {
+            if services.companionAvailable {
                 Toggle(isOn: companionBinding) {
                     Label("Companion", systemImage: "questionmark.bubble")
                 }

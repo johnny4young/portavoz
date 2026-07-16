@@ -163,9 +163,9 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
 @MainActor
 private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
     func isRefreshAvailable() -> Bool {
+        guard FoundationModelsCapability.current().isAvailable else { return false }
         guard #available(macOS 26.0, *) else { return false }
         return UserDefaults.standard.bool(forKey: "companionEnabled")
-            && FoundationModelSummaryProvider.unavailabilityReason() == nil
     }
 
     func refresh(

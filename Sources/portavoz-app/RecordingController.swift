@@ -367,6 +367,7 @@ final class RecordingController {
         let previousOpen = lastOpenRowID
         lastOpenRowID = captions.last?.id
         guard companionEnabled, phase == .recording else { return }
+        guard FoundationModelsCapability.current().isAvailable else { return }
         guard #available(macOS 26.0, *) else { return }
         // "Asked you" (D26): a mention of your name opens the gate
         // even when the sentence does not look like a question ("Johnny, tell us about the deploy").

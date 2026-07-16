@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D71 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first model readiness, and app-scoped Whisper preparation).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D72 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup).
 
 ## Structure
 
@@ -326,8 +326,11 @@ staging plus final or duplicate-root evidence is preserved as
 `capture.recovery.ambiguous` without overwrite or deletion. The coordinator
 maps typed issues to OSLog and one broad invalidation. Only after the awaited
 pass does the process supervisor resume owner-leased diarization/summary work
-with durable retries and one scheduled wake instead of polling. The user's
-post-meeting Shortcut runs after terminal derived work, including
+with durable retries and one scheduled wake instead of polling. Optional
+initial summary-provider discovery runs only after recovery and durable
+worker resume, so a local Ollama probe cannot delay finalized-audio or
+transcript recovery. The user's post-meeting Shortcut runs after terminal
+derived work, including
 transcript-only completion when summary is unavailable; temp-store launches
 suppress real host Shortcuts (D50).
 
@@ -344,11 +347,11 @@ Provider unavailability and pre-attempt supersession create no run. The
 temp-store processing fixture identifies its deterministic provider/model and
 exercises this same production path in the durable-resume XCUITest (D63).
 
-**MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
+**MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items. Summary setup failures are typed: unavailable Apple, missing Ollama selection, missing MLX download, and local-engine failure open an actionable alert whose recovery button opens the native Settings scene at the exact Intelligence category instead of ending in a generic error (D72).
 - **Refine (D7/D35/D47 in-app)**: `ApplicationKit.RefineMeeting` re-transcribes retained non-silent channels with Whisper (+vocabulary), then applies microphone noise/bleed filtering and best-effort diarization. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Companion refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
 - Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation and gateway-enforced meeting/document metadata.
 
-**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background progress, and stable `settings-whisper-*` accessibility identifiers (D71) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · External model BYOK (endpoint/model in defaults, key in Keychain, Companion opt-in toggle disabled until all configured; deleting key turns it off — spec 04) · GitHub (token in Keychain).
+**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background progress, and stable `settings-whisper-*` accessibility identifiers (D71) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Companion activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key in Keychain, answer-provider opt-in disabled until everything and the Companion classifier are available; deleting key turns it off — spec 04) · GitHub (token in Keychain). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72).
 
 ## Verified in real world (Jul 2026)
 
@@ -362,19 +365,21 @@ exercises this same production path in the durable-resume XCUITest (D63).
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 20 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 21 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
-rail health+chapters, post-meeting mirror, player skip+only-my-voice, clip export, refine cancel), and Settings (all categories,
+rail health+chapters, post-meeting mirror, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
 Whisper preparation, custom structures, capture
 controls, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
 neither SQLite nor audio can touch the user's library. `-seed-recovery`,
-`-seed-processing`, `-seed-refine-running`, and `-seed-just-recorded` are
+`-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`, and
+`-seed-without-summary` are
 accepted only with the temp
-store. The processing
+store. `-simulate-sequoia-capabilities` makes the Foundation Models adapter
+deterministically unavailable without depending on the XCUITest host. The processing
 fixture uses a deterministic fake local provider and no real audio, models,
 biometric files, Keychain, or host Shortcut; it uses the normal exact request
 factory and observes the original transcript and dependent summary after launch
@@ -384,7 +389,9 @@ interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
 assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
 Library, Insights, Meeting Detail, and post-meeting mirror checkpoints so unrelated desktop content
-is never captured. **Real bug caught by XCUITest (not computer-use):**
+is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
+test language and region flags; the complete 21-case suite is green in the
+default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps
 before forming the range and has unit coverage.
