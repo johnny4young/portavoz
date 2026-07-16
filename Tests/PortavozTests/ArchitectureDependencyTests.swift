@@ -201,6 +201,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(adapter.contains("store.companionCards(for:"))
     }
 
+    func testLibraryFeatureOwnsStateAndActionsOutsideSwiftUI() throws {
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/LibraryModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/LibraryView.swift")
+        let trash = try Self.contents(
+            of: "Sources/portavoz-app/TrashSection.swift")
+        let content = try Self.contents(
+            of: "Sources/portavoz-app/ContentView.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Library.swift")
+
+        XCTAssertTrue(model.contains("@MainActor\n@Observable\nfinal class LibraryModel"))
+        XCTAssertTrue(model.contains("struct State"))
+        XCTAssertTrue(model.contains("enum Action"))
+        XCTAssertTrue(model.contains("enum Effect"))
+        XCTAssertTrue(model.contains("private(set) var state = State()"))
+        XCTAssertTrue(view.contains("model.send(.reload(version: invalidationVersion))"))
+        XCTAssertTrue(content.contains("@State private var libraryModel: LibraryModel"))
+        XCTAssertTrue(adapter.contains("defer { libraryVersion += 1 }"))
+        XCTAssertFalse(view.contains("services.store"))
+        XCTAssertFalse(view.contains("services.meetingLifecycle"))
+        XCTAssertFalse(view.contains("services.libraryVersion +="))
+        XCTAssertFalse(view.contains("@State private var meetings"))
+        XCTAssertFalse(trash.contains("@Environment(AppServices.self)"))
+        XCTAssertFalse(trash.contains("services."))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

@@ -105,6 +105,17 @@ configured/fallback recordings root, omit missing or unreadable channels as
 before, and perform full-file reads plus IntegrationsKit format-v1 encoding on
 utility tasks. Meeting Detail retains the native save panel, filename, UTI,
 and exact localized error presentation (D52).
+Slice 2M introduces the first feature-scoped presentation owner through the
+Strangler pattern. Each `ContentView` creates one per-window `@MainActor`
+`@Observable` `LibraryModel` with a private-write value snapshot and enum
+actions/effects. It owns Library loading, FTS debounce and stale-result fences,
+meetings/voice mixes/open items/trash, rename and mutation outcomes, import
+progress/errors, calendar agenda, briefs, and navigation effects.
+`LibraryView` and `TrashSection` now render and present native UI instead of
+coordinating Store, lifecycle, import, or platform calls. A narrow app client
+composes the existing services; StorageKit-shaped projections and the broad
+`libraryVersion` reload request remain explicit temporary seams for the next
+scoped-observation slice (D53).
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -119,7 +130,9 @@ eleven Kit libraries. Most depend on Core only; verified exceptions are
 still compose most capabilities directly at runtime; trash mutations, Meeting
 Detail summary regeneration, external-audio and `.portavoz` aggregate import/export,
 meeting refinement, and durable recording Start/Stop/launch-recovery handoffs
-now cross ApplicationKit.
+now cross ApplicationKit. The Library's presentation state and actions have one
+per-window app-owned model; its read side still enters the existing Store APIs
+through a temporary composition client.
 
 | Module | Responsibility |
 |---|---|
@@ -135,13 +148,15 @@ now cross ApplicationKit.
 | `AudioPlaybackKit` | Synchronized playback, channel-aware waveform data, clips, silence skipping, and AAC transcoding |
 | `SyncKit` | Placeholder-scale `Visibility` model. CKSyncEngine and CloudKit sync are planned, not implemented |
 | `IntegrationsKit` | Export and external-system adapters plus several cross-cutting read/product policies. It is the only cross-Kit layer under D31; narrowing it is part of Band 2 |
-| `portavoz-app` | SwiftUI macOS application. `AppServices` composes dependencies and still carries the process-scoped post-capture worker supervisor plus broad invalidation. Trash mutations, Meeting Detail summary regeneration, external-audio and meeting-bundle import/export, meeting refinement, and durable Start/Stop/launch recovery enter through ApplicationKit. Private adapters own concrete capture sources/session/live Parakeet feeds, shared voiceprint acquisition, recordings-root discovery, CAF recovery mechanics, bundle decoding/remapping, canonical file staging/reading, format-v1 encoding, fixtures, OSLog, and presentation mapping while the remaining feature extraction continues incrementally |
+| `portavoz-app` | SwiftUI macOS application. `AppServices` composes dependencies and still carries the process-scoped post-capture worker supervisor plus broad invalidation. Each `ContentView` owns one per-window `LibraryModel` value state/action/effect machine; Library and trash views render it, keep native presentation, and no longer coordinate Store or lifecycle calls. Trash mutations, Meeting Detail summary regeneration, external-audio and meeting-bundle import/export, meeting refinement, and durable Start/Stop/launch recovery enter through ApplicationKit. Private adapters own concrete capture sources/session/live Parakeet feeds, shared voiceprint acquisition, recordings-root discovery, CAF recovery mechanics, bundle decoding/remapping, canonical file staging/reading, format-v1 encoding, fixtures, OSLog, and presentation mapping while the remaining feature extraction continues incrementally |
 | `portavoz-cli` | Executable development harness (`record --seconds N --pid X --system --out dir`) |
 
-Band 2 slices 2A–2L establish and exercise a dependency ratchet rather than a
+Band 2 slices 2A–2M establish and exercise a dependency and feature-state
+ratchet rather than a
 broad empty layer. Package and XcodeGen manifests expose `ApplicationKit`; app,
 CLI, and tests link it. StorageKit, IntelligenceKit, TranscriptionKit, and
-DiarizationKit are admitted only with real vertical use cases. Fourteen architecture tests parse the real target
+DiarizationKit are admitted only with real vertical use cases. Fifteen
+architecture tests parse the real target
 declarations and source imports. They prevent capability Kits from
 depending back on ApplicationKit, reject presentation or platform imports in
 the application layer, freeze Core's existing `SecretStore.swift → Security`
@@ -153,7 +168,9 @@ direct app refine persistence bypasses, and Start/Stop persistence or capture
 bypasses in `RecordingController`; launch recovery must also enter through its
 use case before worker resume, and bundle import cannot return to sequential
 Store writes; bundle export cannot return to Meeting Detail assembly or
-meeting-length reads. Ninety-six application tests prove
+meeting-length reads. The Library rule requires per-window model ownership and
+rejects direct Store/lifecycle coordination or local meeting state in its
+views. Ninety-six application workflow tests prove
 exact port delegation, provider override/material inputs, reuse and pivot
 fallback, released failure policy, strict expiry, aggregate/voice-mix
 conservation, import order/language/degradation/rollback/atomicity, and real
@@ -179,7 +196,9 @@ isolation, original-error-preserving compensation, full-content conservation,
 foreign-child rejection, and rollback when the final relational child fails.
 The T16 parity slice also proves newest-across-recipe selection without
 deleting older immutable snapshots. Slice 2G adds a 19th XCUITest proving a
-running refine can be canceled without changing the visible transcript.
+running refine can be canceled without changing the visible transcript. Eight
+direct `LibraryModel` tests characterize complete/empty/degraded/failed loads,
+version and query fences, mutations/effects, import, agenda, and brief state.
 
 ## Target modular-monolith architecture (partially implemented)
 
@@ -231,7 +250,8 @@ Target responsibility rules:
 - `ModelStoreKit` remains the single reviewed catalog and SHA-256-verified
   lifecycle for downloadable model artifacts.
 - `portavoz-app` owns dependency composition, navigation, feature-scoped
-  `@Observable` models, localization, and rendering only.
+  `@Observable` models, localization, and rendering. This is as-built for the
+  Library; other features still migrate incrementally.
 - `StorageKit` owns strict record conversion, transactions, migrations,
   integrity checks, query-specific read models, and scoped GRDB observations.
 - `IntegrationsKit` retains outbound adapters; pure chapter, voice, summary,
@@ -547,7 +567,8 @@ until a later Band 1 adoption slice.
 8. **Documentation is part of the change:** all explanatory content under `docs/` is English. Every refactor commit updates this file and every other source-of-truth document whose facts changed. User-visible changes update CHANGELOG; internal plumbing does not create misleading release notes.
 9. **Persisted identity is strict:** storage decoding never invents UUIDs or silently changes aggregate identity.
 10. **Capture outranks derivation:** usable captured audio remains discoverable even when captions, diarization, refine, summaries, indexing, or integrations fail.
-11. **Application dependencies ratchet inward:** `ApplicationKit` started Core-only and now admits StorageKit for characterized lifecycle/trash/regeneration/import/export/refine/recording/recovery persistence, IntelligenceKit for regeneration/import summary and refine Companion contracts, and TranscriptionKit plus DiarizationKit for the characterized import/refine and recording boundaries. Platform settings, filesystem operations, concrete capture/model/provider construction, external-format decoding/encoding, localization, and availability remain injected adapters above the layer. Every later capability dependency must arrive with the use case that needs it; capability Kits never depend back on the application layer (D44–D52).
+11. **Application dependencies ratchet inward:** `ApplicationKit` started Core-only and now admits StorageKit for characterized lifecycle/trash/regeneration/import/export/refine/recording/recovery persistence, IntelligenceKit for regeneration/import summary and refine Companion contracts, and TranscriptionKit plus DiarizationKit for the characterized import/refine and recording boundaries. Platform settings, filesystem operations, concrete capture/model/provider construction, external-format decoding/encoding, localization, and availability remain injected adapters above the layer. Every later capability dependency must arrive with the use case that needs it; capability Kits never depend back on the application layer (D44–D53).
+12. **Feature state has one owner:** an adopted feature uses one per-window `@MainActor @Observable` model, a private-write value snapshot, enum actions/effects, and narrow injected clients. SwiftUI renders and presents; it does not coordinate persistence or capability workflows. Scoped observation replaces broad invalidation only after characterized parity (D53).
 
 ## Refactor migration status
 
@@ -558,9 +579,9 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 560-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the 569-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, atomic captured-state/initial-job handoff, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, exact operation fingerprints, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43) | Valid audio is durable before derivation; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
-| 2 — Application layer | In progress — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import; 2L moves read-consistent `.portavoz` export, path stripping, optional canonical audio, and off-main format work behind store/files/document ports while native save presentation remains in SwiftUI (D44–D52) | Next: introduce the first feature-scoped `LibraryModel` through the Strangler pattern while retaining the characterized Library UI and broad invalidation contract |
+| 2 — Application layer | In progress — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import; 2L moves read-consistent `.portavoz` export; 2M gives each window one explicit Library state/action/effect owner while retaining the broad reload seam (D44–D53) | Next: introduce query-specific Library read models plus scoped GRDB observation and retire only the Library's `libraryVersion` trigger after parity |
 | 3 — Provenance and privacy | Not started; the nullable schema-v6 `generationRun` envelope exists but no producer writes it | Generation provenance adoption, egress gateway, privacy receipt, typed errors and diagnostics |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |

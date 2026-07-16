@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D52 (application dependency and workflow ownership).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D53 (application workflow and feature-state ownership).
 
 ## Structure
 
@@ -13,7 +13,7 @@ Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Acce
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
-DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` for UI downloads; `libraryVersion` invalidates lists/detail (views reload with `.task(id:)`).
+DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` drives UI downloads. `libraryVersion` still invalidates Meeting Detail, Insights, Spotlight, and the Library compatibility adapter; the Library now fences and publishes reloads through its feature model rather than owning data state in the view.
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -95,6 +95,24 @@ Complete audio reads and JSON/base64 encoding run in detached utility tasks.
 The native file exporter, title-based filename, UTI, dismissal state, and
 localized failure alert are unchanged (D52).
 
+Slice 2M gives each `ContentView` window one `@MainActor` `@Observable`
+`LibraryModel`. Its private-write value `State` snapshot plus enum
+`Action`/`Effect` contracts own complete/empty/degraded/failed loading, version-
+fenced reloads, debounced and query-fenced FTS, meetings/voice mixes/open items,
+rename and mutation outcomes, trash, import progress/errors, calendar agenda,
+on-demand briefs, and navigation effects. `LibraryView` and `TrashSection`
+render the snapshot, retain native AppKit panels and SwiftUI presentation, and
+send actions instead of invoking Store, lifecycle, import, or EventKit-backed
+services. `ContentView` creates a fresh model per `WindowGroup` instance, so
+transient search/rename/import state is not global.
+
+`AppServices+Library` is the temporary narrow client over the current Store,
+ApplicationKit use cases, and platform services. It deliberately retains
+StorageKit projection types and accepts `libraryVersion` as a reload request;
+the model ignores older versions and stale search results. Query-specific read
+models and scoped GRDB observations are not implemented yet and are the next
+independent slice (D53).
+
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed preparation/reservation/source-start attempt, while ownership transfers to the active session on success; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
@@ -138,7 +156,7 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
 
 ## Views and flows
 
-**LibraryView**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings via `openActionItems` — checkbox completes in-place and bumps `libraryVersion`; click navigates to meeting; UITests use `firstMatch` because meeting title appears also as caption in these rows), and a list with `Rename`/`Delete` context-menu actions. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing navigation, degradable filesystem behavior, and broad reload semantics remain while scoped observations are pending.
+**LibraryView + LibraryModel**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, degradable filesystem behavior, and broad reload semantics remain while scoped observations are pending. `library-search-field` now provides a stable automation boundary for the real FTS/model wiring; UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
 
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: `RecordingController` resets live visual state and sends callbacks

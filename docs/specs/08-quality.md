@@ -1,14 +1,15 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 560 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
+Status: 569 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations** across `Sources`; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 220 Swift files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/bundle-import/bundle-export/refine/Start/Stop/recovery bypass prevention, launch ordering, and the Sendable async use-case contract |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/bundle-import/bundle-export/refine/Start/Stop/recovery bypass prevention, launch ordering, per-window Library feature-state ownership without view-level Store orchestration, and the Sendable async use-case contract |
+| LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, and real MeetingStore note/snapshot adaptation |
@@ -261,6 +262,22 @@ out of Meeting Detail while preserving private IntegrationsKit and filesystem
 adapters. Strict SwiftLint remains clean across 218 source files; no
 interactive control or localized copy changed, and the existing 19-case suite
 remains the UI contract.
+
+Band 2 slice 2M adds eight direct `LibraryModel` tests and a fifteenth
+architecture rule. A database-free client fake proves one complete latest-
+version value snapshot; empty, degraded, and failed load phases; stale-version
+rejection; trimmed/debounced FTS with loaded/empty/degraded/idle outcomes;
+rename, action-item, delete/restore/purge actions and navigation effects;
+preserved degradable mutation behavior; import progress/error routing; and
+calendar/brief state. The source rule requires ContentView-owned feature state
+and rejects direct Store/lifecycle/broad-invalidation mutations or local
+meeting arrays in Library/Trash views. SwiftPM tests directly depend on the
+`portavoz-app` executable target, which Swift 6 supports even though it contains
+`@main`; no extra feature library was introduced. Strict SwiftLint remains
+clean across 220 Swift files. The existing grouped-Library XCUITest now types
+through `library-search-field` and observes the seeded real-FTS result, covering
+the SwiftUI binding/model/client integration. No visible control or localized
+copy changed, and the full 19-case XCUITest suite remains the UI contract.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

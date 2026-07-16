@@ -41,6 +41,16 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["Earlier"].exists || app.staticTexts["Antes"].exists,
             "an old meeting must sit under the Earlier bucket")
+
+        // Search crosses the SwiftUI binding, feature-model debounce, and
+        // real FTS projection before publishing a new Library snapshot.
+        let search = app.textFields["library-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("presupuesto")
+        XCTAssertTrue(
+            app.staticTexts["Test meeting · 00:00"].waitForExistence(timeout: 10),
+            "the feature model must publish the seeded transcript search hit")
     }
 
     @MainActor

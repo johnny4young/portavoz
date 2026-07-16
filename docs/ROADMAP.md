@@ -7,20 +7,33 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): introduce the first
-feature-scoped `LibraryModel` through the Strangler pattern. Move Library
-loading/search/action state behind one `@MainActor @Observable` model with an
-explicit state snapshot and enum actions while preserving every current
-Library control, accessibility identifier, navigation path, search result,
-trash/import behavior, and the characterized `libraryVersion` reload contract.
-Do not combine the first model extraction with scoped GRDB observations; that
-is the following slice. `ExportMeetingBundle`, `ImportMeetingBundle`,
+program in [refactor-20260714.md](refactor-20260714.md): replace the Library's
+temporary `libraryVersion` reload trigger and pull-based Store projections with
+query-specific read models and scoped GRDB observation. Keep the per-window
+`LibraryModel` action/state/effect contract and every current Library control,
+accessibility identifier, navigation path, search result, mutation, agenda,
+trash, and import behavior unchanged. Retire broad invalidation only for this
+feature; Meeting Detail, Insights, and Spotlight remain separate later slices.
+`LibraryModel`, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53).
+
+- **Architecture Band 2 slice 2M complete — Library state has one owner (Jul
+  15, 2026)**: each main window now owns one `@MainActor` `@Observable`
+  `LibraryModel`. Its private-write value snapshot and enum actions/effects own
+  loading, FTS debounce, stale-result fences, meetings/voice mix/open items,
+  rename/mutations, trash, import progress/errors, calendar agenda, briefs,
+  and navigation outcomes. `LibraryView` and `TrashSection` render and present
+  native UI only; an `AppServices` client adapts the existing Store, use cases,
+  and platform services. The characterized `libraryVersion` trigger and
+  StorageKit projection types remain intentionally as compatibility seams for
+  the next scoped-observation slice. Eight direct model tests plus a fifteenth
+  architecture rule bring the verified baseline to 569 package tests (13
+  gated), 220 linted Swift files, and 19 UI cases (D53).
 
 - **Architecture Band 2 slice 2L complete — exports stop blocking the meeting
   view (Jul 15, 2026)**: `ApplicationKit.ExportMeetingBundle` now owns one

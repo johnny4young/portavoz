@@ -14,15 +14,24 @@ enum Route: Hashable {
 }
 
 struct ContentView: View {
-    @Environment(AppServices.self) private var services
+    let services: AppServices
     @Environment(\.openWindow) private var openWindow
     @State private var route: Route?
+    @State private var libraryModel: LibraryModel
     @State private var reminder = MeetingReminderController()
     @State private var showOnboarding = false
 
+    init(services: AppServices) {
+        self.services = services
+        _libraryModel = State(initialValue: services.makeLibraryModel())
+    }
+
     var body: some View {
         NavigationSplitView {
-            LibraryView(route: $route)
+            LibraryView(
+                model: libraryModel,
+                invalidationVersion: services.libraryVersion,
+                route: $route)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
                 .background { AuroraSidebarBackground() }
         } detail: {

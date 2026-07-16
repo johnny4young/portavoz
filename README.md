@@ -144,6 +144,12 @@ architecture migration is tracked in
 | `IntegrationsKit` | GitHub/Linear export, Gist sharing, MCP server |
 | `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 
+The macOS app owns a per-window `LibraryModel` with one observable value-state
+snapshot and enum actions/effects. SwiftUI Library views render and present
+native controls; an app composition adapter currently bridges the existing
+Store/use-case APIs and broad invalidation trigger. Scoped GRDB observations
+are the next incremental migration step, not a parallel UI rewrite.
+
 ## Build from source
 
 Requires **Xcode 16+ / Swift 6 on macOS 14.4+**.

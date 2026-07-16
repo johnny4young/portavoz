@@ -965,3 +965,43 @@ new database or format version. Keeping IntegrationsKit in a private adapter
 preserves D44's dependency ratchet, while off-main meeting-length work removes
 the largest responsiveness risk without changing the open format, optional
 audio semantics, or user flow.
+
+## D53 — Each Library window owns one explicit feature state machine (Jul 2026)
+
+**Context:** `LibraryView` directly owned meetings, voice-mix projections,
+cross-meeting actions, trash, search debounce/results, rename, import progress,
+calendar agenda, and brief presentation while also coordinating Store,
+lifecycle, import, and platform calls. Most refreshes arrived through the same
+global `libraryVersion` integer used by Meeting Detail, Insights, and
+Spotlight. This made the view the state owner and workflow coordinator, allowed
+unrelated writes to reload the whole sidebar, and made its failure and stale-
+result behavior difficult to test without launching SwiftUI.
+
+**Decision:** every `ContentView` creates and retains one `@MainActor`
+`@Observable` `LibraryModel`. The model exposes one private-write value `State`
+snapshot plus enum `Action` and navigation `Effect` contracts. It owns complete
+reload/search phases, version and query fences, meetings and their current
+voice-mix/open-item/trash projections, rename and mutation outcomes, import
+progress/errors, calendar agenda, and on-demand briefs. `LibraryView` and
+`TrashSection` render that snapshot, send actions, preserve native panels and
+bindings, and map effects to the existing route only.
+
+An app-owned `LibraryModelClient` keeps `AppServices` as composition root and
+adapts the already characterized Store, ApplicationKit lifecycle/import use
+cases, and EventKit-backed services. This first Strangler slice deliberately
+retains the broad `libraryVersion` value as the Library reload request and
+retains StorageKit projection types at the temporary client boundary. Reloads
+publish only a complete latest-version snapshot; search ignores cancellation
+and stale-query results. One model belongs to one window, so transient Library
+state cannot leak between `WindowGroup` instances.
+
+**Rationale:** feature state and transition policy become deterministic and
+directly unit-testable without adding a state framework or rewriting the UI.
+The per-window lifetime matches SwiftUI navigation ownership, while the narrow
+client preserves all released controls, accessibility identifiers, agenda,
+trash/import behavior, failure degradation, and cross-feature invalidation.
+Keeping observation migration separate makes the next slice a replaceable
+read-side adapter change: introduce query-specific ApplicationKit/StorageKit
+read models and scoped GRDB observations, then retire only the Library's broad
+trigger after parity. Other `libraryVersion` consumers remain independent
+characterized slices.

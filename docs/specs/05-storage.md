@@ -204,6 +204,14 @@ join or validate a non-deleted meeting before exposing data. Deleting a meeting
 therefore removes it from Insights and library totals without mutating its
 children; restoring the root returns the exact previous projections.
 
+The first Library feature-model slice still pulls `meetings`, `voiceMixes`,
+`openActionItems`, `deletedMeetings`, and `search` through a narrow app client
+and retains their current StorageKit projection types. A broad
+`libraryVersion` value requests a complete model reload, whose version fence
+prevents an older request from replacing newer state. Query-specific read
+models and GRDB `ValueObservation` streams are planned for the next slice and
+are not implemented in this commit (D53).
+
 ## `.portavoz` bundle (M15 L0)
 
 `MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its notes/cards from the same database moment (D52).

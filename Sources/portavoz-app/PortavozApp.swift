@@ -40,7 +40,7 @@ struct PortavozApp: App {
 
     var body: some Scene {
         WindowGroup(id: "main") {
-            ContentView()
+            ContentView(services: services)
                 .portavozLocalized()
                 .environment(services)
                 .frame(minWidth: 900, minHeight: 560)

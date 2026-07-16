@@ -142,6 +142,7 @@ let package = Package(
         .testTarget(
             name: "PortavozTests",
             dependencies: [
+                "portavoz-app",
                 "ApplicationKit",
                 "PortavozCore",
                 "ModelStoreKit",
