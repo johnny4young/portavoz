@@ -42,6 +42,9 @@ public struct DataEgressDestination: Equatable, Sendable {
 public enum DataEgressOperation: String, Codable, Sendable {
     case companionKnowledgeAnswer = "companion-knowledge-answer"
     case summaryGeneration = "summary-generation"
+    case publishGitHubGist = "publish-github-gist"
+    case createGitHubIssue = "create-github-issue"
+    case createLinearIssue = "create-linear-issue"
 }
 
 public enum DataEgressClassification: String, Codable, Sendable {
@@ -50,6 +53,10 @@ public enum DataEgressClassification: String, Codable, Sendable {
     /// Formatted transcript, speaker labels, user notes, glossary, and recipe
     /// instructions required to generate one summary.
     case meetingSummaryMaterial = "meeting-summary-material"
+    /// A rendered meeting document selected for explicit publication.
+    case meetingExportDocument = "meeting-export-document"
+    /// One meeting-derived action item plus its attribution context.
+    case meetingActionItem = "meeting-action-item"
 }
 
 public enum DataEgressConsentSource: String, Codable, Sendable {
@@ -61,6 +68,12 @@ public enum DataEgressConsentSource: String, Codable, Sendable {
     case summaryEngineSettings = "summary-engine-settings"
     /// A caller explicitly constructed an external summary provider.
     case explicitSummaryProvider = "explicit-summary-provider"
+    /// The user explicitly confirmed or invoked GitHub Gist publication.
+    case explicitGistPublish = "explicit-gist-publish"
+    /// The user explicitly invoked GitHub Issue publication.
+    case explicitGitHubIssuePublish = "explicit-github-issue-publish"
+    /// The user explicitly invoked Linear Issue publication.
+    case explicitLinearIssuePublish = "explicit-linear-issue-publish"
 }
 
 public struct DataEgressProviderDisclosure: Equatable, Sendable {

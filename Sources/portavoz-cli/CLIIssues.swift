@@ -79,8 +79,15 @@ enum IssuesCommand {
                         print("error: sin token de GitHub — `portavoz-cli secrets set-github-token <t>`")
                         return
                     }
-                    url = try await GitHubIssuesExporter(repository: githubRepo, token: token)
-                        .publish(item, meetingTitle: detail.meeting.title, ownerName: owner)
+                    url = try await GitHubIssuesExporter(
+                        repository: githubRepo,
+                        token: token,
+                        gateway: URLSessionDataEgressGateway()
+                    ).publish(
+                        item,
+                        meetingID: meetingID,
+                        meetingTitle: detail.meeting.title,
+                        ownerName: owner)
                 } else {
                     guard
                         let token = (try? SecretStore.get(service: SecretStore.linearTokenService))
@@ -89,8 +96,15 @@ enum IssuesCommand {
                         print("error: sin token de Linear — `portavoz-cli secrets set-linear-token <t>`")
                         return
                     }
-                    url = try await LinearExporter(teamID: linearTeam!, token: token)
-                        .publish(item, meetingTitle: detail.meeting.title, ownerName: owner)
+                    url = try await LinearExporter(
+                        teamID: linearTeam!,
+                        token: token,
+                        gateway: URLSessionDataEgressGateway()
+                    ).publish(
+                        item,
+                        meetingID: meetingID,
+                        meetingTitle: detail.meeting.title,
+                        ownerName: owner)
                 }
                 print("  ✓ \(item.text) → \(url.absoluteString)")
             }

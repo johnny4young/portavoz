@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D68 (enforced Companion and OpenAI-compatible summary egress).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -40,11 +40,11 @@ change rejects the stale CLI result instead of overwriting newer truth (D47).
 ## Exporters — IntegrationsKit
 
 - `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
-- `GistPublisher`: `api.github.com/gists`, secret by default, explicit `--public`; token from Keychain.
-- `GitHubIssuesExporter` (REST) and `LinearExporter` (GraphQL; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Tested offline; real publishing pending the user's tokens.
+- `GistPublisher`: exact `https://api.github.com/gists`, secret by default, explicit `--public`; token from Keychain. Construction requires a `DataEgressGateway`, and publication requires the source `MeetingID`.
+- `GitHubIssuesExporter` (canonical REST `https://api.github.com/repos/{owner}/{repo}/issues`) and `LinearExporter` (exact GraphQL `https://api.linear.app/graphql`; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Both require a gateway and source meeting. Tested offline; real publishing pending the user's tokens.
 - Output to external services ALWAYS requires explicit confirmation (D8): the UI confirms before the gist; the CLI is opt-in by nature.
 
-### Shared data-egress adapter (D67/D68)
+### Shared data-egress adapter (D67–D69)
 
 IntegrationsKit now implements `URLSessionDataEgressGateway`, the concrete
 adapter for Core's content-free `DataEgressGateway` port. Before sending it
@@ -61,10 +61,23 @@ gateway, real source `MeetingID`, full-summary classification, exact provider,
 model, destination and operation-specific consent. Only Ollama discovery stays
 direct because those requests contain no meeting material.
 
-This slice does not claim universal enforcement. `GistPublisher`,
-`GitHubIssuesExporter`, `LinearExporter`, Shortcuts, and remaining outbound
-operations retain their existing explicit invocation paths until
-operation-specific gateway contracts land.
+D69 adds three operation-specific publishing contracts. Gist requests declare
+`publish-github-gist`, complete meeting-export document material, explicit Gist
+consent, the source meeting, GitHub's provider host, no model, and remote scope.
+GitHub and Linear requests declare their own create-issue operations,
+meeting-action-item material, and provider-specific explicit consent. The
+adapter requires non-empty POST bodies and exact operation/classification/
+consent/provider combinations. It accepts only the exact Gist and Linear URLs
+or a canonical GitHub repository-issues path with no port, query, fragment,
+empty owner/repository, or dot traversal. Forged metadata fails before
+transport. App confirmation, CLI opt-in/warnings, body and authorization shape,
+response parsing, and failure behavior remain unchanged.
+
+Every current HTTP path that carries meeting content now crosses this gateway.
+Content-free Ollama discovery and model downloads remain direct by design. The
+post-meeting Shortcut is an explicit local `/usr/bin/shortcuts` process surface,
+not a network adapter; its user-configured Shortcut may independently perform
+external actions outside Portavoz's process.
 
 ## Known limitations
 
@@ -74,8 +87,6 @@ operation-specific gateway contracts land.
    remains an SPM-built bundle; the post-meeting Shortcut hook, URL scheme,
    and Spotlight are implemented. Native intents are deferred to M14a's Xcode
    app target.
-4. Shared egress enforcement covers Companion BYOK and OpenAI-compatible
-   summaries; Gist/GitHub/Linear publishing is the next Band 3 migration slice.
 
 ## M16 automation (Jul 2026)
 

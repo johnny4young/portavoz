@@ -218,6 +218,160 @@ final class DataEgressGatewayTests: XCTestCase {
         }
     }
 
+    func testGatewayAcceptsOnlyMatchingCanonicalPublishingMetadata() throws {
+        let item = ActionItem(text: "Ship the release")
+        let requests = [
+            (
+                try GistPublisher.request(
+                    markdown: "# Meeting", filename: "meeting.md",
+                    description: "Planning", isPublic: false, token: "token"),
+                DataEgressOperation.publishGitHubGist,
+                DataEgressClassification.meetingExportDocument,
+                DataEgressConsentSource.explicitGistPublish,
+                "api.github.com"
+            ),
+            (
+                try GitHubIssuesExporter.request(
+                    item: item, meetingTitle: "Planning", ownerName: "Ana",
+                    repository: "owner/repo", token: "token"),
+                .createGitHubIssue,
+                .meetingActionItem,
+                .explicitGitHubIssuePublish,
+                "api.github.com"
+            ),
+            (
+                try LinearExporter.request(
+                    item: item, meetingTitle: "Planning", ownerName: nil,
+                    teamID: "TEAM", token: "token"),
+                .createLinearIssue,
+                .meetingActionItem,
+                .explicitLinearIssuePublish,
+                "api.linear.app"
+            ),
+        ]
+
+        for (request, operation, classification, consent, provider) in requests {
+            let destination = try XCTUnwrap(request.url)
+            let metadata = publishingMetadata(
+                operation: operation,
+                destination: destination,
+                meetingID: meetingID,
+                classification: classification,
+                consentSource: consent,
+                providerID: provider)
+            XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+                request,
+                metadata: metadata))
+        }
+    }
+
+    func testGatewayRejectsForgedPublishingMetadataBeforeTransport() throws {
+        let request = try GistPublisher.request(
+            markdown: "# Meeting", filename: "meeting.md",
+            description: "Planning", isPublic: false, token: "token")
+        let destination = try XCTUnwrap(request.url)
+        let valid = publishingMetadata(
+            operation: .publishGitHubGist,
+            destination: destination,
+            meetingID: meetingID,
+            classification: .meetingExportDocument,
+            consentSource: .explicitGistPublish,
+            providerID: "api.github.com")
+        var getRequest = request
+        getRequest.httpMethod = "GET"
+        var emptyRequest = request
+        emptyRequest.httpBody = Data()
+
+        let forged: [(URLRequest, DataEgressRequest)] = [
+            (request, publishingMetadata(
+                operation: .createGitHubIssue, destination: destination,
+                meetingID: meetingID, classification: .meetingExportDocument,
+                consentSource: .explicitGistPublish, providerID: "api.github.com")),
+            (request, publishingMetadata(
+                operation: .publishGitHubGist, destination: destination,
+                meetingID: meetingID, classification: .meetingActionItem,
+                consentSource: .explicitGistPublish, providerID: "api.github.com")),
+            (request, publishingMetadata(
+                operation: .publishGitHubGist, destination: destination,
+                meetingID: nil, classification: .meetingExportDocument,
+                consentSource: .explicitGistPublish, providerID: "api.github.com")),
+            (request, publishingMetadata(
+                operation: .publishGitHubGist, destination: destination,
+                meetingID: meetingID, classification: .meetingExportDocument,
+                consentSource: .explicitGitHubIssuePublish, providerID: "api.github.com")),
+            (request, publishingMetadata(
+                operation: .publishGitHubGist, destination: destination,
+                meetingID: meetingID, classification: .meetingExportDocument,
+                consentSource: .explicitGistPublish, providerID: "uploads.github.com")),
+            (request, publishingMetadata(
+                operation: .publishGitHubGist, destination: destination,
+                meetingID: meetingID, classification: .meetingExportDocument,
+                consentSource: .explicitGistPublish, providerID: "api.github.com",
+                modelID: "not-a-model-operation")),
+            (getRequest, valid),
+            (emptyRequest, valid),
+        ]
+        for (forgedRequest, forgedMetadata) in forged {
+            XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+                forgedRequest,
+                metadata: forgedMetadata))
+        }
+    }
+
+    func testGatewayRejectsNonCanonicalGitHubIssueEndpointsBeforeTransport() throws {
+        let item = ActionItem(text: "Ship the release")
+        let githubRequest = try GitHubIssuesExporter.request(
+            item: item, meetingTitle: "Planning", ownerName: nil,
+            repository: "owner/repo", token: "token")
+        let invalidURLs = [
+            "http://api.github.com/repos/owner/repo/issues",
+            "https://api.github.com:443/repos/owner/repo/issues",
+            "https://api.github.com/repos/owner/repo/issues?milestone=1",
+            "https://api.github.com/repos/owner/repo/issues#fragment",
+            "https://api.github.com/repos/owner/repo/issues/extra",
+            "https://api.github.com/repos//repo/issues",
+            "https://api.github.com/repos/%2E%2E/repo/issues",
+            "https://api.github.com/repos/owner/repo%2F..%2Fevil/issues",
+        ]
+        for rawURL in invalidURLs {
+            var forged = githubRequest
+            let url = try XCTUnwrap(URL(string: rawURL))
+            forged.url = url
+            let metadata = publishingMetadata(
+                operation: .createGitHubIssue,
+                destination: url,
+                meetingID: meetingID,
+                classification: .meetingActionItem,
+                consentSource: .explicitGitHubIssuePublish,
+                providerID: "api.github.com")
+            XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+                forged,
+                metadata: metadata), rawURL)
+        }
+    }
+
+    func testGatewayRejectsNonCanonicalFixedPublishingEndpointsBeforeTransport() throws {
+        let item = ActionItem(text: "Ship the release")
+        try assertFixedPublishingEndpointRejected(
+            request: GistPublisher.request(
+                markdown: "# M", filename: "m.md", description: "M",
+                isPublic: false, token: "token"),
+            forgedURL: "https://api.github.com/gists?public=true",
+            operation: .publishGitHubGist,
+            classification: .meetingExportDocument,
+            consentSource: .explicitGistPublish,
+            providerID: "api.github.com")
+        try assertFixedPublishingEndpointRejected(
+            request: LinearExporter.request(
+                item: item, meetingTitle: "Planning", ownerName: nil,
+                teamID: "TEAM", token: "token"),
+            forgedURL: "https://api.linear.app/graphql/v2",
+            operation: .createLinearIssue,
+            classification: .meetingActionItem,
+            consentSource: .explicitLinearIssuePublish,
+            providerID: "api.linear.app")
+    }
+
     func testGatewayRejectsForgedDestinationOrProviderBeforeTransport() throws {
         let request = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
@@ -315,6 +469,52 @@ final class DataEgressGatewayTests: XCTestCase {
         }
     }
 
+    private func publishingMetadata(
+        operation: DataEgressOperation,
+        destination: URL,
+        meetingID: MeetingID?,
+        classification: DataEgressClassification,
+        consentSource: DataEgressConsentSource,
+        providerID: String,
+        modelID: String? = nil
+    ) -> DataEgressRequest {
+        DataEgressRequest(
+            operation: operation,
+            destination: DataEgressDestination(url: destination),
+            dataClassification: classification,
+            meetingID: meetingID,
+            consentSource: consentSource,
+            providerDisclosure: DataEgressProviderDisclosure(
+                providerID: providerID,
+                modelID: modelID))
+    }
+
+    private func assertFixedPublishingEndpointRejected(
+        request: URLRequest,
+        forgedURL: String,
+        operation: DataEgressOperation,
+        classification: DataEgressClassification,
+        consentSource: DataEgressConsentSource,
+        providerID: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        var forged = request
+        let destination = try XCTUnwrap(URL(string: forgedURL), file: file, line: line)
+        forged.url = destination
+        let metadata = publishingMetadata(
+            operation: operation,
+            destination: destination,
+            meetingID: meetingID,
+            classification: classification,
+            consentSource: consentSource,
+            providerID: providerID)
+        XCTAssertThrowsError(
+            try URLSessionDataEgressGateway.validate(forged, metadata: metadata),
+            file: file,
+            line: line)
+    }
+
     private func egressMetadata(
         destination: URL,
         meetingID: MeetingID?,
@@ -359,19 +559,23 @@ struct TestDataEgressGateway: DataEgressGateway {
     }
 }
 
-private actor CapturingDataEgressGateway: DataEgressGateway {
+actor CapturingDataEgressGateway: DataEgressGateway {
     struct Capture: Sendable {
         let request: URLRequest
         let metadata: DataEgressRequest
     }
 
     private let responseData: Data
+    private let statusCode: Int
     private var capture: Capture?
 
-    init(responseData: Data = Data(
-        #"{"choices":[{"message":{"content":"Use let by default."}}]}"#.utf8
-    )) {
+    init(
+        responseData: Data = Data(
+            #"{"choices":[{"message":{"content":"Use let by default."}}]}"#.utf8),
+        statusCode: Int = 200
+    ) {
         self.responseData = responseData
+        self.statusCode = statusCode
     }
 
     func perform(
@@ -381,7 +585,7 @@ private actor CapturingDataEgressGateway: DataEgressGateway {
         capture = Capture(request: networkRequest, metadata: metadata)
         return DataEgressResponse(
             data: responseData,
-            statusCode: 200)
+            statusCode: statusCode)
     }
 
     func snapshot() -> Capture? { capture }

@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D68 (enforced Companion and OpenAI-compatible summary egress).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -259,7 +259,8 @@ transport-free. Offline tests decode remote and loopback requests, prove exact
 metadata and consent, exercise the real provider response parser, and reject
 cross-operation consent. The 23rd architecture rule prevents IntelligenceKit,
 app composition, or CLI composition from restoring a direct summary network
-path. Explicit Gist/GitHub/Linear publishing remains the next egress slice.
+path. D69 subsequently moves explicit publishing through the same port under
+separate contracts; see spec 07.
 
 ## Naming
 
@@ -271,8 +272,6 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
    configured Ollama/MLX regeneration performs a new generation.
 2. Brute-force RAG is O(n) over embeddings and is not measured at 1,000+
    meetings (the < 50 ms target may require sqlite-vec).
-3. `DataEgressGateway` enforces Companion BYOK and OpenAI-compatible summaries;
-   explicit Gist/GitHub/Linear publishing migrates in the next Band 3 slice.
 
 ## Planned (not implemented)
 

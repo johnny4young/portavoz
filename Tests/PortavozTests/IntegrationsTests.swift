@@ -116,6 +116,9 @@ final class MeetingExporterTests: XCTestCase {
 }
 
 final class GistPublisherTests: XCTestCase {
+    private let meetingID = MeetingID(
+        rawValue: UUID(uuidString: "E6000000-0000-0000-0000-000000000002")!)
+
     func testRequestShape() throws {
         let request = try GistPublisher.request(
             markdown: "# hola", filename: "reunion.md",
@@ -140,10 +143,63 @@ final class GistPublisherTests: XCTestCase {
     func testRejectsMalformedResponse() {
         XCTAssertThrowsError(try GistPublisher.parseResponse(Data("{}".utf8)))
     }
+
+    func testPublishRoutesMeetingDocumentThroughGateway() async throws {
+        let response = Data(
+            #"{"html_url":"https://gist.github.com/johnny/abc123"}"#.utf8)
+        let gateway = CapturingDataEgressGateway(
+            responseData: response,
+            statusCode: 201)
+        let publisher = GistPublisher(token: "ghp_x", gateway: gateway)
+
+        let url = try await publisher.publish(
+            meetingID: meetingID,
+            markdown: "# Planning Q3",
+            filename: "planning.md",
+            description: "Planning Q3")
+
+        XCTAssertEqual(url.absoluteString, "https://gist.github.com/johnny/abc123")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .publishGitHubGist)
+        XCTAssertEqual(captured.metadata.destination.scope, .remote)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingExportDocument)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitGistPublish)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.github.com")
+        XCTAssertNil(captured.metadata.providerDisclosure.modelID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testPublishPreservesGitHubFailureDetails() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"message":"validation failed"}"#.utf8),
+            statusCode: 422)
+        let publisher = GistPublisher(token: "ghp_x", gateway: gateway)
+
+        do {
+            _ = try await publisher.publish(
+                meetingID: meetingID,
+                markdown: "# Planning Q3",
+                filename: "planning.md",
+                description: "Planning Q3")
+            XCTFail("Expected GitHub's failure to remain visible")
+        } catch let error as GistPublisher.PublishError {
+            guard case .requestFailed(let status, let body) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(status, 422)
+            XCTAssertEqual(body, #"{"message":"validation failed"}"#)
+        }
+    }
 }
 
 final class IssueExporterTests: XCTestCase {
     private let item = ActionItem(text: "Preparar el rollback plan")
+    private let meetingID = MeetingID(
+        rawValue: UUID(uuidString: "E6000000-0000-0000-0000-000000000003")!)
 
     func testGitHubRequestShape() throws {
         let request = try GitHubIssuesExporter.request(
@@ -165,6 +221,57 @@ final class IssueExporterTests: XCTestCase {
             Data(#"{"html_url": "https://github.com/o/r/issues/7", "number": 7}"#.utf8))
         XCTAssertEqual(url.absoluteString, "https://github.com/o/r/issues/7")
         XCTAssertThrowsError(try GitHubIssuesExporter.parseResponse(Data("{}".utf8)))
+    }
+
+    func testGitHubPublishRoutesActionItemThroughGateway() async throws {
+        let response = Data(
+            #"{"html_url":"https://github.com/o/r/issues/7"}"#.utf8)
+        let gateway = CapturingDataEgressGateway(
+            responseData: response,
+            statusCode: 201)
+        let publisher = GitHubIssuesExporter(
+            repository: "o/r",
+            token: "ghp_x",
+            gateway: gateway)
+
+        let url = try await publisher.publish(
+            item,
+            meetingID: meetingID,
+            meetingTitle: "Planning Q3",
+            ownerName: "Ana")
+
+        XCTAssertEqual(url.absoluteString, "https://github.com/o/r/issues/7")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .createGitHubIssue)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingActionItem)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitGitHubIssuePublish)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.github.com")
+        XCTAssertNil(captured.metadata.providerDisclosure.modelID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testGitHubPublishPreservesProviderFailureDetails() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"message":"invalid repository"}"#.utf8),
+            statusCode: 422)
+        let publisher = GitHubIssuesExporter(
+            repository: "o/r", token: "ghp_x", gateway: gateway)
+
+        do {
+            _ = try await publisher.publish(
+                item, meetingID: meetingID, meetingTitle: "Planning Q3")
+            XCTFail("Expected GitHub's failure to remain visible")
+        } catch let error as IssueExporterError {
+            guard case .requestFailed(let status, let body) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(status, 422)
+            XCTAssertEqual(body, #"{"message":"invalid repository"}"#)
+        }
     }
 
     func testLinearRequestShape() throws {
@@ -190,6 +297,55 @@ final class IssueExporterTests: XCTestCase {
 
         let failed = #"{"data":{"issueCreate":{"success":false,"issue":null}}}"#
         XCTAssertThrowsError(try LinearExporter.parseResponse(Data(failed.utf8)))
+    }
+
+    func testLinearPublishRoutesActionItemThroughGateway() async throws {
+        let response = Data(
+            #"{"data":{"issueCreate":{"success":true,"issue":{"url":"https://linear.app/t/issue/T-1"}}}}"#.utf8)
+        let gateway = CapturingDataEgressGateway(responseData: response)
+        let publisher = LinearExporter(
+            teamID: "TEAM-1",
+            token: "lin_x",
+            gateway: gateway)
+
+        let url = try await publisher.publish(
+            item,
+            meetingID: meetingID,
+            meetingTitle: "Planning Q3")
+
+        XCTAssertEqual(url.absoluteString, "https://linear.app/t/issue/T-1")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .createLinearIssue)
+        XCTAssertEqual(captured.metadata.destination.scope, .remote)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingActionItem)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitLinearIssuePublish)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.linear.app")
+        XCTAssertNil(captured.metadata.providerDisclosure.modelID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testLinearPublishPreservesProviderFailureDetails() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"error":"not authorized"}"#.utf8),
+            statusCode: 401)
+        let publisher = LinearExporter(
+            teamID: "TEAM-1", token: "lin_x", gateway: gateway)
+
+        do {
+            _ = try await publisher.publish(
+                item, meetingID: meetingID, meetingTitle: "Planning Q3")
+            XCTFail("Expected Linear's failure to remain visible")
+        } catch let error as IssueExporterError {
+            guard case .requestFailed(let status, let body) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(status, 401)
+            XCTAssertEqual(body, #"{"error":"not authorized"}"#)
+        }
     }
 }
 

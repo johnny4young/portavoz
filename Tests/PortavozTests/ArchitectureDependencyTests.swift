@@ -156,6 +156,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(cli.contains("data(for:"))
     }
 
+    func testExplicitPublishingEgressCannotBypassTheGateway() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/DataEgress.swift")
+        let adapter = try Self.contents(
+            of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
+        let gist = try Self.contents(of: "Sources/IntegrationsKit/GistPublisher.swift")
+        let issues = try Self.contents(of: "Sources/IntegrationsKit/IssueExporters.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let cliExport = try Self.contents(of: "Sources/portavoz-cli/CLIExport.swift")
+        let cliIssues = try Self.contents(of: "Sources/portavoz-cli/CLIIssues.swift")
+
+        for operation in ["publishGitHubGist", "createGitHubIssue", "createLinearIssue"] {
+            XCTAssertTrue(core.contains(operation))
+            XCTAssertTrue(adapter.contains("case .\(operation):"))
+        }
+        for publisher in [gist, issues] {
+            XCTAssertTrue(publisher.contains("private let gateway: any DataEgressGateway"))
+            XCTAssertTrue(publisher.contains("gateway.perform("))
+            XCTAssertFalse(publisher.contains("URLSession"))
+            XCTAssertFalse(publisher.contains("data(for:"))
+        }
+        XCTAssertTrue(detail.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(detail.contains("meetingID: detail.meeting.id"))
+        XCTAssertTrue(cliExport.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(cliExport.contains("meetingID: meetingID"))
+        XCTAssertTrue(cliIssues.contains("gateway: URLSessionDataEgressGateway()"))
+        XCTAssertTrue(cliIssues.contains("meetingID: meetingID"))
+    }
+
     func testApplicationKitImportsStayInsideTheApprovedLayer() throws {
         let allowed = Set([
             "Foundation", "PortavozCore", "TranscriptionKit", "DiarizationKit",

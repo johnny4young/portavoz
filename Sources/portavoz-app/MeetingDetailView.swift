@@ -1226,7 +1226,11 @@ extension MeetingDetailView {
             summaryVersion: summary?.version
         )
         do {
-            gistResult = try await GistPublisher(token: token).publish(
+            gistResult = try await GistPublisher(
+                token: token,
+                gateway: URLSessionDataEgressGateway()
+            ).publish(
+                meetingID: detail.meeting.id,
                 markdown: markdown,
                 filename: "\(detail.meeting.title).md",
                 description: detail.meeting.title,

@@ -27,29 +27,45 @@ extension SecretStore {
 public struct GitHubIssuesExporter: Sendable {
     private let repository: String
     private let token: String
-    private let session: URLSession
+    private let gateway: any DataEgressGateway
 
     /// - Parameter repository: `owner/name`.
-    public init(repository: String, token: String, session: URLSession = .shared) {
+    public init(
+        repository: String,
+        token: String,
+        gateway: any DataEgressGateway
+    ) {
         self.repository = repository
         self.token = token
-        self.session = session
+        self.gateway = gateway
     }
 
     /// Creates one issue per action item; returns its URL.
     public func publish(
-        _ item: ActionItem, meetingTitle: String, ownerName: String? = nil
+        _ item: ActionItem,
+        meetingID: MeetingID,
+        meetingTitle: String,
+        ownerName: String? = nil
     ) async throws -> URL {
         let request = try Self.request(
             item: item, meetingTitle: meetingTitle, ownerName: ownerName,
             repository: repository, token: token)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 201 else {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        let response = try await gateway.perform(
+            request,
+            metadata: DataEgressRequest(
+                operation: .createGitHubIssue,
+                destination: DataEgressDestination(url: request.url!),
+                dataClassification: .meetingActionItem,
+                meetingID: meetingID,
+                consentSource: .explicitGitHubIssuePublish,
+                providerDisclosure: DataEgressProviderDisclosure(
+                    providerID: "api.github.com")))
+        guard response.statusCode == 201 else {
             throw IssueExporterError.requestFailed(
-                status: status, body: String(data: data.prefix(200), encoding: .utf8) ?? "")
+                status: response.statusCode,
+                body: String(data: response.data.prefix(200), encoding: .utf8) ?? "")
         }
-        return try Self.parseResponse(data)
+        return try Self.parseResponse(response.data)
     }
 
     static func request(
@@ -92,27 +108,43 @@ public struct GitHubIssuesExporter: Sendable {
 public struct LinearExporter: Sendable {
     private let teamID: String
     private let token: String
-    private let session: URLSession
+    private let gateway: any DataEgressGateway
 
-    public init(teamID: String, token: String, session: URLSession = .shared) {
+    public init(
+        teamID: String,
+        token: String,
+        gateway: any DataEgressGateway
+    ) {
         self.teamID = teamID
         self.token = token
-        self.session = session
+        self.gateway = gateway
     }
 
     public func publish(
-        _ item: ActionItem, meetingTitle: String, ownerName: String? = nil
+        _ item: ActionItem,
+        meetingID: MeetingID,
+        meetingTitle: String,
+        ownerName: String? = nil
     ) async throws -> URL {
         let request = try Self.request(
             item: item, meetingTitle: meetingTitle, ownerName: ownerName,
             teamID: teamID, token: token)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        let response = try await gateway.perform(
+            request,
+            metadata: DataEgressRequest(
+                operation: .createLinearIssue,
+                destination: DataEgressDestination(url: request.url!),
+                dataClassification: .meetingActionItem,
+                meetingID: meetingID,
+                consentSource: .explicitLinearIssuePublish,
+                providerDisclosure: DataEgressProviderDisclosure(
+                    providerID: "api.linear.app")))
+        guard (200..<300).contains(response.statusCode) else {
             throw IssueExporterError.requestFailed(
-                status: status, body: String(data: data.prefix(200), encoding: .utf8) ?? "")
+                status: response.statusCode,
+                body: String(data: response.data.prefix(200), encoding: .utf8) ?? "")
         }
-        return try Self.parseResponse(data)
+        return try Self.parseResponse(response.data)
     }
 
     static func request(

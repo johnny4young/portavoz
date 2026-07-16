@@ -103,6 +103,63 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
                 throw DataEgressGatewayError.invalidMetadata(
                     "Summary egress requires summary-specific consent")
             }
+        case .publishGitHubGist:
+            try validateGitHubGistRequest(networkRequest, metadata: metadata)
+        case .createGitHubIssue:
+            try validateGitHubIssueRequest(networkRequest, metadata: metadata)
+        case .createLinearIssue:
+            try validateLinearIssueRequest(networkRequest, metadata: metadata)
+        }
+    }
+
+    private static func validateGitHubGistRequest(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) throws {
+        try validatePublishingRequest(
+            networkRequest,
+            metadata: metadata,
+            classification: .meetingExportDocument,
+            consentSource: .explicitGistPublish,
+            label: "Gist")
+        guard networkRequest.url == URL(string: "https://api.github.com/gists")
+        else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "Gist egress requires the canonical GitHub endpoint")
+        }
+    }
+
+    private static func validateGitHubIssueRequest(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) throws {
+        try validatePublishingRequest(
+            networkRequest,
+            metadata: metadata,
+            classification: .meetingActionItem,
+            consentSource: .explicitGitHubIssuePublish,
+            label: "GitHub Issue")
+        guard let url = networkRequest.url, isCanonicalGitHubIssueURL(url)
+        else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "GitHub Issue egress requires a canonical repository endpoint")
+        }
+    }
+
+    private static func validateLinearIssueRequest(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) throws {
+        try validatePublishingRequest(
+            networkRequest,
+            metadata: metadata,
+            classification: .meetingActionItem,
+            consentSource: .explicitLinearIssuePublish,
+            label: "Linear Issue")
+        guard networkRequest.url == URL(string: "https://api.linear.app/graphql")
+        else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "Linear Issue egress requires the canonical Linear endpoint")
         }
     }
 
@@ -122,5 +179,43 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
             throw DataEgressGatewayError.invalidMetadata(
                 "\(label) egress requires a classified non-empty model POST")
         }
+    }
+
+    private static func validatePublishingRequest(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest,
+        classification: DataEgressClassification,
+        consentSource: DataEgressConsentSource,
+        label: String
+    ) throws {
+        guard networkRequest.httpMethod == "POST",
+              networkRequest.httpBody?.isEmpty == false,
+              metadata.meetingID != nil,
+              metadata.dataClassification == classification,
+              metadata.consentSource == consentSource,
+              metadata.providerDisclosure.modelID == nil
+        else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "\(label) egress requires explicit classified publishing metadata")
+        }
+    }
+
+    private static func isCanonicalGitHubIssueURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+              url.host?.lowercased() == "api.github.com",
+              url.port == nil,
+              url.query == nil,
+              url.fragment == nil
+        else { return false }
+        let components = url.path.split(separator: "/", omittingEmptySubsequences: false)
+        guard components.count == 5,
+              components[0].isEmpty,
+              components[1] == "repos",
+              !components[2].isEmpty,
+              !components[3].isEmpty,
+              components[4] == "issues"
+        else { return false }
+        return components[2] != "." && components[2] != ".."
+            && components[3] != "." && components[3] != ".."
     }
 }

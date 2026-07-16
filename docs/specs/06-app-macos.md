@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D68 (atomic summary, accepted Refine transcript, Companion-card provenance, and enforced Companion/summary data-egress verticals).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D69 (atomic summary, accepted Refine transcript, Companion-card provenance, and enforced meeting-content data-egress verticals).
 
 ## Structure
 
@@ -84,8 +84,16 @@ Each provider receives the real source `MeetingID`; the adapter validates full
 summary-material classification, exact provider/model/destination, conservative
 local/remote scope, and a non-empty POST before transport. Ollama summary calls
 therefore cross the policy point as `local-device`, while health/model discovery
-remains direct because it carries no meeting content. Explicit Gist, GitHub,
-and Linear publishing remain on their characterized paths for slice 3G-b.
+remains direct because it carries no meeting content.
+
+D69 moves Meeting Detail's secret-Gist publication through the same composition
+point. The view still requires the existing explicit off-device confirmation,
+then constructs `GistPublisher` with `URLSessionDataEgressGateway` and passes the
+selected meeting's real identity. The publisher declares the complete exported
+meeting document, GitHub Gist destination, and explicit Gist consent before the
+adapter can send. Request shape, secret-by-default behavior, response parsing,
+and user-visible failure presentation remain unchanged. GitHub/Linear issue
+publishing is CLI-only today and follows the parallel contract in spec 07.
 
 Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
 `RecordingController` still flushes `RecordingSession`, closes live feeds, and
@@ -338,7 +346,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items.
 - **Refine (D7/D35/D47 in-app)**: `ApplicationKit.RefineMeeting` re-transcribes retained non-silent channels with Whisper (+vocabulary), then applies microphone noise/bleed filtering and best-effort diarization. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Companion refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
-- Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation.
+- Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation and gateway-enforced meeting/document metadata.
 
 **SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · External model BYOK (endpoint/model in defaults, key in Keychain, Companion opt-in toggle disabled until all configured; deleting key turns it off — spec 04) · GitHub (token in Keychain).
 

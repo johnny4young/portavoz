@@ -142,7 +142,7 @@ real vertical use case.
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
 | `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic summary, accepted-Refine transcript, and Companion-card provenance, durable leased job queue, local vector index |
-| `IntegrationsKit` | GitHub/Linear/Gist, EventKit calendar, RAG, bundle/export, MCP, and policy-checked outbound network adapters |
+| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked outbound network adapter |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
 SwiftUI views render and present native controls; app composition adapters map
@@ -176,7 +176,7 @@ Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask
 
 ## Privacy
 
-Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Companion BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist and issue publishing will adopt the same boundary next. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
+Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Companion BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
 
 ## Contributing
 

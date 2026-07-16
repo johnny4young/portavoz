@@ -1582,3 +1582,40 @@ full-material classification is more honest than reusing Companion's
 question-only label. A separate 3G-a commit keeps rollback narrow and lets an
 architecture test reject future direct summary transport before publishing
 adapters move in 3G-b.
+
+## D69 — Explicit publishers use separate egress capabilities (Jul 2026)
+
+**Context:** after D67/D68, the remaining direct meeting-content URLSession
+owners were `GistPublisher`, `GitHubIssuesExporter`, and `LinearExporter`.
+Their payloads and user intent differ: a Gist contains a rendered meeting
+document, while tracker operations contain one action item plus meeting-title
+and owner context. A generic "external publish" marker would be too broad for
+future privacy receipts and could authorize one service with consent intended
+for another.
+
+**Decision:** Core adds three operations (`publish-github-gist`,
+`create-github-issue`, `create-linear-issue`), two classifications
+(`meeting-export-document`, `meeting-action-item`), and three matching explicit
+consent sources. All three operations require a source `MeetingID`, non-empty
+POST body, remote provider disclosure with no model, exact operation-specific
+classification/consent, and a canonical service URL before transport. Gist and
+Linear use fixed endpoints; GitHub Issues admits only
+`/repos/{owner}/{repository}/issues` on `https://api.github.com` without query,
+fragment, custom port, or path traversal.
+
+The three publishers require an injected `DataEgressGateway` and cannot own a
+URLSession. Meeting Detail composes the gateway after its existing secret-Gist
+confirmation; CLI export and issue commands compose it after their existing
+explicit flags and warnings. Request bodies, headers, public/secret behavior,
+response parsing, success URLs, and visible provider failures are unchanged.
+The app and CLI pass the actual source meeting rather than letting an adapter
+invent provenance. Content-free model downloads and Ollama discovery remain
+outside the meeting-content boundary. The configured Shortcut hook remains an
+explicit local process automation surface; it is not falsely labeled as a
+network destination.
+
+**Rationale:** separate capabilities make cross-service consent reuse fail
+closed while preserving the released sharing and developer workflows. Exact
+endpoint validation prevents a forged path from hiding behind a correct host,
+and centralized transport gives the later privacy receipt one complete,
+content-free vocabulary without duplicating exported meeting data.
