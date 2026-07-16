@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 15, 2026
 
+- **⚡ Meeting exports stay responsive** — A `.portavoz` bundle now reads optional full-length audio and builds its JSON away from the interface, from one consistent meeting snapshot. The native save panel, format-v1 compatibility, notes, latest summary, Companion cards, and missing-channel behavior stay intact.
 - **🛡️ Meeting bundles import whole or not at all** — A `.portavoz` file now restores its transcript, cast, summary, notes, Companion, and optional audio together. Embedded audio is limited to safe meeting channels and playback formats, and a failed import removes its staged copy instead of leaving a partial meeting or a file outside its fresh folder.
 - **🛡️ Refine is reviewable, cancellable, and atomic** — Stop a long quality pass without touching the transcript you already trust. Applying a reviewed draft now installs its language, speakers, and words together, rejects stale drafts if the meeting changed underneath them, and keeps every older summary safely in history.
 - **📥 Audio imports stay responsive and clean** — Drag in a long recording without freezing the Library while Portavoz copies it. If required preparation, transcription, or saving fails, the incomplete meeting and its private staged audio are rolled back together instead of leaving hidden files or a partial entry.

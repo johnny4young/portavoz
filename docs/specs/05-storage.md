@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export).
 
 ## Database
 
@@ -155,6 +155,13 @@ generic completion path remains available only to non-content jobs. Storage
 derives meeting lifecycle rather than asking callers to save a second,
 potentially inconsistent aggregate state.
 
+`meetingExportSnapshot(_:)` is the dedicated read-side aggregate for sharing.
+One GRDB read loads the live meeting, cast, ordered transcript, newest summary
+across every recipe, ordered notes, and ordered Companion cards. The required
+meeting/cast/transcript projection remains strict; optional summary, note, and
+card decoding retains the released degradable fallback. Audio bytes are not a
+database concern and remain behind the application filesystem port (D52).
+
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:)` (validated, revision-fenced refined aggregate replacement — D47), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
@@ -199,7 +206,7 @@ children; restoring the root returns the exact previous projections.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51).
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, action item, note, and card IDs so that two imports are independent. An older v1 bundle without `companionCards` or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its notes/cards from the same database moment (D52).
 
 ## Recordings folder — `RecordingsLocation`
 
@@ -305,3 +312,11 @@ notes, and Companion cards can no longer commit independently of their meeting,
 cast, and transcript. Focused real-Store tests prove full conservation,
 pre-write rejection of foreign children, and rollback when an injected trigger
 rejects the final Companion card (D51).
+
+Slice 2L makes `MeetingStore` conform to `ExportMeetingBundleStore` through
+`meetingExportSnapshot(_:)`. One live-rooted GRDB read supplies the meeting,
+cast, ordered transcript, newest summary across recipe histories, notes, and
+Companion cards to ApplicationKit. Audio stays outside SQLite, and no database
+record or SQL detail crosses the port. Focused real-Store tests prove complete
+content conservation, newest-recipe selection, tombstone exclusion, and the
+released optional-row degradation policy (D52).

@@ -184,6 +184,23 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(adapter.contains("store.save(bundle.companionCards"))
     }
 
+    func testAppMeetingBundleExportEntersThroughApplicationKit() throws {
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Bundle.swift")
+
+        XCTAssertTrue(view.contains("services.exportMeetingBundle"))
+        XCTAssertFalse(view.contains("let bundle = MeetingBundle("))
+        XCTAssertFalse(view.contains("MeetingBundle.AudioAttachment"))
+        XCTAssertFalse(view.contains("Data(contentsOf:"))
+        XCTAssertTrue(adapter.contains("exportMeetingBundleUseCase.execute"))
+        XCTAssertTrue(adapter.contains("MeetingBundle("))
+        XCTAssertTrue(adapter.contains("Task.detached(priority: .utility)"))
+        XCTAssertFalse(adapter.contains("store.contextItems(for:"))
+        XCTAssertFalse(adapter.contains("store.companionCards(for:"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

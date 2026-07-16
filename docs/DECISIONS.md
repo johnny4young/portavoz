@@ -927,3 +927,41 @@ while canonical attachment types turn untrusted metadata into a closed domain
 before any path is constructed. Fresh identity, open-format compatibility,
 optional audio, and the released UX remain unchanged, but partial meetings and
 path-shaped attachment metadata no longer cross the boundary.
+
+## D52 — Bundle export owns one read-consistent aggregate outside presentation (Jul 2026)
+
+**Context:** Meeting Detail assembled `.portavoz` documents directly from its
+loaded detail and summary state plus separate Store reads for notes and
+Companion cards. Export-with-audio then resolved and synchronously loaded each
+complete channel with `Data(contentsOf:)` and encoded the base64 JSON from the
+MainActor before opening SwiftUI's native save panel. A long recording could
+therefore stall the interface, and independently timed reads could mix rows
+from different database moments. The view also depended directly on the
+external bundle format.
+
+**Decision:** `ApplicationKit.ExportMeetingBundle` loads one format-neutral
+aggregate through an `ExportMeetingBundleStore` port. `MeetingStore` implements
+that port with one GRDB read of the live meeting, cast, ordered transcript,
+newest immutable summary across recipes, notes, and Companion cards. The use
+case captures the relative audio directory, clears it before document
+assembly, optionally requests only unique validated system/microphone m4a/caf/wav
+attachments, and sends the result to an external-document port. It does not
+import IntegrationsKit or receive SwiftUI, AppKit, absolute paths, or localized
+copy.
+
+Private app adapters retain `RecordingsLocation` fallback resolution,
+`MeetingAudioLayout` preference order, best-effort omission of missing or
+unreadable individual channels, and the actual IntegrationsKit `MeetingBundle`
+mapping. Full channel reads and format-v1 JSON/base64 encoding run in detached
+utility tasks. Corrupt optional summary/note/card projections retain the
+released degradable fallback, while core aggregate or encoding failures map to
+the existing visible export error. Meeting Detail still owns the title-derived
+filename, exported UTI, native save panel, and dismissal state.
+
+**Rationale:** export policy is an application workflow; file discovery and
+JSON are replaceable capabilities, and the save panel is presentation. One
+read transaction provides a coherent shareable snapshot without inventing a
+new database or format version. Keeping IntegrationsKit in a private adapter
+preserves D44's dependency ratchet, while off-main meeting-length work removes
+the largest responsiveness risk without changing the open format, optional
+audio semantics, or user flow.

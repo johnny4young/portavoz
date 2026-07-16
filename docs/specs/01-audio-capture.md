@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export).
 
 ## Channel model (D5)
 
@@ -138,6 +138,14 @@ remapped meeting directory, cleans a partially written directory, and treats
 the completed directory as staged until the full relational bundle aggregate
 commits. A later Store failure triggers best-effort compensation without
 masking the persistence error.
+
+`.portavoz` attachment export is the symmetric D52 application workflow. A
+private filesystem adapter resolves the configured recordings root with the
+existing default-root fallback, checks channels in canonical system then
+microphone order, and uses `MeetingAudioLayout`'s m4a/caf/wav preference.
+Missing or unreadable individual channels remain degradable. Complete file
+reads run on a detached utility task before the external format adapter encodes
+the bundle; no meeting-length audio is loaded from SwiftUI.
 
 ## Planned (not implemented)
 

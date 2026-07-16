@@ -95,21 +95,28 @@ extension MeetingStore {
     public func mostRecentSummary(
         _ id: MeetingID
     ) async throws -> (draft: SummaryDraft, version: Int)? {
-        let meetingKey = id.rawValue.uuidString
         return try await database.read { db in
+            let meetingKey = id.rawValue.uuidString
             guard try MeetingRecord
                 .filter(Column("id") == meetingKey)
                 .filter(Column("deletedAt") == nil)
                 .fetchCount(db) > 0
             else { return nil }
-            guard let record = try SummaryRecord
-                .filter(Column("meetingID") == meetingKey)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("createdAt").desc, Column("rowid").desc)
-                .fetchOne(db)
-            else { return nil }
-            return try Self.summarySnapshot(record, meetingID: id, in: db)
+            return try Self.mostRecentSummarySnapshot(meetingID: id, in: db)
         }
+    }
+
+    static func mostRecentSummarySnapshot(
+        meetingID: MeetingID,
+        in db: Database
+    ) throws -> (draft: SummaryDraft, version: Int)? {
+        guard let record = try SummaryRecord
+            .filter(Column("meetingID") == meetingID.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("createdAt").desc, Column("rowid").desc)
+            .fetchOne(db)
+        else { return nil }
+        return try summarySnapshot(record, meetingID: meetingID, in: db)
     }
 
     /// The latest live snapshot whose material fingerprint matches (D25):
@@ -143,7 +150,7 @@ extension MeetingStore {
         }
     }
 
-    private static func summarySnapshot(
+    static func summarySnapshot(
         _ record: SummaryRecord,
         meetingID: MeetingID,
         in db: Database

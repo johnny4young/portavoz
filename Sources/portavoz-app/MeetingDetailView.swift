@@ -345,29 +345,10 @@ extension MeetingDetailView {
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
     private func exportBundle(_ detail: MeetingDetail, includeAudio: Bool) async {
-        let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
-        let cards = (try? await services.store.companionCards(for: meetingID)) ?? []
-        var audio: [MeetingBundle.AudioAttachment]?
-        if includeAudio, let relative = detail.meeting.audioDirectory {
-            let base = RecordingsLocation.shared.resolve(relative)
-            let attachments = ["system", "microphone"].compactMap { name -> MeetingBundle.AudioAttachment? in
-                guard let url = MeetingAudioLayout.channelFile(named: name, in: base),
-                    let data = try? Data(contentsOf: url)
-                else { return nil }
-                return MeetingBundle.AudioAttachment(
-                    name: name, fileExtension: url.pathExtension, data: data)
-            }
-            audio = attachments.isEmpty ? nil : attachments
-        }
-        let bundle = MeetingBundle(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: summary?.draft,
-            contextItems: notes,
-            companionCards: cards,
-            audioFiles: audio)
-        guard let data = try? bundle.encoded() else {
+        guard let data = try? await services.exportMeetingBundle(
+            meetingID: detail.meeting.id,
+            includeAudio: includeAudio)
+        else {
             gistError = L10n.text("Could not encode the meeting file.")
             return
         }

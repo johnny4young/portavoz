@@ -85,7 +85,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
 
 **Own your data**
-- **Open format** — Markdown + a SQLite file you own. Full-library Markdown backup, per-meeting `.portavoz` bundles (optionally with audio), and a **trash** with restore (auto-purge after 30 days). No accounts, no lock-in.
+- **Open format** — Markdown + a SQLite file you own. Full-library Markdown backup, per-meeting `.portavoz` bundles (optionally with audio, assembled off the UI thread from one consistent snapshot), and a **trash** with restore (auto-purge after 30 days). No accounts, no lock-in.
 
 ## Benchmarks
 
@@ -132,7 +132,7 @@ architecture migration is tracked in
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import, reviewable/revision-fenced refinement, and durable recording Start/Stop/launch-recovery handoffs over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, and durable recording Start/Stop/launch-recovery handoffs over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |

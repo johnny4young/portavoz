@@ -28,6 +28,72 @@ extension AppServices {
             files: AppImportMeetingBundleFiles(root: Self.audioRoot),
             store: store)
     }
+
+    /// Builds one `.portavoz` payload. SwiftUI retains only the native save
+    /// panel and its localized presentation state.
+    func exportMeetingBundle(
+        meetingID: MeetingID,
+        includeAudio: Bool
+    ) async throws -> Data {
+        try await exportMeetingBundleUseCase.execute(
+            ExportMeetingBundleRequest(
+                meetingID: meetingID,
+                includeAudio: includeAudio))
+    }
+
+    private var exportMeetingBundleUseCase: ExportMeetingBundle {
+        ExportMeetingBundle(
+            store: store,
+            files: AppExportMeetingBundleFiles(location: .shared),
+            documents: AppExportMeetingBundleDocuments())
+    }
+}
+
+private struct AppExportMeetingBundleFiles: ExportMeetingBundleFiles {
+    let location: RecordingsLocation
+
+    func readBundleAudio(
+        from relativeDirectory: String
+    ) async -> [ExportMeetingBundleAttachment] {
+        let directory = location.resolve(relativeDirectory)
+        return await Task.detached(priority: .utility) {
+            [AudioChannel.system, .microphone].compactMap { channel in
+                guard let url = MeetingAudioLayout.channelFile(
+                    named: channel.rawValue,
+                    in: directory),
+                    let data = try? Data(contentsOf: url, options: .mappedIfSafe)
+                else { return nil }
+                return ExportMeetingBundleAttachment(
+                    channel: channel,
+                    fileExtension: url.pathExtension,
+                    data: data)
+            }
+        }.value
+    }
+}
+
+private struct AppExportMeetingBundleDocuments: ExportMeetingBundleDocuments {
+    func encodeMeetingBundle(
+        _ document: ExportMeetingBundleDocument
+    ) async throws -> Data {
+        try await Task.detached(priority: .utility) {
+            let audioFiles = document.attachments.map {
+                MeetingBundle.AudioAttachment(
+                    name: $0.channel.rawValue,
+                    fileExtension: $0.fileExtension,
+                    data: $0.data)
+            }
+            return try MeetingBundle(
+                meeting: document.meeting,
+                speakers: document.speakers,
+                segments: document.segments,
+                summary: document.summary,
+                contextItems: document.contextItems,
+                companionCards: document.companionCards,
+                audioFiles: audioFiles.isEmpty ? nil : audioFiles)
+                .encoded()
+        }.value
+    }
 }
 
 private struct AppImportMeetingBundleDocuments: ImportMeetingBundleDocuments {
