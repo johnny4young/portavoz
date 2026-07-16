@@ -99,7 +99,9 @@ private extension MeetingStore {
                 failures: 1)
         }
     }
+}
 
+extension MeetingStore {
     func observedStream<Reducer>(
         _ observation: ValueObservation<Reducer>
     ) -> AsyncThrowingStream<Reducer.Value, Error>

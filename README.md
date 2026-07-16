@@ -132,7 +132,7 @@ architecture migration is tracked in
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, calendar-neutral upcoming events, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library and Insights read/update contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |
@@ -140,17 +140,18 @@ architecture migration is tracked in
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
 | `ContextFeedKit` | Placeholder compatibility target; co-authored notes currently span Core, StorageKit, IntelligenceKit, and the app |
-| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library observations, versioned snapshots, durable leased job queue, local vector index |
+| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library and Insights observations, versioned snapshots, durable leased job queue, local vector index |
 | `IntegrationsKit` | GitHub/Linear/Gist, EventKit calendar, RAG, bundle/export, and MCP adapters |
 | `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 
-The macOS app owns a per-window `LibraryModel` with one observable value-state
-snapshot and enum actions/effects. SwiftUI Library views render and present
-native controls; an app composition adapter merges independent GRDB
-observations for meeting rows/voice mix, open items, trash, and active FTS into
-storage-independent ApplicationKit updates. Library no longer consumes the
-global invalidation counter; Meeting Detail, Insights, and Spotlight retain
-that transitional seam until their own characterized slices.
+The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
+SwiftUI views render and present native controls; app composition adapters map
+independent GRDB observations to storage-independent ApplicationKit updates.
+Library observes meeting rows/voice mix, open items, trash, and active FTS;
+Insights observes meeting chronology, participant/commitment facts, talk
+balance, and scope-bounded finding evidence. Neither feature consumes the
+global invalidation counter. Meeting Detail and Spotlight retain that
+transitional seam until their own characterized slices.
 
 ## Build from source
 

@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58 (scoped Insights observations).
 
 ## Database
 
@@ -220,8 +220,21 @@ The existing one-shot `meetings`, `voiceMixes`, `openActionItems`,
 observed paths; ordering, live-root joins, tombstone scope, and limits therefore
 have one implementation. StorageKit keeps GRDB-specific projection types at
 its edge, while the app maps them to ApplicationKit Library read contracts.
-The database remains a `DatabaseQueue`; this slice adds no migration and schema
-v6 is unchanged.
+
+Insights has four additional independent observations (D58). Meeting chronology
+observes `meeting`; confirmed participant and commitment facts observe
+`meeting`, `speaker`, `summary`, and `actionItem`; voice balance observes
+`meeting`, `speaker`, and `segment`; finding evidence observes `meeting`,
+`segment`, `summary`, and `actionItem`. Finding keys are selected from the 60
+newest live meetings inside the active `DateInterval` before transcript,
+newest-summary, and action-item evidence is assembled. A scope change creates a
+new observation. Facts, voice balance, and finding inputs share their fetch
+helpers with the existing one-shot APIs, so live-root scope, ordering, and
+degradable optional-row behavior cannot drift. The app maps these projections
+to ApplicationKit contracts; no GRDB projection reaches `InsightsView`.
+
+The database remains a `DatabaseQueue`; these observation slices add no
+migration and schema v6 is unchanged.
 
 ## `.portavoz` bundle (M15 L0)
 

@@ -106,80 +106,92 @@ extension MeetingStore {
     /// One aggregate query over every attributed segment → per-person talk
     /// split and the overall balance. Names are grouped case-insensitively.
     /// The query plus the fold-into-per-person pass is one cohesive unit.
-    public func voiceBalance( // swiftlint:disable:this function_body_length
+    public func voiceBalance(
         topLimit: Int = 6
     ) async throws -> VoiceBalance {
         try await database.read { db in
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT segment.meetingID AS meetingID,
-                           speaker.isMe AS isMe,
-                           speaker.displayName AS displayName,
-                           SUM(segment.endTime - segment.startTime) AS seconds
-                    FROM segment
-                    JOIN meeting ON meeting.id = segment.meetingID
-                        AND meeting.deletedAt IS NULL
-                    JOIN speaker ON speaker.id = segment.speakerID
-                        AND speaker.deletedAt IS NULL
-                    WHERE segment.deletedAt IS NULL
-                      AND segment.speakerID IS NOT NULL
-                      AND segment.endTime > segment.startTime
-                    GROUP BY segment.meetingID, segment.speakerID
-                    """)
-
-            // Per meeting: your seconds, and each named person's seconds.
-            var mineByMeeting: [String: Double] = [:]
-            var namedByMeeting: [String: [(key: String, name: String, seconds: Double)]] = [:]
-            var overallMine = 0.0
-            var overallTotal = 0.0
-            for row in rows {
-                let meetingID: String = row["meetingID"]
-                let isMe: Bool = row["isMe"]
-                let seconds: Double = row["seconds"]
-                overallTotal += seconds
-                if isMe {
-                    overallMine += seconds
-                    mineByMeeting[meetingID, default: 0] += seconds
-                } else if let raw = row["displayName"] as String?,
-                    !raw.trimmingCharacters(in: .whitespaces).isEmpty {
-                    let key = raw.trimmingCharacters(in: .whitespaces).lowercased()
-                    namedByMeeting[meetingID, default: []].append(
-                        (key: key, name: raw, seconds: seconds))
-                }
-            }
-
-            // Fold into per-person totals, carrying your time in each of
-            // their meetings so the amber/violet split is truthful.
-            struct Acc { var name: String; var meetings = 0; var theirs = 0.0; var mineWith = 0.0 }
-            var byPerson: [String: Acc] = [:]
-            for (meetingID, people) in namedByMeeting {
-                let mine = mineByMeeting[meetingID] ?? 0
-                for person in people {
-                    var acc = byPerson[person.key] ?? Acc(name: person.name)
-                    acc.meetings += 1
-                    acc.theirs += person.seconds
-                    acc.mineWith += mine
-                    byPerson[person.key] = acc
-                }
-            }
-
-            let participants = byPerson.values
-                .sorted { $0.theirs > $1.theirs }
-                .prefix(topLimit)
-                .map { acc -> ParticipantVoice in
-                    let denom = acc.mineWith + acc.theirs
-                    return ParticipantVoice(
-                        name: acc.name,
-                        meetings: acc.meetings,
-                        theirSeconds: acc.theirs,
-                        myShareWithThem: denom > 0 ? acc.mineWith / denom : 0)
-                }
-
-            return VoiceBalance(
-                participants: Array(participants),
-                myOverallShare: overallTotal > 0 ? overallMine / overallTotal : 0,
-                hasData: overallTotal > 0)
+            try Self.fetchVoiceBalance(in: db, topLimit: topLimit)
         }
+    }
+
+    static func fetchVoiceBalance( // swiftlint:disable:this function_body_length
+        in database: Database,
+        topLimit: Int
+    ) throws -> VoiceBalance {
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT segment.meetingID AS meetingID,
+                       speaker.isMe AS isMe,
+                       speaker.displayName AS displayName,
+                       SUM(segment.endTime - segment.startTime) AS seconds
+                FROM segment
+                JOIN meeting ON meeting.id = segment.meetingID
+                    AND meeting.deletedAt IS NULL
+                JOIN speaker ON speaker.id = segment.speakerID
+                    AND speaker.deletedAt IS NULL
+                WHERE segment.deletedAt IS NULL
+                  AND segment.speakerID IS NOT NULL
+                  AND segment.endTime > segment.startTime
+                GROUP BY segment.meetingID, segment.speakerID
+                """)
+
+        // Per meeting: your seconds, and each named person's seconds.
+        var mineByMeeting: [String: Double] = [:]
+        var namedByMeeting: [String: [(key: String, name: String, seconds: Double)]] = [:]
+        var overallMine = 0.0
+        var overallTotal = 0.0
+        for row in rows {
+            let meetingID: String = row["meetingID"]
+            let isMe: Bool = row["isMe"]
+            let seconds: Double = row["seconds"]
+            overallTotal += seconds
+            if isMe {
+                overallMine += seconds
+                mineByMeeting[meetingID, default: 0] += seconds
+            } else if let raw = row["displayName"] as String?,
+                !raw.trimmingCharacters(in: .whitespaces).isEmpty {
+                let key = raw.trimmingCharacters(in: .whitespaces).lowercased()
+                namedByMeeting[meetingID, default: []].append(
+                    (key: key, name: raw, seconds: seconds))
+            }
+        }
+
+        // Fold into per-person totals, carrying your time in each of their
+        // meetings so the amber/violet split is truthful.
+        struct Acc {
+            var name: String
+            var meetings = 0
+            var theirs = 0.0
+            var mineWith = 0.0
+        }
+        var byPerson: [String: Acc] = [:]
+        for (meetingID, people) in namedByMeeting {
+            let mine = mineByMeeting[meetingID] ?? 0
+            for person in people {
+                var acc = byPerson[person.key] ?? Acc(name: person.name)
+                acc.meetings += 1
+                acc.theirs += person.seconds
+                acc.mineWith += mine
+                byPerson[person.key] = acc
+            }
+        }
+
+        let participants = byPerson.values
+            .sorted { $0.theirs > $1.theirs }
+            .prefix(topLimit)
+            .map { acc -> ParticipantVoice in
+                let denominator = acc.mineWith + acc.theirs
+                return ParticipantVoice(
+                    name: acc.name,
+                    meetings: acc.meetings,
+                    theirSeconds: acc.theirs,
+                    myShareWithThem: denominator > 0 ? acc.mineWith / denominator : 0)
+            }
+
+        return VoiceBalance(
+            participants: Array(participants),
+            myOverallShare: overallTotal > 0 ? overallMine / overallTotal : 0,
+            hasData: overallTotal > 0)
     }
 }

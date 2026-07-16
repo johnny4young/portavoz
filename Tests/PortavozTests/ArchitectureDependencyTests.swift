@@ -300,6 +300,35 @@ final class ArchitectureDependencyTests: XCTestCase {
             "InsightsView must not regain a broad outbound dependency for local read policy")
     }
 
+    func testInsightsUsesOneScopedReadModelWithoutGlobalInvalidation() throws {
+        let readModels = try Self.contents(
+            of: "Sources/ApplicationKit/InsightsReadModels.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/InsightsModel.swift")
+        let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+Insights.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/InsightsView.swift")
+        let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+InsightsObservation.swift")
+
+        XCTAssertTrue(readModels.contains("struct InsightsReadModel"))
+        XCTAssertFalse(readModels.contains("import StorageKit"))
+        XCTAssertFalse(readModels.contains("import GRDB"))
+        XCTAssertTrue(model.contains("@Observable"))
+        XCTAssertTrue(model.contains("InsightsReadModel.compute"))
+        XCTAssertTrue(adapter.contains("store.observeInsightsMeetings()"))
+        XCTAssertTrue(adapter.contains("store.observeInsightsFacts()"))
+        XCTAssertTrue(adapter.contains("store.observeInsightsVoiceBalance()"))
+        XCTAssertTrue(adapter.contains("store.observeInsightsFindingInputs"))
+        XCTAssertTrue(content.contains("@State private var insightsModel: InsightsModel"))
+        XCTAssertTrue(view.contains("let model: InsightsModel"))
+        XCTAssertFalse(view.contains("libraryVersion"))
+        XCTAssertFalse(view.contains("services.store"))
+        XCTAssertFalse(view.contains("import StorageKit"))
+        for table in ["meeting", "speaker", "segment", "summary", "actionItem"] {
+            XCTAssertTrue(storage.contains("Table(\"\(table)\")"))
+        }
+    }
+
     func testMeetingPreparationPoliciesStayInsideInwardLayers() throws {
         for policy in ["BriefRelevance", "ReminderPolicy", "MirrorStats"] {
             XCTAssertTrue(

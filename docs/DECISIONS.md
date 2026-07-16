@@ -1136,3 +1136,37 @@ runtime path. The split removes the last local policy from IntegrationsKit while
 preserving brief reasons, reminder timing, bilingual mirror wording, schema,
 settings, and localized UI. The UI fixture exercises production qualification
 with deterministic seeded facts and no capture hardware or user data.
+
+## D58 — Insights recomputes by query ownership, not global invalidation (Jul 2026)
+
+**Context:** `InsightsView` loaded meeting chronology, library facts, voice
+balance, and finding inputs directly from `MeetingStore`, then restarted two
+tasks whenever the process-wide `libraryVersion` changed. Those projections
+depend on different tables and failure domains, while findings are also scoped
+by the selected calendar window. A title-only mutation could therefore rerun
+speaker and summary aggregates, and independently launched meeting/finding
+loads could briefly describe different source moments.
+
+**Decision:** ApplicationKit owns the storage-independent
+`InsightsReadModel`, raw fact/balance/finding contracts, section identities,
+and update stream. Each `ContentView` owns one `@MainActor @Observable`
+`InsightsModel`; it samples one reference date per scope observation, merges
+the four query families, preserves healthy sections after a partial failure,
+rejects stale observation updates, and publishes one complete projection.
+StorageKit exposes four explicit GRDB observations: live meetings observe
+`meeting`; participant and commitment facts observe `meeting`, `speaker`,
+`summary`, and `actionItem`; voice balance observes `meeting`, `speaker`, and
+`segment`; finding evidence observes `meeting`, `segment`, `summary`, and
+`actionItem`, bounded to the 60 newest live meetings in the active scope.
+One-shot and observed facts, voice balance, and finding reads share query
+helpers. A nineteenth architecture rule forbids `InsightsView` from importing
+StorageKit, reaching `services.store`, or consuming `libraryVersion`. Meeting
+Detail and Spotlight retain that compatibility seam for independent slices.
+
+**Rationale:** this is a small CQRS-style read boundary, not a second database,
+state framework, schema migration, or `DatabasePool` adoption. Writes wake the
+smallest correct projection: action-item changes refresh facts/findings, while
+segment changes refresh voice balance/findings. The single per-window model
+keeps scope, loading, partial failure, and stale-result policy outside SwiftUI,
+while preserving the exact local calculations, visible dashboard, schema v6,
+and `DatabaseQueue` execution model.

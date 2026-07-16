@@ -1,25 +1,21 @@
 import ApplicationKit
-import PortavozCore
-import StorageKit
 import SwiftUI
 
 /// The Insights dashboard: what your meeting life looks like, computed
 /// 100% locally from the library — scoped totals, cadence, and who you
 /// talk with (and how much). Design system 3a.
 struct InsightsView: View {
-    @Environment(AppServices.self) private var services
-
+    let model: InsightsModel
     @Binding var route: Route?
 
-    @State private var meetings: [Meeting] = []
-    @State private var stats: LibraryStats?
-    @State private var facts: MeetingStore.LibraryFacts?
-    @State private var balance: MeetingStore.VoiceBalance?
-    @State private var noDecision: InsightsFindings.NoDecision?
-    @State private var topics: [InsightsFindings.RecurringTopic] = []
     @AppStorage("insightsScope") private var scopeRaw = InsightsScope.week.rawValue
 
     private var scope: InsightsScope { InsightsScope(rawValue: scopeRaw) ?? .week }
+    private var readModel: InsightsReadModel? { model.state.readModel }
+    private var facts: InsightsLibraryFacts? { readModel?.facts }
+    private var balance: InsightsVoiceBalance? { readModel?.balance }
+    private var noDecision: InsightsFindings.NoDecision? { readModel?.noDecision }
+    private var topics: [InsightsFindings.RecurringTopic] { readModel?.topics ?? [] }
 
     /// Violet for "them" in the participation bar — amber (VoicePalette.me)
     /// stays reserved for you.
@@ -29,11 +25,11 @@ struct InsightsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                if let stats {
-                    tiles(stats)
+                if let readModel {
+                    tiles(readModel)
                     findingsSection
                     HStack(alignment: .top, spacing: 16) {
-                        rhythmHeatmap(stats)
+                        rhythmHeatmap(readModel.stats)
                         if let balance, !balance.participants.isEmpty {
                             participationCard(balance)
                         }
@@ -43,8 +39,7 @@ struct InsightsView: View {
             .padding(24)
             .frame(maxWidth: 920, alignment: .leading)
         }
-        .task(id: services.libraryVersion) { await reload() }
-        .task(id: "\(services.libraryVersion)-\(scopeRaw)") { await loadFindings() }
+        .task(id: scopeRaw) { await model.observe(scope: scope) }
     }
 
     private var header: some View {
@@ -68,63 +63,10 @@ struct InsightsView: View {
         }
     }
 
-    private func reload() async {
-        meetings = (try? await services.store.meetings()) ?? []
-        stats = LibraryStats.compute(meetings: meetings)
-        facts = try? await services.store.libraryFacts()
-        balance = try? await services.store.voiceBalance()
-    }
-
-    // MARK: - Findings ✦
-
-    /// Detects the "Hallazgos ✦" over the current scope's meetings, honestly:
-    /// which summarized meetings reached no decision, and which domain terms
-    /// keep recurring. Bounded to the 60 most recent in scope.
-    private func loadFindings() async {
-        let interval = scope.currentInterval(now: Date())
-        let scoped = meetings
-            .filter { interval.contains($0.startedAt) }
-            .prefix(60)
-        let inputs = (try? await services.store.findingInputs(for: scoped.map(\.id))) ?? [:]
-        let facts = scoped.map { meeting -> InsightsFindings.MeetingFact in
-            let input = inputs[meeting.id]
-            let seconds = meeting.endedAt.map { $0.timeIntervalSince(meeting.startedAt) } ?? 0
-            let hasDecision = (input?.actionItemCount ?? 0) > 0
-                || markdownHasDecision(input?.summaryMarkdown)
-            return InsightsFindings.MeetingFact(
-                id: meeting.id,
-                startedAt: meeting.startedAt,
-                seconds: max(0, seconds),
-                hasSummary: input?.summaryMarkdown != nil,
-                hasDecision: hasDecision,
-                transcript: input?.transcript ?? "")
-        }
-        noDecision = InsightsFindings.noDecision(Array(facts))
-        topics = InsightsFindings.recurringTopics(Array(facts), exclude: participantNames())
-    }
-
-    /// Known participant names (lowercased) so a person who recurs reads as a
-    /// participant in the panel above, never as a "topic".
-    private func participantNames() -> Set<String> {
-        var names: Set<String> = ["me", "yo"]
-        for person in balance?.participants ?? [] { names.insert(person.name.lowercased()) }
-        for person in facts?.topParticipants ?? [] { names.insert(person.name.lowercased()) }
-        return names
-    }
-
-    /// A summary reaches a decision when it has a "Decisions/Decisiones"
-    /// section with at least one bullet — matched language-agnostically.
-    private func markdownHasDecision(_ markdown: String?) -> Bool {
-        guard let markdown else { return false }
-        return SummarySections.parse(markdown).sections.contains { section in
-            section.bulletCount > 0 && section.heading.lowercased().contains("decis")
-        }
-    }
-
     // MARK: - Tiles
 
-    private func tiles(_ stats: LibraryStats) -> some View {
-        let totals = ScopedTotals.compute(meetings: meetings, scope: scope)
+    private func tiles(_ readModel: InsightsReadModel) -> some View {
+        let totals = readModel.totals
         return HStack(spacing: 12) {
             tile(
                 value: "\(totals.count)",
@@ -330,7 +272,7 @@ struct InsightsView: View {
 
     // MARK: - Who you talk with, and how much
 
-    private func participationCard(_ balance: MeetingStore.VoiceBalance) -> some View {
+    private func participationCard(_ balance: InsightsVoiceBalance) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Identifier on the title leaf, not the container: a container
             // `.accessibilityIdentifier` stamps every descendant on macOS,
@@ -351,7 +293,7 @@ struct InsightsView: View {
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private func participantRow(_ person: MeetingStore.ParticipantVoice) -> some View {
+    private func participantRow(_ person: InsightsParticipantVoice) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
                 avatar(person.name)

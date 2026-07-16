@@ -208,106 +208,130 @@ extension MeetingStore {
     public func findingInputs(
         for meetingIDs: [MeetingID]
     ) async throws -> [MeetingID: FindingInput] {
-        guard !meetingIDs.isEmpty else { return [:] }
-        let ids = meetingIDs.map { $0.rawValue.uuidString }
         return try await database.read { db in
-            let placeholders = databaseQuestionMarks(count: ids.count)
-            let transcripts = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
-                    FROM segment
-                    JOIN meeting ON meeting.id = segment.meetingID
-                        AND meeting.deletedAt IS NULL
-                    WHERE segment.deletedAt IS NULL
-                      AND segment.meetingID IN (\(placeholders))
-                    GROUP BY segment.meetingID
-                    """,
-                arguments: StatementArguments(ids))
-            var byMeeting: [String: (String, String?, Int)] = [:]
-            for row in transcripts {
-                byMeeting[row["meetingID"]] = (row["transcript"] ?? "", nil, 0)
-            }
-
-            // The newest summary per meeting, and its action-item count.
-            let summaries = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT s.meetingID AS meetingID, s.markdown AS markdown,
-                           (SELECT COUNT(*) FROM actionItem ai
-                            WHERE ai.summaryID = s.id AND ai.deletedAt IS NULL) AS items
-                    FROM summary s
-                    JOIN meeting ON meeting.id = s.meetingID
-                        AND meeting.deletedAt IS NULL
-                    WHERE s.deletedAt IS NULL
-                      AND s.meetingID IN (\(placeholders))
-                      AND s.version = (
-                          SELECT MAX(l.version) FROM summary l
-                          WHERE l.meetingID = s.meetingID AND l.deletedAt IS NULL)
-                    """,
-                arguments: StatementArguments(ids))
-            for row in summaries {
-                let key: String = row["meetingID"]
-                let existing = byMeeting[key] ?? ("", nil, 0)
-                byMeeting[key] = (existing.0, row["markdown"], row["items"])
-            }
-
-            var result: [MeetingID: FindingInput] = [:]
-            for (key, value) in byMeeting {
-                let uuid = try PersistedIdentity.required(
-                    key, table: "meeting", column: "id")
-                result[MeetingID(rawValue: uuid)] = FindingInput(
-                    transcript: value.0, summaryMarkdown: value.1, actionItemCount: value.2)
-            }
-            return result
+            try Self.fetchFindingInputs(in: db, for: meetingIDs)
         }
     }
 
     public func libraryFacts(topLimit: Int = 8) async throws -> LibraryFacts {
         try await database.read { db in
-            let participantRows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT displayName AS name,
-                           COUNT(DISTINCT speaker.meetingID) AS meetings
-                    FROM speaker
-                    JOIN meeting ON meeting.id = speaker.meetingID
-                        AND meeting.deletedAt IS NULL
-                    WHERE speaker.deletedAt IS NULL
-                      AND speaker.isMe = 0
-                      AND speaker.displayName IS NOT NULL
-                      AND TRIM(speaker.displayName) != ''
-                    GROUP BY LOWER(TRIM(speaker.displayName))
-                    ORDER BY meetings DESC, LOWER(TRIM(speaker.displayName)) ASC
-                    LIMIT ?
-                    """,
-                arguments: [topLimit])
-            // Same latest-snapshot rule as `openActionItems`: superseded
-            // summary versions must not double-count their items.
-            let counts = try Row.fetchOne(
-                db,
-                sql: """
-                    SELECT SUM(actionItem.isDone = 0) AS open,
-                           SUM(actionItem.isDone = 1) AS done
-                    FROM actionItem
-                    JOIN summary ON summary.id = actionItem.summaryID
-                        AND summary.deletedAt IS NULL
-                    JOIN meeting ON meeting.id = actionItem.meetingID
-                        AND meeting.deletedAt IS NULL
-                    WHERE actionItem.deletedAt IS NULL
-                      AND summary.version = (
-                          SELECT MAX(version) FROM summary latest
-                          WHERE latest.meetingID = summary.meetingID
-                            AND latest.recipeID = summary.recipeID
-                            AND latest.deletedAt IS NULL)
-                    """)
-            return LibraryFacts(
-                topParticipants: participantRows.map {
-                    LibraryParticipant(name: $0["name"], meetings: $0["meetings"])
-                },
-                openActionItems: counts?["open"] ?? 0,
-                doneActionItems: counts?["done"] ?? 0)
+            try Self.fetchLibraryFacts(in: db, topLimit: topLimit)
         }
+    }
+
+    static func fetchFindingInputs(
+        in database: Database,
+        for meetingIDs: [MeetingID]
+    ) throws -> [MeetingID: FindingInput] {
+        try fetchFindingInputs(
+            in: database,
+            meetingKeys: meetingIDs.map { $0.rawValue.uuidString })
+    }
+
+    static func fetchFindingInputs(
+        in database: Database,
+        meetingKeys: [String]
+    ) throws -> [MeetingID: FindingInput] {
+        guard !meetingKeys.isEmpty else { return [:] }
+        let placeholders = databaseQuestionMarks(count: meetingKeys.count)
+        let transcripts = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
+                FROM segment
+                JOIN meeting ON meeting.id = segment.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE segment.deletedAt IS NULL
+                  AND segment.meetingID IN (\(placeholders))
+                GROUP BY segment.meetingID
+                """,
+            arguments: StatementArguments(meetingKeys))
+        var byMeeting: [String: (String, String?, Int)] = [:]
+        for row in transcripts {
+            byMeeting[row["meetingID"]] = (row["transcript"] ?? "", nil, 0)
+        }
+
+        // The newest summary per meeting, and its action-item count.
+        let summaries = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT s.meetingID AS meetingID, s.markdown AS markdown,
+                       (SELECT COUNT(*) FROM actionItem ai
+                        WHERE ai.summaryID = s.id AND ai.deletedAt IS NULL) AS items
+                FROM summary s
+                JOIN meeting ON meeting.id = s.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE s.deletedAt IS NULL
+                  AND s.meetingID IN (\(placeholders))
+                  AND s.version = (
+                      SELECT MAX(l.version) FROM summary l
+                      WHERE l.meetingID = s.meetingID AND l.deletedAt IS NULL)
+                """,
+            arguments: StatementArguments(meetingKeys))
+        for row in summaries {
+            let key: String = row["meetingID"]
+            let existing = byMeeting[key] ?? ("", nil, 0)
+            byMeeting[key] = (existing.0, row["markdown"], row["items"])
+        }
+
+        var result: [MeetingID: FindingInput] = [:]
+        for (key, value) in byMeeting {
+            let uuid = try PersistedIdentity.required(
+                key, table: "meeting", column: "id")
+            result[MeetingID(rawValue: uuid)] = FindingInput(
+                transcript: value.0,
+                summaryMarkdown: value.1,
+                actionItemCount: value.2)
+        }
+        return result
+    }
+
+    static func fetchLibraryFacts(
+        in database: Database,
+        topLimit: Int
+    ) throws -> LibraryFacts {
+        let participantRows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT displayName AS name,
+                       COUNT(DISTINCT speaker.meetingID) AS meetings
+                FROM speaker
+                JOIN meeting ON meeting.id = speaker.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE speaker.deletedAt IS NULL
+                  AND speaker.isMe = 0
+                  AND speaker.displayName IS NOT NULL
+                  AND TRIM(speaker.displayName) != ''
+                GROUP BY LOWER(TRIM(speaker.displayName))
+                ORDER BY meetings DESC, LOWER(TRIM(speaker.displayName)) ASC
+                LIMIT ?
+                """,
+            arguments: [topLimit])
+        // Same latest-snapshot rule as `openActionItems`: superseded summary
+        // versions must not double-count their items.
+        let counts = try Row.fetchOne(
+            database,
+            sql: """
+                SELECT SUM(actionItem.isDone = 0) AS open,
+                       SUM(actionItem.isDone = 1) AS done
+                FROM actionItem
+                JOIN summary ON summary.id = actionItem.summaryID
+                    AND summary.deletedAt IS NULL
+                JOIN meeting ON meeting.id = actionItem.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE actionItem.deletedAt IS NULL
+                  AND summary.version = (
+                      SELECT MAX(version) FROM summary latest
+                      WHERE latest.meetingID = summary.meetingID
+                        AND latest.recipeID = summary.recipeID
+                        AND latest.deletedAt IS NULL)
+                """)
+        return LibraryFacts(
+            topParticipants: participantRows.map {
+                LibraryParticipant(name: $0["name"], meetings: $0["meetings"])
+            },
+            openActionItems: counts?["open"] ?? 0,
+            doneActionItems: counts?["done"] ?? 0)
     }
 
     /// Pending action items across all meetings — only from the LATEST

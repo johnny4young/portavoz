@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D57 (application workflow, feature-state ownership, scoped Library reads, and inward product/read policy).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D58 (application workflow, feature-state ownership, scoped Library/Insights reads, and inward product/read policy).
 
 ## Structure
 
@@ -13,7 +13,7 @@ Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Acce
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
-DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` drives UI downloads. `libraryVersion` still invalidates Meeting Detail, Insights, and Spotlight. Library no longer consumes it: its feature model receives independent meeting/open-item/trash/search updates from scoped Store observations.
+DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` drives UI downloads. `libraryVersion` still invalidates Meeting Detail and Spotlight. Library and Insights no longer consume it: their per-window feature models receive storage-independent updates from query-scoped Store observations.
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -145,6 +145,17 @@ eighteenth architecture rule guard the split. The disposable UI fixture can
 mark the seed as freshly recorded, opt into the mirror, assert `mirror-card`,
 and retain app-window evidence without capture hardware or user data (D57).
 
+Slice 2R gives Insights one per-window read owner. `ContentView` stores an
+`@MainActor @Observable InsightsModel`; `InsightsView` receives that model and
+restarts its observation only when the selected `InsightsScope` changes. The
+model samples one reference date, merges meetings, participant/commitment
+facts, voice balance, and scope-bounded finding updates, rejects stale
+observation IDs, preserves healthy sections after a source failure, and
+computes one storage-independent `InsightsReadModel`. `AppServices+Insights`
+maps the four Store streams at composition. The view no longer imports
+StorageKit, calls `services.store`, or reads `libraryVersion`; Meeting Detail
+and Spotlight retain the broad compatibility counter (D58).
+
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed preparation/reservation/source-start attempt, while ownership transfers to the active session on success; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
@@ -171,7 +182,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 ## Insights (Jul 2026) — library dashboard
 
-`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), a 12-week × 7-day rhythm heatmap with zero weeks retained, frequent people, pending gauge, and local findings. Calculation has an inward pure-policy layer — `InsightsScope`, `LibraryStats.compute(meetings:weeks:calendar:now:)`, and `InsightsFindings` in ApplicationKit with injected calendar/now and 21 tests — plus Store-backed `MeetingStore.libraryFacts()` and `voiceBalance()` projections. Meetings without `endedAt` count but do not drag the average; no-decision findings require summarized evidence, and recurring topics exclude participant names. Everything remains 100% local and reloads with `libraryVersion`.
+`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), a 12-week × 7-day rhythm heatmap with zero weeks retained, frequent people, pending gauge, and local findings. ApplicationKit owns `InsightsScope`, `LibraryStats`, `InsightsFindings`, and the complete storage-independent `InsightsReadModel`; calculations inject calendar/now. A per-window `InsightsModel` combines four app-mapped Store observations: live meeting chronology, participant/commitment facts, voice balance, and finding evidence for at most the 60 newest live meetings in the selected scope. Meetings without `endedAt` count but do not drag the average; no-decision findings require summarized evidence, and recurring topics exclude participant names. Everything remains 100% local. Writes refresh only the query families whose explicit base-table regions changed; scope changes restart the bounded finding observation without a process-wide reload.
 
 ## Resident menu bar (Jul 2026)
 

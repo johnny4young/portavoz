@@ -17,12 +17,14 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var route: Route?
     @State private var libraryModel: LibraryModel
+    @State private var insightsModel: InsightsModel
     @State private var reminder = MeetingReminderController()
     @State private var showOnboarding = false
 
     init(services: AppServices) {
         self.services = services
         _libraryModel = State(initialValue: services.makeLibraryModel())
+        _insightsModel = State(initialValue: services.makeInsightsModel())
     }
 
     var body: some View {
@@ -43,7 +45,7 @@ struct ContentView: View {
                 case .ask:
                     AskView(route: $route)
                 case .insights:
-                    InsightsView(route: $route)
+                    InsightsView(model: insightsModel, route: $route)
                 case nil:
                     ContentUnavailableView(
                         "Portavoz",
