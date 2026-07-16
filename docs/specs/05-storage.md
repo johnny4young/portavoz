@@ -233,6 +233,17 @@ helpers with the existing one-shot APIs, so live-root scope, ordering, and
 degradable optional-row behavior cannot drift. The app maps these projections
 to ApplicationKit contracts; no GRDB projection reaches `InsightsView`.
 
+Meeting Detail has three independent observations (D59). Its live root, cast,
+and ordered transcript observe `meeting`, `speaker`, and `segment`; its newest
+immutable summary across recipes plus current action items observe `meeting`,
+`summary`, and `actionItem`; persisted Companion cards observe `meeting` and
+`companionCard`. Every projection is filtered to one live meeting. The core and
+Companion helpers are shared with `detail` and `companionCards(for:)`, while
+the summary stream reuses `mostRecentSummarySnapshot`; one-shot and observed
+selection, ordering, tombstone scope, and strict decoding therefore remain
+identical. The app maps these StorageKit edge values into storage-independent
+ApplicationKit review updates.
+
 The database remains a `DatabaseQueue`; these observation slices add no
 migration and schema v6 is unchanged.
 

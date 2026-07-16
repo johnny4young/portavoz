@@ -149,9 +149,11 @@ SwiftUI views render and present native controls; app composition adapters map
 independent GRDB observations to storage-independent ApplicationKit updates.
 Library observes meeting rows/voice mix, open items, trash, and active FTS;
 Insights observes meeting chronology, participant/commitment facts, talk
-balance, and scope-bounded finding evidence. Neither feature consumes the
-global invalidation counter. Meeting Detail and Spotlight retain that
-transitional seam until their own characterized slices.
+balance, and scope-bounded finding evidence; Meeting Detail observes its
+transcript/cast, newest immutable summary, and Companion cards independently.
+These three features no longer consume the global invalidation counter.
+Spotlight retains that transitional seam until its measured Band 4 outbox
+slice.
 
 ## Build from source
 

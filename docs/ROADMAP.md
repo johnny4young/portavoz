@@ -6,20 +6,38 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): give Meeting Detail one
-meeting-scoped, storage-independent read model backed by explicit StorageKit
-observations. Preserve immutable summary selection, transcript/cast, notes,
-Companion, action items, player loading, regeneration/refine outcomes, and the
-visible two-column review surface exactly. Keep Spotlight independent; its
-incremental indexing/outbox adoption belongs with measured Band 4 scale work.
+**Next concrete step:** finish Band 2 of the approved architecture-hardening
+program in [refactor-20260714.md](refactor-20260714.md): move Meeting Detail's
+remaining title/speaker/action-item/Companion mutations behind its narrow model
+client, preserving explicit consent offers, typed errors, newest-summary
+selection, and Spotlight invalidation. The scoped read model and observations
+are complete. Keep Spotlight independent; its incremental indexing/outbox
+adoption belongs with measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59).
+
+- **Architecture Band 2 slice 2S complete — Meeting Detail reads one meeting,
+  not the library (Jul 15, 2026)**: ApplicationKit now owns storage-independent
+  `MeetingReviewReadModel`, core, newest-summary, section, and update contracts.
+  Each detail route owns one `@MainActor @Observable MeetingDetailModel` that
+  merges transcript/cast, newest immutable summary/action items, and Companion
+  card streams; distinguishes missing from failed state; preserves healthy
+  sections after partial failure; and publishes one projection. StorageKit
+  observes the three query families through explicit regions and shares the
+  core/Companion helpers with one-shot reads. Meeting Detail no longer reloads
+  those projections through `libraryVersion` or three sequential Store reads.
+  Accepted Refine regenerates from the accepted draft itself, avoiding a race
+  with observation delivery. Seven new model, real-Store observation, and
+  architecture tests bring the verified baseline to 593 package tests (13
+  gated), 231 linted Swift files, and 20 UI cases. The existing detail case
+  retains fresh app-window visual evidence. Direct detail mutations still use
+  the Store and increment the broad counter for Spotlight; slice 2T removes
+  that presentation bypass without changing visible behavior (D59).
 
 - **Architecture Band 2 slice 2R complete — Insights reads only what changed
   (Jul 15, 2026)**: ApplicationKit now owns one storage-independent

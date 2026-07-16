@@ -26,15 +26,16 @@ struct MeetingDetailView: View {
     @Environment(AppServices.self) private var services
     let meetingID: MeetingID
     @Binding var route: Route?
+    @State private var model: MeetingDetailModel
 
-    @State private var detail: MeetingDetail?
+    private var detail: MeetingReviewReadModel? { model.state.readModel }
     /// The live Companion's answer cards, persisted (D26) so the meeting can
-    /// be reviewed afterward. Loaded lazily; empty hides the rail section.
-    @State private var companionCards: [CompanionCard] = []
+    /// be reviewed afterward. Empty hides the rail section.
+    private var companionCards: [CompanionCard] { detail?.companionCards ?? [] }
     /// AI topic headings per chapter, keyed by the chapter's start time. Filled
     /// lazily; a chapter with no entry falls back to its real-excerpt title.
     @State private var chapterTitles: [TimeInterval: String] = [:]
-    @State private var summary: (draft: SummaryDraft, version: Int)?
+    private var summary: MeetingReviewSummary? { detail?.summary }
     @State private var player: MeetingPlayer?
     @State private var waveform: [Waveform.Bucket] = []
     @State private var channelURLs: [URL] = []
@@ -91,9 +92,14 @@ struct MeetingDetailView: View {
     @State private var rememberOffer: Speaker?
     @State private var rememberingVoice = false
 
-    private struct ReloadID: Hashable {
-        let meetingID: MeetingID
-        let libraryVersion: Int
+    init(
+        services: AppServices,
+        meetingID: MeetingID,
+        route: Binding<Route?>
+    ) {
+        self.meetingID = meetingID
+        _route = route
+        _model = State(initialValue: services.makeMeetingDetailModel(meetingID))
     }
 
     /// The post-meeting mirror (6a-2): opt-in, shown once right after a
@@ -111,9 +117,8 @@ struct MeetingDetailView: View {
                 ProgressView()
             }
         }
-        .task(id: ReloadID(meetingID: meetingID, libraryVersion: services.libraryVersion)) {
-            await reload()
-        }
+        .task { await model.observe() }
+        .task(id: model.state.revision) { await refreshPresentation() }
         .onDisappear { player?.invalidate() }
     }
 
@@ -121,7 +126,7 @@ struct MeetingDetailView: View {
     /// the stack of exporter/confirmation/alert modifiers. The branchy pieces
     /// live in the extracted subviews and computed bindings below so this
     /// stays a flat composition.
-    private func loaded(_ detail: MeetingDetail) -> some View {
+    private func loaded(_ detail: MeetingReviewReadModel) -> some View {
         loadedBody(detail)
             // No `.navigationTitle`: the meeting title already lives in the
             // header below, and showing it in the window bar too read as a
@@ -180,7 +185,7 @@ struct MeetingDetailView: View {
 // MARK: - Loaded content (subviews & presentation bindings)
 
 extension MeetingDetailView {
-    private func loadedBody(_ detail: MeetingDetail) -> some View {
+    private func loadedBody(_ detail: MeetingReviewReadModel) -> some View {
         // A fixed-height composition (NOT one big page scroll): header and
         // summary sit at the top, the transcript fills the middle and scrolls
         // in its own viewport, and the player is DOCKED at the bottom — so you
@@ -223,7 +228,7 @@ extension MeetingDetailView {
     /// audio (sized to fill the space above the docked player), or a plain
     /// scrolling list otherwise.
     @ViewBuilder
-    private func transcriptArea(_ detail: MeetingDetail) -> some View {
+    private func transcriptArea(_ detail: MeetingReviewReadModel) -> some View {
         if player != nil {
             GeometryReader { geometry in
                 transcriptLines(detail, carouselHeight: max(180, geometry.size.height))
@@ -233,7 +238,7 @@ extension MeetingDetailView {
         }
     }
 
-    private func transcriptLines(_ detail: MeetingDetail, carouselHeight: CGFloat) -> some View {
+    private func transcriptLines(_ detail: MeetingReviewReadModel, carouselHeight: CGFloat) -> some View {
         // Own View struct so only it re-renders as the playhead moves — the
         // header and summary above stay put.
         TranscriptSegmentsView(
@@ -265,7 +270,7 @@ extension MeetingDetailView {
     /// cards) never grows the page and pushes the header or docked player
     /// off-screen — the rail stays within its column, everything else stays put.
     @ViewBuilder
-    private func detailRail(_ detail: MeetingDetail) -> some View {
+    private func detailRail(_ detail: MeetingReviewReadModel) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
         if hasHealth || hasChapters || !companionCards.isEmpty {
@@ -297,7 +302,7 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func summaryOrGenerate(_ detail: MeetingDetail) -> some View {
+    private func summaryOrGenerate(_ detail: MeetingReviewReadModel) -> some View {
         if let summary {
             summarySection(summary)
         } else if regenerating {
@@ -344,7 +349,7 @@ extension MeetingDetailView {
     /// The .portavoz interchange file (M15 L0): transcript + cast +
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
-    private func exportBundle(_ detail: MeetingDetail, includeAudio: Bool) async {
+    private func exportBundle(_ detail: MeetingReviewReadModel, includeAudio: Bool) async {
         guard let data = try? await services.exportMeetingBundle(
             meetingID: detail.meeting.id,
             includeAudio: includeAudio)
@@ -365,7 +370,7 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func gistConfirmButtons(_ detail: MeetingDetail) -> some View {
+    private func gistConfirmButtons(_ detail: MeetingReviewReadModel) -> some View {
         Button("Publish secret gist") { Task { await publishGist(detail) } }
         Button("Cancel", role: .cancel) {}
     }
@@ -388,7 +393,7 @@ extension MeetingDetailView {
     /// A compact rename sheet — opens pre-filled with the current title,
     /// selected, so you can type over it or edit. (Replaces the old `.alert`,
     /// whose text field went blank on the second open.)
-    private func renameSheet(_ detail: MeetingDetail) -> some View {
+    private func renameSheet(_ detail: MeetingReviewReadModel) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Rename meeting").font(.headline)
             AutoSelectTextField(text: $newTitle, onSubmit: { commitRename(detail) })
@@ -406,7 +411,7 @@ extension MeetingDetailView {
         .frame(width: 380)
     }
 
-    private func commitRename(_ detail: MeetingDetail) {
+    private func commitRename(_ detail: MeetingReviewReadModel) {
         let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         editingTitle = false
         guard !title.isEmpty else { return }
@@ -414,7 +419,6 @@ extension MeetingDetailView {
         Task {
             meeting.title = title
             try? await services.store.save(meeting)
-            await reload()
             services.libraryVersion += 1
         }
     }
@@ -466,7 +470,7 @@ extension MeetingDetailView {
 // MARK: - Header, speakers & name suggestions
 
 extension MeetingDetailView {
-    private func header(_ detail: MeetingDetail) -> some View {
+    private func header(_ detail: MeetingReviewReadModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(detail.meeting.title).font(.title2.bold())
@@ -513,7 +517,7 @@ extension MeetingDetailView {
     /// (design system: refine · export · delete live with the meeting, not
     /// in the window toolbar). Export is tinted the accent; delete is
     /// destructive red.
-    private func actionRow(_ detail: MeetingDetail) -> some View {
+    private func actionRow(_ detail: MeetingReviewReadModel) -> some View {
         HStack(spacing: 8) {
             refineMenu(detail)
 
@@ -580,7 +584,7 @@ extension MeetingDetailView {
     /// The meeting's cast, with the M6 "1-tap speaker→name" flow: ✦
     /// proposes names the transcript proves; one click applies them.
     @ViewBuilder
-    private func speakersRow(_ detail: MeetingDetail) -> some View {
+    private func speakersRow(_ detail: MeetingReviewReadModel) -> some View {
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
         HStack(spacing: 8) {
             ForEach(detail.speakers) { speaker in
@@ -669,7 +673,7 @@ extension MeetingDetailView {
         }
     }
 
-    private func suggestNames(_ detail: MeetingDetail) async {
+    private func suggestNames(_ detail: MeetingReviewReadModel) async {
         guard #available(macOS 26.0, *) else {
             gistError = L10n.text("Name suggestions require macOS 26.")
             return
@@ -693,7 +697,7 @@ extension MeetingDetailView {
         }
     }
 
-    private func apply(_ suggestion: NameSuggestion, in detail: MeetingDetail) async {
+    private func apply(_ suggestion: NameSuggestion, in detail: MeetingReviewReadModel) async {
         guard var speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
             return
         }
@@ -706,7 +710,7 @@ extension MeetingDetailView {
 
     // MARK: Cross-meeting voices (D8/D21)
 
-    private func apply(_ match: VoiceMatcher.Match, in detail: MeetingDetail) async {
+    private func apply(_ match: VoiceMatcher.Match, in detail: MeetingReviewReadModel) async {
         guard var speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
             return
         }
@@ -776,7 +780,7 @@ extension MeetingDetailView {
     /// Embeddings are transient: nothing is persisted here (persisting is
     /// the explicit "Remember" gesture only).
     private func extractVoiceprints(
-        _ detail: MeetingDetail, speakers: [Speaker]
+        _ detail: MeetingReviewReadModel, speakers: [Speaker]
     ) async -> [String: Voiceprint] {
         guard let relative = detail.meeting.audioDirectory else { return [:] }
         let base = RecordingsLocation.shared.resolve(relative)
@@ -804,7 +808,7 @@ extension MeetingDetailView {
 // MARK: - Summary, export & regenerate
 
 extension MeetingDetailView {
-    private func summarySection(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+    private func summarySection(_ summary: MeetingReviewSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Summary")
@@ -869,7 +873,7 @@ extension MeetingDetailView {
     /// bullet count) · Pendientes (done/total). Parsed from the Markdown so
     /// it works in any language.
     @ViewBuilder
-    private func summaryTabs(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+    private func summaryTabs(_ summary: MeetingReviewSummary) -> some View {
         let parsed = SummarySections.parse(summary.draft.markdown)
         let done = summary.draft.actionItems.filter(\.isDone).count
         let total = summary.draft.actionItems.count
@@ -907,7 +911,7 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func summaryTabContent(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+    private func summaryTabContent(_ summary: MeetingReviewSummary) -> some View {
         let parsed = SummarySections.parse(summary.draft.markdown)
         if summaryTabSelection == 1000 {
             ForEach(summary.draft.actionItems) { item in
@@ -925,7 +929,7 @@ extension MeetingDetailView {
 
     private enum ExportFormat { case markdown, pdf }
 
-    private func export(_ detail: MeetingDetail, as format: ExportFormat) {
+    private func export(_ detail: MeetingReviewReadModel, as format: ExportFormat) {
         let markdown = MeetingExporter.markdown(
             meeting: detail.meeting,
             speakers: detail.speakers,
@@ -979,9 +983,13 @@ extension MeetingDetailView {
     private func regenerate(
         language: LanguageCode,
         engine: SummaryEngine? = nil,
-        recipe: Recipe? = nil
+        recipe: Recipe? = nil,
+        segments: [TranscriptSegment]? = nil,
+        speakers: [Speaker]? = nil
     ) {
         guard let detail, !regenerating else { return }
+        let sourceSegments = segments ?? detail.segments
+        let sourceSpeakers = speakers ?? detail.speakers
         regenerating = true
         // No explicit recipe keeps whatever structure the summary already
         // has — regenerating in another language must not lose a Standup.
@@ -991,16 +999,16 @@ extension MeetingDetailView {
             defer { regenerating = false }
             let request = RegenerateSummaryRequest(
                 meetingID: meetingID,
-                segments: detail.segments,
-                speakers: detail.speakers,
+                segments: sourceSegments,
+                speakers: sourceSpeakers,
                 recipe: activeRecipe,
                 targetLanguage: language.identifier,
                 providerOverride: engine)
             let result = await services.regenerateSummary.execute(request)
             switch result {
             case .completed:
-                // Keep the released broad invalidation until the scoped-state
-                // slice replaces libraryVersion.
+                // Keep Spotlight's released broad invalidation until Band 4
+                // replaces it with incremental indexing.
                 services.libraryVersion += 1
             case .unchanged(let version):
                 summaryNotice =
@@ -1032,7 +1040,7 @@ extension MeetingDetailView {
     /// language override, the fix for a meeting whose transcript came out in
     /// the wrong language on weak audio.
     @ViewBuilder
-    private func refineMenu(_ detail: MeetingDetail) -> some View {
+    private func refineMenu(_ detail: MeetingReviewReadModel) -> some View {
         let isRefining = refining != nil
         let disabled = !isRefining && detail.meeting.audioDirectory == nil
         if isRefining {
@@ -1085,12 +1093,14 @@ extension MeetingDetailView {
     }
 
     private func refine(
-        _ detail: MeetingDetail,
+        _ detail: MeetingReviewReadModel,
         languagePolicy: TranscriptLanguagePolicy? = nil
     ) {
         services.refines.start(
             meetingID: meetingID,
-            detail: detail,
+            meeting: detail.meeting,
+            speakers: detail.speakers,
+            segments: detail.segments,
             useCase: services.refineMeeting.draft,
             languagePolicy: languagePolicy)
     }
@@ -1117,10 +1127,11 @@ extension MeetingDetailView {
                     actionError = L10n.text(
                         "The transcript was refined, but Companion cards could not be refreshed.")
                 }
-                await reload()
                 services.libraryVersion += 1
                 regenerate(
-                    language: summaryLanguage(summary?.draft.language))
+                    language: summaryLanguage(summary?.draft.language),
+                    segments: draft.segments,
+                    speakers: draft.speakers)
             } catch StorageError.staleRefineDraft(_, _, _) {
                 actionError = L10n.text(
                     "The transcript changed while you reviewed this draft. Run refine again.")
@@ -1203,7 +1214,7 @@ extension MeetingDetailView {
 // MARK: - Gist, rename, playback & lifecycle
 
 extension MeetingDetailView {
-    private func publishGist(_ detail: MeetingDetail) async {
+    private func publishGist(_ detail: MeetingReviewReadModel) async {
         guard
             let token = try? SecretStore.get(service: SecretStore.gitHubTokenService),
             !token.isEmpty
@@ -1240,7 +1251,6 @@ extension MeetingDetailView {
             return
         }
         renamingSpeaker = nil
-        await reload()
         services.libraryVersion += 1
         offerToRemember(renamed)
     }
@@ -1261,7 +1271,7 @@ extension MeetingDetailView {
 
     /// The meeting's duration, preferring wall-clock (start→end) and falling
     /// back to attributed speech when the meeting has no recorded end.
-    private func mirrorDuration(_ detail: MeetingDetail, health: MeetingHealth) -> TimeInterval {
+    private func mirrorDuration(_ detail: MeetingReviewReadModel, health: MeetingHealth) -> TimeInterval {
         if let ended = detail.meeting.endedAt {
             return ended.timeIntervalSince(detail.meeting.startedAt)
         }
@@ -1270,7 +1280,7 @@ extension MeetingDetailView {
 
     /// The user's own stat for this meeting, matched by the `isMe` speaker.
     private func mirrorMyStat(
-        _ detail: MeetingDetail, health: MeetingHealth
+        _ detail: MeetingReviewReadModel, health: MeetingHealth
     ) -> MeetingHealth.SpeakerStat? {
         guard let me = detail.speakers.first(where: \.isMe) else { return nil }
         return health.stats.first { $0.speakerID == me.id }
@@ -1278,7 +1288,7 @@ extension MeetingDetailView {
 
     /// The mirror shows once, right after a qualifying recording, and only
     /// when the user opted in. Everything is local and gated on real signal.
-    private func mirrorShouldShow(_ detail: MeetingDetail) -> Bool {
+    private func mirrorShouldShow(_ detail: MeetingReviewReadModel) -> Bool {
         guard mirrorAfterMeeting, services.justRecorded == meetingID else { return false }
         let health = MeetingHealth.compute(segments: detail.segments)
         guard mirrorMyStat(detail, health: health) != nil else { return false }
@@ -1287,7 +1297,7 @@ extension MeetingDetailView {
             seconds: mirrorDuration(detail, health: health))
     }
 
-    private func mirrorBinding(_ detail: MeetingDetail) -> Binding<Bool> {
+    private func mirrorBinding(_ detail: MeetingReviewReadModel) -> Binding<Bool> {
         Binding(
             get: { mirrorShouldShow(detail) },
             set: { if !$0 { services.justRecorded = nil } })
@@ -1305,7 +1315,7 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func mirrorSheet(_ detail: MeetingDetail) -> some View {
+    private func mirrorSheet(_ detail: MeetingReviewReadModel) -> some View {
         let health = MeetingHealth.compute(segments: detail.segments)
         if let mine = mirrorMyStat(detail, health: health) {
             MirrorCard(
@@ -1326,25 +1336,8 @@ extension MeetingDetailView {
         }
     }
 
-    private func reload() async {
-        if detail?.meeting.id != meetingID {
-            player?.invalidate()
-            player = nil
-            waveform = []
-            channelURLs = []
-            chapterTitles = [:]
-            companionCards = []
-            summary = nil
-        }
-        let loadedDetail = try? await services.store.detail(meetingID)
-        guard !Task.isCancelled else { return }
-        detail = loadedDetail
-        let loadedCards = (try? await services.store.companionCards(for: meetingID)) ?? []
-        guard !Task.isCancelled else { return }
-        companionCards = loadedCards
-        let loadedSummary = try? await services.store.mostRecentSummary(meetingID)
-        guard !Task.isCancelled else { return }
-        summary = loadedSummary
+    private func refreshPresentation() async {
+        guard detail != nil else { return }
         await loadPlayerIfNeeded()
         guard !Task.isCancelled else { return }
         // A palette citation navigated here: jump to the cited moment.
@@ -1419,7 +1412,7 @@ extension MeetingDetailView {
     /// any other way. Never applied on its own.
     @ViewBuilder
     private func recipeSuggestionChip(
-        _ summary: (draft: SummaryDraft, version: Int)
+        _ summary: MeetingReviewSummary
     ) -> some View {
         if let suggested = suggestedRecipe, !regenerating {
             Button {
@@ -1444,7 +1437,7 @@ extension MeetingDetailView {
     /// and was NOT the engine that produced this summary.
     @ViewBuilder
     private func thinSummaryChip(
-        _ summary: (draft: SummaryDraft, version: Int)
+        _ summary: MeetingReviewSummary
     ) -> some View {
         if !regenerating,
             services.summaryEngine != .mlx,
@@ -1470,7 +1463,7 @@ extension MeetingDetailView {
 
     /// "v3 · en" plus the structure when it is not the default one.
     private func summaryBadgeText(
-        _ summary: (draft: SummaryDraft, version: Int)
+        _ summary: MeetingReviewSummary
     ) -> some View {
         let badge = summaryBadge(summary)
         return Text(badge)
@@ -1481,7 +1474,7 @@ extension MeetingDetailView {
             .accessibilityIdentifier("summary-badge")
     }
 
-    private func summaryBadge(_ summary: (draft: SummaryDraft, version: Int)) -> String {
+    private func summaryBadge(_ summary: MeetingReviewSummary) -> String {
         var badge = "v\(summary.version) · \(summary.draft.language)"
         if summary.draft.recipeID != Recipe.general.id,
             let recipe = CustomRecipeStore.byID(summary.draft.recipeID) {
@@ -1573,7 +1566,7 @@ extension MeetingDetailView {
     /// labeled with a real opening line and seeking the player on tap.
     /// Shown only when the meeting actually breaks into more than one.
     @ViewBuilder
-    private func chaptersSection(_ detail: MeetingDetail) -> some View {
+    private func chaptersSection(_ detail: MeetingReviewReadModel) -> some View {
         let chapters = ChapterExtractor.chapters(from: detail.segments)
         if !chapters.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
@@ -1709,7 +1702,6 @@ extension MeetingDetailView {
         // leaves the card in place instead of stranding a phantom removal.
         do {
             try await services.store.deleteCompanionCard(id)
-            companionCards.removeAll { $0.id == id }
         } catch {
             actionError = L10n.text("Could not remove the card.")
         }

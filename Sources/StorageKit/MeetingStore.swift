@@ -56,6 +56,18 @@ public struct MeetingDetail: Sendable {
     public let speakers: [Speaker]
     public let segments: [TranscriptSegment]
     public let summaries: [SummaryInfo]
+
+    public init(
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment],
+        summaries: [SummaryInfo]
+    ) {
+        self.meeting = meeting
+        self.speakers = speakers
+        self.segments = segments
+        self.summaries = summaries
+    }
 }
 
 /// Snapshot metadata (the markdown itself loads via `summary(...)`).
@@ -179,24 +191,9 @@ public final class MeetingStore: Sendable {
     }
 
     public func detail(_ id: MeetingID) async throws -> MeetingDetail? {
-        let key = id.rawValue.uuidString
         return try await database.read { db in
-            guard
-                let meetingRecord = try MeetingRecord
-                    .filter(Column("id") == key)
-                    .filter(Column("deletedAt") == nil)
-                    .fetchOne(db)
-            else { return nil }
-
-            let speakers = try SpeakerRecord
-                .filter(Column("meetingID") == key)
-                .filter(Column("deletedAt") == nil)
-                .fetchAll(db).map { try $0.speaker }
-            let segments = try SegmentRecord
-                .filter(Column("meetingID") == key)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("startTime"))
-                .fetchAll(db).map { try $0.segment }
+            guard let core = try Self.fetchMeetingReviewCore(id, in: db) else { return nil }
+            let key = id.rawValue.uuidString
             let summaries = try SummaryRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
@@ -208,8 +205,10 @@ public final class MeetingStore: Sendable {
                         version: $0.version, createdAt: $0.createdAt)
                 }
             return MeetingDetail(
-                meeting: try meetingRecord.meeting,
-                speakers: speakers, segments: segments, summaries: summaries)
+                meeting: core.meeting,
+                speakers: core.speakers,
+                segments: core.segments,
+                summaries: summaries)
         }
     }
 
@@ -363,12 +362,7 @@ public final class MeetingStore: Sendable {
 
     public func companionCards(for id: MeetingID) async throws -> [CompanionCard] {
         try await database.read { db in
-            try CompanionCardRecord
-                .filter(Column("meetingID") == id.rawValue.uuidString)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("askedAt"))
-                .fetchAll(db)
-                .map { try $0.card }
+            try Self.fetchMeetingReviewCompanionCards(id, in: db)
         }
     }
 

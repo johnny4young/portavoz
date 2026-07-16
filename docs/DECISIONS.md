@@ -1170,3 +1170,40 @@ segment changes refresh voice balance/findings. The single per-window model
 keeps scope, loading, partial failure, and stale-result policy outside SwiftUI,
 while preserving the exact local calculations, visible dashboard, schema v6,
 and `DatabaseQueue` execution model.
+
+## D59 — Meeting Detail observes one aggregate through independent sections (Jul 2026)
+
+**Context:** Meeting Detail loaded its live meeting/cast/transcript, persisted
+Companion cards, and newest immutable summary through three sequential Store
+reads whenever the process-wide `libraryVersion` changed. Those sections have
+different tables and failure domains. An action-item toggle could rebuild the
+transcript-side view task, while a speaker rename could reload summaries and
+Companion. The view also owned the timing of those reads, so a broad
+invalidation could briefly combine values from different database moments.
+
+**Decision:** ApplicationKit owns storage-independent `MeetingReviewCore`,
+`MeetingReviewSummary`, `MeetingReviewReadModel`, section, and update contracts.
+Each detail route owns one `@MainActor @Observable MeetingDetailModel` that
+merges three streams, distinguishes an absent/tombstoned meeting from a failed
+read, preserves healthy section values after a partial failure, rejects stale
+observation instances, and publishes one review projection. StorageKit exposes
+three explicit observations: core tracks `meeting`, `speaker`, and `segment`;
+the newest cross-recipe summary tracks `meeting`, `summary`, and `actionItem`;
+Companion tracks `meeting` and `companionCard`. The core and Companion fetch
+helpers are shared with their one-shot APIs; newest-summary selection continues
+to use the existing immutable helper. A twentieth architecture rule prevents
+the old `libraryVersion`-keyed reload and sequential detail/summary/Companion
+reads from returning. Direct title/speaker/action-item/Companion mutations and
+the Spotlight compatibility increment remain for slice 2T.
+
+Accepted Refine no longer waits for an unrelated reload before regeneration:
+it submits the accepted draft's speakers and segments directly to the existing
+`RegenerateSummary` use case, which is the exact material just committed.
+
+**Rationale:** this is a meeting-scoped CQRS-style read boundary, not a new
+state framework, schema, database, or cache. Independent table regions avoid
+conceptually unrelated projection work and isolate degradable failures, while
+one model owns loading and consistency policy outside SwiftUI. The visible
+two-column review surface, player lifecycle, chapters, newest summary across
+recipes, action items, Companion, exports, refine outcomes, local-first
+privacy, schema v6, and `DatabaseQueue` remain unchanged.

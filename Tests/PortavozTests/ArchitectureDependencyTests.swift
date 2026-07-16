@@ -371,6 +371,38 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testMeetingDetailUsesScopedReadModelWithoutGlobalReload() throws {
+        let readModels = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingDetailReadModels.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
+
+        XCTAssertTrue(readModels.contains("struct MeetingReviewReadModel"))
+        XCTAssertFalse(readModels.contains("import StorageKit"))
+        XCTAssertFalse(readModels.contains("import GRDB"))
+        XCTAssertTrue(model.contains("@Observable"))
+        XCTAssertTrue(model.contains("MeetingReviewReadModel("))
+        XCTAssertTrue(adapter.contains("store.observeMeetingReviewCore"))
+        XCTAssertTrue(adapter.contains("store.observeMeetingReviewSummary"))
+        XCTAssertTrue(adapter.contains("store.observeMeetingReviewCompanionCards"))
+        XCTAssertTrue(view.contains("@State private var model: MeetingDetailModel"))
+        XCTAssertTrue(view.contains(".task { await model.observe() }"))
+        XCTAssertFalse(view.contains("ReloadID"))
+        XCTAssertFalse(view.contains("services.store.detail"))
+        XCTAssertFalse(view.contains("services.store.mostRecentSummary"))
+        XCTAssertFalse(view.contains("services.store.companionCards(for:"))
+        XCTAssertFalse(view.contains("libraryVersion: services.libraryVersion"))
+        XCTAssertTrue(storage.contains(
+            "regions: [Table(\"meeting\"), Table(\"speaker\"), Table(\"segment\")]"))
+        XCTAssertTrue(storage.contains(
+            "regions: [Table(\"meeting\"), Table(\"summary\"), Table(\"actionItem\")]"))
+        XCTAssertTrue(storage.contains(
+            "regions: [Table(\"meeting\"), Table(\"companionCard\")]"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

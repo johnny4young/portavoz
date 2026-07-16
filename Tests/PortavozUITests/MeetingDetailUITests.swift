@@ -122,7 +122,7 @@ final class MeetingDetailUITests: XCTestCase {
             app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
             "the answered Companion card must render for review")
 
-        attachScreenshot(of: app, named: "band-2o-meeting-review")
+        attachScreenshot(of: app, named: "band-2s-scoped-meeting-detail")
     }
 
     @MainActor

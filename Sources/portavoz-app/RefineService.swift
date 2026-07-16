@@ -61,7 +61,9 @@ final class RefineService {
 
     func start(
         meetingID: MeetingID,
-        detail: MeetingDetail,
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment],
         useCase: RefineMeeting,
         languagePolicy: TranscriptLanguagePolicy? = nil
     ) {
@@ -75,6 +77,11 @@ final class RefineService {
         let runID = UUID()
         runIDs[meetingID] = runID
         phases[meetingID] = .running(L10n.text("Preparing…"))
+        let detail = MeetingDetail(
+            meeting: meeting,
+            speakers: speakers,
+            segments: segments,
+            summaries: [])
         tasks[meetingID] = Task { [weak self] in
             guard let self else { return }
             do {
