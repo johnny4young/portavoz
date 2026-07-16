@@ -315,46 +315,53 @@ extension MeetingStore {
     /// never duplicate their items.
     public func openActionItems(limit: Int = 50) async throws -> [OpenActionItem] {
         try await database.read { db in
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT actionItem.id AS id,
-                           actionItem.text AS text,
-                           actionItem.ownerSpeakerID AS ownerSpeakerID,
-                           actionItem.meetingID AS meetingID,
-                           meeting.title AS title
-                    FROM actionItem
-                    JOIN summary ON summary.id = actionItem.summaryID
-                        AND summary.deletedAt IS NULL
-                    JOIN meeting ON meeting.id = actionItem.meetingID
-                        AND meeting.deletedAt IS NULL
-                    WHERE actionItem.deletedAt IS NULL
-                      AND actionItem.isDone = 0
-                      AND summary.version = (
-                          SELECT MAX(version) FROM summary latest
-                          WHERE latest.meetingID = summary.meetingID
-                            AND latest.recipeID = summary.recipeID
-                            AND latest.deletedAt IS NULL)
-                    ORDER BY actionItem.createdAt DESC
-                    LIMIT ?
-                    """,
-                arguments: [limit])
-            return try rows.map { row in
-                OpenActionItem(
-                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
-                        row["meetingID"], table: "actionItem", column: "meetingID")),
-                    meetingTitle: row["title"],
-                    item: ActionItem(
-                        id: try PersistedIdentity.required(
-                            row["id"], table: "actionItem", column: "id"),
-                        text: row["text"],
-                        ownerSpeakerID: try PersistedIdentity.optional(
-                            row["ownerSpeakerID"] as String?,
-                            table: "actionItem", column: "ownerSpeakerID"
-                        ).map { SpeakerID(rawValue: $0) },
-                        isDone: false)
-                )
-            }
+            try Self.fetchOpenActionItems(in: db, limit: limit)
+        }
+    }
+
+    static func fetchOpenActionItems(
+        in database: Database,
+        limit: Int
+    ) throws -> [OpenActionItem] {
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT actionItem.id AS id,
+                       actionItem.text AS text,
+                       actionItem.ownerSpeakerID AS ownerSpeakerID,
+                       actionItem.meetingID AS meetingID,
+                       meeting.title AS title
+                FROM actionItem
+                JOIN summary ON summary.id = actionItem.summaryID
+                    AND summary.deletedAt IS NULL
+                JOIN meeting ON meeting.id = actionItem.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE actionItem.deletedAt IS NULL
+                  AND actionItem.isDone = 0
+                  AND summary.version = (
+                      SELECT MAX(version) FROM summary latest
+                      WHERE latest.meetingID = summary.meetingID
+                        AND latest.recipeID = summary.recipeID
+                        AND latest.deletedAt IS NULL)
+                ORDER BY actionItem.createdAt DESC
+                LIMIT ?
+                """,
+            arguments: [limit])
+        return try rows.map { row in
+            OpenActionItem(
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    row["meetingID"], table: "actionItem", column: "meetingID")),
+                meetingTitle: row["title"],
+                item: ActionItem(
+                    id: try PersistedIdentity.required(
+                        row["id"], table: "actionItem", column: "id"),
+                    text: row["text"],
+                    ownerSpeakerID: try PersistedIdentity.optional(
+                        row["ownerSpeakerID"] as String?,
+                        table: "actionItem", column: "ownerSpeakerID"
+                    ).map { SpeakerID(rawValue: $0) },
+                    isDone: false)
+            )
         }
     }
 

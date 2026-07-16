@@ -1,7 +1,7 @@
 import AppKit
+import ApplicationKit
 import IntegrationsKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 
 /// The design system's tokens in Swift — the single source the app reads;
@@ -133,7 +133,7 @@ enum VoicePalette {
     /// The color of one sidebar voice-mix slice: amber for you, a stable
     /// name hue for named speakers, cast order for the rest.
     static func color(
-        for slice: MeetingStore.VoiceMixSlice, colorScheme: ColorScheme
+        for slice: LibraryVoiceMixSlice, colorScheme: ColorScheme
     ) -> Color {
         if slice.isMe { return me }
         return color(

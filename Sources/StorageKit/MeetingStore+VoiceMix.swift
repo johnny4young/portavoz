@@ -23,53 +23,61 @@ extension MeetingStore {
         for meetingIDs: [MeetingID]
     ) async throws -> [MeetingID: [VoiceMixSlice]] {
         guard !meetingIDs.isEmpty else { return [:] }
-        let ids = meetingIDs.map { $0.rawValue.uuidString }
         return try await database.read { db in
-            let placeholders = databaseQuestionMarks(count: ids.count)
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT segment.meetingID AS meetingID,
-                           speaker.isMe AS isMe,
-                           speaker.displayName AS displayName,
-                           SUM(segment.endTime - segment.startTime) AS seconds
-                    FROM segment
-                    JOIN meeting ON meeting.id = segment.meetingID
-                        AND meeting.deletedAt IS NULL
-                    JOIN speaker ON speaker.id = segment.speakerID
-                        AND speaker.deletedAt IS NULL
-                    WHERE segment.deletedAt IS NULL
-                      AND segment.speakerID IS NOT NULL
-                      AND segment.endTime > segment.startTime
-                      AND segment.meetingID IN (\(placeholders))
-                    GROUP BY segment.meetingID, segment.speakerID
-                    ORDER BY segment.meetingID, seconds DESC
-                    """,
-                arguments: StatementArguments(ids))
-
-            var byMeeting: [MeetingID: [(isMe: Bool, name: String?, seconds: Double)]] = [:]
-            for row in rows {
-                let uuid = try PersistedIdentity.required(
-                    row["meetingID"], table: "segment", column: "meetingID")
-                let id = MeetingID(rawValue: uuid)
-                byMeeting[id, default: []].append(
-                    (isMe: row["isMe"], name: row["displayName"], seconds: row["seconds"]))
-            }
-
-            var result: [MeetingID: [VoiceMixSlice]] = [:]
-            for (id, speakers) in byMeeting {
-                let total = speakers.reduce(0) { $0 + $1.seconds }
-                guard total > 0 else { continue }
-                result[id] = speakers.enumerated().map { order, speaker in
-                    VoiceMixSlice(
-                        isMe: speaker.isMe,
-                        displayName: speaker.name,
-                        fraction: speaker.seconds / total,
-                        order: order)
-                }
-            }
-            return result
+            try Self.fetchVoiceMixes(in: db, for: meetingIDs)
         }
+    }
+
+    static func fetchVoiceMixes(
+        in database: Database,
+        for meetingIDs: [MeetingID]
+    ) throws -> [MeetingID: [VoiceMixSlice]] {
+        guard !meetingIDs.isEmpty else { return [:] }
+        let ids = meetingIDs.map { $0.rawValue.uuidString }
+        let placeholders = databaseQuestionMarks(count: ids.count)
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT segment.meetingID AS meetingID,
+                       speaker.isMe AS isMe,
+                       speaker.displayName AS displayName,
+                       SUM(segment.endTime - segment.startTime) AS seconds
+                FROM segment
+                JOIN meeting ON meeting.id = segment.meetingID
+                    AND meeting.deletedAt IS NULL
+                JOIN speaker ON speaker.id = segment.speakerID
+                    AND speaker.deletedAt IS NULL
+                WHERE segment.deletedAt IS NULL
+                  AND segment.speakerID IS NOT NULL
+                  AND segment.endTime > segment.startTime
+                  AND segment.meetingID IN (\(placeholders))
+                GROUP BY segment.meetingID, segment.speakerID
+                ORDER BY segment.meetingID, seconds DESC
+                """,
+            arguments: StatementArguments(ids))
+
+        var byMeeting: [MeetingID: [(isMe: Bool, name: String?, seconds: Double)]] = [:]
+        for row in rows {
+            let uuid = try PersistedIdentity.required(
+                row["meetingID"], table: "segment", column: "meetingID")
+            let id = MeetingID(rawValue: uuid)
+            byMeeting[id, default: []].append(
+                (isMe: row["isMe"], name: row["displayName"], seconds: row["seconds"]))
+        }
+
+        var result: [MeetingID: [VoiceMixSlice]] = [:]
+        for (id, speakers) in byMeeting {
+            let total = speakers.reduce(0) { $0 + $1.seconds }
+            guard total > 0 else { continue }
+            result[id] = speakers.enumerated().map { order, speaker in
+                VoiceMixSlice(
+                    isMe: speaker.isMe,
+                    displayName: speaker.name,
+                    fraction: speaker.seconds / total,
+                    order: order)
+            }
+        }
+        return result
     }
 
     /// How much you talk vs each named person across the meetings you share

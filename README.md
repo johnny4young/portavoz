@@ -132,7 +132,7 @@ architecture migration is tracked in
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, and durable recording Start/Stop/launch-recovery handoffs over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, and storage-independent Library read contracts over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |
@@ -140,15 +140,17 @@ architecture migration is tracked in
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
 | `ContextFeedKit` | Placeholder compatibility target; co-authored notes currently span Core, StorageKit, IntelligenceKit, and the app |
-| `StorageKit` | GRDB/SQLite, FTS5 search, versioned snapshots, durable leased job queue, local vector index |
+| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library observations, versioned snapshots, durable leased job queue, local vector index |
 | `IntegrationsKit` | GitHub/Linear export, Gist sharing, MCP server |
 | `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 
 The macOS app owns a per-window `LibraryModel` with one observable value-state
 snapshot and enum actions/effects. SwiftUI Library views render and present
-native controls; an app composition adapter currently bridges the existing
-Store/use-case APIs and broad invalidation trigger. Scoped GRDB observations
-are the next incremental migration step, not a parallel UI rewrite.
+native controls; an app composition adapter merges independent GRDB
+observations for meeting rows/voice mix, open items, trash, and active FTS into
+storage-independent ApplicationKit updates. Library no longer consumes the
+global invalidation counter; Meeting Detail, Insights, and Spotlight retain
+that transitional seam until their own characterized slices.
 
 ## Build from source
 

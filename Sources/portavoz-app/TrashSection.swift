@@ -1,4 +1,4 @@
-import StorageKit
+import ApplicationKit
 import SwiftUI
 
 /// Sidebar section: soft-deleted meetings with one-click restore. Deletes
@@ -6,11 +6,11 @@ import SwiftUI
 /// Collapsed by default; invisible while the trash is empty.
 struct TrashSection: View {
     @AppStorage("trashSectionExpanded") private var expanded = false
-    /// Loaded by LibraryView's reload — a lifecycle modifier on a
-    /// Section-producing view inside a List does not reliably fire.
-    let items: [MeetingStore.DeletedMeeting]
-    let onRestore: (MeetingStore.DeletedMeeting) -> Void
-    let onPurge: (MeetingStore.DeletedMeeting) -> Void
+    /// Supplied by LibraryModel's parent-level observation — a lifecycle
+    /// modifier on a Section-producing view inside a List does not reliably fire.
+    let items: [LibraryTrashItem]
+    let onRestore: (LibraryTrashItem) -> Void
+    let onPurge: (LibraryTrashItem) -> Void
 
     var body: some View {
         if !items.isEmpty {
@@ -25,7 +25,7 @@ struct TrashSection: View {
         }
     }
 
-    private func row(_ entry: MeetingStore.DeletedMeeting) -> some View {
+    private func row(_ entry: LibraryTrashItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.meeting.title).lineLimit(1)

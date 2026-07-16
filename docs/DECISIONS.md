@@ -1005,3 +1005,45 @@ read-side adapter change: introduce query-specific ApplicationKit/StorageKit
 read models and scoped GRDB observations, then retire only the Library's broad
 trigger after parity. Other `libraryVersion` consumers remain independent
 characterized slices.
+
+## D54 — Library observations follow query ownership, not screen ownership (Jul 2026)
+
+**Context:** after D53, `LibraryModel` owned feature state but still rebuilt one
+complete snapshot whenever the process-wide `libraryVersion` changed. Meeting
+rows, voice mix, open action items, trash, and active FTS have different source
+tables and failure modes. A single observation over their union would remove
+the integer trigger but would still recompute unrelated projections—for
+example, changing one action item would unnecessarily reload meeting rows and
+voice mix. Exposing StorageKit projection types to the app model would also
+make the presentation boundary depend on GRDB-shaped contracts.
+
+**Decision:** ApplicationKit owns storage-independent `LibraryMeetingRow`,
+`LibraryVoiceMixSlice`, `LibraryOpenItem`, `LibraryTrashItem`,
+`LibrarySearchHit`, `LibrarySection`, and `LibraryUpdate` contracts. StorageKit
+owns four `ValueObservation` streams with explicit regions:
+
+- meeting rows and voice mix: `meeting`, `speaker`, `segment`;
+- open action items: `meeting`, `summary`, `actionItem`;
+- trash: `meeting`;
+- active FTS: `meeting`, `segment`.
+
+Each StorageKit stream buffers only its newest unread value. The app composition
+adapter maps the three persistent sidebar streams to ApplicationKit and merges
+them without dropping section identity; search remains a query-scoped stream.
+`LibraryModel` waits for every persistent section to report or fail, publishes
+complete/empty/degraded/failed phases, and preserves the last healthy data when
+one observation later fails. One-shot Store APIs and observed reads share the
+same query helpers so their ordering, tombstone scope, and degradable voice-mix
+fallback cannot drift. Library no longer reads `libraryVersion`; mutation
+adapters continue incrementing it only because Meeting Detail, Insights, and
+Spotlight still consume that independent compatibility seam.
+
+**Rationale:** query ownership gives each write the smallest correct
+recomputation boundary and isolates failure without a second UI architecture.
+ApplicationKit contracts keep the feature model independent from GRDB and
+StorageKit, while the composition edge remains responsible for concrete
+mapping and cancellation. Explicit base-table regions avoid coupling active
+search to FTS5 shadow-table internals. This is a read-path refactor only:
+schema v6, `DatabaseQueue`, user-visible behavior, and every existing Library
+control remain unchanged. `DatabasePool` still requires measured contention
+evidence before adoption.

@@ -7,20 +7,35 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): replace the Library's
-temporary `libraryVersion` reload trigger and pull-based Store projections with
-query-specific read models and scoped GRDB observation. Keep the per-window
-`LibraryModel` action/state/effect contract and every current Library control,
-accessibility identifier, navigation path, search result, mutation, agenda,
-trash, and import behavior unchanged. Retire broad invalidation only for this
-feature; Meeting Detail, Insights, and Spotlight remain separate later slices.
-`LibraryModel`, `ExportMeetingBundle`, `ImportMeetingBundle`,
+program in [refactor-20260714.md](refactor-20260714.md): begin narrowing
+`IntegrationsKit` with a characterized meeting-review policy slice. Move the
+pure `ChapterExtractor`, `PlaybackRanges`, `SummarySections`, and `VoiceHue`
+policies to an inward application/domain boundary, update their app and test
+consumers, and add a dependency rule that prevents those
+policies from returning to the outbound-adapter Kit. Preserve every chapter,
+summary-tab, only-my-voice, and speaker-color behavior exactly; external bundle,
+GitHub/Linear/Gist, calendar, and RAG adapters remain in IntegrationsKit.
+`LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54).
+
+- **Architecture Band 2 slice 2N complete — Library reads only what changed
+  (Jul 15, 2026)**: ApplicationKit now owns storage-independent Library row,
+  open-item, trash, search, section, and update contracts. StorageKit exposes
+  independent `ValueObservation` streams with explicit regions for meeting
+  rows/voice mix (`meeting`, `speaker`, `segment`), open items (`meeting`,
+  `summary`, `actionItem`), trash (`meeting`), and active FTS (`meeting`,
+  `segment`). The app composition adapter merges section updates while
+  `LibraryModel` preserves healthy sections when one projection fails. Library
+  no longer consumes `libraryVersion`; Detail, Insights, and Spotlight retain
+  it for their own parity slices. Three real-Store observation tests and a
+  ninth model test bring the verified baseline to 573 package tests (13 gated),
+  222 linted Swift files, and 19 UI cases. `DatabaseQueue` and schema v6 remain
+  unchanged (D54).
 
 - **Architecture Band 2 slice 2M complete — Library state has one owner (Jul
   15, 2026)**: each main window now owns one `@MainActor` `@Observable`

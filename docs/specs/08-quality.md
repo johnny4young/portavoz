@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 569 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
+Status: 573 package tests passing (13 gated) + 19 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 19 cases; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 220 Swift files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 222 Swift files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -278,6 +278,20 @@ clean across 220 Swift files. The existing grouped-Library XCUITest now types
 through `library-search-field` and observes the seeded real-FTS result, covering
 the SwiftUI binding/model/client integration. No visible control or localized
 copy changed, and the full 19-case XCUITest suite remains the UI contract.
+
+Band 2 slice 2N adds three real-Store `LibraryObservationTests` and expands the
+Library model suite to nine cases while retaining the fifteenth architecture
+rule. Observation coverage proves that meeting/voice-mix, open-item, trash,
+and active-FTS streams refresh from only their declared base-table regions;
+delete/restore conservation; search refresh after segment text and meeting-title
+writes; and independent projection availability when corrupt meeting data
+breaks one stream. Model coverage proves that a later section failure preserves
+its last healthy data while degrading the aggregate phase. The source rule now
+requires ApplicationKit-owned Library contracts, explicit StorageKit regions,
+app-edge stream merging, and zero StorageKit/broad-version state in
+`LibraryModel` or Library views. The complete baseline is 573 package tests (13
+gated), strict SwiftLint is clean across 222 Swift files, and the unchanged
+19-case XCUITest suite remains the end-to-end UI contract (D54).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

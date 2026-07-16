@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D53 (application workflow and feature-state ownership).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D54 (application workflow, feature-state ownership, and scoped Library reads).
 
 ## Structure
 
@@ -13,7 +13,7 @@ Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Acce
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
-DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` drives UI downloads. `libraryVersion` still invalidates Meeting Detail, Insights, Spotlight, and the Library compatibility adapter; the Library now fences and publishes reloads through its feature model rather than owning data state in the view.
+DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), `whisper` (lazy, first time downloads verified 1.6 GB with progress). `modelsState` drives UI downloads. `libraryVersion` still invalidates Meeting Detail, Insights, and Spotlight. Library no longer consumes it: its feature model receives independent meeting/open-item/trash/search updates from scoped Store observations.
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -106,12 +106,18 @@ send actions instead of invoking Store, lifecycle, import, or EventKit-backed
 services. `ContentView` creates a fresh model per `WindowGroup` instance, so
 transient search/rename/import state is not global.
 
-`AppServices+Library` is the temporary narrow client over the current Store,
-ApplicationKit use cases, and platform services. It deliberately retains
-StorageKit projection types and accepts `libraryVersion` as a reload request;
-the model ignores older versions and stale search results. Query-specific read
-models and scoped GRDB observations are not implemented yet and are the next
-independent slice (D53).
+Slice 2N replaces the temporary Library read seam. ApplicationKit defines the
+storage-independent meeting-row/voice-mix, open-item, trash, search, section,
+and update types consumed by `LibraryModel`; the model and Library views no
+longer import StorageKit. `AppServices+Library` maps and merges independent
+Store observations for meeting rows/voice mix, open items, and trash, while
+active FTS remains its own debounced query stream. A failed section preserves
+the most recent healthy data and degrades the load phase without stopping the
+other observations. Search continues to fence stale queries and now also
+updates while the same query remains active. Library no longer reads
+`libraryVersion`; mutation adapters still increment it for Meeting Detail,
+Insights, and Spotlight until those consumers migrate independently. No
+visible control, navigation behavior, or localized copy changed (D54).
 
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed preparation/reservation/source-start attempt, while ownership transfers to the active session on success; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 

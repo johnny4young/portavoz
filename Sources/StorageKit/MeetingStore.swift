@@ -163,12 +163,19 @@ public final class MeetingStore: Sendable {
 
     public func meetings(includeDeleted: Bool = false) async throws -> [Meeting] {
         try await database.read { db in
-            var request = MeetingRecord.order(Column("startedAt").desc)
-            if !includeDeleted {
-                request = request.filter(Column("deletedAt") == nil)
-            }
-            return try request.fetchAll(db).map { try $0.meeting }
+            try Self.fetchMeetings(in: db, includeDeleted: includeDeleted)
         }
+    }
+
+    static func fetchMeetings(
+        in database: Database,
+        includeDeleted: Bool = false
+    ) throws -> [Meeting] {
+        var request = MeetingRecord.order(Column("startedAt").desc)
+        if !includeDeleted {
+            request = request.filter(Column("deletedAt") == nil)
+        }
+        return try request.fetchAll(database).map { try $0.meeting }
     }
 
     public func detail(_ id: MeetingID) async throws -> MeetingDetail? {
@@ -260,15 +267,19 @@ public final class MeetingStore: Sendable {
 
     public func deletedMeetings() async throws -> [DeletedMeeting] {
         try await database.read { db in
-            try MeetingRecord
-                .filter(Column("deletedAt") != nil)
-                .order(Column("deletedAt").desc)
-                .fetchAll(db)
-                .compactMap { record in
-                    guard let deletedAt = record.deletedAt else { return nil }
-                    return DeletedMeeting(meeting: try record.meeting, deletedAt: deletedAt)
-                }
+            try Self.fetchDeletedMeetings(in: db)
         }
+    }
+
+    static func fetchDeletedMeetings(in database: Database) throws -> [DeletedMeeting] {
+        try MeetingRecord
+            .filter(Column("deletedAt") != nil)
+            .order(Column("deletedAt").desc)
+            .fetchAll(database)
+            .compactMap { record in
+                guard let deletedAt = record.deletedAt else { return nil }
+                return DeletedMeeting(meeting: try record.meeting, deletedAt: deletedAt)
+            }
     }
 
     /// Undeletes: clearing the meeting's tombstone brings everything back —

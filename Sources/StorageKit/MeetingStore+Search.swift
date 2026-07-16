@@ -16,34 +16,42 @@ extension MeetingStore {
         let match = Self.ftsQuery(from: query, requireAll: requireAll)
         guard !match.isEmpty else { return [] }
         return try await database.read { db in
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT segment.id AS segmentID,
-                           segment.meetingID AS meetingID,
-                           segment.startTime AS startTime,
-                           meeting.title AS title,
-                           snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet
-                    FROM segmentSearch
-                    JOIN segment ON segment.rowid = segmentSearch.rowid
-                    JOIN meeting ON meeting.id = segment.meetingID
-                    WHERE segmentSearch MATCH ?
-                      AND segment.deletedAt IS NULL
-                      AND meeting.deletedAt IS NULL
-                    ORDER BY bm25(segmentSearch)
-                    LIMIT ?
-                    """,
-                arguments: [match, limit])
-            return try rows.map { row in
-                SearchHit(
-                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
-                        row["meetingID"], table: "segment", column: "meetingID")),
-                    meetingTitle: row["title"],
-                    segmentID: try PersistedIdentity.required(
-                        row["segmentID"], table: "segment", column: "id"),
-                    snippet: row["snippet"],
-                    startTime: row["startTime"])
-            }
+            try Self.fetchSearch(in: db, match: match, limit: limit)
+        }
+    }
+
+    static func fetchSearch(
+        in database: Database,
+        match: String,
+        limit: Int
+    ) throws -> [SearchHit] {
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT segment.id AS segmentID,
+                       segment.meetingID AS meetingID,
+                       segment.startTime AS startTime,
+                       meeting.title AS title,
+                       snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet
+                FROM segmentSearch
+                JOIN segment ON segment.rowid = segmentSearch.rowid
+                JOIN meeting ON meeting.id = segment.meetingID
+                WHERE segmentSearch MATCH ?
+                  AND segment.deletedAt IS NULL
+                  AND meeting.deletedAt IS NULL
+                ORDER BY bm25(segmentSearch)
+                LIMIT ?
+                """,
+            arguments: [match, limit])
+        return try rows.map { row in
+            SearchHit(
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    row["meetingID"], table: "segment", column: "meetingID")),
+                meetingTitle: row["title"],
+                segmentID: try PersistedIdentity.required(
+                    row["segmentID"], table: "segment", column: "id"),
+                snippet: row["snippet"],
+                startTime: row["startTime"])
         }
     }
 

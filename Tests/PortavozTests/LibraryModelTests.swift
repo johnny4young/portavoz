@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import IntegrationsKit
 import PortavozCore
@@ -8,16 +9,15 @@ import XCTest
 
 @MainActor
 final class LibraryModelTests: XCTestCase {
-    func testReloadPublishesOneCompleteSnapshotAtTheRequestedVersion() async {
+    func testObservationPublishesOneCompleteSnapshotAndAgenda() async {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
         client.agenda = fixture.agenda
         let model = LibraryModel(client: client, searchDelay: .zero)
 
-        _ = await model.send(.reload(version: 7))
+        _ = await model.send(.observeLibrary)
 
         XCTAssertEqual(model.state.loadPhase, .loaded)
-        XCTAssertEqual(model.state.reloadVersion, 7)
         XCTAssertEqual(model.state.meetings.map(\.id), [fixture.meeting.id])
         XCTAssertEqual(model.state.voiceMixes[fixture.meeting.id], fixture.voiceMix)
         XCTAssertEqual(model.state.openItems.map(\.item.id), [fixture.actionItem.id])
@@ -25,53 +25,58 @@ final class LibraryModelTests: XCTestCase {
         XCTAssertEqual(model.state.upcomingToday, fixture.agenda.today)
         XCTAssertEqual(model.state.upcomingTomorrow, fixture.agenda.tomorrow)
         XCTAssertTrue(model.state.offerCalendar)
-        XCTAssertEqual(
-            client.calls,
-            [.meetings, .voiceMixes([fixture.meeting.id]), .openItems(20), .trash, .agenda])
+        XCTAssertEqual(client.calls, [.observeLibrary, .agenda])
     }
 
-    func testReloadDistinguishesEmptyDegradedAndFailedState() async {
+    func testObservationDistinguishesEmptyDegradedAndUnavailableState() async {
         let fixture = LibraryModelFixture()
 
         let emptyClient = LibraryModelClientFake(fixture: fixture)
-        emptyClient.meetings = []
-        emptyClient.voiceMixes = [:]
-        emptyClient.openItems = []
-        emptyClient.trash = []
+        emptyClient.updates = fixture.updates(includeContent: false)
         let emptyModel = LibraryModel(client: emptyClient, searchDelay: .zero)
-        _ = await emptyModel.send(.reload(version: 1))
+        _ = await emptyModel.send(.observeLibrary)
         XCTAssertEqual(emptyModel.state.loadPhase, .empty)
 
         let degradedClient = LibraryModelClientFake(fixture: fixture)
-        degradedClient.failures = [.voiceMixes]
+        degradedClient.updates = fixture.updates(meetingFailures: 1)
         let degradedModel = LibraryModel(client: degradedClient, searchDelay: .zero)
-        _ = await degradedModel.send(.reload(version: 2))
+        _ = await degradedModel.send(.observeLibrary)
         XCTAssertEqual(degradedModel.state.loadPhase, .degraded(failures: 1))
         XCTAssertEqual(degradedModel.state.meetings.map(\.id), [fixture.meeting.id])
-        XCTAssertTrue(degradedModel.state.voiceMixes.isEmpty)
 
-        let failedClient = LibraryModelClientFake(fixture: fixture)
-        failedClient.failures = [.meetings, .openItems, .trash]
-        let failedModel = LibraryModel(client: failedClient, searchDelay: .zero)
-        _ = await failedModel.send(.reload(version: 3))
-        XCTAssertEqual(failedModel.state.loadPhase, .failed)
-        XCTAssertTrue(failedModel.state.meetings.isEmpty)
-        XCTAssertTrue(failedModel.state.openItems.isEmpty)
-        XCTAssertTrue(failedModel.state.trashed.isEmpty)
+        let unavailableClient = LibraryModelClientFake(fixture: fixture)
+        unavailableClient.updates = LibrarySection.allCases.map(LibraryUpdate.failed)
+        let unavailableModel = LibraryModel(client: unavailableClient, searchDelay: .zero)
+        _ = await unavailableModel.send(.observeLibrary)
+        XCTAssertEqual(unavailableModel.state.loadPhase, .failed)
+        XCTAssertTrue(unavailableModel.state.meetings.isEmpty)
     }
 
-    func testOlderReloadCannotReplaceARequestedNewerVersion() async {
+    func testLaterObservedSnapshotReplacesEarlierState() async {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
+        client.updates = fixture.updates() + fixture.updates(includeContent: false)
         let model = LibraryModel(client: client, searchDelay: .zero)
 
-        _ = await model.send(.reload(version: 9))
-        client.meetings = []
-        _ = await model.send(.reload(version: 8))
+        _ = await model.send(.observeLibrary)
 
-        XCTAssertEqual(model.state.reloadVersion, 9)
+        XCTAssertEqual(model.state.loadPhase, .empty)
+        XCTAssertTrue(model.state.meetings.isEmpty)
+        XCTAssertTrue(model.state.openItems.isEmpty)
+        XCTAssertTrue(model.state.trashed.isEmpty)
+    }
+
+    func testObservationFailurePreservesLastSnapshotAndMarksItDegraded() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.updates += [.failed(.meetings)]
+        let model = LibraryModel(client: client, searchDelay: .zero)
+
+        _ = await model.send(.observeLibrary)
+
+        XCTAssertEqual(model.state.loadPhase, .degraded(failures: 1))
         XCTAssertEqual(model.state.meetings.map(\.id), [fixture.meeting.id])
-        XCTAssertEqual(client.calls.filter { $0 == .meetings }.count, 1)
+        XCTAssertEqual(model.state.openItems.map(\.item.id), [fixture.actionItem.id])
     }
 
     func testSearchTrimsInputAndOwnsLoadedEmptyAndDegradedState() async {
@@ -80,25 +85,27 @@ final class LibraryModelTests: XCTestCase {
         let model = LibraryModel(client: client, searchDelay: .zero)
 
         _ = await model.send(.queryChanged("  presupuesto  "))
-        _ = await model.send(.search)
+        _ = await model.send(.observeSearch)
         XCTAssertEqual(client.queries, ["presupuesto"])
         XCTAssertEqual(model.state.hits.map(\.segmentID), [fixture.hit.segmentID])
         XCTAssertEqual(model.state.searchPhase, .loaded)
 
         client.hits = []
         _ = await model.send(.queryChanged("missing"))
-        _ = await model.send(.search)
+        _ = await model.send(.observeSearch)
         XCTAssertEqual(model.state.searchPhase, .empty)
 
         client.failures = [.search]
         _ = await model.send(.queryChanged("broken"))
-        _ = await model.send(.search)
+        _ = await model.send(.observeSearch)
         XCTAssertTrue(model.state.hits.isEmpty)
         XCTAssertEqual(model.state.searchPhase, .degraded)
 
         _ = await model.send(.queryChanged("   "))
+        _ = await model.send(.observeSearch)
         XCTAssertTrue(model.state.hits.isEmpty)
         XCTAssertEqual(model.state.searchPhase, .idle)
+        XCTAssertEqual(client.queries, ["presupuesto", "missing", "broken"])
     }
 
     func testMutationsFlowThroughActionsAndReturnNavigationEffects() async {
@@ -188,8 +195,8 @@ private struct LibraryModelFixture {
     let importedID: MeetingID
     let eventToday: UpcomingEvent
     let eventTomorrow: UpcomingEvent
-    let deleted: MeetingStore.DeletedMeeting
-    let hit: SearchHit
+    let deleted: LibraryTrashItem
+    let hit: LibrarySearchHit
 
     init() {
         let meeting = Meeting(
@@ -206,12 +213,12 @@ private struct LibraryModelFixture {
             title: "Review",
             startDate: Date(timeIntervalSince1970: 1_789_100_000),
             attendees: ["Luis"])
-        deleted = MeetingStore.DeletedMeeting(
+        deleted = LibraryTrashItem(
             meeting: Meeting(
                 title: "Deleted",
                 startedAt: Date(timeIntervalSince1970: 1_788_000_000)),
             deletedAt: Date(timeIntervalSince1970: 1_789_200_000))
-        hit = SearchHit(
+        hit = LibrarySearchHit(
             meetingID: meeting.id,
             meetingTitle: meeting.title,
             segmentID: UUID(),
@@ -219,16 +226,16 @@ private struct LibraryModelFixture {
             startTime: 12)
     }
 
-    var voiceMix: [MeetingStore.VoiceMixSlice] {
-        [MeetingStore.VoiceMixSlice(
+    var voiceMix: [LibraryVoiceMixSlice] {
+        [LibraryVoiceMixSlice(
             isMe: true,
             displayName: "Me",
             fraction: 1,
             order: 0)]
     }
 
-    var openItem: MeetingStore.OpenActionItem {
-        MeetingStore.OpenActionItem(
+    var openItem: LibraryOpenItem {
+        LibraryOpenItem(
             meetingID: meeting.id,
             meetingTitle: meeting.title,
             item: actionItem)
@@ -245,16 +252,27 @@ private struct LibraryModelFixture {
         MeetingBrief(
             event: eventToday,
             related: [],
-            openItems: [openItem],
+            openItems: [],
             whatToKnow: [])
+    }
+
+    func updates(
+        includeContent: Bool = true,
+        meetingFailures: Int = 0
+    ) -> [LibraryUpdate] {
+        [
+            .meetings(
+                includeContent
+                    ? [LibraryMeetingRow(meeting: meeting, voiceMix: voiceMix)]
+                    : [],
+                failures: meetingFailures),
+            .openItems(includeContent ? [openItem] : []),
+            .trash(includeContent ? [deleted] : []),
+        ]
     }
 }
 
-private enum LibraryModelFailure: String, Error, Hashable, LocalizedError {
-    case meetings
-    case voiceMixes
-    case openItems
-    case trash
+private enum LibraryModelFailure: String, Error, Hashable, LocalizedError, Sendable {
     case search
     case rename
     case setActionItem
@@ -266,10 +284,7 @@ private enum LibraryModelFailure: String, Error, Hashable, LocalizedError {
 }
 
 private enum LibraryModelCall: Equatable {
-    case meetings
-    case voiceMixes([MeetingID])
-    case openItems(Int)
-    case trash
+    case observeLibrary
     case agenda
     case search(String)
     case rename(String)
@@ -284,11 +299,8 @@ private enum LibraryModelCall: Equatable {
 
 @MainActor
 private final class LibraryModelClientFake: LibraryModelClient {
-    var meetings: [Meeting]
-    var voiceMixes: [MeetingID: [MeetingStore.VoiceMixSlice]]
-    var openItems: [MeetingStore.OpenActionItem]
-    var trash: [MeetingStore.DeletedMeeting]
-    var hits: [SearchHit]
+    var updates: [LibraryUpdate]
+    var hits: [LibrarySearchHit]
     var agenda: LibraryModel.Agenda?
     var brief: MeetingBrief?
     var failures: Set<LibraryModelFailure> = []
@@ -297,45 +309,27 @@ private final class LibraryModelClientFake: LibraryModelClient {
     let importedID: MeetingID
 
     init(fixture: LibraryModelFixture) {
-        meetings = [fixture.meeting]
-        voiceMixes = [fixture.meeting.id: fixture.voiceMix]
-        openItems = [fixture.openItem]
-        trash = [fixture.deleted]
+        updates = fixture.updates()
         hits = [fixture.hit]
         importedID = fixture.importedID
     }
 
-    func loadLibraryMeetings() throws -> [Meeting] {
-        calls.append(.meetings)
-        try fail(.meetings)
-        return meetings
+    func observeLibrary() -> AsyncStream<LibraryUpdate> {
+        calls.append(.observeLibrary)
+        return AsyncStream { continuation in
+            for update in updates {
+                continuation.yield(update)
+            }
+            continuation.finish()
+        }
     }
 
-    func loadLibraryVoiceMixes(
-        for meetingIDs: [MeetingID]
-    ) throws -> [MeetingID: [MeetingStore.VoiceMixSlice]] {
-        calls.append(.voiceMixes(meetingIDs))
-        try fail(.voiceMixes)
-        return voiceMixes
-    }
-
-    func loadLibraryOpenItems(limit: Int) throws -> [MeetingStore.OpenActionItem] {
-        calls.append(.openItems(limit))
-        try fail(.openItems)
-        return openItems
-    }
-
-    func loadLibraryTrash() throws -> [MeetingStore.DeletedMeeting] {
-        calls.append(.trash)
-        try fail(.trash)
-        return trash
-    }
-
-    func searchLibrary(_ query: String) throws -> [SearchHit] {
+    func observeLibrarySearch(
+        _ query: String
+    ) -> AsyncThrowingStream<[LibrarySearchHit], Error> {
         calls.append(.search(query))
         queries.append(query)
-        try fail(.search)
-        return hits
+        return stream([hits], failure: failures.contains(.search) ? .search : nil)
     }
 
     func renameLibraryMeeting(_ meeting: Meeting) throws {
@@ -358,7 +352,7 @@ private final class LibraryModelClientFake: LibraryModelClient {
         try fail(.restore)
     }
 
-    func purgeLibraryMeeting(_ entry: MeetingStore.DeletedMeeting) {
+    func purgeLibraryMeeting(_ entry: LibraryTrashItem) {
         calls.append(.purge(entry.meeting.id))
     }
 
@@ -388,5 +382,21 @@ private final class LibraryModelClientFake: LibraryModelClient {
 
     private func fail(_ failure: LibraryModelFailure) throws {
         if failures.contains(failure) { throw failure }
+    }
+
+    private func stream<Element: Sendable>(
+        _ values: [Element],
+        failure: LibraryModelFailure?
+    ) -> AsyncThrowingStream<Element, Error> {
+        AsyncThrowingStream { continuation in
+            for value in values {
+                continuation.yield(value)
+            }
+            if let failure {
+                continuation.finish(throwing: failure)
+            } else {
+                continuation.finish()
+            }
+        }
     }
 }

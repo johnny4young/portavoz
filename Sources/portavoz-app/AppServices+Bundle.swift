@@ -173,10 +173,13 @@ private struct AppImportMeetingBundleFiles: ImportMeetingBundleFiles {
 extension AppServices {
     /// Permanently removes a trashed meeting: its stored rows (FTS cleans via
     /// triggers) AND its audio folder on disk.
-    func purgeMeeting(_ entry: MeetingStore.DeletedMeeting) async {
+    func purgeMeeting(
+        meetingID: MeetingID,
+        audioDirectory: String?
+    ) async {
         let request = PurgeMeetingRequest(
-            meetingID: entry.meeting.id,
-            audioDirectory: entry.meeting.audioDirectory)
+            meetingID: meetingID,
+            audioDirectory: audioDirectory)
         _ = try? await meetingPurge.purge(request)
         libraryVersion += 1
     }

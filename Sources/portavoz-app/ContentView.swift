@@ -30,7 +30,6 @@ struct ContentView: View {
         NavigationSplitView {
             LibraryView(
                 model: libraryModel,
-                invalidationVersion: services.libraryVersion,
                 route: $route)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
                 .background { AuroraSidebarBackground() }

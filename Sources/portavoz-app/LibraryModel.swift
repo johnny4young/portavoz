@@ -1,27 +1,23 @@
+import ApplicationKit
 import Foundation
 import IntegrationsKit
 import Observation
 import PortavozCore
-import StorageKit
 
-/// Narrow composition contract for the Library feature. The first Strangler
-/// slice deliberately keeps the released Store queries and broad invalidation;
-/// scoped GRDB observations replace this client in the following slice.
+/// Narrow composition contract for the Library feature. Persistence-specific
+/// projections and observation mechanics stay behind the app adapter.
 @MainActor
 protocol LibraryModelClient: AnyObject {
-    func loadLibraryMeetings() async throws -> [Meeting]
-    func loadLibraryVoiceMixes(
-        for meetingIDs: [MeetingID]
-    ) async throws -> [MeetingID: [MeetingStore.VoiceMixSlice]]
-    func loadLibraryOpenItems(limit: Int) async throws -> [MeetingStore.OpenActionItem]
-    func loadLibraryTrash() async throws -> [MeetingStore.DeletedMeeting]
-    func searchLibrary(_ query: String) async throws -> [SearchHit]
+    func observeLibrary() -> AsyncStream<LibraryUpdate>
+    func observeLibrarySearch(
+        _ query: String
+    ) -> AsyncThrowingStream<[LibrarySearchHit], Error>
 
     func renameLibraryMeeting(_ meeting: Meeting) async throws
     func setLibraryActionItem(_ id: UUID, done: Bool) async throws
     func deleteLibraryMeeting(_ id: MeetingID) async throws
     func restoreLibraryMeeting(_ id: MeetingID) async throws
-    func purgeLibraryMeeting(_ entry: MeetingStore.DeletedMeeting) async
+    func purgeLibraryMeeting(_ entry: LibraryTrashItem) async
     func importLibraryFile(
         _ url: URL,
         progress: @escaping @MainActor (String) -> Void
@@ -69,14 +65,13 @@ final class LibraryModel {
     /// observe and render it, but cannot mutate feature state directly.
     struct State {
         fileprivate(set) var loadPhase: LoadPhase = .idle
-        fileprivate(set) var reloadVersion: Int?
         fileprivate(set) var meetings: [Meeting] = []
-        fileprivate(set) var voiceMixes: [MeetingID: [MeetingStore.VoiceMixSlice]] = [:]
-        fileprivate(set) var openItems: [MeetingStore.OpenActionItem] = []
-        fileprivate(set) var trashed: [MeetingStore.DeletedMeeting] = []
+        fileprivate(set) var voiceMixes: [MeetingID: [LibraryVoiceMixSlice]] = [:]
+        fileprivate(set) var openItems: [LibraryOpenItem] = []
+        fileprivate(set) var trashed: [LibraryTrashItem] = []
 
         fileprivate(set) var query = ""
-        fileprivate(set) var hits: [SearchHit] = []
+        fileprivate(set) var hits: [LibrarySearchHit] = []
         fileprivate(set) var searchPhase: SearchPhase = .idle
 
         fileprivate(set) var rename: RenameState?
@@ -92,9 +87,9 @@ final class LibraryModel {
     }
 
     enum Action {
-        case reload(version: Int)
+        case observeLibrary
         case queryChanged(String)
-        case search
+        case observeSearch
         case beginRename(Meeting)
         case renameTitleChanged(String)
         case cancelRename
@@ -102,7 +97,7 @@ final class LibraryModel {
         case setActionItem(UUID, done: Bool)
         case delete(MeetingID)
         case restore(MeetingID)
-        case purge(MeetingStore.DeletedMeeting)
+        case purge(LibraryTrashItem)
         case importFile(URL)
         case dismissImportError
         case refreshAgenda
@@ -120,7 +115,9 @@ final class LibraryModel {
 
     private let client: any LibraryModelClient
     private let searchDelay: Duration
-    private var newestReloadVersion = Int.min
+    private var observedSections: Set<LibrarySection> = []
+    private var failedSections: Set<LibrarySection> = []
+    private var inlineFailures: [LibrarySection: Int] = [:]
 
     init(
         client: any LibraryModelClient,
@@ -142,16 +139,16 @@ final class LibraryModel {
 private extension LibraryModel {
     func handleLoadingAction(_ action: Action) async {
         switch action {
-        case .reload(let version):
-            await reload(version: version)
+        case .observeLibrary:
+            await observeLibrary()
         case .queryChanged(let query):
             state.query = query
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 state.hits = []
                 state.searchPhase = .idle
             }
-        case .search:
-            await search()
+        case .observeSearch:
+            await observeSearch()
         default:
             break
         }
@@ -211,66 +208,70 @@ private extension LibraryModel {
 }
 
 private extension LibraryModel {
-    func reload(version: Int) async {
-        guard version >= newestReloadVersion else { return }
-        newestReloadVersion = version
+    func observeLibrary() async {
         state.loadPhase = .loading
-
-        var meetings: [Meeting] = []
-        var voiceMixes: [MeetingID: [MeetingStore.VoiceMixSlice]] = [:]
-        var openItems: [MeetingStore.OpenActionItem] = []
-        var trashed: [MeetingStore.DeletedMeeting] = []
-        var failures = 0
-        var successfulPrimaryReads = 0
-
-        do {
-            meetings = try await client.loadLibraryMeetings()
-            successfulPrimaryReads += 1
-            voiceMixes = try await client.loadLibraryVoiceMixes(
-                for: meetings.map(\.id))
-        } catch {
-            guard !isCancellation(error) else { return }
-            failures += 1
+        observedSections = []
+        failedSections = []
+        inlineFailures = [:]
+        for await update in client.observeLibrary() {
+            guard !Task.isCancelled else { return }
+            publish(update)
         }
-        do {
-            openItems = try await client.loadLibraryOpenItems(limit: 20)
-            successfulPrimaryReads += 1
-        } catch {
-            guard !isCancellation(error) else { return }
-            failures += 1
-        }
-        do {
-            trashed = try await client.loadLibraryTrash()
-            successfulPrimaryReads += 1
-        } catch {
-            guard !isCancellation(error) else { return }
-            failures += 1
-        }
-
-        guard !Task.isCancelled, version == newestReloadVersion else { return }
-        state.meetings = meetings
-        state.voiceMixes = voiceMixes
-        state.openItems = openItems
-        state.trashed = trashed
-        state.reloadVersion = version
-        state.loadPhase = loadPhase(
-            failures: failures,
-            successfulPrimaryReads: successfulPrimaryReads,
-            hasContent: !meetings.isEmpty || !openItems.isEmpty || !trashed.isEmpty)
-        refreshAgenda()
     }
 
-    func loadPhase(
-        failures: Int,
-        successfulPrimaryReads: Int,
-        hasContent: Bool
-    ) -> LoadPhase {
-        if successfulPrimaryReads == 0 { return .failed }
-        if failures > 0 { return .degraded(failures: failures) }
-        return hasContent ? .loaded : .empty
+    func publish(_ update: LibraryUpdate) {
+        switch update {
+        case .meetings(let rows, let failures):
+            state.meetings = rows.map(\.meeting)
+            state.voiceMixes = Dictionary(uniqueKeysWithValues: rows.map {
+                ($0.meeting.id, $0.voiceMix)
+            })
+            markObserved(.meetings, inlineFailureCount: failures)
+            refreshAgenda()
+        case .openItems(let items):
+            state.openItems = items
+            markObserved(.openItems)
+        case .trash(let items):
+            state.trashed = items
+            markObserved(.trash)
+        case .failed(let section):
+            failedSections.insert(section)
+            inlineFailures[section] = 0
+        }
+        refreshLoadPhase()
     }
 
-    func search() async {
+    func markObserved(
+        _ section: LibrarySection,
+        inlineFailureCount: Int = 0
+    ) {
+        observedSections.insert(section)
+        failedSections.remove(section)
+        inlineFailures[section] = inlineFailureCount
+    }
+
+    func refreshLoadPhase() {
+        let accountedSections = observedSections.union(failedSections)
+        guard accountedSections.count == LibrarySection.allCases.count else {
+            state.loadPhase = .loading
+            return
+        }
+        guard failedSections.count < LibrarySection.allCases.count else {
+            state.loadPhase = .failed
+            return
+        }
+        let failures = failedSections.count + inlineFailures.values.reduce(0, +)
+        if failures > 0 {
+            state.loadPhase = .degraded(failures: failures)
+            return
+        }
+        let hasContent = !state.meetings.isEmpty
+            || !state.openItems.isEmpty
+            || !state.trashed.isEmpty
+        state.loadPhase = hasContent ? .loaded : .empty
+    }
+
+    func observeSearch() async {
         let sourceQuery = state.query
         let query = sourceQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
@@ -284,11 +285,12 @@ private extension LibraryModel {
             try Task.checkCancellation()
             guard state.query == sourceQuery else { return }
             state.searchPhase = .searching
-            let hits = try await client.searchLibrary(query)
-            try Task.checkCancellation()
-            guard state.query == sourceQuery else { return }
-            state.hits = hits
-            state.searchPhase = hits.isEmpty ? .empty : .loaded
+            for try await hits in client.observeLibrarySearch(query) {
+                try Task.checkCancellation()
+                guard state.query == sourceQuery else { return }
+                state.hits = hits
+                state.searchPhase = hits.isEmpty ? .empty : .loaded
+            }
         } catch {
             guard !isCancellation(error), state.query == sourceQuery else { return }
             state.hits = []

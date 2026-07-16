@@ -1,14 +1,13 @@
 import AppKit
+import ApplicationKit
 import IntegrationsKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 import UniformTypeIdentifiers
 
 /// Sidebar: record button, full-text search, and the meeting library.
 struct LibraryView: View {
     let model: LibraryModel
-    let invalidationVersion: Int
     @Binding var route: Route?
 
     /// To-dos fold away when the user wants a lean sidebar; the choice
@@ -182,8 +181,8 @@ struct LibraryView: View {
             importAudio(from: url)
             return true
         }
-        .task(id: invalidationVersion) {
-            _ = await model.send(.reload(version: invalidationVersion))
+        .task {
+            _ = await model.send(.observeLibrary)
         }
         .onReceive(briefTimer) { _ in perform(.refreshAgenda) }
     }
@@ -215,12 +214,13 @@ struct LibraryView: View {
     }
 
     /// One open action item: check it off right here, or click through to
-    /// its meeting. Checking retains the broad invalidation contract, which
-    /// reloads this model and the detail view. NOT a selection
+    /// its meeting. Checking refreshes this model through the open-item
+    /// observation and retains broad invalidation only for the detail view.
+    /// NOT a selection
     /// row: several to-dos share one meeting, and tagging them with it made
     /// the List paint every sibling as selected at once (field bug, Jul 11)
     /// — so navigation is an explicit tap and selection stays disabled.
-    private func todoRow(_ open: MeetingStore.OpenActionItem) -> some View {
+    private func todoRow(_ open: LibraryOpenItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Toggle(isOn: todoBinding(open)) { EmptyView() }
                 .toggleStyle(.checkbox)
@@ -238,7 +238,7 @@ struct LibraryView: View {
         .selectionDisabled()
     }
 
-    private func todoBinding(_ open: MeetingStore.OpenActionItem) -> Binding<Bool> {
+    private func todoBinding(_ open: LibraryOpenItem) -> Binding<Bool> {
         Binding(
             get: { open.item.isDone },
             set: { done in
@@ -436,7 +436,7 @@ extension LibraryView {
                 set: { perform(.queryChanged($0)) }))
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier("library-search-field")
-                .task(id: state.query) { _ = await model.send(.search) }
+                .task(id: state.query) { _ = await model.send(.observeSearch) }
             Text(verbatim: "⌘K")
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.tertiary)

@@ -204,13 +204,24 @@ join or validate a non-deleted meeting before exposing data. Deleting a meeting
 therefore removes it from Insights and library totals without mutating its
 children; restoring the root returns the exact previous projections.
 
-The first Library feature-model slice still pulls `meetings`, `voiceMixes`,
-`openActionItems`, `deletedMeetings`, and `search` through a narrow app client
-and retains their current StorageKit projection types. A broad
-`libraryVersion` value requests a complete model reload, whose version fence
-prevents an older request from replacing newer state. Query-specific read
-models and GRDB `ValueObservation` streams are planned for the next slice and
-are not implemented in this commit (D53).
+Library now has four independent GRDB `ValueObservation` streams (D54).
+Meeting rows plus voice mix explicitly observe `meeting`, `speaker`, and
+`segment`; open items observe `meeting`, `summary`, and `actionItem`; trash
+observes `meeting`; active FTS observes the base `meeting` and `segment` tables
+rather than FTS5 shadow tables. Each source uses newest-value buffering and
+cancels its observation task when the consumer ends. The three persistent
+sidebar sources fail independently, so corrupt meeting projection data does
+not prevent open-item or trash reads from remaining available. Meeting rows
+retain the released partial fallback: if the meeting list is valid but voice
+mix cannot be decoded, rows publish with empty mixes and one inline failure.
+
+The existing one-shot `meetings`, `voiceMixes`, `openActionItems`,
+`deletedMeetings`, and `search` APIs share private query helpers with the
+observed paths; ordering, live-root joins, tombstone scope, and limits therefore
+have one implementation. StorageKit keeps GRDB-specific projection types at
+its edge, while the app maps them to ApplicationKit Library read contracts.
+The database remains a `DatabaseQueue`; this slice adds no migration and schema
+v6 is unchanged.
 
 ## `.portavoz` bundle (M15 L0)
 
