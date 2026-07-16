@@ -36,6 +36,8 @@ final class RecordingController {
     private(set) var contextItems: [ContextItem] = []
     /// Companion answer cards (D26), newest last. Opt-in per recording.
     private(set) var companionCards: [CompanionCard] = []
+    private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
+    private var companionTerminalRuns: [GenerationRun] = []
     var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
         didSet { UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled") }
     }
@@ -144,6 +146,8 @@ final class RecordingController {
         translations = [:]
         liveSummary = nil
         companionCards = []
+        companionArtifactsByCardID = [:]
+        companionTerminalRuns = []
         contextItems = []
         liveNotes = []
         recordingShell = nil
@@ -209,6 +213,8 @@ final class RecordingController {
         liveNotes = []
         summarizedCount = 0
         companionCards = []
+        companionArtifactsByCardID = [:]
+        companionTerminalRuns = []
         contextItems = []
         lastOpenRowID = nil
         micLevel = 0
@@ -369,19 +375,35 @@ final class RecordingController {
         let askedAt = closed.startTime
         // BYOK only if the user configured it AND enabled the opt-in for the
         // Companion (D8/D26); si no, el cliente es nil y todo queda on-device.
-        let companion = LiveCompanion(byok: BYOKSettings.companionClient())
+        let companion = ProvenanceCompanion(byok: BYOKSettings.companionClient())
+        let language = closed.language.flatMap { LanguageCode($0)?.identifier }
+        let sourceMeetingID = meetingID
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard
-                let card = try? await companion.process(
-                    candidate: candidate, recentTranscript: passages,
-                    ownerName: ownerName, askedAt: askedAt),
-                self.phase == .recording,
-                // Dedup against every card kept, not just the last — the same
-                // question can resurface after others and shouldn't repeat.
-                !self.companionCards.contains(where: { $0.question == card.question })
+            let result = await companion.generate(CompanionGenerationRequest(
+                meetingID: sourceMeetingID,
+                sourceTranscriptRevision: 0,
+                workflow: .liveRecording,
+                candidate: candidate,
+                recentTranscript: passages,
+                ownerName: ownerName,
+                outputLanguage: language,
+                askedAt: askedAt))
+            guard self.phase == .recording,
+                  self.meetingID == sourceMeetingID
             else { return }
-            self.companionCards.append(card)
+            switch result {
+            case .artifact(let artifact):
+                guard !self.companionCards.contains(where: {
+                    $0.question == artifact.card.question
+                }) else { return }
+                self.companionCards.append(artifact.card)
+                self.companionArtifactsByCardID[artifact.card.id] = artifact
+            case .terminal(let run):
+                self.companionTerminalRuns.append(run)
+            case .noAttempt, .noArtifact, .unavailable:
+                break
+            }
         }
     }
 
@@ -442,6 +464,10 @@ extension RecordingController {
             captions: captions,
             contextItems: contextItems,
             companionCards: companionCards,
+            companionArtifacts: companionCards.compactMap {
+                companionArtifactsByCardID[$0.id]
+            },
+            companionTerminalRuns: companionTerminalRuns,
             capture: capture,
             voiceprint: voiceprint))
         await session.cancelVoiceprintRead()
@@ -570,6 +596,7 @@ extension RecordingController {
 
     func dismissCompanionCard(_ id: UUID) {
         companionCards.removeAll { $0.id == id }
+        companionArtifactsByCardID[id] = nil
     }
 
     /// Adds a typed note anchored to the current moment of the recording.

@@ -12,6 +12,8 @@ public struct CapturedMeetingSnapshot: Sendable {
     public let segments: [TranscriptSegment]
     public let contextItems: [ContextItem]
     public let companionCards: [CompanionCard]
+    public let companionArtifacts: [CompanionGenerationArtifact]
+    public let companionTerminalRuns: [GenerationRun]
 
     public init(
         meeting: Meeting,
@@ -19,7 +21,9 @@ public struct CapturedMeetingSnapshot: Sendable {
         speakers: [Speaker],
         segments: [TranscriptSegment],
         contextItems: [ContextItem],
-        companionCards: [CompanionCard]
+        companionCards: [CompanionCard],
+        companionArtifacts: [CompanionGenerationArtifact] = [],
+        companionTerminalRuns: [GenerationRun] = []
     ) {
         self.meeting = meeting
         self.assets = assets
@@ -27,6 +31,8 @@ public struct CapturedMeetingSnapshot: Sendable {
         self.segments = segments
         self.contextItems = contextItems
         self.companionCards = companionCards
+        self.companionArtifacts = companionArtifacts
+        self.companionTerminalRuns = companionTerminalRuns
     }
 }
 
@@ -419,10 +425,23 @@ extension MeetingStore {
                 item, createdAt: timestamp, updatedAt: timestamp)
             try record.insert(db)
         }
+        for run in snapshot.companionTerminalRuns {
+            try GenerationRunRecord(run).insert(db)
+        }
         for card in snapshot.companionCards {
             let record = CompanionCardRecord(
                 card,
                 meetingID: snapshot.meeting.id,
+                createdAt: timestamp,
+                updatedAt: timestamp)
+            try record.insert(db)
+        }
+        for artifact in snapshot.companionArtifacts {
+            try GenerationRunRecord(artifact.generationRun).insert(db)
+            let record = CompanionCardRecord(
+                artifact.card,
+                meetingID: snapshot.meeting.id,
+                generationRunID: artifact.generationRun.id,
                 createdAt: timestamp,
                 updatedAt: timestamp)
             try record.insert(db)
@@ -458,6 +477,8 @@ extension MeetingStore {
         }
 
         try validateCapturedContent(snapshot)
+
+        try validateCapturedCompanionProvenance(snapshot)
 
         for asset in snapshot.assets {
             try StoredAudioPath.validate(asset.relativePath)

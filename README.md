@@ -134,14 +134,14 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, calendar-neutral upcoming events, durable processing jobs, privacy-safe generation provenance), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, provenance-linked summary generation and refined transcripts, `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library/Insights/Meeting Detail read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library/Insights/Meeting Detail read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), exact privacy-safe Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
-| `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live companion |
+| `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints and provider/egress traces |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic summary and accepted-Refine transcript provenance, durable leased job queue, local vector index |
+| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic summary, accepted-Refine transcript, and Companion-card provenance, durable leased job queue, local vector index |
 | `IntegrationsKit` | GitHub/Linear/Gist, EventKit calendar, RAG, bundle/export, and MCP adapters |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.

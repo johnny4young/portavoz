@@ -292,6 +292,11 @@ final class RefineMeetingUseCaseTests: XCTestCase {
     func testCompletedCompanionRefreshReplacesSnapshotIncludingEmptyResult() async throws {
         let fixture = RefineFixture()
         for cards in [fixture.companionCards, []] {
+            let artifacts = cards.map {
+                CompanionGenerationArtifact(
+                    card: $0,
+                    generationRun: fixture.successfulCompanionRun(card: $0))
+            }
             let dependencies = RefineDependencies(
                 audio: fixture.audio,
                 systemTranscription: fixture.systemTranscription,
@@ -299,7 +304,8 @@ final class RefineMeetingUseCaseTests: XCTestCase {
                 turns: [],
                 companionAvailable: true,
                 companionRefresh: RefineMeetingCompanionRefresh(
-                    cards: cards,
+                    cards: [],
+                    artifacts: artifacts,
                     completed: true))
             let useCase = ApplyRefinedMeeting(store: dependencies, companion: dependencies)
 
@@ -317,6 +323,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
 
     func testIncompleteCompanionRefreshPreservesPreviousSnapshot() async throws {
         let fixture = RefineFixture()
+        let failedRun = fixture.failedCompanionRun()
         let dependencies = RefineDependencies(
             audio: fixture.audio,
             systemTranscription: fixture.systemTranscription,
@@ -325,6 +332,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
             companionAvailable: true,
             companionRefresh: RefineMeetingCompanionRefresh(
                 cards: fixture.companionCards,
+                terminalRuns: [failedRun],
                 completed: false))
 
         let result = try await ApplyRefinedMeeting(
@@ -334,6 +342,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         let state = await dependencies.state()
         XCTAssertEqual(result.companion, .preserved)
         XCTAssertNil(state.savedCompanionCards)
+        XCTAssertEqual(state.standaloneRuns.last, failedRun)
     }
 
     func testCompanionPersistenceFailureDoesNotTurnCommittedTranscriptIntoFailure() async throws {
@@ -755,6 +764,37 @@ private struct RefineFixture: Sendable {
             metricsJSON: #"{"outputUTF8Bytes":42,"segmentCount":1,"speechMilliseconds":9000}"#)
     }
 
+    func successfulCompanionRun(card: CompanionCard) -> GenerationRun {
+        let timestamp = startedAt.addingTimeInterval(card.askedAt)
+        return GenerationRun(
+            meetingID: meetingID,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "b", count: 64),
+            configJSON: #"{"operation":"classify-and-answer","sourceTranscriptRevision":5,"workflow":"post-refine"}"#,
+            outputLanguage: "es",
+            startedAt: timestamp,
+            finishedAt: timestamp.addingTimeInterval(1),
+            outcome: .succeeded,
+            metricsJSON: #"{"answerUTF8Bytes":8,"questionUTF8Bytes":16}"#)
+    }
+
+    func failedCompanionRun() -> GenerationRun {
+        let timestamp = startedAt.addingTimeInterval(30)
+        return GenerationRun(
+            meetingID: meetingID,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "c", count: 64),
+            configJSON: #"{"operation":"classify-and-answer","sourceTranscriptRevision":5,"workflow":"post-refine"}"#,
+            outputLanguage: "es",
+            startedAt: timestamp,
+            finishedAt: timestamp.addingTimeInterval(1),
+            outcome: .failed)
+    }
+
     func applyRequest(
         _ draft: RefineDraft,
         _ dependencies: RefineDependencies
@@ -948,20 +988,30 @@ private actor RefineDependencies:
         standaloneRuns.append(run)
     }
 
+    func saveRefinedCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) {
+        events.append("save-companion-generation-run")
+        standaloneRuns.append(run)
+    }
+
     func replaceRefinedCompanionCards(
         _ cards: [CompanionCard],
+        generated artifacts: [CompanionGenerationArtifact],
         for meetingID: MeetingID
     ) throws {
         events.append("save-companion")
         if failures.contains(.companionPersistence) { throw RefineDependencyError() }
-        savedCompanionCards = cards
+        savedCompanionCards = cards + artifacts.map(\.card)
     }
 
     func isRefreshAvailable() -> Bool { companionAvailable }
 
     func refresh(
         segments: [TranscriptSegment],
-        meetingID: MeetingID
+        meetingID: MeetingID,
+        transcriptRevision: Int
     ) -> RefineMeetingCompanionRefresh {
         events.append("refresh-companion")
         return companionRefresh

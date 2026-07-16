@@ -461,13 +461,20 @@ struct CompanionCardRecord: Codable, FetchableRecord, PersistableRecord {
     var source: String
     var directed: Bool
     var askedAt: Double
+    var generationRunID: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
 
     // `CompanionCard` carries no meetingID (it's a transient UI card); the
     // owning meeting is stamped here at persistence time.
-    init(_ card: CompanionCard, meetingID: MeetingID, createdAt: Date, updatedAt: Date) {
+    init(
+        _ card: CompanionCard,
+        meetingID: MeetingID,
+        generationRunID: GenerationRunID? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
         self.id = card.id.uuidString
         self.meetingID = meetingID.rawValue.uuidString
         self.question = card.question
@@ -476,6 +483,7 @@ struct CompanionCardRecord: Codable, FetchableRecord, PersistableRecord {
         self.source = card.source
         self.directed = card.directed
         self.askedAt = card.askedAt
+        self.generationRunID = generationRunID?.rawValue.uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = nil

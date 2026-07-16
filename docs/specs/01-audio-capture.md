@@ -109,14 +109,16 @@ an immutable `ApplicationKit.StopRecording` request. A recording-scoped
 voiceprint read begins while capture is active. The use case reconciles
 finalized or missing assets, derives provisional cast and homogeneous aggregate
 language without translating per-turn text, and installs assets, transcript,
-notes, Companion cards, and the exact first diarization job in one StorageKit
-transaction. It then kicks the process worker and schedules engine release;
+notes, retained Companion cards, their successful generation-run links,
+completed failed/cancelled Companion attempts, and the exact first diarization
+job in one StorageKit transaction. Unlinked legacy/bundle-style cards remain
+valid. It then kicks the process worker and schedules engine release;
 the controller navigates immediately from the typed success. Relaunch resumes
 the same owner-leased work after capture recovery. Job-admission failure cannot
 expose a half-installed captured snapshot, and the use case attempts an
 explicit `needsAttention` snapshot fallback without deleting audio. Empty
 publication evidence preserves staging/final recovery files or discards only
-an untouched empty shell (D48).
+an untouched empty shell (D48/D66).
 
 ## External-audio ownership (D46)
 

@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D65 (atomic summary and accepted Refine transcript provenance).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D66 (atomic summary, accepted Refine transcript, and Companion-card provenance).
 
 ## Database
 
@@ -21,7 +21,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `companionCard` (v5) | id, meetingID (FK CASCADE), question, answer, kind, source, directed, askedAt, generationRunID? (v6), createdAt/updatedAt/deletedAt — reviewable Companion snapshot (D26) |
 | `audioAsset` (v6) | id, meetingID, channel, role, unique relativePath, optional finalized media metadata/checksum/levels, healthStatus, sourceAssetID lineage, createdAt/updatedAt/supersededAt/deletedAt |
 | `processingJob` (v6) | durable job state, priority/progress, retries, scheduling/lease/error timestamps; UNIQUE meetingID+kind+inputFingerprint |
-| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine, durable post-capture, and external-audio import successful summaries link atomically; accepted Refine links every replacement segment in its source-revision transaction; failed/cancelled attempts persist separately (D62–D65) |
+| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine, durable post-capture, and external-audio import successful summaries link atomically; accepted Refine links every replacement segment; generated live/post-Refine Companion cards link one current-workflow run; failed/cancelled attempts persist separately (D62–D66) |
 | `outboxEvent` (v6) | idempotent external-side-effect envelope with delivery state, attempts, and retry/delivery timestamps |
 | `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
@@ -167,7 +167,7 @@ card decoding retains the released degradable fallback. Audio bytes are not a
 database concern and remain behind the application filesystem port (D52).
 
 The existing aggregate API remains:
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)`, `companionCards(for:)`, `deleteCompanionCard(_:)`, and `replaceCompanionCards(_:for:)` (atomic replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets; `ftsQuery` quotes tokens — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
 External audio uses the dedicated
 `saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the
@@ -279,7 +279,8 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
 
 1. No SQLCipher (optional and planned, PRODUCT/security).
 2. Manual/post-refine regeneration, durable post-capture generation,
-   external-audio import summaries, and accepted Refine transcripts now write
+   external-audio import summaries, accepted Refine transcripts, and generated
+   live/post-Refine Companion cards now write
    validated terminal `generationRun` records. Manual/import success commits run, immutable
    summary, and actions together; durable success additionally shares the job's
    lease/revision-fenced completion and lifecycle transaction. Import summary
@@ -291,8 +292,9 @@ Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub toke
    post-attempt failures and cancellations persist separately on a best-effort
    basis. The Store exposes typed run history and summary-link lookup, rejects
    orphaned success and malformed or mismatched links, and stores no meeting
-   content in config/metrics. Inline diarization and Companion remain later
-   Band 3 producers (D62–D65).
+   content in config/metrics. Inline diarization has no separate durable artifact
+   link beyond the transcript it attributes; transient suggestions/briefs remain
+   intentionally ephemeral (D62–D66).
 3. `visibility` reserved and unused (sharing D12).
 4. FTS at 1,000 meetings / 80k segments is measured at p50 22.8 ms and
    p95 23.9 ms (`portavoz-cli bench-fts`, spec 08). Larger-library and
@@ -340,8 +342,12 @@ durable write; after D65, a begun failed/cancelled attempt may persist one
 standalone diagnostic run. Acceptance uses optimistic revision fencing and one
 aggregate/provenance transaction.
 Companion cards are a separate optional post-commit replacement, and summaries
-remain immutable history. A source rule prevents the macOS app from bypassing
-the use case through direct refine mutations (D47/D65).
+remain immutable history. After D66, a complete refresh atomically replaces
+cards plus successful runs only when the run's post-refine source revision is
+still current. An incomplete refresh preserves the prior snapshot and may store
+current failed/cancelled attempts best effort. Later generic card saves retain
+the established link. A source rule prevents the macOS app from bypassing the
+use case through direct refine mutations (D47/D65/D66).
 
 Slice 2H makes `MeetingStore` conform to the narrow `StopRecordingStore` port.
 The adapter exposes guarded empty-shell discard, canonical recovery marking,

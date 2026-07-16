@@ -3,6 +3,7 @@ import Foundation
 /// Generated-artifact family recorded by the shared schema-v6 provenance
 /// envelope. Add a case only when that artifact type adopts provenance.
 public enum GenerationRunKind: String, Codable, Sendable {
+    case companion
     case summary
     case transcript
 }

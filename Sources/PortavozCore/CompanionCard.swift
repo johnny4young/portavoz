@@ -43,3 +43,16 @@ public struct CompanionCard: Codable, Identifiable, Sendable, Equatable {
         self.askedAt = askedAt
     }
 }
+
+/// One generated Companion artifact and the exact successful model operation
+/// that produced it. Persistence links both atomically; UI still renders only
+/// the card value.
+public struct CompanionGenerationArtifact: Equatable, Sendable {
+    public let card: CompanionCard
+    public let generationRun: GenerationRun
+
+    public init(card: CompanionCard, generationRun: GenerationRun) {
+        self.card = card
+        self.generationRun = generationRun
+    }
+}

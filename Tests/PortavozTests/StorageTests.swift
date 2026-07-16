@@ -607,4 +607,144 @@ extension MeetingStoreTests {
         let cards = try await store.companionCards(for: meeting.id)
         XCTAssertEqual(cards.map(\.question), ["nueva"])  // the old snapshot is gone
     }
+
+    func testGeneratedCompanionReplacementLinksRunAndRetainsItOnCardSave() async throws {
+        try await store.save(meeting)
+        let card = CompanionCard(
+            question: "What changed?", answer: "The provenance boundary.",
+            kind: .context, source: "on-device", askedAt: 15)
+        let run = companionRun(card: card, outcome: .succeeded)
+
+        try await store.replaceCompanionCards(
+            [],
+            generated: [CompanionGenerationArtifact(card: card, generationRun: run)],
+            for: meeting.id)
+
+        let storedRuns = try await store.generationRuns(for: meeting.id)
+        XCTAssertEqual(storedRuns, [run])
+        try await store.save([card], for: meeting.id)
+        let linkedRunID = try await store.database.read { db in
+            try String.fetchOne(
+                db,
+                sql: "SELECT generationRunID FROM companionCard WHERE id = ?",
+                arguments: [card.id.uuidString])
+        }
+        XCTAssertEqual(linkedRunID, run.id.rawValue.uuidString)
+    }
+
+    func testGeneratedCompanionReplacementRollsBackRunAndOldSnapshotOnCardFailure() async throws {
+        try await store.save(meeting)
+        let old = CompanionCard(
+            question: "Old card", answer: "Keep me", kind: .context,
+            source: "on-device", askedAt: 5)
+        try await store.save([old], for: meeting.id)
+        try await store.database.write { db in
+            try db.execute(sql: """
+                CREATE TRIGGER reject_generated_companion
+                BEFORE INSERT ON companionCard
+                WHEN NEW.question = 'New card'
+                BEGIN
+                    SELECT RAISE(ABORT, 'injected Companion failure');
+                END
+                """)
+        }
+        let card = CompanionCard(
+            question: "New card", answer: "Never partial", kind: .knowledge,
+            source: "on-device", askedAt: 10)
+        let run = companionRun(card: card, outcome: .succeeded)
+
+        do {
+            try await store.replaceCompanionCards(
+                [],
+                generated: [CompanionGenerationArtifact(card: card, generationRun: run)],
+                for: meeting.id)
+            XCTFail("a late card failure must reject the whole replacement")
+        } catch {
+            let cards = try await store.companionCards(for: meeting.id)
+            let runs = try await store.generationRuns(for: meeting.id)
+            XCTAssertEqual(cards, [old])
+            XCTAssertTrue(runs.isEmpty)
+        }
+    }
+
+    func testGeneratedCompanionReplacementRejectsStaleTranscriptRevision() async throws {
+        try await store.save(meeting)
+        let card = CompanionCard(
+            question: "Stale question", answer: "Must not publish",
+            kind: .context, source: "on-device", askedAt: 15)
+        let staleRun = companionRun(
+            card: card,
+            outcome: .succeeded,
+            sourceTranscriptRevision: meeting.transcriptRevision + 1)
+
+        do {
+            try await store.replaceCompanionCards(
+                [],
+                generated: [CompanionGenerationArtifact(
+                    card: card,
+                    generationRun: staleRun)],
+                for: meeting.id)
+            XCTFail("stale Companion provenance must not replace the current snapshot")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let cards = try await store.companionCards(for: meeting.id)
+        let runs = try await store.generationRuns(for: meeting.id)
+        XCTAssertTrue(cards.isEmpty)
+        XCTAssertTrue(runs.isEmpty)
+    }
+
+    func testCompanionTerminalRunRejectsStaleTranscriptRevision() async throws {
+        try await store.save(meeting)
+        let card = CompanionCard(
+            question: "Failed question", answer: "",
+            kind: .context, source: "on-device", askedAt: 15)
+        let sourceRevision = meeting.transcriptRevision + 1
+        let staleRun = companionRun(
+            card: card,
+            outcome: .failed,
+            sourceTranscriptRevision: sourceRevision)
+
+        do {
+            try await store.saveCompanionGenerationRun(
+                staleRun,
+                workflow: "post-refine",
+                sourceTranscriptRevision: sourceRevision)
+            XCTFail("a stale terminal Companion run must not enter current history")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let runs = try await store.generationRuns(for: meeting.id)
+        XCTAssertTrue(runs.isEmpty)
+    }
+
+    private func companionRun(
+        card: CompanionCard,
+        outcome: GenerationRunOutcome,
+        sourceTranscriptRevision: Int = 0
+    ) -> GenerationRun {
+        let timestamp = meeting.startedAt.addingTimeInterval(card.askedAt)
+        return GenerationRun(
+            meetingID: meeting.id,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "e", count: 64),
+            configJSON: """
+                {"operation":"classify-and-answer",\
+                "sourceTranscriptRevision":\(sourceTranscriptRevision),\
+                "workflow":"post-refine"}
+                """,
+            outputLanguage: "en",
+            startedAt: timestamp,
+            finishedAt: timestamp.addingTimeInterval(1),
+            outcome: outcome,
+            metricsJSON: #"{"answerUTF8Bytes":12,"questionUTF8Bytes":12}"#)
+    }
 }

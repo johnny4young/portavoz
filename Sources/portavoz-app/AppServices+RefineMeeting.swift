@@ -170,16 +170,20 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
 
     func refresh(
         segments: [TranscriptSegment],
-        meetingID: MeetingID
+        meetingID: MeetingID,
+        transcriptRevision: Int
     ) async -> RefineMeetingCompanionRefresh {
         guard #available(macOS 26.0, *) else {
             return RefineMeetingCompanionRefresh(cards: [], completed: false)
         }
         let result = await CompanionRefresh.regenerate(
             from: segments,
-            meetingID: meetingID)
+            meetingID: meetingID,
+            transcriptRevision: transcriptRevision)
         return RefineMeetingCompanionRefresh(
-            cards: result.cards,
+            cards: [],
+            artifacts: result.artifacts,
+            terminalRuns: result.terminalRuns,
             completed: result.completed)
     }
 }

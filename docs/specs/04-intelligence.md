@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D64 (atomic manual, durable, and import summary-generation provenance).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -184,6 +184,37 @@ the Band 3 outbox.
 3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (`BYOKSettings.companionClient()`, same instructions as on-device, 400 tokens max, `source` = provider host; if the cloud call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8).
 
 App: per-recording opt-in ("Companion" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail reviews them and jumps to the moment asked. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only verbatim `passage N` citations at the end, never legitimate intermediate text. It never answers for you (D26). Settings: "Modelo externo (BYOK)" section with endpoint/model/key + Companion toggle disabled until everything is configured; removing the key turns off the toggle. Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
+
+### Companion-card generation provenance (D66)
+
+`ProvenanceCompanion` wraps the released pipeline without changing its card
+policy. After the deterministic question/name gate and model availability
+check, it creates one ephemeral attempt. The exact operation fingerprint hashes
+meeting and source transcript revision, live-recording/post-refine workflow,
+candidate, ordered `RAGPassage` material, optional owner/language, exact asked-at
+bits, and optional external destination/provider/model. The exact destination
+may include a base path but appears only inside the hash; run JSON keeps only
+the disclosure-safe provider label/model. None of the private meeting values is
+copied into the run JSON.
+
+A successful durable card receives one `.companion` `GenerationRun` whose
+configuration names the Foundation Models classifier, actual answer provider
+and model, context count, workflow/revision, and whether a BYOK transfer was
+configured, attempted, and successful. Metrics contain only question/answer
+UTF-8 byte counts, kind, and directed status. A remote success identifies that
+provider; a remote failure followed by the released local answer identifies
+Foundation Models while retaining the failed-transfer facts. BYOK is marked
+before transfer, and cancellation is rethrown or detected through
+`Task.checkCancellation()` before fallback, so cancellation never invokes an
+unintended local model. The original `LiveCompanion.process` still exposes its
+underlying error rather than the internal trace wrapper.
+
+Failure/cancellation after attempt start creates a terminal run. The
+deterministic gate, unavailable model, classifier negative/logistics drop,
+unusable answer, and post-generation deduplication create no durable run. A
+directed ping is still a generated card and identifies Foundation Models even
+when no answer stage was needed. Live and post-Refine persistence boundaries are
+specified in specs 01, 05, and 06.
 
 ## Naming
 

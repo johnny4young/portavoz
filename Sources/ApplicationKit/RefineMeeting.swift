@@ -348,8 +348,13 @@ public protocol RefineMeetingStore: Sendable {
         generationRun: GenerationRun?
     ) async throws
     func saveRefineGenerationRun(_ run: GenerationRun) async throws
+    func saveRefinedCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) async throws
     func replaceRefinedCompanionCards(
         _ cards: [CompanionCard],
+        generated artifacts: [CompanionGenerationArtifact],
         for meetingID: MeetingID
     ) async throws
 }
@@ -376,20 +381,40 @@ extension MeetingStore: RefineMeetingStore {
         try await saveGenerationRun(run)
     }
 
+    public func saveRefinedCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) async throws {
+        try await saveCompanionGenerationRun(
+            run,
+            workflow: "post-refine",
+            sourceTranscriptRevision: sourceTranscriptRevision)
+    }
+
     public func replaceRefinedCompanionCards(
         _ cards: [CompanionCard],
+        generated artifacts: [CompanionGenerationArtifact],
         for meetingID: MeetingID
     ) async throws {
-        try await replaceCompanionCards(cards, for: meetingID)
+        try await replaceCompanionCards(cards, generated: artifacts, for: meetingID)
     }
 }
 
 public struct RefineMeetingCompanionRefresh: Sendable {
     public let cards: [CompanionCard]
+    public let artifacts: [CompanionGenerationArtifact]
+    public let terminalRuns: [GenerationRun]
     public let completed: Bool
 
-    public init(cards: [CompanionCard], completed: Bool) {
+    public init(
+        cards: [CompanionCard],
+        artifacts: [CompanionGenerationArtifact] = [],
+        terminalRuns: [GenerationRun] = [],
+        completed: Bool
+    ) {
         self.cards = cards
+        self.artifacts = artifacts
+        self.terminalRuns = terminalRuns
         self.completed = completed
     }
 }
@@ -400,7 +425,8 @@ public protocol RefineMeetingCompanion: Sendable {
     func isRefreshAvailable() async -> Bool
     func refresh(
         segments: [TranscriptSegment],
-        meetingID: MeetingID
+        meetingID: MeetingID,
+        transcriptRevision: Int
     ) async -> RefineMeetingCompanionRefresh
 }
 
@@ -489,13 +515,20 @@ public struct ApplyRefinedMeeting: ApplicationUseCase {
         await request.progress(.refreshingCompanion)
         let refreshed = await companion.refresh(
             segments: request.draft.segments,
-            meetingID: request.meetingID)
+            meetingID: request.meetingID,
+            transcriptRevision: request.draft.sourceTranscriptRevision + 1)
+        for run in refreshed.terminalRuns {
+            try? await store.saveRefinedCompanionGenerationRun(
+                run,
+                sourceTranscriptRevision: request.draft.sourceTranscriptRevision + 1)
+        }
         guard refreshed.completed else { return .preserved }
         do {
             try await store.replaceRefinedCompanionCards(
                 refreshed.cards,
+                generated: refreshed.artifacts,
                 for: request.meetingID)
-            return .replaced(count: refreshed.cards.count)
+            return .replaced(count: refreshed.cards.count + refreshed.artifacts.count)
         } catch {
             return .persistenceFailed
         }

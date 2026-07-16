@@ -7,12 +7,13 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3E:
-characterize Companion generation and adopt provenance without weakening its
-degradable live/post-Refine behavior or reviewable-card persistence. Slices
-3A–3D adopted provenance for manual/post-refine summaries, the durable
-post-capture executor, best-effort external-audio import summaries, and
-accepted refined transcripts; Band 2 is complete. Keep
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3F: introduce
+the first `DataEgressGateway` vertical path for explicitly enabled Companion
+BYOK, distinguishing localhost from remote transfer and preserving its current
+question-only disclosure and on-device fallback. Slices 3A–3E adopted
+provenance for manual/post-refine summaries, the durable post-capture executor,
+best-effort external-audio import summaries, accepted refined transcripts, and
+durable Companion cards; Band 2 is complete. Keep
 Spotlight independent; its incremental indexing/outbox adoption belongs with
 measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
@@ -21,7 +22,28 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66).
+
+- **Architecture Band 3 slice 3E complete — Companion cards carry exact,
+  privacy-safe attempt provenance (Jul 16, 2026)**: each durable live or
+  post-Refine card links one successful `.companion` run. Its length-framed
+  fingerprint hashes the meeting/revision/workflow, candidate, ordered context,
+  owner/language/time, and configured external provider without storing any of
+  that private material. Configuration distinguishes the Foundation Models
+  classifier, actual answer provider/model, context count, and whether a BYOK
+  transfer occurred and succeeded; metrics contain only question/answer byte
+  counts, kind, and directed status. A cancelled remote request never falls
+  through to a local model, while an ordinary provider failure retains the
+  released on-device fallback and records both stages honestly. Live successes
+  and completed terminal attempts join the atomic Stop snapshot; post-Refine
+  success replaces cards with run links in one current-revision transaction,
+  while an incomplete refresh preserves prior cards and stores current terminal
+  attempts best effort. Heuristic rejects, unavailable models, classifier
+  negatives, unusable answers, and deduplicated cards create no orphaned run.
+  Eight direct provenance/storage cases plus strengthened Stop/Refine coverage
+  prove content redaction, remote success/fallback/cancellation, stale-revision
+  rejection, link retention, and late-write rollback. The current gate is 617
+  package tests (13 gated), 233 linted Swift source files, and 20 UI cases (D66).
 
 - **Architecture Band 3 slice 3D complete — accepted Refine transcripts carry
   atomic, content-free provenance (Jul 16, 2026)**: one composite transcript

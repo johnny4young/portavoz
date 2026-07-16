@@ -273,6 +273,29 @@ final class RecordingPersistenceTests: XCTestCase {
             kind: .context,
             source: "on-device",
             askedAt: 1.5)
+        let successfulRun = GenerationRun(
+            meetingID: meeting.id,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "c", count: 64),
+            configJSON: #"{"operation":"classify-and-answer","sourceTranscriptRevision":0,"workflow":"live-recording"}"#,
+            outputLanguage: "en",
+            startedAt: meeting.startedAt.addingTimeInterval(1),
+            finishedAt: meeting.startedAt.addingTimeInterval(1.5),
+            outcome: .succeeded,
+            metricsJSON: #"{"answerUTF8Bytes":32,"questionUTF8Bytes":13}"#)
+        let failedRun = GenerationRun(
+            meetingID: meeting.id,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "d", count: 64),
+            configJSON: #"{"operation":"classify-and-answer","sourceTranscriptRevision":0,"workflow":"live-recording"}"#,
+            outputLanguage: "en",
+            startedAt: meeting.startedAt.addingTimeInterval(1.6),
+            finishedAt: meeting.startedAt.addingTimeInterval(1.7),
+            outcome: .failed)
         meeting.endedAt = meeting.startedAt.addingTimeInterval(2)
         meeting.language = "en"
         meeting.lifecycleState = .captured
@@ -283,13 +306,18 @@ final class RecordingPersistenceTests: XCTestCase {
             speakers: [speaker],
             segments: [segment],
             contextItems: [note],
-            companionCards: [card]))
+            companionCards: [],
+            companionArtifacts: [CompanionGenerationArtifact(
+                card: card,
+                generationRun: successfulRun)],
+            companionTerminalRuns: [failedRun]))
 
         let loadedDetail = try await store.detail(meeting.id)
         let storedDetail = try XCTUnwrap(loadedDetail)
         let storedAssets = try await store.audioAssets(for: meeting.id)
         let storedNotes = try await store.contextItems(for: meeting.id)
         let storedCards = try await store.companionCards(for: meeting.id)
+        let storedRuns = try await store.generationRuns(for: meeting.id)
         XCTAssertEqual(storedDetail.meeting.lifecycleState, .captured)
         XCTAssertEqual(storedDetail.meeting.language, "en")
         XCTAssertEqual(storedDetail.speakers.map(\.id), [speaker.id])
@@ -300,6 +328,14 @@ final class RecordingPersistenceTests: XCTestCase {
         XCTAssertEqual(storedAssets.first?.sha256, String(repeating: "a", count: 64))
         XCTAssertEqual(storedNotes.map(\.id), [note.id])
         XCTAssertEqual(storedCards.map(\.id), [card.id])
+        XCTAssertEqual(Set(storedRuns.map(\.id)), Set([successfulRun.id, failedRun.id]))
+        let linkedRunID = try await store.database.read { db in
+            try String.fetchOne(
+                db,
+                sql: "SELECT generationRunID FROM companionCard WHERE id = ?",
+                arguments: [card.id.uuidString])
+        }
+        XCTAssertEqual(linkedRunID, successfulRun.id.rawValue.uuidString)
     }
 
     func testCapturedSnapshotAtomicallyAdmitsInitialProcessing() async throws {

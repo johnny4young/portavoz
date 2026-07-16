@@ -98,6 +98,40 @@ public enum CompanionAnswer {
 #if canImport(FoundationModels)
 import FoundationModels
 
+public struct CompanionProcessTrace: Equatable, Sendable {
+    public internal(set) var classifierInvoked = false
+    public internal(set) var answerProviderID: String?
+    public internal(set) var answerModelID: String?
+    public internal(set) var externalTransferOccurred = false
+    public internal(set) var externalTransferSucceeded = false
+
+    public init(
+        classifierInvoked: Bool = false,
+        answerProviderID: String? = nil,
+        answerModelID: String? = nil,
+        externalTransferOccurred: Bool = false,
+        externalTransferSucceeded: Bool = false
+    ) {
+        self.classifierInvoked = classifierInvoked
+        self.answerProviderID = answerProviderID
+        self.answerModelID = answerModelID
+        self.externalTransferOccurred = externalTransferOccurred
+        self.externalTransferSucceeded = externalTransferSucceeded
+    }
+}
+
+struct CompanionProcessResult: Sendable {
+    let card: CompanionCard?
+    let trace: CompanionProcessTrace
+}
+
+struct CompanionProcessFailure: Error {
+    let trace: CompanionProcessTrace
+    let underlying: any Error
+
+    var cancelled: Bool { underlying is CancellationError }
+}
+
 /// The live companion pipeline (D26): classify a candidate caption row,
 /// route by question type, answer on-device — or, for `knowledge`
 /// questions ONLY and with the user's explicit BYOK opt-in, via their
@@ -129,15 +163,62 @@ public struct LiveCompanion: Sendable {
         ownerName: String? = nil,
         askedAt: TimeInterval
     ) async throws -> CompanionCard? {
+        do {
+            return try await processWithTrace(
+                candidate: candidate,
+                recentTranscript: recentTranscript,
+                ownerName: ownerName,
+                askedAt: askedAt).card
+        } catch let failure as CompanionProcessFailure {
+            throw failure.underlying
+        }
+    }
+
+    func processWithTrace(
+        candidate: String,
+        recentTranscript: [RAGPassage],
+        ownerName: String? = nil,
+        askedAt: TimeInterval
+    ) async throws -> CompanionProcessResult {
         let mentioned = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
-        guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else { return nil }
+        guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else {
+            return CompanionProcessResult(card: nil, trace: CompanionProcessTrace())
+        }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
+        var trace = CompanionProcessTrace()
+        trace.classifierInvoked = true
+        do {
+            return try await processCandidate(
+                candidate,
+                recentTranscript: recentTranscript,
+                ownerName: ownerName,
+                mentioned: mentioned,
+                askedAt: askedAt,
+                trace: &trace)
+        } catch {
+            let underlying: any Error = error is CancellationError || Task.isCancelled
+                ? CancellationError()
+                : error
+            throw CompanionProcessFailure(
+                trace: trace,
+                underlying: underlying)
+        }
+    }
+
+    private func processCandidate(
+        _ candidate: String,
+        recentTranscript: [RAGPassage],
+        ownerName: String?,
+        mentioned: Bool,
+        askedAt: TimeInterval,
+        trace: inout CompanionProcessTrace
+    ) async throws -> CompanionProcessResult {
         guard let detected = try await classify(candidate, ownerName: ownerName),
             detected.isQuestion, !detected.question.isEmpty
-        else { return nil }
+        else { return CompanionProcessResult(card: nil, trace: trace) }
         // Directed = the DETERMINISTIC name gate, never the model's
         // opinion: asked to flag it, the 3B cleaned "Johnny," out of the
         // question and reported false (caught by the gated test).
@@ -147,38 +228,57 @@ public struct LiveCompanion: Sendable {
         case "knowledge":
             let rawAnswer: String
             let source: String
-            if let byok,
-                let answer = try? await byok.complete(
-                    system: Self.knowledgeInstructions,
-                    user: detected.question,
-                    maxTokens: 400) {
-                rawAnswer = answer
-                source = byok.providerLabel
+            if let byok {
+                trace.externalTransferOccurred = true
+                trace.answerProviderID = byok.providerLabel
+                trace.answerModelID = byok.model
+                do {
+                    let answer = try await byok.complete(
+                        system: Self.knowledgeInstructions,
+                        user: detected.question,
+                        maxTokens: 400)
+                    trace.externalTransferSucceeded = true
+                    rawAnswer = answer
+                    source = byok.providerLabel
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    try Task.checkCancellation()
+                    trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+                    trace.answerModelID = CompanionGenerationAttempt.foundationModelID
+                    rawAnswer = try await answerKnowledge(detected.question)
+                    source = "on-device"
+                }
             } else {
-                // No BYOK — or the cloud call failed (network, quota, endpoint
-                // down): the card falls back on-device and says so in `source`.
+                trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+                trace.answerModelID = CompanionGenerationAttempt.foundationModelID
                 rawAnswer = try await answerKnowledge(detected.question)
                 source = "on-device"
             }
-            return Self.card(
+            let card = Self.card(
                 question: detected.question, rawAnswer: rawAnswer, kind: .knowledge,
                 source: source, directed: directed, askedAt: askedAt)
+            return CompanionProcessResult(card: card, trace: trace)
         case "context":
             guard !recentTranscript.isEmpty else {
-                return directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
+                let card = directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
+                return CompanionProcessResult(card: card, trace: trace)
             }
+            trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+            trace.answerModelID = CompanionGenerationAttempt.foundationModelID
             let answer = try await RAGAnswerer().answer(
                 question: detected.question, passages: recentTranscript)
-            return Self.card(
+            let card = Self.card(
                 question: detected.question, rawAnswer: answer, kind: .context,
                 source: "on-device", directed: directed, askedAt: askedAt)
+            return CompanionProcessResult(card: card, trace: trace)
         default:
             // Logistics/small talk: a card here is noise, the classic
             // failure mode of this feature class — UNLESS it was aimed at
             // the owner by name ("Johnny, ¿nos acompañas mañana?"). Then
             // the ping IS the value: question only, no invented answer.
-            guard directed else { return nil }
-            return Self.pingCard(detected.question, askedAt: askedAt)
+            let card = directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
+            return CompanionProcessResult(card: card, trace: trace)
         }
     }
 

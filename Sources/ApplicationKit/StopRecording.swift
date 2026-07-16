@@ -106,6 +106,8 @@ public struct StopRecordingRequest: Sendable {
     public let captions: [TranscriptSegment]
     public let contextItems: [ContextItem]
     public let companionCards: [CompanionCard]
+    public let companionArtifacts: [CompanionGenerationArtifact]
+    public let companionTerminalRuns: [GenerationRun]
     public let capture: StopRecordingCapture
     public let voiceprint: Voiceprint?
 
@@ -115,6 +117,8 @@ public struct StopRecordingRequest: Sendable {
         captions: [TranscriptSegment],
         contextItems: [ContextItem],
         companionCards: [CompanionCard],
+        companionArtifacts: [CompanionGenerationArtifact] = [],
+        companionTerminalRuns: [GenerationRun] = [],
         capture: StopRecordingCapture,
         voiceprint: Voiceprint?
     ) {
@@ -123,6 +127,8 @@ public struct StopRecordingRequest: Sendable {
         self.captions = captions
         self.contextItems = contextItems
         self.companionCards = companionCards
+        self.companionArtifacts = companionArtifacts
+        self.companionTerminalRuns = companionTerminalRuns
         self.capture = capture
         self.voiceprint = voiceprint
     }
@@ -406,13 +412,18 @@ public struct StopRecording: ApplicationUseCase {
         assets: [AudioAsset],
         attribution: SpeakerAttributor.Attribution
     ) -> CapturedMeetingSnapshot {
-        CapturedMeetingSnapshot(
+        let generatedCardIDs = Set(request.companionArtifacts.map(\.card.id))
+        return CapturedMeetingSnapshot(
             meeting: meeting,
             assets: assets,
             speakers: attribution.speakers,
             segments: attribution.segments,
             contextItems: request.contextItems,
-            companionCards: request.companionCards)
+            companionCards: request.companionCards.filter {
+                !generatedCardIDs.contains($0.id)
+            },
+            companionArtifacts: request.companionArtifacts,
+            companionTerminalRuns: request.companionTerminalRuns)
     }
 
     private func reconciledAssets(
