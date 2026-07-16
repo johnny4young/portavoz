@@ -69,6 +69,22 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["▸"].waitForExistence(timeout: 5),
             "the Decisiones tab must reveal the ▸ coauthored bullet (D28)")
+
+        // A real mutation crosses MeetingDetailModel's client and the scoped
+        // summary observation returns the completed count to the same view.
+        let todosTab = app.control(withIdentifier: "summary-tab-todos")
+        todosTab.click()
+        let actionItem = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'action-item-'"))
+            .firstMatch
+        XCTAssertTrue(
+            actionItem.waitForExistence(timeout: 5),
+            "the seeded action item must expose its stable control boundary")
+        actionItem.click()
+        let completed = expectation(
+            for: NSPredicate(format: "label CONTAINS '1/1'"),
+            evaluatedWith: todosTab)
+        wait(for: [completed], timeout: 5)
     }
 
     @MainActor
@@ -122,7 +138,7 @@ final class MeetingDetailUITests: XCTestCase {
             app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
             "the answered Companion card must render for review")
 
-        attachScreenshot(of: app, named: "band-2s-scoped-meeting-detail")
+        attachScreenshot(of: app, named: "band-2t-meeting-detail-mutations")
     }
 
     @MainActor

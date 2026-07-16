@@ -45,7 +45,8 @@ final class AppServices {
     private(set) var whisper: WhisperEngine?
     private var whisperVariantID: String?
 
-    /// Bumped after any write so list/detail views know to reload.
+    /// Compatibility trigger for Spotlight's full local reindex. Library,
+    /// Insights, and Meeting Detail reads are scoped observations instead.
     var libraryVersion = 0
     /// Navigation requested from OUTSIDE the window hierarchy (the
     /// pre-meeting banner): ContentView observes it, applies it to its

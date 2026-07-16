@@ -9,6 +9,13 @@ protocol MeetingDetailModelClient: AnyObject {
     func observeMeetingReview(
         _ meetingID: MeetingID
     ) -> AsyncStream<MeetingReviewUpdate>
+
+    func renameMeetingDetailMeeting(_ meeting: Meeting) async throws
+    func renameMeetingDetailSpeaker(_ speaker: Speaker) async throws
+    func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws
+    func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
+    func deleteMeetingDetail(_ id: MeetingID) async throws
+    func requestMeetingDetailSearchReindex()
 }
 
 /// Per-detail owner of scoped loading, partial failure, and the current
@@ -29,6 +36,25 @@ final class MeetingDetailModel {
         fileprivate(set) var phase: LoadPhase = .idle
         fileprivate(set) var readModel: MeetingReviewReadModel?
         fileprivate(set) var revision = 0
+        fileprivate(set) var lastActionError: String?
+    }
+
+    enum Action {
+        case renameMeeting(Meeting, title: String)
+        case acceptNameSuggestion(Speaker, name: String)
+        case acceptVoiceSuggestion(Speaker, name: String)
+        case renameSpeaker(Speaker, name: String)
+        case setActionItem(UUID, done: Bool)
+        case removeCompanionCard(UUID)
+        case deleteMeeting
+        case searchableContentChanged
+    }
+
+    enum Effect {
+        case nameSuggestionAccepted(Speaker)
+        case voiceSuggestionAccepted(Speaker)
+        case speakerRenamed(Speaker)
+        case meetingDeleted(MeetingID)
     }
 
     private(set) var state = State()
@@ -59,6 +85,91 @@ final class MeetingDetailModel {
             guard !Task.isCancelled, observationID == currentID else { return }
             publish(update)
         }
+    }
+
+    @discardableResult
+    func send(_ action: Action) async -> Effect? {
+        switch action {
+        case .renameMeeting(let meeting, let title):
+            await renameMeeting(meeting, title: title)
+            return nil
+        case .acceptNameSuggestion(let speaker, let name):
+            return await acceptNameSuggestion(speaker, name: name)
+        case .acceptVoiceSuggestion(let speaker, let name):
+            return await acceptVoiceSuggestion(speaker, name: name)
+        case .renameSpeaker(let speaker, let name):
+            return await renameSpeaker(speaker, name: name)
+        case .setActionItem(let id, let done):
+            await setActionItem(id, done: done)
+            return nil
+        case .removeCompanionCard(let id):
+            await removeCompanionCard(id)
+            return nil
+        case .deleteMeeting:
+            await deleteMeeting()
+            return .meetingDeleted(meetingID)
+        case .searchableContentChanged:
+            client.requestMeetingDetailSearchReindex()
+            return nil
+        }
+    }
+}
+
+private extension MeetingDetailModel {
+    func renameMeeting(_ original: Meeting, title: String) async {
+        var meeting = original
+        meeting.title = title
+        _ = try? await client.renameMeetingDetailMeeting(meeting)
+        client.requestMeetingDetailSearchReindex()
+    }
+
+    func acceptNameSuggestion(_ original: Speaker, name: String) async -> Effect {
+        var speaker = original
+        speaker.displayName = name
+        _ = try? await client.renameMeetingDetailSpeaker(speaker)
+        client.requestMeetingDetailSearchReindex()
+        return .nameSuggestionAccepted(speaker)
+    }
+
+    func acceptVoiceSuggestion(_ original: Speaker, name: String) async -> Effect {
+        var speaker = original
+        speaker.displayName = name
+        _ = try? await client.renameMeetingDetailSpeaker(speaker)
+        client.requestMeetingDetailSearchReindex()
+        return .voiceSuggestionAccepted(speaker)
+    }
+
+    func renameSpeaker(_ original: Speaker, name: String) async -> Effect? {
+        var speaker = original
+        speaker.displayName = name.isEmpty ? nil : name
+        do {
+            try await client.renameMeetingDetailSpeaker(speaker)
+        } catch {
+            state.lastActionError = L10n.format(
+                "Could not rename: %@",
+                error.localizedDescription)
+            return nil
+        }
+        client.requestMeetingDetailSearchReindex()
+        return .speakerRenamed(speaker)
+    }
+
+    func setActionItem(_ id: UUID, done: Bool) async {
+        _ = try? await client.setMeetingDetailActionItem(id, done: done)
+        client.requestMeetingDetailSearchReindex()
+    }
+
+    func removeCompanionCard(_ id: UUID) async {
+        do {
+            try await client.deleteMeetingDetailCompanionCard(id)
+        } catch {
+            state.lastActionError = L10n.text("Could not remove the card.")
+        }
+    }
+
+    func deleteMeeting() async {
+        _ = try? await client.deleteMeetingDetail(meetingID)
+        client.requestMeetingDetailSearchReindex()
     }
 }
 

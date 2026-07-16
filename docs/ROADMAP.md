@@ -7,19 +7,34 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** finish Band 2 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md): move Meeting Detail's
-remaining title/speaker/action-item/Companion mutations behind its narrow model
-client, preserving explicit consent offers, typed errors, newest-summary
-selection, and Spotlight invalidation. The scoped read model and observations
-are complete. Keep Spotlight independent; its incremental indexing/outbox
-adoption belongs with measured Band 4 scale work.
+program in [refactor-20260714.md](refactor-20260714.md): audit external package
+compatibility and remove or justify the unused `ContextFeedKit` and `SyncKit`
+placeholder targets in slice 2U. Meeting Detail's scoped read model and
+mutation boundary are complete. Keep Spotlight independent; its incremental
+indexing/outbox adoption belongs with measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
 `RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60).
+
+- **Architecture Band 2 slice 2T complete — Meeting Detail writes through one
+  owner (Jul 16, 2026)**: `MeetingDetailModel` now owns explicit actions and
+  effects for title/speaker changes, name and voice suggestions, action-item
+  completion, Companion removal, meeting deletion, and searchable-content
+  changes. Its `AppServices` client adapts Store, lifecycle, and Spotlight's
+  compatibility trigger; the view no longer reaches any of those directly.
+  Best-effort paths, manual-rename and Companion errors, delete navigation,
+  and explicit remember-voice consent remain unchanged. The adapter also maps
+  stale-refine persistence errors before presentation. Two direct model tests
+  bring the verified baseline to 595 package tests (13 gated), 231 linted Swift
+  files, and 20 UI cases. The existing summary case now checks that an action
+  toggle returns through the scoped summary observation; the rail case retains
+  fresh app-window evidence. The remaining Band 2 decision is the two unused
+  placeholder Kits; audio-path resolution and incremental Spotlight indexing
+  remain measured Band 4 seams (D60).
 
 - **Architecture Band 2 slice 2S complete — Meeting Detail reads one meeting,
   not the library (Jul 15, 2026)**: ApplicationKit now owns storage-independent

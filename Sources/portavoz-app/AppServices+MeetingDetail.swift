@@ -7,6 +7,20 @@ extension AppServices {
     func makeMeetingDetailModel(_ meetingID: MeetingID) -> MeetingDetailModel {
         MeetingDetailModel(meetingID: meetingID, client: self)
     }
+
+    func applyMeetingDetailRefine(
+        _ request: ApplyRefinedMeetingRequest
+    ) async throws -> ApplyRefinedMeetingResult {
+        do {
+            return try await refineMeeting.apply(request)
+        } catch StorageError.staleRefineDraft(_, _, _) {
+            throw MeetingDetailRefineApplyError.staleDraft
+        }
+    }
+}
+
+enum MeetingDetailRefineApplyError: Error {
+    case staleDraft
 }
 
 extension AppServices: MeetingDetailModelClient {
@@ -17,6 +31,30 @@ extension AppServices: MeetingDetailModelClient {
             core: store.observeMeetingReviewCore(meetingID),
             summary: store.observeMeetingReviewSummary(meetingID),
             companion: store.observeMeetingReviewCompanionCards(meetingID))
+    }
+
+    func renameMeetingDetailMeeting(_ meeting: Meeting) async throws {
+        try await store.save(meeting)
+    }
+
+    func renameMeetingDetailSpeaker(_ speaker: Speaker) async throws {
+        try await store.save([speaker])
+    }
+
+    func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws {
+        try await store.setActionItem(id, done: done)
+    }
+
+    func deleteMeetingDetailCompanionCard(_ id: UUID) async throws {
+        try await store.deleteCompanionCard(id)
+    }
+
+    func deleteMeetingDetail(_ id: MeetingID) async throws {
+        try await meetingLifecycle.delete(id)
+    }
+
+    func requestMeetingDetailSearchReindex() {
+        libraryVersion += 1
     }
 }
 

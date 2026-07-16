@@ -1207,3 +1207,42 @@ one model owns loading and consistency policy outside SwiftUI. The visible
 two-column review surface, player lifecycle, chapters, newest summary across
 recipes, action items, Companion, exports, refine outcomes, local-first
 privacy, schema v6, and `DatabaseQueue` remain unchanged.
+
+## D60 — Meeting Detail mutations enter through its route model (Jul 2026)
+
+**Context:** after D59, Meeting Detail reads belonged to one route-owned model,
+but the SwiftUI view still saved meeting titles and speakers, toggled action
+items, deleted Companion cards, invoked meeting deletion, and incremented the
+Spotlight compatibility counter itself. These paths intentionally had
+different released failure policies: title/name suggestions, action toggles,
+and meeting deletion were best effort; manual speaker rename exposed the
+underlying error; Companion deletion exposed a fixed safe message. Moving only
+the calls without preserving those distinctions would change behavior.
+
+**Decision:** `MeetingDetailModel` owns explicit mutation actions and navigation
+effects for meeting rename, name/voice suggestion acceptance, manual speaker
+rename, action-item completion, Companion removal, searchable-content change,
+and meeting deletion. Its narrow client exposes only the required persistence
+operations and a search-reindex request. `AppServices+MeetingDetail` implements
+that client with `MeetingStore`, the existing ApplicationKit lifecycle use
+case, and the temporary `libraryVersion` projection used solely to trigger
+Spotlight's full local reindex. The model preserves each released error and
+effect policy exactly; scoped observations remain the source of post-write UI
+truth rather than optimistic duplicate state.
+
+The app adapter also maps StorageKit's stale-refine error into an app-owned
+error before presentation. `MeetingDetailView` no longer reaches
+`services.store`, `services.meetingLifecycle`, or `services.libraryVersion`.
+It still imports StorageKit for `RecordingsLocation` and `MeetingAudioLayout`
+while resolving local audio for playback/voiceprints; that separate file-path
+seam belongs to the measured Band 4 detail decomposition. Summary regeneration
+and reviewed refine remain existing ApplicationKit workflows, not raw
+persistence mutations.
+
+**Rationale:** feature mutation policy now has the same single owner as feature
+read state, SwiftUI renders/presents instead of coordinating persistence, and
+the composition root retains concrete storage and indexing knowledge. The
+two-column review, explicit remember-voice consent, best-effort operations,
+visible errors, delete navigation, summary/refine outcomes, schema v6, local
+privacy, and Spotlight behavior remain unchanged. The seeded action-item UI
+case proves a model-routed write returns through the scoped summary observation.

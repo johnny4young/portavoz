@@ -296,7 +296,7 @@ extension MeetingDetailView {
                 Text(progress).foregroundStyle(.secondary)
             }
         }
-        if let message = refineError ?? actionError {
+        if let message = refineError ?? actionError ?? model.state.lastActionError {
             Text(message).font(.caption).foregroundStyle(.red)
         }
     }
@@ -415,11 +415,8 @@ extension MeetingDetailView {
         let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         editingTitle = false
         guard !title.isEmpty else { return }
-        var meeting = detail.meeting
         Task {
-            meeting.title = title
-            try? await services.store.save(meeting)
-            services.libraryVersion += 1
+            await model.send(.renameMeeting(detail.meeting, title: title))
         }
     }
 
@@ -486,10 +483,8 @@ extension MeetingDetailView {
                     Button {
                         suggestedTitle = nil
                         Task {
-                            var meeting = detail.meeting
-                            meeting.title = suggestion
-                            try? await services.store.save(meeting)
-                            services.libraryVersion += 1
+                            await model.send(
+                                .renameMeeting(detail.meeting, title: suggestion))
                         }
                     } label: {
                         ChipLabel(kind: .ai, text: "“\(suggestion)”?")
@@ -549,9 +544,9 @@ extension MeetingDetailView {
                 help: "Move this meeting to Recently deleted"
             ) {
                 Task {
-                    try? await services.meetingLifecycle.delete(meetingID)
-                    services.libraryVersion += 1
-                    route = nil
+                    if case .meetingDeleted = await model.send(.deleteMeeting) {
+                        route = nil
+                    }
                 }
             }
         }
@@ -698,26 +693,26 @@ extension MeetingDetailView {
     }
 
     private func apply(_ suggestion: NameSuggestion, in detail: MeetingReviewReadModel) async {
-        guard var speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
+        guard let speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
             return
         }
-        speaker.displayName = suggestion.name
-        try? await services.store.save([speaker])
+        let effect = await model.send(
+            .acceptNameSuggestion(speaker, name: suggestion.name))
         nameSuggestions.removeAll { $0.label == suggestion.label }
-        services.libraryVersion += 1
-        offerToRemember(speaker)
+        if case .nameSuggestionAccepted(let renamed) = effect {
+            offerToRemember(renamed)
+        }
     }
 
     // MARK: Cross-meeting voices (D8/D21)
 
     private func apply(_ match: VoiceMatcher.Match, in detail: MeetingReviewReadModel) async {
-        guard var speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
+        guard let speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
             return
         }
-        speaker.displayName = match.name
-        try? await services.store.save([speaker])
+        _ = await model.send(
+            .acceptVoiceSuggestion(speaker, name: match.name))
         voiceSuggestions.removeAll { $0.voiceLabel == match.voiceLabel }
-        services.libraryVersion += 1
     }
 
     /// Offers the remember-this-voice chip after a name was confirmed by a
@@ -919,6 +914,7 @@ extension MeetingDetailView {
                     Text(item.text).strikethrough(item.isDone)
                 }
                 .toggleStyle(.checkbox)
+                .accessibilityIdentifier("action-item-\(item.id.uuidString)")
             }
         } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
             MarkdownText(text: parsed.sections[summaryTabSelection - 1].body)
@@ -1009,7 +1005,7 @@ extension MeetingDetailView {
             case .completed:
                 // Keep Spotlight's released broad invalidation until Band 4
                 // replaces it with incremental indexing.
-                services.libraryVersion += 1
+                await model.send(.searchableContentChanged)
             case .unchanged(let version):
                 summaryNotice =
                     // One-line UI notice.
@@ -1111,7 +1107,7 @@ extension MeetingDetailView {
         Task {
             defer { applying = nil }
             do {
-                let result = try await services.refineMeeting.apply(
+                let result = try await services.applyMeetingDetailRefine(
                     ApplyRefinedMeetingRequest(
                         meetingID: meetingID,
                         draft: draft
@@ -1127,12 +1123,12 @@ extension MeetingDetailView {
                     actionError = L10n.text(
                         "The transcript was refined, but Companion cards could not be refreshed.")
                 }
-                services.libraryVersion += 1
+                await model.send(.searchableContentChanged)
                 regenerate(
                     language: summaryLanguage(summary?.draft.language),
                     segments: draft.segments,
                     speakers: draft.speakers)
-            } catch StorageError.staleRefineDraft(_, _, _) {
+            } catch MeetingDetailRefineApplyError.staleDraft {
                 actionError = L10n.text(
                     "The transcript changed while you reviewed this draft. Run refine again.")
             } catch {
@@ -1242,17 +1238,11 @@ extension MeetingDetailView {
     }
 
     private func rename(_ speaker: Speaker, to name: String) async {
-        var renamed = speaker
-        renamed.displayName = name.isEmpty ? nil : name
-        do {
-            try await services.store.save([renamed])
-        } catch {
-            actionError = L10n.format("Could not rename: %@", error.localizedDescription)
-            return
+        let effect = await model.send(.renameSpeaker(speaker, name: name))
+        if case .speakerRenamed(let renamed) = effect {
+            renamingSpeaker = nil
+            offerToRemember(renamed)
         }
-        renamingSpeaker = nil
-        services.libraryVersion += 1
-        offerToRemember(renamed)
     }
 
     private func actionBinding(_ item: ActionItem) -> Binding<Bool> {
@@ -1260,8 +1250,7 @@ extension MeetingDetailView {
             get: { item.isDone },
             set: { done in
                 Task {
-                    try? await services.store.setActionItem(item.id, done: done)
-                    services.libraryVersion += 1
+                    await model.send(.setActionItem(item.id, done: done))
                 }
             }
         )
@@ -1700,10 +1689,6 @@ extension MeetingDetailView {
     private func removeCompanionCard(_ id: UUID) async {
         // Drop from the UI only after the tombstone lands — a failed delete
         // leaves the card in place instead of stranding a phantom removal.
-        do {
-            try await services.store.deleteCompanionCard(id)
-        } catch {
-            actionError = L10n.text("Could not remove the card.")
-        }
+        await model.send(.removeCompanionCard(id))
     }
 }
