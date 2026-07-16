@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance).
 
 ## Roles and engines (D7)
 
@@ -84,6 +84,18 @@ Whisper and recording-engine idle release. The draft carries the source
 `transcriptRevision`; acceptance is a separate ApplicationKit use case and
 StorageKit transaction that rejects stale drafts rather than overwriting a
 newer transcript.
+
+Refine defines one exact composite operation identity across the non-silent
+channels that actually reach Whisper. The length-framed SHA-256 fingerprint
+binds meeting/source revision, the selected WhisperKit provider/model/revision,
+automatic or fixed language hint, ordered vocabulary material, and each
+channel's audio digest. Finalized v6 capture checksum evidence is reused only
+after the current file size matches; legacy recordings are streamed through
+local SHA-256. Raw paths and vocabulary never enter the persisted envelope. A
+successful run stays in the review draft until Apply; discarding it or losing
+the revision fence stores no success. Failure or cancellation after the
+attempt begins stores only a content-free standalone terminal run best effort
+(D65).
 
 ## SpeechAnalyzer spike (M12/D25) — status and findings (Jul 2026)
 

@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -37,7 +37,11 @@ explicitly rethrown so a canceled quality pass cannot surface a draft. The
 draft carries the transcript revision used for attribution. If accepted,
 StorageKit validates every speaker/segment identity and speaker reference,
 then replaces cast, transcript, language, and revision atomically; a stale
-draft or invalid child preserves the current aggregate (D47).
+draft or invalid child preserves the current aggregate (D47). The accepted
+segments also link to Refine's composite Whisper generation run in that same
+transaction. Inline best-effort diarization does not yet receive a separate
+run/artifact link; D65 records the coherent transcript operation without
+misrepresenting diarizer failure as transcript failure.
 
 ## LIVE diarization — `LiveSpeakerLabeler` (Jul 2026)
 

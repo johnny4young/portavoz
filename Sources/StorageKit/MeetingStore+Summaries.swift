@@ -8,15 +8,15 @@ extension MeetingStore {
     // MARK: - Generation provenance
 
     /// Persists a terminal model run that produced no artifact, such as a
-    /// failed or cancelled attempt. Successful summary runs use the atomic
-    /// snapshot overload below so provenance can never point at a missing
-    /// artifact after a partial write.
+    /// failed or cancelled attempt. Successful runs use an artifact-specific
+    /// atomic overload so provenance can never point at missing output after
+    /// a partial write.
     public func saveGenerationRun(_ run: GenerationRun) async throws {
         try await database.write { db in
             try Self.validateTerminalGenerationRun(run)
             guard run.outcome != .succeeded else {
                 throw StorageError.invalidGenerationRun(
-                    "a succeeded summary run must be linked to its artifact")
+                    "a succeeded run must be linked to its artifact")
             }
             guard try MeetingRecord.exists(
                 db, key: run.meetingID.rawValue.uuidString)
@@ -185,9 +185,11 @@ extension MeetingStore {
         guard finishedAt >= run.startedAt else {
             throw StorageError.invalidGenerationRun("finish time precedes start time")
         }
-        guard let outputLanguage = run.outputLanguage,
-              !outputLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { throw StorageError.invalidGenerationRun("summary output language is blank") }
+        if run.kind == .summary {
+            guard let outputLanguage = run.outputLanguage,
+                  !outputLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else { throw StorageError.invalidGenerationRun("summary output language is blank") }
+        }
         guard Self.isJSONObject(run.configJSON),
               run.metricsJSON.map(Self.isJSONObject) ?? true
         else { throw StorageError.invalidGenerationRun("configuration or metrics is not JSON") }

@@ -237,13 +237,19 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
     var endTime: Double
     var confidence: Double?
     var isFinal: Bool
+    var generationRunID: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
     /// Float32 LE, L2-normalized sentence embedding (v2, local RAG).
     var embedding: Data?
 
-    init(_ segment: TranscriptSegment, createdAt: Date, updatedAt: Date) {
+    init(
+        _ segment: TranscriptSegment,
+        generationRunID: GenerationRunID? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
         self.id = segment.id.uuidString
         self.meetingID = segment.meetingID.rawValue.uuidString
         self.speakerID = segment.speakerID?.rawValue.uuidString
@@ -254,6 +260,7 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
         self.endTime = segment.endTime
         self.confidence = segment.confidence
         self.isFinal = segment.isFinal
+        self.generationRunID = generationRunID?.rawValue.uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = nil

@@ -7,12 +7,12 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3D:
-characterize and adopt provenance for refined transcript generation without
-weakening its review-before-apply UX or source-revision-fenced accepted
-aggregate. Slices 3A–3C adopted provenance for manual/post-refine summaries,
-the durable post-capture executor, and best-effort external-audio import
-summaries; Band 2 is complete. Keep
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3E:
+characterize Companion generation and adopt provenance without weakening its
+degradable live/post-Refine behavior or reviewable-card persistence. Slices
+3A–3D adopted provenance for manual/post-refine summaries, the durable
+post-capture executor, best-effort external-audio import summaries, and
+accepted refined transcripts; Band 2 is complete. Keep
 Spotlight independent; its incremental indexing/outbox adoption belongs with
 measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
@@ -21,7 +21,27 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65).
+
+- **Architecture Band 3 slice 3D complete — accepted Refine transcripts carry
+  atomic, content-free provenance (Jul 16, 2026)**: one composite transcript
+  attempt covers every non-silent system/microphone Whisper call that produces
+  a reviewable draft. Its exact fingerprint binds source transcript revision,
+  selected Whisper model/revision, automatic versus fixed language hint,
+  vocabulary material, and content digests for the actual channels; persisted
+  configuration and metrics contain only safe identity/count/timing data. A
+  successful run stays ephemeral with the draft until Apply atomically inserts
+  it, links every accepted segment, replaces cast/transcript/language, and
+  increments the revision under the existing stale-draft fence. Discarded,
+  empty, stale, or invalid drafts create no orphaned success; failures and
+  cancellations after the attempt begins persist standalone best effort.
+  Legacy recordings derive content digests locally while finalized v6 assets
+  reuse checksum evidence after a size check. Seventeen Refine and seven
+  operation-fingerprint cases cover mixed language, privacy-safe metadata,
+  no-attempt paths, failure/cancellation, invalid provenance, segment-link
+  retention, stale rejection, and injected transactional rollback. The current
+  gate is 609 package tests (13 gated), 231 linted Swift source files, and 20 UI
+  cases (D65).
 
 - **Architecture Band 3 slice 3C complete — imported summaries preserve both
   aggregate durability and attempt truth (Jul 16, 2026)**: external-audio import

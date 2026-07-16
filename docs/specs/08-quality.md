@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 606 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 20 cases and retained Meeting Detail, Library, Insights, and post-meeting mirror screenshots; earlier automation-mode harness failures remain documented below.
+Status: 609 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest, build + test + **SwiftLint `--strict`**). The latest full local UI run passed all 20 cases and retained Meeting Detail, Library, Insights, and post-meeting mirror screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 230 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 231 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -16,7 +16,7 @@ Status: 606 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHu
 | ImportMeetingUseCaseTests | Required preparation/transcription order, typed progress, mixed-language preservation, best-effort diarization/summary, exact idle release, staged-audio rollback, atomic imported aggregate persistence, successful/failed/cancelled/no-provider summary provenance, privacy-safe metadata, and real MeetingStore summary linkage/rollback adaptation |
 | ImportMeetingBundleUseCaseTests | Canonical attachment validation, duplicate rejection, text/audio ordering, machine-path clearing, early-failure isolation, compensation without error masking, full relational conservation, foreign-child rejection, and rollback after an injected final-child failure |
 | ExportMeetingBundleUseCaseTests | Canonical attachment admission, text/audio ordering, opt-in and no-directory behavior, machine-path clearing, typed boundary failures, newest cross-recipe summary plus live-child conservation, tombstone exclusion, and degradable optional-row corruption through real MeetingStore adaptation |
-| RefineMeetingUseCaseTests | Draft order/progress/language, silence/noise/bleed hygiene, required versus degradable failures, cancellation/release, revision-fenced apply, Companion outcomes, immutable summaries, stale rejection, and injected transactional rollback through real MeetingStore adaptation |
+| RefineMeetingUseCaseTests | Draft order/progress/language, silence/noise/bleed hygiene, exact composite transcript provenance, content-free metadata/metrics, no-attempt/failure/cancellation outcomes, revision-fenced run/segment linkage, link retention, invalid-run rejection, Companion outcomes, immutable summaries, stale rejection, and injected transactional rollback through real MeetingStore adaptation |
 | StartRecordingUseCaseTests | Once-sampled preferences, title/sequence and event-title policy, preparation/reservation/source order, callback forwarding, selected-channel assets, typed preparation failures, staging/published evidence preservation, guarded empty-shell discard, reconciliation failure reporting, release, and real MeetingStore atomic reservation before source invocation |
 | StopRecordingUseCaseTests | Finalized/missing asset reconciliation, provisional attribution, per-turn mixed-language preservation, exact initial-job policy/order, transcript/no-audio/recovery outcomes, admission and fallback failures, unconditional engine release, and atomic real-Store snapshot/job adaptation |
 | MeetingStoreTests summary history | Per-recipe immutable versions, deterministic newest-across-recipe selection for Meeting Detail, retained older structures, and recipe-scoped fingerprint cache/pivot reads |
@@ -25,7 +25,7 @@ Status: 606 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHu
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
 | CaptionCoalescerTests | 13 coalescer cases (merge, identity, channels, pauses, limits, loose punctuation, early split of `system` after sentence) |
 | DiarizationTests | Catalog, SpeakerAttributor (multi-turn), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (units), live streaming (gated) |
-| ProcessingOperationFingerprintTests | Length-framed SHA-256 identity, diarization segment-order stability and material/revision sensitivity, finalized audio/voiceprint/model evidence, summary provider/language/revision separation, and the canonical initial-request execution policy |
+| ProcessingOperationFingerprintTests | Length-framed SHA-256 identity, diarization segment-order stability and material/revision sensitivity, finalized audio/voiceprint/model evidence, summary provider/language/revision separation, Refine channel-order stability plus material/revision/language sensitivity and invalid-evidence rejection, and the canonical initial-request execution policy |
 | LiveSpeakerLabelerTests | 7 cases: row split with two voices, last row untouched, idempotency, mic never relabeled, "Me" by voiceprint |
 | IntelligenceTests | PromptFactory, naming filters, **NamingExcerpt**, **LiveSummaryPolicy** |
 | ChapterExtractorTests / PlaybackRangesTests / SummarySectionsTests / VoiceHueTests / TranscriptNoiseFilterTests | chapter boundaries/labels, safe duration-bounded voice-range complements, language-agnostic summary sections, stable speaker hues, and conservative fragment filtering without losing sentences/acronyms |
@@ -40,7 +40,7 @@ Status: 606 package tests passing (13 gated) + 20 XCUITest UI cases. CI on GitHu
 | MeetingHealthTests | 6 cases: talk-time/share, ES/EN questions, thresholded interruptions, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
-| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36/D37/D38/D39/D40/D41/D43/D63/D64 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration, lifecycle/path/language/idempotency constraints, atomic pre-capture reservations, all-or-nothing captured/recovered snapshot installation, atomic initial-job admission, ready-state protection, owner-leased durable jobs with cancellation/scheduled-wake control, stale-safe atomic diarization/summary completion including durable run linkage and late-commit rollback, and generated-summary transaction reuse after imported-aggregate commit |
+| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36/D37/D38/D39/D40/D41/D43/D63/D64/D65 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration, lifecycle/path/language/idempotency constraints, atomic pre-capture reservations, all-or-nothing captured/recovered snapshot installation, atomic initial-job admission, ready-state protection, owner-leased durable jobs with cancellation/scheduled-wake control, stale-safe atomic diarization/summary completion including durable run linkage and late-commit rollback, generated-summary transaction reuse after imported-aggregate commit, and revision-fenced accepted Refine run/segment linkage with rollback |
 | PostCaptureSummaryGenerationAttemptTests | Content-free durable provider/model/job/revision/config metadata, aggregate-only success metrics, and distinct failed/cancelled terminal attempts without invented output metrics |
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
@@ -414,6 +414,20 @@ meeting/cast/transcript available. The complete baseline is 606 package tests
 (13 gated), strict SwiftLint is clean across 230 Swift source files, and all 20
 XCUITest cases pass. Fresh Meeting Detail evidence confirms no visible behavior
 changed (D64).
+
+Band 3 slice 3D adds two exact Refine operation-fingerprint cases and one
+invalid-provenance Store case while strengthening the existing Refine suite.
+The 17 Refine cases now prove one privacy-safe composite run across actual
+non-silent channels, automatic/fixed language metadata, no run for silent
+input, standalone failed/cancelled attempts, an ephemeral success before
+review, atomic accepted run plus segment links, link retention on later segment
+save, rejection of kind/language/revision mismatch, stale-draft rollback, and
+rollback of generation/cast/transcript/metadata when the injected segment
+trigger fires. The trigger test now reuses one draft so its relational IDs are
+valid and the intended late failure is actually reached. The complete baseline
+is 609 package tests (13 gated), strict SwiftLint is clean across 231 Swift
+source files, and all 20 XCUITest cases pass. Fresh Meeting Detail evidence
+confirms no visible behavior changed (D65).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

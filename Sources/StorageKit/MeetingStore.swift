@@ -167,6 +167,7 @@ public final class MeetingStore: Sendable {
                 var record = SegmentRecord(
                     segment, createdAt: existing?.createdAt ?? now, updatedAt: now)
                 record.deletedAt = existing?.deletedAt
+                record.generationRunID = existing?.generationRunID
                 // Text unchanged → the stored embedding stays valid.
                 if existing?.text == segment.text {
                     record.embedding = existing?.embedding

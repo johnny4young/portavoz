@@ -4,6 +4,7 @@ import Foundation
 /// envelope. Add a case only when that artifact type adopts provenance.
 public enum GenerationRunKind: String, Codable, Sendable {
     case summary
+    case transcript
 }
 
 public enum GenerationRunOutcome: String, Codable, Sendable {

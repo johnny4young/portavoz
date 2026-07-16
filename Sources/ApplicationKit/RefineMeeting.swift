@@ -8,10 +8,13 @@ import TranscriptionKit
 public struct RefineMeetingAudioChannel: Equatable, Sendable {
     public let fileURL: URL
     public let isSilent: Bool
+    /// Digest of the exact audio bytes; raw paths never enter provenance.
+    public let contentFingerprint: String
 
-    public init(fileURL: URL, isSilent: Bool) {
+    public init(fileURL: URL, isSilent: Bool, contentFingerprint: String) {
         self.fileURL = fileURL
         self.isSilent = isSilent
+        self.contentFingerprint = contentFingerprint
     }
 }
 
@@ -33,7 +36,10 @@ public struct RefineMeetingAudio: Equatable, Sendable {
 
 /// Filesystem and media inspection kept in the app adapter.
 public protocol RefineMeetingAudioFiles: Sendable {
-    func resolveRefineAudio(_ relativeDirectory: String) async throws -> RefineMeetingAudio
+    func resolveRefineAudio(
+        _ relativeDirectory: String,
+        meetingID: MeetingID
+    ) async throws -> RefineMeetingAudio
 }
 
 public struct RefineMeetingPreferencesSnapshot: Sendable {
@@ -62,8 +68,22 @@ public enum RefineMeetingProgress: Equatable, Sendable {
 public typealias RefineMeetingProgressHandler =
     @Sendable (RefineMeetingProgress) async -> Void
 
+/// Exact transcriber selected for one Refine use-case instance.
+public struct RefineMeetingTranscriptionProvider: Equatable, Sendable {
+    public let providerID: String
+    public let modelID: String
+    public let modelRevision: String?
+
+    public init(providerID: String, modelID: String, modelRevision: String?) {
+        self.providerID = providerID
+        self.modelID = modelID
+        self.modelRevision = modelRevision
+    }
+}
+
 /// Concrete Whisper/diarizer ownership remains in the app composition root.
 public protocol RefineMeetingProcessor: Sendable {
+    func transcriptionProvider() async -> RefineMeetingTranscriptionProvider
     func prepare(progress: @escaping RefineMeetingProgressHandler) async throws
     func transcribe(
         fileURL: URL,
@@ -102,22 +122,35 @@ public struct RefineMeeting: ApplicationUseCase {
     private let audioFiles: any RefineMeetingAudioFiles
     private let preferences: any RefineMeetingPreferences
     private let processor: any RefineMeetingProcessor
+    private let store: any RefineMeetingStore
+    private let makeGenerationRunID: @Sendable () -> GenerationRunID
+    private let now: @Sendable () -> Date
 
     public init(
         audioFiles: any RefineMeetingAudioFiles,
         preferences: any RefineMeetingPreferences,
-        processor: any RefineMeetingProcessor
+        processor: any RefineMeetingProcessor,
+        store: any RefineMeetingStore,
+        makeGenerationRunID: @escaping @Sendable () -> GenerationRunID = {
+            GenerationRunID()
+        },
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.audioFiles = audioFiles
         self.preferences = preferences
         self.processor = processor
+        self.store = store
+        self.makeGenerationRunID = makeGenerationRunID
+        self.now = now
     }
 
     public func execute(_ request: RefineMeetingRequest) async throws -> RefineDraft {
         guard let relativeDirectory = request.detail.meeting.audioDirectory else {
             throw RefineMeetingError.audioNotRetained
         }
-        let audio = try await audioFiles.resolveRefineAudio(relativeDirectory)
+        let audio = try await audioFiles.resolveRefineAudio(
+            relativeDirectory,
+            meetingID: request.detail.meeting.id)
         guard audio.hasStoredChannel else { throw RefineMeetingError.audioUnavailable }
 
         await request.progress(.preparingModels)
@@ -149,12 +182,47 @@ public struct RefineMeeting: ApplicationUseCase {
                 policy: policy),
             vocabulary: preferences.vocabulary,
             meetingID: detail.meeting.id)
-        let segments = try await transcribe(audio: audio, hints: hints, progress: request.progress)
-        let turns = try await speakerTurns(audio: audio, progress: request.progress)
-        let attribution = SpeakerAttributor.attribute(
-            segments: segments,
-            turns: turns,
-            meetingID: detail.meeting.id)
+        let attempt = try await generationAttempt(
+            detail: detail,
+            audio: audio,
+            hints: hints)
+        do {
+            let segments = try await transcribe(
+                audio: audio,
+                hints: hints,
+                progress: request.progress)
+            let turns = try await speakerTurns(audio: audio, progress: request.progress)
+            let attribution = SpeakerAttributor.attribute(
+                segments: segments,
+                turns: turns,
+                meetingID: detail.meeting.id)
+            return refinedDraft(
+                detail: detail,
+                attribution: attribution,
+                attempt: attempt)
+        } catch {
+            if let attempt {
+                let outcome: GenerationRunOutcome = error is CancellationError
+                    ? .cancelled
+                    : .failed
+                try? await store.saveRefineGenerationRun(
+                    attempt.finish(
+                        outcome: outcome,
+                        outputLanguage: hints.language,
+                        segments: nil,
+                        at: now()))
+            }
+            throw error
+        }
+    }
+
+    private func refinedDraft(
+        detail: MeetingDetail,
+        attribution: SpeakerAttributor.Attribution,
+        attempt: RefinedTranscriptGenerationAttempt?
+    ) -> RefineDraft {
+        let language = SpokenLanguageDetector.homogeneousLanguage(
+            in: attribution.segments)
         let oldSpeech = detail.segments.reduce(0) {
             $0 + ($1.endTime - $1.startTime)
         }
@@ -163,14 +231,58 @@ public struct RefineMeeting: ApplicationUseCase {
         }
         return RefineDraft(
             sourceTranscriptRevision: detail.meeting.transcriptRevision,
-            language: SpokenLanguageDetector.homogeneousLanguage(
-                in: attribution.segments),
+            language: language,
             speakers: attribution.speakers,
             segments: attribution.segments,
             oldSegmentCount: detail.segments.count,
             oldSpeakerCount: detail.speakers.count,
             oldSpeechSeconds: oldSpeech,
-            meetingSeconds: meetingSeconds)
+            meetingSeconds: meetingSeconds,
+            generationRun: attempt?.finish(
+                outcome: .succeeded,
+                outputLanguage: language,
+                segments: attribution.segments,
+                at: now()))
+    }
+
+    private func generationAttempt(
+        detail: MeetingDetail,
+        audio: RefineMeetingAudio,
+        hints: TranscriptionHints
+    ) async throws -> RefinedTranscriptGenerationAttempt? {
+        let channels = [
+            audio.system.map { ($0, AudioChannel.system) },
+            audio.microphone.map { ($0, AudioChannel.microphone) }
+        ].compactMap { value -> RefineTranscriptionChannelEvidence? in
+            guard let (channel, kind) = value, !channel.isSilent else { return nil }
+            return RefineTranscriptionChannelEvidence(
+                channel: kind,
+                contentFingerprint: channel.contentFingerprint)
+        }
+        guard !channels.isEmpty else { return nil }
+
+        let provider = await processor.transcriptionProvider()
+        guard let fingerprint = RefineTranscriptionOperationFingerprint.compute(.init(
+            meetingID: detail.meeting.id,
+            sourceTranscriptRevision: detail.meeting.transcriptRevision,
+            providerID: provider.providerID,
+            modelID: provider.modelID,
+            modelRevision: provider.modelRevision,
+            languageHint: hints.language,
+            vocabulary: hints.vocabulary,
+            channels: channels))
+        else { throw RefineMeetingError.audioUnavailable }
+
+        return RefinedTranscriptGenerationAttempt(
+            id: makeGenerationRunID(),
+            meetingID: detail.meeting.id,
+            provider: provider,
+            inputFingerprint: fingerprint,
+            sourceTranscriptRevision: detail.meeting.transcriptRevision,
+            channels: channels.map(\.channel),
+            languageHint: hints.language,
+            vocabularyCount: hints.vocabulary.count,
+            startedAt: now())
     }
 
     private func transcribe(
@@ -232,8 +344,10 @@ public protocol RefineMeetingStore: Sendable {
         expectedTranscriptRevision: Int,
         language: String?,
         speakers: [Speaker],
-        segments: [TranscriptSegment]
+        segments: [TranscriptSegment],
+        generationRun: GenerationRun?
     ) async throws
+    func saveRefineGenerationRun(_ run: GenerationRun) async throws
     func replaceRefinedCompanionCards(
         _ cards: [CompanionCard],
         for meetingID: MeetingID
@@ -246,14 +360,20 @@ extension MeetingStore: RefineMeetingStore {
         expectedTranscriptRevision: Int,
         language: String?,
         speakers: [Speaker],
-        segments: [TranscriptSegment]
+        segments: [TranscriptSegment],
+        generationRun: GenerationRun?
     ) async throws {
         try await applyRefinedCast(
             for: meetingID,
             expectedTranscriptRevision: expectedTranscriptRevision,
             language: language,
             speakers: speakers,
-            segments: segments)
+            segments: segments,
+            generationRun: generationRun)
+    }
+
+    public func saveRefineGenerationRun(_ run: GenerationRun) async throws {
+        try await saveGenerationRun(run)
     }
 
     public func replaceRefinedCompanionCards(
@@ -353,7 +473,8 @@ public struct ApplyRefinedMeeting: ApplicationUseCase {
             expectedTranscriptRevision: request.draft.sourceTranscriptRevision,
             language: request.draft.language,
             speakers: request.draft.speakers,
-            segments: request.draft.segments)
+            segments: request.draft.segments,
+            generationRun: request.draft.generationRun)
 
         let outcome = await refreshCompanionIfAvailable(request)
         return ApplyRefinedMeetingResult(
@@ -395,7 +516,79 @@ public struct RefineMeetingUseCases: Sendable {
         draft = RefineMeeting(
             audioFiles: audioFiles,
             preferences: preferences,
-            processor: processor)
+            processor: processor,
+            store: store)
         apply = ApplyRefinedMeeting(store: store, companion: companion)
+    }
+}
+
+private struct RefinedTranscriptGenerationAttempt: Sendable {
+    let id: GenerationRunID
+    let meetingID: MeetingID
+    let provider: RefineMeetingTranscriptionProvider
+    let inputFingerprint: String
+    let sourceTranscriptRevision: Int
+    let channels: [AudioChannel]
+    let languageHint: String?
+    let vocabularyCount: Int
+    let startedAt: Date
+
+    func finish(
+        outcome: GenerationRunOutcome,
+        outputLanguage: String?,
+        segments: [TranscriptSegment]?,
+        at finishedAt: Date
+    ) -> GenerationRun {
+        GenerationRun(
+            id: id,
+            meetingID: meetingID,
+            kind: .transcript,
+            providerID: provider.providerID,
+            modelID: provider.modelID,
+            modelRevision: provider.modelRevision,
+            inputFingerprint: inputFingerprint,
+            configJSON: Self.json(Configuration(
+                channels: channels.map(\.rawValue),
+                languageMode: languageHint == nil ? "automatic" : "fixed",
+                operation: "transcribe",
+                sourceTranscriptRevision: sourceTranscriptRevision,
+                vocabularyCount: vocabularyCount,
+                workflow: "meeting-refine")),
+            outputLanguage: outputLanguage,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
+            outcome: outcome,
+            metricsJSON: segments.map {
+                Self.json(Metrics(
+                    outputUTF8Bytes: $0.reduce(0) { $0 + $1.text.utf8.count },
+                    segmentCount: $0.count,
+                    speechMilliseconds: Int(($0.reduce(0.0) {
+                        $0 + max(0, $1.endTime - $1.startTime)
+                    } * 1_000).rounded())))
+            })
+    }
+
+    private static func json<Value: Encodable>(_ value: Value) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(value),
+              let json = String(data: data, encoding: .utf8)
+        else { return "{}" }
+        return json
+    }
+
+    private struct Configuration: Encodable {
+        let channels: [String]
+        let languageMode: String
+        let operation: String
+        let sourceTranscriptRevision: Int
+        let vocabularyCount: Int
+        let workflow: String
+    }
+
+    private struct Metrics: Encodable {
+        let outputUTF8Bytes: Int
+        let segmentCount: Int
+        let speechMilliseconds: Int
     }
 }

@@ -15,12 +15,16 @@ public struct RefineDraft: Sendable {
     public let oldSpeechSeconds: TimeInterval
     /// Wall-clock length of the meeting, when known.
     public let meetingSeconds: TimeInterval?
+    /// Successful provenance remains ephemeral until the user accepts this
+    /// draft. Apply persists it atomically with the replacement transcript.
+    public let generationRun: GenerationRun?
 
     public init(
         sourceTranscriptRevision: Int,
         language: String?, speakers: [Speaker], segments: [TranscriptSegment],
         oldSegmentCount: Int, oldSpeakerCount: Int,
-        oldSpeechSeconds: TimeInterval, meetingSeconds: TimeInterval?
+        oldSpeechSeconds: TimeInterval, meetingSeconds: TimeInterval?,
+        generationRun: GenerationRun? = nil
     ) {
         self.sourceTranscriptRevision = sourceTranscriptRevision
         self.language = language
@@ -30,6 +34,7 @@ public struct RefineDraft: Sendable {
         self.oldSpeakerCount = oldSpeakerCount
         self.oldSpeechSeconds = oldSpeechSeconds
         self.meetingSeconds = meetingSeconds
+        self.generationRun = generationRun
     }
 
     public var newSpeechSeconds: TimeInterval {

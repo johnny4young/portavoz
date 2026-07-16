@@ -2,6 +2,7 @@ import DiarizationKit
 import Foundation
 import IntelligenceKit
 import PortavozCore
+import TranscriptionKit
 import XCTest
 
 final class ProcessingOperationFingerprintTests: XCTestCase {
@@ -128,6 +129,90 @@ final class ProcessingOperationFingerprintTests: XCTestCase {
                 request: spanish, providerID: "local/model", transcriptRevision: 4))
     }
 
+    func testRefineFingerprintIsChannelOrderStableAndMaterialSensitive() throws {
+        let system = RefineTranscriptionChannelEvidence(
+            channel: .system,
+            contentFingerprint: "system-sha")
+        let microphone = RefineTranscriptionChannelEvidence(
+            channel: .microphone,
+            contentFingerprint: "microphone-sha")
+        let base = try XCTUnwrap(RefineTranscriptionOperationFingerprint.compute(.init(
+            meetingID: meetingID,
+            sourceTranscriptRevision: 4,
+            providerID: "whisperkit/coreml",
+            modelID: "whisper-large-v3",
+            modelRevision: "revision",
+            languageHint: nil,
+            vocabulary: ["Portavoz"],
+            channels: [system, microphone])))
+
+        XCTAssertEqual(
+            base,
+            RefineTranscriptionOperationFingerprint.compute(.init(
+                meetingID: meetingID,
+                sourceTranscriptRevision: 4,
+                providerID: "whisperkit/coreml",
+                modelID: "whisper-large-v3",
+                modelRevision: "revision",
+                languageHint: nil,
+                vocabulary: ["Portavoz"],
+                channels: [microphone, system])))
+        XCTAssertNotEqual(
+            base,
+            RefineTranscriptionOperationFingerprint.compute(.init(
+                meetingID: meetingID,
+                sourceTranscriptRevision: 5,
+                providerID: "whisperkit/coreml",
+                modelID: "whisper-large-v3",
+                modelRevision: "revision",
+                languageHint: nil,
+                vocabulary: ["Portavoz"],
+                channels: [system, microphone])))
+        XCTAssertNotEqual(
+            base,
+            RefineTranscriptionOperationFingerprint.compute(.init(
+                meetingID: meetingID,
+                sourceTranscriptRevision: 4,
+                providerID: "whisperkit/coreml",
+                modelID: "whisper-large-v3",
+                modelRevision: "revision",
+                languageHint: "es",
+                vocabulary: ["Portavoz"],
+                channels: [system, microphone])))
+        XCTAssertNotEqual(
+            refineFingerprint(modelRevision: nil, languageHint: nil, channels: [system]),
+            refineFingerprint(
+                modelRevision: "revision",
+                languageHint: nil,
+                channels: [system]))
+        XCTAssertNotEqual(
+            refineFingerprint(modelRevision: "revision", languageHint: nil, channels: [system]),
+            refineFingerprint(
+                modelRevision: "revision",
+                languageHint: "automatic",
+                channels: [system]))
+    }
+
+    func testRefineFingerprintRejectsMissingOrDuplicateChannelEvidence() {
+        let system = RefineTranscriptionChannelEvidence(
+            channel: .system,
+            contentFingerprint: "system-sha")
+        XCTAssertNil(refineFingerprint(channels: []))
+        XCTAssertNil(refineFingerprint(channels: [
+            system,
+            RefineTranscriptionChannelEvidence(
+                channel: .system,
+                contentFingerprint: "other-sha"),
+        ]))
+        XCTAssertNil(refineFingerprint(channels: [
+            RefineTranscriptionChannelEvidence(
+                channel: .microphone,
+                contentFingerprint: " "),
+        ]))
+        XCTAssertNil(refineFingerprint(modelRevision: " ", channels: [system]))
+        XCTAssertNil(refineFingerprint(languageHint: " ", channels: [system]))
+    }
+
     private func segment(
         id: String,
         text: String,
@@ -180,5 +265,21 @@ final class ProcessingOperationFingerprintTests: XCTestCase {
             recipe: .general,
             targetLanguage: language,
             glossary: ["Portavoz"])
+    }
+
+    private func refineFingerprint(
+        modelRevision: String? = "revision",
+        languageHint: String? = nil,
+        channels: [RefineTranscriptionChannelEvidence]
+    ) -> String? {
+        RefineTranscriptionOperationFingerprint.compute(.init(
+            meetingID: meetingID,
+            sourceTranscriptRevision: 4,
+            providerID: "whisperkit/coreml",
+            modelID: "whisper-large-v3",
+            modelRevision: modelRevision,
+            languageHint: languageHint,
+            vocabulary: [],
+            channels: channels))
     }
 }

@@ -48,6 +48,24 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(draft.oldSpeakerCount, 1)
         XCTAssertEqual(draft.oldSpeechSeconds, 8)
         XCTAssertEqual(draft.meetingSeconds, 12)
+        let run = try XCTUnwrap(draft.generationRun)
+        XCTAssertEqual(run.id, fixture.generationRunID)
+        XCTAssertEqual(run.kind, .transcript)
+        XCTAssertEqual(run.providerID, "whisperkit/coreml")
+        XCTAssertEqual(run.modelID, "whisper-large-v3-test")
+        XCTAssertEqual(run.modelRevision, "test-revision")
+        XCTAssertEqual(run.inputFingerprint.count, 64)
+        XCTAssertEqual(
+            run.configJSON,
+            #"{"channels":["system","microphone"],"languageMode":"fixed","operation":"transcribe","sourceTranscriptRevision":4,"vocabularyCount":1,"workflow":"meeting-refine"}"#)
+        XCTAssertEqual(run.outputLanguage, "es")
+        XCTAssertEqual(run.outcome, .succeeded)
+        XCTAssertEqual(
+            run.metricsJSON,
+            "{\"outputUTF8Bytes\":\(draft.segments.reduce(0) { $0 + $1.text.utf8.count }),"
+                + "\"segmentCount\":2,\"speechMilliseconds\":8000}")
+        XCTAssertFalse(run.configJSON.contains("Portavoz"))
+        XCTAssertFalse(run.metricsJSON?.contains("presupuesto") == true)
         XCTAssertEqual(state.releaseCount, 1)
     }
 
@@ -87,6 +105,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.languageHints, [nil])
         XCTAssertNil(draft.language)
         XCTAssertEqual(draft.segments.map(\.language), ["es", "en"])
+        XCTAssertNil(draft.generationRun?.outputLanguage)
         XCTAssertEqual(state.releaseCount, 1)
     }
 
@@ -124,10 +143,12 @@ final class RefineMeetingUseCaseTests: XCTestCase {
             audio: RefineMeetingAudio(
                 system: RefineMeetingAudioChannel(
                     fileURL: fixture.systemURL,
-                    isSilent: true),
+                    isSilent: true,
+                    contentFingerprint: "silent-system-sha"),
                 microphone: RefineMeetingAudioChannel(
                     fileURL: fixture.microphoneURL,
-                    isSilent: true)),
+                    isSilent: true,
+                    contentFingerprint: "silent-microphone-sha")),
             systemTranscription: fixture.systemTranscription,
             microphoneTranscription: fixture.microphoneTranscription,
             turns: [])
@@ -138,6 +159,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertTrue(draft.segments.isEmpty)
         XCTAssertTrue(draft.speakers.isEmpty)
         XCTAssertNil(draft.language)
+        XCTAssertNil(draft.generationRun)
         XCTAssertFalse(state.events.contains { $0.hasPrefix("transcribe-") })
         XCTAssertFalse(state.events.contains("diarize"))
         XCTAssertEqual(state.releaseCount, 1)
@@ -188,6 +210,12 @@ final class RefineMeetingUseCaseTests: XCTestCase {
 
             let state = await dependencies.state()
             XCTAssertEqual(state.releaseCount, 1, "failure: \(failure)")
+            if failure == .preparation {
+                XCTAssertTrue(state.standaloneRuns.isEmpty)
+            } else {
+                XCTAssertEqual(state.standaloneRuns.map(\.outcome), [.failed])
+                XCTAssertTrue(state.standaloneRuns.allSatisfy { $0.metricsJSON == nil })
+            }
         }
     }
 
@@ -206,6 +234,8 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertTrue(draft.segments.allSatisfy { $0.speakerID == nil })
         let state = await dependencies.state()
         XCTAssertEqual(state.releaseCount, 1)
+        XCTAssertEqual(draft.generationRun?.outcome, .succeeded)
+        XCTAssertTrue(state.standaloneRuns.isEmpty)
     }
 
     func testCancellationPropagatesAndSchedulesRelease() async throws {
@@ -231,6 +261,8 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         }
         let state = await dependencies.state()
         XCTAssertEqual(state.releaseCount, 1)
+        XCTAssertEqual(state.standaloneRuns.map(\.outcome), [.cancelled])
+        XCTAssertNil(state.standaloneRuns.first?.metricsJSON)
     }
 
     func testApplyUsesRevisionFenceAndSkipsUnavailableCompanion() async throws {
@@ -252,6 +284,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.applied?.expectedTranscriptRevision, 4)
         XCTAssertEqual(state.applied?.language, "es")
         XCTAssertEqual(state.applied?.segments.map(\.text), draft.segments.map(\.text))
+        XCTAssertEqual(state.applied?.generationRun?.id, fixture.generationRunID)
         XCTAssertEqual(state.applyProgress, [.applyingTranscript])
         XCTAssertEqual(state.events, ["apply"])
     }
@@ -374,8 +407,97 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(detail.segments.map(\.text), fixture.draft().segments.map(\.text))
         XCTAssertEqual(detail.speakers.map(\.label), ["S1"])
         XCTAssertEqual(detail.summaries.count, 1)
+        let runs = try await store.generationRuns(for: fixture.meetingID)
+        XCTAssertEqual(runs, [try XCTUnwrap(fixture.draft().generationRun)])
+        let linkedRunIDs = try await store.database.read { db in
+            try String.fetchAll(
+                db,
+                sql: "SELECT DISTINCT generationRunID FROM segment "
+                    + "WHERE meetingID = ? AND deletedAt IS NULL",
+                arguments: [fixture.meetingID.rawValue.uuidString])
+        }
+        XCTAssertEqual(linkedRunIDs, [fixture.generationRunID.rawValue.uuidString])
+        var editedSegment = try XCTUnwrap(detail.segments.first)
+        editedSegment.text = "Edited accepted transcript keeps its origin."
+        try await store.save([editedSegment])
+        let editedSegmentID = editedSegment.id.uuidString
+        let retainedRunID = try await store.database.read { db in
+            try String.fetchOne(
+                db,
+                sql: "SELECT generationRunID FROM segment WHERE id = ?",
+                arguments: [editedSegmentID])
+        }
+        XCTAssertEqual(retainedRunID, fixture.generationRunID.rawValue.uuidString)
         let summary = try await store.summary(fixture.meetingID)
         XCTAssertEqual(summary?.draft.markdown, "# Existing")
+    }
+
+    func testInvalidRefineProvenanceCannotMutateTheAcceptedAggregate() async throws {
+        let fixture = RefineFixture()
+        let store = try MeetingStore.inMemory()
+        try await fixture.seed(store)
+        let draft = fixture.draft()
+        let timestamp = fixture.startedAt.addingTimeInterval(20)
+        let invalidRuns = [
+            GenerationRun(
+                meetingID: fixture.meetingID,
+                kind: .summary,
+                providerID: "whisperkit/coreml",
+                modelID: "whisper-large-v3-test",
+                inputFingerprint: String(repeating: "a", count: 64),
+                configJSON: fixture.successfulGenerationRun().configJSON,
+                outputLanguage: "es",
+                startedAt: timestamp,
+                finishedAt: timestamp,
+                outcome: .succeeded),
+            GenerationRun(
+                meetingID: fixture.meetingID,
+                kind: .transcript,
+                providerID: "whisperkit/coreml",
+                modelID: "whisper-large-v3-test",
+                inputFingerprint: String(repeating: "b", count: 64),
+                configJSON: #"{"sourceTranscriptRevision":3,"workflow":"meeting-refine"}"#,
+                outputLanguage: "es",
+                startedAt: timestamp,
+                finishedAt: timestamp,
+                outcome: .succeeded),
+            GenerationRun(
+                meetingID: fixture.meetingID,
+                kind: .transcript,
+                providerID: "whisperkit/coreml",
+                modelID: "whisper-large-v3-test",
+                inputFingerprint: String(repeating: "c", count: 64),
+                configJSON: fixture.successfulGenerationRun().configJSON,
+                outputLanguage: "en",
+                startedAt: timestamp,
+                finishedAt: timestamp,
+                outcome: .succeeded),
+        ]
+
+        for run in invalidRuns {
+            do {
+                try await store.applyRefinedCast(
+                    for: fixture.meetingID,
+                    expectedTranscriptRevision: 4,
+                    language: "es",
+                    speakers: draft.speakers,
+                    segments: draft.segments,
+                    generationRun: run)
+                XCTFail("invalid transcript provenance must not be accepted")
+            } catch let error as StorageError {
+                guard case .invalidGenerationRun = error else {
+                    return XCTFail("unexpected storage error: \(error)")
+                }
+            }
+        }
+
+        let storedDetail = try await store.detail(fixture.meetingID)
+        let detail = try XCTUnwrap(storedDetail)
+        XCTAssertEqual(detail.meeting.transcriptRevision, 4)
+        XCTAssertEqual(detail.meeting.language, "en")
+        XCTAssertEqual(detail.segments.map(\.text), ["Original transcript remains intact."])
+        let runs = try await store.generationRuns(for: fixture.meetingID)
+        XCTAssertTrue(runs.isEmpty)
     }
 
     func testStaleDraftRejectsWholeApplyAndPreservesCurrentAggregate() async throws {
@@ -393,7 +515,8 @@ final class RefineMeetingUseCaseTests: XCTestCase {
                 expectedTranscriptRevision: 4,
                 language: "es",
                 speakers: draft.speakers,
-                segments: draft.segments)
+                segments: draft.segments,
+                generationRun: draft.generationRun)
             XCTFail("a stale draft must not replace a newer transcript")
         } catch let error as StorageError {
             guard case .staleRefineDraft(_, 4, 5) = error else {
@@ -407,12 +530,15 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(detail.meeting.language, "en")
         XCTAssertEqual(detail.segments.map(\.text), ["Original transcript remains intact."])
         XCTAssertEqual(detail.summaries.count, 1)
+        let runs = try await store.generationRuns(for: fixture.meetingID)
+        XCTAssertTrue(runs.isEmpty)
     }
 
     func testRefinedCastTransactionRollsBackMetadataAndChildrenOnInsertFailure() async throws {
         let fixture = RefineFixture()
         let store = try MeetingStore.inMemory()
         try await fixture.seed(store)
+        let draft = fixture.draft()
         try await store.database.write { db in
             try db.execute(sql: """
                 CREATE TRIGGER reject_refined_segment
@@ -429,8 +555,9 @@ final class RefineMeetingUseCaseTests: XCTestCase {
                 for: fixture.meetingID,
                 expectedTranscriptRevision: 4,
                 language: "es",
-                speakers: fixture.draft().speakers,
-                segments: fixture.draft().segments)
+                speakers: draft.speakers,
+                segments: draft.segments,
+                generationRun: draft.generationRun)
             XCTFail("child failure must reject the entire refined aggregate")
         } catch {
             let storedDetail = try await store.detail(fixture.meetingID)
@@ -440,6 +567,8 @@ final class RefineMeetingUseCaseTests: XCTestCase {
             XCTAssertEqual(detail.speakers.map(\.label), ["Original"])
             XCTAssertEqual(detail.segments.map(\.text), ["Original transcript remains intact."])
             XCTAssertEqual(detail.summaries.count, 1)
+            let runs = try await store.generationRuns(for: fixture.meetingID)
+            XCTAssertTrue(runs.isEmpty)
         }
     }
 }
@@ -447,6 +576,8 @@ final class RefineMeetingUseCaseTests: XCTestCase {
 private struct RefineFixture: Sendable {
     let meetingID = MeetingID(
         rawValue: UUID(uuidString: "B2000000-0000-0000-0000-000000000001")!)
+    let generationRunID = GenerationRunID(
+        rawValue: UUID(uuidString: "B2000000-0000-0000-0000-000000000002")!)
     let startedAt = Date(timeIntervalSince1970: 1_750_100_000)
     let systemURL = URL(fileURLWithPath: "/scratch/Audio/refine/system.caf")
     let microphoneURL = URL(fileURLWithPath: "/scratch/Audio/refine/microphone.caf")
@@ -480,10 +611,14 @@ private struct RefineFixture: Sendable {
 
     var audio: RefineMeetingAudio {
         RefineMeetingAudio(
-            system: RefineMeetingAudioChannel(fileURL: systemURL, isSilent: false),
+            system: RefineMeetingAudioChannel(
+                fileURL: systemURL,
+                isSilent: false,
+                contentFingerprint: "system-audio-sha"),
             microphone: RefineMeetingAudioChannel(
                 fileURL: microphoneURL,
-                isSilent: false))
+                isSilent: false,
+                contentFingerprint: "microphone-audio-sha"))
     }
 
     var systemTranscription: FileTranscription {
@@ -572,7 +707,10 @@ private struct RefineFixture: Sendable {
         RefineMeeting(
             audioFiles: dependencies,
             preferences: dependencies,
-            processor: dependencies)
+            processor: dependencies,
+            store: dependencies,
+            makeGenerationRunID: { generationRunID },
+            now: { startedAt.addingTimeInterval(20) })
     }
 
     func draft() -> RefineDraft {
@@ -595,7 +733,26 @@ private struct RefineFixture: Sendable {
             oldSegmentCount: 1,
             oldSpeakerCount: 1,
             oldSpeechSeconds: 8,
-            meetingSeconds: 12)
+            meetingSeconds: 12,
+            generationRun: successfulGenerationRun())
+    }
+
+    func successfulGenerationRun() -> GenerationRun {
+        let timestamp = startedAt.addingTimeInterval(20)
+        return GenerationRun(
+            id: generationRunID,
+            meetingID: meetingID,
+            kind: .transcript,
+            providerID: "whisperkit/coreml",
+            modelID: "whisper-large-v3-test",
+            modelRevision: "test-revision",
+            inputFingerprint: String(repeating: "a", count: 64),
+            configJSON: #"{"channels":["system"],"languageMode":"automatic","operation":"transcribe","sourceTranscriptRevision":4,"vocabularyCount":0,"workflow":"meeting-refine"}"#,
+            outputLanguage: "es",
+            startedAt: timestamp,
+            finishedAt: timestamp,
+            outcome: .succeeded,
+            metricsJSON: #"{"outputUTF8Bytes":42,"segmentCount":1,"speechMilliseconds":9000}"#)
     }
 
     func applyRequest(
@@ -637,6 +794,7 @@ private struct AppliedRefine: Sendable {
     let language: String?
     let speakers: [Speaker]
     let segments: [TranscriptSegment]
+    let generationRun: GenerationRun?
 }
 
 private struct RefineDependencyState: Sendable {
@@ -648,6 +806,7 @@ private struct RefineDependencyState: Sendable {
     let releaseCount: Int
     let applied: AppliedRefine?
     let savedCompanionCards: [CompanionCard]?
+    let standaloneRuns: [GenerationRun]
 }
 
 private actor RefineDependencies:
@@ -673,6 +832,7 @@ private actor RefineDependencies:
     private var releaseCount = 0
     private var applied: AppliedRefine?
     private var savedCompanionCards: [CompanionCard]?
+    private var standaloneRuns: [GenerationRun] = []
     private var transcriptionStarted = false
     private var transcriptionWaiters: [CheckedContinuation<Void, Never>] = []
 
@@ -708,7 +868,10 @@ private actor RefineDependencies:
         applyProgressEvents.append(progress)
     }
 
-    func resolveRefineAudio(_ relativeDirectory: String) -> RefineMeetingAudio {
+    func resolveRefineAudio(
+        _ relativeDirectory: String,
+        meetingID: MeetingID
+    ) -> RefineMeetingAudio {
         events.append("resolve-audio")
         return audio
     }
@@ -722,6 +885,13 @@ private actor RefineDependencies:
         events.append("prepare")
         if failures.contains(.preparation) { throw RefineDependencyError() }
         await progress(.downloadingWhisper(size: "1.6 GB", percent: 42))
+    }
+
+    func transcriptionProvider() -> RefineMeetingTranscriptionProvider {
+        RefineMeetingTranscriptionProvider(
+            providerID: "whisperkit/coreml",
+            modelID: "whisper-large-v3-test",
+            modelRevision: "test-revision")
     }
 
     func transcribe(
@@ -759,7 +929,8 @@ private actor RefineDependencies:
         expectedTranscriptRevision: Int,
         language: String?,
         speakers: [Speaker],
-        segments: [TranscriptSegment]
+        segments: [TranscriptSegment],
+        generationRun: GenerationRun?
     ) throws {
         events.append("apply")
         if failures.contains(.apply) { throw RefineDependencyError() }
@@ -768,7 +939,13 @@ private actor RefineDependencies:
             expectedTranscriptRevision: expectedTranscriptRevision,
             language: language,
             speakers: speakers,
-            segments: segments)
+            segments: segments,
+            generationRun: generationRun)
+    }
+
+    func saveRefineGenerationRun(_ run: GenerationRun) {
+        events.append("save-generation-run")
+        standaloneRuns.append(run)
     }
 
     func replaceRefinedCompanionCards(
@@ -804,7 +981,8 @@ private actor RefineDependencies:
             vocabularies: vocabularies,
             releaseCount: releaseCount,
             applied: applied,
-            savedCompanionCards: savedCompanionCards)
+            savedCompanionCards: savedCompanionCards,
+            standaloneRuns: standaloneRuns)
     }
 }
 

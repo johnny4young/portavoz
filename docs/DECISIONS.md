@@ -1387,3 +1387,48 @@ every actual optional model call explainable. Reusing the attempt identity
 after a publish rollback records one truthful operation rather than inventing a
 second call, and the no-provider/no-run rule keeps diagnostics semantically
 honest without changing schema or visible behavior.
+
+## D65 — Refine transcript provenance follows the user's acceptance boundary (Jul 2026)
+
+**Context:** one quality Refine can invoke Whisper once for retained system
+audio and once for microphone audio, then filter/attribute the combined result
+into a single reviewable draft. The current transcript remains authoritative
+until the user accepts that draft, and Apply already rejects a draft generated
+from a stale transcript revision. Persisting each low-level channel call as an
+independent success would not describe the coherent artifact the user reviews;
+persisting success before Apply would create durable provenance for output the
+user discarded or that lost its revision fence.
+
+**Decision:** one Refine execution creates one composite transcript
+`GenerationRun` immediately before its first real Whisper call, covering every
+non-silent system/microphone channel in that draft. Its exact operation
+fingerprint length-frames and hashes meeting/source revision, the actual
+WhisperKit provider and selected pinned model/revision, automatic versus fixed
+language hint, ordered vocabulary material, and channel/content digests. The
+app reuses finalized v6 capture SHA-256 evidence only after the current byte
+count matches; legacy audio is streamed through local SHA-256. Paths,
+vocabulary, transcript text, and draft text never enter persisted provenance.
+Configuration stores only workflow/operation, channel names, policy mode,
+source revision, and vocabulary count; metrics store only segment count,
+output UTF-8 byte count, and aggregate speech milliseconds.
+
+Successful provenance remains an ephemeral member of `RefineDraft`. On Apply,
+StorageKit validates terminal transcript kind/outcome, meeting, output
+language, workflow, and source revision, then inserts the run, links every new
+segment, replaces the accepted cast/transcript/language, and increments
+`transcriptRevision` in the existing transaction. Any stale draft, invalid
+provenance, duplicate run, or child write failure rolls back every new row.
+Discarded and empty drafts create no success record. Once an attempt begins,
+transcription failure or cancellation writes one standalone failed/cancelled
+run best effort; silent channels create no run. Later generic segment saves
+retain the established link. CLI refinement remains compatible through the
+optional run parameter, and best-effort diarization/Companion plus follow-up
+summary behavior remain unchanged.
+
+**Rationale:** the accepted transcript — not an individual decoder call or an
+ephemeral comparison — is the durable business artifact. Aligning provenance
+with that boundary preserves human review and optimistic concurrency while
+making accepted model output reproducible and failures diagnosable. One
+content-free composite attempt accurately describes multi-channel Refine
+without adding schema, duplicating private content, or weakening local-first
+behavior.

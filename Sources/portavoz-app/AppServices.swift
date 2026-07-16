@@ -153,12 +153,12 @@ final class AppServices {
     /// shared. The variant follows the "Whisper compacto" preference (turbo
     /// 1.6 GB vs. 626 MB for low disk, M12); switching it reloads.
     func loadWhisperIfNeeded(
+        descriptor requestedDescriptor: ModelDescriptor? = nil,
         progress: @escaping @MainActor (String) -> Void,
         downloadProgress: (@MainActor (String, Int) -> Void)? = nil
     ) async throws -> WhisperEngine {
-        let compact = UserDefaults.standard.bool(forKey: "whisperCompact")
-        let descriptor =
-            compact ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
+        let descriptor = requestedDescriptor ?? Self.preferredWhisperDescriptor()
+        let compact = descriptor.id == ModelCatalog.whisperLargeV3_626MB.id
         // A fresh use cancels any idle release scheduled by the previous one.
         whisperIdleGeneration += 1
         if let whisper, whisperVariantID == descriptor.id { return whisper }
@@ -176,6 +176,12 @@ final class AppServices {
         whisper = engine
         whisperVariantID = descriptor.id
         return engine
+    }
+
+    static func preferredWhisperDescriptor() -> ModelDescriptor {
+        UserDefaults.standard.bool(forKey: "whisperCompact")
+            ? ModelCatalog.whisperLargeV3_626MB
+            : ModelCatalog.whisperLargeV3Turbo
     }
 
     /// Called after enrolling/deleting the voiceprint so the next load
