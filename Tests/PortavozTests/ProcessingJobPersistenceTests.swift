@@ -205,28 +205,88 @@ final class ProcessingJobPersistenceTests: XCTestCase {
     }
 
     func testGeneratedJobCannotCompleteWithoutItsArtifact() async throws {
+        for kind in [ProcessingJobKind.transcription, .summary] {
+            let store = try MeetingStore.inMemory()
+            let captured = meeting()
+            try await store.save(captured)
+            _ = try await store.enqueueProcessingJobs(
+                for: captured.id,
+                requests: [ProcessingJobRequest(
+                    kind: kind,
+                    inputFingerprint: "\(kind.rawValue):required-artifact")],
+                at: now)
+            let claimValue = try await store.claimNextProcessingJob(
+                kinds: [kind], owner: "worker-a", leaseDuration: 30, at: now)
+            let claim = try XCTUnwrap(claimValue)
+
+            do {
+                _ = try await store.completeProcessingJob(
+                    claim.id, owner: "worker-a", at: now.addingTimeInterval(1))
+                XCTFail("\(kind.rawValue) cannot succeed without its artifact")
+            } catch StorageError.invalidProcessingJob(let reason) {
+                XCTAssertTrue(reason.contains("artifact completion"))
+            }
+            let jobs = try await store.processingJobs(for: captured.id)
+            XCTAssertEqual(jobs.first?.state, .running)
+            XCTAssertEqual(jobs.first?.leaseOwner, "worker-a")
+        }
+    }
+
+    func testTranscriptionCompletionPublishesRevisionAndDiarizationAtomically() async throws {
         let store = try MeetingStore.inMemory()
         let captured = meeting()
         try await store.save(captured)
+        let fingerprint = "transcription:audio-sha:revision-0"
         _ = try await store.enqueueProcessingJobs(
             for: captured.id,
             requests: [ProcessingJobRequest(
-                kind: .summary, inputFingerprint: "summary:required-artifact")],
+                kind: .transcription,
+                inputFingerprint: fingerprint,
+                priority: 30)],
             at: now)
         let claimValue = try await store.claimNextProcessingJob(
-            kinds: [.summary], owner: "worker-a", leaseDuration: 30, at: now)
+            kinds: [.transcription],
+            owner: "worker-a",
+            leaseDuration: 30,
+            at: now)
         let claim = try XCTUnwrap(claimValue)
+        let speaker = Speaker(meetingID: captured.id, label: "Them")
+        let segment = TranscriptSegment(
+            meetingID: captured.id,
+            speakerID: speaker.id,
+            channel: .system,
+            text: "La transcripción se recuperó desde el audio.",
+            language: "es",
+            startTime: 0,
+            endTime: 4,
+            isFinal: true)
+        let diarization = ProcessingJobRequest(
+            kind: .diarization,
+            inputFingerprint: "diarization:recovered-revision-1",
+            priority: 20)
 
-        do {
-            _ = try await store.completeProcessingJob(
-                claim.id, owner: "worker-a", at: now.addingTimeInterval(1))
-            XCTFail("generated work cannot succeed without committing its artifact")
-        } catch StorageError.invalidProcessingJob(let reason) {
-            XCTAssertTrue(reason.contains("artifact completion"))
-        }
-        let jobs = try await store.processingJobs(for: captured.id)
-        XCTAssertEqual(jobs.first?.state, .running)
-        XCTAssertEqual(jobs.first?.leaseOwner, "worker-a")
+        let commit = try await store.completeTranscriptionJob(
+            claim.id,
+            owner: "worker-a",
+            artifact: TranscriptionArtifact(
+                meetingID: captured.id,
+                inputFingerprint: fingerprint,
+                sourceTranscriptRevision: 0,
+                language: "es",
+                speakers: [speaker],
+                segments: [segment]),
+            enqueue: [diarization],
+            at: now.addingTimeInterval(2))
+
+        XCTAssertEqual(commit.artifactVersion, 1)
+        XCTAssertEqual(commit.completedJob.state, .succeeded)
+        XCTAssertEqual(commit.enqueuedJobs.map(\.kind), [.diarization])
+        let stored = try await detail(captured.id, in: store)
+        XCTAssertEqual(stored.meeting.transcriptRevision, 1)
+        XCTAssertEqual(stored.meeting.language, "es")
+        XCTAssertEqual(stored.segments.map(\.text), [segment.text])
+        XCTAssertEqual(stored.speakers.map(\.label), ["Them"])
+        XCTAssertEqual(stored.meeting.lifecycleState, .processing)
     }
 
     func testDiarizationCompletionPublishesRevisionAndFollowUpAtomically() async throws {

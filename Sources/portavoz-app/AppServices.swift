@@ -42,6 +42,7 @@ final class AppServices {
     var modelsState: ModelsState = .unknown
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
+    private var recordingEnginesLoadTask: Task<Void, Error>?
     private(set) var whisper: WhisperEngine?
     private var whisperVariantID: String?
 
@@ -55,6 +56,9 @@ final class AppServices {
     /// Quality re-passes keyed by meeting — they outlive the detail view,
     /// so navigating away never loses a draft (field bug, Jul 10).
     let refines = RefineService()
+    /// One serial utility lane for file transcription. Live streams bypass it
+    /// by design, so a new recording always wins ANE scheduling (D7).
+    let transcriptionScheduler = TranscriptionScheduler()
     /// Process-scoped ownership of the durable post-capture worker and its
     /// single scheduled retry wake. The supervisor deduplicates launch and
     /// producer kicks without polling SQLite.
@@ -118,34 +122,62 @@ final class AppServices {
             modelsState = .ready
             return
         }
-        let modelStore = ModelStore()
+        if let recordingEnginesLoadTask {
+            try await recordingEnginesLoadTask.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            try await self.loadRecordingEngines()
+        }
+        recordingEnginesLoadTask = task
         do {
-            modelsState = .downloading(L10n.text("Preparing models…"))
-            if transcriber == nil {
-                transcriber = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
-                    let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading(
-                            L10n.format("Downloading transcription model… %d%%", percent))
-                    }
-                }
-            }
-            if diarizer == nil {
-                let voiceprint = (try? VoiceprintStore().load())
-                diarizer = try await PyannoteDiarizer.loadRecommended(
-                    store: modelStore, voiceprint: voiceprint
-                ) { progress in
-                    let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading(
-                            L10n.format("Downloading diarization model… %d%%", percent))
-                    }
-                }
-            }
+            try await task.value
+            recordingEnginesLoadTask = nil
             modelsState = .ready
         } catch {
+            recordingEnginesLoadTask = nil
             modelsState = .failed(error.localizedDescription)
             throw error
+        }
+    }
+
+    /// Starts verified model preparation without delaying audio capture. Every
+    /// caller joins `recordingEnginesLoadTask`, so Stop recovery, Refine, and a
+    /// second meeting never race duplicate downloads or model loads.
+    func prepareRecordingEnginesInBackground() {
+        guard transcriber == nil || diarizer == nil else {
+            modelsState = .ready
+            return
+        }
+        Task { @MainActor [weak self] in
+            try? await self?.loadEnginesIfNeeded()
+        }
+    }
+
+    private func loadRecordingEngines() async throws {
+        let modelStore = ModelStore()
+        modelsState = .downloading(L10n.text("Preparing models…"))
+        if transcriber == nil {
+            transcriber = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
+                let percent = Int(progress.fraction * 100)
+                Task { @MainActor [weak self] in
+                    self?.modelsState = .downloading(
+                        L10n.format("Downloading transcription model… %d%%", percent))
+                }
+            }
+        }
+        if diarizer == nil {
+            let voiceprint = (try? VoiceprintStore().load())
+            diarizer = try await PyannoteDiarizer.loadRecommended(
+                store: modelStore, voiceprint: voiceprint
+            ) { progress in
+                let percent = Int(progress.fraction * 100)
+                Task { @MainActor [weak self] in
+                    self?.modelsState = .downloading(
+                        L10n.format("Downloading diarization model… %d%%", percent))
+                }
+            }
         }
     }
 
@@ -195,6 +227,7 @@ final class AppServices {
     /// restores them on the next recording. Callers must not hold a
     /// recording open when they call this.
     func releaseRecordingEngines() {
+        guard recordingEnginesLoadTask == nil else { return }
         transcriber = nil
         diarizer = nil
         modelsState = .unknown

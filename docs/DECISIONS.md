@@ -1619,3 +1619,40 @@ closed while preserving the released sharing and developer workflows. Exact
 endpoint validation prevents a forged path from hiding behind a correct host,
 and centralized transport gives the later privacy receipt one complete,
 content-free vocabulary without duplicating exported meeting data.
+
+## D70 — Audio capture never waits for transcription models (Jul 2026)
+
+**Context:** on a clean Sequoia installation, starting the first recording
+awaited verified Parakeet and diarization downloads plus Core ML preparation.
+The interface stayed on a model-download screen and made a derivation
+capability appear to be a prerequisite for saving the meeting. A live engine
+or one channel can also fail after capture begins; preserving only partial
+captions would make the later transcript look complete when it is not.
+
+**Decision:** `ApplicationKit.StartRecording` prepares only the microphone and
+structural capture channels before reserving and starting audio. The app runtime
+may attach direct live Parakeet streams only when a verified engine is already
+resident. Otherwise it starts or joins one process-wide verified engine task
+after audio is active and exposes a visible deferred-transcript state. Any
+missing or failed live lane marks the recording as requiring complete recovery;
+it never stops audio or its peer lane.
+
+At Stop, empty captions or that recovery evidence admit a `.transcription`
+job in the same captured-snapshot Unit of Work. Its content-free exact
+fingerprint binds the meeting/source revision, pinned Parakeet identity,
+automatic multilingual/no-vocabulary policy, and finalized channel identity,
+health, checksum, duration, and bytes. Pending evidence, missing-only evidence,
+and purely silent audio cannot run. The process worker revalidates the identity,
+joins verified loading, transcribes each usable channel through the serial
+batch lane, preserves its real `AudioChannel`, applies microphone noise/bleed
+hygiene, and atomically replaces cast/transcript, advances the revision,
+completes the owned job, and enqueues exact diarization. Generic job completion
+cannot claim transcription success without that artifact transaction. Whisper
+Refine remains a separate explicit, reviewable quality pass.
+
+**Rationale:** audio is Portavoz's primary recoverable fact; model readiness is
+derived capability state. Separating them makes clean-install recording fast
+and honest without weakening verified downloads, mixed-language preservation,
+the live-vs-batch scheduling rule, or the existing lease/revision fences. A
+single durable recovery path also handles no-live-model, failed-lane, Stop, and
+relaunch cases instead of creating UI-only retries.

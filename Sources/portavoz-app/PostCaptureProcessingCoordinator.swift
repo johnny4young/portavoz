@@ -169,12 +169,14 @@ final class PostCaptureProcessingSupervisor {
     }
 }
 
-/// Concrete Band 1 worker for durable diarization and summary operations.
+/// Concrete Band 1 worker for durable transcription, diarization, and summary.
 /// Capture recovery always runs first; normal Stop atomically admits the first
 /// job and hands the remaining work to this process-scoped supervisor.
 @MainActor
 enum PostCaptureProcessingCoordinator {
-    static let supportedKinds: Set<ProcessingJobKind> = [.diarization, .summary]
+    static let supportedKinds: Set<ProcessingJobKind> = [
+        .transcription, .diarization, .summary
+    ]
 
     private static let logger = Logger(
         subsystem: "app.portavoz.mac", category: "post-capture-processing")
@@ -225,6 +227,9 @@ enum PostCaptureProcessingCoordinator {
 
         do {
             switch job.kind {
+            case .transcription:
+                try await PostCaptureTranscriptionProcessor.process(
+                    job, owner: owner, services: services)
             case .diarization:
                 try await processDiarization(job, owner: owner, services: services)
             case .summary:
@@ -505,6 +510,7 @@ enum PostCaptureProcessingCoordinator {
 
     private static func failureCode(for kind: ProcessingJobKind) -> String {
         switch kind {
+        case .transcription: "processing.transcription.failed"
         case .diarization: "processing.diarization.failed"
         case .summary: "processing.summary.failed"
         default: "processing.worker.failed"

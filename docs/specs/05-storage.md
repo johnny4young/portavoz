@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery).
 
 ## Database
 
@@ -52,11 +52,13 @@ exact canonical database values. Raw submillisecond `Date` equality is never
 used as a stronger, non-durable identity constraint.
 
 D43 extends this boundary with `installCapturedSnapshot(_:enqueue:at:)`.
-Normal Stop supplies the exact initial diarization request, and the same
-transaction installs captured content, inserts that immutable-key job, and
-derives `processing`. A job constraint/write failure therefore rolls the
-snapshot and job back together; package tests inject that failure and verify
-the original recording shell plus pending reservation remain untouched.
+Normal Stop supplies the exact initial diarization request when live captions
+are complete, or D70's exact initial transcription request when captions are
+empty/degraded but finalized audio is usable. The same transaction installs
+captured content, inserts that immutable-key job, and derives `processing`. A
+job constraint/write failure therefore rolls the snapshot and job back
+together; package tests inject that failure and verify the original recording
+shell plus pending reservation remain untouched.
 
 Slice 1D-a maps `processingJob` through strict `ProcessingJobID`, open typed
 kinds, states, requests/failures, and `ProcessingJobRecord`. One enqueue
@@ -150,11 +152,17 @@ ready aggregates and are exact-repeat safe (D40).
 Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `processingJobs(for:)`, `claimNextProcessingJob(kinds:owner:leaseDuration:at:)`,
 `heartbeatProcessingJob`, `completeProcessingJob`,
-`completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
+`completeTranscriptionJob`, `completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
 `cancelProcessingJob`, `nextScheduledProcessingDate`, and
 `recoverExpiredProcessingJobs`. Claims and scheduled wakes are capability-
 filtered and owner-fenced; generated work must use its artifact completion API,
 while the generic completion path remains available only to non-content jobs.
+`completeTranscriptionJob` validates the exact meeting/fingerprint/source
+revision, replaces the live cast/transcript with one canonical meeting-owned
+artifact, advances `transcriptRevision`, completes the lease, enqueues exact
+diarization, and reconciles lifecycle in one transaction. Transcription and
+diarization share one internal transcript-artifact envelope so identity,
+ownership, tombstoning, and revision rules cannot drift between stages.
 `SummaryArtifact` requires the successful generation run whose operation
 fingerprint matches the job. `completeSummaryJob` validates that run and inserts
 it with the immutable summary/actions, job success, and lifecycle

@@ -501,6 +501,16 @@
         }
       }
     },
+    "Audio is recording now. The complete transcript will appear after the local model finishes preparing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio ya se está grabando. La transcripción completa aparecerá cuando el modelo local termine de prepararse."
+          }
+        }
+      }
+    },
     "Audio compressed — %@ freed.": {
       "localizations": {
         "es": {
@@ -1087,6 +1097,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se encontró el audio de la reunión."
+          }
+        }
+      }
+    },
+    "Could not prepare recording: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo preparar la grabación: %@"
           }
         }
       }

@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery).
 
 ## Channel model (D5)
 
@@ -36,12 +36,17 @@ Actor that coordinates sources and writers by channel (created lazily with the f
 
 Startup is transactional at both levels. `ApplicationKit.StartRecording`
 samples title/language/vocabulary/capture preferences once, asks a private app
-runtime to warm the microphone while loading recording engines, and receives
-the structurally selected channels. Before any source starts, the use case
-atomically inserts a `recording` meeting shell and one pending `AudioAsset`
-reservation per selected channel. The runtime then starts `RecordingSession`,
-which stops partially started sources on failure, closes its direct live
-Parakeet feeds, and stops mic warm-up. The use case inspects both reserved
+runtime to warm the microphone, select structural channels, and report whether
+a verified live Parakeet instance is already resident. Model readiness is
+evidence, never a capture gate. Before any source starts, the use case atomically
+inserts a `recording` meeting shell and one pending `AudioAsset` reservation per
+selected channel. The runtime then starts `RecordingSession` immediately. If
+Parakeet is resident it also owns one direct stream per channel; otherwise it
+starts one deduplicated verified model-preparation task after audio is active
+and marks the session for complete transcript recovery at Stop. A failed live
+lane sets the same recovery marker without stopping audio or its peer. Source-
+start failure stops partially started sources, closes any live feeds, and stops
+mic warm-up. The use case inspects both reserved
 staging paths and their published counterparts: any file retains the shell as
 `needsAttention`; only an untouched empty shell can pass D37's guarded discard.
 Every failed attempt schedules idle engine release (D49).
@@ -75,10 +80,17 @@ is preserved and Portavoz neither overwrites nor guesses (D40/D50).
 
 `ApplicationKit.StopRecording` installs `captured`, finalized/missing assets,
 provisional live cast/transcript, notes, Companion cards, and the exact first
-job in one StorageKit Unit of Work before diarization or summary work, then the
-worker records `processing` and finally `ready`. Batch attribution atomically
-replaces the provisional cast. Audio with no captions is retained as
-`needsAttention`; a later required-write failure does the same. Stop schedules
+job in one StorageKit Unit of Work before derived work. A complete first-pass
+`transcription` job is admitted when captions are empty or any live lane was
+unavailable/failed; otherwise the initial job remains `diarization`. The
+transcription worker joins verified Parakeet preparation, transcribes each
+healthy finalized channel in its real channel role, applies mic-noise and bleed
+hygiene, atomically replaces the complete transcript/cast, advances its
+revision, and enqueues exact diarization. Truly silent audio cannot admit that
+job and remains visible as `needsAttention` with explicit empty-transcript
+guidance. The worker records `processing` and finally `ready`; batch attribution
+atomically replaces the provisional cast. A later required-write failure
+preserves the meeting as `needsAttention`. Stop schedules
 engine release on every accepted outcome, even when there was not enough audio
 to keep. The handoff compares reservation timestamps through GRDB's canonical
 millisecond representation rather than raw in-memory `Date` equality, so an

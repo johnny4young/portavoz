@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 16, 2026
 
+- **🎙️ Record now, transcribe safely after** — A fresh Mac no longer makes you wait for local speech models before the first recording. Portavoz starts saving audio immediately, prepares verified models in the background, and durably recovers the complete transcript after Stop if live captions were not ready or one caption lane failed.
 - **🛟 Stop means safely saved** — Fresh recordings no longer trip over submillisecond timestamp precision when they close. Audio, transcript, and the durable follow-up job now cross the atomic handoff immediately instead of showing a reservation error and waiting for launch recovery.
 
 ## July 15, 2026

@@ -131,6 +131,46 @@ extension MeetingStore {
         }
     }
 
+    /// Publishes a complete transcript recovered from finalized capture audio,
+    /// advances its revision, completes the owned transcription attempt, and
+    /// admits dependent diarization in one transaction.
+    public func completeTranscriptionJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        artifact: TranscriptionArtifact,
+        enqueue followUpRequests: [ProcessingJobRequest] = [],
+        at timestamp: Date = Date()
+    ) async throws -> ProcessingArtifactCommit {
+        try Self.validateOwner(owner)
+        let transcript = TranscriptArtifactEnvelope(artifact)
+        try Self.validateTranscriptArtifact(transcript)
+        try Self.validateFollowUps(followUpRequests)
+        return try await database.write { db in
+            var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            try Self.validateArtifactJob(
+                record, kind: .transcription, meetingID: artifact.meetingID,
+                fingerprint: artifact.inputFingerprint)
+            var meeting = try Self.liveMeeting(artifact.meetingID, in: db)
+            try Self.requireRevision(
+                artifact.sourceTranscriptRevision, for: record, meeting: meeting)
+            try Self.requireTranscriptIdentities(transcript, in: db)
+            try Self.writeTranscriptArtifact(
+                transcript,
+                meeting: &meeting,
+                at: timestamp,
+                in: db)
+            let enqueued = try Self.enqueueFollowUps(
+                followUpRequests, after: record, at: timestamp, in: db)
+            let completed = try Self.succeed(&record, at: timestamp, in: db)
+            try Self.reconcileProcessingLifecycle(
+                for: artifact.meetingID, at: timestamp, in: db)
+            return ProcessingArtifactCommit(
+                completedJob: completed,
+                enqueuedJobs: enqueued,
+                artifactVersion: meeting.transcriptRevision)
+        }
+    }
+
     /// Publishes an attributed transcript, advances its revision, completes
     /// the owned diarization attempt, and optionally creates dependent work
     /// in one transaction. A changed source revision rejects the whole write.
@@ -142,7 +182,8 @@ extension MeetingStore {
         at timestamp: Date = Date()
     ) async throws -> ProcessingArtifactCommit {
         try Self.validateOwner(owner)
-        try Self.validateDiarizationArtifact(artifact)
+        let transcript = TranscriptArtifactEnvelope(artifact)
+        try Self.validateTranscriptArtifact(transcript)
         try Self.validateFollowUps(followUpRequests)
         return try await database.write { db in
             var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
@@ -152,9 +193,12 @@ extension MeetingStore {
             var meeting = try Self.liveMeeting(artifact.meetingID, in: db)
             try Self.requireRevision(
                 artifact.sourceTranscriptRevision, for: record, meeting: meeting)
-            try Self.requireDiarizationIdentities(artifact, in: db)
-            try Self.writeDiarizationArtifact(
-                artifact, meeting: &meeting, at: timestamp, in: db)
+            try Self.requireTranscriptIdentities(transcript, in: db)
+            try Self.writeTranscriptArtifact(
+                transcript,
+                meeting: &meeting,
+                at: timestamp,
+                in: db)
             let enqueued = try Self.enqueueFollowUps(
                 followUpRequests, after: record, at: timestamp, in: db)
             let completed = try Self.succeed(&record, at: timestamp, in: db)
@@ -472,7 +516,8 @@ extension MeetingStore {
     }
 
     private static func requiresArtifactCommit(_ kind: String) -> Bool {
-        kind == ProcessingJobKind.refine.rawValue
+        kind == ProcessingJobKind.transcription.rawValue
+            || kind == ProcessingJobKind.refine.rawValue
             || kind == ProcessingJobKind.diarization.rawValue
             || kind == ProcessingJobKind.summary.rawValue
     }
@@ -507,43 +552,12 @@ extension MeetingStore {
         }
     }
 
-    fileprivate static func isCanonical(_ value: String) -> Bool {
+    static func isCanonical(_ value: String) -> Bool {
         !value.isEmpty && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
 extension MeetingStore {
-    private static func validateDiarizationArtifact(
-        _ artifact: DiarizationArtifact
-    ) throws {
-        let speakerIDs = Set(artifact.speakers.map(\.id))
-        let segmentIDs = Set(artifact.segments.map(\.id))
-        guard isCanonical(artifact.inputFingerprint),
-            artifact.sourceTranscriptRevision >= 0,
-            artifact.language.map(isCanonical) ?? true,
-            !artifact.segments.isEmpty,
-            speakerIDs.count == artifact.speakers.count,
-            segmentIDs.count == artifact.segments.count,
-            artifact.speakers.allSatisfy({ speaker in
-                speaker.meetingID == artifact.meetingID
-                    && isCanonical(speaker.label)
-            }),
-            artifact.segments.allSatisfy({ segment in
-                segment.meetingID == artifact.meetingID
-                    && (segment.speakerID.map(speakerIDs.contains) ?? true)
-                    && hasContent(segment.text)
-                    && segment.startTime.isFinite
-                    && segment.endTime.isFinite
-                    && segment.startTime >= 0
-                    && segment.endTime >= segment.startTime
-                    && (segment.confidence.map { $0.isFinite && (0...1).contains($0) } ?? true)
-            })
-        else {
-            throw StorageError.invalidProcessingJob(
-                "diarization artifact must be canonical, unique, and meeting-owned")
-        }
-    }
-
     private static func validateSummaryArtifact(_ artifact: SummaryArtifact) throws {
         let draft = artifact.draft
         guard isCanonical(artifact.inputFingerprint),
@@ -600,28 +614,6 @@ extension MeetingStore {
         }
     }
 
-    private static func requireDiarizationIdentities(
-        _ artifact: DiarizationArtifact,
-        in db: Database
-    ) throws {
-        let meetingKey = artifact.meetingID.rawValue.uuidString
-        for speaker in artifact.speakers {
-            if let existing = try SpeakerRecord.fetchOne(
-                db, key: speaker.id.rawValue.uuidString),
-                existing.meetingID != meetingKey {
-                throw StorageError.invalidProcessingJob(
-                    "diarization cannot move an existing speaker between meetings")
-            }
-        }
-        for segment in artifact.segments {
-            if let existing = try SegmentRecord.fetchOne(db, key: segment.id.uuidString),
-                existing.meetingID != meetingKey {
-                throw StorageError.invalidProcessingJob(
-                    "diarization cannot move an existing segment between meetings")
-            }
-        }
-    }
-
     private static func requireSummaryOwners(
         _ draft: SummaryDraft,
         in db: Database
@@ -637,37 +629,6 @@ extension MeetingStore {
             throw StorageError.invalidProcessingJob(
                 "summary action owners must belong to the current live cast")
         }
-    }
-
-    private static func writeDiarizationArtifact(
-        _ artifact: DiarizationArtifact,
-        meeting: inout MeetingRecord,
-        at timestamp: Date,
-        in db: Database
-    ) throws {
-        let key = artifact.meetingID.rawValue.uuidString
-        try db.execute(
-            sql: "UPDATE segment SET deletedAt = ?, updatedAt = ? "
-                + "WHERE meetingID = ? AND deletedAt IS NULL",
-            arguments: [timestamp, timestamp, key])
-        try db.execute(
-            sql: "UPDATE speaker SET deletedAt = ?, updatedAt = ? "
-                + "WHERE meetingID = ? AND deletedAt IS NULL",
-            arguments: [timestamp, timestamp, key])
-        for speaker in artifact.speakers {
-            let record = SpeakerRecord(
-                speaker, createdAt: timestamp, updatedAt: timestamp)
-            try record.save(db)
-        }
-        for segment in artifact.segments {
-            let record = SegmentRecord(
-                segment, createdAt: timestamp, updatedAt: timestamp)
-            try record.save(db)
-        }
-        meeting.language = artifact.language
-        meeting.transcriptRevision += 1
-        meeting.updatedAt = timestamp
-        try meeting.update(db)
     }
 
     private static func enqueueFollowUps(

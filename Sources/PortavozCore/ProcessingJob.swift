@@ -9,6 +9,7 @@ public struct ProcessingJobKind: RawRepresentable, Codable, Hashable, Sendable {
         self.rawValue = rawValue
     }
 
+    public static let transcription = ProcessingJobKind(rawValue: "transcription")
     public static let refine = ProcessingJobKind(rawValue: "refine")
     public static let diarization = ProcessingJobKind(rawValue: "diarization")
     public static let summary = ProcessingJobKind(rawValue: "summary")
@@ -53,6 +54,35 @@ public struct ProcessingJobFailure: Sendable, Equatable {
     public init(code: String, message: String? = nil) {
         self.code = code
         self.message = message
+    }
+}
+
+/// A complete first-pass transcript recovered from finalized capture audio.
+/// The artifact is fenced to the exact audio/model fingerprint and source
+/// transcript revision owned by its durable job. Storage publishes the cast,
+/// advances the revision, and admits dependent diarization atomically.
+public struct TranscriptionArtifact: Sendable {
+    public let meetingID: MeetingID
+    public let inputFingerprint: String
+    public let sourceTranscriptRevision: Int
+    public let language: String?
+    public let speakers: [Speaker]
+    public let segments: [TranscriptSegment]
+
+    public init(
+        meetingID: MeetingID,
+        inputFingerprint: String,
+        sourceTranscriptRevision: Int,
+        language: String?,
+        speakers: [Speaker],
+        segments: [TranscriptSegment]
+    ) {
+        self.meetingID = meetingID
+        self.inputFingerprint = inputFingerprint
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.language = language
+        self.speakers = speakers
+        self.segments = segments
     }
 }
 

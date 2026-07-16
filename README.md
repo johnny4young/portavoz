@@ -55,7 +55,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Capture & transcribe**
 - **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, a low-mic nudge, and a heads-up when the incoming channel goes silent. A channel that captured nothing stays empty — never filled with invented text.
-- **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. On launch, staging-only or final-only files are revalidated and restored; ambiguous copies are preserved rather than guessed at. If transcription or later processing fails, the recording remains discoverable for playback or export.
+- **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. A fresh install records immediately instead of waiting for local speech-model downloads; verified models prepare in the background, and Stop admits an exact durable recovery job when live captions were unavailable or a lane failed. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. On launch, staging-only or final-only files are revalidated and restored; ambiguous copies are preserved rather than guessed at.
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
 - **Whisper refine** — a cancellable maximum-quality re-pass you approve as a draft (never silently overwrites), 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting to recover one that came out wrong.
@@ -110,7 +110,7 @@ An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked 
 
 ### Models
 
-Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). None of them phone home after download.
+Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. None of the models phone home after download.
 
 | Model | Role | On-disk | Min RAM |
 |---|---|---|---|
@@ -137,11 +137,11 @@ real vertical use case.
 | `ApplicationKit` | Characterized workflows for lifecycle/trash, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library/Insights/Meeting Detail read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
-| `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), exact privacy-safe Refine operation fingerprints, scheduler |
+| `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic summary, accepted-Refine transcript, and Companion-card provenance, durable leased job queue, local vector index |
+| `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, durable leased job queue, local vector index |
 | `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked outbound network adapter |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.

@@ -51,6 +51,9 @@ struct RecordingView: View {
                 if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
                     appTapBanner
                 }
+                if controller.liveTranscriptDeferred {
+                    deferredTranscriptBanner
+                }
                 if controller.translationNeedsDownload {
                     translationDownloadBanner
                 }
@@ -426,6 +429,19 @@ struct RecordingView: View {
 // view body under the length limit. `private` stays file-scoped, so these
 // still reach `controller` and `systemWarningDismissed`.
 extension RecordingView {
+    /// Audio is the primary artifact: a fresh install starts recording now,
+    /// while the verified local model prepares in the background. The durable
+    /// worker fills the complete transcript from the saved channels after Stop.
+    var deferredTranscriptBanner: some View {
+        Label(
+            "Audio is recording now. The complete transcript will appear after the local model finishes preparing.",
+            systemImage: "waveform.badge.clock")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 20)
+        .accessibilityIdentifier("recording-transcript-deferred")
+    }
+
     /// Shown only when the mic stays quiet — the far-field-mic nudge (field
     /// bug jul 2026), out of the compact bar so it never crowds it.
     var micLowBanner: some View {

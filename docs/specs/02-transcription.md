@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery).
 
 ## Roles and engines (D7)
 
@@ -22,10 +22,36 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
 - **Custom delta filter** (`ParakeetSegmentMapper`): upstream dedup fails with small chunks (re-emits ~all left context). Updates' `tokenTimings` use absolute stream time → filter `startTime > last emitted boundary` and reconstruct text with `joinedText` (handles SentencePiece `▁`).
 - Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
-- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` instantiates one direct Parakeet stream per selected channel; these streams never enter or wait for the serial batch slot. File imports/refine remain batch work.
+- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` instantiates one direct Parakeet stream per selected channel only when the verified engine is already resident; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+
+### Audio-first model readiness and recovery (D70)
+
+Recording does not await `ModelStore` downloads or Core ML compilation. The
+app runtime snapshots the currently resident Parakeet instance, starts durable
+mic/system capture, and then joins or starts one process-wide verified engine
+preparation task. The recording UI states that audio is active and the complete
+transcript will appear after local preparation when live captions are deferred.
+
+If no live transcriber existed at Start, or either direct stream throws, the
+session carries a recovery bit into `StopRecording`. Stop admits an exact
+`.transcription` job whose length-framed fingerprint binds meeting ID, source
+transcript revision, Parakeet provider/model/revision, automatic multilingual
+mode, no vocabulary, and the current finalized channel IDs, health, checksums,
+durations, and byte counts. Pending evidence, missing-only evidence, and purely
+silent audio cannot produce runnable work.
+
+The process worker revalidates that fingerprint, joins verified model loading,
+and transcribes healthy/clipped system and microphone files through the serial
+batch scheduler while preserving their real `AudioChannel`. Automatic mode
+uses no fixed language and no vocabulary so a mixed Spanish/English meeting is
+not biased or translated. Mic fragments pass `TranscriptNoiseFilter` and
+`MicBleedFilter`; StorageKit then atomically publishes the complete attributed
+cast/transcript, advances `transcriptRevision`, completes the owned lease, and
+enqueues exact diarization. Whisper Refine remains the explicit reviewable
+quality pass and is not replaced by this safety net.
 
 ## Quality: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
 

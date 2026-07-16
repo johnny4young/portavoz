@@ -30,6 +30,7 @@ final class StartRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(commit.reservation.assets.map(\.channel), [.microphone, .system])
         XCTAssertEqual(commit.reservation.assets.map(\.healthStatus), [.pending, .pending])
         XCTAssertEqual(commit.tappedMeetingApps, ["Meet"])
+        XCTAssertTrue(commit.liveTranscriptionAvailable)
         XCTAssertEqual(state.captureRequest?.meetingID, fixture.meetingID)
         XCTAssertEqual(state.captureRequest?.audioDirectory, fixture.directory)
         XCTAssertNil(state.captureRequest?.languageHint)
@@ -69,7 +70,7 @@ final class StartRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.captureRequest?.languageHint, "es")
     }
 
-    func testModelPreparationFailureCleansRuntimeAndSchedulesRelease() async {
+    func testPreparationFailureCleansRuntimeAndSchedulesRelease() async {
         let fixture = StartRecordingFixture()
         let dependencies = StartRecordingDependencies(
             preferences: fixture.preferences,
@@ -77,8 +78,8 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .modelPreparationFailed(let message) = result else {
-            return XCTFail("model failure should stay distinct")
+        guard case .preparationFailed(let message) = result else {
+            return XCTFail("runtime preparation failure should stay distinct")
         }
         let state = await dependencies.state()
         XCTAssertEqual(message, StartRecordingDependencyError.prepare.localizedDescription)
@@ -86,21 +87,25 @@ final class StartRecordingUseCaseTests: XCTestCase {
         XCTAssertNil(state.reservedMeeting)
     }
 
-    func testUnavailableTranscriberKeepsReleasedGuidanceDistinct() async {
+    func testUnavailableLiveTranscriberStillStartsAudioFirst() async {
         let fixture = StartRecordingFixture()
         let dependencies = StartRecordingDependencies(
             preferences: fixture.preferences,
-            prepareError: .transcriberUnavailable)
+            liveTranscriptionAvailable: false)
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .transcriptionEngineUnavailable = result else {
-            return XCTFail("missing transcriber should be typed")
+        guard case .started(let commit) = result else {
+            return XCTFail("missing live transcriber must not block audio")
         }
         let state = await dependencies.state()
-        XCTAssertEqual(state.cancelCount, 1)
-        XCTAssertEqual(state.releaseCount, 1)
-        XCTAssertNil(state.reservedMeeting)
+        XCTAssertFalse(commit.liveTranscriptionAvailable)
+        XCTAssertEqual(
+            state.events,
+            ["preferences", "prepare", "count", "reserve", "start"])
+        XCTAssertEqual(state.cancelCount, 0)
+        XCTAssertEqual(state.releaseCount, 0)
+        XCTAssertNotNil(state.reservedMeeting)
     }
 
     func testReservationFailureNeverStartsSourcesAndReleasesPreparedRuntime() async {
@@ -276,7 +281,6 @@ private struct StartRecordingFixture {
 
 private enum StartRecordingDependencyError: Error, LocalizedError {
     case prepare
-    case transcriberUnavailable
     case reserve
     case start
     case mark
@@ -328,7 +332,7 @@ private actor StartRecordingDependencies:
     private let startedMeetingCountValue: Int
     private let discardResult: Bool
     private let prepareError: StartRecordingDependencyError?
-    private let transcriberUnavailable: Bool
+    private let liveTranscriptionAvailable: Bool
     private let reserveError: StartRecordingDependencyError?
     private let startError: StartRecordingDependencyError?
     private let markError: StartRecordingDependencyError?
@@ -347,6 +351,7 @@ private actor StartRecordingDependencies:
         startedMeetingCount: Int = 0,
         discardResult: Bool = true,
         prepareError: StartRecordingDependencyError? = nil,
+        liveTranscriptionAvailable: Bool = true,
         reserveError: StartRecordingDependencyError? = nil,
         startError: StartRecordingDependencyError? = nil,
         markError: StartRecordingDependencyError? = nil
@@ -355,8 +360,8 @@ private actor StartRecordingDependencies:
         self.existingPaths = existingPaths
         startedMeetingCountValue = startedMeetingCount
         self.discardResult = discardResult
-        transcriberUnavailable = prepareError == .transcriberUnavailable
-        self.prepareError = prepareError == .transcriberUnavailable ? nil : prepareError
+        self.prepareError = prepareError
+        self.liveTranscriptionAvailable = liveTranscriptionAvailable
         self.reserveError = reserveError
         self.startError = startError
         self.markError = markError
@@ -371,13 +376,11 @@ private actor StartRecordingDependencies:
         preferences: StartRecordingPreferencesSnapshot
     ) async throws -> StartRecordingPreparedRuntime {
         events.append("prepare")
-        if transcriberUnavailable {
-            throw StartRecordingRuntimeError.transcriptionEngineUnavailable
-        }
         if let prepareError { throw prepareError }
         return StartRecordingPreparedRuntime(
             channels: [.microphone, .system],
-            tappedMeetingApps: ["Meet"])
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: liveTranscriptionAvailable)
     }
 
     func startCapture(

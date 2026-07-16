@@ -16,20 +16,25 @@ extension AppServices {
 }
 
 extension StopRecordingCapture {
-    init(_ summary: RecordingSession.Summary) {
-        self.init(publishedFiles: summary.publishedFiles.mapValues {
-            StopRecordingPublishedFile(
-                container: $0.container,
-                codec: $0.codec,
-                sampleRate: $0.sampleRate,
-                channelCount: $0.channelCount,
-                durationSeconds: $0.durationSeconds,
-                byteCount: $0.byteCount,
-                sha256: $0.sha256,
-                healthStatus: $0.healthStatus,
-                peakDBFS: $0.peakDBFS,
-                rmsDBFS: $0.rmsDBFS)
-        })
+    init(
+        _ summary: RecordingSession.Summary,
+        transcriptRequiresRecovery: Bool = false
+    ) {
+        self.init(
+            publishedFiles: summary.publishedFiles.mapValues {
+                StopRecordingPublishedFile(
+                    container: $0.container,
+                    codec: $0.codec,
+                    sampleRate: $0.sampleRate,
+                    channelCount: $0.channelCount,
+                    durationSeconds: $0.durationSeconds,
+                    byteCount: $0.byteCount,
+                    sha256: $0.sha256,
+                    healthStatus: $0.healthStatus,
+                    peakDBFS: $0.peakDBFS,
+                    rmsDBFS: $0.rmsDBFS)
+            },
+            transcriptRequiresRecovery: transcriptRequiresRecovery)
     }
 }
 

@@ -61,22 +61,62 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.installs[0].snapshot.segments.map(\.language), ["es", "en"])
     }
 
-    func testEmptyTranscriptPreservesAudioWithoutAdmittingWork() async {
+    func testEmptyTranscriptAdmitsDurableAudioRecovery() async {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(shell: fixture.shell)
 
         let result = await fixture.useCase(dependencies).execute(
             fixture.request(captions: []))
 
+        guard case .completed(let commit) = result else {
+            return XCTFail("empty transcript should enter durable recovery")
+        }
+        let state = await dependencies.state()
+        XCTAssertEqual(commit.meeting.lifecycleState, .processing)
+        XCTAssertNil(commit.meeting.lastProcessingError)
+        XCTAssertEqual(state.installs[0].requests.map(\.kind), [.transcription])
+        XCTAssertEqual(state.installs[0].requests.first?.priority, 30)
+        XCTAssertEqual(state.kickCount, 1)
+        XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testFailedLiveLaneRecoversCompleteTranscriptEvenWithPartialCaptions() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let capture = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile()],
+            transcriptRequiresRecovery: true)
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(captions: [fixture.captions[0]], capture: capture))
+
+        guard case .completed(let commit) = result else {
+            return XCTFail("a failed live lane should enter full transcript recovery")
+        }
+        let state = await dependencies.state()
+        XCTAssertEqual(commit.meeting.lifecycleState, .processing)
+        XCTAssertEqual(state.installs[0].snapshot.segments.count, 1)
+        XCTAssertEqual(state.installs[0].requests.map(\.kind), [.transcription])
+        XCTAssertEqual(state.kickCount, 1)
+    }
+
+    func testSilentAudioStillPreservesExplicitEmptyTranscriptGuidance() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let silent = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile(healthStatus: .silent)])
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(captions: [], capture: silent))
+
         guard case .transcriptEmpty(let commit) = result else {
-            return XCTFail("empty transcript should be recoverable")
+            return XCTFail("truly silent audio cannot admit transcription work")
         }
         let state = await dependencies.state()
         XCTAssertEqual(commit.meeting.lifecycleState, .needsAttention)
         XCTAssertEqual(commit.meeting.lastProcessingError, "transcription.empty")
         XCTAssertTrue(state.installs[0].requests.isEmpty)
         XCTAssertEqual(state.kickCount, 0)
-        XCTAssertEqual(state.releaseCount, 1)
     }
 
     func testUnpublishedReservationAtEitherCapturePathPreservesRecovery() async {
@@ -311,7 +351,9 @@ private struct StopRecordingFixture {
             isFinal: true)
     }
 
-    func publishedFile() -> StopRecordingPublishedFile {
+    func publishedFile(
+        healthStatus: AudioAssetHealthStatus = .healthy
+    ) -> StopRecordingPublishedFile {
         StopRecordingPublishedFile(
             container: "caf",
             codec: "pcm-s16le",
@@ -320,7 +362,7 @@ private struct StopRecordingFixture {
             durationSeconds: 60,
             byteCount: 5_760_128,
             sha256: String(repeating: "a", count: 64),
-            healthStatus: .healthy,
+            healthStatus: healthStatus,
             peakDBFS: -6,
             rmsDBFS: -18)
     }

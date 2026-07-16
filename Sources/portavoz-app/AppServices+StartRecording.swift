@@ -87,48 +87,29 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             voiceProcessing: preferences.voiceProcessingEnabled)
         let warmup = Task { await microphone.warmUp() }
 
-        do {
-            try await services.loadEnginesIfNeeded()
-            guard let transcriber = services.transcriber else {
-                prepared = Prepared(
-                    microphone: microphone,
-                    warmup: warmup,
-                    sources: [microphone],
-                    transcriber: nil)
-                throw StartRecordingRuntimeError.transcriptionEngineUnavailable
-            }
-
-            var sources: [any AudioCaptureSource] = [microphone]
-            var tappedMeetingApps: [String] = []
-            if #available(macOS 14.4, *) {
-                let system = await makeSystemTapSource(mode: preferences.captureMode)
-                sources.append(system.source)
-                tappedMeetingApps = system.appNames
-            }
-            prepared = Prepared(
-                microphone: microphone,
-                warmup: warmup,
-                sources: sources,
-                transcriber: transcriber)
-            return StartRecordingPreparedRuntime(
-                channels: sources.map(\.channel),
-                tappedMeetingApps: tappedMeetingApps)
-        } catch {
-            if prepared == nil {
-                prepared = Prepared(
-                    microphone: microphone,
-                    warmup: warmup,
-                    sources: [microphone],
-                    transcriber: nil)
-            }
-            throw error
+        var sources: [any AudioCaptureSource] = [microphone]
+        var tappedMeetingApps: [String] = []
+        if #available(macOS 14.4, *) {
+            let system = await makeSystemTapSource(mode: preferences.captureMode)
+            sources.append(system.source)
+            tappedMeetingApps = system.appNames
         }
+        let transcriber = services.transcriber
+        prepared = Prepared(
+            microphone: microphone,
+            warmup: warmup,
+            sources: sources,
+            transcriber: transcriber)
+        return StartRecordingPreparedRuntime(
+            channels: sources.map(\.channel),
+            tappedMeetingApps: tappedMeetingApps,
+            liveTranscriptionAvailable: transcriber != nil)
     }
 
     func startCapture(
         _ request: StartRecordingCaptureRequest
     ) async throws -> any StartRecordingSession {
-        guard let prepared, let transcriber = prepared.transcriber else {
+        guard let prepared else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
         self.prepared = nil
@@ -136,12 +117,15 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             outputDirectory: audioRoot.appendingPathComponent(request.audioDirectory),
             microphone: prepared.microphone,
             sources: prepared.sources,
-            transcriber: transcriber,
+            transcriber: prepared.transcriber,
             voiceprintTask: Task.detached(priority: .utility) {
                 try? VoiceprintStore().load()
             })
         do {
             try await active.start(request)
+            if prepared.transcriber == nil {
+                services?.prepareRecordingEnginesInBackground()
+            }
             return active
         } catch {
             await active.abortFailedStart()
@@ -189,27 +173,52 @@ private actor AppStartRecordingSession: StartRecordingSession {
     private let recordingSession: RecordingSession
     private let microphone: MicrophoneSource
     private let sources: [any AudioCaptureSource]
-    private let transcriber: any TranscriptionEngine
+    private let transcriber: (any TranscriptionEngine)?
     private let voiceprintTask: Task<Voiceprint?, Never>
     private var feeds: [AudioChannel: AsyncStream<AudioChunk>.Continuation] = [:]
     private var consumers: [Task<Void, Never>] = []
+    private var transcriptRequiresRecovery: Bool
     private var stoppedCapture: StopRecordingCapture?
 
     init(
         outputDirectory: URL,
         microphone: MicrophoneSource,
         sources: [any AudioCaptureSource],
-        transcriber: any TranscriptionEngine,
+        transcriber: (any TranscriptionEngine)?,
         voiceprintTask: Task<Voiceprint?, Never>
     ) {
         recordingSession = RecordingSession(outputDirectory: outputDirectory)
         self.microphone = microphone
         self.sources = sources
         self.transcriber = transcriber
+        transcriptRequiresRecovery = transcriber == nil
         self.voiceprintTask = voiceprintTask
     }
 
     func start(_ request: StartRecordingCaptureRequest) async throws {
+        if let transcriber {
+            startLiveTranscription(
+                transcriber: transcriber,
+                request: request)
+        }
+
+        let channelFeeds = feeds
+        let chunk = request.callbacks.chunk
+        do {
+            try await recordingSession.start(sources: sources) { audio in
+                channelFeeds[audio.channel]?.yield(audio)
+                chunk(audio)
+            }
+        } catch {
+            await finishLiveStreams()
+            throw error
+        }
+    }
+
+    private func startLiveTranscription(
+        transcriber: any TranscriptionEngine,
+        request: StartRecordingCaptureRequest
+    ) {
         for source in sources {
             let (stream, continuation) = AsyncStream.makeStream(of: AudioChunk.self)
             feeds[source.channel] = continuation
@@ -227,20 +236,9 @@ private actor AppStartRecordingSession: StartRecordingSession {
                     }
                 } catch {
                     // One dead transcript lane never stops capture or its peer.
+                    self.markTranscriptForRecovery()
                 }
             })
-        }
-
-        let channelFeeds = feeds
-        let chunk = request.callbacks.chunk
-        do {
-            try await recordingSession.start(sources: sources) { audio in
-                channelFeeds[audio.channel]?.yield(audio)
-                chunk(audio)
-            }
-        } catch {
-            await finishLiveStreams()
-            throw error
         }
     }
 
@@ -248,7 +246,9 @@ private actor AppStartRecordingSession: StartRecordingSession {
         if let stoppedCapture { return stoppedCapture }
         let summary = await recordingSession.stop()
         await finishLiveStreams()
-        let capture = StopRecordingCapture(summary)
+        let capture = StopRecordingCapture(
+            summary,
+            transcriptRequiresRecovery: transcriptRequiresRecovery)
         stoppedCapture = capture
         return capture
     }
@@ -277,5 +277,9 @@ private actor AppStartRecordingSession: StartRecordingSession {
         let pending = consumers
         consumers = []
         for consumer in pending { await consumer.value }
+    }
+
+    private func markTranscriptForRecovery() {
+        transcriptRequiresRecovery = true
     }
 }

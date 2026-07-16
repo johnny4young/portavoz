@@ -46,9 +46,17 @@ public struct StopRecordingPublishedFile: Sendable {
 /// Reader-visible channels that passed inspection and atomic publication.
 public struct StopRecordingCapture: Sendable {
     public let publishedFiles: [AudioChannel: StopRecordingPublishedFile]
+    /// True when one or more live lanes were unavailable or failed. Stop must
+    /// recover the complete transcript from finalized audio, even if another
+    /// lane emitted a partial live transcript.
+    public let transcriptRequiresRecovery: Bool
 
-    public init(publishedFiles: [AudioChannel: StopRecordingPublishedFile]) {
+    public init(
+        publishedFiles: [AudioChannel: StopRecordingPublishedFile],
+        transcriptRequiresRecovery: Bool = false
+    ) {
         self.publishedFiles = publishedFiles
+        self.transcriptRequiresRecovery = transcriptRequiresRecovery
     }
 }
 
@@ -172,6 +180,16 @@ public enum StopRecordingJobError: Error, Equatable, LocalizedError, Sendable {
 
 /// Owns exact initial operation identity and retry policy for captured audio.
 public enum StopRecordingJobFactory {
+    public static func initialTranscriptionRequest(
+        meeting: Meeting,
+        assets: [AudioAsset]
+    ) -> ProcessingJobRequest? {
+        InitialTranscriptionOperationFingerprint.request(
+            meetingID: meeting.id,
+            transcriptRevision: meeting.transcriptRevision,
+            assets: assets)
+    }
+
     public static func initialDiarizationRequest(
         meeting: Meeting,
         segments: [TranscriptSegment],
@@ -272,6 +290,17 @@ public struct StopRecording: ApplicationUseCase {
         assets: [AudioAsset],
         attribution: SpeakerAttributor.Attribution
     ) async -> StopRecordingResult {
+        if request.capture.transcriptRequiresRecovery || request.captions.isEmpty,
+            let transcription = StopRecordingJobFactory.initialTranscriptionRequest(
+                meeting: meeting,
+                assets: assets) {
+            return await installRecoverableTranscript(
+                request,
+                meeting: meeting,
+                assets: assets,
+                attribution: attribution,
+                initialRequest: transcription)
+        }
         guard !request.captions.isEmpty else {
             return await installEmptyTranscript(
                 request,
@@ -301,6 +330,24 @@ public struct StopRecording: ApplicationUseCase {
                 fallback: fallback)
         }
 
+        return await installInitialDiarization(
+            request,
+            meeting: meeting,
+            assets: assets,
+            attribution: attribution,
+            initialRequest: initialRequest,
+            failureCode: hasPendingPublication
+                ? "capture.publication.failed" : "processing.enqueue.failed")
+    }
+
+    private func installInitialDiarization(
+        _ request: StopRecordingRequest,
+        meeting: Meeting,
+        assets: [AudioAsset],
+        attribution: SpeakerAttributor.Attribution,
+        initialRequest: ProcessingJobRequest,
+        failureCode: String
+    ) async -> StopRecordingResult {
         do {
             try await store.installStoppedSnapshot(
                 capturedSnapshot(
@@ -320,8 +367,40 @@ public struct StopRecording: ApplicationUseCase {
                 meeting: meeting,
                 assets: assets,
                 attribution: attribution,
-                errorCode: hasPendingPublication
-                    ? "capture.publication.failed" : "processing.enqueue.failed")
+                errorCode: failureCode)
+            return .processingFailed(
+                message: error.localizedDescription,
+                fallback: fallback)
+        }
+    }
+
+    private func installRecoverableTranscript(
+        _ request: StopRecordingRequest,
+        meeting: Meeting,
+        assets: [AudioAsset],
+        attribution: SpeakerAttributor.Attribution,
+        initialRequest: ProcessingJobRequest
+    ) async -> StopRecordingResult {
+        do {
+            try await store.installStoppedSnapshot(
+                capturedSnapshot(
+                    request,
+                    meeting: meeting,
+                    assets: assets,
+                    attribution: attribution),
+                enqueue: [initialRequest])
+            var processingMeeting = meeting
+            processingMeeting.lifecycleState = .processing
+            let commit = StopRecordingCommit(meeting: processingMeeting, assets: assets)
+            await lifecycle.kickPostCaptureProcessing()
+            return .completed(commit)
+        } catch {
+            let fallback = await preserveNeedsAttention(
+                request,
+                meeting: meeting,
+                assets: assets,
+                attribution: attribution,
+                errorCode: "processing.transcription.enqueue.failed")
             return .processingFailed(
                 message: error.localizedDescription,
                 fallback: fallback)

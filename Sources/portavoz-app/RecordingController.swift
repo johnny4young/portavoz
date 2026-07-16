@@ -87,6 +87,10 @@ final class RecordingController {
     /// output) instead of the global device output — the AirPods-HFP workaround.
     /// Names the apps being captured for the on-screen note.
     private(set) var tappedMeetingApps: [String] = []
+    /// Audio capture is already active, but this meeting started before the
+    /// verified live model was ready. Stop will recover the complete transcript
+    /// from finalized audio through the durable worker.
+    private(set) var liveTranscriptDeferred = false
 
     private func updateSystemLevel(_ rms: Float) {
         systemChunks += 1
@@ -225,6 +229,7 @@ final class RecordingController {
         liveTurns = []
         liveSpeakerLabels = [:]
         tappedMeetingApps = []
+        liveTranscriptDeferred = false
         micMuted = false
     }
 
@@ -256,20 +261,25 @@ final class RecordingController {
             recordingShell = reservation.meeting
             reservedAssets = reservation.assets
             tappedMeetingApps = commit.tappedMeetingApps
+            liveTranscriptDeferred = !commit.liveTranscriptionAvailable
             session = commit.session
             services.libraryVersion += 1
             liveDiarizerFeed = diarizerFeed
-            startLiveDiarization(
-                consuming: diarizerStream,
-                session: commit.session)
+            if commit.liveTranscriptionAvailable {
+                startLiveDiarization(
+                    consuming: diarizerStream,
+                    session: commit.session)
+            } else {
+                // Shared background preparation owns a clean install's model
+                // download. Do not create a second session diarizer when live
+                // labels cannot accompany unavailable live captions anyway.
+                liveDiarizerFeed?.finish()
+            }
             phase = .recording
             startRollingSummaryIfAvailable()
-        case .modelPreparationFailed(let message):
+        case .preparationFailed(let message):
             diarizerFeed.finish()
-            phase = .failed(L10n.format("Could not prepare the models: %@", message))
-        case .transcriptionEngineUnavailable:
-            diarizerFeed.finish()
-            phase = .failed(L10n.text("The transcription engine is not available."))
+            phase = .failed(L10n.format("Could not prepare recording: %@", message))
         case .captureFailed(let message, let reservation, let invalidations):
             diarizerFeed.finish()
             recordingShell = reservation?.meeting

@@ -10,9 +10,11 @@ Single source of truth for progress — it previously lived in a session HANDOFF
 before resuming architecture Band 3. The first unit fixed a real Stop failure:
 GRDB's millisecond `Date` representation no longer conflicts with the original
 submillisecond in-memory recording reservation, so normal capture commits
-immediately instead of relying on launch recovery. The remaining units make
-audio capture independent of initial model downloads, expose proactive model
-preparation and honest Summary/Companion capability guidance, and diagnose the
+immediately instead of relying on launch recovery. The second unit makes audio
+capture independent of initial Parakeet downloads and durably recovers a full
+transcript after Stop when live captions were unavailable or failed. The
+remaining units expose proactive Whisper preparation and honest Summary/
+Companion capability guidance, and diagnose the
 Homebrew-versus-DMG installation difference. Then resume
 [refactor-20260714.md](refactor-20260714.md) at slice 3H: assemble a local
 privacy receipt from content-free generation provenance and classified egress
@@ -31,7 +33,21 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70).
+
+- **Sequoia stabilization unit 2 complete — audio starts before models (Jul
+  16, 2026)**: Start now warms the microphone, selects channels, reserves the
+  durable shell/assets, and begins capture without awaiting Parakeet download
+  or Core ML compilation. If the verified live engine is absent, or either
+  caption lane fails, the session records explicit recovery evidence while
+  audio continues. Stop atomically admits an exact multilingual first-pass
+  transcription job; the worker joins one deduplicated verified model load,
+  transcribes each healthy finalized channel, applies mic-noise/bleed hygiene,
+  and publishes cast/transcript/revision plus exact diarization in one owned
+  transaction. Truly silent audio retains explicit recovery guidance. Three
+  fingerprint cases, hardened Start/Stop/architecture coverage, and atomic
+  artifact/dependent persistence bring the gate to 646 package tests (13
+  gated), 238 linted Swift source files, and 20 UI cases (D70).
 
 - **Sequoia stabilization unit 1 complete — Stop uses durable timestamp
   identity (Jul 16, 2026)**: a real recording exposed that GRDB stores dates at

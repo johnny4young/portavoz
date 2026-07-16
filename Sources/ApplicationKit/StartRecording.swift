@@ -62,15 +62,21 @@ public struct StartRecordingLiveCallbacks: Sendable {
     }
 }
 
-/// Structural sources selected by the platform runtime after model and mic
-/// preparation. Display names are informational presentation evidence.
+/// Structural sources selected by the platform runtime after mic preparation.
+/// Model readiness is evidence, never a gate for starting audio capture.
 public struct StartRecordingPreparedRuntime: Sendable {
     public let channels: [AudioChannel]
     public let tappedMeetingApps: [String]
+    public let liveTranscriptionAvailable: Bool
 
-    public init(channels: [AudioChannel], tappedMeetingApps: [String] = []) {
+    public init(
+        channels: [AudioChannel],
+        tappedMeetingApps: [String] = [],
+        liveTranscriptionAvailable: Bool = true
+    ) {
         self.channels = channels
         self.tappedMeetingApps = tappedMeetingApps
+        self.liveTranscriptionAvailable = liveTranscriptionAvailable
     }
 }
 
@@ -163,13 +169,10 @@ extension MeetingStore: StartRecordingStore {
 }
 
 public enum StartRecordingRuntimeError: Error, Equatable, LocalizedError, Sendable {
-    case transcriptionEngineUnavailable
     case preparationUnavailable
 
     public var errorDescription: String? {
         switch self {
-        case .transcriptionEngineUnavailable:
-            "The transcription engine is not available."
         case .preparationUnavailable:
             "The prepared recording runtime is no longer available."
         }
@@ -204,15 +207,18 @@ public struct StartRecordingCommit: Sendable {
     public let reservation: StartRecordingReservation
     public let session: any StartRecordingSession
     public let tappedMeetingApps: [String]
+    public let liveTranscriptionAvailable: Bool
 
     public init(
         reservation: StartRecordingReservation,
         session: any StartRecordingSession,
-        tappedMeetingApps: [String]
+        tappedMeetingApps: [String],
+        liveTranscriptionAvailable: Bool = true
     ) {
         self.reservation = reservation
         self.session = session
         self.tappedMeetingApps = tappedMeetingApps
+        self.liveTranscriptionAvailable = liveTranscriptionAvailable
     }
 }
 
@@ -220,8 +226,7 @@ public struct StartRecordingCommit: Sendable {
 /// workflow while preserving the released failure distinctions.
 public enum StartRecordingResult: Sendable {
     case started(StartRecordingCommit)
-    case modelPreparationFailed(message: String)
-    case transcriptionEngineUnavailable
+    case preparationFailed(message: String)
     case captureFailed(
         message: String,
         reservation: StartRecordingReservation?,
@@ -277,14 +282,10 @@ public struct StartRecording: ApplicationUseCase {
     ) async -> StartRecordingPreparation {
         do {
             return .ready(try await runtime.prepare(preferences: preferences))
-        } catch StartRecordingRuntimeError.transcriptionEngineUnavailable {
-            await runtime.cancelPreparation()
-            await runtime.scheduleIdleRelease()
-            return .failed(.transcriptionEngineUnavailable)
         } catch {
             await runtime.cancelPreparation()
             await runtime.scheduleIdleRelease()
-            return .failed(.modelPreparationFailed(message: error.localizedDescription))
+            return .failed(.preparationFailed(message: error.localizedDescription))
         }
     }
 
@@ -320,7 +321,8 @@ public struct StartRecording: ApplicationUseCase {
             return .started(StartRecordingCommit(
                 reservation: reservation,
                 session: session,
-                tappedMeetingApps: prepared.tappedMeetingApps))
+                tappedMeetingApps: prepared.tappedMeetingApps,
+                liveTranscriptionAvailable: prepared.liveTranscriptionAvailable))
         } catch {
             await runtime.cancelPreparation()
             let captureMessage = error.localizedDescription
