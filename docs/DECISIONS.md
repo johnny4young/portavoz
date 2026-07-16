@@ -1351,3 +1351,39 @@ run at the artifact type boundary makes missing provenance unrepresentable,
 while separate terminal attempts explain wasted or cancelled model work without
 weakening retry semantics or creating a second private corpus. The schema,
 visible summary, and local-first behavior remain unchanged.
+
+## D64 — Import summary provenance cannot weaken the imported aggregate (Jul 2026)
+
+**Context:** external-audio import intentionally commits the copied audio,
+meeting, cast, and transcript before attempting its optional summary. The
+released workflow returns that usable aggregate even when no summary provider
+exists, generation fails or is cancelled, or summary persistence fails. Adding
+provenance must not make optional intelligence capable of rolling back captured
+user value, and a provider-unavailable path must not claim a model attempt that
+never occurred.
+
+**Decision:** `ImportMeeting` resolves a metadata-bearing summary provider only
+after the required aggregate commits. When no provider is available it creates
+no run. Immediately before each real provider call, the use case snapshots one
+attempt ID, provider/model and optional revision, the existing material
+`SummaryFingerprint`, General recipe, requested output language, start time,
+and the `audio-import`/`generate` operation. Its configuration and metrics are
+content-free; metrics contain only output UTF-8 bytes and action-item count.
+
+A successful run, immutable summary, and action items publish atomically through
+StorageKit's generated-summary transaction. If provider execution is cancelled
+or fails, the attempt is stored separately as cancelled or failed. If summary
+publication fails after the model returns, the success transaction rolls back
+and the same attempt ID is persisted best effort as failed with aggregate output
+metrics. Provenance persistence itself remains degradable, so diagnostics never
+replace the import result. Required aggregate installation, staged-audio
+compensation before that commit, typed progress, navigation, language policy,
+and engine idle-release timing retain their released semantics.
+
+**Rationale:** the imported meeting transaction and generated-summary
+transaction have different business criticality. Keeping their boundaries
+separate preserves audio-first durability while the shared run envelope makes
+every actual optional model call explainable. Reusing the attempt identity
+after a publish rollback records one truthful operation rather than inventing a
+second call, and the no-provider/no-run rule keeps diagnostics semantically
+honest without changing schema or visible behavior.

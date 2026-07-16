@@ -58,6 +58,32 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.summaryRequest?.targetLanguage, "es")
         XCTAssertEqual(state.summaryRequest?.glossary, ["Portavoz"])
         XCTAssertEqual(state.savedSummary?.meetingID, fixture.meetingID)
+        let summaryRequest = try XCTUnwrap(state.summaryRequest)
+        let run = try XCTUnwrap(state.savedSummaryRun)
+        XCTAssertEqual(run.id, fixture.generationRunID)
+        XCTAssertEqual(run.providerID, ImportSummaryProviderStub.testProviderID)
+        XCTAssertEqual(run.modelID, ImportSummaryProviderStub.testModelID)
+        XCTAssertEqual(run.modelRevision, ImportSummaryProviderStub.testModelRevision)
+        XCTAssertEqual(
+            run.inputFingerprint,
+            SummaryFingerprint.compute(
+                request: summaryRequest,
+                providerID: ImportSummaryProviderStub.testProviderID))
+        XCTAssertEqual(run.outputLanguage, "es")
+        XCTAssertEqual(run.startedAt, fixture.now)
+        XCTAssertEqual(run.finishedAt, fixture.now)
+        XCTAssertEqual(run.outcome, .succeeded)
+        XCTAssertEqual(
+            run.configJSON,
+            #"{"operation":"generate","recipeID":"general","workflow":"audio-import"}"#)
+        XCTAssertEqual(
+            run.metricsJSON,
+            #"{"actionItemCount":0,"outputUTF8Bytes":18}"#)
+        for privateText in ["presupuesto", "lanzamiento", "Portavoz", "Imported summary"] {
+            XCTAssertFalse(run.configJSON.contains(privateText))
+            XCTAssertFalse(run.metricsJSON?.contains(privateText) == true)
+        }
+        XCTAssertTrue(state.standaloneRuns.isEmpty)
         XCTAssertEqual(state.releaseCount, 1)
         XCTAssertTrue(state.discardedAudio.isEmpty)
     }
@@ -146,6 +172,9 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         let state = await dependencies.state()
         XCTAssertNotNil(state.installed)
         XCTAssertNil(state.savedSummary)
+        XCTAssertEqual(state.standaloneRuns.count, 1)
+        XCTAssertEqual(state.standaloneRuns.first?.outcome, .failed)
+        XCTAssertNil(state.standaloneRuns.first?.metricsJSON)
         XCTAssertTrue(state.discardedAudio.isEmpty)
         XCTAssertEqual(state.releaseCount, 1)
     }
@@ -163,7 +192,50 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(meetingID, fixture.meetingID)
         XCTAssertNotNil(state.installed)
         XCTAssertNil(state.savedSummary)
+        XCTAssertEqual(state.standaloneRuns.count, 1)
+        XCTAssertEqual(state.standaloneRuns.first?.outcome, .failed)
+        XCTAssertEqual(
+            state.standaloneRuns.first?.metricsJSON,
+            #"{"actionItemCount":0,"outputUTF8Bytes":18}"#)
         XCTAssertTrue(state.discardedAudio.isEmpty)
+        XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testSummaryCancellationIsRecordedWithoutFailingCommittedMeeting() async throws {
+        let fixture = ImportFixture()
+        let dependencies = ImportDependencies(
+            transcription: fixture.spanishTranscription,
+            failures: [.summaryCancellation])
+
+        let meetingID = try await fixture.useCase(dependencies: dependencies)(
+            fixture.request(dependencies: dependencies))
+
+        let state = await dependencies.state()
+        XCTAssertEqual(meetingID, fixture.meetingID)
+        XCTAssertNotNil(state.installed)
+        XCTAssertNil(state.savedSummary)
+        XCTAssertEqual(state.standaloneRuns.count, 1)
+        XCTAssertEqual(state.standaloneRuns.first?.outcome, .cancelled)
+        XCTAssertTrue(state.discardedAudio.isEmpty)
+        XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testUnavailableSummaryProviderCreatesNoSyntheticAttempt() async throws {
+        let fixture = ImportFixture()
+        let dependencies = ImportDependencies(
+            transcription: fixture.spanishTranscription,
+            failures: [.summaryUnavailable])
+
+        let meetingID = try await fixture.useCase(dependencies: dependencies)(
+            fixture.request(dependencies: dependencies))
+
+        let state = await dependencies.state()
+        XCTAssertEqual(meetingID, fixture.meetingID)
+        XCTAssertNotNil(state.installed)
+        XCTAssertNil(state.summaryRequest)
+        XCTAssertNil(state.savedSummaryRun)
+        XCTAssertTrue(state.standaloneRuns.isEmpty)
+        XCTAssertFalse(state.events.contains("summarize"))
         XCTAssertEqual(state.releaseCount, 1)
     }
 
@@ -245,18 +317,60 @@ final class ImportMeetingUseCaseTests: XCTestCase {
             preferences: dependencies,
             processor: dependencies,
             store: store,
-            summarizer: dependencies,
+            summaryProviders: dependencies,
             makeMeetingID: { fixture.meetingID },
+            makeGenerationRunID: { fixture.generationRunID },
             now: { fixture.now })
 
         _ = try await useCase(fixture.request(dependencies: dependencies))
 
         let detail = try await store.detail(fixture.meetingID)
         let summary = try await store.summary(fixture.meetingID)
+        let run = try await store.generationRun(forSummary: fixture.meetingID)
         XCTAssertEqual(detail?.meeting.title, fixture.title)
         XCTAssertEqual(detail?.speakers.map(\.label), ["S1"])
         XCTAssertEqual(detail?.segments.count, 2)
         XCTAssertEqual(summary?.draft.markdown, "# Imported summary")
+        XCTAssertEqual(run?.id, fixture.generationRunID)
+        XCTAssertEqual(run?.providerID, ImportSummaryProviderStub.testProviderID)
+    }
+
+    func testRealStoreSummaryRollbackRetainsMeetingAndFailedAttempt() async throws {
+        let fixture = ImportFixture()
+        let store = try MeetingStore.inMemory()
+        let dependencies = ImportDependencies(transcription: fixture.spanishTranscription)
+        try await store.database.write { db in
+            try db.execute(sql: """
+                CREATE TRIGGER reject_import_summary
+                BEFORE INSERT ON summary
+                BEGIN
+                    SELECT RAISE(ABORT, 'injected import summary failure');
+                END
+                """)
+        }
+        let useCase = ImportMeeting(
+            audioFiles: dependencies,
+            preferences: dependencies,
+            processor: dependencies,
+            store: store,
+            summaryProviders: dependencies,
+            makeMeetingID: { fixture.meetingID },
+            makeGenerationRunID: { fixture.generationRunID },
+            now: { fixture.now })
+
+        let meetingID = try await useCase(fixture.request(dependencies: dependencies))
+
+        let detail = try await store.detail(meetingID)
+        let summary = try await store.summary(meetingID)
+        let runs = try await store.generationRuns(for: meetingID)
+        XCTAssertNotNil(detail)
+        XCTAssertNil(summary)
+        XCTAssertEqual(runs.count, 1)
+        XCTAssertEqual(runs.first?.id, fixture.generationRunID)
+        XCTAssertEqual(runs.first?.outcome, .failed)
+        XCTAssertEqual(
+            runs.first?.metricsJSON,
+            #"{"actionItemCount":0,"outputUTF8Bytes":18}"#)
     }
 
     func testImportedAggregateTransactionRollsBackWhenChildInsertFails() async throws {
@@ -334,6 +448,8 @@ final class ImportMeetingUseCaseTests: XCTestCase {
 
 private struct ImportFixture: Sendable {
     let meetingID = MeetingID(rawValue: UUID(uuidString: "A1000000-0000-0000-0000-000000000001")!)
+    let generationRunID = GenerationRunID(rawValue: UUID(
+        uuidString: "A2000000-0000-0000-0000-000000000002")!)
     let source = URL(fileURLWithPath: "/tmp/quarterly.m4a")
     let title = "Imported · quarterly"
     let now = Date(timeIntervalSince1970: 1_750_000_000)
@@ -391,8 +507,9 @@ private struct ImportFixture: Sendable {
             preferences: dependencies,
             processor: dependencies,
             store: dependencies,
-            summarizer: dependencies,
+            summaryProviders: dependencies,
             makeMeetingID: { meetingID },
+            makeGenerationRunID: { generationRunID },
             now: { now })
     }
 }
@@ -404,7 +521,9 @@ private enum ImportFailure: Hashable, Sendable {
     case transcription
     case diarization
     case aggregatePersistence
+    case summaryUnavailable
     case summaryGeneration
+    case summaryCancellation
     case summaryPersistence
     case audioDiscard
 }
@@ -428,6 +547,8 @@ private struct ImportDependencyState: Sendable {
     let installed: InstalledImport?
     let summaryRequest: SummaryRequest?
     let savedSummary: SummaryDraft?
+    let savedSummaryRun: GenerationRun?
+    let standaloneRuns: [GenerationRun]
     let releaseCount: Int
 }
 
@@ -436,7 +557,7 @@ private actor ImportDependencies:
     ImportMeetingPreferences,
     ImportMeetingProcessor,
     ImportMeetingStore,
-    ImportMeetingSummarizer
+    ImportMeetingSummaryProviderResolver
 {
     private let preferences: ImportMeetingPreferencesSnapshot
     private let transcription: FileTranscription
@@ -453,6 +574,8 @@ private actor ImportDependencies:
     private var installed: InstalledImport?
     private var summaryRequest: SummaryRequest?
     private var savedSummary: SummaryDraft?
+    private var savedSummaryRun: GenerationRun?
+    private var standaloneRuns: [GenerationRun] = []
     private var releaseCount = 0
 
     init(
@@ -553,9 +676,16 @@ private actor ImportDependencies:
         installed = InstalledImport(meeting: meeting, speakers: speakers, segments: segments)
     }
 
+    func resolveImportMeetingSummaryProvider()
+        -> ImportMeetingSummaryProviderResolution {
+        if failures.contains(.summaryUnavailable) { return .unavailable }
+        return .available(ImportSummaryProviderStub(dependencies: self))
+    }
+
     func summarizeImportedMeeting(_ request: SummaryRequest) throws -> SummaryDraft {
         events.append("summarize")
         summaryRequest = request
+        if failures.contains(.summaryCancellation) { throw CancellationError() }
         if failures.contains(.summaryGeneration) { throw ImportDependencyError() }
         return SummaryDraft(
             meetingID: request.meetingID,
@@ -565,10 +695,19 @@ private actor ImportDependencies:
             actionItems: [])
     }
 
-    func saveImportedSummary(_ draft: SummaryDraft) throws {
+    func saveImportedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) throws {
         events.append("save-summary")
         if failures.contains(.summaryPersistence) { throw ImportDependencyError() }
         savedSummary = draft
+        savedSummaryRun = generationRun
+    }
+
+    func saveImportedSummaryRun(_ run: GenerationRun) {
+        events.append("save-summary-run")
+        standaloneRuns.append(run)
     }
 
     func state() -> ImportDependencyState {
@@ -583,7 +722,25 @@ private actor ImportDependencies:
             installed: installed,
             summaryRequest: summaryRequest,
             savedSummary: savedSummary,
+            savedSummaryRun: savedSummaryRun,
+            standaloneRuns: standaloneRuns,
             releaseCount: releaseCount)
+    }
+}
+
+private struct ImportSummaryProviderStub: ImportMeetingSummaryProvider {
+    static let testProviderID = "import-test-provider"
+    static let testModelID = "import-test-model"
+    static let testModelRevision = "import-test-revision"
+
+    let dependencies: ImportDependencies
+
+    let providerID = Self.testProviderID
+    let modelID = Self.testModelID
+    let modelRevision: String? = Self.testModelRevision
+
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        try await dependencies.summarizeImportedMeeting(request)
     }
 }
 

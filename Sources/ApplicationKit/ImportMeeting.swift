@@ -73,9 +73,24 @@ public protocol ImportMeetingProcessor: Sendable {
     func scheduleIdleRelease() async
 }
 
-/// Summary capability for the released best-effort import path.
-public protocol ImportMeetingSummarizer: Sendable {
-    func summarizeImportedMeeting(_ request: SummaryRequest) async throws -> SummaryDraft
+/// One concrete summary capability selected for the best-effort import path.
+/// Provider construction and availability policy remain outside ApplicationKit.
+public protocol ImportMeetingSummaryProvider: Sendable {
+    var providerID: String { get }
+    var modelID: String { get }
+    var modelRevision: String? { get }
+
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft
+}
+
+public enum ImportMeetingSummaryProviderResolution: Sendable {
+    case available(any ImportMeetingSummaryProvider)
+    case unavailable
+}
+
+public protocol ImportMeetingSummaryProviderResolver: Sendable {
+    func resolveImportMeetingSummaryProvider() async
+        -> ImportMeetingSummaryProviderResolution
 }
 
 /// Persistence boundary: the required aggregate is atomic; summary is optional.
@@ -85,7 +100,11 @@ public protocol ImportMeetingStore: Sendable {
         speakers: [Speaker],
         segments: [TranscriptSegment]
     ) async throws
-    func saveImportedSummary(_ draft: SummaryDraft) async throws
+    func saveImportedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async throws
+    func saveImportedSummaryRun(_ run: GenerationRun) async throws
 }
 
 extension MeetingStore: ImportMeetingStore {
@@ -97,8 +116,15 @@ extension MeetingStore: ImportMeetingStore {
         try await saveImportedMeeting(meeting, speakers: speakers, segments: segments)
     }
 
-    public func saveImportedSummary(_ draft: SummaryDraft) async throws {
-        _ = try await saveSummary(draft)
+    public func saveImportedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async throws {
+        _ = try await saveSummary(draft, generationRun: generationRun)
+    }
+
+    public func saveImportedSummaryRun(_ run: GenerationRun) async throws {
+        try await saveGenerationRun(run)
     }
 }
 
@@ -126,8 +152,9 @@ public struct ImportMeeting: ApplicationUseCase {
     private let preferences: any ImportMeetingPreferences
     private let processor: any ImportMeetingProcessor
     private let store: any ImportMeetingStore
-    private let summarizer: any ImportMeetingSummarizer
+    private let summaryProviders: any ImportMeetingSummaryProviderResolver
     private let makeMeetingID: @Sendable () -> MeetingID
+    private let makeGenerationRunID: @Sendable () -> GenerationRunID
     private let now: @Sendable () -> Date
 
     public init(
@@ -135,16 +162,20 @@ public struct ImportMeeting: ApplicationUseCase {
         preferences: any ImportMeetingPreferences,
         processor: any ImportMeetingProcessor,
         store: any ImportMeetingStore,
-        summarizer: any ImportMeetingSummarizer,
+        summaryProviders: any ImportMeetingSummaryProviderResolver,
         makeMeetingID: @escaping @Sendable () -> MeetingID = { MeetingID() },
+        makeGenerationRunID: @escaping @Sendable () -> GenerationRunID = {
+            GenerationRunID()
+        },
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.audioFiles = audioFiles
         self.preferences = preferences
         self.processor = processor
         self.store = store
-        self.summarizer = summarizer
+        self.summaryProviders = summaryProviders
         self.makeMeetingID = makeMeetingID
+        self.makeGenerationRunID = makeGenerationRunID
         self.now = now
     }
 
@@ -242,8 +273,39 @@ public struct ImportMeeting: ApplicationUseCase {
             recipe: .general,
             targetLanguage: language.identifier,
             glossary: preferences.vocabulary)
-        if let draft = try? await summarizer.summarizeImportedMeeting(request) {
-            try? await store.saveImportedSummary(draft)
+        guard case .available(let provider) =
+            await summaryProviders.resolveImportMeetingSummaryProvider()
+        else { return }
+
+        let attempt = ImportedSummaryGenerationAttempt(
+            id: makeGenerationRunID(),
+            request: request,
+            provider: provider,
+            inputFingerprint: SummaryFingerprint.compute(
+                request: request,
+                providerID: provider.providerID),
+            startedAt: now())
+        var generatedDraft: SummaryDraft?
+        do {
+            let draft = try await provider.summarize(request)
+            generatedDraft = draft
+            try await store.saveImportedSummary(
+                draft,
+                generationRun: attempt.finish(
+                    outcome: .succeeded,
+                    draft: draft,
+                    at: now()))
+        } catch {
+            let outcome: GenerationRunOutcome = error is CancellationError
+                ? .cancelled
+                : .failed
+            // Provenance remains best effort so summary diagnostics cannot
+            // change the released best-effort import result.
+            try? await store.saveImportedSummaryRun(
+                attempt.finish(
+                    outcome: outcome,
+                    draft: generatedDraft,
+                    at: now()))
         }
     }
 }
@@ -253,4 +315,82 @@ private struct ImportedMeetingContent: Sendable {
     let segments: [TranscriptSegment]
     let speakers: [Speaker]
     let spokenLanguage: String?
+}
+
+private struct ImportedSummaryGenerationAttempt: Sendable {
+    let id: GenerationRunID
+    let meetingID: MeetingID
+    let providerID: String
+    let modelID: String
+    let modelRevision: String?
+    let inputFingerprint: String
+    let recipeID: String
+    let outputLanguage: String
+    let startedAt: Date
+
+    init(
+        id: GenerationRunID,
+        request: SummaryRequest,
+        provider: any ImportMeetingSummaryProvider,
+        inputFingerprint: String,
+        startedAt: Date
+    ) {
+        self.id = id
+        meetingID = request.meetingID
+        providerID = provider.providerID
+        modelID = provider.modelID
+        modelRevision = provider.modelRevision
+        self.inputFingerprint = inputFingerprint
+        recipeID = request.recipe.id
+        outputLanguage = request.targetLanguage
+        self.startedAt = startedAt
+    }
+
+    func finish(
+        outcome: GenerationRunOutcome,
+        draft: SummaryDraft?,
+        at finishedAt: Date
+    ) -> GenerationRun {
+        GenerationRun(
+            id: id,
+            meetingID: meetingID,
+            kind: .summary,
+            providerID: providerID,
+            modelID: modelID,
+            modelRevision: modelRevision,
+            inputFingerprint: inputFingerprint,
+            configJSON: Self.json(Configuration(
+                operation: "generate",
+                recipeID: recipeID,
+                workflow: "audio-import")),
+            outputLanguage: outputLanguage,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
+            outcome: outcome,
+            metricsJSON: draft.map {
+                Self.json(Metrics(
+                    actionItemCount: $0.actionItems.count,
+                    outputUTF8Bytes: $0.markdown.utf8.count))
+            })
+    }
+
+    private static func json<Value: Encodable>(_ value: Value) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(value),
+              let json = String(data: data, encoding: .utf8)
+        else { return "{}" }
+        return json
+    }
+
+    private struct Configuration: Encodable {
+        let operation: String
+        let recipeID: String
+        let workflow: String
+    }
+
+    private struct Metrics: Encodable {
+        let actionItemCount: Int
+        let outputUTF8Bytes: Int
+    }
 }

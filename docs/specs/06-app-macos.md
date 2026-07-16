@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62/D63 (atomic manual and durable summary provenance).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D64 (atomic manual, durable, and import summary provenance).
 
 ## Structure
 
@@ -40,7 +40,14 @@ Library navigation. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
 File copy and compensating deletion run at utility priority instead of on the
-MainActor (D46).
+MainActor. Its import-specific provider resolver exposes the configured
+provider/model/revision without leaking engine construction into ApplicationKit.
+After the required aggregate commits, each real summary call records one
+content-free attempt. Success links run + immutable summary/actions atomically;
+provider failure, cancellation, or publish failure remains best effort and can
+never discard the meeting or copied audio. An unavailable provider creates no
+synthetic run. Existing progress, navigation, and idle-release timing stay
+unchanged (D46/D64).
 
 Slice 2G moves quality re-passes through `ApplicationKit.RefineMeeting` and
 `ApplyRefinedMeeting`. `AppServices` composes private audio, preference,

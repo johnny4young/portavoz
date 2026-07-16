@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62/D63 (atomic manual and durable summary-generation provenance).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D64 (atomic manual, durable, and import summary-generation provenance).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -67,7 +67,7 @@ Slice 2E adds D45 active-snapshot semantics: after successful regeneration,
 Meeting Detail reloads the newest live immutable snapshot across recipes rather
 than defaulting to General. Per-recipe version history is unchanged.
 
-### Summary-generation provenance (D62/D63)
+### Summary-generation provenance (D62–D64)
 
 Each actual `RegenerateSummary` provider operation now produces a typed
 `GenerationRun`. Direct Ollama/MLX/Foundation Models generation records a
@@ -107,7 +107,18 @@ superseded input writes a cancelled run. Provider unavailability or input
 supersession before the attempt produces no run. Every retry therefore receives
 its real durable attempt number without changing the worker's released retry,
 optional degradation, provider fallback, immediate-detail, or Shortcut policy.
-External-audio import summaries remain the next Band 3 producer.
+
+External-audio import uses the same envelope after a different business fence.
+The required copied-audio/meeting/cast/transcript aggregate commits first. A
+metadata-bearing provider resolver then creates one attempt immediately before
+each real model call, carrying provider/model and optional revision, the
+material `SummaryFingerprint`, General recipe, requested output language,
+timing, and the `audio-import`/`generate` operation. Metrics contain only output
+UTF-8 bytes and action-item count. Success commits run + immutable summary +
+actions atomically; provider failure, cancellation, or summary-publish rollback
+stores the same attempt best effort as failed/cancelled. No provider means no
+synthetic run, and optional intelligence can never remove the already committed
+meeting or copied audio (D64).
 
 Slice 2F routes the optional import summary through
 `ApplicationKit.ImportMeeting` and an app-owned provider resolver. The use case
@@ -116,7 +127,9 @@ the imported transcript is homogeneous, builds the General recipe request,
 and attempts both generation and immutable persistence only after the required
 meeting/cast/transcript aggregate commits. Either summary failure is
 best-effort: the imported meeting and its audio remain available, exactly as in
-the released path (D46).
+the released path. The app adapter reuses configured summary-engine selection
+while exposing provider/model metadata through an import-specific port
+(D46/D64).
 
 Slice 2G routes post-refine Companion work through
 `ApplicationKit.ApplyRefinedMeeting` and an app-owned availability/model

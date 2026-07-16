@@ -7,12 +7,12 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3C: make the
-external-audio import summary producer emit the same typed `generationRun`
-envelope without changing its best-effort semantics or the atomic imported
-meeting/cast/transcript boundary. Slices 3A and 3B adopted provenance for
-manual/post-refine regeneration and the durable post-capture executor;
-Band 2 is complete. Keep
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3D:
+characterize and adopt provenance for refined transcript generation without
+weakening its review-before-apply UX or source-revision-fenced accepted
+aggregate. Slices 3A–3C adopted provenance for manual/post-refine summaries,
+the durable post-capture executor, and best-effort external-audio import
+summaries; Band 2 is complete. Keep
 Spotlight independent; its incremental indexing/outbox adoption belongs with
 measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
@@ -21,7 +21,20 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64).
+
+- **Architecture Band 3 slice 3C complete — imported summaries preserve both
+  aggregate durability and attempt truth (Jul 16, 2026)**: external-audio import
+  resolves the configured summary provider with provider/model/revision
+  identity and creates one content-free run immediately before each real model
+  call. Success atomically links that run to the immutable summary/actions;
+  provider failure, cancellation, or summary-publish failure records a
+  standalone best-effort terminal attempt. Provider unavailability creates no
+  synthetic run. The already committed imported meeting, copied audio, cast,
+  transcript, navigation timing, progress, and idle release remain unchanged.
+  Exact metadata/privacy assertions and a real-Store injected summary rollback
+  prove the boundary. The current gate is 606 package tests (13 gated), 230
+  linted Swift source files, and 20 UI cases (D64).
 
 - **Architecture Band 3 slice 3B complete — durable summary provenance shares
   the job fence (Jul 16, 2026)**: every post-capture model attempt now snapshots
@@ -35,7 +48,7 @@ commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/
   and retries keep distinct attempt records. A required `SummaryArtifact` run,
   injected SQLite rollback, mismatch guards, and direct metadata tests cover the
   boundary; the durable resume XCUITest exercises the production worker. The
-  current gate is 603 package tests (13 gated), 230 linted Swift source files,
+  slice gate was 603 package tests (13 gated), 230 linted Swift source files,
   and 20 UI cases (D63).
 
 - **Architecture Band 3 slice 3A complete — manual summaries carry atomic,
