@@ -131,8 +131,8 @@ architecture migration is tracked in
 
 | Module | Responsibility |
 |---|---|
-| `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, durable processing jobs), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library read contracts, and deterministic meeting-review plus Insights scope/aggregate/finding policies over narrow capability ports |
+| `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, calendar-neutral upcoming events, durable processing jobs), Keychain secret store |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, summary regeneration, external-audio and `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live) + Whisper (refine), scheduler |
@@ -141,7 +141,7 @@ architecture migration is tracked in
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
 | `ContextFeedKit` | Placeholder compatibility target; co-authored notes currently span Core, StorageKit, IntelligenceKit, and the app |
 | `StorageKit` | GRDB/SQLite, FTS5 search, scoped Library observations, versioned snapshots, durable leased job queue, local vector index |
-| `IntegrationsKit` | GitHub/Linear/Gist, calendar, RAG, bundle/export, and MCP adapters plus the remaining characterized brief, reminder, and mirror policies awaiting inward migration |
+| `IntegrationsKit` | GitHub/Linear/Gist, EventKit calendar, RAG, bundle/export, and MCP adapters |
 | `SyncKit` | Placeholder target for future CloudKit sync and sharing |
 
 The macOS app owns a per-window `LibraryModel` with one observable value-state

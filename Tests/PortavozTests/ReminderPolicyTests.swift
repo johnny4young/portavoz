@@ -1,5 +1,6 @@
+import ApplicationKit
 import Foundation
-import IntegrationsKit
+import PortavozCore
 import XCTest
 
 final class ReminderPolicyTests: XCTestCase {

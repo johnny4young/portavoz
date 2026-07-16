@@ -65,9 +65,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testApplicationKitImportsStayInsideTheApprovedLayer() throws {
         let allowed = Set([
-            "Foundation", "PortavozCore", "ModelStoreKit", "AudioCaptureKit",
-            "TranscriptionKit", "DiarizationKit", "IntelligenceKit", "StorageKit",
-            "AudioPlaybackKit", "IntegrationsKit",
+            "Foundation", "PortavozCore", "TranscriptionKit", "DiarizationKit",
+            "IntelligenceKit", "StorageKit",
         ])
         let violations = try Self.imports(under: "Sources/ApplicationKit")
             .filter { !allowed.contains($0.module) }
@@ -299,6 +298,48 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(
             insights.contains("import IntegrationsKit"),
             "InsightsView must not regain a broad outbound dependency for local read policy")
+    }
+
+    func testMeetingPreparationPoliciesStayInsideInwardLayers() throws {
+        for policy in ["BriefRelevance", "ReminderPolicy", "MirrorStats"] {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: Self.repoRoot
+                    .appendingPathComponent("Sources/ApplicationKit/\(policy).swift").path),
+                "\(policy) must remain an inward ApplicationKit policy")
+            XCTAssertFalse(
+                FileManager.default.fileExists(atPath: Self.repoRoot
+                    .appendingPathComponent("Sources/IntegrationsKit/\(policy).swift").path),
+                "\(policy) must not return to the outbound integration layer")
+        }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: Self.repoRoot
+            .appendingPathComponent("Sources/PortavozCore/UpcomingEvent.swift").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
+            .appendingPathComponent("Sources/ApplicationKit/UpcomingEvent.swift").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
+            .appendingPathComponent("Sources/IntegrationsKit/UpcomingEvent.swift").path))
+
+        let calendar = try Self.contents(
+            of: "Sources/IntegrationsKit/CalendarAttendeeSource.swift")
+        XCTAssertTrue(calendar.contains("import EventKit"))
+        XCTAssertTrue(calendar.contains("import PortavozCore"))
+        XCTAssertFalse(calendar.contains("struct UpcomingEvent"))
+
+        for consumer in ["MeetingBriefView.swift", "MeetingReminder.swift", "MirrorCard.swift"] {
+            XCTAssertTrue(
+                try Self.contents(of: "Sources/portavoz-app/\(consumer)")
+                    .contains("import ApplicationKit"),
+                "\(consumer) must consume product policy through ApplicationKit")
+        }
+
+        for eventOnlyConsumer in [
+            "ContentView.swift", "LibraryModel.swift", "LibraryView.swift", "RecordingView.swift",
+        ] {
+            XCTAssertFalse(
+                try Self.contents(of: "Sources/portavoz-app/\(eventOnlyConsumer)")
+                    .contains("import IntegrationsKit"),
+                "\(eventOnlyConsumer) must not depend on the EventKit adapter for a Core value")
+        }
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

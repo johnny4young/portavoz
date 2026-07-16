@@ -1,6 +1,6 @@
+import ApplicationKit
 import Foundation
 import IntelligenceKit
-import IntegrationsKit
 import PortavozCore
 import XCTest
 

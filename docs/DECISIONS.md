@@ -1094,8 +1094,9 @@ absent from IntegrationsKit; it also requires `InsightsView` to import
 ApplicationKit without regaining an IntegrationsKit dependency. Store-backed
 facts, participant/voice-balance projections, and the feature's existing
 `libraryVersion` refresh remain unchanged for later read-model and scoped-
-observation slices. IntegrationsKit retains outbound adapters plus the remaining
-brief, reminder, and mirror policies until the next characterized slice.
+observation slices. IntegrationsKit retained outbound adapters plus the brief,
+reminder, and mirror policies at that slice; D57 subsequently moves those final
+local policies inward while leaving the adapters in place.
 
 **Rationale:** Insights calculations are product/read decisions, not outbound
 integration concerns or reusable entity invariants. Moving them inward reduces
@@ -1105,3 +1106,33 @@ existing characterization suite preserves calendar cutoffs, open-ended meeting
 handling, deterministic ordering, heatmap shape, participant exclusions, and
 topic heuristics; the UI smoke and retained app-window screenshot preserve the
 real dashboard surface.
+
+## D57 — Meeting-preparation policy is inward; calendar adapters stay outbound (Jul 2026)
+
+**Context:** `BriefRelevance`, `ReminderPolicy`, and `MirrorStats` remained in
+`IntegrationsKit` after the adapter layer had relinquished every other local
+product/read policy. They encode deterministic feature decisions: explainable
+ranking of retrieved passages, reminder lead-window and session deduplication,
+and factual post-meeting qualification/comparison copy. `UpcomingEvent` was
+declared beside the EventKit adapter even though Library state, recording
+routes, reminders, and meeting preparation use only its title, time, and
+attendees. Moving that neutral value to ApplicationKit would force a capability
+Kit to depend back on the application layer, violating D44.
+
+**Decision:** ApplicationKit owns the three feature policies with their existing
+public APIs and exact algorithms. PortavozCore owns `UpcomingEvent` as a
+platform-neutral domain value. IntegrationsKit retains `CalendarAttendeeSource`,
+EventKit authorization/query/mapping, RAG retrieval, external formats, egress,
+and MCP. An eighteenth architecture rule requires the policy files to remain in
+ApplicationKit, the event value to remain in Core, and the EventKit adapter to
+construct that value without redeclaring it. Direct brief, reminder, and mirror
+views import ApplicationKit. The existing 14 policy tests target the inward
+modules; a temp-store-only fresh-recording fixture now verifies and captures the
+real opted-in mirror sheet.
+
+**Rationale:** feature semantics, reusable domain values, and platform adapters
+now have separate owners without adding a package dependency edge or alternate
+runtime path. The split removes the last local policy from IntegrationsKit while
+preserving brief reasons, reminder timing, bilingual mirror wording, schema,
+settings, and localized UI. The UI fixture exercises production qualification
+with deterministic seeded facts and no capture hardware or user data.

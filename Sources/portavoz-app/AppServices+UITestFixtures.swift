@@ -23,4 +23,11 @@ extension AppServices {
     func seedRunningRefineIfRequested(for meetingID: MeetingID) {
         refines.seedRunningForUITest(meetingID)
     }
+
+    /// Marks the disposable seed as freshly recorded so XCUITest can exercise
+    /// the one-shot post-meeting mirror without starting capture hardware.
+    func seedJustRecordedIfRequested(for meetingID: MeetingID) {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-just-recorded") else { return }
+        justRecorded = meetingID
+    }
 }

@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D56 (application workflow, feature-state ownership, scoped Library reads, and inward product/read policy).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D57 (application workflow, feature-state ownership, scoped Library reads, and inward product/read policy).
 
 ## Structure
 
@@ -135,6 +135,16 @@ existing `libraryVersion` refresh are unchanged. Twenty-one direct policy tests,
 a source-ownership/import architecture rule, and the retained heatmap screenshot
 guard behavior and the visible dashboard (D56).
 
+Slice 2Q completes the local product-policy move. ApplicationKit owns
+`BriefRelevance`, `ReminderPolicy`, and `MirrorStats`; PortavozCore owns the
+calendar-neutral `UpcomingEvent`; and IntegrationsKit retains EventKit access
+and mapping plus RAG/external adapters. Brief ranking and visible reasons,
+lead-window/session-deduplicated reminders, and the mirror's qualification plus
+bilingual factual synthesis are unchanged. Fourteen direct policy tests and an
+eighteenth architecture rule guard the split. The disposable UI fixture can
+mark the seed as freshly recorded, opt into the mirror, assert `mirror-card`,
+and retain app-window evidence without capture hardware or user data (D57).
+
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed preparation/reservation/source-start attempt, while ownership transfers to the active session on success; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: the durable post-capture worker and the `ImportMeeting` processor reload with `loadEnginesIfNeeded()` just before diarizing (a scheduled release by another flow could have dropped it in the middle). Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
@@ -251,16 +261,17 @@ suppress real host Shortcuts (D50).
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 19 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 20 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
-rail health+chapters, player skip+only-my-voice, clip export, refine cancel), and Settings (all categories,
+rail health+chapters, post-meeting mirror, player skip+only-my-voice, clip export, refine cancel), and Settings (all categories,
 independent transcript/summary language controls, custom structures, capture
 controls, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
 neither SQLite nor audio can touch the user's library. `-seed-recovery`,
-`-seed-processing`, and `-seed-refine-running` are accepted only with the temp
+`-seed-processing`, `-seed-refine-running`, and `-seed-just-recorded` are
+accepted only with the temp
 store. The processing
 fixture uses a deterministic fake local provider and no real audio, models,
 biometric files, Keychain, or host Shortcut; it uses the normal exact request
@@ -270,7 +281,7 @@ channel) so there are two chapters and solo audio. Convention: all new
 interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
 assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
-Library, Insights, and Meeting Detail checkpoints so unrelated desktop content
+Library, Insights, Meeting Detail, and post-meeting mirror checkpoints so unrelated desktop content
 is never captured. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

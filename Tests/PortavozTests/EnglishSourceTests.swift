@@ -159,7 +159,7 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("quién") || line.contains("cuál") || line.contains("cuánto")
                 || line.contains("ana maría") || line.contains("podrías")
         }
-        if relative == "Sources/IntegrationsKit/MirrorStats.swift" {
+        if relative == "Sources/ApplicationKit/MirrorStats.swift" {
             // The post-meeting mirror synthesis is bilingual and lives in a
             // pure module (no L10n): both languages are inlined by design.
             return line.contains("habitual") || line.contains("balance de habla")

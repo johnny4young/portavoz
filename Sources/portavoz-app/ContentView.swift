@@ -1,6 +1,5 @@
 import AppKit
 import CoreSpotlight
-import IntegrationsKit
 import PortavozCore
 import SwiftUI
 

@@ -22,6 +22,7 @@ extension XCUIApplication {
         seedDemo: Bool = false,
         seedLatestRecipe: Bool = false,
         seedRefineRunning: Bool = false,
+        seedJustRecorded: Bool = false,
         seedRecovery: Bool = false,
         seedProcessing: Bool = false,
         openSettings: Bool = false,
@@ -33,6 +34,7 @@ extension XCUIApplication {
         if seedDemo { app.launchArguments.append("-seed-demo") }
         if seedLatestRecipe { app.launchArguments.append("-seed-latest-recipe") }
         if seedRefineRunning { app.launchArguments.append("-seed-refine-running") }
+        if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }
         if seedRecovery { app.launchArguments.append("-seed-recovery") }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }

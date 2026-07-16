@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Decides WHEN the pre-meeting banner fires. Pure so tests pin it: the
 /// next not-yet-started event whose start falls inside the lead window and

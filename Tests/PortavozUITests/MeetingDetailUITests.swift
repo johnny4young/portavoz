@@ -12,12 +12,17 @@ final class MeetingDetailUITests: XCTestCase {
     @MainActor
     private func launchOnSeededMeeting(
         latestRecipe: Bool = false,
-        refineRunning: Bool = false
+        refineRunning: Bool = false,
+        justRecorded: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
             seedDemo: true,
             seedLatestRecipe: latestRecipe,
-            seedRefineRunning: refineRunning)
+            seedRefineRunning: refineRunning,
+            seedJustRecorded: justRecorded)
+        if justRecorded {
+            app.launchArguments += ["-mirrorAfterMeeting", "true"]
+        }
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
@@ -118,6 +123,17 @@ final class MeetingDetailUITests: XCTestCase {
             "the answered Companion card must render for review")
 
         attachScreenshot(of: app, named: "band-2o-meeting-review")
+    }
+
+    @MainActor
+    func testFreshQualifyingMeetingShowsThePostMeetingMirror() {
+        let app = launchOnSeededMeeting(justRecorded: true)
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "mirror-card").waitForExistence(timeout: 10),
+            "an opted-in fresh qualifying meeting must show its factual mirror")
+        attachScreenshot(of: app, named: "band-2q-post-meeting-mirror")
     }
 
     @MainActor

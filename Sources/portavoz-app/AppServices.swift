@@ -408,6 +408,7 @@ final class AppServices {
                 kind: .context, source: "on-device", directed: true, askedAt: 200)
         ], for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
+        seedJustRecordedIfRequested(for: meeting.id)
         libraryVersion += 1
     }
 

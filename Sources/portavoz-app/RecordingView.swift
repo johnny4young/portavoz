@@ -1,5 +1,4 @@
 import ApplicationKit
-import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
