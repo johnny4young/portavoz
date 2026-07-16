@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only).
+Status: implemented, signed with Developer ID, **notarized by Apple (0.1.0, Accepted + stapled)** and used in real meetings. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62 (atomic summary provenance).
 
 ## Structure
 
@@ -25,7 +25,12 @@ filesystem. `RegenerateSummary` receives storage, glossary-preference, and
 provider-resolution adapters; Meeting Detail submits one request and maps its
 typed completion/cache/unavailability/failure result. Regeneration reuse is
 recipe-scoped, reload selects the newest immutable snapshot across structures,
-and all older per-recipe versions remain stored (D44/D45).
+and all older per-recipe versions remain stored (D44/D45). Each direct model or
+Apple translation-pivot attempt now carries provider/model metadata and creates
+content-free terminal provenance. Exact cache hits create no run; successful
+run + immutable summary + action items commit atomically, while failed/cancelled
+attempts remain best-effort diagnostics. The app still presents the same silent
+versus visible provider and persistence outcomes (D62).
 
 Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
 `AppServices` now only samples platform preferences, constructs private

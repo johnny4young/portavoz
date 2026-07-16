@@ -11,6 +11,7 @@ public enum StorageError: Error, LocalizedError {
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
+    case invalidGenerationRun(String)
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
     case processingJobInputChanged(ProcessingJobID)
@@ -36,6 +37,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid recording reservation: \(reason)"
         case .invalidProcessingJob(let reason):
             return "invalid processing job: \(reason)"
+        case .invalidGenerationRun(let reason):
+            return "invalid generation run: \(reason)"
         case .processingJobNotFound(let id):
             return "no such processing job: \(id.rawValue.uuidString)"
         case .processingJobLeaseLost(let id):

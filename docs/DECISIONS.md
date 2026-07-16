@@ -1272,3 +1272,44 @@ The compatibility audit found no consumer to break, while every released
 capture, transcript, note, export, and review feature remains available through
 its existing Core, ApplicationKit, capability, storage, integration, and app
 owners.
+
+## D62 — Generated summaries and provenance commit as one fact (Jul 2026)
+
+**Context:** schema v6 already provided a `generationRun` envelope and nullable
+artifact links, but no producer populated them. Manual regeneration could
+complete, fail, cancel, reuse an exact snapshot, or translate an Apple
+Foundation Models pivot before falling back to full generation. Writing a run
+and summary independently could leave an orphaned success or an artifact with
+missing provenance; logging prompts or outputs would also duplicate private
+meeting content without improving reproducibility.
+
+**Decision:** PortavozCore defines typed generation-run identity, summary kind,
+and terminal outcomes. Every concrete manual-regeneration provider reports its
+provider, model, and optional pinned revision. ApplicationKit creates one
+privacy-safe envelope per actual generation or translation attempt using the
+existing material fingerprint, recipe/reuse operation, requested output
+language, timing, and aggregate output byte/action counts. It stores no
+transcript, note, prompt, summary, or action text. Exact cache hits create no
+run because no model operation occurred. Failed and cancelled attempts persist
+as best-effort terminal records; a failed translation pivot remains visible as
+one failed run before the released full-generation fallback creates its own
+run.
+
+StorageKit installs a successful run, immutable summary snapshot, and action
+items in one transaction and links the summary's `generationRunID`. It rejects
+standalone successful summary runs, blank output language, malformed JSON,
+nonterminal timing, cross-meeting links, language mismatches, and non-summary
+or unsuccessful artifact links. Failed/cancelled provenance persistence and
+successful artifact persistence retain the released best-effort presentation:
+storage diagnostics never replace the provider result shown to the user.
+Accepted Refine uses the same regeneration path and therefore receives the
+same summary provenance; durable post-capture, import, transcript/refine, and
+Companion producers remain later vertical slices.
+
+**Rationale:** one transaction makes provenance and artifact truth
+non-contradictory, while a typed, content-free envelope supports future local
+diagnostics without creating a second sensitive corpus. Attempt-level records
+make pivot fallback and cancellation explainable, and the no-run cache rule
+keeps provenance semantically honest. The provider order, cache behavior,
+failure asymmetry, immutable history, visible summary, schema version, and
+local-first privacy remain unchanged.

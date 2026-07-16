@@ -5,6 +5,63 @@ import PortavozCore
 // Immutable versioned summary snapshots + their action items. Split out of
 // `MeetingStore.swift` so the core type stays small.
 extension MeetingStore {
+    // MARK: - Generation provenance
+
+    /// Persists a terminal model run that produced no artifact, such as a
+    /// failed or cancelled attempt. Successful summary runs use the atomic
+    /// snapshot overload below so provenance can never point at a missing
+    /// artifact after a partial write.
+    public func saveGenerationRun(_ run: GenerationRun) async throws {
+        try await database.write { db in
+            try Self.validateTerminalGenerationRun(run)
+            guard run.outcome != .succeeded else {
+                throw StorageError.invalidGenerationRun(
+                    "a succeeded summary run must be linked to its artifact")
+            }
+            guard try MeetingRecord.exists(
+                db, key: run.meetingID.rawValue.uuidString)
+            else { throw StorageError.meetingNotFound(run.meetingID) }
+            try GenerationRunRecord(run).insert(db)
+        }
+    }
+
+    /// Reads the provenance history for diagnostics and future product
+    /// surfaces without exposing GRDB records above StorageKit.
+    public func generationRuns(for meetingID: MeetingID) async throws -> [GenerationRun] {
+        try await database.read { db in
+            try GenerationRunRecord
+                .filter(Column("meetingID") == meetingID.rawValue.uuidString)
+                .order(Column("startedAt"), Column("rowid"))
+                .fetchAll(db)
+                .map { try $0.run }
+        }
+    }
+
+    /// Returns the run linked to one summary version. nil means the snapshot
+    /// predates provenance or was written by a workflow not adopted yet.
+    public func generationRun(
+        forSummary meetingID: MeetingID,
+        recipeID: String = Recipe.general.id,
+        version: Int? = nil
+    ) async throws -> GenerationRun? {
+        try await database.read { db in
+            var request = SummaryRecord
+                .filter(Column("meetingID") == meetingID.rawValue.uuidString)
+                .filter(Column("recipeID") == recipeID)
+                .filter(Column("deletedAt") == nil)
+            if let version {
+                request = request.filter(Column("version") == version)
+            } else {
+                request = request.order(Column("version").desc)
+            }
+            guard
+                let runID = try request.fetchOne(db)?.generationRunID,
+                let record = try GenerationRunRecord.fetchOne(db, key: runID)
+            else { return nil }
+            return try record.run
+        }
+    }
+
     // MARK: - Summaries (immutable versioned snapshots)
 
     /// Persists a new snapshot; the version auto-increments per
@@ -20,12 +77,50 @@ extension MeetingStore {
         }
     }
 
+    /// Atomically installs one successful generation envelope and the
+    /// immutable summary it produced. Either both rows and all action items
+    /// commit, or none do.
+    @discardableResult
+    public func saveSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async throws -> Int {
+        try await database.write { db in
+            try Self.validateTerminalGenerationRun(generationRun)
+            guard generationRun.meetingID == draft.meetingID else {
+                throw StorageError.invalidGenerationRun(
+                    "summary and run belong to different meetings")
+            }
+            guard generationRun.kind == .summary,
+                  generationRun.outcome == .succeeded
+            else {
+                throw StorageError.invalidGenerationRun(
+                    "a linked summary requires a succeeded summary run")
+            }
+            guard generationRun.outputLanguage == draft.language else {
+                throw StorageError.invalidGenerationRun(
+                    "summary and run output languages differ")
+            }
+            let meetingKey = draft.meetingID.rawValue.uuidString
+            guard try MeetingRecord.exists(db, key: meetingKey) else {
+                throw StorageError.meetingNotFound(draft.meetingID)
+            }
+            try GenerationRunRecord(generationRun).insert(db)
+            return try Self.insertSummarySnapshot(
+                draft,
+                at: generationRun.finishedAt ?? generationRun.startedAt,
+                generationRunID: generationRun.id,
+                in: db)
+        }
+    }
+
     /// Transaction-scoped primitive shared by direct saves and durable job
     /// completion. Callers must first prove that the meeting is live and that
     /// any processing lease/input guards still hold.
     static func insertSummarySnapshot(
         _ draft: SummaryDraft,
         at timestamp: Date,
+        generationRunID: GenerationRunID? = nil,
         in db: Database
     ) throws -> Int {
         let meetingKey = draft.meetingID.rawValue.uuidString
@@ -44,6 +139,7 @@ extension MeetingStore {
             markdown: draft.markdown,
             version: version,
             fingerprint: draft.fingerprint,
+            generationRunID: generationRunID?.rawValue.uuidString,
             createdAt: timestamp,
             deletedAt: nil)
         try summary.insert(db)
@@ -62,6 +158,31 @@ extension MeetingStore {
             try record.insert(db)
         }
         return version
+    }
+
+    private static func validateTerminalGenerationRun(_ run: GenerationRun) throws {
+        let required = [run.providerID, run.modelID, run.inputFingerprint, run.configJSON]
+        guard required.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        else { throw StorageError.invalidGenerationRun("required identity is blank") }
+        guard let finishedAt = run.finishedAt, run.outcome != nil else {
+            throw StorageError.invalidGenerationRun("terminal run is missing outcome or finish time")
+        }
+        guard finishedAt >= run.startedAt else {
+            throw StorageError.invalidGenerationRun("finish time precedes start time")
+        }
+        guard let outputLanguage = run.outputLanguage,
+              !outputLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { throw StorageError.invalidGenerationRun("summary output language is blank") }
+        guard Self.isJSONObject(run.configJSON),
+              run.metricsJSON.map(Self.isJSONObject) ?? true
+        else { throw StorageError.invalidGenerationRun("configuration or metrics is not JSON") }
+    }
+
+    private static func isJSONObject(_ value: String) -> Bool {
+        guard let data = value.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data)
+        else { return false }
+        return object is [String: Any]
     }
 
     /// Loads a snapshot: the latest version by default, or an exact one.

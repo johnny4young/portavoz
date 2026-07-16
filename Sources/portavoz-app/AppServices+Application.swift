@@ -55,14 +55,18 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
                 return .available(
                     AppDirectSummaryRegenerationProvider(
                         provider: OllamaService.summaryProvider(model: ollamaModel),
-                        providerID: OllamaService.providerID(model: ollamaModel)))
+                        providerID: OllamaService.providerID(model: ollamaModel),
+                        modelID: ollamaModel,
+                        modelRevision: nil))
             }
         case .mlx:
             if let mlxModelDirectory {
                 return .available(
                     AppDirectSummaryRegenerationProvider(
                         provider: MLXSummaryProvider(modelDirectory: mlxModelDirectory),
-                        providerID: MLXSummaryProvider.providerID))
+                        providerID: MLXSummaryProvider.providerID,
+                        modelID: ModelCatalog.mlxQwen35.id,
+                        modelRevision: ModelCatalog.mlxQwen35.revision))
             }
         case .appleOnDevice:
             break
@@ -85,6 +89,8 @@ private enum AppSummaryRegenerationProviderError: Error {
 private struct AppDirectSummaryRegenerationProvider: SummaryRegenerationProvider {
     let provider: any SummaryProvider
     let providerID: String
+    let modelID: String
+    let modelRevision: String?
     let reusePolicy = SummaryRegenerationReusePolicy.none
     let failurePresentation = SummaryRegenerationFailurePresentation.localModelNotice
 
@@ -104,6 +110,8 @@ private struct AppDirectSummaryRegenerationProvider: SummaryRegenerationProvider
 @available(macOS 26.0, *)
 private struct AppFoundationSummaryRegenerationProvider: SummaryRegenerationProvider {
     let providerID = FoundationModelSummaryProvider.providerID
+    let modelID = "system-language-model"
+    let modelRevision: String? = nil
     let reusePolicy = SummaryRegenerationReusePolicy.fingerprintCacheAndTranslationPivot
     let failurePresentation = SummaryRegenerationFailurePresentation.silent
     private let provider = FoundationModelSummaryProvider()

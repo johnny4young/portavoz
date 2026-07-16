@@ -1,3 +1,4 @@
+import Foundation
 import IntelligenceKit
 import PortavozCore
 import StorageKit
@@ -11,7 +12,7 @@ public enum SummaryEngine: String, CaseIterable, Sendable {
 }
 
 /// Reuse behavior supported by a concrete summary provider.
-public enum SummaryRegenerationReusePolicy: Sendable {
+public enum SummaryRegenerationReusePolicy: String, Sendable {
     /// The released Ollama/MLX path generates directly.
     case none
     /// Apple FM checks exact material first, then translates a language pivot.
@@ -37,6 +38,8 @@ public enum SummaryRegenerationUnavailability: Equatable, Sendable {
 /// reuse policy.
 public protocol SummaryRegenerationProvider: Sendable {
     var providerID: String { get }
+    var modelID: String { get }
+    var modelRevision: String? { get }
     var reusePolicy: SummaryRegenerationReusePolicy { get }
     var failurePresentation: SummaryRegenerationFailurePresentation { get }
 
@@ -85,7 +88,11 @@ public protocol SummaryRegenerationStore: Sendable {
         fingerprint: String,
         language: String?
     ) async throws -> SummaryRegenerationSnapshot?
-    func saveRegeneratedSummary(_ draft: SummaryDraft) async throws
+    func saveRegeneratedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async throws
+    func saveRegenerationRun(_ run: GenerationRun) async throws
 }
 
 extension MeetingStore: SummaryRegenerationStore {
@@ -108,8 +115,15 @@ extension MeetingStore: SummaryRegenerationStore {
         return SummaryRegenerationSnapshot(draft: stored.draft, version: stored.version)
     }
 
-    public func saveRegeneratedSummary(_ draft: SummaryDraft) async throws {
-        _ = try await saveSummary(draft)
+    public func saveRegeneratedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async throws {
+        _ = try await saveSummary(draft, generationRun: generationRun)
+    }
+
+    public func saveRegenerationRun(_ run: GenerationRun) async throws {
+        try await saveGenerationRun(run)
     }
 }
 
@@ -154,15 +168,23 @@ public struct RegenerateSummary: ApplicationUseCase {
     private let store: any SummaryRegenerationStore
     private let preferences: any SummaryRegenerationPreferences
     private let providers: any SummaryRegenerationProviderResolver
+    private let makeGenerationRunID: @Sendable () -> GenerationRunID
+    private let now: @Sendable () -> Date
 
     public init(
         store: any SummaryRegenerationStore,
         preferences: any SummaryRegenerationPreferences,
-        providers: any SummaryRegenerationProviderResolver
+        providers: any SummaryRegenerationProviderResolver,
+        makeGenerationRunID: @escaping @Sendable () -> GenerationRunID = {
+            GenerationRunID()
+        },
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
         self.preferences = preferences
         self.providers = providers
+        self.makeGenerationRunID = makeGenerationRunID
+        self.now = now
     }
 
     public func execute(_ request: RegenerateSummaryRequest) async -> SummaryRegenerationResult {
@@ -181,21 +203,29 @@ public struct RegenerateSummary: ApplicationUseCase {
         case .unavailable(let reason):
             return .unavailable(reason)
         case .available(let provider):
+            let fingerprint = SummaryFingerprint.compute(
+                request: summaryRequest,
+                providerID: provider.providerID)
             switch provider.reusePolicy {
             case .none:
-                return await generate(summaryRequest, with: provider)
+                return await generate(
+                    summaryRequest,
+                    fingerprint: fingerprint,
+                    with: provider)
             case .fingerprintCacheAndTranslationPivot:
-                return await regenerateWithReuse(summaryRequest, provider: provider)
+                return await regenerateWithReuse(
+                    summaryRequest,
+                    fingerprint: fingerprint,
+                    provider: provider)
             }
         }
     }
 
     private func regenerateWithReuse(
         _ request: SummaryRequest,
+        fingerprint: String,
         provider: any SummaryRegenerationProvider
     ) async -> SummaryRegenerationResult {
-        let fingerprint = SummaryFingerprint.compute(
-            request: request, providerID: provider.providerID)
         if let exact = try? await store.regenerationSummary(
             request.meetingID,
             recipeID: request.recipe.id,
@@ -207,34 +237,154 @@ public struct RegenerateSummary: ApplicationUseCase {
             request.meetingID,
             recipeID: request.recipe.id,
             fingerprint: fingerprint,
-            language: nil),
-            let translated = try? await provider.translate(
-                pivot.draft,
-                to: request.targetLanguage,
-                glossary: request.glossary) {
-            return .completed(persisted: await persist(translated))
+            language: nil) {
+            let attempt = generationAttempt(
+                request: request,
+                provider: provider,
+                operation: .translatePivot,
+                fingerprint: fingerprint)
+            do {
+                let translated = try await provider.translate(
+                    pivot.draft,
+                    to: request.targetLanguage,
+                    glossary: request.glossary)
+                let run = generationRun(
+                    attempt: attempt,
+                    outcome: .succeeded,
+                    draft: translated)
+                return .completed(
+                    persisted: await persist(translated, generationRun: run))
+            } catch {
+                await persistFailedRun(attempt: attempt, error: error)
+            }
         }
-        return await generate(request, with: provider)
+        return await generate(
+            request,
+            fingerprint: fingerprint,
+            with: provider)
     }
 
     private func generate(
         _ request: SummaryRequest,
+        fingerprint: String,
         with provider: any SummaryRegenerationProvider
     ) async -> SummaryRegenerationResult {
+        let attempt = generationAttempt(
+            request: request,
+            provider: provider,
+            operation: .regenerate,
+            fingerprint: fingerprint)
         do {
             let draft = try await provider.summarize(request)
-            return .completed(persisted: await persist(draft))
+            let run = generationRun(
+                attempt: attempt,
+                outcome: .succeeded,
+                draft: draft)
+            return .completed(persisted: await persist(draft, generationRun: run))
         } catch {
+            await persistFailedRun(attempt: attempt, error: error)
             return .generationFailed(provider.failurePresentation)
         }
     }
 
-    private func persist(_ draft: SummaryDraft) async -> Bool {
+    private func persist(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async -> Bool {
         do {
-            try await store.saveRegeneratedSummary(draft)
+            try await store.saveRegeneratedSummary(
+                draft,
+                generationRun: generationRun)
             return true
         } catch {
             return false
         }
+    }
+
+    private func generationAttempt(
+        request: SummaryRequest,
+        provider: any SummaryRegenerationProvider,
+        operation: Operation,
+        fingerprint: String
+    ) -> GenerationAttempt {
+        GenerationAttempt(
+            request: request,
+            providerID: provider.providerID,
+            modelID: provider.modelID,
+            modelRevision: provider.modelRevision,
+            reusePolicy: provider.reusePolicy,
+            operation: operation,
+            fingerprint: fingerprint,
+            startedAt: now())
+    }
+
+    private func persistFailedRun(
+        attempt: GenerationAttempt,
+        error: any Error
+    ) async {
+        let run = generationRun(
+            attempt: attempt,
+            outcome: error is CancellationError ? .cancelled : .failed,
+            draft: nil)
+        // Provenance persistence is intentionally best effort because the
+        // released generation-failure presentation must remain unchanged.
+        try? await store.saveRegenerationRun(run)
+    }
+
+    private func generationRun(
+        attempt: GenerationAttempt,
+        outcome: GenerationRunOutcome,
+        draft: SummaryDraft?
+    ) -> GenerationRun {
+        GenerationRun(
+            id: makeGenerationRunID(),
+            meetingID: attempt.request.meetingID,
+            kind: .summary,
+            providerID: attempt.providerID,
+            modelID: attempt.modelID,
+            modelRevision: attempt.modelRevision,
+            inputFingerprint: attempt.fingerprint,
+            configJSON: Self.json([
+                "operation": attempt.operation.rawValue,
+                "recipeID": attempt.request.recipe.id,
+                "reusePolicy": attempt.reusePolicy.rawValue,
+                "workflow": "manual-regeneration"
+            ]),
+            outputLanguage: attempt.request.targetLanguage,
+            startedAt: attempt.startedAt,
+            finishedAt: now(),
+            outcome: outcome,
+            metricsJSON: draft.map {
+                Self.json([
+                    "actionItemCount": $0.actionItems.count,
+                    "outputUTF8Bytes": $0.markdown.utf8.count
+                ])
+            })
+    }
+
+    private static func json(_ value: [String: Any]) -> String {
+        guard JSONSerialization.isValidJSONObject(value),
+              let data = try? JSONSerialization.data(
+                withJSONObject: value,
+                options: [.sortedKeys]),
+              let json = String(data: data, encoding: .utf8)
+        else { return "{}" }
+        return json
+    }
+
+    private enum Operation: String {
+        case regenerate
+        case translatePivot = "translate-pivot"
+    }
+
+    private struct GenerationAttempt {
+        let request: SummaryRequest
+        let providerID: String
+        let modelID: String
+        let modelRevision: String?
+        let reusePolicy: SummaryRegenerationReusePolicy
+        let operation: Operation
+        let fingerprint: String
+        let startedAt: Date
     }
 }

@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62 (atomic summary-generation provenance).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -66,6 +66,30 @@ best-effort snapshot persistence explicit without changing broad invalidation.
 Slice 2E adds D45 active-snapshot semantics: after successful regeneration,
 Meeting Detail reloads the newest live immutable snapshot across recipes rather
 than defaulting to General. Per-recipe version history is unchanged.
+
+### Manual summary-generation provenance (D62)
+
+Each actual `RegenerateSummary` provider operation now produces a typed
+`GenerationRun`. Direct Ollama/MLX/Foundation Models generation records a
+`regenerate` operation; a reused Apple pivot records `translate-pivot`. The
+envelope carries provider ID, model ID and optional pinned revision, the same
+material fingerprint used by reuse, recipe/reuse policy, requested output
+language, start/finish time, terminal outcome, and only output UTF-8 byte/action
+counts. It never stores transcript, note, glossary, prompt, summary, or action
+text. Ollama uses its configured model name; MLX uses the pinned catalog ID and
+revision; Apple identifies the system language model without inventing an OS
+revision.
+
+An exact-language cache hit creates no run because no provider operation took
+place. A failed/cancelled attempt is stored separately on a best-effort basis;
+if pivot translation fails, its failed run precedes the released full-summary
+fallback and that second attempt gets its own successful run. A successful run,
+immutable summary, and action items commit in one StorageKit transaction. A
+persistence failure still returns the released `completed(persisted: false)`
+result, and provider failures retain their existing silent versus visible
+presentation. Accepted Refine invokes this same regeneration use case after its
+transcript commit, so its follow-up summary is covered. Durable post-capture and
+import summaries remain later Band 3 producers.
 
 Slice 2F routes the optional import summary through
 `ApplicationKit.ImportMeeting` and an app-owned provider resolver. The use case

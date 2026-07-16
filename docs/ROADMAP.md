@@ -6,12 +6,13 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** begin Band 3 of the approved architecture-hardening
-program in [refactor-20260714.md](refactor-20260714.md) with slice 3A: adopt the
-schema-v6 `generationRun` envelope vertically in one characterized summary
-workflow and atomically link the immutable summary to its provenance. Preserve
-provider reuse, pivot translation, failure policy, and visible output before
-expanding provenance to other generated artifacts. Band 2 is complete. Keep
+**Next concrete step:** continue Band 3 of the approved architecture-hardening
+program in [refactor-20260714.md](refactor-20260714.md) with slice 3B: make the
+durable post-capture summary executor emit the same typed `generationRun`
+envelope and link it through the existing lease/revision-fenced completion
+transaction. Preserve job retries, cancellation, optional-summary degradation,
+provider fallback, and immediate Meeting Detail availability. Slice 3A adopted
+provenance for manual and post-refine regeneration; Band 2 is complete. Keep
 Spotlight independent; its incremental indexing/outbox adoption belongs with
 measured Band 4 scale work.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
@@ -20,7 +21,21 @@ measured Band 4 scale work.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62).
+
+- **Architecture Band 3 slice 3A complete — manual summaries carry atomic,
+  content-free provenance (Jul 16, 2026)**: `RegenerateSummary` now records the
+  provider, model/revision, material fingerprint, recipe/reuse operation,
+  output language, timing, outcome, and aggregate output metrics for direct
+  generation and Apple translation pivots. Successful runs, immutable summary,
+  and action items commit atomically; failed/cancelled attempts are best effort
+  terminal records, while exact cache hits create no model run. Storage rejects
+  orphaned successful runs, blank summary languages, malformed JSON, and
+  cross-meeting/language links. No transcript, notes, prompt, summary, or action
+  text enters provenance. Post-refine regeneration benefits through the same
+  use case. Thirteen focused cases cover provider paths, fallback, cancellation,
+  validation, rollback, and real-Store linkage. The current gate is 600 package
+  tests (13 gated), 230 linted Swift files, and 20 UI cases (D62).
 
 - **Architecture Band 2 slice 2U complete — package boundaries describe real
   behavior (Jul 16, 2026)**: a compatibility audit found no app, CLI, test,

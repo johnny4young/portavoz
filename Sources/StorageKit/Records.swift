@@ -296,8 +296,78 @@ struct SummaryRecord: Codable, FetchableRecord, PersistableRecord {
     var markdown: String
     var version: Int
     var fingerprint: String?
+    var generationRunID: String?
     var createdAt: Date
     var deletedAt: Date?
+}
+
+struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "generationRun"
+
+    var id: String
+    var meetingID: String
+    var kind: String
+    var providerID: String
+    var modelID: String
+    var modelRevision: String?
+    var inputFingerprint: String
+    var configJSON: String
+    var outputLanguage: String?
+    var startedAt: Date
+    var finishedAt: Date?
+    var outcome: String?
+    var metricsJSON: String?
+
+    init(_ run: GenerationRun) {
+        id = run.id.rawValue.uuidString
+        meetingID = run.meetingID.rawValue.uuidString
+        kind = run.kind.rawValue
+        providerID = run.providerID
+        modelID = run.modelID
+        modelRevision = run.modelRevision
+        inputFingerprint = run.inputFingerprint
+        configJSON = run.configJSON
+        outputLanguage = run.outputLanguage
+        startedAt = run.startedAt
+        finishedAt = run.finishedAt
+        outcome = run.outcome?.rawValue
+        metricsJSON = run.metricsJSON
+    }
+
+    var run: GenerationRun {
+        get throws {
+            guard let kind = GenerationRunKind(rawValue: kind) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "kind", value: self.kind)
+            }
+            let parsedOutcome: GenerationRunOutcome?
+            if let outcome {
+                guard let value = GenerationRunOutcome(rawValue: outcome) else {
+                    throw StorageError.invalidPersistedValue(
+                        table: Self.databaseTableName, column: "outcome", value: outcome)
+                }
+                parsedOutcome = value
+            } else {
+                parsedOutcome = nil
+            }
+            return GenerationRun(
+                id: GenerationRunID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                kind: kind,
+                providerID: providerID,
+                modelID: modelID,
+                modelRevision: modelRevision,
+                inputFingerprint: inputFingerprint,
+                configJSON: configJSON,
+                outputLanguage: outputLanguage,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                outcome: parsedOutcome,
+                metricsJSON: metricsJSON)
+        }
+    }
 }
 
 struct ActionItemRecord: Codable, FetchableRecord, PersistableRecord {
