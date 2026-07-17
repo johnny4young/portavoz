@@ -1,0 +1,95 @@
+{
+  "buildConfiguration" : "release",
+  "configuration" : {
+    "bucketCount" : 600,
+    "repeatedRuns" : 20
+  },
+  "firstGeneration" : {
+    "baselinePhysicalFootprintBytes" : 3293760,
+    "endingPhysicalFootprintBytes" : 4539016,
+    "incrementalPeakPhysicalFootprintBytes" : 1474632,
+    "peakPhysicalFootprintBytes" : 4768392,
+    "processCPUMilliseconds" : 94.81104166666667,
+    "resultCount" : 600,
+    "resultFingerprint" : "594c6cf638f289f2",
+    "wallMilliseconds" : 109.25125
+  },
+  "generatedAt" : "2026-07-17T05:57:22Z",
+  "host" : {
+    "architecture" : "arm64",
+    "operatingSystem" : "Version 26.5.2 (Build 25F84)",
+    "physicalMemoryBytes" : 38654705664,
+    "processorCount" : 14
+  },
+  "invalidation" : {
+    "replacementFingerprint" : "0aab0e5068536ffa",
+    "replacementResultCount" : 600,
+    "replacementUsesRealAudioFile" : true,
+    "resultChanged" : true
+  },
+  "repeatedGeneration" : {
+    "baselinePhysicalFootprint" : {
+      "maximumBytes" : 5030536,
+      "p50Bytes" : 4932232,
+      "p95Bytes" : 5014152,
+      "sampleCount" : 20
+    },
+    "endingPhysicalFootprint" : {
+      "maximumBytes" : 5030536,
+      "p50Bytes" : 4948616,
+      "p95Bytes" : 5030536,
+      "sampleCount" : 20
+    },
+    "incrementalPeakPhysicalFootprint" : {
+      "maximumBytes" : 393216,
+      "p50Bytes" : 262144,
+      "p95Bytes" : 344064,
+      "sampleCount" : 20
+    },
+    "peakPhysicalFootprint" : {
+      "maximumBytes" : 5292680,
+      "p50Bytes" : 5210760,
+      "p95Bytes" : 5276296,
+      "sampleCount" : 20
+    },
+    "processCPUTime" : {
+      "maximumMilliseconds" : 72.15258333333333,
+      "p50Milliseconds" : 70.1045,
+      "p95Milliseconds" : 71.33079166666667,
+      "sampleCount" : 20
+    },
+    "resultCount" : 600,
+    "resultFingerprint" : "594c6cf638f289f2",
+    "wallTime" : {
+      "maximumMilliseconds" : 71.125542,
+      "p50Milliseconds" : 69.216916,
+      "p95Milliseconds" : 70.109167,
+      "sampleCount" : 20
+    }
+  },
+  "schemaVersion" : 1,
+  "source" : {
+    "channelCount" : 2,
+    "channels" : [
+      {
+        "audioChannelCount" : 1,
+        "byteCount" : 322093696,
+        "container" : "caf",
+        "durationSeconds" : 3355.1,
+        "role" : "microphone",
+        "sampleRate" : 48000
+      },
+      {
+        "audioChannelCount" : 1,
+        "byteCount" : 322100224,
+        "container" : "caf",
+        "durationSeconds" : 3355.168,
+        "role" : "system",
+        "sampleRate" : 48000
+      }
+    ],
+    "copiedToScratch" : true,
+    "durationSeconds" : 3355.168,
+    "totalBytes" : 644193920
+  }
+}

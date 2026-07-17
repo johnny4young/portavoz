@@ -6,13 +6,16 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement architecture Band 4 slice 4F: measure
-waveform generation, repeat-hit behavior, memory, and invalidation against real
-scratch audio before selecting a durable content-addressable cache. Band 4E
-now brings exact semantic wall/CPU p95 from 325.41/328.43 ms to 90.22/91.26
-ms at 100k segments, so D83 retains schema-v7 Float32 BLOBs and rejects
-sqlite-vec, `segmentEmbedding`, `DatabasePool`, and vector caches at the
-measured scale. D78 closes Band 3 by retaining the accurately documented
+**Next concrete step:** implement architecture Band 4 slice 4G: measure the
+current Spotlight full-rebuild delivery time, burst behavior, failure recovery,
+and pending-work visibility against disposable 1k/10k/100k meeting metadata
+before selecting an outbox consumer. Band 4F brings a real 55.9-minute
+dual-channel waveform from 747.53/754.79 ms repeat wall/CPU p95 to
+70.11/71.33 ms without a durable cache, so D84 retains stateless generation
+and rejects sidecars, schema/read-model changes, and invalidation lifecycle at
+the measured scale. Band 4E similarly retains schema-v7 Float32 BLOBs and
+rejects sqlite-vec, `segmentEmbedding`, `DatabasePool`, and vector caches.
+D78 closes Band 3 by retaining the accurately documented
 non-sandboxed distribution until a reversible feature-parity migration passes
 its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
 
@@ -29,7 +32,20 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84).
+
+- **Architecture Band 4 slice 4F complete — long-meeting waveforms are
+  stateless and inside budget (Jul 17, 2026)**: a privacy-safe Release harness
+  copies real audio to scratch, reports only format/size/duration, separates
+  first generation from 20 same-process runs, fingerprints the exact bucket
+  result, and replaces the scratch source to characterize invalidation. On a
+  55.9-minute, 644.19 MB dual-channel CAF source, the scalar loop recorded
+  first wall/CPU 761.75/767.43 ms and repeat p95 747.53/754.79 ms. Range-aligned
+  Accelerate maxima preserve the exact 600-bucket fingerprint while bringing
+  first wall/CPU to 109.25/94.81 ms and repeat p95 to 70.11/71.33 ms; incremental
+  footprint p95 remains 0.33 MiB and replacement changes the fingerprint. A
+  stereo/remainder characterization, tracked before/after reports, source
+  guards, and D84 reject a durable cache at the measured scale.
 
 - **Architecture Band 4 slice 4E complete — exact semantic retrieval is back
   inside budget (Jul 17, 2026)**: StorageKit now streams SQLite-owned embedding

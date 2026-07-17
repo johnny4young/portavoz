@@ -779,7 +779,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let cli = try Self.contents(of: "Sources/portavoz-cli/CLIBenchScale.swift")
         let semanticCLI = try Self.contents(
             of: "Sources/portavoz-cli/CLIBenchSemantic.swift")
+        let waveformCLI = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchWaveform.swift")
         let dispatch = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
+        let package = try Self.contents(of: "Package.swift")
         let scaleRunner = try Self.contents(of: "scripts/run-scale-baseline.sh")
         let semanticRunner = try Self.contents(
             of: "scripts/run-semantic-scale-baseline.sh")
@@ -790,10 +793,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
         let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
         let ask = try Self.contents(of: "Sources/IntegrationsKit/AskPipeline.swift")
+        let waveform = try Self.contents(of: "Sources/AudioPlaybackKit/Waveform.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(dispatch.contains(#"case "bench-scale":"#))
         XCTAssertTrue(dispatch.contains(#"case "bench-semantic":"#))
+        XCTAssertTrue(dispatch.contains(#"case "bench-waveform":"#))
+        XCTAssertTrue(package.contains(#""StorageKit", "IntegrationsKit", "AudioPlaybackKit""#))
         XCTAssertTrue(cli.contains("withTemporaryDirectory(prefix:"))
         XCTAssertTrue(cli.contains("omittingEmptySubsequences: false"))
         XCTAssertTrue(scaleRunner.contains("swift build -c release --product portavoz-cli"))
@@ -805,6 +811,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(semanticRunner.contains("swift build -c release --product portavoz-cli"))
         XCTAssertTrue(semanticRunner.contains(#"for raw_size in "${checkpoints[@]}""#))
         XCTAssertTrue(semanticRunner.contains(#"report.get("buildConfiguration") != "release""#))
+        XCTAssertTrue(waveformCLI.contains("withWaveformTemporaryDirectory"))
+        XCTAssertTrue(waveformCLI.contains("FileManager.default.copyItem"))
+        XCTAssertTrue(waveformCLI.contains("usage.ri_phys_footprint"))
+        XCTAssertTrue(waveformCLI.contains("replacementFingerprint != first.fingerprint"))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-seed-scale")"#))
         XCTAssertTrue(model.contains(#""Meeting Detail First Content""#))
@@ -816,6 +826,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D81 — Bound broad retrieval before vector storage"))
         XCTAssertTrue(decisions.contains("## D82 — Measure semantic cost before changing storage"))
         XCTAssertTrue(decisions.contains("## D83 — Keep exact vectors after the adapter passes"))
+        XCTAssertTrue(decisions.contains("## D84 — Vectorize waveform envelopes before caching"))
         XCTAssertTrue(health.contains("prefixMaximumEnd"))
         XCTAssertTrue(health.contains(
             "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
@@ -833,6 +844,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(ask.contains("guard terms.count <= 8"))
         XCTAssertTrue(ask.contains("1.0 / Double(60 + rank)"))
         XCTAssertTrue(cli.contains("AskPipeline.retrieveLexical"))
+        XCTAssertTrue(waveform.contains("vDSP_maxmgv"))
+        XCTAssertFalse(waveform.contains("WaveformCache"))
 
         let scale = try Self.jsonObject(
             at: "docs/evidence/scale-baseline-20260716.json")
@@ -953,6 +966,61 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertLessThan(
             afterPeakFootprint["p95Bytes"] as? Int ?? .max,
             24 * 1_048_576)
+
+        let waveformBaseline = try Self.jsonObject(
+            at: "docs/evidence/waveform-scale-baseline-20260717.json")
+        let waveformAfter = try Self.jsonObject(
+            at: "docs/evidence/waveform-scale-after-accelerate-20260717.json")
+        XCTAssertEqual(waveformBaseline["buildConfiguration"] as? String, "release")
+        XCTAssertEqual(waveformAfter["buildConfiguration"] as? String, "release")
+        let waveformConfiguration = try XCTUnwrap(
+            waveformAfter["configuration"] as? [String: Any])
+        XCTAssertEqual(waveformConfiguration["repeatedRuns"] as? Int, 20)
+        XCTAssertEqual(waveformConfiguration["bucketCount"] as? Int, 600)
+        let waveformSource = try XCTUnwrap(waveformAfter["source"] as? [String: Any])
+        XCTAssertEqual(waveformSource["copiedToScratch"] as? Bool, true)
+        XCTAssertEqual(waveformSource["channelCount"] as? Int, 2)
+        XCTAssertGreaterThan(waveformSource["durationSeconds"] as? Double ?? 0, 3_300)
+        XCTAssertGreaterThan(waveformSource["totalBytes"] as? Int ?? 0, 600_000_000)
+        let waveformBeforeFirst = try XCTUnwrap(
+            waveformBaseline["firstGeneration"] as? [String: Any])
+        let waveformAfterFirst = try XCTUnwrap(
+            waveformAfter["firstGeneration"] as? [String: Any])
+        XCTAssertEqual(
+            waveformAfterFirst["resultFingerprint"] as? String,
+            waveformBeforeFirst["resultFingerprint"] as? String)
+        XCTAssertLessThan(
+            waveformAfterFirst["wallMilliseconds"] as? Double ?? .infinity,
+            150)
+        XCTAssertLessThan(
+            waveformAfterFirst["processCPUMilliseconds"] as? Double ?? .infinity,
+            120)
+        let waveformBeforeRepeat = try XCTUnwrap(
+            waveformBaseline["repeatedGeneration"] as? [String: Any])
+        let waveformAfterRepeat = try XCTUnwrap(
+            waveformAfter["repeatedGeneration"] as? [String: Any])
+        let waveformBeforeWall = try Self.p95(in: waveformBeforeRepeat, key: "wallTime")
+        let waveformAfterWall = try Self.p95(in: waveformAfterRepeat, key: "wallTime")
+        let waveformBeforeCPU = try Self.p95(
+            in: waveformBeforeRepeat, key: "processCPUTime")
+        let waveformAfterCPU = try Self.p95(
+            in: waveformAfterRepeat, key: "processCPUTime")
+        XCTAssertGreaterThan(waveformBeforeWall, 500)
+        XCTAssertLessThan(waveformAfterWall, 100)
+        XCTAssertLessThan(waveformAfterCPU, 100)
+        XCTAssertLessThan(waveformAfterWall, waveformBeforeWall / 8)
+        XCTAssertLessThan(waveformAfterCPU, waveformBeforeCPU / 8)
+        let waveformFootprint = try XCTUnwrap(
+            waveformAfterRepeat["incrementalPeakPhysicalFootprint"] as? [String: Any])
+        XCTAssertLessThan(
+            waveformFootprint["p95Bytes"] as? Int ?? .max,
+            2 * 1_048_576)
+        let waveformInvalidation = try XCTUnwrap(
+            waveformAfter["invalidation"] as? [String: Any])
+        XCTAssertEqual(waveformInvalidation["resultChanged"] as? Bool, true)
+        XCTAssertNotEqual(
+            waveformInvalidation["replacementFingerprint"] as? String,
+            waveformAfterFirst["resultFingerprint"] as? String)
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

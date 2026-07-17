@@ -443,6 +443,18 @@ exercises this same production path in the durable-resume XCUITest (D63).
 
 **Audio first-class (M11/D27) complete**: player synchronized with **Spotify-style lyrics transcript** (`FocusedTranscriptView`: spoken line stays CENTERED in fixed-height viewport, others fade/shrink/blur towards edges — cylinder effect with `.visualEffect`; no scroll bar; search in timeline moves transcript INSIDE its box, never page), click-to-jump, **waveform-scrubber** (colored by channel: accent=you, gray=them; dimmed after playhead; clip region shaded) and **clips** (mark in/out at playhead → `AudioClipExporter` exports mixed range to m4a/AAC via `AVAssetExportSession`, measured well below 2 s) — all in `AudioPlaybackKit`. Without audio, transcript is normal list. The **same carousel runs in live recording** (`FocusedTranscriptView` parametrized with `anchor`: during recording new line focuses at lower third `y≈0.82` — boundary — and old ones rise and fade; `followSignal` re-centers when live line GROWS, not just appears; replaced pausable follow-live). Also: **skip-silence** (toggle; skips gaps ≥1.2 s detected from waveform), **transcode AAC** ("Comprimir audio (AAC)" → `AudioTranscoder`, deletes original after verified write, rebuilds player from m4a) and **import** (library: "Importar audio…" button + drag-drop → the `AppServices` wrapper around `ApplicationKit.ImportMeeting`; it copies as system channel off the MainActor, applies the transcript recognition policy to Whisper, keeps mixed-language evidence automatic, degrades diarization and summary honestly, commits the required aggregate atomically, then preserves the existing success invalidation and navigation timing). **M11 complete.** `make test-ui` covers player, highlight and clip export button; preflight closes Portavoz before XCUITest to avoid automation mode failures from stale instances.
 
+**Stateless waveform derivation (Band 4F/D84, Jul 2026):**
+`Waveform.generate` reads the available microphone/system sources, partitions
+their shared timeline into the requested bucket count, and computes each
+range-aligned channel peak with Accelerate `vDSP_maxmgv`; the final bucket
+consumes the exact remainder. It returns one normalized bucket sequence with
+the dominant source but writes no cache or sidecar. On a copied real 55.9-minute
+dual-channel CAF source, first wall/CPU is 109.25/94.81 ms and 20-run repeat p95
+is 70.11/71.33 ms, down from 761.75/767.43 and 747.53/754.79 ms while preserving
+the exact result fingerprint. Replacing the source changes the result without
+an invalidation protocol. D84 therefore rejects a persisted cache at the
+measured scale.
+
 
 ## Meeting Detail scale baseline (Band 4A, Jul 2026)
 

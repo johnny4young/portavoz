@@ -43,6 +43,37 @@ final class WaveformTests: XCTestCase {
             ).isEmpty)
     }
 
+    func testEnvelopePreservesBucketBoundariesAcrossChannelsAndRemainder() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wf-boundaries-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let format = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 2,
+            interleaved: false)!
+        let first: [Float] = [0.1, 0.8, 0.2, 0.4, 0.3, 0.2, 0.1, 0.6, 0.2, 0.9, 0.5]
+        let second: [Float] = [0.2, 0.1, 0.7, 0.2, 0.5, 0.1, 0.3, 0.2, 0.4, 0.1, 1.0]
+        var writer: AVAudioFile? = try AVAudioFile(forWriting: url, settings: format.settings)
+        let buffer = AVAudioPCMBuffer(
+            pcmFormat: format,
+            frameCapacity: AVAudioFrameCount(first.count))!
+        buffer.frameLength = AVAudioFrameCount(first.count)
+        first.withUnsafeBufferPointer {
+            buffer.floatChannelData![0].update(from: $0.baseAddress!, count: first.count)
+        }
+        second.withUnsafeBufferPointer {
+            buffer.floatChannelData![1].update(from: $0.baseAddress!, count: second.count)
+        }
+        try writer!.write(from: buffer)
+        writer = nil
+
+        let buckets = Waveform.generate(micFile: url, systemFile: nil, buckets: 3)
+
+        XCTAssertEqual(buckets.map(\.amplitude), [0.8, 0.5, 1.0])
+        XCTAssertTrue(buckets.allSatisfy(\.micDominant))
+    }
+
     /// A loud–silent–loud shape yields one silent range in the middle, and
     /// short dips below `minLength` are ignored.
     func testSilentRangesFindsSustainedGaps() {

@@ -131,7 +131,7 @@ let package = Package(
             dependencies: [
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit", "IntegrationsKit",
+                "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
             ]
         ),
 

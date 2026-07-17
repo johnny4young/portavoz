@@ -1,3 +1,4 @@
+import Accelerate
 import AVFoundation
 import Foundation
 
@@ -90,11 +91,26 @@ public enum Waveform {
             let count = Int(buffer.frameLength)
             guard count > 0, let channelData = buffer.floatChannelData else { break }
             let channels = Int(buffer.format.channelCount)
-            for i in 0..<count {
-                var sample: Float = 0
-                for c in 0..<channels { sample = max(sample, abs(channelData[c][i])) }
-                let bucket = min(buckets - 1, (frameIndex + i) / framesPerBucket)
-                result[bucket] = max(result[bucket], sample)
+            var offset = 0
+            while offset < count {
+                let bucket = min(buckets - 1, (frameIndex + offset) / framesPerBucket)
+                let endOffset = bucket == buckets - 1
+                    ? count
+                    : min(count, (bucket + 1) * framesPerBucket - frameIndex)
+                let span = endOffset - offset
+                guard span > 0 else { break }
+                var peak: Float = 0
+                for channel in 0..<channels {
+                    var channelPeak: Float = 0
+                    vDSP_maxmgv(
+                        channelData[channel].advanced(by: offset),
+                        1,
+                        &channelPeak,
+                        vDSP_Length(span))
+                    peak = max(peak, channelPeak)
+                }
+                result[bucket] = max(result[bucket], peak)
+                offset = endOffset
             }
             frameIndex += count
         }

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **⚡ Hour-long waveforms without the wait** — Portavoz now scans each audio channel in vectorized bucket spans instead of visiting every sample in Swift. A measured 56-minute dual-channel recording generates its complete waveform in 109 ms, with repeated generation around 70 ms and no persisted cache to become stale.
 - **⚡ Semantic Ask answers at library speed** — Local semantic retrieval now streams and scores only the vectors it needs, keeps a tiny exact top-k, and loads full passages only for the winners. At 100,000 segments, measured retrieval falls from 325 ms to 91 ms without a new database extension, schema migration, cloud service, or approximate results.
 
 ## July 16, 2026

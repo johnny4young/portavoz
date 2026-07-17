@@ -131,6 +131,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 | Battery (iPhone, live STT) | < 10%/hour (ANE) | phase 3 |
 | Search through 100k segments | exact p95 < 50 ms; lexical Ask p95 < 100 ms | ✅ exact p95 **30.99 ms**; lexical Ask p95 **66.89 ms**, down from 111.19 ms through bounded per-term candidates and reciprocal-rank fusion (`portavoz-cli bench-scale`, D81) |
 | Semantic retrieval through 100k embedded segments | p95 < 100 ms | ✅ wall/CPU p95 **90.22/91.26 ms**, down from 325.41/328.43 ms through streamed zero-copy Accelerate scoring and bounded exact top-k; **8.42 MiB incremental p95** (D83) |
+| Waveform generation, 56-minute dual-channel recording | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat p95 **70.11/71.33 ms**, down from 747.53/754.79 ms through stateless Accelerate spans; **0.33 MiB incremental p95**, exact result preserved, no cache lifecycle (D84) |
 | Meeting Detail first content, 2 h / 5k segments | < 300 ms | ✅ **91.87 ms**, down from 522.30 ms, with zero measured hangs; `MeetingHealth` p95 is 9.94 ms, down from 347.58 ms (D79/D80) |
 | Mic/system drift | < 50 ms in 30 min | ✅ 4 ms over an actual 22 min |
 | Diarization DER (4 speakers) | < 15%; user contributions 100% | ✅ AMI 7.6%; real meeting pending corrected RTTM |

@@ -294,6 +294,8 @@ final class MeetingDetailUITests: XCTestCase {
             app.control(withIdentifier: "player-only-my-voice").exists,
             "the player must offer the 'only my voice' filter")
         play.click()  // smoke: play doesn't crash
+        Thread.sleep(forTimeInterval: 0.5)
+        attachScreenshot(of: app, named: "band-4f-vectorized-waveform")
     }
 
     /// Marking in/out reveals the clip export button (M11). Advances the

@@ -109,6 +109,7 @@ Measured on a MacBook Pro **M4 Max, 36 GB, macOS 26** (July 2026). Everything be
 | **Dual-channel drift** | AVAudioEngine + Core Audio tap | **4 ms** over 30 min (target < 50 ms) | 30-min `portavoz-cli record --system` |
 | **Library search at 100k segments** | SQLite FTS5 + term-level RRF | exact p95 **30.99 ms**; lexical Ask p95 **66.89 ms**, down from 111.19 ms | `scripts/run-scale-baseline.sh` |
 | **Semantic retrieval at 100k segments** | streamed exact 512-d BLOB cosine + Accelerate | wall/CPU p95 **90.22/91.26 ms**, down from 325.41/328.43 ms; **8.42 MiB** incremental footprint | `scripts/run-semantic-scale-baseline.sh` |
+| **Waveform, 56-minute dual-channel recording** | stateless bucket spans + Accelerate | first wall/CPU **109.25/94.81 ms**; repeat p95 **70.11/71.33 ms**, down from 747.53/754.79 ms | `portavoz-cli bench-waveform --mic microphone.caf --system system.caf` |
 | **Meeting Detail at 5k segments** | scoped GRDB read + SwiftUI | core read p95 **16.27 ms**; health p95 **9.94 ms**; first content **91.87 ms** with no measured hang | `make install && scripts/run-detail-ui-baseline.sh` |
 
 An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked head-to-head against Parakeet in [docs/specs/02-transcription.md](docs/specs/02-transcription.md#speechanalyzer-spike-m12d25--status-and-findings-jul-2026): both stay under 1 s p95; Parakeet keeps the finalization-latency crown, SpeechAnalyzer wins on zero-download and rich volatile captions.
@@ -151,7 +152,7 @@ real vertical use case.
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
-| `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
+| `AudioPlaybackKit` | Synchronized player, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
 | `StorageKit` | GRDB/SQLite schema v7, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
 | `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked, receipt-before-transport outbound network adapter |
 

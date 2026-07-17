@@ -181,7 +181,7 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 **Context:** audio is currently captured, transcribed, and left dead on disk: the app does not play it. Humla has playback with word-by-word highlighting; Otter/Granola treat audio as the canonical record. Without playback there is no human verification of the transcript ("¿de verdad dijo eso?") or clips.
 **Decision:** AudioPlaybackKit (new Kit, depends only on PortavozCore):
 - **Synchronized player**: AVAudioEngine playerNode over the existing WAV files; clicking a segment jumps to the timestamp (`startTime` already exists); during playback, the current segment is highlighted (and the word, when the engine provides word timings). 1–2x speed and skip-silence (gaps between segments are known).
-- **Waveform** per meeting: RMS downsampled to ~2000 buckets, colored by speaker (diarization turns), cached in `Audio/<id>/waveform.bin` — computed once on save.
+- **Waveform** per meeting: channel peak envelope downsampled to the requested bucket count and colored by source. The original persisted `waveform.bin` proposal is superseded by D84: measured stateless vectorized generation is fast enough and cannot become stale.
 - **Clips**: mark a range in the waveform/transcript → export `.m4a` (AVAssetExportSession) + attributed MD snippet; "mark" is FREE, "export" is PRO (already in the matrix).
 - **Master + economics**: WAV remains the master (the pipeline requires it); optional AAC transcode after refine as an additional retention policy (D4 already models retention).
 - **Signal conditioning** (Meetily pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate RNNoise-style denoise (Apple already provides AEC+NS through voice processing, D24) and ~80 Hz high-pass for voice.
@@ -2197,3 +2197,39 @@ additive `segmentEmbedding` table are therefore rejected until a future
 measured corpus, vector width, or latency budget proves this exact adapter no
 longer sufficient. Band 4 proceeds to the independent waveform evidence gate;
 semantic storage is no longer the current bottleneck.
+
+## D84 — Vectorize waveform envelopes before caching (Jul 2026)
+
+**Context:** Band 4's target architecture proposed a content-addressable
+waveform cache without first measuring the released generator. A Release
+`bench-waveform` run copied a real 55.9-minute, dual-channel 48 kHz PCM16 CAF
+capture into a throwaway directory and generated 600 buckets. The scalar
+per-frame loop took 761.75 ms wall / 767.43 ms CPU on its first generation;
+20 same-process runs recorded wall/CPU p95 of 747.53/754.79 ms. Incremental
+physical-footprint p95 was only 0.36 MiB, so the miss was CPU work rather than
+memory pressure or retained state.
+
+**Decision:** keep waveform derivation stateless and preserve its exact bucket
+contract. `Waveform.generate` divides the audio timeline into the same
+range-aligned spans, computes each channel's maximum magnitude with
+Accelerate `vDSP_maxmgv`, and lets the final bucket consume the remainder.
+The CLI harness records the first generation separately from 20 repeated
+generations, publishes format/size/duration but no source path or content, and
+replaces its scratch input with a newly written valid audio file to
+characterize invalidation.
+
+The comparable after report preserves the exact 600-bucket fingerprint. First
+generation is 109.25 ms wall / 94.81 ms CPU, 7.0×/8.1× faster. Repeat wall/CPU
+p95 is 70.11/71.33 ms, 10.7×/10.6× faster and below the 100 ms derived-audio
+budget. Incremental physical-footprint p95 remains 0.33 MiB and absolute peak
+p95 is 5.03 MiB. Replacing the scratch audio changes the result fingerprint,
+so regeneration already has exact invalidation semantics.
+
+**Rationale:** a durable or content-addressable cache, sidecar file, audio-
+asset read model, schema change, and invalidation lifecycle are rejected at
+the measured 55.9-minute scale. The vectorized stateless adapter is simpler,
+has no stale-artifact failure mode, and meets both first and repeat budgets.
+Reconsider caching only if a future longer real-audio matrix misses an explicit
+budget after this adapter, and require comparable latency, memory, storage,
+replacement, migration, and deletion evidence before selecting it. Band 4
+proceeds to Spotlight delivery/backlog measurement rather than cache design.
