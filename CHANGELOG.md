@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 17, 2026
+
+- **⚡ Semantic Ask answers at library speed** — Local semantic retrieval now streams and scores only the vectors it needs, keeps a tiny exact top-k, and loads full passages only for the winners. At 100,000 segments, measured retrieval falls from 325 ms to 91 ms without a new database extension, schema migration, cloud service, or approximate results.
+
 ## July 16, 2026
 
 - **⚡ Ask stays fast as your library grows** — Local meeting Q&A now ranks small per-term FTS candidate sets and rewards passages backed by multiple query terms instead of scoring one enormous OR union. At 100,000 segments, measured lexical retrieval falls from 111 ms to 67 ms while answers receive the complete source segment rather than a clipped search snippet.

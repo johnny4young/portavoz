@@ -2162,3 +2162,38 @@ product, and retain only the bounded top-k instead of sorting every hit. The
 same isolated matrix decides the result. If 100k semantic p95 still exceeds
 100 ms, the next slice may select sqlite-vec and the additive
 `segmentEmbedding` layout with measured before/after and compatibility tests.
+
+## D83 — Keep exact vectors after the adapter passes (Jul 2026)
+
+**Context:** D82 measured the production 512-dimensional semantic path at
+100,000 segments: wall/CPU p95 was 325.41/328.43 ms against a 100 ms target,
+while incremental footprint p95 was only 8.50 MiB. The miss justified removing
+adapter amplification before accepting sqlite-vec, an additive embedding
+table, extension packaging, migration compatibility, and approximate-index
+maintenance. The released path fetched all rows, copied each BLOB into a new
+Float array, materialized every full `SearchHit`, and sorted every score.
+
+**Decision:** retain schema-v7 Float32 BLOBs and exact cosine ranking. The
+StorageKit adapter streams a cursor containing only SQLite-owned embedding
+bytes and rowids, scores each production-width vector directly with
+Accelerate, keeps a deterministic bounded top-k, and fetches complete passage
+content only for those winners. Non-positive limits and empty queries return
+no results; wrong-width or non-finite vectors are excluded; ties retain
+ascending rowid traversal order. Deleted meetings remain excluded through one
+tombstone subquery rather than an indexed meeting lookup for every segment.
+
+The comparable 20-run Release matrix records wall/CPU p95 of 0.51/0.55 ms at
+1k, 9.86/9.95 ms at 10k, 45.18/45.86 ms at 50k, and 90.22/91.26 ms at 100k.
+The 100k path is 72.3%/72.2% below baseline and passes both 100 ms gates.
+Incremental footprint p95 remains 8.42 MiB while absolute peak p95 falls from
+50.05 to 15.66 MiB. Production-width scalar-oracle, malformed-vector,
+tombstone, full-text, top-k, tie, and limit characterizations preserve exact
+behavior.
+
+**Rationale:** the existing local-first format now meets the published scale
+budget without a new dependency, C extension, schema migration, approximate
+index, database pool, or cache invalidation protocol. sqlite-vec and an
+additive `segmentEmbedding` table are therefore rejected until a future
+measured corpus, vector width, or latency budget proves this exact adapter no
+longer sufficient. Band 4 proceeds to the independent waveform evidence gate;
+semantic storage is no longer the current bottleneck.

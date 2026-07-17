@@ -815,11 +815,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D80 — Bound interruption scans with prefix evidence"))
         XCTAssertTrue(decisions.contains("## D81 — Bound broad retrieval before vector storage"))
         XCTAssertTrue(decisions.contains("## D82 — Measure semantic cost before changing storage"))
+        XCTAssertTrue(decisions.contains("## D83 — Keep exact vectors after the adapter passes"))
         XCTAssertTrue(health.contains("prefixMaximumEnd"))
         XCTAssertTrue(health.contains(
             "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
         XCTAssertTrue(search.contains("ORDER BY rank"))
         XCTAssertFalse(search.contains("ORDER BY bm25(segmentSearch)"))
+        XCTAssertTrue(search.contains("Row.fetchCursor"))
+        XCTAssertTrue(search.contains("withUnsafeData(atIndex: 0)"))
+        XCTAssertTrue(search.contains("vDSP_dotpr"))
+        XCTAssertTrue(search.contains("segment.meetingID NOT IN"))
+        XCTAssertTrue(search.contains("ORDER BY segment.rowid ASC"))
+        XCTAssertTrue(search.contains("candidates.count == limit"))
+        XCTAssertTrue(search.contains("semanticHits(in: db, candidates:"))
+        XCTAssertTrue(search.contains("stride(from: 0, to: rowIDs.count, by: 500)"))
         XCTAssertTrue(ask.contains("public static func retrieveLexical"))
         XCTAssertTrue(ask.contains("guard terms.count <= 8"))
         XCTAssertTrue(ask.contains("1.0 / Double(60 + rank)"))
@@ -913,6 +922,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertLessThan(
             incrementalFootprint["p95Bytes"] as? Int ?? .max,
             64 * 1_048_576)
+
+        let afterSemantic = try Self.jsonObject(
+            at: "docs/evidence/semantic-scale-after-adapter-20260717.json")
+        XCTAssertEqual(afterSemantic["buildConfiguration"] as? String, "release")
+        let afterSemanticConfiguration = try XCTUnwrap(
+            afterSemantic["configuration"] as? [String: Any])
+        XCTAssertEqual(afterSemanticConfiguration["embeddingDimension"] as? Int, 512)
+        XCTAssertEqual(afterSemanticConfiguration["measurementRuns"] as? Int, 20)
+        let afterSemanticCheckpoints = try XCTUnwrap(
+            afterSemantic["checkpoints"] as? [[String: Any]])
+        XCTAssertEqual(
+            afterSemanticCheckpoints.compactMap { $0["totalSegments"] as? Int },
+            [1_000, 10_000, 50_000, 100_000])
+        let afterSemanticHundredThousand = try XCTUnwrap(afterSemanticCheckpoints.last)
+        let beforeSemanticWall = try Self.p95(
+            in: semanticHundredThousand, key: "wallTime")
+        let afterSemanticWall = try Self.p95(
+            in: afterSemanticHundredThousand, key: "wallTime")
+        let beforeSemanticCPU = try Self.p95(
+            in: semanticHundredThousand, key: "processCPUTime")
+        let afterSemanticCPU = try Self.p95(
+            in: afterSemanticHundredThousand, key: "processCPUTime")
+        XCTAssertLessThan(afterSemanticWall, 100)
+        XCTAssertLessThan(afterSemanticCPU, 100)
+        XCTAssertLessThan(afterSemanticWall, beforeSemanticWall / 3)
+        XCTAssertLessThan(afterSemanticCPU, beforeSemanticCPU / 3)
+        let afterPeakFootprint = try XCTUnwrap(
+            afterSemanticHundredThousand["peakPhysicalFootprint"] as? [String: Any])
+        XCTAssertLessThan(
+            afterPeakFootprint["p95Bytes"] as? Int ?? .max,
+            24 * 1_048_576)
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
