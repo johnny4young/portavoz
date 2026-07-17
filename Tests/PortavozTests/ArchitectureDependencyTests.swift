@@ -867,6 +867,51 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(diagnostics.contains("CompanionCardEvidence"))
     }
 
+    func testMeetingSyncJournalStaysContentFreeGenerationFencedAndAdapterFree() throws {
+        let manifest = try Self.contents(of: "Package.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let journal = try Self.contents(of: "Sources/StorageKit/Schema+MeetingSync.swift")
+        let storage = try Self.contents(of: "Sources/StorageKit/MeetingStore+Sync.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(schema.contains("registerMigration(\"v14\")"))
+        XCTAssertTrue(schema.contains("createMeetingSyncState(in: db)"))
+        XCTAssertTrue(journal.contains("createEvidenceTriggers(in: db)"))
+        XCTAssertTrue(journal.contains("localGeneration"))
+        XCTAssertTrue(journal.contains("acknowledgedGeneration"))
+        XCTAssertTrue(journal.contains("meetingSyncState.localGeneration + 1"))
+        XCTAssertTrue(journal.contains(#"OLD.\($0) IS NOT NEW.\($0)"#))
+        XCTAssertFalse(journal.contains(".references(\"meeting\""))
+        for deviceLocalField in [
+            "audioDirectory", "embedding", "generationRunID", "personID",
+        ] {
+            XCTAssertFalse(
+                journal.contains(deviceLocalField),
+                "sync triggers must not react to \(deviceLocalField)")
+        }
+        let tableStart = try XCTUnwrap(journal.range(
+            of: "db.create(table: \"meetingSyncState\")"))
+        let indexStart = try XCTUnwrap(journal.range(
+            of: "try db.create(\n            index: \"meetingSyncState_on_pending\"",
+            range: tableStart.upperBound..<journal.endIndex))
+        let tableDefinition = journal[tableStart.lowerBound..<indexStart.lowerBound]
+        for contentField in [
+            "payload", "transcript", "markdown", "question", "answer", "voiceprint",
+        ] {
+            XCTAssertFalse(
+                tableDefinition.contains(contentField),
+                "sync journal must not persist \(contentField)")
+        }
+        XCTAssertTrue(storage.contains("markAllMeetingsForInitialSync"))
+        XCTAssertTrue(storage.contains("change.generation <= record.localGeneration"))
+        XCTAssertTrue(storage.contains("max("))
+        XCTAssertFalse(manifest.contains("CloudKit"))
+        XCTAssertTrue(try Self.imports(under: "Sources")
+            .filter { $0.module == "CloudKit" }
+            .isEmpty)
+        XCTAssertTrue(decisions.contains("## D92"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
@@ -893,6 +938,26 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("codesign --verify --deep --strict"))
         XCTAssertTrue(verifier.contains("stapler validate \"$APP_COPY\""))
         XCTAssertTrue(verifier.contains("spctl -a -vvv -t exec \"$APP_COPY\""))
+    }
+
+    func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {
+        let makefile = try Self.contents(of: "Makefile")
+
+        let resign = try XCTUnwrap(makefile.range(
+            of: "codesign --force --options runtime --timestamp"))
+        let verifyDist = try XCTUnwrap(makefile.range(
+            of: "codesign --verify --deep --strict --verbose=2 dist/Portavoz.app",
+            range: resign.upperBound..<makefile.endIndex))
+        let copy = try XCTUnwrap(makefile.range(
+            of: "cp -R dist/Portavoz.app \"/Applications/Portavoz Dev.app\"",
+            range: verifyDist.upperBound..<makefile.endIndex))
+        let verifyInstalled = try XCTUnwrap(makefile.range(
+            of: "codesign --verify --deep --strict --verbose=2 "
+                + "\"/Applications/Portavoz Dev.app\"",
+            range: copy.upperBound..<makefile.endIndex))
+        XCTAssertNotNil(makefile.range(
+            of: "open \"/Applications/Portavoz Dev.app\"",
+            range: verifyInstalled.upperBound..<makefile.endIndex))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

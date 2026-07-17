@@ -742,3 +742,13 @@ struct CompanionCardEvidenceSegmentRecord: Codable, FetchableRecord, Persistable
     var ordinal: Int
     var createdAt: Date
 }
+
+struct MeetingSyncStateRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "meetingSyncState"
+
+    var meetingID: String
+    var localGeneration: Int
+    var acknowledgedGeneration: Int
+    var changedAt: Date
+    var isDeleted: Bool
+}

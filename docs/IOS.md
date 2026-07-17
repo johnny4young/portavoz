@@ -34,11 +34,36 @@ Rules: live STT degrades BEFORE dropping the recording (saving WAV is always ine
 
 ## Sync (M14c): CKSyncEngine, no proprietary server
 
-- **What it syncs**: meetings/speakers/segments/summaries (the D4 schema is already sync-ready: UUIDs, tombstones, `updatedAt`). Audio is NOT synced by default (large); opt-in per meeting with a CKAsset asset.
-- **Encryption**: `encryptedValues` for all content fields; with the user's Advanced Data Protection, true E2E.
-- **Conflicts**: last-writer-wins per field using `updatedAt` (summaries are immutable snapshots — never a conflict); tombstones always win.
-- **Voiceprint and keys: never** (D8/D21).
-- Companion: remote control of Mac recording via CloudKit push (ephemeral "command" record) — zero proprietary infrastructure.
+**As built after Band 6A (D92):** schema v14 has a content-free per-meeting
+mutation journal with monotonic local/acknowledged generations, explicit
+initial seeding, and deletion state that survives physical purge. Portable
+meeting roots and typed evidence update it in their own transaction;
+device-local paths, embeddings, generation links, canonical people, jobs,
+receipts, audio, model state, keys, and voiceprints do not. Acknowledging an
+in-flight generation cannot hide a newer edit. There is still **no CloudKit
+import, CKSyncEngine state, account request, network transfer, sync status UI,
+conflict resolver, or iOS app target**.
+
+**Planned execution:**
+
+- **6B — private content sync:** IntegrationsKit owns encrypted portable-record
+  codecs and persisted CKSyncEngine state; StorageKit remains the mutation
+  authority. Meetings, observed speakers, transcript segments, immutable
+  summaries/action items, notes, Companion cards, current claim feedback, and
+  typed evidence are the intended aggregate. Initial upload is explicit.
+- **Encryption:** use encrypted record values for content fields. Do not claim
+  end-to-end guarantees beyond the user's actual iCloud/Advanced Data
+  Protection configuration.
+- **Conflicts:** immutable generated artifacts replay by identity; mutable
+  fields and concurrent delete/edit behavior need characterized 6B rules.
+  Tombstones must remain dominant once deletion is accepted. The old broad
+  “last writer wins per field” note is not yet an implemented contract.
+- **Audio:** never part of initial sync. A later per-meeting CKAsset opt-in has
+  its own size, retry, deletion, and consent contract.
+- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92).
+- **Later Companion control:** an ephemeral CloudKit command record may control
+  Mac recording only after private data sync is field-proven; it is not part of
+  6B and requires explicit device trust and replay protection.
 
 ## Live Activity + Dynamic Island (M14c)
 

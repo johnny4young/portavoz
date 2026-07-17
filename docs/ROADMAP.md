@@ -6,12 +6,19 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** keep architecture Band 6 deferred and use the completed
-Band 5 evidence verticals in the real-model quality corpus plus the next public
-release verification. Platform expansion requires a separate product decision;
-it must not begin automatically from this refactor branch. Band 5F completes
-Band 5 with card-identity-keyed, role-separated Companion evidence in schema
-v13: question sources identify what triggered a card, while only exact local
+**Next concrete step:** implement architecture Band 6B as the first bounded
+CloudKit adapter vertical: define encrypted portable-record codecs, persist
+CKSyncEngine state separately from the schema-v14 mutation journal, make
+account/consent and initial-seed behavior explicit, and characterize
+upload/download, retry, tombstone, and conflict semantics without adding the
+iOS shell yet. Band 6A is complete: it adds transport-independent, content-free
+per-meeting generations, explicit initial seeding, generation-aware
+acknowledgement, typed-evidence detection, and purge-surviving deletion state
+without importing CloudKit or enabling network behavior (D92). The user's
+separate product decision opened Band 6; each transport and platform step still
+ships as its own feature-parity-preserving slice. Band 5F completed Band 5 with
+card-identity-keyed, role-separated Companion evidence in schema v13: question
+sources identify what triggered a card, while only exact local
 RAG citations become answer sources (D91). Band 5E keys action-item evidence to stable task identity in schema v12; exact
 provider tags, revision/deletion fences, translation and bundle remapping, and
 Meeting Detail source navigation remain attached when the checkbox changes
@@ -54,7 +61,18 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92).
+
+- **Architecture Band 6 slice 6A complete — no portable change can disappear
+  behind an older acknowledgement (Jul 17, 2026)**: schema v14 owns one
+  content-free state row per dirty meeting aggregate. Transactional triggers
+  cover portable meeting content, independently replaceable typed evidence,
+  and claim feedback while excluding paths, embeddings, generation links, and
+  canonical people. Null-safe value checks avoid false work; generation N
+  acknowledgements cannot hide N+1; initial sync is explicit; physical purge
+  preserves deletion evidence. Migration, rollback, race, evidence-only,
+  local-only, tombstone, and architecture ratchets protect D92. No CloudKit,
+  network, account behavior, conflict resolver, iOS target, or UI changed.
 
 - **Architecture Band 5 slice 5F complete — Companion answers separate the
   question from their proof (Jul 17, 2026)**: schema v13 keys one immutable

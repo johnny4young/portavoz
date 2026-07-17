@@ -40,9 +40,9 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v13 evidence and review
+    // MARK: - Schema v9-v14 evidence, review, and sync journal
 
-    func testV8MigratesAdditivelyThroughCompanionEvidenceSchema() throws {
+    func testV8MigratesAdditivelyThroughMeetingSyncSchema() throws {
         let database = try DatabaseQueue()
         let migrator = StorageSchema.migrator()
         try migrator.migrate(database, upTo: "v8")
@@ -88,7 +88,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 13)
+            XCTAssertEqual(StorageSchema.version, 14)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])

@@ -80,9 +80,13 @@ install:
 	plutil -replace CFBundleName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist
 	# Editing Info.plist invalidates the signature; re-sign or TCC grants
 	# (mic, screen recording) will not stick to the dev app.
-	codesign --force --options runtime --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
+	codesign --force --options runtime --timestamp --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
 		--entitlements packaging/portavoz.entitlements dist/Portavoz.app
+	# Verify before copying. Besides failing closed on a bad nested signature,
+	# this provides a read-after-write barrier for the freshly signed bundle.
+	codesign --verify --deep --strict --verbose=2 dist/Portavoz.app
 	rm -rf "/Applications/Portavoz Dev.app"
 	cp -R dist/Portavoz.app "/Applications/Portavoz Dev.app"
+	codesign --verify --deep --strict --verbose=2 "/Applications/Portavoz Dev.app"
 	open "/Applications/Portavoz Dev.app"
 	@echo "✅ Portavoz Dev reinstalled (release copy untouched)."

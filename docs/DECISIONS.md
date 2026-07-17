@@ -2535,3 +2535,46 @@ actually supported its answer without overstating either. Card identity is the
 stable business key, exact citations are the narrowest honest answer contract,
 and dedicated tables preserve portability and fail-closed behavior without a
 generic evidence graph.
+
+## D92 — Detect portable meeting changes before choosing a sync transport (Jul 2026)
+
+**Context:** Band 6 needs one durable answer to “what changed?” before an iOS
+target or CloudKit adapter can safely send anything. The schema-v6
+`outboxEvent` is a delivery envelope, not an aggregate revision: replacing its
+pending row would let an acknowledgement for an older send hide a newer local
+edit. Migrating an offline-only library must also never opt it into sync, and a
+physical purge must not erase the only remaining evidence that another device
+should delete a meeting.
+
+**Decision:** schema v14 adds one content-free `meetingSyncState` row per dirty
+meeting aggregate. `localGeneration` increases monotonically for every
+portable mutation; `acknowledgedGeneration` advances only to the generation
+actually sent. Acknowledging generation N therefore cannot hide N+1. The row
+stores only meeting identity, both generations, change time, and deletion
+state. It has no foreign key to `meeting`, so a user-confirmed physical purge
+leaves a durable deletion tombstone. Pending reads are bounded and stable;
+invalid limits, future acknowledgements, and unknown meeting identities fail
+closed.
+
+Storage-owned SQLite triggers update that row in the same transaction as the
+meeting, speaker, segment, summary, action item, context note, Companion card,
+claim feedback, or typed evidence mutation. Null-safe `OLD`/`NEW` predicates
+prevent whole-row saves from queuing unchanged values. Device-local paths,
+embeddings, generation-run links, canonical-person links, jobs, model
+configuration/provenance, receipts, audio, secrets, and voiceprints never
+participate. Evidence relations are included because their content may change
+without changing the owning generated text. Migration itself backfills
+nothing; enabling sync must explicitly call `markAllMeetingsForInitialSync()`.
+
+This slice deliberately adds no CloudKit import, CKSyncEngine state, network
+request, account UI, iOS target, conflict resolver, or audio transfer. A later
+IntegrationsKit adapter will encode the portable aggregate and persist its
+transport state while StorageKit remains the mutation authority. The generic
+schema-v6 outbox remains unused rather than being misrepresented as this
+generation fence.
+
+**Rationale:** durable detection is independently shippable and testable, has
+no privacy or network side effect, survives crashes and purges, and removes the
+lost-update race before transport complexity arrives. A specialized aggregate
+journal is simpler and safer than forcing sync semantics into an unused generic
+delivery table.
