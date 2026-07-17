@@ -89,6 +89,9 @@ public struct SearchHit: Sendable {
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let segmentID: UUID
+    /// Complete segment content for retrieval; UI surfaces should prefer the
+    /// highlighted, bounded `snippet` below.
+    public let text: String
     /// Matched terms wrapped in [brackets] by FTS5.
     public let snippet: String
     public let startTime: TimeInterval

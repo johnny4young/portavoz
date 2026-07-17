@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 16, 2026
 
+- **⚡ Ask stays fast as your library grows** — Local meeting Q&A now ranks small per-term FTS candidate sets and rewards passages backed by multiple query terms instead of scoring one enormous OR union. At 100,000 segments, measured lexical retrieval falls from 111 ms to 67 ms while answers receive the complete source segment rather than a clipped search snippet.
 - **⚡ Long meetings open without the wait** — Meeting health now skips transcript history that provably cannot overlap while preserving older long interruptions. A 5,000-segment meeting reaches first content in 92 ms instead of 522 ms, and the measured startup hang is gone.
 - **🛟 Recording errors with a way forward** — Start and Stop failures now show a stable reference and the right next action: retry, open preserved audio in your Library, or open private local diagnostics. Raw system errors stay out of the interface and support file.
 - **🩺 Private recovery evidence** — Export a redacted local support file without meeting text, prompts, secrets, full URLs, or paths. Meeting Detail now explains stalled local processing and lets you safely retry it while preserving the recording, transcript, and durable job evidence already saved.

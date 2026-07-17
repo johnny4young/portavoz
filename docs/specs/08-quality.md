@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 675 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 25 cases and retained app-window-only Meeting Detail, 5k-segment scale detail, Library, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 678 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 25 cases and retained app-window-only Meeting Detail, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 252 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -8,7 +8,7 @@ Status: 675 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHu
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen `ApplicationKit` visibility, StorageKit/IntelligenceKit/TranscriptionKit/DiarizationKit dependency ratchet, no capability reverse dependencies, approved application imports, FileManager/UserDefaults/URLSession exclusion, the one-file Core Security debt baseline, app trash-write, Meeting Detail regeneration, audio-import/bundle-import/bundle-export/refine/Start/Stop/recovery bypass prevention, audio-first Start source guard (no awaited model load before capture), app-scoped verified Whisper preparation with no Settings-owned ModelStore, role-specific Parakeet/pyannote readiness with no Refine or Import live-model bundle and no durable-transcription diarizer dependency, app-before-DMG notarization plus extracted-app verification order, launch ordering, route/window-scoped Library, Insights, and Meeting Detail read ownership without global reload, inward ownership/consumption of local policy clusters, Core ownership of the neutral event value and five failure categories, typed recording Start/Stop boundaries with no dependency-localized transport, the Sendable async use-case contract, no direct Companion BYOK, OpenAI-compatible summary, Gist, GitHub Issue, or Linear Issue network bypass around `DataEgressGateway`, production validation → receipt → redirect-blocked transport composition without content-bearing receipt fields, and local diagnostics/signpost source guards that forbid raw content fields, network upload, meeting/job identity, and localized failures |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention, audio/model/release/privacy boundaries, scoped feature ownership, local diagnostics/signpost redaction, and the measured Band 4 source/evidence gates for prefix-bounded health plus Integration-owned lexical candidate selection |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
@@ -44,12 +44,12 @@ Status: 675 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHu
 | MeetingHealthTests | 8 cases: talk-time/share, ES/EN questions, thresholded interruptions, older-long-overlap conservation behind an ended neighbor, 200 dense timelines matched to the exhaustive reference, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
-| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36/D37/D38/D39/D40/D41/D43/D63/D64/D65/D66/D70/D75 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration plus additive schema-v7 privacy evidence, lifecycle/path/language/idempotency constraints, atomic pre-capture reservations, all-or-nothing captured/recovered snapshot installation including Companion runs/card links, atomic initial-job admission, ready-state protection, owner-leased durable jobs with cancellation/scheduled-wake control, stale-safe atomic first-pass transcription/diarization/summary completion including dependent enqueue, required-artifact fences, durable run linkage and late-commit rollback, generated-summary transaction reuse after imported-aggregate commit, revision-fenced accepted Refine run/segment linkage, current-revision Companion replacement, link retention, and injected rollback |
+| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36–D43/D63–D66/D70/D75 contract: strict persistence, tombstones, hostile FTS, hidden-rank/BM25 top-k equivalence, complete-text plus highlighted-snippet search hits, retention, paths, migration, lifecycle/idempotency constraints, atomic recording/artifact handoffs, owner-leased durable work, provenance linkage, revision fences, and injected rollback |
 | PostCaptureSummaryGenerationAttemptTests | Content-free durable provider/model/job/revision/config metadata, aggregate-only success metrics, and distinct failed/cancelled terminal attempts without invented output metrics |
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
-| RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | RAG fusion, MCP protocol, encrypted voiceprint, offline exporters |
+| RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
 Band 1 slice 1A additionally ran a manual storage acceptance smoke: copy the
@@ -641,6 +641,18 @@ The package baseline is 675 tests (13 gated); the user-visible fixture and the
 25-case EN/ES UI contract are unchanged. Xcode 26.6 still reports no SwiftUI
 update rows, so that limitation remains explicit.
 
+Band 4 slice 4C adds three retrieval characterizations and extends the 32nd
+architecture case with D81, hidden-rank source guards, the exact production
+lexical harness, a p95 <100 ms budget, and a >25% improvement gate. Storage
+proves hidden `rank` selects the same top-k IDs as explicit BM25 and keeps
+hostile OR input harmless. RAG coverage proves multi-term evidence climbs
+without duplicates, selected passages retain complete segment text, and a
+question longer than eight terms keeps the broad-OR fallback. The comparable
+Release report records exact/lexical p95 30.99/66.89 ms at 100k segments,
+versus 38.38/111.19 ms after Band 4B. The package baseline is 678 tests (13
+gated), 252 Swift source files remain in scope, and the unchanged 25-case EN/ES
+UI contract remains authoritative.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
@@ -669,8 +681,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | AEC convergence | — | **~2 s** (hence the warm-up) |
 | Cold start | < 1.5 s | **0.94 s cold / ~0.26 s warm** (`--bench-startup`) |
 | FTS at 1k meetings (80k segments) | < 50 ms | **p50 22.8 ms / p95 23.9 ms** (`portavoz-cli bench-fts`) |
-| Exact FTS at 100k segments | p95 < 50 ms | **p50 39.90 ms / p95 44.35 ms** (`bench-scale`) |
-| Broad OR retrieval at 100k segments | p95 < 100 ms semantic-search target | **p50 111.69 ms / p95 121.64 ms** — measured miss; query selectivity is next (D79) |
+| Exact FTS at 100k segments | p95 < 50 ms | **p50 30.25 ms / p95 30.99 ms** (`bench-scale`, D81) |
+| Lexical Ask at 100k segments | p95 < 100 ms | **p50 66.45 ms / p95 66.89 ms**, down from 111.19 ms through bounded per-term RRF (D81) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
 | Detail first content, 2 h / 5k segments | p95 < 300 ms | **91.87 ms** single signpost run, down from 522.30 ms; **zero hangs**, down from one 515.86 ms hang (D80) |
 | Meeting health, 2 h / 5k → 8 h / 20k | derived-policy diagnostic | **p95 9.94 ms → 41.39 ms**, down from 347.58 ms → 5,385.76 ms |

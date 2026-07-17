@@ -25,12 +25,14 @@ extension MeetingStore {
         match: String,
         limit: Int
     ) throws -> [SearchHit] {
+        guard limit > 0 else { return [] }
         let rows = try Row.fetchAll(
             database,
             sql: """
                 SELECT segment.id AS segmentID,
                        segment.meetingID AS meetingID,
                        segment.startTime AS startTime,
+                       segment.text AS text,
                        meeting.title AS title,
                        snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet
                 FROM segmentSearch
@@ -39,17 +41,24 @@ extension MeetingStore {
                 WHERE segmentSearch MATCH ?
                   AND segment.deletedAt IS NULL
                   AND meeting.deletedAt IS NULL
-                ORDER BY bm25(segmentSearch)
+                -- FTS5's hidden rank column defaults to bm25(), but unlike
+                -- calling bm25() here it can abandon scoring after LIMIT.
+                ORDER BY rank
                 LIMIT ?
                 """,
             arguments: [match, limit])
-        return try rows.map { row in
+        return try Self.searchHits(from: rows)
+    }
+
+    private static func searchHits(from rows: [Row]) throws -> [SearchHit] {
+        try rows.map { row in
             SearchHit(
                 meetingID: MeetingID(rawValue: try PersistedIdentity.required(
                     row["meetingID"], table: "segment", column: "meetingID")),
                 meetingTitle: row["title"],
                 segmentID: try PersistedIdentity.required(
                     row["segmentID"], table: "segment", column: "id"),
+                text: row["text"],
                 snippet: row["snippet"],
                 startTime: row["startTime"])
         }
@@ -130,6 +139,7 @@ extension MeetingStore {
                     meetingTitle: row["title"],
                     segmentID: try PersistedIdentity.required(
                         row["segmentID"], table: "segment", column: "id"),
+                    text: row["text"],
                     snippet: row["text"],
                     startTime: row["startTime"])
                 return (dot, hit)

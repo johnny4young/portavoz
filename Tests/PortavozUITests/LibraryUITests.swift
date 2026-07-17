@@ -85,6 +85,7 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(
             app.staticTexts["Test meeting · 00:00"].waitForExistence(timeout: 10),
             "the feature model must publish the seeded transcript search hit")
+        attachScreenshot(of: app, named: "band-4c-fast-local-search")
     }
 
     @MainActor

@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -173,8 +173,9 @@ meeting-content HTTP receipt boundary.
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.
 - **Index**: BLOB in the `embedding` column of `segment` + brute-force cosine (sqlite-vec intentionally deferred). Micro-segments (< 20 chars) EXCLUDED from the index (they drowned out cross-lingual hits).
-- **Hybrid retrieval**: FTS5 with OR of content words ≥ 4 chars (AND over the literal question never matches) + semantic; RRF fusion (k=60). Multi-query: FM generates bilingual paraphrases of the question (`expandQuery`).
-- **Answer**: on-device FM with `[n]` citations that map to segments (meetingID + timestamp). Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
+- **Lexical candidates (D81)**: IntegrationsKit owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet.
+- **Hybrid retrieval**: lexical candidates + brute-force semantic candidates are fused again with RRF (`k=60`). Multi-query still asks FM for bilingual paraphrases (`expandQuery`), and term deduplication spans those variants.
+- **Answer**: on-device FM with `[n]` citations that map to segments (meetingID + timestamp). It receives the complete selected segment, not the bounded highlighted UI snippet. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
 
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 
@@ -291,11 +292,10 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 
 1. Meeting Detail cache lookup and translation pivot are Apple-FM-only;
    configured Ollama/MLX regeneration performs a new generation.
-2. Band 4A measures the FTS candidate stage, not embedding cosine: exact FTS is
-   p95 44.35 ms at 100k segments, while broad OR question retrieval is p95
-   121.64 ms. Brute-force semantic ranking at that scale still needs a separate
-   benchmark. D79 improves candidate selectivity before considering sqlite-vec
-   or a persisted-vector migration.
+2. Band 4C brings exact/lexical p95 to 30.99/66.89 ms at 100k segments, but the
+   matrix still excludes embedding generation and brute-force cosine ranking.
+   Band 4D must measure semantic latency, CPU, and memory at the same scale
+   before considering sqlite-vec or a persisted-vector migration.
 
 ## Planned (not implemented)
 

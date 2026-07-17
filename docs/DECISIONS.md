@@ -2077,3 +2077,49 @@ but ordinary sequential meetings become near-linear and now pass the 300 ms
 first-content target. Because that target passes, Meeting Detail decomposition,
 a `DatabasePool`, and chapter caching are not justified next; broad OR
 retrieval selectivity remains the next measured Band 4 miss.
+
+## D81 — Bound broad retrieval before vector storage (Jul 2026)
+
+**Context:** after D80 removed Meeting Health from the critical path, the only
+measured Band 4 budget miss was lexical question retrieval. The comparable
+Release report recorded p95 111.19 ms at 100,000 segments. StorageKit built one
+large FTS5 OR expression and invoked `bm25()` across the matching union before
+`LIMIT`; a rank-only experiment retained ordering but varied between 99 ms and
+124 ms p95 and therefore did not provide a trustworthy budget margin. Moving
+embeddings to sqlite-vec would not fix this lexical candidate stage and would
+add a schema, extension, packaging, and migration burden without evidence.
+
+**Decision:** keep the FTS5 schema and make retrieval ownership explicit.
+StorageKit's exact top-k query orders by FTS5's hidden `rank` column, which uses
+the same default BM25 score; a characterization compares its selected IDs with
+an explicit `bm25()` query. Search hits now carry both a bounded highlighted
+snippet for UI surfaces and the complete segment text for downstream retrieval.
+Hostile quoted input, tombstone exclusion, and exact AND behavior remain
+unchanged.
+
+IntegrationsKit's `AskPipeline` owns lexical RAG selection. It extracts words
+of at least four characters exactly as before, normalizes and deduplicates
+them, retrieves a bounded top-k list per term, and fuses those lists with
+reciprocal-rank scoring (`k = 60`). A segment supported by multiple question
+terms therefore climbs instead of requiring FTS5 to score the entire OR union.
+The normal selective path is limited to eight unique terms; a longer pasted
+question retains the released complete broad-OR path rather than multiplying
+unbounded scans. Query expansion, semantic retrieval, final lexical/semantic
+fusion, citations, tombstones, and multilingual terms remain intact. Answers
+receive the complete chosen segment instead of a twelve-token UI snippet.
+
+The Release harness calls this exact production lexical policy without loading
+embedding assets. In the tracked after report, p95 at 100,000 segments changes
+from 38.38 ms to 30.99 ms for exact FTS and from 111.19 ms to 66.89 ms for
+lexical Ask; the latter is 39.8% faster and below the 100 ms target. At
+1k/10k/50k segments lexical p95 is 1.89/5.80/25.12 ms. No schema, index,
+database concurrency model, persisted vector, model, or UI hierarchy changes.
+
+**Rationale:** bounded per-term top-k selection directly removes the measured
+lexical amplification and improves relevance for multi-term evidence while an
+explicit fallback protects unusual long questions. Keeping that policy at the
+integration edge preserves StorageKit as a safe exact-search capability and
+avoids treating a RAG ranking rule as persistence. Since lexical retrieval now
+passes, Band 4D must measure brute-force semantic cosine latency, CPU, and
+memory at the same scale before sqlite-vec or a segment-layout migration can be
+selected.

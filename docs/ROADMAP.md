@@ -6,11 +6,13 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement architecture Band 4 slice 4C: improve broad
-OR retrieval selectivity against the tracked 100k-segment miss before
-considering sqlite-vec or a segment-layout migration. Band 4B now puts the
-5k-detail first-content path safely inside budget, so D79/D80 reject speculative
-view decomposition, `DatabasePool`, or chapter caching. D78 closes Band 3 by retaining the accurately documented
+**Next concrete step:** implement architecture Band 4 slice 4D: measure
+brute-force semantic cosine latency, CPU, and memory at the same
+1k/10k/50k/100k scale before considering sqlite-vec or a segment-layout
+migration. Band 4C now puts lexical Ask safely inside budget, while Band 4B
+puts 5k-detail first content inside budget; D79–D81 therefore reject
+speculative vector storage, view decomposition, `DatabasePool`, or chapter
+caching. D78 closes Band 3 by retaining the accurately documented
 non-sandboxed distribution until a reversible feature-parity migration passes
 its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
 
@@ -27,7 +29,22 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81).
+
+- **Architecture Band 4 slice 4C complete — Ask ranks evidence, not one huge
+  OR union (Jul 16, 2026)**: StorageKit's exact FTS top-k uses the equivalent
+  hidden `rank` path, while IntegrationsKit owns local-RAG lexical selection.
+  Normal questions retrieve bounded candidates per unique content term and
+  fuse them with reciprocal rank, so passages supported by several terms
+  climb; unusually long questions keep the complete released broad-OR
+  fallback. Answers receive complete segment text while search UI retains its
+  highlighted snippet. At 100k segments, exact p95 falls from 38.38 ms to
+  30.99 ms and lexical Ask from 111.19 ms to 66.89 ms (39.8% faster), safely
+  inside both budgets. The full Release matrix, explicit BM25 equivalence,
+  multi-term relevance, long-question fallback, hostile-input coverage, D81,
+  678 package tests, and the unchanged 25-case EN/ES UI contract protect the
+  result. No schema, vector format, model, database pool, or UI layout changed;
+  semantic cosine cost is the next measurement.
 
 - **Architecture Band 4 slice 4B complete — long details are linear in the
   common case (Jul 16, 2026)**: interruption detection now uses a prefix

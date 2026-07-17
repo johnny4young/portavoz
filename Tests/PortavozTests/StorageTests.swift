@@ -1,4 +1,5 @@
 import Foundation
+import GRDB
 import PortavozCore
 import XCTest
 
@@ -456,6 +457,7 @@ final class MeetingStoreTests: XCTestCase {
         let hits = try await store.search("presupuesto")
         XCTAssertEqual(hits.count, 1)
         XCTAssertEqual(hits.first?.meetingTitle, "Planning semanal")
+        XCTAssertEqual(hits.first?.text, "revisemos el presupuesto de transcripción")
         XCTAssertTrue(hits.first?.snippet.contains("[presupuesto]") ?? false)
         XCTAssertEqual(hits.first?.startTime, 0)
 
@@ -466,6 +468,49 @@ final class MeetingStoreTests: XCTestCase {
 
         let none = try await store.search("kubernetes")
         XCTAssertTrue(none.isEmpty)
+    }
+
+    func testRankTopKMatchesExplicitBM25ForBroadORSearch() async throws {
+        try await store.save(meeting)
+        let segments = (0..<120).map { index in
+            let budget = Array(repeating: "presupuesto", count: 1 + index % 9)
+            let project = Array(repeating: "proyecto", count: 1 + index * 5 % 11)
+            let context = Array(repeating: "contexto", count: index + 1)
+            return TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .system,
+                text: (budget + project + context).joined(separator: " "),
+                startTime: Double(index),
+                endTime: Double(index + 1),
+                isFinal: true)
+        }
+        try await store.save(segments)
+
+        let query = "presupuesto proyecto"
+        let match = MeetingStore.ftsQuery(from: query, requireAll: false)
+        let explicitBM25IDs: [UUID] = try await store.database.read { database in
+            try Row.fetchAll(
+                database,
+                sql: """
+                    SELECT segment.id AS segmentID
+                    FROM segmentSearch
+                    JOIN segment ON segment.rowid = segmentSearch.rowid
+                    JOIN meeting ON meeting.id = segment.meetingID
+                    WHERE segmentSearch MATCH ?
+                      AND segment.deletedAt IS NULL
+                      AND meeting.deletedAt IS NULL
+                    ORDER BY bm25(segmentSearch)
+                    LIMIT 20
+                    """,
+                arguments: [match])
+                .map { row in
+                    try PersistedIdentity.required(
+                        row["segmentID"], table: "segment", column: "id")
+                }
+        }
+
+        let ranked = try await store.search(query, requireAll: false)
+        XCTAssertEqual(ranked.map(\.segmentID), explicitBM25IDs)
     }
 
     func testSearchExcludesTombstonedMeetings() async throws {
@@ -479,6 +524,7 @@ final class MeetingStoreTests: XCTestCase {
         _ = try await seedMeetingWithTranscript()
         for hostile in ["\"", "AND OR NOT", "col:x", "(((", "'; DROP TABLE meeting;--"] {
             _ = try await store.search(hostile)  // must not throw
+            _ = try await store.search(hostile, requireAll: false)
         }
         let survivors = try await store.meetings()
         XCTAssertEqual(survivors.count, 1)

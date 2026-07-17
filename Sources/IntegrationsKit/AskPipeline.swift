@@ -38,20 +38,13 @@ public enum AskPipeline {
             queries = await RAGAnswerer().expandQuery(question)
         }
 
-        // Lexical: OR semantics over CONTENT words only.
-        var lexical: [SearchHit] = []
-        var seenLexical = Set<UUID>()
-        for query in queries {
-            let keywords = query.split(whereSeparator: \.isWhitespace)
-                .map { $0.trimmingCharacters(in: .punctuationCharacters) }
-                .filter { $0.count >= 4 }
-                .joined(separator: " ")
-            guard !keywords.isEmpty else { continue }
-            for hit in try await store.search(keywords, limit: 12, requireAll: false)
-            where seenLexical.insert(hit.segmentID).inserted {
-                lexical.append(hit)
-            }
-        }
+        // Lexical: term-level top-k candidates over CONTENT words only.
+        // Multi-term evidence climbs through reciprocal-rank fusion without
+        // forcing FTS5 to score the entire broad OR union before LIMIT.
+        let lexical = try await retrieveLexical(
+            queries: queries,
+            store: store,
+            limit: 12 * queries.count)
 
         // Semantic: best rank per segment across every query variant.
         let vectors = try await embedder.embed(queries)
@@ -79,9 +72,87 @@ public enum AskPipeline {
                 meetingID: hit.meetingID,
                 meetingTitle: hit.meetingTitle,
                 timestamp: hit.startTime,
-                text: hit.snippet
-                    .replacingOccurrences(of: "[", with: "")
-                    .replacingOccurrences(of: "]", with: ""))
+                text: hit.text)
+        }
+    }
+
+    /// Lexical half of local RAG, public so the scale harness can measure the
+    /// exact production candidate policy without loading embedding assets.
+    public static func retrieveLexical(
+        queries: [String],
+        store: MeetingStore,
+        limit: Int
+    ) async throws -> [SearchHit] {
+        guard limit > 0 else { return [] }
+        let queryTerms = queries.map(Self.contentTerms)
+        let terms = Self.uniqueTerms(queryTerms.flatMap { $0 })
+        guard !terms.isEmpty else { return [] }
+
+        // Query expansion is intentionally terse (at most three variants).
+        // A user can still paste a paragraph; keep that unusual shape on the
+        // released broad-OR path instead of multiplying many FTS scans.
+        guard terms.count <= 8 else {
+            return try await retrieveBroadFallback(
+                queryTerms: queryTerms,
+                store: store,
+                limit: limit)
+        }
+
+        let perTermLimit = limit <= 48 ? max(64, limit * 4) : 256
+        var hitsByID: [UUID: SearchHit] = [:]
+        var scores: [UUID: Double] = [:]
+        var bestRanks: [UUID: Int] = [:]
+        for term in terms {
+            for (rank, hit) in try await store.search(term, limit: perTermLimit).enumerated() {
+                scores[hit.segmentID, default: 0] += 1.0 / Double(60 + rank)
+                if rank < (bestRanks[hit.segmentID] ?? .max) {
+                    hitsByID[hit.segmentID] = hit
+                    bestRanks[hit.segmentID] = rank
+                }
+            }
+        }
+
+        return scores.keys.sorted { left, right in
+            if scores[left] != scores[right] {
+                return scores[left, default: 0] > scores[right, default: 0]
+            }
+            if bestRanks[left] != bestRanks[right] {
+                return bestRanks[left, default: .max] < bestRanks[right, default: .max]
+            }
+            return left.uuidString < right.uuidString
+        }.prefix(limit).compactMap { hitsByID[$0] }
+    }
+
+    private static func retrieveBroadFallback(
+        queryTerms: [[String]],
+        store: MeetingStore,
+        limit: Int
+    ) async throws -> [SearchHit] {
+        var hits: [SearchHit] = []
+        var seen = Set<UUID>()
+        for terms in queryTerms where !terms.isEmpty {
+            let query = terms.joined(separator: " ")
+            for hit in try await store.search(query, limit: min(12, limit), requireAll: false)
+            where seen.insert(hit.segmentID).inserted {
+                hits.append(hit)
+            }
+        }
+        return Array(hits.prefix(limit))
+    }
+
+    private static func contentTerms(from query: String) -> [String] {
+        query.split(whereSeparator: \.isWhitespace)
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .filter { $0.count >= 4 }
+    }
+
+    private static func uniqueTerms(_ terms: [String]) -> [String] {
+        var seen = Set<String>()
+        return terms.filter { term in
+            let key = term.folding(
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: Locale(identifier: "en_US_POSIX"))
+            return seen.insert(key).inserted
         }
     }
 }

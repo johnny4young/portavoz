@@ -1,4 +1,5 @@
 import Foundation
+import IntegrationsKit
 import PortavozCore
 import StorageKit
 
@@ -73,7 +74,12 @@ enum BenchFTSCommand {
         for _ in 0..<20 {
             for (query, requireAll) in queries {
                 let start = Date()
-                _ = try await store.search(query, limit: 20, requireAll: requireAll)
+                if requireAll {
+                    _ = try await store.search(query, limit: 20)
+                } else {
+                    _ = try await AskPipeline.retrieveLexical(
+                        queries: [query], store: store, limit: 20)
+                }
                 let label = requireAll ? "exact search (AND)" : "question retrieval (OR)"
                 perQuery[label, default: []].append(Date().timeIntervalSince(start) * 1_000)
             }

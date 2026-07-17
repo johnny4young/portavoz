@@ -3,6 +3,7 @@ import PortavozCore
 import XCTest
 
 @testable import IntelligenceKit
+@testable import IntegrationsKit
 @testable import StorageKit
 
 final class RAGFusionTests: XCTestCase {
@@ -19,6 +20,79 @@ final class RAGFusionTests: XCTestCase {
         let fused = RAGFusion.fuse(lexical: ["a", "b", "c"], semantic: [], limit: 2)
         XCTAssertEqual(fused, ["a", "b"], "single-list order preserved, limit honored")
         XCTAssertTrue(RAGFusion.fuse(lexical: [String](), semantic: [], limit: 5).isEmpty)
+    }
+}
+
+final class LexicalRAGCandidateTests: XCTestCase {
+    func testTermLevelFusionRewardsCrossTermEvidenceWithoutDuplicates() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Plan conjunto", startedAt: Date())
+        try await store.save(meeting)
+
+        let relevant = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "presupuesto proyecto plan conjunto",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        let budgetOnly = (0..<20).map { index in
+            TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .system,
+                text: Array(repeating: "presupuesto", count: 8).joined(separator: " ")
+                    + " detalle \(index)",
+                startTime: Double(index + 1),
+                endTime: Double(index + 2),
+                isFinal: true)
+        }
+        let projectOnly = (0..<20).map { index in
+            TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .system,
+                text: Array(repeating: "proyecto", count: 8).joined(separator: " ")
+                    + " contexto \(index)",
+                startTime: Double(index + 21),
+                endTime: Double(index + 22),
+                isFinal: true)
+        }
+        try await store.save([relevant] + budgetOnly + projectOnly)
+
+        let hits = try await AskPipeline.retrieveLexical(
+            queries: [
+                "¿Qué acordamos sobre presupuesto y proyecto?",
+                "PRESUPUESTO proyecto",
+            ],
+            store: store,
+            limit: 12)
+
+        XCTAssertEqual(hits.first?.segmentID, relevant.id)
+        XCTAssertEqual(hits.first?.text, relevant.text)
+        XCTAssertEqual(Set(hits.map(\.segmentID)).count, hits.count)
+        XCTAssertEqual(hits.count, 12)
+    }
+
+    func testLongQuestionFallbackKeepsLateTermsRetrievable() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Long query", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "ninthword decisive context",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+
+        let hits = try await AskPipeline.retrieveLexical(
+            queries: [
+                "alpha bravo charlie delta echoo foxtrot golfxx hotelx ninthword",
+            ],
+            store: store,
+            limit: 6)
+
+        XCTAssertEqual(hits.map(\.segmentID), [segment.id])
     }
 }
 

@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates).
 
 ## Database
 
@@ -489,3 +489,25 @@ or persisted output. Scoped reads remain p95 16.27 ms at 5k and 64.91 ms at
 20k in the after report. D80 therefore continues to reject a `DatabasePool` or
 detail cache: the next measured miss is broad OR candidate selectivity, not
 storage concurrency.
+
+Band 4C changes no schema or database concurrency model. StorageKit exact FTS
+orders by FTS5's hidden `rank`, which defaults to the same BM25 score and is
+characterized against explicit `bm25()` IDs. Every `SearchHit` now exposes the
+complete segment text for retrieval while preserving the bounded highlighted
+snippet consumed by Library, CLI, and MCP search surfaces. Quoted hostile input,
+AND semantics, tombstones, and observation regions are unchanged. IntegrationsKit,
+not StorageKit, owns the bounded per-term RAG policy (D81).
+
+The comparable report is
+`docs/evidence/scale-baseline-20260716-after-search.json`:
+
+| Corpus | Exact FTS p95 | Lexical Ask p95 | Previous lexical p95 |
+|---:|---:|---:|---:|
+| 1,000 segments | 0.47 ms | 1.89 ms | 1.14 ms |
+| 10,000 | 2.37 ms | 5.80 ms | 8.03 ms |
+| 50,000 | 11.93 ms | 25.12 ms | 53.59 ms |
+| 100,000 | 30.99 ms | 66.89 ms | 111.19 ms |
+
+Both published targets now pass. D81 therefore retains FTS5, `DatabaseQueue`,
+and the current embedding BLOB layout; Band 4D measures semantic cosine before
+any vector-storage decision.

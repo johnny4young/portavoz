@@ -784,6 +784,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
         let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
         let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
+        let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
+        let ask = try Self.contents(of: "Sources/IntegrationsKit/AskPipeline.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(dispatch.contains(#"case "bench-scale":"#))
@@ -799,9 +801,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(detailRunner.contains("Trace file had no SwiftUI data"))
         XCTAssertTrue(decisions.contains("## D79 — Scale changes follow measured bottlenecks"))
         XCTAssertTrue(decisions.contains("## D80 — Bound interruption scans with prefix evidence"))
+        XCTAssertTrue(decisions.contains("## D81 — Bound broad retrieval before vector storage"))
         XCTAssertTrue(health.contains("prefixMaximumEnd"))
         XCTAssertTrue(health.contains(
             "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
+        XCTAssertTrue(search.contains("ORDER BY rank"))
+        XCTAssertFalse(search.contains("ORDER BY bm25(segmentSearch)"))
+        XCTAssertTrue(ask.contains("public static func retrieveLexical"))
+        XCTAssertTrue(ask.contains("guard terms.count <= 8"))
+        XCTAssertTrue(ask.contains("1.0 / Double(60 + rank)"))
+        XCTAssertTrue(cli.contains("AskPipeline.retrieveLexical"))
 
         let scale = try Self.jsonObject(
             at: "docs/evidence/scale-baseline-20260716.json")
@@ -846,6 +855,26 @@ final class ArchitectureDependencyTests: XCTestCase {
         let afterResponsiveness = try XCTUnwrap(
             afterDetail["responsiveness"] as? [String: Any])
         XCTAssertEqual(afterResponsiveness["potentialHangCount"] as? Int, 0)
+
+        let afterSearch = try Self.jsonObject(
+            at: "docs/evidence/scale-baseline-20260716-after-search.json")
+        let searchLibrary = try XCTUnwrap(afterSearch["library"] as? [[String: Any]])
+        let beforeHundredThousand = try XCTUnwrap(
+            try XCTUnwrap(afterScale["library"] as? [[String: Any]]).first {
+                $0["totalSegments"] as? Int == 100_000
+            })
+        let afterHundredThousand = try XCTUnwrap(searchLibrary.first {
+            $0["totalSegments"] as? Int == 100_000
+        })
+        let beforeBroad = try Self.p95(
+            in: beforeHundredThousand, key: "questionRetrieval")
+        let afterBroad = try Self.p95(
+            in: afterHundredThousand, key: "questionRetrieval")
+        XCTAssertLessThan(afterBroad, 100)
+        XCTAssertLessThan(afterBroad, beforeBroad * 0.75)
+        XCTAssertLessThan(
+            try Self.p95(in: afterHundredThousand, key: "exactSearch"),
+            50)
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
