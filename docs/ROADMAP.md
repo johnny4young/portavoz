@@ -6,29 +6,40 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** complete architecture Band 3 with the App Sandbox
-capability spike in [refactor-20260714.md](refactor-20260714.md). Exercise real
-microphone and process-tap capture, model and recording storage, Sparkle,
-import/export panels, Keychain, calendar, and local Shortcut/MCP surfaces in a
-separately signed experimental build. Record measured pass/fail evidence and
-an explicit enable/defer decision; do not add the production sandbox
-entitlement from static analysis alone. Keep Spotlight independent; its
-incremental indexing/outbox adoption belongs with measured Band 4 scale work.
+**Next concrete step:** start architecture Band 4 with slice 4A: establish the
+long-meeting and 1k/10k/50k/100k-segment performance matrix plus SwiftUI update
+baseline before changing Meeting Detail, caches, `DatabaseQueue`, vectors, or
+Spotlight. D78 closes Band 3 by retaining the accurately documented
+non-sandboxed distribution until a reversible feature-parity migration passes
+its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
 
-Slices 3A–3J now cover attempt-level generation provenance, every current
+Slices 3A–3K now cover attempt-level generation provenance, every current
 meeting-content HTTP path, an honest per-meeting receipt, and local redacted
 support/recovery evidence plus stable recording-lifecycle failures. The Jul 16
 Sequoia stabilization interrupt fixed Stop timestamp identity, audio-first
 capture/recovery, proactive Whisper preparation, exact capability-aware
 Summary/Companion setup, role-specific speech-model readiness, and independent
-app/DMG notarization. Band 2 is complete.
+app/DMG notarization. Band 3 is complete.
 `LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
 `RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
-`RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0 and 1 are
+`RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0–2 are
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78).
+
+- **Architecture Band 3 slice 3K complete — App Sandbox has measured gates,
+  not hopeful entitlements (Jul 16, 2026)**: a Developer-ID-signed sandboxed
+  probe and identical non-sandboxed control produce a tracked capability
+  matrix. Container enforcement and child inheritance are proven; microphone,
+  Keychain, hotkey, loopback networking, and process-catalog operations pass.
+  The full private process-tap graph starts/stops in both variants, proving
+  structural setup compatibility while real product capture remains a gate.
+  Current shared app/CLI/MCP storage, plain custom-folder paths, Sparkle setup,
+  and interactive automation still lack feature parity, so production remains
+  notarized/Hardened Runtime and non-sandboxed. The 31st architecture rule and
+  672nd package test require the decision and experimental harness to remain
+  explicit (D78). Band 3 is complete.
 
 - **Architecture Band 3 slice 3J complete — recording failures have stable
   recovery contracts (Jul 16, 2026)**: Core now defines five product-level

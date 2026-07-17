@@ -40,8 +40,14 @@ final class PrivacyReceiptTests: XCTestCase {
         guard case .since(let trackingStartedAt) = receipt.coverage else {
             return XCTFail("a migrated meeting must not claim lifetime coverage")
         }
-        XCTAssertGreaterThanOrEqual(trackingStartedAt, beforeMigration)
-        XCTAssertLessThanOrEqual(trackingStartedAt, afterMigration)
+        // GRDB's SQLite datetime round-trip is millisecond-precise. Compare
+        // against the wall-clock bracket at that same durable precision.
+        XCTAssertGreaterThanOrEqual(
+            trackingStartedAt,
+            beforeMigration.addingTimeInterval(-0.001))
+        XCTAssertLessThanOrEqual(
+            trackingStartedAt,
+            afterMigration.addingTimeInterval(0.001))
         XCTAssertEqual(receipt.status, .noRemoteTransferRecorded)
 
         try await store.database.read { db in

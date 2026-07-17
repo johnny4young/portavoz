@@ -17,3 +17,21 @@ Please **do not** open a public issue for security problems. Email `security@por
 - Durable-processing signposts contain only job kind, attempt, and outcome; they never include meeting/job identity or content.
 - Model downloads are verified against pinned SHA-256 checksums.
 - The MCP interface is local JSON-RPC over process stdio; it opens no network listener. A future network transport would require localhost binding and authentication before shipping.
+
+## macOS containment boundary
+
+The current direct-download/Homebrew app is Developer-ID signed, Hardened
+Runtime-enabled, notarized, and intentionally **not App Sandbox-enabled**. We do
+not describe it as sandboxed. It requests only the shipping microphone and
+Calendar entitlements, while TCC still requires user permission.
+
+D78 records the signed sandbox/control capability evidence. Enabling App
+Sandbox today would separate the app's container from the CLI/MCP shared
+library and model cache, invalidate plain-path persistent recording folders,
+and leave capture/update/automation paths without full feature-parity proof.
+Adoption therefore requires a reversible data/App Group migration,
+security-scoped bookmarks, Sparkle sandbox configuration, and signed product
+smoke for real process-tap capture, cross-app dictation, configured Shortcuts,
+Calendar, panels, models, and updates. The reproducible probe is
+`scripts/run-sandbox-capability-spike.sh`; its current evidence is
+`docs/evidence/app-sandbox-capability-spike-20260716.json`.

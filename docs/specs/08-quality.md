@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 671 package tests passing (13 gated) + 24 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 24 cases and retained app-window-only Meeting Detail, Library, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 672 package tests passing (13 gated) + 24 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 24 cases and retained app-window-only Meeting Detail, Library, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict` passes with **zero violations across 250 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -589,6 +589,22 @@ screenshots in both locales. The current gate is 671 package tests (13 gated),
 strict SwiftLint is clean across 250 Swift source files, and all 24 XCUITest
 cases pass in English and Spanish (D77).
 
+Band 3 slice 3K adds the 31st architecture case: the shipping entitlements must
+remain explicitly non-sandboxed while D78 is active, the experimental
+entitlements must enable App Sandbox, the signed runner must verify the bundle
+and enforcement result, and D78 must remain present. The repeatable capability
+harness runs a sandboxed probe and same-binary non-sandboxed control against a
+dedicated temporary legacy folder and loopback server; it never reads Portavoz
+user data. The tracked macOS 26.5.2 result proves containment, child-process
+inheritance, microphone, Keychain, hotkey, network, and process-catalog
+behavior. Both variants also create and start/stop the full private
+tap/aggregate/IOProc graph, proving structural setup compatibility without
+claiming a complete product capture. The current gate is 672 package tests (13 gated),
+strict SwiftLint remains clean across 250 product Swift source files, and the
+unchanged 24-case EN/ES XCUITest baseline remains authoritative (D78).
+The privacy-coverage migration bracket uses the same 1 ms durable timestamp
+precision as SQLite, preventing a sub-millisecond in-memory comparison flake.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
@@ -600,6 +616,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 - `bench-m2`: live transcript lag (p50/p95/max) with concurrent batch processing.
 - `portavoz-cli der`: DER against reference RTTM (public fixture: pyannote sample.wav/rttm).
 - `scripts/verify_drift.py`: drift through envelope correlation (±5 s, edge warning, multi-point).
+- `scripts/run-sandbox-capability-spike.sh`: signed sandbox/control capability matrix with full private tap-graph setup and tracked JSON evidence.
 
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 

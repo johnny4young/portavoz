@@ -165,8 +165,9 @@ D43 preserves post-meeting Shortcut behavior after Stop becomes asynchronous.
 When no summary provider is available, the Shortcut receives transcript-only
 Markdown after diarization. Otherwise it runs after summary success or terminal
 optional cancellation. This hook remains best-effort; disposable temp-store
-launches suppress it, and exactly-once external delivery remains planned for
-the Band 3 outbox.
+launches suppress it. Exactly-once external delivery remains future automation
+work; completed Band 3 deliberately kept the local Shortcut process outside the
+meeting-content HTTP receipt boundary.
 
 ## Local RAG (D22) — `SentenceEmbedder` + `RAGAnswerer` + storage
 

@@ -527,8 +527,8 @@ artifact. Aggregate reconciliation also treats a pending capture asset as
 `capture.publication.failed`; historical succeeded jobs do not block later
 asset recovery. Slice 1D-b2a establishes these boundaries without changing the
 released synchronous Stop path. D42 adopts them in a process-scoped executor;
-D43 adopts the producer and atomic handoff, while `generationRun` provenance
-remains Band 3.
+D43 adopts the producer and atomic handoff; D62–D66 later adopt
+`generationRun` provenance in Band 3.
 
 **Rationale:** idempotency requires the operation outcome and its durable
 artifact to share one commit boundary. Separating operation identity from cache
@@ -599,8 +599,9 @@ and refresh the selected detail after atomic artifact commits. If no summary
 provider exists, the Shortcut runs after diarization with transcript-only
 Markdown; if summary succeeds or exhausts its optional retries, it runs after
 that terminal outcome. Disposable `-use-temp-store` launches never invoke a
-real host Shortcut. Shortcut execution remains best-effort and is not yet an
-outbox event; durable exactly-once external delivery remains Band 3.
+real host Shortcut. Shortcut execution remains best-effort and is not an outbox
+event. Completed Band 3 deliberately leaves durable exactly-once local
+automation delivery as future work.
 
 **Rationale:** one transaction closes the only database-side gap between
 irreversible capture and retryable derivation. Sampling identity evidence
@@ -1525,10 +1526,11 @@ cancellation still cannot fall through. Companion provenance records the
 actual `local-device`/`remote` destination scope without storing content.
 
 This is the first vertical adoption, not a false claim of universal coverage.
-The general OpenAI-compatible summary client and explicit GitHub, Linear, Gist,
-Shortcut, and other outbound adapters retain their characterized paths until
-later Band 3 slices migrate them through the same port with operation-specific
-classifications and consent contracts.
+At this slice, the general OpenAI-compatible summary client and explicit
+GitHub, Linear, Gist, Shortcut, and other outbound adapters retain their
+characterized paths. D68/D69 later migrate every meeting-content HTTP adapter;
+the user-configured Shortcut remains an explicit local process surface rather
+than a network adapter.
 
 **Rationale:** a narrow inward policy port makes the privacy promise testable
 before bytes reach `URLSession`, preserves provider-specific request building,
@@ -1924,3 +1926,65 @@ workflow enums preserves business meaning that a global `AppError` would erase;
 keeping presentation in the app prevents capability and persistence layers from
 depending on UI language. Incremental adoption avoids a risky error-system
 rewrite while establishing a ratchet against raw error transport.
+
+## D78 — Production App Sandbox waits for a feature-parity migration (Jul 2026)
+
+**Context:** Portavoz ships outside the Mac App Store with Developer ID,
+Hardened Runtime, notarization, and narrowly declared microphone/calendar
+entitlements, but without `com.apple.security.app-sandbox`. D33 required
+measured capability evidence before either enabling App Sandbox or retaining an
+accurately documented non-sandboxed threat model. A static entitlement change
+would be especially risky because the app and CLI intentionally share the
+database, model cache, recording-root marker, and voice data under
+`~/Library/Application Support/Portavoz`; custom recording folders persist as
+plain paths; Sparkle uses the non-sandboxed integration; and local automation
+includes cross-app dictation plus `/usr/bin/shortcuts`.
+
+**Decision:** production remains non-sandboxed for now. The decision is based
+on the repeatable signed probe in `scripts/run-sandbox-capability-spike.sh`, not
+on assumption. On macOS 26.5.2, the sandboxed variant proves its profile is
+active by writing inside its container while both direct access to a dedicated
+legacy Application Support fixture and the same access through a spawned
+`/bin/cat` fail. The otherwise identical non-sandboxed control can access that
+fixture. The sandboxed probe successfully starts/stops an AVAudioEngine input
+tap, queries the Core Audio process catalog, registers a Carbon global hotkey,
+round-trips a unique Keychain item, and reaches a loopback HTTP fixture. A
+spawned system executable can launch, but inherits the parent's sandbox.
+
+The result does **not** claim more than it measures. Both variants create the
+private process tap and aggregate, create its IOProc, and start/stop the graph;
+this proves structural graph setup compatibility, not a complete real meeting
+capture under LaunchServices/TCC. The harmless nonexistent-Shortcut invocation
+and non-prompting Accessibility/Calendar state checks are observational, not
+feature-parity proof. User-selected panels and persistent bookmarks, an actual
+configured Shortcut, cross-app paste, model reuse/download, CLI/MCP shared
+storage, and a real Sparkle install remain product-level gates. The tracked
+JSON evidence lives in
+`docs/evidence/app-sandbox-capability-spike-20260716.json`.
+
+Reconsider App Sandbox only through a reversible vertical migration that:
+
+1. migrates existing app data and models into a container or signed App Group
+   without splitting the app, CLI, and local MCP view of the same library;
+2. replaces plain custom-folder paths with stale-aware security-scoped
+   bookmarks and balanced access lifetimes;
+3. configures and release-tests Sparkle's sandbox installer/XPC requirements;
+4. proves real microphone/process-tap buffers through the product capture
+   graph, cross-app dictation, a configured post-meeting Shortcut, Calendar,
+   import/export, model preparation, and update installation in a separately
+   signed product build;
+5. preserves rollback, existing data visibility, and every released feature.
+
+The capability harness remains separate from
+`packaging/portavoz.entitlements`, and an architecture test requires the
+production defer decision and the experimental sandbox entitlement to remain
+explicit. A future adoption commit must update D78 and that test together.
+
+**Rationale:** enabling the entitlement today could hide the existing library
+and model cache from the app, split CLI/MCP behavior, invalidate persistent
+recording-folder access, and ship unproven capture/update/automation paths.
+Deferral protects users from those regressions without rejecting App Sandbox
+permanently. Until the migration gates pass, Portavoz's accurate boundary is a
+notarized Hardened Runtime app with least-privilege TCC entitlements, Keychain
+secrets, checksum-pinned models, policy-gated meeting-content egress, local
+receipts, and redacted diagnostics — not a sandboxed app.

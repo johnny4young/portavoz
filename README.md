@@ -187,6 +187,12 @@ Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask
 
 Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Companion BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. The gateway validates metadata, persists an immutable content-free attempt, blocks redirects, and only then hands bytes to URLSession; if the receipt cannot be stored, the transfer does not start. Meeting Detail renders those attempts beside generation provenance and marks pre-v7 history as only partially covered. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
 
+The current Developer ID distribution uses Hardened Runtime and notarization,
+but **does not claim App Sandbox**. A signed sandbox/control probe showed that a
+one-line entitlement change would split today's app/CLI/MCP data and custom
+recording-folder behavior. D78 keeps the accurate boundary until a reversible
+feature-parity migration also proves capture, updates, and automation.
+
 ## Contributing
 
 Issues are the most valuable contribution right now — use cases, platform quirks, model recommendations. See [CONTRIBUTING.md](CONTRIBUTING.md). Privacy is non-negotiable and we are MIT-licensed (no GPL code ports).

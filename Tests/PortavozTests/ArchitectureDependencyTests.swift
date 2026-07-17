@@ -704,6 +704,30 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("spctl -a -vvv -t exec \"$APP_COPY\""))
     }
 
+    func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {
+        let productionEntitlements = try Self.contents(of: "packaging/portavoz.entitlements")
+        let probeEntitlements = try Self.contents(
+            of: "scripts/sandbox-spike/probe.entitlements")
+        let runner = try Self.contents(of: "scripts/run-sandbox-capability-spike.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let evidence = try Self.contents(
+            of: "docs/evidence/app-sandbox-capability-spike-20260716.json")
+
+        XCTAssertFalse(productionEntitlements.contains("com.apple.security.app-sandbox"))
+        XCTAssertTrue(probeEntitlements.contains("com.apple.security.app-sandbox"))
+        XCTAssertTrue(runner.contains("SandboxCapabilityProbe.swift"))
+        XCTAssertTrue(runner.contains("codesign --verify --deep --strict"))
+        XCTAssertTrue(runner.contains("sandboxEnforcementObserved"))
+        XCTAssertTrue(evidence.contains(#""signingMode": "developer-id""#))
+        XCTAssertTrue(evidence.contains(#""sandboxed""#))
+        XCTAssertTrue(evidence.contains(#""nonSandboxedControl""#))
+        XCTAssertEqual(
+            evidence.components(separatedBy: "graph-started-and-stopped").count - 1,
+            4,
+            "Sandbox and control must each prove microphone and process-tap graph setup")
+        XCTAssertTrue(decisions.contains("## D78"))
+    }
+
     func testSupportDiagnosticsRemainRedactedLocalEvidence() throws {
         let exporter = try Self.contents(
             of: "Sources/ApplicationKit/ExportSupportDiagnostics.swift")

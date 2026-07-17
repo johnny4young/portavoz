@@ -142,8 +142,12 @@ Keychain for secrets; `NSFileProtectionComplete` (iOS) / optional SQLCipher
 notarization, signed releases, and SECURITY.md; local MCP over process stdio
 with no network listener; content-free egress receipts persisted before a
 redirect-blocked transport; opt-in telemetry; recording disclosure with jurisdiction
-presets; pinned SPM dependencies. **Current macOS distribution is not App
-Sandbox-enabled.** The architecture program requires a capability spike for
-process taps, global hotkeys, Accessibility paste, custom folders, Sparkle,
-models, CLI/shared data, and integrations before either adopting App Sandbox
-or documenting a hardened non-sandboxed threat model (D33).
+presets; pinned SPM dependencies. **Current macOS distribution is intentionally
+and accurately not App Sandbox-enabled.** D78's signed sandbox/control matrix
+proved containment and several compatible capabilities, but also proved that
+the current shared app/CLI/MCP storage layout cannot survive an entitlement
+toggle. App Sandbox remains a supported future direction only after reversible
+data migration, security-scoped custom folders, Sparkle setup, and signed
+capture/automation feature-parity smoke. Until then, Developer ID, Hardened
+Runtime, notarization, narrow TCC entitlements, and enforceable egress policy
+are the shipping boundary — never a sandbox marketing claim.

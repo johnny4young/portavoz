@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate).
 
 ## Structure
 
@@ -10,6 +10,35 @@ Status: implemented, signed with Developer ID, and used in real meetings; publis
 - `make-dmg.sh`: with `PORTAVOZ_NOTARY_PROFILE`, archives the signed app, notarizes/staples/validates it, then creates the UDZO DMG + `/Applications` symlink and separately signs/notarizes/staples the image. `verify-distribution.sh` mounts the final DMG, copies the app out like Homebrew Cask, and independently requires codesign, stapler, and Gatekeeper acceptance for both artifacts.
 - `make-release.sh <v>`: stamps version, DMG, `generate_appcast --account portavoz` (dedicated EdDSA key — the default from Keychain is for ANOTHER project), cask with sha256 → `dist/release/`.
 - Sparkle 2.9: menu "Buscar actualizaciones…" (`SPUStandardUpdaterController`); `SUFeedURL` points to GitHub release; public key in `assets/sparkle-public-key`.
+
+### App Sandbox capability state (D78)
+
+The shipping bundle has Hardened Runtime but no App Sandbox entitlement. This
+is a measured feature-parity decision, not an omission presented as privacy.
+`scripts/run-sandbox-capability-spike.sh` compiles the same minimal probe into a
+Developer-ID-signed sandboxed app and a non-sandboxed control, verifies both
+signatures, runs a loopback fixture, and writes the comparison to
+`docs/evidence/app-sandbox-capability-spike-20260716.json`.
+
+On the measured macOS 26.5.2 host, the sandboxed variant writes in its
+container, denies direct and child-process reads/writes of a dedicated legacy
+Application Support fixture, and allows an AVAudioEngine mic graph, Keychain
+round trip, Carbon hotkey, loopback network client, and Core Audio process
+catalog. The spawned process runs but inherits the sandbox. Both variants create
+the private tap/aggregate/IOProc and start/stop the full graph, proving
+structural setup compatibility. It does not replace a real product capture
+under LaunchServices/TCC. Shortcuts, Accessibility, and Calendar checks are
+observational.
+
+Current product blockers are concrete: app defaults would move into its
+container while the CLI/MCP still open legacy paths; `RecordingsLocation`
+persists a plain absolute folder path rather than a security-scoped bookmark;
+existing model/audio/voice data need reversible migration; and `make-app.sh`
+does not configure Sparkle's sandbox installer launcher and communication
+requirements. A future adoption must additionally prove real process-tap
+capture, cross-app dictation paste, configured post-meeting Shortcut, EventKit
+permission, panels/bookmarks, model preparation, and Sparkle update install in
+a separately signed product build. Production entitlements remain unchanged.
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
