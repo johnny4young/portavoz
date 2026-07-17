@@ -168,7 +168,7 @@ extension CloudMeetingSyncStateStore {
             }
             switch attempt.phase {
             case .ready:
-                guard attempt.attemptCount == 0,
+                guard attempt.attemptCount >= 0,
                       attempt.lastFailure == nil,
                       attempt.nextRetryAt != nil
                 else {

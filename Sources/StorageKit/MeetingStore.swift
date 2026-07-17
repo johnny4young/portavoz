@@ -216,7 +216,11 @@ public final class MeetingStore: Sendable {
             let summaries = try SummaryRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("deletedAt") == nil)
-                .order(Column("createdAt").desc)
+                .order(
+                    Column("createdAt").desc,
+                    Column("version").desc,
+                    Column("recipeID").asc,
+                    Column("id").asc)
                 .fetchAll(db)
                 .map {
                     SummaryInfo(

@@ -166,6 +166,16 @@ write GRDB or define conflict semantics directly. This separation keeps the
 portable journal usable by another transport and ensures account switches do
 not rewrite meeting content (D94/D95).
 
+Band 6C1 adds one read-only, content-free observation above the same schema:
+`meetingSyncJournalStatus()` and `observeMeetingSyncJournalStatus()` publish
+only the pending row count and newest change timestamp. They never project a
+meeting title, transcript, speaker, summary, or identifier. The IntegrationsKit
+lifecycle combines this signal with its separately protected transport state;
+StorageKit still has no CloudKit import or account policy. Pausing or removing
+this device through that lifecycle never changes meeting rows. Remove-this-
+device clears only IntegrationsKit transport metadata and protected payload
+files (D96).
+
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
 states. `MeetingStore.beginRecording` inserts one `recording` meeting plus all
@@ -333,6 +343,11 @@ in a `.portavoz` bundle; accepted meeting-local display names still round-trip.
 
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link and transactionally replaces optional typed evidence), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run/evidence replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint and rejects user feedback), `setSummaryClaimFeedback(_:for:meetingID:)` (newest-claim-fenced replace/clear), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+
+`detail(id)` orders summary metadata by creation time, then version, recipe,
+and identity. The explicit tie-break keeps the newest immutable version first
+when SQLite's millisecond date precision gives two snapshots the same
+`createdAt`, including after portable replay.
 
 `spotlightDocuments()` is the D85 read-side projection for local OS search. A
 single `DatabaseQueue.read` uses ranked CTEs to select every live meeting, its

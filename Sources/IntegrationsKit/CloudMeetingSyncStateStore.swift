@@ -291,6 +291,35 @@ public actor CloudMeetingSyncStateStore {
         try? FileManager.default.removeItem(
             at: payloadDirectory.appendingPathComponent(fileName))
     }
+
+    /// One explicit user retry makes delayed and terminal attempts eligible
+    /// now without discarding their exact generation or audit counters.
+    @discardableResult
+    public func retryPendingAttempts(at date: Date) throws -> Int {
+        let indexes = snapshot.attempts.indices.filter {
+            snapshot.attempts[$0].phase != .ready
+        }
+        guard !indexes.isEmpty else { return 0 }
+        try commitSnapshot {
+            for index in indexes {
+                snapshot.attempts[index].phase = .ready
+                snapshot.attempts[index].nextRetryAt = date
+                snapshot.attempts[index].lastFailure = nil
+            }
+        }
+        return indexes.count
+    }
+
+    /// Removes only this Mac's CloudKit transport state. It does not touch
+    /// StorageKit meetings or any encrypted records already present in iCloud.
+    public func removeThisDeviceState() throws {
+        let payloadFiles = snapshot.attempts.map(\.payloadFileName)
+            + snapshot.deferredReplays.map(\.payloadFileName)
+        try commitSnapshot {
+            snapshot = CloudMeetingSyncSnapshot()
+        }
+        removePayloadFiles(payloadFiles)
+    }
 }
 
 extension CloudMeetingSyncStateStore {

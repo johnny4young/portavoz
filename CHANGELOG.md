@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **🧭 Summary history stays in order** — Meeting Detail now uses a stable version tie-break when two summary snapshots land within the same millisecond, so the newest version cannot appear behind an older one after import or sync replay.
 - **💬 Companion answers show their sources** — Saved Companion cards now separate the exact question moment from the transcript passages that supported a context answer. Click either source to focus its words and audio; changed or deleted evidence disables the jump instead of pointing somewhere misleading.
 - **✅ Every to-do keeps its proof** — Action items can now show the exact transcript moments where the commitment was made. Completing a task never detaches its source, while changed or deleted evidence disables navigation instead of pointing at the wrong words.
 - **📌 Every decision points back to the meeting** — Decision bullets can now show the exact transcript moments that support them. Click a source to focus the matching words and audio; changed or deleted transcript evidence disables the jump instead of showing a misleading citation.

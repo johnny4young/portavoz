@@ -6,13 +6,14 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** begin architecture Band 6C with a macOS consent and
-status vertical that explicitly composes the already characterized 6B2
-transport. It must create the private CKContainer/CKSyncEngine only after
-account capability and account-scoped user opt-in, expose local-only, pending,
-synchronized, paused, retrying, and failed states, and make disable/remove-
-device behavior unambiguous. Initial library seeding remains a separate
-explicit action; no audio sync or iOS shell enters 6C. Band 6B2 is complete:
+**Next concrete step:** complete architecture Band 6C2 by composing the private
+macOS CKContainer/CKSyncEngine behind the already characterized lifecycle,
+capability checks, entitlements, and account-scoped user opt-in. Add one
+bilingual Settings surface for local-only, pending, synchronized, paused,
+retrying, and failed states plus explicit enable, existing-library seed,
+retry, pause, and remove-this-device actions. Band 6C1 now owns those semantics
+outside SwiftUI and performs zero platform work on an unconsented launch (D96).
+No audio sync or iOS shell enters 6C. Band 6B2 is complete:
 IntegrationsKit now has encrypted private-zone records plus separately
 protected account/consent/seed, opaque engine/system-field, exact attempt,
 bounded retry, cursor, and deferred-replay state. A thin injected delegate is
@@ -67,7 +68,21 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93/D94/D95).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93/D94/D95/D96).
+
+- **Architecture Band 6 slice 6C1 complete — sync cannot touch iCloud before
+  consent or hide its state (Jul 17, 2026)**: a platform-neutral IntegrationsKit
+  lifecycle owns explicit enable, existing-library seed, retry, pause,
+  remove-this-device, and account-change behavior above D95. A clean local-only
+  launch performs no platform call. Account loss preserves consent and exact
+  attempts; account switch requires a new opt-in. StorageKit publishes only a
+  content-free pending-generation observation, while the lifecycle derives six
+  truthful phases from journal, account, seed, queue, retry, and typed failure
+  evidence. Pause preserves content and queued work; remove clears only this
+  Mac's transport files/metadata; retry preserves exact payload and history.
+  Ten lifecycle/journal tests plus the D96 architecture ratchet bring the full
+  package to 793 tests. CKContainer, entitlements, app network composition, and
+  status UI remain 6C2.
 
 - **Architecture Band 6 slice 6B2B complete — delivery survives restart
   without owning the meeting (Jul 17, 2026)**: a separate complete-protected

@@ -134,6 +134,72 @@ public struct CloudMeetingSyncSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+public enum CloudMeetingSyncPhase: String, Equatable, Sendable {
+    case localOnly
+    case pending
+    case synchronized
+    case paused
+    case retrying
+    case failed
+}
+
+public enum CloudMeetingSyncLifecycleFailure: String, Equatable, Sendable {
+    case capabilityUnavailable
+    case accountCheckFailed
+    case accountIdentityUnavailable
+    case transportCreationFailed
+    case synchronizationFailed
+    case journalUnavailable
+    case transportStateUnavailable
+}
+
+public struct CloudMeetingSyncProgress: Equatable, Sendable {
+    public let pendingLocalChanges: Int
+    public let queuedTransfers: Int
+    public let retryingTransfers: Int
+    public let failedTransfers: Int
+
+    public init(
+        pendingLocalChanges: Int,
+        queuedTransfers: Int,
+        retryingTransfers: Int,
+        failedTransfers: Int
+    ) {
+        self.pendingLocalChanges = pendingLocalChanges
+        self.queuedTransfers = queuedTransfers
+        self.retryingTransfers = retryingTransfers
+        self.failedTransfers = failedTransfers
+    }
+}
+
+public struct CloudMeetingSyncStatus: Equatable, Sendable {
+    public let phase: CloudMeetingSyncPhase
+    public let accountStatus: CloudSyncAccountStatus
+    public let isEnabled: Bool
+    public let initialSeedState: CloudSyncInitialSeedState
+    public let progress: CloudMeetingSyncProgress
+    public let nextRetryAt: Date?
+    public let failure: CloudMeetingSyncLifecycleFailure?
+
+    public init(
+        phase: CloudMeetingSyncPhase,
+        accountStatus: CloudSyncAccountStatus,
+        isEnabled: Bool,
+        initialSeedState: CloudSyncInitialSeedState,
+        progress: CloudMeetingSyncProgress,
+        nextRetryAt: Date?,
+        failure: CloudMeetingSyncLifecycleFailure?
+    ) {
+        self.phase = phase
+        self.accountStatus = accountStatus
+        self.isEnabled = isEnabled
+        self.initialSeedState = initialSeedState
+        self.progress = progress
+        self.nextRetryAt = nextRetryAt
+        self.failure = failure
+    }
+}
+
 public struct CloudSyncRetryPolicy: Equatable, Sendable {
     public let baseDelay: TimeInterval
     public let maximumDelay: TimeInterval

@@ -34,7 +34,7 @@ Rules: live STT degrades BEFORE dropping the recording (saving WAV is always ine
 
 ## Sync (M14c): CKSyncEngine, no proprietary server
 
-**As built after Band 6B2 (D92–D95):** schema v14 has a content-free per-meeting
+**As built after Band 6C1 (D92–D96):** schema v14 has a content-free per-meeting
 mutation journal with monotonic local/acknowledged generations, explicit
 initial seeding, and deletion state that survives physical purge. Portable
 meeting roots and typed evidence update it in their own transaction;
@@ -60,6 +60,10 @@ clears old account-scoped metadata; callbacks pass through a thin injected
 delegate to StorageKit's replay authority. There is still **no app-composed
 CKContainer/CKSyncEngine, account request, entitlement, network transfer, sync
 status UI, user-triggered initial upload, audio sync, or iOS app target**.
+Above that dormant boundary, a platform-neutral lifecycle now owns
+zero-platform local-only launch, explicit enable/seed/retry/pause/remove-device,
+account transitions, and truthful content-free status. It does not yet compose
+CloudKit on macOS or add any iOS target.
 
 **Planned execution:**
 
@@ -75,7 +79,10 @@ status UI, user-triggered initial upload, audio sync, or iOS app target**.
   state survives restart. Partial failures stay independent, account switches
   reset old account metadata, and a thin injected delegate forwards callbacks
   without app runtime composition (D95).
-- **6C next — macOS consent/status/runtime:** explicitly create the container
+- **6C1 complete — shared lifecycle policy:** account/driver protocols, six
+  truthful phases, and explicit enable/seed/retry/pause/remove-device semantics
+  are independent of SwiftUI and CloudKit composition (D96).
+- **6C2 next — macOS consent/status/runtime:** explicitly create the container
   and engine only after capability plus account-scoped opt-in; expose local-only,
   pending, synchronized, paused, retrying, and failed states. Initial seeding is
   a separate action and disable/remove-device semantics must be explicit.
@@ -90,7 +97,7 @@ status UI, user-triggered initial upload, audio sync, or iOS app target**.
   last-writer-wins is not the contract.
 - **Audio:** never part of initial sync. A later per-meeting CKAsset opt-in has
   its own size, retry, deletion, and consent contract.
-- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D95).
+- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D96).
 - **Later Companion control:** an ephemeral CloudKit command record may control
   Mac recording only after private data sync is field-proven; it is not part of
   6B and requires explicit device trust and replay protection.

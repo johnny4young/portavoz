@@ -30,6 +30,10 @@ public actor CloudMeetingSyncEngineDelegate: CKSyncEngineDelegate {
         latestFailure
     }
 
+    public func clearLastFailure() {
+        latestFailure = nil
+    }
+
     public func restoredEngineState() async throws -> CKSyncEngine.State.Serialization? {
         try await transportStore.restoredEngineState()
     }

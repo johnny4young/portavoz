@@ -1009,6 +1009,24 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D95"))
     }
 
+    func testCloudSyncLifecycleKeepsConsentStatusAndUserActionsOutsideViews() throws {
+        let lifecycle = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncLifecycle.swift")
+        let observation = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncObservation.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(lifecycle.contains("resumeIfConsented"))
+        XCTAssertTrue(lifecycle.contains("guard snapshot.consentedAccountFingerprint != nil"))
+        XCTAssertTrue(lifecycle.contains("protocol CloudMeetingSyncPlatform"))
+        XCTAssertTrue(lifecycle.contains("includeExistingLibrary"))
+        XCTAssertTrue(lifecycle.contains("retryPendingAttempts"))
+        XCTAssertTrue(lifecycle.contains("removeThisDeviceState"))
+        XCTAssertTrue(observation.contains("observeMeetingSyncJournalStatus"))
+        XCTAssertFalse(lifecycle.contains("import CloudKit"))
+        XCTAssertTrue(decisions.contains("## D96"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")

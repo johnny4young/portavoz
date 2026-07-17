@@ -411,6 +411,16 @@ final class MeetingSyncAggregateTests: XCTestCase {
             evidence: CompanionCardEvidence(
                 cardID: cardID,
                 questionSegmentIDs: [segments[1].id]))], for: meeting.id)
+        // SQLite stores dates at millisecond precision. Force the real tie
+        // that exposed nondeterministic Meeting Detail summary ordering.
+        try await store.database.write { db in
+            try db.execute(
+                sql: "UPDATE summary SET createdAt = ? WHERE meetingID = ?",
+                arguments: [
+                    Date(timeIntervalSince1970: 1_784_300_100),
+                    meeting.id.rawValue.uuidString,
+                ])
+        }
         return Seed(meeting: meeting, speaker: speaker, segments: segments)
     }
 

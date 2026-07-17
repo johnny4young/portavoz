@@ -2727,3 +2727,41 @@ and lets exact encrypted meeting bytes receive stronger filesystem protection
 without leaking them into logs or the metadata snapshot. A dormant delegate can
 be characterized thoroughly before any user opt-in or network side effect is
 composed.
+
+## D96 — Keep sync lifecycle policy independent of CloudKit composition (Jul 2026)
+
+**Context:** D95 makes transport delivery restart-safe, but the app still needs
+one truthful definition of enabled, pending, synchronized, paused, retrying,
+and failed. If SwiftUI or `CKContainer` owned that policy, a clean local-only
+launch could touch iCloud before consent, account changes could silently retain
+the wrong opt-in, and pause/remove/retry actions could lose their data contract.
+
+**Decision:** IntegrationsKit owns a platform-neutral
+`CloudMeetingSyncLifecycle` above D95. Account discovery and manual engine
+driving enter through injected protocols; constructing or resuming the
+lifecycle performs zero platform work unless this device already has an
+account-scoped consent. Explicit enable binds consent to the available account
+fingerprint and starts one manual cycle. Uploading the existing library remains
+a separate explicit action. Temporary account loss pauses with consent and the
+exact queue intact; a real account switch clears the old account-scoped consent
+and requires another explicit enable.
+
+The lifecycle derives one content-free `CloudMeetingSyncStatus` from the
+StorageKit generation journal, protected attempts, account/seed state, and
+typed transport failures. StorageKit exposes only an observable pending count
+and newest-change timestamp. Pause revokes this Mac's consent but preserves
+local meetings, remote records, and queued attempts. Remove-this-device clears
+only local transport metadata and protected payload files; it never deletes
+meeting rows or CloudKit records. Explicit retry makes delayed or blocked exact
+attempts ready without replacing their generation, payload, or historical
+attempt count. A missing account identity or unavailable capability fails
+closed.
+
+This 6C1 slice deliberately imports no CloudKit in the lifecycle, creates no
+container, adds no entitlement, performs no network request from the app, and
+exposes no UI. The macOS platform adapter and status surface arrive in 6C2.
+
+**Rationale:** one deterministic policy actor makes privacy and destructive
+semantics independently testable, keeps views declarative, and leaves the real
+CloudKit composition thin enough to fail closed without changing business
+behavior.
