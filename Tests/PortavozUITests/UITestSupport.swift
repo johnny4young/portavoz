@@ -20,6 +20,8 @@ extension XCUIApplication {
     @MainActor
     static func portavoz(
         seedDemo: Bool = false,
+        seedScale: Bool = false,
+        scaleAutoSummaryUpdate: Bool = false,
         seedLatestRecipe: Bool = false,
         seedRefineRunning: Bool = false,
         seedJustRecorded: Bool = false,
@@ -36,6 +38,8 @@ extension XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-NSTreatUnknownArgumentsAsOpen", "NO", "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language"]
         if seedDemo { app.launchArguments.append("-seed-demo") }
+        if seedScale { app.launchArguments.append("-seed-scale") }
+        if scaleAutoSummaryUpdate { app.launchArguments.append("-scale-auto-summary-update") }
         if seedLatestRecipe { app.launchArguments.append("-seed-latest-recipe") }
         if seedRefineRunning { app.launchArguments.append("-seed-refine-running") }
         if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }

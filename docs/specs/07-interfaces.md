@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -23,6 +23,8 @@ SPM binary (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`
 | `issues` | `--meeting <uuid> (--github <owner/repo> \| --linear-team <id>)` |
 | `models` | `download \| verify \| path` — complete sha256 catalog |
 | `bench-m2` | M2 acceptance harness (live lag + concurrent batch) |
+| `bench-fts` | `[--meetings N] [--segments-per-meeting N]` — legacy disposable FTS harness |
+| `bench-scale` | `[--library-sizes 1000,10000,50000,100000] [--meeting-minutes 30,120,480] [--runs 20] [--output report.json]` — Release-only tracked scale matrix over throwaway databases (D79) |
 
 `meetings refine` still owns its CLI/model presentation pipeline, but accepted
 results now persist through the same `MeetingStore.applyRefinedCast` Unit of

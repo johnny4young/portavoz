@@ -77,6 +77,7 @@ struct ContentView: View {
             }
         }
         .task { await services.seedDemoIfRequested() }
+        .task { await services.seedScaleBenchmarkIfRequested() }
         .task { positionUITestWindowIfNeeded() }
         .task { await services.purgeExpiredTrash() }
         .task { await services.seedShowcaseIfRequested() }

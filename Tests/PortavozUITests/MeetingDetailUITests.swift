@@ -7,6 +7,32 @@ import XCTest
 /// health, chapters, a content-free privacy receipt in the right rail, and a
 /// player.
 final class MeetingDetailUITests: XCTestCase {
+    @MainActor
+    func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
+        let app = XCUIApplication.portavoz(
+            seedScale: true,
+            scaleAutoSummaryUpdate: true)
+        defer { app.terminate() }
+        app.launchPortavoz()
+
+        XCTAssertTrue(
+            app.staticTexts["Scale baseline · 2 h · 5000 segments"]
+                .waitForExistence(timeout: 30),
+            "the disposable 2-hour fixture must navigate to Meeting Detail")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-transcript-title")
+                .waitForExistence(timeout: 10),
+            "Meeting Detail must render first content for 5,000 segments")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-chapters").waitForExistence(timeout: 10),
+            "the scale detail must complete its chapter projection")
+        XCTAssertTrue(
+            app.staticTexts["Scale baseline summary revision 2."]
+                .waitForExistence(timeout: 15),
+            "the scoped summary observation must update without replacing the detail route")
+        attachScreenshot(of: app, named: "band-4a-scale-detail-5000-segments")
+    }
+
     /// Launches the app on the seeded meeting with isolated audio. Point
     /// PORTAVOZ_TEST_AUDIO_ROOT at a folder holding a REAL recording
     /// (Audio/<uuid>/…) to exercise the player on real audio instead.

@@ -127,6 +127,11 @@ final class EnglishSourceTests: XCTestCase {
             // prose: the bilingual transcript is what the screenshot shows.
             return true
         }
+        if relative == "Sources/portavoz-app/AppServices+ScaleBenchmark.swift" {
+            // Disposable mixed-language content used only by the measured
+            // large-detail fixture and its UI screenshot.
+            return true
+        }
         if relative == "Sources/portavoz-app/AppServices+UITestFixtures.swift" {
             // The deterministic Meeting Detail fixture deliberately carries
             // Spanish transcript, summary, and Companion evidence.
@@ -152,6 +157,11 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("presupuesto") || line.contains("qué acordamos")
                 || line.contains("integración") || line.contains("diarización")
                 || line.contains("reunión")
+        }
+        if relative == "Sources/portavoz-cli/CLIBenchScale.swift" {
+            // Synthetic bilingual corpus and queries for the Band 4 scale
+            // matrix; this is data, not public explanatory prose.
+            return true
         }
         if relative == "Sources/IntelligenceKit/Companion.swift" {
             return line.contains("qué") || line.contains("cómo") || line.contains("¿")

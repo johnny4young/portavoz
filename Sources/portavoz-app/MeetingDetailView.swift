@@ -130,7 +130,7 @@ struct MeetingDetailView: View {
     /// live in the extracted subviews and computed bindings below so this
     /// stays a flat composition.
     private func loaded(_ detail: MeetingReviewReadModel) -> some View {
-        loadedBody(detail)
+        loadedBody(detail).onAppear { model.firstContentDidAppear() }
             // No `.navigationTitle`: the meeting title already lives in the
             // header below, and showing it in the window bar too read as a
             // duplicate. The window bar keeps the app's own title.
@@ -228,7 +228,9 @@ extension MeetingDetailView {
 
     private var transcriptHeader: some View {
         HStack {
-            Text("Transcript").font(.headline)
+            Text("Transcript")
+                .font(.headline)
+                .accessibilityIdentifier("detail-transcript-title")
             if player != nil {
                 Spacer()
                 Text("Click a line to jump there")
@@ -1638,6 +1640,7 @@ extension MeetingDetailView {
     /// breaks re-titles just the new ones. Silent no-op without the model —
     /// the rail then shows the real-excerpt titles.
     private func titleChaptersIfNeeded() async {
+        guard !ProcessInfo.processInfo.arguments.contains("-seed-scale") else { return }
         guard #available(macOS 26.0, *) else { return }
         guard FoundationModelSummaryProvider.unavailabilityReason() == nil else { return }
         guard let detail else { return }

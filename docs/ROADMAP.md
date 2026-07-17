@@ -6,10 +6,11 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** start architecture Band 4 with slice 4A: establish the
-long-meeting and 1k/10k/50k/100k-segment performance matrix plus SwiftUI update
-baseline before changing Meeting Detail, caches, `DatabaseQueue`, vectors, or
-Spotlight. D78 closes Band 3 by retaining the accurately documented
+**Next concrete step:** implement architecture Band 4 slice 4B: preserve exact
+interruption semantics while removing the measured `MeetingHealth` quadratic
+common case, then rerun the 4A Release and app-detail reports. D79 keeps
+`DatabaseQueue`, chapter derivation, vectors, and Spotlight unchanged until
+their own budgets miss. D78 closes Band 3 by retaining the accurately documented
 non-sandboxed distribution until a reversible feature-parity migration passes
 its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
 
@@ -26,7 +27,21 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79).
+
+- **Architecture Band 4 slice 4A complete — scale decisions now start with
+  evidence (Jul 16, 2026)**: a Release CLI matrix measures the production
+  schema at 1k/10k/50k/100k library segments and 30-minute/2-hour/8-hour
+  meetings. Exact FTS remains inside its 50 ms budget at 100k; broad OR
+  retrieval misses at 50k and 100k. Core detail reads and chapter extraction
+  stay fast, while `MeetingHealth` reaches p95 347.58 ms at 5k and 5.39 s at
+  20k. A disposable 5k-detail app fixture records 522.30 ms to first content,
+  one 515.86 ms initial hang, a working later summary observation, and an
+  inspected `band-4a-scale-detail-5000-segments` screenshot. Xcode 26.6's
+  SwiftUI lane returns its explicit no-data warning, so invalidation causes
+  remain open instead of being misreported. Two repeatable runners, tracked
+  content-free JSON, the 32nd architecture rule, 673 package tests, and the
+  25th EN/ES XCUITest protect D79. Slice 4B optimizes health first.
 
 - **Architecture Band 3 slice 3K complete — App Sandbox has measured gates,
   not hopeful entitlements (Jul 16, 2026)**: a Developer-ID-signed sandboxed

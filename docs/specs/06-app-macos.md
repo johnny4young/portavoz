@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79 (evidence-first detail scale changes).
 
 ## Structure
 
@@ -444,10 +444,38 @@ exercises this same production path in the durable-resume XCUITest (D63).
 **Audio first-class (M11/D27) complete**: player synchronized with **Spotify-style lyrics transcript** (`FocusedTranscriptView`: spoken line stays CENTERED in fixed-height viewport, others fade/shrink/blur towards edges — cylinder effect with `.visualEffect`; no scroll bar; search in timeline moves transcript INSIDE its box, never page), click-to-jump, **waveform-scrubber** (colored by channel: accent=you, gray=them; dimmed after playhead; clip region shaded) and **clips** (mark in/out at playhead → `AudioClipExporter` exports mixed range to m4a/AAC via `AVAssetExportSession`, measured well below 2 s) — all in `AudioPlaybackKit`. Without audio, transcript is normal list. The **same carousel runs in live recording** (`FocusedTranscriptView` parametrized with `anchor`: during recording new line focuses at lower third `y≈0.82` — boundary — and old ones rise and fade; `followSignal` re-centers when live line GROWS, not just appears; replaced pausable follow-live). Also: **skip-silence** (toggle; skips gaps ≥1.2 s detected from waveform), **transcode AAC** ("Comprimir audio (AAC)" → `AudioTranscoder`, deletes original after verified write, rebuilds player from m4a) and **import** (library: "Importar audio…" button + drag-drop → the `AppServices` wrapper around `ApplicationKit.ImportMeeting`; it copies as system channel off the MainActor, applies the transcript recognition policy to Whisper, keeps mixed-language evidence automatic, degrades diarization and summary honestly, commits the required aggregate atomically, then preserves the existing success invalidation and navigation timing). **M11 complete.** `make test-ui` covers player, highlight and clip export button; preflight closes Portavoz before XCUITest to avoid automation mode failures from stale instances.
 
 
+## Meeting Detail scale baseline (Band 4A, Jul 2026)
+
+`AppServices+ScaleBenchmark` admits `-seed-scale` only together with
+`-use-temp-store`. It creates one deterministic 2-hour meeting with 5,000
+segments, four speakers, a versioned summary, no audio, and no model or user
+preference access, then routes to the real Meeting Detail. The fixture skips
+automatic chapter retitling so model work cannot contaminate a projection
+baseline. An optional `-scale-auto-summary-update` writes summary revision 2
+after three seconds through the normal scoped Store observation.
+
+`MeetingDetailModel` starts the content-free `Meeting Detail First Content`
+`OSSignposter` interval at model creation; the loaded view ends it once on its
+first appearance. The signpost contains no meeting identity, title, transcript,
+speaker, path, or generated text. `scripts/run-detail-ui-baseline.sh` refuses
+the notarized `/Applications/Portavoz.app`, launches only Portavoz Dev with the
+disposable fixture, and records Logging plus SwiftUI/Time Profiler/Hangs. The
+tracked Xcode 26.6 result reaches content in 522.30 ms and reports one 515.86 ms
+initial hang. Time Profiler captures 15,908 samples with Meeting Detail and
+transcript symbols. The SwiftUI template emits `Trace file had no SwiftUI data`
+and zero update rows on this toolchain, so exact view-body invalidation remains
+unmeasured rather than being represented as zero (D79).
+
+The 25th XCUITest waits for the 5,000-segment title, transcript, chapter rail,
+and delayed summary revision 2, then retains the
+`band-4a-scale-detail-5000-segments` app-window screenshot. This proves that
+the scoped summary stream remains functional at scale; it does not substitute
+for the unavailable SwiftUI update-cause lane.
+
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 24 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 25 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
@@ -458,6 +486,7 @@ controls, redacted support export, mirror, and live language switch via ⌘,). E
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
 neither SQLite nor audio can touch the user's library. `-seed-recovery`,
 `-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`,
+`-seed-scale` with optional `-scale-auto-summary-update`,
 `-simulate-recording-start-failure`, and
 `-seed-without-summary` are
 accepted only with the temp
@@ -473,7 +502,7 @@ assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
 Library, Insights, Meeting Detail, and post-meeting mirror checkpoints so unrelated desktop content
 is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 24-case suite is green in the
+test language and region flags; the complete 25-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

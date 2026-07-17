@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import Observation
+import OSLog
 import PortavozCore
 
 /// Narrow read-side contract for one Meeting Detail feature instance.
@@ -24,6 +25,10 @@ protocol MeetingDetailModelClient: AnyObject {
 @MainActor
 @Observable
 final class MeetingDetailModel {
+    private static let performanceSignposter = OSSignposter(
+        subsystem: "app.portavoz.mac",
+        category: "meeting-detail")
+
     enum LoadPhase: Equatable {
         case idle
         case loading
@@ -63,6 +68,8 @@ final class MeetingDetailModel {
     let meetingID: MeetingID
 
     private let client: any MeetingDetailModelClient
+    private let firstContentInterval: OSSignpostIntervalState
+    private var didRenderFirstContent = false
     private var observationID = UUID()
     private var observedSections: Set<MeetingReviewSection> = []
     private var failedSections: Set<MeetingReviewSection> = []
@@ -76,6 +83,18 @@ final class MeetingDetailModel {
     init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
         self.meetingID = meetingID
         self.client = client
+        firstContentInterval = Self.performanceSignposter.beginInterval(
+            "Meeting Detail First Content")
+    }
+
+    /// Ends the content-free navigation interval when SwiftUI mounts the
+    /// first real Meeting Detail projection. Repeated appearances are ignored.
+    func firstContentDidAppear() {
+        guard !didRenderFirstContent else { return }
+        didRenderFirstContent = true
+        Self.performanceSignposter.endInterval(
+            "Meeting Detail First Content",
+            firstContentInterval)
     }
 
     func observe() async {

@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity).
 
 ## Database
 
@@ -442,3 +442,34 @@ Companion cards to ApplicationKit. Audio stays outside SQLite, and no database
 record or SQL detail crosses the port. Focused real-Store tests prove complete
 content conservation, newest-recipe selection, tombstone exclusion, and the
 released optional-row degradation policy (D52).
+
+## Measured scale baseline (Band 4A, Jul 2026)
+
+`portavoz-cli bench-scale` creates only throwaway databases and exercises the
+production schema, FTS triggers, aggregate saves, scoped detail core read, and
+current pure chapter/health policies in a Release build. The tracked host
+result is `docs/evidence/scale-baseline-20260716.json` (20 storage/query samples
+and three expensive algorithm samples per point):
+
+| Corpus | Exact FTS p95 | Broad OR p95 | Allocated DB |
+|---:|---:|---:|---:|
+| 1,000 segments / 5 meetings | 0.59 ms | 1.12 ms | 0.77 MB |
+| 10,000 / 50 | 3.08 ms | 8.60 ms | 5.40 MB |
+| 50,000 / 250 | 15.77 ms | 57.64 ms | 26.40 MB |
+| 100,000 / 500 | 44.35 ms | 121.64 ms | 52.40 MB |
+
+| One meeting | Scoped core read p95 | Chapters p95 | Meeting health p95 |
+|---:|---:|---:|---:|
+| 30 min / 1,250 segments | 4.32 ms | 0.24 ms | 24.25 ms |
+| 2 h / 5,000 | 17.22 ms | 0.85 ms | 347.58 ms |
+| 8 h / 20,000 | 67.70 ms | 3.84 ms | 5,385.76 ms |
+
+D79 therefore retains the single `DatabaseQueue`: the scoped read has no
+measured contention or latency case for `DatabasePool`. It also retains direct
+chapter extraction and the existing segment embedding BLOB layout. Exact FTS
+still meets its p95 50 ms budget at 100k segments; the OR question path misses
+because its candidate set is broad, so query selectivity is the next search
+work before a vector/storage migration. `MeetingHealth`, not SQLite or chapter
+extraction, is the first detail optimization. Band 4B must preserve arbitrary
+overlap semantics and rerun this exact matrix before any later architecture is
+selected.

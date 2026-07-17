@@ -1988,3 +1988,57 @@ permanently. Until the migration gates pass, Portavoz's accurate boundary is a
 notarized Hardened Runtime app with least-privilege TCC entitlements, Keychain
 secrets, checksum-pinned models, policy-gated meeting-content egress, local
 receipts, and redacted diagnostics — not a sandboxed app.
+
+## D79 — Scale changes follow measured bottlenecks (Jul 2026)
+
+**Context:** Band 4 proposes Meeting Detail decomposition, content-addressable
+caches, incremental Spotlight delivery, a possible `DatabasePool`, and possible
+vector-storage changes. Applying those ideas together would create a broad
+rewrite without identifying which work actually misses the published budgets.
+The existing scoped observations already isolate transcript/cast, summary,
+Companion, privacy, and processing database updates, but the detail still
+projects derived chapter and meeting-health data in the presentation process.
+
+**Decision:** Band 4 starts with two reproducible, disposable Release baselines.
+`portavoz-cli bench-scale` measures the production schema and read paths at
+1k/10k/50k/100k library segments and at 30-minute/2-hour/8-hour meetings.
+`scripts/run-detail-ui-baseline.sh` launches only `/Applications/Portavoz
+Dev.app` with a temp store, 5,000 synthetic segments, no audio or models, a
+content-free first-content signpost, a delayed summary mutation, Time Profiler,
+Hangs, and the SwiftUI template. The tracked reports are
+`docs/evidence/scale-baseline-20260716.json` and
+`docs/evidence/detail-ui-baseline-20260716.json`.
+
+The measured order of work is binding until a later baseline disproves it:
+
+1. Optimize `MeetingHealth` first. It is the dominant derived-detail cost:
+   p95 24.25 ms at 1,250 segments, 347.58 ms at 5,000, and 5,385.76 ms at
+   20,000. The 5,000-segment app reaches first content in 522.30 ms against the
+   300 ms target and records one 515.86 ms initial hang.
+2. Retain the current `DatabaseQueue` until contention is demonstrated. The
+   scoped core detail read is p95 17.22 ms at 5,000 segments and 67.70 ms at
+   20,000, so a concurrent pool is not justified by this baseline.
+3. Do not add a chapter cache yet. Chapter extraction remains p95 0.85 ms at
+   5,000 segments and 3.84 ms at 20,000. Waveform work still needs its own
+   audio-backed hit/miss baseline before a cache design is selected.
+4. Keep FTS5 for exact retrieval: p95 remains 44.35 ms at 100,000 segments,
+   within the 50 ms budget. Broad OR question retrieval reaches 57.64 ms at
+   50,000 and 121.64 ms at 100,000, so query/retrieval selectivity must be
+   improved before adopting `sqlite-vec` or moving embedding columns.
+5. Do not claim that broad SwiftUI invalidation is solved. Xcode 26.6's
+   `xctrace` emitted `Trace file had no SwiftUI data` and zero SwiftUI update
+   rows in repeated Debug and Release captures, although Time Profiler captured
+   15,908 samples and the detail/transcript symbols. The 5,000-segment
+   XCUITest proves scoped summary updates remain functional and retains a
+   screenshot; exact view-body update causes remain an explicit measurement
+   gap for a working Instruments toolchain.
+
+Every performance change reruns the relevant matrix and preserves a before/
+after report. No cache, pool, index, vector format, or model decomposition is
+accepted on architectural taste alone.
+
+**Rationale:** measurement keeps Band 4 incremental and reversible. The first
+baseline identifies a specific algorithmic hotspot and a specific broad-query
+miss while showing that several proposed infrastructure changes would add
+complexity without evidence. Explicitly recording the Instruments limitation
+is more trustworthy than converting an empty lane into a success claim.

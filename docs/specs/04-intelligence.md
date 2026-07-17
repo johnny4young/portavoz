@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -274,8 +274,11 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 
 1. Meeting Detail cache lookup and translation pivot are Apple-FM-only;
    configured Ollama/MLX regeneration performs a new generation.
-2. Brute-force RAG is O(n) over embeddings and is not measured at 1,000+
-   meetings (the < 50 ms target may require sqlite-vec).
+2. Band 4A measures the FTS candidate stage, not embedding cosine: exact FTS is
+   p95 44.35 ms at 100k segments, while broad OR question retrieval is p95
+   121.64 ms. Brute-force semantic ranking at that scale still needs a separate
+   benchmark. D79 improves candidate selectivity before considering sqlite-vec
+   or a persisted-vector migration.
 
 ## Planned (not implemented)
 

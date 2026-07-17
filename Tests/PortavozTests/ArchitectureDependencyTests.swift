@@ -775,6 +775,53 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(signpostedExecution.contains("localizedDescription"))
     }
 
+    func testBandFourScaleBaselineStaysMeasuredAndDisposable() throws {
+        let cli = try Self.contents(of: "Sources/portavoz-cli/CLIBenchScale.swift")
+        let dispatch = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
+        let scaleRunner = try Self.contents(of: "scripts/run-scale-baseline.sh")
+        let detailRunner = try Self.contents(of: "scripts/run-detail-ui-baseline.sh")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(dispatch.contains(#"case "bench-scale":"#))
+        XCTAssertTrue(cli.contains("withTemporaryDirectory(prefix:"))
+        XCTAssertTrue(cli.contains("omittingEmptySubsequences: false"))
+        XCTAssertTrue(scaleRunner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(scaleRunner.contains(#""buildConfiguration") != "release""#))
+        XCTAssertTrue(fixture.contains(#"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(fixture.contains(#"arguments.contains("-seed-scale")"#))
+        XCTAssertTrue(model.contains(#""Meeting Detail First Content""#))
+        XCTAssertTrue(detailRunner.contains(#"--template "$template""#))
+        XCTAssertTrue(detailRunner.contains(#""$APP" == "/Applications/Portavoz.app""#))
+        XCTAssertTrue(detailRunner.contains("Trace file had no SwiftUI data"))
+        XCTAssertTrue(decisions.contains("## D79 — Scale changes follow measured bottlenecks"))
+
+        let scale = try Self.jsonObject(
+            at: "docs/evidence/scale-baseline-20260716.json")
+        XCTAssertEqual(scale["buildConfiguration"] as? String, "release")
+        let library = try XCTUnwrap(scale["library"] as? [[String: Any]])
+        XCTAssertEqual(library.compactMap { $0["totalSegments"] as? Int }, [
+            1_000, 10_000, 50_000, 100_000,
+        ])
+        let meetings = try XCTUnwrap(scale["longMeetings"] as? [[String: Any]])
+        XCTAssertEqual(meetings.compactMap { $0["durationMinutes"] as? Int }, [30, 120, 480])
+
+        let detail = try Self.jsonObject(
+            at: "docs/evidence/detail-ui-baseline-20260716.json")
+        let reproduction = try XCTUnwrap(detail["reproduction"] as? [String: Any])
+        XCTAssertEqual(reproduction["releaseApplicationProtected"] as? Bool, true)
+        let firstContent = try XCTUnwrap(detail["firstContent"] as? [String: Any])
+        XCTAssertGreaterThan(firstContent["durationMilliseconds"] as? Double ?? 0, 0)
+        let swiftUI = try XCTUnwrap(detail["swiftUI"] as? [String: Any])
+        let status = try XCTUnwrap(swiftUI["status"] as? String)
+        XCTAssertTrue(["captured", "unavailable-toolchain"].contains(status))
+        if status == "unavailable-toolchain" {
+            XCTAssertFalse((detail["limitations"] as? [String] ?? []).isEmpty)
+        }
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")
@@ -798,6 +845,12 @@ private extension ArchitectureDependencyTests {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),
             encoding: .utf8)
+    }
+
+    static func jsonObject(at relativePath: String) throws -> [String: Any] {
+        let data = try Data(contentsOf: repoRoot.appendingPathComponent(relativePath))
+        return try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
     static func imports(under relativeDirectory: String) throws -> [SourceImport] {
