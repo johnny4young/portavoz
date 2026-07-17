@@ -2486,3 +2486,52 @@ telemetry, privacy receipts, and overview feedback remain outside this slice.
 commitment. A dedicated aggregate keeps completion mutable, generated
 provenance immutable, portability explicit, and future Companion evidence free
 to adopt its own semantics rather than a generic evidence graph.
+
+## D91 — Separate Companion question evidence from answer evidence (Jul 2026)
+
+**Context:** a Companion card has two different relationships to the
+transcript. One closed or coalesced participant turn triggered the card, while
+a context answer may rely on earlier RAG passages. Treating both as one source
+list would hide that distinction. Reusing summary/action-item evidence would
+also couple a card to the wrong business identity, and using `askedAt` alone
+cannot prove which coalesced rows or answer passages were involved.
+
+**Decision:** add `CompanionCardEvidence` as a separate immutable aggregate
+keyed to exactly one `CompanionCard.id`. It owns a fresh evidence ID, source
+transcript revision, ordered question segment IDs, ordered answer segment IDs,
+and unavailable counts for each role. Live generation carries the exact closed
+row as question evidence; post-Refine generation carries every segment in the
+coalesced triggering turn. The operation fingerprint includes those identities
+and optional passage segment IDs.
+
+Only a context answer's exact, in-range `[N]` RAG citations may become answer
+evidence, in first-use order with duplicates removed. Knowledge answers and
+directed pings have question evidence but no answer evidence. Missing segment
+identity or an uncited answer never gains synthetic support. Generation-run
+configuration and metrics remain content-free and do not serialize evidence.
+
+Schema v13 adds `companionCardEvidence` and
+`companionCardEvidenceSegment`. The link role is constrained to `question` or
+`answer`; ordinals and live segment identities are unique within each role.
+Persistence requires the evidence to target its card, requires nonempty unique
+question sources, validates every source as live and owned by the same meeting,
+and stamps the current transcript revision in the card transaction. Nullable
+segment foreign keys use `ON DELETE SET NULL`, so physical deletion remains an
+unavailable source rather than disappearing. Evidence-only writes invalidate
+the Companion observation, not summary or support projections.
+
+`CompanionCard` carries optional nested evidence only as an additive read and
+format-v1 transport convenience; durable tables remain separate. Bundle import
+validates the source card relationship before minting fresh card/evidence/
+segment identities, clears the foreign revision, and drops malformed evidence
+without losing the card. Meeting Detail keeps the existing `askedAt` playback
+button for feature parity and adds separate Question source and Answer sources
+controls. A current source focuses transcript/audio without autoplay; stale,
+missing, deleted, or partial roles cannot navigate. Companion evidence never
+enters summary tables, claim feedback, privacy receipts, or support diagnostics.
+
+**Rationale:** the role split tells users what caused the intervention and what
+actually supported its answer without overstating either. Card identity is the
+stable business key, exact citations are the narrowest honest answer contract,
+and dedicated tables preserve portability and fail-closed behavior without a
+generic evidence graph.

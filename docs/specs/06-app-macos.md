@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation).
 
 ## Structure
 
@@ -329,6 +329,17 @@ stale-refine persistence error before presentation. The view still imports
 StorageKit only for local recording-path helpers used by playback/voiceprint
 extraction; that seam is deferred to measured Band 4 decomposition (D60).
 
+Band 5F keeps Companion provenance inside that scoped read model without
+conflating the question with the answer. Each evidenced card renders one
+localized **Question source** control and zero or more ordered **Answer
+sources**. The former identifies the exact transcript turn that produced the
+question or directed ping; the latter appears only for context answers and
+follows exact local-RAG citations. Selecting either role focuses the cited
+transcript row and seeks the shared player without autoplay. Stale or
+physically unavailable evidence remains explicit instead of navigating to a
+nearby guess. Stable card/role/index accessibility identifiers make both paths
+deterministic under XCUITest (D91).
+
 **Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either owns the resident live engine or triggers shared preparation in the background; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome and the recovery worker refreshes that idle policy after publishing. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery calls `loadTranscriberIfNeeded()`, durable attribution and Import call `loadDiarizerIfNeeded()`, and Refine prepares Whisper then requests only its degradable diarizer. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
@@ -556,10 +567,10 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 30 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 31 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
-advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
+advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
@@ -578,14 +589,14 @@ deterministically unavailable without depending on the XCUITest host. The proces
 fixture uses a deterministic fake local provider and no real audio, models,
 biometric files, Keychain, or host Shortcut; it uses the normal exact request
 factory and observes the original transcript and dependent summary after launch
-resume. Seed-demo includes a third segment at 200 s (mic
-channel) so there are two chapters and solo audio. Convention: all new
+resume. Seed-demo includes deterministic question and answer sources plus a
+third segment at 200 s (mic channel) so there are two chapters and solo audio. Convention: all new
 interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
 assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
-Library, Insights, Meeting Detail, confirmed-person memory, and post-meeting mirror checkpoints so unrelated desktop content
+Library, Insights, Meeting Detail, Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints so unrelated desktop content
 is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 25-case suite is green in the
+test language and region flags; the complete 31-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

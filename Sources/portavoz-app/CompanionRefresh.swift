@@ -27,6 +27,7 @@ enum CompanionRefresh {
         var text: String
         let startTime: TimeInterval
         var languages: Set<String>
+        var segmentIDs: [UUID]
 
         var language: String? {
             languages.count == 1 ? languages.first : nil
@@ -71,20 +72,16 @@ enum CompanionRefresh {
             // Context = the last lines from BOTH sides before the question, so
             // an answer already given in the room ("The endpoint is …") is
             // found, not hedged away as "not in the context".
-            let passages = ordered
-                .filter { $0.startTime < turn.startTime }
-                .suffix(14)
-                .map { segment in
-                    RAGPassage(
-                        meetingID: meetingID, meetingTitle: "This meeting",
-                        timestamp: segment.startTime,
-                        text: (segment.channel == .microphone ? "Me: " : "Them: ") + segment.text)
-                }
+            let passages = recentPassages(
+                before: turn.startTime,
+                from: ordered,
+                meetingID: meetingID)
             let result = await companion.generate(CompanionGenerationRequest(
                 meetingID: meetingID,
                 sourceTranscriptRevision: transcriptRevision,
                 workflow: .postRefine,
                 candidate: turn.text,
+                questionSegmentIDs: turn.segmentIDs,
                 recentTranscript: passages,
                 ownerName: ownerName,
                 outputLanguage: turn.language,
@@ -112,6 +109,24 @@ enum CompanionRefresh {
             completed: completed)
     }
 
+    private static func recentPassages(
+        before startTime: TimeInterval,
+        from ordered: [TranscriptSegment],
+        meetingID: MeetingID
+    ) -> [RAGPassage] {
+        ordered
+            .filter { $0.startTime < startTime }
+            .suffix(14)
+            .map { segment in
+                RAGPassage(
+                    segmentID: segment.id,
+                    meetingID: meetingID,
+                    meetingTitle: "This meeting",
+                    timestamp: segment.startTime,
+                    text: (segment.channel == .microphone ? "Me: " : "Them: ") + segment.text)
+            }
+    }
+
     /// Coalesces the participants' (system-channel) segments into interventions:
     /// a run of the same speaker with no long gap becomes one turn, so the
     /// Companion classifies and answers whole thoughts instead of fragments.
@@ -125,6 +140,7 @@ enum CompanionRefresh {
             let sameSpeaker = lastSpeaker == .some(segment.speakerID)
             if !turns.isEmpty, sameSpeaker, segment.startTime - lastEnd < turnGap {
                 turns[turns.count - 1].text += " " + segment.text
+                turns[turns.count - 1].segmentIDs.append(segment.id)
                 if let language = segment.language.flatMap(LanguageCode.init)?.identifier {
                     turns[turns.count - 1].languages.insert(language)
                 }
@@ -134,7 +150,8 @@ enum CompanionRefresh {
                 turns.append(Turn(
                     text: segment.text,
                     startTime: segment.startTime,
-                    languages: languages))
+                    languages: languages,
+                    segmentIDs: [segment.id]))
             }
             lastEnd = segment.endTime
             lastSpeaker = .some(segment.speakerID)

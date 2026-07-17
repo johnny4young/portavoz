@@ -45,9 +45,16 @@ final class MeetingBundleTests: XCTestCase {
                 evidenceSegmentIDs: [segments[0].id])])
         let note = ContextItem(
             meetingID: meeting.id, kind: .note, content: "congelar scope", timestamp: 12)
+        let cardID = UUID()
         let card = CompanionCard(
+            id: cardID,
             question: "¿Cuándo sale la beta?", answer: "El lunes.", kind: .context,
-            source: "on-device", directed: true, askedAt: 22)
+            source: "on-device", directed: true, askedAt: 22,
+            evidence: CompanionCardEvidence(
+                cardID: cardID,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                questionSegmentIDs: [segments[1].id],
+                answerSegmentIDs: [segments[0].id]))
         return MeetingBundle(
             meeting: meeting, speakers: [me, marta], segments: segments,
             summary: summary, contextItems: [note], companionCards: [card])
@@ -77,6 +84,12 @@ final class MeetingBundleTests: XCTestCase {
             [decoded.segments[0].id])
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
         XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
+        XCTAssertEqual(
+            decoded.companionCards?.first?.evidence?.questionSegmentIDs,
+            [decoded.segments[1].id])
+        XCTAssertEqual(
+            decoded.companionCards?.first?.evidence?.answerSegmentIDs,
+            [decoded.segments[0].id])
     }
 
     func testAudioPathNeverTravels() throws {
@@ -159,6 +172,16 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNotEqual(
             remapped.companionCards?.first?.id,
             original.companionCards?.first?.id)
+        XCTAssertEqual(
+            remapped.companionCards?.first?.evidence?.cardID,
+            remapped.companionCards?.first?.id)
+        XCTAssertEqual(
+            remapped.companionCards?.first?.evidence?.questionSegmentIDs,
+            [remapped.segments[1].id])
+        XCTAssertEqual(
+            remapped.companionCards?.first?.evidence?.answerSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.companionCards?.first?.evidence?.sourceTranscriptRevision)
     }
 
     func testAudioAttachmentsRideAlongAndSurviveRemap() throws {
@@ -230,5 +253,28 @@ final class MeetingBundleTests: XCTestCase {
             actionItemEvidence: original.actionItemEvidence)
 
         XCTAssertNil(bundle.remappedForImport().summary)
+    }
+
+    func testMalformedCompanionEvidenceTargetIsDroppedWithoutLosingCard() throws {
+        var bundle = sample()
+        let card = try XCTUnwrap(bundle.companionCards?.first)
+        let evidence = try XCTUnwrap(card.evidence)
+        bundle.companionCards = [CompanionCard(
+            id: card.id,
+            question: card.question,
+            answer: card.answer,
+            kind: card.kind,
+            source: card.source,
+            directed: card.directed,
+            askedAt: card.askedAt,
+            evidence: CompanionCardEvidence(
+                cardID: UUID(),
+                sourceTranscriptRevision: evidence.sourceTranscriptRevision,
+                questionSegmentIDs: evidence.questionSegmentIDs,
+                answerSegmentIDs: evidence.answerSegmentIDs))]
+
+        let remapped = try XCTUnwrap(bundle.remappedForImport().companionCards?.first)
+        XCTAssertEqual(remapped.question, card.question)
+        XCTAssertNil(remapped.evidence)
     }
 }

@@ -722,3 +722,23 @@ struct CompanionCardRecord: Codable, FetchableRecord, PersistableRecord {
         }
     }
 }
+
+struct CompanionCardEvidenceRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "companionCardEvidence"
+
+    var id: String
+    var cardID: String
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct CompanionCardEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "companionCardEvidenceSegment"
+
+    var id: String
+    var evidenceID: String
+    var role: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}

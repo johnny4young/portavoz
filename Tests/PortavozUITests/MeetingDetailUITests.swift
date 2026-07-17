@@ -293,6 +293,37 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testCompanionAnswerSourceJumpsToItsTranscriptAndAudio() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let source = app.control(
+            withIdentifier:
+                "companion-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
+        guard source.waitForExistence(timeout: 10) else {
+            XCTFail("the Companion answer must expose its exact transcript source")
+            return
+        }
+        XCTAssertEqual(
+            source.value as? String,
+            "El rollout del modelo queda para el viernes.")
+        source.click()
+
+        let citedRow = app.control(
+            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
+        let focused = expectation(
+            for: NSPredicate(format: "isSelected == true"),
+            evaluatedWith: citedRow)
+        wait(for: [focused], timeout: 5)
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 5)
+        attachScreenshot(of: app, named: "band-5f-companion-evidence")
+    }
+
+    @MainActor
     func testSummaryFeedbackIsExplicitReversibleAndLocal() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }

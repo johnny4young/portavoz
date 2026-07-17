@@ -62,6 +62,27 @@ public enum QuestionHeuristic {
 /// tested without the model. A companion card only earns its place when the
 /// model actually answered: filler is worse than nothing on a glanceable panel.
 public enum CompanionAnswer {
+    /// Zero-based passage positions explicitly cited as `[N]`, in first-use
+    /// order. Unknown, out-of-range, and repeated markers are ignored.
+    public static func citedPassageIndexes(
+        _ raw: String,
+        passageCount: Int
+    ) -> [Int] {
+        guard passageCount > 0,
+              let expression = try? NSRegularExpression(pattern: #"\[(\d+)\]"#)
+        else { return [] }
+        let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+        var seen: Set<Int> = []
+        return expression.matches(in: raw, range: range).compactMap { match in
+            guard let numberRange = Range(match.range(at: 1), in: raw),
+                  let number = Int(raw[numberRange]),
+                  (1...passageCount).contains(number),
+                  seen.insert(number - 1).inserted
+            else { return nil }
+            return number - 1
+        }
+    }
+
     /// The answer if it's a real one, else nil. Strips the citation markers the
     /// RAG answerer is told to add ("[2]", "… in passage 3") — meaningless on a
     /// card — and treats a hedge / non-answer ("not in the context", "I
@@ -126,6 +147,17 @@ public struct CompanionProcessTrace: Equatable, Sendable {
 struct CompanionProcessResult: Sendable {
     let card: CompanionCard?
     let trace: CompanionProcessTrace
+    let answerEvidenceIndexes: [Int]
+
+    init(
+        card: CompanionCard?,
+        trace: CompanionProcessTrace,
+        answerEvidenceIndexes: [Int] = []
+    ) {
+        self.card = card
+        self.trace = trace
+        self.answerEvidenceIndexes = answerEvidenceIndexes
+    }
 }
 
 struct CompanionProcessFailure: Error {
@@ -273,18 +305,12 @@ public struct LiveCompanion: Sendable {
                 source: source, directed: directed, askedAt: askedAt)
             return CompanionProcessResult(card: card, trace: trace)
         case "context":
-            guard !recentTranscript.isEmpty else {
-                let card = directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
-                return CompanionProcessResult(card: card, trace: trace)
-            }
-            trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
-            trace.answerModelID = CompanionGenerationAttempt.foundationModelID
-            let answer = try await RAGAnswerer().answer(
-                question: detected.question, passages: recentTranscript)
-            let card = Self.card(
-                question: detected.question, rawAnswer: answer, kind: .context,
-                source: "on-device", directed: directed, askedAt: askedAt)
-            return CompanionProcessResult(card: card, trace: trace)
+            return try await answerContext(
+                detected.question,
+                passages: recentTranscript,
+                directed: directed,
+                askedAt: askedAt,
+                trace: &trace)
         default:
             // Logistics/small talk: a card here is noise, the classic
             // failure mode of this feature class — UNLESS it was aimed at
@@ -293,6 +319,36 @@ public struct LiveCompanion: Sendable {
             let card = directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
             return CompanionProcessResult(card: card, trace: trace)
         }
+    }
+
+    private func answerContext(
+        _ question: String,
+        passages: [RAGPassage],
+        directed: Bool,
+        askedAt: TimeInterval,
+        trace: inout CompanionProcessTrace
+    ) async throws -> CompanionProcessResult {
+        guard !passages.isEmpty else {
+            let card = directed ? Self.pingCard(question, askedAt: askedAt) : nil
+            return CompanionProcessResult(card: card, trace: trace)
+        }
+        trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+        trace.answerModelID = CompanionGenerationAttempt.foundationModelID
+        let answer = try await RAGAnswerer().answer(question: question, passages: passages)
+        let evidence = CompanionAnswer.citedPassageIndexes(
+            answer,
+            passageCount: passages.count)
+        let card = Self.card(
+            question: question,
+            rawAnswer: answer,
+            kind: .context,
+            source: "on-device",
+            directed: directed,
+            askedAt: askedAt)
+        return CompanionProcessResult(
+            card: card,
+            trace: trace,
+            answerEvidenceIndexes: evidence)
     }
 
     /// Builds a card from a raw model answer: keeps it only if the model

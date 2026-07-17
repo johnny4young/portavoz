@@ -125,15 +125,31 @@ final class MeetingDetailObservationTests: XCTestCase {
         }
         XCTAssertEqual(reviewed?.draft.markdown, "## Resumen")
 
+        let cardID = UUID()
         let card = CompanionCard(
+            id: cardID,
             question: "¿Cuándo?",
             answer: "El viernes.",
             kind: .context,
             source: "meeting",
-            askedAt: 1)
+            askedAt: 1,
+            evidence: CompanionCardEvidence(
+                cardID: cardID,
+                questionSegmentIDs: [segment.id],
+                answerSegmentIDs: [segment.id]))
         try await store.save([card], for: meeting.id)
         let cards = try await nextCompanion(&companion) { $0.map(\.id) == [card.id] }
         XCTAssertEqual(cards.first?.answer, "El viernes.")
+        XCTAssertEqual(cards.first?.evidence?.answerSegmentIDs, [segment.id])
+        try await store.database.write { database in
+            try database.execute(
+                sql: "UPDATE companionCardEvidenceSegment SET segmentID = NULL WHERE role = ?",
+                arguments: ["answer"])
+        }
+        let unavailable = try await nextCompanion(&companion) {
+            $0.first?.evidence?.unavailableAnswerCount == 1
+        }
+        XCTAssertTrue(unavailable.first?.evidence?.answerSegmentIDs.isEmpty == true)
         try await store.deleteCompanionCard(card.id)
         let removedCards = try await nextCompanion(&companion) { $0.isEmpty }
         XCTAssertTrue(removedCards.isEmpty)

@@ -361,6 +361,16 @@
         }
       }
     },
+    "Answer sources": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes de la respuesta"
+          }
+        }
+      }
+    },
     "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model.": {
       "localizations": {
         "es": {
@@ -3057,6 +3067,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Publicar gist secreto"
+          }
+        }
+      }
+    },
+    "Question source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente de la pregunta"
           }
         }
       }

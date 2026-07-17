@@ -40,9 +40,9 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v12 summary evidence and review
+    // MARK: - Schema v9-v13 evidence and review
 
-    func testV8MigratesAdditivelyThroughActionItemEvidenceSchema() throws {
+    func testV8MigratesAdditivelyThroughCompanionEvidenceSchema() throws {
         let database = try DatabaseQueue()
         let migrator = StorageSchema.migrator()
         try migrator.migrate(database, upTo: "v8")
@@ -88,7 +88,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 12)
+            XCTAssertEqual(StorageSchema.version, 13)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -116,6 +116,12 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryActionItemEvidenceSegment").map(\.name)),
                 ["id", "evidenceID", "segmentID", "ordinal", "createdAt"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "companionCardEvidence").map(\.name)),
+                ["id", "cardID", "sourceTranscriptRevision", "createdAt"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "companionCardEvidenceSegment").map(\.name)),
+                ["id", "evidenceID", "role", "segmentID", "ordinal", "createdAt"])
             XCTAssertEqual(
                 try String.fetchOne(
                     db, sql: "SELECT markdown FROM summary WHERE id = ?",
@@ -1148,6 +1154,85 @@ extension MeetingStoreTests {
         XCTAssertEqual(remaining.map(\.question), [second.question])
     }
 
+    func testCompanionEvidenceRoundTripsAndRetainsUnavailableAnswerLink() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let cardID = UUID()
+        let card = CompanionCard(
+            id: cardID,
+            question: "¿Cuándo sale?",
+            answer: "El viernes.",
+            kind: .context,
+            source: "on-device",
+            askedAt: 9,
+            evidence: CompanionCardEvidence(
+                cardID: cardID,
+                questionSegmentIDs: [segments[1].id],
+                answerSegmentIDs: [segments[0].id]))
+        try await store.save([card], for: meeting.id)
+
+        let storedCards = try await store.companionCards(for: meeting.id)
+        let stored = try XCTUnwrap(storedCards.first)
+        let evidence = try XCTUnwrap(stored.evidence)
+        XCTAssertEqual(evidence.sourceTranscriptRevision, 0)
+        XCTAssertEqual(evidence.questionSegmentIDs, [segments[1].id])
+        XCTAssertEqual(evidence.answerSegmentIDs, [segments[0].id])
+
+        try await store.database.write { db in
+            try db.execute(
+                sql: "DELETE FROM segment WHERE id = ?",
+                arguments: [segments[0].id.uuidString])
+        }
+        let cardsAfterDeletion = try await store.companionCards(for: meeting.id)
+        let afterDeletion = try XCTUnwrap(cardsAfterDeletion.first?.evidence)
+        XCTAssertEqual(afterDeletion.unavailableAnswerCount, 1)
+        XCTAssertEqual(
+            afterDeletion.resolveAnswer(
+                currentTranscriptRevision: 0,
+                segments: [segments[1]])?.status,
+            .unavailable)
+        XCTAssertEqual(
+            afterDeletion.resolveQuestion(
+                currentTranscriptRevision: 0,
+                segments: [segments[1]]).status,
+            .current)
+
+        try await store.save([
+            CompanionCard(
+                id: cardID,
+                question: card.question,
+                answer: card.answer,
+                kind: card.kind,
+                source: card.source,
+                askedAt: card.askedAt)
+        ], for: meeting.id)
+        let cardsAfterClear = try await store.companionCards(for: meeting.id)
+        XCTAssertNil(cardsAfterClear.first?.evidence)
+    }
+
+    func testCompanionEvidenceTargetMismatchRollsBackCard() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let card = CompanionCard(
+            question: "¿Cuándo sale?",
+            answer: "El viernes.",
+            kind: .context,
+            source: "on-device",
+            askedAt: 9,
+            evidence: CompanionCardEvidence(
+                cardID: UUID(),
+                questionSegmentIDs: [segments[1].id]))
+
+        do {
+            try await store.save([card], for: meeting.id)
+            XCTFail("mismatched Companion evidence must reject the card transaction")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+        let storedCards = try await store.companionCards(for: meeting.id)
+        XCTAssertTrue(storedCards.isEmpty)
+    }
+
     func testReplaceCompanionCardsTombstonesTheOldSnapshot() async throws {
         try await store.save(meeting)
         try await store.save(
@@ -1196,8 +1281,8 @@ extension MeetingStoreTests {
         XCTAssertEqual(linkedRunID, run.id.rawValue.uuidString)
     }
 
-    func testGeneratedCompanionReplacementRollsBackRunAndOldSnapshotOnCardFailure() async throws {
-        try await store.save(meeting)
+    func testGeneratedCompanionReplacementRollsBackOnEvidenceLinkFailure() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
         let old = CompanionCard(
             question: "Old card", answer: "Keep me", kind: .context,
             source: "on-device", askedAt: 5)
@@ -1205,16 +1290,20 @@ extension MeetingStoreTests {
         try await store.database.write { db in
             try db.execute(sql: """
                 CREATE TRIGGER reject_generated_companion
-                BEFORE INSERT ON companionCard
-                WHEN NEW.question = 'New card'
+                BEFORE INSERT ON companionCardEvidenceSegment
                 BEGIN
-                    SELECT RAISE(ABORT, 'injected Companion failure');
+                    SELECT RAISE(ABORT, 'injected Companion evidence failure');
                 END
                 """)
         }
+        let cardID = UUID()
         let card = CompanionCard(
+            id: cardID,
             question: "New card", answer: "Never partial", kind: .knowledge,
-            source: "on-device", askedAt: 10)
+            source: "on-device", askedAt: 10,
+            evidence: CompanionCardEvidence(
+                cardID: cardID,
+                questionSegmentIDs: [segments[1].id]))
         let run = companionRun(card: card, outcome: .succeeded)
 
         do {
@@ -1222,7 +1311,7 @@ extension MeetingStoreTests {
                 [],
                 generated: [CompanionGenerationArtifact(card: card, generationRun: run)],
                 for: meeting.id)
-            XCTFail("a late card failure must reject the whole replacement")
+            XCTFail("a late evidence-link failure must reject the whole replacement")
         } catch {
             let cards = try await store.companionCards(for: meeting.id)
             let runs = try await store.generationRuns(for: meeting.id)

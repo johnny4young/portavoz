@@ -95,7 +95,7 @@ capabilities; current and deferred status is authoritative in
 - Domain vocabulary as initial_prompt (service/teammate names).
 - "What did I miss?": a live, Spanish-language catch-up for the last N minutes.
 - "Someone asked you something" detector (name mentioned → notification with the question).
-- **Live Companion (D26)**: questions detected in the conversation ("what is the difference between `var` and `let`?") → card with a suggested answer in <5 s; `contexto` answers from local RAG, `conocimiento` answers from on-device FM (or BYOK with disclosure).
+- **Live Companion (D26/D91)**: questions detected in the conversation ("what is the difference between `var` and `let`?") → card with a suggested answer in <5 s; `contexto` answers from local RAG, `conocimiento` answers from on-device FM (or BYOK with disclosure). Review separates what triggered the card from the exact passages cited by a context answer.
 - Live translated ES↔EN captions (Translation framework, on-device; partials in the original language, translation when each segment is finalized).
 
 ## Future (research, not committed)
@@ -123,6 +123,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 11. **Correct the claim, preserve the record** (Band 5C): a private correction or unsupported mark stays visibly separate from generated text, can be cleared without hidden text history, and travels only through an explicit meeting export.
 12. **A decision you can verify in one click** (Band 5D): each supported decision bullet exposes its exact transcript and audio moments; stale or missing evidence disables navigation instead of presenting false certainty.
 13. **A to-do that remembers the commitment** (Band 5E): the source stays attached to the task even after its checkbox changes, so users can verify who committed to what without searching the meeting or trusting generated text blindly.
+14. **A Companion answer with two kinds of proof** (Band 5F): the card shows where the question was asked separately from which earlier meeting passages supported its answer; knowledge answers and pings never pretend to have transcript support they did not use.
 
 ## Performance targets (world-class = numbers)
 

@@ -18,6 +18,12 @@ extension MeetingStore {
                 record.deletedAt = existing?.deletedAt
                 record.generationRunID = existing?.generationRunID
                 try record.save(db)
+                try Self.replaceCompanionCardEvidence(
+                    card.evidence,
+                    cardID: card.id,
+                    meetingID: meetingID,
+                    at: now,
+                    in: db)
             }
         }
     }
@@ -124,6 +130,12 @@ extension MeetingStore {
             throw StorageError.invalidGenerationRun(
                 "captured Companion provenance must be unique")
         }
+        for card in snapshot.companionCards {
+            try validateCompanionEvidenceShape(
+                card.evidence,
+                cardID: card.id,
+                sourceTranscriptRevision: meeting.transcriptRevision)
+        }
         for run in snapshot.companionTerminalRuns {
             try validateTerminalGenerationRun(run)
             guard run.meetingID == meeting.id,
@@ -152,6 +164,10 @@ extension MeetingStore {
         for artifact in artifacts {
             let run = artifact.generationRun
             try validateTerminalGenerationRun(run)
+            try validateCompanionEvidenceShape(
+                artifact.card.evidence,
+                cardID: artifact.card.id,
+                sourceTranscriptRevision: sourceTranscriptRevision)
             guard run.meetingID == meetingID,
                   run.kind == .companion,
                   run.outcome == .succeeded,
@@ -199,6 +215,12 @@ extension MeetingStore {
             let record = CompanionCardRecord(
                 card, meetingID: meetingID, createdAt: timestamp, updatedAt: timestamp)
             try record.save(db)
+            try replaceCompanionCardEvidence(
+                card.evidence,
+                cardID: card.id,
+                meetingID: meetingID,
+                at: timestamp,
+                in: db)
         }
         for artifact in artifacts {
             try GenerationRunRecord(artifact.generationRun).insert(db)
@@ -209,6 +231,12 @@ extension MeetingStore {
                 createdAt: timestamp,
                 updatedAt: timestamp)
             try record.save(db)
+            try replaceCompanionCardEvidence(
+                artifact.card.evidence,
+                cardID: artifact.card.id,
+                meetingID: meetingID,
+                at: timestamp,
+                in: db)
         }
     }
 }

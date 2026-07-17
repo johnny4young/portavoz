@@ -445,6 +445,12 @@ extension MeetingStore {
                 createdAt: timestamp,
                 updatedAt: timestamp)
             try record.insert(db)
+            try replaceCompanionCardEvidence(
+                card.evidence,
+                cardID: card.id,
+                meetingID: snapshot.meeting.id,
+                at: timestamp,
+                in: db)
         }
         for artifact in snapshot.companionArtifacts {
             try GenerationRunRecord(artifact.generationRun).insert(db)
@@ -455,6 +461,12 @@ extension MeetingStore {
                 createdAt: timestamp,
                 updatedAt: timestamp)
             try record.insert(db)
+            try replaceCompanionCardEvidence(
+                artifact.card.evidence,
+                cardID: artifact.card.id,
+                meetingID: snapshot.meeting.id,
+                at: timestamp,
+                in: db)
         }
     }
 

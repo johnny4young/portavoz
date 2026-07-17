@@ -137,6 +137,58 @@ final class CoreTypesTests: XCTestCase {
             .unavailable)
     }
 
+    func testCompanionEvidenceSeparatesQuestionAndAnswerRoles() {
+        let meetingID = MeetingID()
+        let question = TranscriptSegment(
+            meetingID: meetingID, channel: .system, text: "When is rollout?",
+            startTime: 6, endTime: 8)
+        let answer = TranscriptSegment(
+            meetingID: meetingID, channel: .system, text: "Ship Friday",
+            startTime: 3, endTime: 6)
+        let cardID = UUID()
+        let evidence = CompanionCardEvidence(
+            cardID: cardID,
+            sourceTranscriptRevision: 2,
+            questionSegmentIDs: [question.id],
+            answerSegmentIDs: [answer.id])
+
+        XCTAssertEqual(evidence.cardID, cardID)
+        XCTAssertEqual(
+            evidence.resolveQuestion(
+                currentTranscriptRevision: 2,
+                segments: [question, answer]).segments.map(\.id),
+            [question.id])
+        XCTAssertEqual(
+            evidence.resolveAnswer(
+                currentTranscriptRevision: 2,
+                segments: [question, answer])?.segments.map(\.id),
+            [answer.id])
+        XCTAssertEqual(
+            evidence.resolveQuestion(
+                currentTranscriptRevision: 3,
+                segments: [question, answer]).status,
+            .stale)
+    }
+
+    func testCompanionCardDecodesOlderValueWithoutEvidence() throws {
+        let cardID = UUID()
+        let json = """
+            {
+              "id": "\(cardID.uuidString)",
+              "question": "When?",
+              "answer": "Friday.",
+              "kind": "context",
+              "source": "on-device",
+              "directed": false,
+              "askedAt": 6
+            }
+            """
+
+        let decoded = try JSONDecoder().decode(CompanionCard.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.id, cardID)
+        XCTAssertNil(decoded.evidence)
+    }
+
     func testBuiltInRecipesClassifyDecisionSectionsExplicitly() {
         XCTAssertEqual(Recipe.general.decisionSectionIndexes, [1])
         XCTAssertEqual(Recipe.planning.decisionSectionIndexes, [1])

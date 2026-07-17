@@ -1,12 +1,12 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence).
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v12` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v13` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -35,6 +35,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `summaryDecisionEvidenceSegment` (v11) | id, decisionID (FK CASCADE), segmentID? (FK SET NULL), ordinal, createdAt; unique decision+ordinal and decision+live-segment |
 | `summaryActionItemEvidence` (v12) | id, actionItemID (unique FK CASCADE), sourceTranscriptRevision, createdAt; one immutable evidence aggregate per durable task |
 | `summaryActionItemEvidenceSegment` (v12) | id, evidenceID (FK CASCADE), segmentID? (FK SET NULL), ordinal, createdAt; unique evidence+ordinal and evidence+live-segment |
+| `companionCardEvidence` (v13) | id, cardID (unique FK CASCADE), sourceTranscriptRevision, createdAt; one immutable evidence aggregate per Companion card |
+| `companionCardEvidenceSegment` (v13) | id, evidenceID (FK CASCADE), role (`question` or `answer`), segmentID? (FK SET NULL), ordinal, createdAt; unique evidence+role+ordinal and evidence+role+live-segment |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
@@ -99,6 +101,16 @@ then stamps the current meeting revision. Toggling `actionItem.isDone`
 updates only the task row, so its evidence identity and links remain stable.
 Physical segment deletion sets a link null and makes the whole task source
 unavailable rather than partially navigable.
+
+Schema v13 is the additive Companion-card-evidence migration (D91). Existing
+cards gain no synthetic evidence. One optional aggregate must target its card,
+contain nonempty unique question links, contain unique answer links, and
+reference only live segments from the same meeting. Storage stamps the current
+transcript revision in the same transaction as the card. Question and answer
+ordinals are independent; one segment may legitimately appear in both roles.
+Physical segment deletion sets only the affected link null and increments that
+role's unavailable count on read. Replacing a card with evidence `nil` deletes
+the prior evidence child instead of retaining obsolete provenance.
 
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
@@ -266,7 +278,7 @@ when remapping imported speakers, so canonical device identity never travels
 in a `.portavoz` bundle; accepted meeting-local display names still round-trip.
 
 The existing aggregate API remains:
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint and rejects user feedback), `setSummaryClaimFeedback(_:for:meetingID:)` (newest-claim-fenced replace/clear), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link and transactionally replaces optional typed evidence), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run/evidence replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint and rejects user feedback), `setSummaryClaimFeedback(_:for:meetingID:)` (newest-claim-fenced replace/clear), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
 `spotlightDocuments()` is the D85 read-side projection for local OS search. A
 single `DatabaseQueue.read` uses ranked CTEs to select every live meeting, its
@@ -310,11 +322,13 @@ imported aggregate cannot roll back (D64).
 Meeting-bundle import uses the superset
 `saveImportedMeetingBundle(_:at:)` Unit of Work (D51). Before writing it
 validates the relative audio directory; unique speaker/segment/note/card/action
-identities; meeting ownership; cast references; and summary/action ownership.
+identities; meeting ownership; cast references; summary/action ownership; and
+current, card-targeted Companion evidence over imported segments.
 One transaction rejects an existing meeting ID and inserts the meeting, cast,
 transcript, optional summary as immutable version 1 with its action items,
-notes, and Companion cards. A failure in the last card insert rolls back every
-earlier row, while invalid foreign children are rejected before any write.
+notes, Companion cards, and their evidence. A failure in the final evidence
+link insert rolls back every earlier row, while invalid foreign children are
+rejected before any write.
 
 Accepted refine drafts use the dedicated
 `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)`
@@ -374,8 +388,9 @@ immutable summary across recipes plus current action items and typed overview/
 decision evidence observe `meeting`, `summary`, `actionItem`, `summaryClaim`,
 `summaryClaimSegment`, `summaryClaimFeedback`, `summaryDecisionEvidence`,
 `summaryDecisionEvidenceSegment`, `summaryActionItemEvidence`, and
-`summaryActionItemEvidenceSegment`; persisted Companion cards observe `meeting` and
-`companionCard`; the privacy receipt observes `meeting`, `generationRun`,
+`summaryActionItemEvidenceSegment`; persisted Companion cards observe `meeting`,
+`companionCard`, `companionCardEvidence`, and
+`companionCardEvidenceSegment`; the privacy receipt observes `meeting`, `generationRun`,
 `dataEgressEvent`, and `privacyReceiptCoverage`; durable processing observes
 only `meeting` and `processingJob`. Every projection is filtered to one live meeting. The core and
 Companion helpers are shared with `detail` and `companionCards(for:)`, while
@@ -390,7 +405,7 @@ schema and leaves all existing rows and query behavior unchanged.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, and card IDs so that two imports are independent; evidence follows fresh segments and task identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. An older v1 bundle without claims, decisions, action evidence, feedback, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Companion cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Companion evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Companion evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
 
 ## Recordings folder — `RecordingsLocation`
 

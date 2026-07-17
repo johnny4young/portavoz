@@ -2255,6 +2255,7 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .disabled(player == nil)
+                .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
                 Text(card.question)
                     .font(.callout.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
@@ -2265,6 +2266,7 @@ extension MeetingDetailView {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            companionCardEvidence(card)
             HStack {
                 Text(companionCardTag(card))
                     .font(.caption2)
@@ -2298,7 +2300,46 @@ extension MeetingDetailView {
         .overlay(
             RoundedRectangle(cornerRadius: 8).strokeBorder(tint.opacity(0.25), lineWidth: 1)
         )
-        .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
+    }
+
+    @ViewBuilder
+    private func companionCardEvidence(_ card: CompanionCard) -> some View {
+        if let evidence = card.evidence, let detail {
+            let question = evidence.resolveQuestion(
+                currentTranscriptRevision: detail.meeting.transcriptRevision,
+                segments: detail.segments)
+            VStack(alignment: .leading, spacing: 5) {
+                companionEvidenceRole(
+                    L10n.text("Question source"),
+                    resolution: question,
+                    identifier: "companion-card-\(card.id.uuidString)-question")
+                if let answer = evidence.resolveAnswer(
+                    currentTranscriptRevision: detail.meeting.transcriptRevision,
+                    segments: detail.segments) {
+                    companionEvidenceRole(
+                        L10n.text("Answer sources"),
+                        resolution: answer,
+                        identifier: "companion-card-\(card.id.uuidString)-answer")
+                }
+            }
+        }
+    }
+
+    private func companionEvidenceRole(
+        _ label: String,
+        resolution: TranscriptEvidenceResolution,
+        identifier: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            summaryEvidenceSources(
+                resolution,
+                sourceIdentifier: "\(identifier)-evidence",
+                staleIdentifier: "\(identifier)-stale",
+                unavailableIdentifier: "\(identifier)-unavailable")
+        }
     }
 
     private func companionCardTag(_ card: CompanionCard) -> String {

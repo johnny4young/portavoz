@@ -69,6 +69,13 @@ Implemented and tested features whose final criterion can be closed only with a 
   meeting; verify that every visible source directly supports the overview,
   unsupported overviews show no source rather than a weak one, and Refine turns
   the prior links stale before the regenerated summary installs fresh links.
+- **Real-model Companion evidence quality (D91)**: on a copied real meeting,
+  verify that every detected question keeps its exact spoken turn, every
+  context answer exposes only the transcript passages named by exact local-RAG
+  citations, and those passages directly support the answer. Knowledge answers
+  and directed pings must expose no invented answer source. After Refine, old
+  card evidence must resolve stale until the refreshed Companion snapshot
+  installs sources for the accepted transcript revision.
 - **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
 
 ## What are NOT gaps (deliberate decisions — do not "fix")

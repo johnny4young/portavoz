@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -257,7 +257,26 @@ meeting-content HTTP receipt boundary.
 2. **FM classifier** (`DetectedQuestion` @Generable: isQuestion/question/kind) sent to the scheduler with `.live` + key `companion-detect` (latest-wins: ticks never stack up). `logistics` → no card (the classic failure mode for this class of features), **unless the caption names you**: then the card is a PING ("te preguntaron", question without an invented answer, orange tint). Two lessons from the 3B caught by the gated test: (a) `directed` is ALWAYS the deterministic name gate, never the model's opinion (requesting it as a field → it stripped "Johnny," from the question and reported false); (b) the logistics filter needs literal few-shot examples ("¿nos acompañas mañana…?" is logistics, NOT context) — with only the abstract rule, it leaked through.
 3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (`BYOKSettings.companionClient(gateway:)`, same instructions as on-device, 400 tokens max, `source` = provider host; if the provider or egress-policy call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8/D67). Explicit cancellation never falls through to the local answer.
 
-App: per-recording opt-in ("Companion" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail reviews them and jumps to the moment asked. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only verbatim `passage N` citations at the end, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Companion BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
+App: per-recording opt-in ("Companion" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Companion BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
+
+### Companion transcript evidence (D91)
+
+`CompanionGenerationRequest` carries exact question segment identities and
+`RAGPassage` may carry its source segment identity. Live generation uses the
+closed row that triggered detection. Post-Refine generation coalesces adjacent
+same-speaker rows into one turn and retains every constituent segment ID. The
+`companion-generation-v2` fingerprint binds those ordered identities and every
+optional passage identity in addition to the existing private material.
+
+For context answers, `CompanionAnswer.citedPassageIndexes` extracts only exact
+in-range `[N]` markers from the raw model response, deduplicated in first-use
+order, before display cleanup removes the markers. `CompanionEvidenceFactory`
+maps those indexes to same-meeting passages with real segment IDs. Knowledge
+answers and directed pings receive question evidence but no answer evidence;
+uncited context answers likewise receive no fabricated answer links. The
+resulting `CompanionCardEvidence` is card-identity-keyed, revision-fenced, and
+role-separated. It is attached to the card before the generated artifact
+crosses StorageKit, but generation-run JSON remains content-free.
 
 ### Companion-card generation provenance (D66)
 
@@ -265,7 +284,8 @@ App: per-recording opt-in ("Companion" toggle next to the translation toggle, pe
 policy. After the deterministic question/name gate and model availability
 check, it creates one ephemeral attempt. The exact operation fingerprint hashes
 meeting and source transcript revision, live-recording/post-refine workflow,
-candidate, ordered `RAGPassage` material, optional owner/language, exact asked-at
+candidate, ordered question segment identities and `RAGPassage` material
+(including optional segment identities), optional owner/language, exact asked-at
 bits, and optional external destination/provider/model. The exact destination
 may include a base path but appears only inside the hash; run JSON keeps only
 the disclosure-safe provider label/model. None of the private meeting values is

@@ -678,8 +678,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "regions: [Table(\"meeting\"), Table(\"speaker\"), Table(\"segment\")]"))
         XCTAssertTrue(storage.contains("Table(\"summaryClaim\")"))
         XCTAssertTrue(storage.contains("Table(\"summaryClaimSegment\")"))
-        XCTAssertTrue(storage.contains(
-            "regions: [Table(\"meeting\"), Table(\"companionCard\")]"))
+        XCTAssertTrue(storage.contains("Table(\"companionCard\")"))
+        XCTAssertTrue(storage.contains("Table(\"companionCardEvidence\")"))
+        XCTAssertTrue(storage.contains("Table(\"companionCardEvidenceSegment\")"))
     }
 
     func testCanonicalPeopleRequireConfirmationAndStayOutOfAutomaticEvidencePaths() throws {
@@ -834,6 +835,36 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(detail.contains("summary-action-item-"))
         XCTAssertFalse(companion.contains("SummaryActionItemEvidence"))
         XCTAssertFalse(diagnostics.contains("SummaryActionItemEvidence"))
+    }
+
+    func testCompanionEvidenceStaysRoleTypedRevisionFencedAndPortable() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/CompanionCard.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+CompanionCardEvidence.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CompanionCardEvidence.swift")
+        let provenance = try Self.contents(
+            of: "Sources/IntelligenceKit/CompanionGenerationProvenance.swift")
+        let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
+        let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let diagnostics = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
+
+        XCTAssertTrue(core.contains("struct CompanionCardEvidence"))
+        XCTAssertTrue(core.contains("questionSegmentIDs"))
+        XCTAssertTrue(core.contains("answerSegmentIDs"))
+        XCTAssertTrue(schema.contains("table: \"companionCardEvidence\""))
+        XCTAssertTrue(schema.contains("role IN ('question', 'answer')"))
+        XCTAssertTrue(storage.contains("Companion evidence is stale"))
+        XCTAssertTrue(schema.contains("onDelete: .setNull"))
+        XCTAssertTrue(provenance.contains("CompanionEvidenceFactory"))
+        XCTAssertTrue(provenance.contains("questionSegmentIDs"))
+        XCTAssertTrue(companion.contains("citedPassageIndexes"))
+        XCTAssertTrue(bundle.contains("remappedCompanionCard"))
+        XCTAssertTrue(detail.contains("Question source"))
+        XCTAssertTrue(detail.contains("Answer sources"))
+        XCTAssertFalse(diagnostics.contains("CompanionCardEvidence"))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

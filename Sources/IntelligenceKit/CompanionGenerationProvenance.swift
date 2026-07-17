@@ -27,6 +27,7 @@ public struct CompanionGenerationRequest: Sendable {
     public let sourceTranscriptRevision: Int
     public let workflow: CompanionGenerationWorkflow
     public let candidate: String
+    public let questionSegmentIDs: [UUID]
     public let recentTranscript: [RAGPassage]
     public let ownerName: String?
     public let outputLanguage: String?
@@ -37,6 +38,7 @@ public struct CompanionGenerationRequest: Sendable {
         sourceTranscriptRevision: Int,
         workflow: CompanionGenerationWorkflow,
         candidate: String,
+        questionSegmentIDs: [UUID] = [],
         recentTranscript: [RAGPassage],
         ownerName: String?,
         outputLanguage: String?,
@@ -46,6 +48,7 @@ public struct CompanionGenerationRequest: Sendable {
         self.sourceTranscriptRevision = sourceTranscriptRevision
         self.workflow = workflow
         self.candidate = candidate
+        self.questionSegmentIDs = questionSegmentIDs
         self.recentTranscript = recentTranscript
         self.ownerName = ownerName
         self.outputLanguage = outputLanguage
@@ -61,8 +64,37 @@ public enum CompanionGenerationResult: Sendable {
     case terminal(GenerationRun)
 }
 
+/// Pure bridge from one Companion generation request and the model's exact
+/// passage citations to durable role-typed transcript evidence.
+public enum CompanionEvidenceFactory {
+    public static func make(
+        cardID: UUID,
+        request: CompanionGenerationRequest,
+        answerEvidenceIndexes: [Int]
+    ) -> CompanionCardEvidence? {
+        let questions = unique(request.questionSegmentIDs)
+        guard !questions.isEmpty else { return nil }
+        let answers = unique(answerEvidenceIndexes.compactMap { index in
+            guard request.recentTranscript.indices.contains(index) else { return nil }
+            let passage = request.recentTranscript[index]
+            guard passage.meetingID == request.meetingID else { return nil }
+            return passage.segmentID
+        })
+        return CompanionCardEvidence(
+            cardID: cardID,
+            sourceTranscriptRevision: request.sourceTranscriptRevision,
+            questionSegmentIDs: questions,
+            answerSegmentIDs: answers)
+    }
+
+    private static func unique(_ ids: [UUID]) -> [UUID] {
+        var seen: Set<UUID> = []
+        return ids.filter { seen.insert($0).inserted }
+    }
+}
+
 public enum CompanionGenerationOperationFingerprint {
-    private static let version = "companion-generation-v1"
+    private static let version = "companion-generation-v2"
 
     public static func compute(
         request: CompanionGenerationRequest,
@@ -84,9 +116,12 @@ public enum CompanionGenerationOperationFingerprint {
             optional("external-destination", externalProvider?.destinationIdentity),
             optional("external-provider", externalProvider?.providerID),
             optional("external-model", externalProvider?.modelID),
+            String(request.questionSegmentIDs.count)
+        ] + request.questionSegmentIDs.map(\.uuidString) + [
             String(request.recentTranscript.count)
         ] + request.recentTranscript.flatMap { passage in
             [
+                optional("segment", passage.segmentID?.uuidString),
                 passage.meetingID.rawValue.uuidString,
                 passage.meetingTitle,
                 String(passage.timestamp.bitPattern, radix: 16),
@@ -272,12 +307,19 @@ public struct ProvenanceCompanion: Sendable {
                         consentSource: egressConsentSource)
                 })
             guard let card = result.card else { return .noArtifact }
+            let evidence = CompanionEvidenceFactory.make(
+                cardID: card.id,
+                request: request,
+                answerEvidenceIndexes: result.answerEvidenceIndexes)
+            let evidencedCard = card.withEvidence(evidence)
             let run = attempt.finish(
                 outcome: .succeeded,
                 trace: result.trace,
-                card: card,
+                card: evidencedCard,
                 at: now())
-            return .artifact(CompanionGenerationArtifact(card: card, generationRun: run))
+            return .artifact(CompanionGenerationArtifact(
+                card: evidencedCard,
+                generationRun: run))
         } catch let failure as CompanionProcessFailure {
             return .terminal(attempt.finish(
                 outcome: failure.cancelled ? .cancelled : .failed,
@@ -292,5 +334,6 @@ public struct ProvenanceCompanion: Sendable {
                 at: now()))
         }
     }
+
 }
 #endif

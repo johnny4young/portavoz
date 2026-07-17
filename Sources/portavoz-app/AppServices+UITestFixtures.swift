@@ -23,6 +23,8 @@ extension AppServices {
         let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
         try? await store.save([me, ana])
         let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
+        let companionQuestionID = UUID(
+            uuidString: "B5F00000-0000-4000-8000-000000000001")!
         let seedSegments = [
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
@@ -33,6 +35,11 @@ extension AppServices {
                 meetingID: meeting.id, speakerID: ana.id, channel: .system,
                 text: "El rollout del modelo queda para el viernes.",
                 startTime: 3, endTime: 6, isFinal: true),
+            TranscriptSegment(
+                id: companionQuestionID,
+                meetingID: meeting.id, speakerID: ana.id, channel: .system,
+                text: "¿Cuándo es el rollout?",
+                startTime: 6, endTime: 8, isFinal: true),
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
                 text: "Cerremos con los próximos pasos del rollout.",
@@ -46,19 +53,36 @@ extension AppServices {
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
-        try? await store.save([
-            CompanionCard(
-                question: "¿Cuándo es el rollout?", answer: "El rollout queda para el viernes.",
-                kind: .context, source: "on-device", askedAt: 6),
-            CompanionCard(
-                question: "Ana, ¿te encargas del presupuesto?", answer: "",
-                kind: .context, source: "on-device", directed: true, askedAt: 200)
-        ], for: meeting.id)
+        await seedCompanionCards(
+            meetingID: meeting.id,
+            questionSegmentID: companionQuestionID,
+            answerSegmentID: citedSegmentID)
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSpotlightReindex()
+    }
+
+    private func seedCompanionCards(
+        meetingID: MeetingID,
+        questionSegmentID: UUID,
+        answerSegmentID: UUID
+    ) async {
+        let cardID = UUID(uuidString: "B5F00000-0000-4000-8000-000000000002")!
+        try? await store.save([
+            CompanionCard(
+                id: cardID,
+                question: "¿Cuándo es el rollout?", answer: "El rollout queda para el viernes.",
+                kind: .context, source: "on-device", askedAt: 6,
+                evidence: CompanionCardEvidence(
+                    cardID: cardID,
+                    questionSegmentIDs: [questionSegmentID],
+                    answerSegmentIDs: [answerSegmentID])),
+            CompanionCard(
+                question: "Ana, ¿te encargas del presupuesto?", answer: "",
+                kind: .context, source: "on-device", directed: true, askedAt: 200)
+        ], for: meetingID)
     }
 
     private func seedSummaryIfRequested(

@@ -68,13 +68,14 @@ extension MeetingStore {
         }
         let meetingID = snapshot.meeting.id
         let speakerIDs = Set(snapshot.speakers.map(\.id))
+        let segmentIDs = Set(snapshot.segments.map(\.id))
         guard speakerIDs.count == snapshot.speakers.count,
             snapshot.speakers.allSatisfy({ $0.meetingID == meetingID })
         else {
             throw StorageError.invalidImportedMeeting(
                 "speaker IDs must be unique and belong to the imported meeting")
         }
-        guard Set(snapshot.segments.map(\.id)).count == snapshot.segments.count,
+        guard segmentIDs.count == snapshot.segments.count,
             snapshot.segments.allSatisfy({ segment in
                 segment.meetingID == meetingID
                     && segment.speakerID.map(speakerIDs.contains) ?? true
@@ -87,16 +88,47 @@ extension MeetingStore {
             snapshot.summary,
             meetingID: meetingID,
             cast: speakerIDs,
-            segments: Set(snapshot.segments.map(\.id)))
+            segments: segmentIDs)
         guard Set(snapshot.contextItems.map(\.id)).count == snapshot.contextItems.count,
             snapshot.contextItems.allSatisfy({ $0.meetingID == meetingID })
         else {
             throw StorageError.invalidImportedMeeting(
                 "notes must be unique and belong to the imported meeting")
         }
-        guard Set(snapshot.companionCards.map(\.id)).count == snapshot.companionCards.count else {
-            throw StorageError.invalidImportedMeeting("Companion card IDs must be unique")
+        let validCompanionEvidence = snapshot.companionCards.allSatisfy {
+            validImportedCompanionEvidence(
+                $0,
+                transcriptRevision: snapshot.meeting.transcriptRevision,
+                segmentIDs: segmentIDs)
         }
+        guard Set(snapshot.companionCards.map(\.id)).count == snapshot.companionCards.count,
+              validCompanionEvidence
+        else {
+            throw StorageError.invalidImportedMeeting(
+                "Companion card IDs and evidence must belong to the imported aggregate")
+        }
+    }
+
+    private static func validImportedCompanionEvidence(
+        _ card: CompanionCard,
+        transcriptRevision: Int,
+        segmentIDs: Set<UUID>
+    ) -> Bool {
+        guard let evidence = card.evidence else { return true }
+        let questionsAreValid = !evidence.questionSegmentIDs.isEmpty
+            && Set(evidence.questionSegmentIDs).count == evidence.questionSegmentIDs.count
+        let answersAreValid = Set(evidence.answerSegmentIDs).count
+            == evidence.answerSegmentIDs.count
+        let revisionMatches = evidence.sourceTranscriptRevision == nil
+            || evidence.sourceTranscriptRevision == transcriptRevision
+        let allIDs = evidence.questionSegmentIDs + evidence.answerSegmentIDs
+        return evidence.cardID == card.id
+            && evidence.unavailableQuestionCount == 0
+            && evidence.unavailableAnswerCount == 0
+            && questionsAreValid
+            && answersAreValid
+            && revisionMatches
+            && allIDs.allSatisfy(segmentIDs.contains)
     }
 
     private static func validateImportedSummary(
@@ -176,6 +208,12 @@ extension MeetingStore {
                 createdAt: timestamp,
                 updatedAt: timestamp)
                 .insert(db)
+            try replaceCompanionCardEvidence(
+                card.evidence,
+                cardID: card.id,
+                meetingID: snapshot.meeting.id,
+                at: timestamp,
+                in: db)
         }
     }
 }

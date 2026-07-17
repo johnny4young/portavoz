@@ -1222,6 +1222,17 @@ final class ThinSummaryPolicyTests: XCTestCase {
 }
 
 final class CompanionAnswerTests: XCTestCase {
+    func testExtractsOnlyUniqueInRangePassageCitationsInFirstUseOrder() {
+        XCTAssertEqual(
+            CompanionAnswer.citedPassageIndexes(
+                "Sale el viernes [2], después de QA [1]. Confirmado [2] y no [9].",
+                passageCount: 3),
+            [1, 0])
+        XCTAssertTrue(CompanionAnswer.citedPassageIndexes(
+            "No citation here.",
+            passageCount: 3).isEmpty)
+    }
+
     func testKeepsARealAnswer() {
         XCTAssertEqual(
             CompanionAnswer.usable("The endpoint is the callback URL that Gian is posting."),

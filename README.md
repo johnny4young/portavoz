@@ -86,7 +86,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **⌘K — ask your week** — a Spotlight-style palette over any view: instant results as you type, a full on-device answer with citation chips that jump to the exact moment.
 
 **Fits your workflow**
-- **Companion while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
+- **Companion while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. In review, each saved card separates the exact question moment from the transcript passages cited by a context answer. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
 - **Dictate anywhere** — a global hotkey (⌥⌘D) transcribes straight into any app, tap-to-toggle or hold-to-talk.
 - **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
@@ -154,7 +154,7 @@ real vertical use case.
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite schema v12, FTS5 search, additive canonical people/aliases, typed source-revision-fenced overview, decision, and action-item evidence with separate reversible overview feedback, scoped Library/Insights/Meeting Detail observations, a one-read Spotlight projection, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
+| `StorageKit` | GRDB/SQLite schema v13, FTS5 search, additive canonical people/aliases, typed source-revision-fenced overview, decision, action-item, and role-separated Companion evidence with separate reversible overview feedback, scoped Library/Insights/Meeting Detail observations, a one-read Spotlight projection, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
 | `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked, receipt-before-transport outbound network adapter |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.

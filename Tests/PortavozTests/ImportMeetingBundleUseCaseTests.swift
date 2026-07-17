@@ -164,6 +164,9 @@ final class ImportMeetingBundleUseCaseTests: XCTestCase {
             "Ship the beta after legal approval.")
         XCTAssertEqual(notes.map(\.content), ["Keep rollout private"])
         XCTAssertEqual(cards.map(\.question), ["When do we ship?"])
+        XCTAssertEqual(cards.first?.evidence?.sourceTranscriptRevision, 0)
+        XCTAssertEqual(cards.first?.evidence?.questionSegmentIDs, [fixture.segment.id])
+        XCTAssertEqual(cards.first?.evidence?.answerSegmentIDs, [fixture.segment.id])
     }
 
     func testRealStoreRollsBackEveryRowWhenLastBundleChildFails() async throws {
@@ -171,10 +174,10 @@ final class ImportMeetingBundleUseCaseTests: XCTestCase {
         let store = try MeetingStore.inMemory()
         try await store.database.write { db in
             try db.execute(sql: """
-                CREATE TRIGGER reject_import_card
-                BEFORE INSERT ON companionCard
+                CREATE TRIGGER reject_import_companion_evidence_link
+                BEFORE INSERT ON companionCardEvidenceSegment
                 BEGIN
-                    SELECT RAISE(ABORT, 'injected final bundle child failure');
+                    SELECT RAISE(ABORT, 'injected final evidence-link failure');
                 END
                 """)
         }
@@ -221,6 +224,36 @@ final class ImportMeetingBundleUseCaseTests: XCTestCase {
                 guard case .invalidImportedMeeting = error else {
                     return XCTFail("unexpected storage error: \(error)")
                 }
+            }
+        }
+
+        let meetings = try await store.meetings(includeDeleted: true)
+        XCTAssertTrue(meetings.isEmpty)
+    }
+
+    func testRealStoreRejectsForeignCompanionEvidenceBeforeWriting() async throws {
+        let fixture = BundleImportFixture()
+        let store = try MeetingStore.inMemory()
+        let malformedCard = CompanionCard(
+            id: fixture.card.id,
+            question: fixture.card.question,
+            answer: fixture.card.answer,
+            kind: fixture.card.kind,
+            source: fixture.card.source,
+            directed: fixture.card.directed,
+            askedAt: fixture.card.askedAt,
+            evidence: CompanionCardEvidence(
+                cardID: fixture.card.id,
+                questionSegmentIDs: [UUID()]))
+
+        do {
+            try await store.saveImportedMeetingBundle(
+                fixture.snapshot(companionCards: [malformedCard]),
+                at: fixture.now)
+            XCTFail("foreign Companion evidence must reject the aggregate")
+        } catch let error as StorageError {
+            guard case .invalidImportedMeeting = error else {
+                return XCTFail("unexpected storage error: \(error)")
             }
         }
 
@@ -275,13 +308,19 @@ private struct BundleImportFixture: Sendable {
             kind: .note,
             content: "Keep rollout private",
             timestamp: 2)
+        let cardID = UUID(uuidString: "B2000000-0000-0000-0000-000000000007")!
         self.card = CompanionCard(
+            id: cardID,
             question: "When do we ship?",
             answer: "Friday",
             kind: .context,
             source: "on-device",
             directed: true,
-            askedAt: 3)
+            askedAt: 3,
+            evidence: CompanionCardEvidence(
+                cardID: cardID,
+                questionSegmentIDs: [self.segment.id],
+                answerSegmentIDs: [self.segment.id]))
     }
 
     func attachment(
@@ -309,7 +348,8 @@ private struct BundleImportFixture: Sendable {
 
     func snapshot(
         summary: SummaryDraft? = nil,
-        contextItems: [ContextItem]? = nil
+        contextItems: [ContextItem]? = nil,
+        companionCards: [CompanionCard]? = nil
     ) -> ImportedMeetingBundleSnapshot {
         var storedMeeting = meeting
         storedMeeting.audioDirectory = nil
@@ -319,7 +359,7 @@ private struct BundleImportFixture: Sendable {
             segments: [segment],
             summary: summary ?? self.summary,
             contextItems: contextItems ?? [note],
-            companionCards: [card])
+            companionCards: companionCards ?? [card])
     }
 
     func useCase(_ dependencies: BundleImportDependencies) -> ImportMeetingBundle {

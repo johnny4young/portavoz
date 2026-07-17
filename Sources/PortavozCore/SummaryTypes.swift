@@ -349,21 +349,26 @@ public struct SummaryActionItemEvidence: Codable, Sendable, Identifiable {
     }
 }
 
-public enum SummaryClaimEvidenceStatus: Sendable, Equatable {
+public enum TranscriptEvidenceStatus: Sendable, Equatable {
     case current
     case stale
     case unavailable
 }
 
-public struct SummaryClaimEvidenceResolution: Sendable {
-    public let status: SummaryClaimEvidenceStatus
+public struct TranscriptEvidenceResolution: Sendable {
+    public let status: TranscriptEvidenceStatus
     public let segments: [TranscriptSegment]
 
-    public init(status: SummaryClaimEvidenceStatus, segments: [TranscriptSegment] = []) {
+    public init(status: TranscriptEvidenceStatus, segments: [TranscriptSegment] = []) {
         self.status = status
         self.segments = segments
     }
 }
+
+/// Backward-compatible summary vocabulary for the shared transcript-evidence
+/// resolver. Companion cards use the neutral names directly.
+public typealias SummaryClaimEvidenceStatus = TranscriptEvidenceStatus
+public typealias SummaryClaimEvidenceResolution = TranscriptEvidenceResolution
 
 extension SummaryClaim {
     /// Resolves links against one coherent Meeting Detail read model. A stale
@@ -373,7 +378,7 @@ extension SummaryClaim {
         currentTranscriptRevision: Int,
         segments: [TranscriptSegment]
     ) -> SummaryClaimEvidenceResolution {
-        resolveSummaryEvidence(
+        resolveTranscriptEvidence(
             sourceTranscriptRevision: sourceTranscriptRevision,
             evidenceSegmentIDs: evidenceSegmentIDs,
             unavailableEvidenceCount: unavailableEvidenceCount,
@@ -387,7 +392,7 @@ extension SummaryDecisionEvidence {
         currentTranscriptRevision: Int,
         segments: [TranscriptSegment]
     ) -> SummaryClaimEvidenceResolution {
-        resolveSummaryEvidence(
+        resolveTranscriptEvidence(
             sourceTranscriptRevision: sourceTranscriptRevision,
             evidenceSegmentIDs: evidenceSegmentIDs,
             unavailableEvidenceCount: unavailableEvidenceCount,
@@ -401,7 +406,7 @@ extension SummaryActionItemEvidence {
         currentTranscriptRevision: Int,
         segments: [TranscriptSegment]
     ) -> SummaryClaimEvidenceResolution {
-        resolveSummaryEvidence(
+        resolveTranscriptEvidence(
             sourceTranscriptRevision: sourceTranscriptRevision,
             evidenceSegmentIDs: evidenceSegmentIDs,
             unavailableEvidenceCount: unavailableEvidenceCount,
@@ -410,28 +415,28 @@ extension SummaryActionItemEvidence {
     }
 }
 
-private func resolveSummaryEvidence(
+func resolveTranscriptEvidence(
     sourceTranscriptRevision: Int?,
     evidenceSegmentIDs: [UUID],
     unavailableEvidenceCount: Int,
     currentTranscriptRevision: Int,
     segments: [TranscriptSegment]
-) -> SummaryClaimEvidenceResolution {
+) -> TranscriptEvidenceResolution {
     guard let sourceTranscriptRevision else {
-        return SummaryClaimEvidenceResolution(status: .unavailable)
+        return TranscriptEvidenceResolution(status: .unavailable)
     }
     guard sourceTranscriptRevision == currentTranscriptRevision else {
-        return SummaryClaimEvidenceResolution(status: .stale)
+        return TranscriptEvidenceResolution(status: .stale)
     }
     guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
-        return SummaryClaimEvidenceResolution(status: .unavailable)
+        return TranscriptEvidenceResolution(status: .unavailable)
     }
     let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
     let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
     guard resolved.count == evidenceSegmentIDs.count else {
-        return SummaryClaimEvidenceResolution(status: .unavailable)
+        return TranscriptEvidenceResolution(status: .unavailable)
     }
-    return SummaryClaimEvidenceResolution(status: .current, segments: resolved)
+    return TranscriptEvidenceResolution(status: .current, segments: resolved)
 }
 
 public struct ActionItem: Codable, Sendable, Identifiable {

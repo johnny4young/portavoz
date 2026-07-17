@@ -452,6 +452,7 @@ final class RecordingController {
                 sourceTranscriptRevision: 0,
                 workflow: .liveRecording,
                 candidate: candidate,
+                questionSegmentIDs: [closed.id],
                 recentTranscript: passages,
                 ownerName: ownerName,
                 outputLanguage: language,
@@ -480,6 +481,7 @@ final class RecordingController {
     private func recentPassages() -> [RAGPassage] {
         captions.suffix(14).dropLast().map { row in
             RAGPassage(
+                segmentID: row.id,
                 meetingID: meetingID,
                 meetingTitle: "This meeting",
                 timestamp: row.startTime,

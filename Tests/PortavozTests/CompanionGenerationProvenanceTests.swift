@@ -8,6 +8,12 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
         rawValue: UUID(uuidString: "C3000000-0000-0000-0000-000000000001")!)
     private let runID = GenerationRunID(
         rawValue: UUID(uuidString: "C3000000-0000-0000-0000-000000000002")!)
+    private let questionSegmentID = UUID(
+        uuidString: "C3000000-0000-0000-0000-000000000003")!
+    private let firstPassageID = UUID(
+        uuidString: "C3000000-0000-0000-0000-000000000004")!
+    private let secondPassageID = UUID(
+        uuidString: "C3000000-0000-0000-0000-000000000005")!
     private let startedAt = Date(timeIntervalSince1970: 1_783_700_000)
 
     func testFingerprintBindsOrderedPrivateMaterialAndProviderConfiguration() throws {
@@ -26,6 +32,9 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             request: request(passages: Array(first.recentTranscript.reversed())),
             externalProvider: externalProvider))
         XCTAssertNotEqual(base, CompanionGenerationOperationFingerprint.compute(
+            request: request(questionSegmentIDs: []),
+            externalProvider: externalProvider))
+        XCTAssertNotEqual(base, CompanionGenerationOperationFingerprint.compute(
             request: first,
             externalProvider: nil))
         XCTAssertNotEqual(base, CompanionGenerationOperationFingerprint.compute(
@@ -34,6 +43,23 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
                 providerID: externalProvider.providerID,
                 modelID: externalProvider.modelID,
                 destinationIdentity: "https://api.example.com/another-base")))
+    }
+
+    func testEvidenceFactorySeparatesQuestionFromCitedAnswerSources() throws {
+        let cardID = UUID(uuidString: "C3000000-0000-0000-0000-000000000006")!
+        let evidence = try XCTUnwrap(CompanionEvidenceFactory.make(
+            cardID: cardID,
+            request: request(),
+            answerEvidenceIndexes: [1, 0, 1, 99]))
+
+        XCTAssertEqual(evidence.cardID, cardID)
+        XCTAssertEqual(evidence.sourceTranscriptRevision, 5)
+        XCTAssertEqual(evidence.questionSegmentIDs, [questionSegmentID])
+        XCTAssertEqual(evidence.answerSegmentIDs, [secondPassageID, firstPassageID])
+        XCTAssertNil(CompanionEvidenceFactory.make(
+            cardID: cardID,
+            request: request(questionSegmentIDs: []),
+            answerEvidenceIndexes: [0]))
     }
 
     func testAttemptRecordsContentFreeProviderEgressAndAggregateMetrics() throws {
@@ -149,8 +175,11 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
 
     private func request(
         candidate: String = "Johnny, ¿cuándo se aprueba?",
+        questionSegmentIDs: [UUID]? = nil,
         passages: [RAGPassage] = [
             RAGPassage(
+                segmentID: UUID(
+                    uuidString: "C3000000-0000-0000-0000-000000000004")!,
                 meetingID: MeetingID(
                     rawValue: UUID(
                         uuidString: "C3000000-0000-0000-0000-000000000001")!),
@@ -158,6 +187,8 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
                 timestamp: 5,
                 text: "Them: El viernes."),
             RAGPassage(
+                segmentID: UUID(
+                    uuidString: "C3000000-0000-0000-0000-000000000005")!,
                 meetingID: MeetingID(
                     rawValue: UUID(
                         uuidString: "C3000000-0000-0000-0000-000000000001")!),
@@ -171,6 +202,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             sourceTranscriptRevision: 5,
             workflow: .postRefine,
             candidate: candidate,
+            questionSegmentIDs: questionSegmentIDs ?? [questionSegmentID],
             recentTranscript: passages,
             ownerName: "Johnny",
             outputLanguage: "es",

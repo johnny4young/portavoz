@@ -65,12 +65,7 @@ extension MeetingStore {
                 .order(Column("timestamp"))
                 .fetchAll(db)
                 .map { try $0.item }) ?? []
-            let companionCards = (try? CompanionCardRecord
-                .filter(Column("meetingID") == key)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("askedAt"))
-                .fetchAll(db)
-                .map { try $0.card }) ?? []
+            let companionCards = (try? Self.companionCards(meetingID: id, in: db)) ?? []
 
             return MeetingExportSnapshot(
                 meeting: try meeting.meeting,

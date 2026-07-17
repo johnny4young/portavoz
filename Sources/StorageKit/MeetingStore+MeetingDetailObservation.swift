@@ -48,7 +48,10 @@ extension MeetingStore {
         _ id: MeetingID
     ) -> AsyncThrowingStream<[CompanionCard], Error> {
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Table("companionCard")],
+            regions: [
+                Table("meeting"), Table("companionCard"),
+                Table("companionCardEvidence"), Table("companionCardEvidenceSegment")
+            ],
             fetch: { database in
                 try Self.fetchMeetingReviewCompanionCards(id, in: database)
             })
@@ -133,12 +136,7 @@ extension MeetingStore {
         in database: Database
     ) throws -> [CompanionCard] {
         guard try liveMeetingExists(id, in: database) else { return [] }
-        return try CompanionCardRecord
-            .filter(Column("meetingID") == id.rawValue.uuidString)
-            .filter(Column("deletedAt") == nil)
-            .order(Column("askedAt"))
-            .fetchAll(database)
-            .map { try $0.card }
+        return try companionCards(meetingID: id, in: database)
     }
 
     private static func liveMeetingExists(

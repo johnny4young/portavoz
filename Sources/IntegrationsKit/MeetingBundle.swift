@@ -154,13 +154,41 @@ public struct MeetingBundle: Codable, Sendable {
                 content: item.content,
                 timestamp: item.timestamp)
         }
-        copy.companionCards = companionCards?.map { card in
-            CompanionCard(
-                id: UUID(), question: card.question, answer: card.answer,
-                kind: card.kind, source: card.source, directed: card.directed,
-                askedAt: card.askedAt)
+        copy.companionCards = companionCards?.map {
+            remappedCompanionCard($0, segmentMap: segmentMap)
         }
         return copy
+    }
+
+    private func remappedCompanionCard(
+        _ card: CompanionCard,
+        segmentMap: [UUID: UUID]
+    ) -> CompanionCard {
+        let cardID = UUID()
+        let evidence = card.evidence.flatMap { source -> CompanionCardEvidence? in
+            let questions = source.questionSegmentIDs.compactMap { segmentMap[$0] }
+            let answers = source.answerSegmentIDs.compactMap { segmentMap[$0] }
+            guard source.cardID == card.id,
+                  source.unavailableQuestionCount == 0,
+                  source.unavailableAnswerCount == 0,
+                  questions.count == source.questionSegmentIDs.count,
+                  answers.count == source.answerSegmentIDs.count
+            else { return nil }
+            return CompanionCardEvidence(
+                cardID: cardID,
+                sourceTranscriptRevision: nil,
+                questionSegmentIDs: questions,
+                answerSegmentIDs: answers)
+        }
+        return CompanionCard(
+            id: cardID,
+            question: card.question,
+            answer: card.answer,
+            kind: card.kind,
+            source: card.source,
+            directed: card.directed,
+            askedAt: card.askedAt,
+            evidence: evidence)
     }
 
     private func remappedSummary(
