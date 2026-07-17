@@ -6,12 +6,16 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** begin architecture Band 5 slice 5A with a
-characterized canonical-person and alias boundary. Inventory every current
-speaker/name/voiceprint/calendar identity path, define confirmation-safe merge
-semantics and additive storage compatibility, then implement the smallest
-vertical that lets a user link an observed speaker to one person without any
-automatic merge or biometric sync. Band 4G closes the prior Spotlight gate:
+**Next concrete step:** begin architecture Band 5 slice 5B with the smallest
+typed evidence-link vertical for generated claims. Start with one durable
+summary claim shape, define source-revision and stale-evidence semantics, link
+it to supporting transcript segments without a generic EAV artifact table,
+and add transcript/audio navigation before extending the pattern to decisions,
+action items, or Companion cards. Band 5A now provides the prerequisite human
+memory boundary: schema v8 stores canonical people and duplicate-safe aliases,
+while only an explicit Meeting Detail action may create or link a non-user
+speaker. Exact aliases are candidates, not automatic merges; bundles strip the
+device-local link and Refine requires fresh confirmation (D86). Band 4G closes the prior Spotlight gate:
 the exact 100,000-meeting projection falls from 22,085.35 ms to 425.64 ms wall
 p95, while a process-scoped actor now reconciles a named file-protected index
 with bounded batches, client state, retries, and launch repair. D85 therefore
@@ -33,7 +37,18 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86).
+
+- **Architecture Band 5 slice 5A complete — people are remembered only after
+  confirmation (Jul 17, 2026)**: additive schema v8 introduces canonical
+  people, normalized aliases, and nullable observed-speaker links. Name,
+  calendar, and encrypted voice evidence remain suggestions; after accepting a
+  non-user name, a separate Remember action either creates one person or opens
+  an exact-alias chooser that preserves duplicate names. Create/link is atomic,
+  `Me` cannot be linked, exported bundles strip person IDs, and fresh Refine
+  speakers never inherit identity automatically. Core/Storage/Application/UI,
+  migration, ambiguity, rollback, privacy, localization, and EN/ES UI coverage
+  protect D86.
 
 - **Architecture Band 4 slice 4G complete — private Spotlight search heals
   itself and scales (Jul 17, 2026)**: StorageKit now projects every live

@@ -194,6 +194,7 @@ struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
     var label: String
     var displayName: String?
     var isMe: Bool
+    var personID: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -204,6 +205,7 @@ struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
         self.label = speaker.label
         self.displayName = speaker.displayName
         self.isMe = speaker.isMe
+        self.personID = speaker.personID?.rawValue.uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = nil
@@ -218,8 +220,81 @@ struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
                     meetingID, table: Self.databaseTableName, column: "meetingID")),
                 label: label,
                 displayName: displayName,
-                isMe: isMe
+                isMe: isMe,
+                personID: try PersistedIdentity.optional(
+                    personID, table: Self.databaseTableName, column: "personID"
+                ).map { PersonID(rawValue: $0) }
             )
+        }
+    }
+}
+
+struct PersonRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "person"
+
+    var id: String
+    var preferredName: String
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    init(_ person: Person, createdAt: Date, updatedAt: Date, deletedAt: Date? = nil) {
+        id = person.id.rawValue.uuidString
+        preferredName = person.preferredName
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
+
+    var person: Person {
+        get throws {
+            Person(
+                id: PersonID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                preferredName: preferredName)
+        }
+    }
+}
+
+struct PersonAliasRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "personAlias"
+
+    var id: String
+    var personID: String
+    var normalizedAlias: String
+    var source: String
+    var confidence: Double
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    init(_ alias: PersonAlias, createdAt: Date, updatedAt: Date, deletedAt: Date? = nil) {
+        id = alias.id.uuidString
+        personID = alias.personID.rawValue.uuidString
+        normalizedAlias = alias.normalizedAlias
+        source = alias.source.rawValue
+        confidence = alias.confidence
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
+
+    var alias: PersonAlias {
+        get throws {
+            guard let source = PersonAliasSource(rawValue: source) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "source",
+                    value: self.source)
+            }
+            return PersonAlias(
+                id: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id"),
+                personID: PersonID(rawValue: try PersistedIdentity.required(
+                    personID, table: Self.databaseTableName, column: "personID")),
+                normalizedAlias: normalizedAlias,
+                source: source,
+                confidence: confidence)
         }
     }
 }

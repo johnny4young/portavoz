@@ -3381,6 +3381,86 @@
         }
       }
     },
+    "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una persona existente o conserva esta como una persona distinta. Portavoz nunca combina personas automáticamente."
+          }
+        }
+      }
+    },
+    "Could not look up remembered people.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron consultar las personas recordadas."
+          }
+        }
+      }
+    },
+    "Could not remember this person.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo recordar esta persona."
+          }
+        }
+      }
+    },
+    "Create a separate person": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear una persona distinta"
+          }
+        }
+      }
+    },
+    "Dismiss person offer": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar sugerencia de persona"
+          }
+        }
+      }
+    },
+    "Linked to a remembered person": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vinculado a una persona recordada"
+          }
+        }
+      }
+    },
+    "Links this meeting speaker to local, user-confirmed person memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincula esta voz de la reunión con una persona local confirmada por ti."
+          }
+        }
+      }
+    },
+    "Meeting-only name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre solo para esta reunión"
+          }
+        }
+      }
+    },
     "Remember": {
       "localizations": {
         "es": {
@@ -3391,12 +3471,52 @@
         }
       }
     },
+    "Remember %@ as a person?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Recordar a %@ como persona?"
+          }
+        }
+      }
+    },
     "Remember %@’s voice?": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "¿Recordar la voz de %@?"
+          }
+        }
+      }
+    },
+    "Use %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar %@"
+          }
+        }
+      }
+    },
+    "Use %@ (person %d)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar %@ (persona %d)"
+          }
+        }
+      }
+    },
+    "Who is %@?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quién es %@?"
           }
         }
       }

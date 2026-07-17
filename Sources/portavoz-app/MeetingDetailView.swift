@@ -20,6 +20,11 @@ import UniformTypeIdentifiers
 // paying for line-count only.
 // swiftlint:disable file_length
 
+private struct PersonRememberOffer {
+    let speaker: Speaker
+    let source: PersonAliasSource
+}
+
 /// Transcript with editable speaker pills (the M3 leftover), the latest
 /// summary snapshot, and its checkable action items.
 struct MeetingDetailView: View {
@@ -94,6 +99,12 @@ struct MeetingDetailView: View {
     /// remembering that speaker's voice for future meetings.
     @State private var rememberOffer: Speaker?
     @State private var rememberingVoice = false
+    /// Canonical people are a separate explicit-consent path from encrypted
+    /// voice memory. Alias matches only open a chooser; they never auto-link.
+    @State private var personOffer: PersonRememberOffer?
+    @State private var personCandidates: [Person] = []
+    @State private var choosingPerson: PersonRememberOffer?
+    @State private var findingPerson = false
 
     init(
         services: AppServices,
@@ -130,6 +141,10 @@ struct MeetingDetailView: View {
     /// live in the extracted subviews and computed bindings below so this
     /// stays a flat composition.
     private func loaded(_ detail: MeetingReviewReadModel) -> some View {
+        loadedAlertsAndEditors(detail)
+    }
+
+    private func loadedSheetsAndDialogs(_ detail: MeetingReviewReadModel) -> some View {
         loadedBody(detail).onAppear { model.firstContentDidAppear() }
             // No `.navigationTitle`: the meeting title already lives in the
             // header below, and showing it in the window bar too read as a
@@ -153,6 +168,24 @@ struct MeetingDetailView: View {
             ) {
                 gistConfirmButtons(detail)
             }
+            .confirmationDialog(
+                Text(L10n.format(
+                    "Who is %@?",
+                    choosingPerson?.speaker.displayName ?? "")),
+                isPresented: personChoiceBinding,
+                titleVisibility: .visible
+            ) {
+                personChoiceButtons
+            } message: {
+                Text(L10n.text(
+                    // One-line UI explanation.
+                    // swiftlint:disable:next line_length
+                    "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically."))
+            }
+    }
+
+    private func loadedAlertsAndEditors(_ detail: MeetingReviewReadModel) -> some View {
+        loadedSheetsAndDialogs(detail)
             .alert("Gist published", isPresented: gistResultBinding) {
                 gistPublishedButtons
             } message: {
@@ -703,6 +736,7 @@ extension MeetingDetailView {
     @ViewBuilder
     private var renameSpeakerButtons: some View {
         TextField("Name", text: $newName)
+            .accessibilityIdentifier("speaker-name-field")
         Button("Save") {
             // Capture NOW: dismissing the alert nils renamingSpeaker
             // before the task runs, which silently dropped the rename.
@@ -711,6 +745,7 @@ extension MeetingDetailView {
                 Task { await rename(speaker, to: name) }
             }
         }
+        .accessibilityIdentifier("speaker-rename-save")
         Button("Cancel", role: .cancel) {}
     }
 
@@ -747,6 +782,47 @@ extension MeetingDetailView {
             get: { renamingSpeaker != nil },
             set: { if !$0 { renamingSpeaker = nil } }
         )
+    }
+
+    private var personChoiceBinding: Binding<Bool> {
+        Binding(
+            get: { choosingPerson != nil && !personCandidates.isEmpty },
+            set: { presented in
+                if !presented {
+                    choosingPerson = nil
+                    personCandidates = []
+                }
+            })
+    }
+
+    @ViewBuilder
+    private var personChoiceButtons: some View {
+        if let offer = choosingPerson {
+            ForEach(Array(personCandidates.enumerated()), id: \.element.id) { index, person in
+                Button(personCandidateLabel(person, index: index)) {
+                    Task {
+                        await linkPerson(offer, selection: .existing(person.id))
+                    }
+                }
+                .accessibilityIdentifier("person-link-existing-\(index)")
+            }
+            Button(L10n.text("Create a separate person")) {
+                Task { await linkPerson(offer, selection: .createDistinct) }
+            }
+            .accessibilityIdentifier("person-create-distinct")
+        }
+        Button(L10n.text("Cancel"), role: .cancel) {}
+            .accessibilityIdentifier("person-link-cancel")
+    }
+
+    private func personCandidateLabel(_ person: Person, index: Int) -> String {
+        if personCandidates.count == 1 {
+            return L10n.format("Use %@", person.preferredName)
+        }
+        return L10n.format(
+            "Use %@ (person %d)",
+            person.preferredName,
+            index + 1)
     }
 }
 
@@ -869,7 +945,11 @@ extension MeetingDetailView {
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
         HStack(spacing: 8) {
             ForEach(detail.speakers) { speaker in
-                SpeakerPill(speaker: speaker, cast: detail.speakers) { speaker in
+                SpeakerPill(
+                    speaker: speaker,
+                    cast: detail.speakers,
+                    accessibilityIdentifier: "cast-speaker-\(speaker.label)"
+                ) { speaker in
                     renamingSpeaker = speaker
                     newName = speaker.displayName ?? ""
                 }
@@ -909,7 +989,50 @@ extension MeetingDetailView {
                 .help(L10n.format(
                     "Voice match: sounds like “%@” from your remembered voices.", match.name))
             }
+            personOfferChip
             rememberOfferChip
+        }
+    }
+
+    /// The explicit canonical-person boundary (D86). One press creates a
+    /// distinct person only when there are no exact alias candidates; any
+    /// candidate requires a second, visible choice.
+    @ViewBuilder
+    private var personOfferChip: some View {
+        if let offer = personOffer, let name = offer.speaker.displayName {
+            if findingPerson {
+                ProgressView().controlSize(.small)
+            } else {
+                HStack(spacing: 6) {
+                    Label(
+                        L10n.format("Remember %@ as a person?", name),
+                        systemImage: "person.crop.circle.badge.plus")
+                    .font(.caption)
+                    .foregroundStyle(PVDesign.chipOfferInk)
+                    Button(L10n.text("Remember")) {
+                        Task { await findOrCreatePerson(for: offer) }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("person-remember-offer")
+                    Button {
+                        personOffer = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                            .foregroundStyle(PVDesign.chipOfferInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.text("Dismiss person offer"))
+                    .accessibilityIdentifier("person-dismiss-offer")
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(PVDesign.chipOfferBg, in: Capsule())
+                .help(L10n.text(
+                    "Links this meeting speaker to local, user-confirmed person memory."))
+            }
         }
     }
 
@@ -986,7 +1109,8 @@ extension MeetingDetailView {
             .acceptNameSuggestion(speaker, name: suggestion.name))
         nameSuggestions.removeAll { $0.label == suggestion.label }
         if case .nameSuggestionAccepted(let renamed) = effect {
-            offerToRemember(renamed)
+            offerToRememberPerson(renamed, source: .transcriptSuggestion)
+            await offerToRememberVoice(renamed)
         }
     }
 
@@ -996,20 +1120,64 @@ extension MeetingDetailView {
         guard let speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
             return
         }
-        _ = await model.send(
+        let effect = await model.send(
             .acceptVoiceSuggestion(speaker, name: match.name))
         voiceSuggestions.removeAll { $0.voiceLabel == match.voiceLabel }
+        if case .voiceSuggestionAccepted(let renamed) = effect {
+            offerToRememberPerson(renamed, source: .voiceSuggestion)
+        }
+    }
+
+    private func offerToRememberPerson(_ speaker: Speaker, source: PersonAliasSource) {
+        guard !speaker.isMe,
+              speaker.personID == nil,
+              let name = speaker.displayName,
+              !name.isEmpty
+        else {
+            personOffer = nil
+            return
+        }
+        personOffer = PersonRememberOffer(speaker: speaker, source: source)
+    }
+
+    private func findOrCreatePerson(for offer: PersonRememberOffer) async {
+        findingPerson = true
+        defer { findingPerson = false }
+        let effect = await model.send(
+            .findCanonicalPeople(offer.speaker, source: offer.source))
+        guard case .canonicalPeopleFound(_, _, let people) = effect else { return }
+        if people.isEmpty {
+            await linkPerson(offer, selection: .createDistinct)
+        } else {
+            personCandidates = people
+            choosingPerson = offer
+        }
+    }
+
+    private func linkPerson(
+        _ offer: PersonRememberOffer,
+        selection: CanonicalPersonSelection
+    ) async {
+        let effect = await model.send(
+            .linkCanonicalPerson(
+                offer.speaker,
+                source: offer.source,
+                selection: selection))
+        guard case .canonicalPersonLinked = effect else { return }
+        personOffer = nil
+        choosingPerson = nil
+        personCandidates = []
     }
 
     /// Offers the remember-this-voice chip after a name was confirmed by a
     /// user gesture. Skipped for "Me" (that's the enrollment in Settings)
     /// and for names already in the gallery (their voice is remembered).
-    private func offerToRemember(_ speaker: Speaker) {
+    private func offerToRememberVoice(_ speaker: Speaker) async {
         guard !speaker.isMe, let name = speaker.displayName, !name.isEmpty else {
             rememberOffer = nil
             return
         }
-        let remembered = (try? VoiceGallery().voices()) ?? []
+        let remembered = await loadRememberedVoices()
         guard !remembered.contains(where: {
             $0.name.compare(name, options: .caseInsensitive) == .orderedSame
         }) else {
@@ -1048,13 +1216,24 @@ extension MeetingDetailView {
         guard !voiceMatchedOnce, let detail else { return }
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
         guard !unnamed.isEmpty else { return }
-        guard let gallery = try? VoiceGallery().voices(), !gallery.isEmpty else { return }
+        let gallery = await loadRememberedVoices()
+        guard !gallery.isEmpty else { return }
         voiceMatchedOnce = true
         let prints = await extractVoiceprints(detail, speakers: unnamed)
         guard !prints.isEmpty else { return }
         voiceSuggestions = VoiceMatcher.matches(
             speakers: prints.map { ($0.key, $0.value.embedding) },
             gallery: gallery)
+    }
+
+    /// Keychain access may wait for securityd or user interaction. Keep it
+    /// off MainActor, and never let disposable UI fixtures inspect the real
+    /// user's encrypted gallery.
+    private func loadRememberedVoices() async -> [RememberedVoice] {
+        guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return [] }
+        return await Task.detached(priority: .utility) {
+            (try? VoiceGallery().voices()) ?? []
+        }.value
     }
 
     /// One embedding per requested speaker from their system-channel spans.
@@ -1535,7 +1714,8 @@ extension MeetingDetailView {
         let effect = await model.send(.renameSpeaker(speaker, name: name))
         if case .speakerRenamed(let renamed) = effect {
             renamingSpeaker = nil
-            offerToRemember(renamed)
+            offerToRememberPerson(renamed, source: .manualName)
+            await offerToRememberVoice(renamed)
         }
     }
 

@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -43,6 +43,12 @@ transaction. Inline best-effort diarization does not yet receive a separate
 run/artifact link; D65 records the coherent transcript operation without
 misrepresenting diarizer failure as transcript failure.
 
+Accepted Refine speakers are fresh meeting observations with fresh IDs. Even
+if a prior speaker had a D86 canonical-person link, Refine does not copy it by
+label, display name, alias, or voice suggestion. The person remains stored,
+but the new observed speaker requires a fresh explicit confirmation; this
+prevents unstable diarization labels from becoming cross-meeting identity.
+
 ## LIVE diarization — `LiveSpeakerLabeler` (Jul 2026)
 
 Field request: two remote voices speaking one after the other were merged into a single live "Ellos" row — it was not apparent that they were two people. Pipeline:
@@ -69,7 +75,7 @@ batch identity cannot accidentally sample different enrollment state (D49).
 
 Field request: remember a participant's voice across meetings to autosuggest their name. STRICTER rules than for the user's own voiceprint (storing third-party biometrics is more sensitive, D8):
 
-- **`VoiceGallery`** (`voice-gallery.enc`, same pattern as VoiceprintStore: AES-GCM, key only in Keychain service `app.portavoz.voice-gallery-key`, never sync). A voice is added ONLY through an explicit gesture: the "Remember X's voice?" chip that appears after confirming a name (manual rename or applied chip). Rerecording someone REPLACES their embedding (one per person, case-insensitive). Individually removable (context menu in Ajustes → "Remembered voices"), and "Forget all voices" destroys the file + key in one action.
+- **`VoiceGallery`** (`voice-gallery.enc`, same pattern as VoiceprintStore: AES-GCM, key only in Keychain service `app.portavoz.voice-gallery-key`, never sync). A voice is added ONLY through an explicit gesture: the "Remember X's voice?" chip that appears after confirming a name (manual rename or applied chip). Rerecording someone REPLACES their embedding (one per person, case-insensitive). Individually removable (context menu in Ajustes → "Remembered voices"), and "Forget all voices" destroys the file + key in one action. Meeting Detail performs gallery/Keychain reads on a utility executor so securityd cannot block MainActor; `-use-temp-store` returns an empty gallery and never inspects the host biometric file or key.
 - **`PyannoteDiarizer.extractVoiceprints(fromFile:rangesBySpeaker:minimumSeconds:maximumSeconds:)`**: one embedding per speaker from their system-channel spans — resamples the file ONCE, slices by ranges (longest first up to 20 s; < 5 s is discarded: a short embedding would match noise). Embeddings are transient: NOTHING is persisted here.
 - **`VoiceMatcher`** (pure, 5 tests): its own cosine distance (outside FluidAudio — internal clustering does not work cross-meeting), threshold `maxCosineDistance = 0.54` (the same effective yardstick as D17 clustering; pending field calibration). Each speaker receives at most their closest voice, and each gallery voice is suggested for at most one speaker (two speakers cannot both be "Marta"). Degenerate embeddings (norm 0, different dimensions) never match.
 - **UI (MeetingDetailView)**: when opening a detail with unnamed speakers + a nonempty gallery, an EPHEMERAL diarizer (~14 MB; heavy engines are NOT loaded) extracts and matches once per visit → "S1 → ¿Marta?" chips with a waveform icon (the evidence is the voice, not the transcript — therefore it does NOT pass through `NameSuggestionFilter`). Same D21 contract: chip, click, never applied automatically.
@@ -80,6 +86,27 @@ Field request: remember a participant's voice across meetings to autosuggest the
 - **Never-trust-verify** (`NameSuggestionFilter`, pure and tested): the proposed name must appear LITERALLY in the full transcript OR among the calendar attendees (the model fabricates names with fabricated evidence — observed: "John" from nowhere).
 - `CalendarAttendeeSource` (IntegrationsKit): attendees of EventKit events around the meeting as candidates (requests calendar TCC).
 - UI: "S1 → ¿Ana?" chips with evidence in a tooltip; one click applies; nothing is applied automatically.
+
+## Canonical people (Band 5A / D86)
+
+- `Speaker` remains one meeting observation. Its optional `personID` links to
+  one user-confirmed `Person`; labels, accepted display names, calendar
+  attendees, and voice matches are never identity by themselves.
+- After a user manually renames a non-user speaker or accepts a transcript,
+  calendar, or voice suggestion, Meeting Detail shows a separate explicit
+  Remember action. The evidence source is retained as alias provenance but
+  cannot invoke persistence automatically.
+- Exact normalized aliases are candidate lookup only. No candidate lets the
+  explicit action create a person; one or more candidates open a chooser that
+  also offers “Create a separate person.” Duplicate human names therefore stay
+  representable rather than being silently merged.
+- `Me` remains structural hardware/voiceprint identity and is excluded from
+  this first other-participant person vertical. `VoiceGallery` remains an
+  independent encrypted file with its existing explicit consent, deletion,
+  and no-sync behavior; schema v8 does not bind it to `Person`.
+- A confirmed speaker pill shows a local checkmark. `.portavoz` bundles keep
+  the meeting-local display name but strip `personID`, so the receiving device
+  does not inherit private identity claims.
 
 ## Evaluation — `DiarizationEvaluation` + `portavoz-cli der`
 

@@ -11,13 +11,30 @@ struct SpeakerPill: View {
     /// The meeting's cast — hue assignment for unnamed speakers follows
     /// their order of appearance within it.
     var cast: [Speaker] = []
+    var accessibilityIdentifier: String?
     let onRename: (Speaker) -> Void
 
+    @ViewBuilder
     var body: some View {
+        if let accessibilityIdentifier {
+            pill.accessibilityIdentifier(accessibilityIdentifier)
+        } else {
+            pill
+        }
+    }
+
+    private var pill: some View {
         Button {
             if let speaker { onRename(speaker) }
         } label: {
-            Text(speaker.map { $0.displayName ?? $0.label } ?? "?")
+            HStack(spacing: 4) {
+                Text(speaker.map { $0.displayName ?? $0.label } ?? "?")
+                if speaker?.personID != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(PVDesign.accent)
+                }
+            }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(speaker?.isMe == true ? VoicePalette.meContrast : .primary)
                 .padding(.horizontal, 8)
@@ -26,6 +43,11 @@ struct SpeakerPill: View {
         }
         .buttonStyle(.plain)
         .disabled(speaker == nil)
+        .accessibilityLabel(speaker.map { $0.displayName ?? $0.label } ?? "?")
+        .accessibilityValue(
+            speaker?.personID == nil
+                ? L10n.text("Meeting-only name")
+                : L10n.text("Linked to a remembered person"))
     }
 
     private var pillBackground: Color {

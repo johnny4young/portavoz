@@ -69,6 +69,42 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.releaseCount, 1)
     }
 
+    func testRefineDoesNotAutoLinkFreshDiarizationSpeakersToCanonicalPeople() async throws {
+        let fixture = RefineFixture()
+        let personID = PersonID()
+        let linkedSpeaker = Speaker(
+            meetingID: fixture.meetingID,
+            label: "S1",
+            displayName: "Ana",
+            personID: personID)
+        let current = TranscriptSegment(
+            meetingID: fixture.meetingID,
+            speakerID: linkedSpeaker.id,
+            channel: .system,
+            text: "Current confirmed observation.",
+            language: "en",
+            startTime: 0,
+            endTime: 8,
+            isFinal: true)
+        let detail = MeetingDetail(
+            meeting: fixture.meeting,
+            speakers: [linkedSpeaker],
+            segments: [current],
+            summaries: [])
+        let dependencies = RefineDependencies(
+            audio: RefineMeetingAudio(system: fixture.audio.system, microphone: nil),
+            systemTranscription: fixture.systemTranscription,
+            microphoneTranscription: fixture.microphoneTranscription,
+            turns: [SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 5)])
+
+        let draft = try await fixture.useCase(dependencies)(
+            RefineMeetingRequest(detail: detail))
+
+        XCTAssertFalse(draft.speakers.isEmpty)
+        XCTAssertTrue(draft.speakers.allSatisfy { $0.personID == nil })
+        XCTAssertFalse(draft.speakers.contains { $0.id == linkedSpeaker.id })
+    }
+
     func testAutomaticMixedMeetingKeepsWhisperAutomaticAndAggregateLanguageUnknown() async throws {
         let fixture = RefineFixture()
         let mixedSystem = FileTranscription(

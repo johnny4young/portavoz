@@ -43,6 +43,16 @@ extension AppServices: MeetingDetailModelClient {
         try await store.save([speaker])
     }
 
+    func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person] {
+        try await FindCanonicalPeople(store: store).execute(alias)
+    }
+
+    func linkMeetingDetailSpeaker(
+        _ request: LinkObservedSpeakerRequest
+    ) async throws -> ConfirmedPersonLink {
+        try await LinkObservedSpeaker(store: store).execute(request)
+    }
+
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws {
         try await store.setActionItem(id, done: done)
     }

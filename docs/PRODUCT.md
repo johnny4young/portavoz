@@ -14,7 +14,7 @@ makes tracked exceptions visible instead of weakening the promise silently.
 No one in the market combines these 6 attributes; each competitor has ~2:
 
 1. **True local-first** (on-device transcription + diarization + summarization)
-2. **Speaker identity** (who said what + which contributions belong to the user)
+2. **Speaker identity** (who said what + which contributions belong to the user + explicitly confirmed people remembered across meetings)
 3. **Features for developers** (issues, ADRs, MCP, Shortcuts)
 4. **Deep ES/EN bilingual support** (cross-language summaries, technical glossary, translated captions)
 5. **One-time payment** (vs market-wide subscriptions of $8–19/user/month)

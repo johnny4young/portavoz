@@ -55,6 +55,23 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNil(decoded.meeting.audioDirectory, "machine-local paths must not travel (D4)")
     }
 
+    func testCanonicalPersonLinksNeverTravelOrReturnOnImport() throws {
+        let meeting = Meeting(title: "Private identity", startedAt: Date())
+        let linked = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: "Ana",
+            personID: PersonID())
+        let bundle = MeetingBundle(meeting: meeting, speakers: [linked], segments: [])
+
+        XCTAssertNil(bundle.speakers.first?.personID)
+        let encoded = try bundle.encoded()
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("personID"))
+        let remapped = try MeetingBundle.decode(encoded).remappedForImport()
+        XCTAssertNil(remapped.speakers.first?.personID)
+        XCTAssertEqual(remapped.speakers.first?.displayName, "Ana")
+    }
+
     func testFutureFormatVersionIsRejected() throws {
         var data = try sample().encoded()
         var json = try XCTUnwrap(String(data: data, encoding: .utf8))

@@ -1,19 +1,19 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases).
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v7` migrations in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v8` migrations in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
-| `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, tombstone |
+| `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), generationRunID? (v6), tombstone |
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — immutable snapshots), **fingerprint** (v4, D25 — language-independent material identity; NULL in old snapshots = never match), generationRunID? (v6) |
 | `actionItem` | id, summaryID (FK CASCADE), meetingID, text, ownerSpeakerID?, isDone (the MUTABLE exception), tombstone |
@@ -26,6 +26,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
 | `dataEgressEvent` (v7) | immutable content-free attempt: meeting, operation, conservative destination scope/host, classification, consent, provider/model, and attemptedAt; indexed by meeting/time |
 | `privacyReceiptCoverage` (v7) | singleton `meeting-content-egress` row with the migration timestamp that bounds trustworthy receipt history |
+| `person` (v8) | id, preferredName, createdAt/updatedAt/deletedAt — one user-confirmed human identity independent from meeting observations |
+| `personAlias` (v8) | id, personID (FK CASCADE), normalizedAlias, source, confidence, createdAt/updatedAt/deletedAt; unique per person+alias but deliberately repeatable across people |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
@@ -41,6 +43,14 @@ admit only the known operations/scopes/classifications/consents; the runtime
 additionally requires an existing meeting, non-empty host/provider, and exact
 host/provider equality, then recomputes conservative scope from the host. A
 malformed, falsely local, or unowned event writes nothing.
+
+Schema v8 is an additive human-memory migration (D86). It creates empty
+`person`/`personAlias` tables, adds nullable indexed `speaker.personID`, and
+rewrites no existing name, cast, transcript, biometric file, or meeting. The
+foreign key uses `ON DELETE SET NULL`, while aliases cascade with their person.
+Alias source/confidence constraints reject unknown evidence and non-finite or
+out-of-range confidence. Exact alias lookup permits several live people with
+the same normalized name; ambiguity is product truth, not a migration error.
 
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
@@ -186,12 +196,26 @@ reconciliation inside the same lease/revision-fenced transaction. Storage
 derives meeting lifecycle rather than asking callers to save a second,
 potentially inconsistent aggregate state (D63).
 
+Canonical people use three narrow D86 APIs. `people(matchingAlias:)` applies
+Core's POSIX-stable whitespace/case/diacritic/width normalization and returns
+every exact live candidate in deterministic order without writing. The
+separate `createPersonAndLink` and `linkSpeaker` transactions accept only one
+live, non-user observed speaker. They atomically insert/reactivate the alias,
+set `speaker.personID`, and canonicalize that speaker's display name; failure
+leaves no person, alias, or partial link. Creating a distinct person remains
+valid when another person owns the same normalized alias. Linking an already
+linked speaker to a different person, a deleted/missing person, `isMe`, or an
+empty name throws `StorageError.invalidPersonLink`.
+
 `meetingExportSnapshot(_:)` is the dedicated read-side aggregate for sharing.
 One GRDB read loads the live meeting, cast, ordered transcript, newest summary
 across every recipe, ordered notes, and ordered Companion cards. The required
 meeting/cast/transcript projection remains strict; optional summary, note, and
 card decoding retains the released degradable fallback. Audio bytes are not a
 database concern and remain behind the application filesystem port (D52).
+The format adapter removes every `speaker.personID` before encoding and again
+when remapping imported speakers, so canonical device identity never travels
+in a `.portavoz` bundle; accepted meeting-local display names still round-trip.
 
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).

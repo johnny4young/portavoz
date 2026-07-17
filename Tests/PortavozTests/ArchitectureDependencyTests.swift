@@ -656,14 +656,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("services.store"))
         XCTAssertFalse(view.contains("services.libraryVersion"))
         XCTAssertFalse(view.contains("services.meetingLifecycle"))
+        XCTAssertTrue(view.contains("Task.detached(priority: .utility)"))
+        XCTAssertTrue(view.contains(#"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(model.contains("enum Action"))
         XCTAssertTrue(model.contains("case renameMeeting"))
         XCTAssertTrue(model.contains("case renameSpeaker"))
+        XCTAssertTrue(model.contains("case findCanonicalPeople"))
+        XCTAssertTrue(model.contains("case linkCanonicalPerson"))
         XCTAssertTrue(model.contains("case setActionItem"))
         XCTAssertTrue(model.contains("case removeCompanionCard"))
         XCTAssertTrue(model.contains("case deleteMeeting"))
         XCTAssertTrue(adapter.contains("renameMeetingDetailMeeting"))
         XCTAssertTrue(adapter.contains("renameMeetingDetailSpeaker"))
+        XCTAssertTrue(adapter.contains("FindCanonicalPeople(store: store)"))
+        XCTAssertTrue(adapter.contains("LinkObservedSpeaker(store: store)"))
         XCTAssertTrue(adapter.contains("setMeetingDetailActionItem"))
         XCTAssertTrue(adapter.contains("deleteMeetingDetailCompanionCard"))
         XCTAssertTrue(adapter.contains("deleteMeetingDetail"))
@@ -674,6 +680,32 @@ final class ArchitectureDependencyTests: XCTestCase {
             "regions: [Table(\"meeting\"), Table(\"summary\"), Table(\"actionItem\")]"))
         XCTAssertTrue(storage.contains(
             "regions: [Table(\"meeting\"), Table(\"companionCard\")]"))
+    }
+
+    func testCanonicalPeopleRequireConfirmationAndStayOutOfAutomaticEvidencePaths() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/PersonIdentity.swift")
+        let application = try Self.contents(of: "Sources/ApplicationKit/CanonicalPeople.swift")
+        let storage = try Self.contents(of: "Sources/StorageKit/MeetingStore+People.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let calendar = try Self.contents(
+            of: "Sources/IntegrationsKit/CalendarAttendeeSource.swift")
+        let gallery = try Self.contents(of: "Sources/DiarizationKit/VoiceGallery.swift")
+
+        XCTAssertTrue(core.contains("enum PersonAliasNormalizer"))
+        XCTAssertTrue(core.contains("never authority to merge people"))
+        XCTAssertTrue(application.contains("func people(matchingAlias"))
+        XCTAssertTrue(application.contains("case createDistinct"))
+        XCTAssertTrue(application.contains("case existing(PersonID)"))
+        XCTAssertTrue(storage.contains("Duplicate aliases across people are deliberate"))
+        XCTAssertTrue(storage.contains("guard !speaker.isMe"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v8\")"))
+        XCTAssertTrue(schema.contains("t.add(column: \"personID\", .text)"))
+        XCTAssertTrue(bundle.contains("personID: nil"))
+        XCTAssertFalse(calendar.contains("linkSpeaker("))
+        XCTAssertFalse(calendar.contains("createPersonAndLink("))
+        XCTAssertFalse(gallery.contains("linkSpeaker("))
+        XCTAssertFalse(gallery.contains("createPersonAndLink("))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

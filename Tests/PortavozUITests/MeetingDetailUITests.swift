@@ -193,6 +193,46 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testNamedSpeakerCanBeRememberedAsCanonicalPerson() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let speaker = app.control(withIdentifier: "cast-speaker-S1")
+        XCTAssertTrue(
+            speaker.waitForExistence(timeout: 10),
+            "the observed participant must expose a stable rename boundary")
+        speaker.click()
+
+        // SwiftUI's macOS alert bridge strips a TextField's custom AX
+        // identifier. Scope the query to the alert sheet so we never type
+        // into the library search field behind it.
+        let field = app.sheets.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.click()
+        field.typeKey("a", modifierFlags: .command)
+        field.typeText("Ana")
+        app.control(withIdentifier: "speaker-rename-save").click()
+
+        let remember = app.buttons["person-remember-offer"]
+        XCTAssertTrue(
+            remember.waitForExistence(timeout: 5),
+            "a confirmed meeting-local name must offer explicit person memory")
+        remember.click()
+
+        let expectedValue = Locale.current.identifier.hasPrefix("es")
+            ? "Vinculado a una persona recordada"
+            : "Linked to a remembered person"
+        let linked = expectation(
+            for: NSPredicate(format: "value == %@", expectedValue),
+            evaluatedWith: speaker)
+        wait(for: [linked], timeout: 5)
+        XCTAssertFalse(
+            app.buttons["person-remember-offer"].exists,
+            "the explicit offer must clear after the atomic link succeeds")
+        attachScreenshot(of: app, named: "band-5a-confirmed-person-memory")
+    }
+
+    @MainActor
     func testMostRecentRecipeRemainsVisibleAfterReload() {
         let app = launchOnSeededMeeting(latestRecipe: true)
         defer { app.terminate() }

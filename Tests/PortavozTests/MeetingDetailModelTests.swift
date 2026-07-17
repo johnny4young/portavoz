@@ -96,7 +96,7 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testMutationActionsOwnPersistenceEffectsAndSearchInvalidation() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [], person: fixture.person)
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
         await model.send(.renameMeeting(fixture.meeting, title: "Weekly planning"))
@@ -106,6 +106,13 @@ final class MeetingDetailModelTests: XCTestCase {
             .acceptVoiceSuggestion(fixture.speaker, name: "Bea"))
         let renameEffect = await model.send(
             .renameSpeaker(fixture.speaker, name: "Carla"))
+        let peopleEffect = await model.send(
+            .findCanonicalPeople(fixture.speaker, source: .manualName))
+        let linkEffect = await model.send(
+            .linkCanonicalPerson(
+                fixture.speaker,
+                source: .manualName,
+                selection: .existing(fixture.person.id)))
         await model.send(.setActionItem(fixture.actionItem.id, done: true))
         await model.send(.removeCompanionCard(fixture.card.id))
         await model.send(.searchableContentChanged)
@@ -117,15 +124,25 @@ final class MeetingDetailModelTests: XCTestCase {
             .renameSpeaker("Ana"),
             .renameSpeaker("Bea"),
             .renameSpeaker("Carla"),
+            .findPeople("Ana"),
+            .linkPerson(fixture.speaker.id, fixture.person.id),
             .setActionItem(fixture.actionItem.id, true),
             .deleteCompanion(fixture.card.id),
             .deleteMeeting(fixture.meeting.id),
             .retryProcessing(fixture.meeting.id),
         ])
-        XCTAssertEqual(client.searchReindexRequests, 7)
+        XCTAssertEqual(client.searchReindexRequests, 8)
         XCTAssertEqual(effectSpeakerName(nameEffect), "Ana")
         XCTAssertEqual(effectSpeakerName(voiceEffect), "Bea")
         XCTAssertEqual(effectSpeakerName(renameEffect), "Carla")
+        guard case .canonicalPeopleFound(_, .manualName, let people) = peopleEffect else {
+            return XCTFail("candidate lookup must preserve its explicit source")
+        }
+        XCTAssertEqual(people.map(\.id), [fixture.person.id])
+        guard case .canonicalPersonLinked(let link) = linkEffect else {
+            return XCTFail("explicit linking must preserve its result")
+        }
+        XCTAssertEqual(link.person.id, fixture.person.id)
         guard case .meetingDeleted(let id) = deleteEffect else {
             return XCTFail("delete must preserve the navigation effect")
         }
@@ -196,6 +213,7 @@ private struct MeetingDetailModelFixture {
     let segment: TranscriptSegment
     let card: CompanionCard
     let actionItem: ActionItem
+    let person: Person
 
     init() {
         meeting = Meeting(title: "Planning", startedAt: Date())
@@ -215,6 +233,7 @@ private struct MeetingDetailModelFixture {
             source: "meeting",
             askedAt: 1)
         actionItem = ActionItem(text: "Publicar")
+        person = Person(preferredName: "Ana")
     }
 
     var core: MeetingReviewCore {
@@ -259,9 +278,14 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
+    private let person: Person
 
-    init(updates: [MeetingReviewUpdate]) {
+    init(
+        updates: [MeetingReviewUpdate],
+        person: Person = Person(preferredName: "Ana")
+    ) {
         self.updates = updates
+        self.person = person
     }
 
     func observeMeetingReview(
@@ -282,6 +306,35 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     func renameMeetingDetailSpeaker(_ speaker: Speaker) throws {
         calls.append(.renameSpeaker(speaker.displayName))
         try fail(.renameSpeaker)
+    }
+
+    func findMeetingDetailPeople(matchingAlias alias: String) throws -> [Person] {
+        calls.append(.findPeople(alias))
+        try fail(.findPeople)
+        return [person]
+    }
+
+    func linkMeetingDetailSpeaker(
+        _ request: LinkObservedSpeakerRequest
+    ) throws -> ConfirmedPersonLink {
+        let selectedID: PersonID?
+        switch request.selection {
+        case .createDistinct:
+            selectedID = nil
+        case .existing(let personID):
+            selectedID = personID
+        }
+        calls.append(.linkPerson(request.speakerID, selectedID))
+        try fail(.linkPerson)
+        let linkedPerson = selectedID.map { Person(id: $0, preferredName: request.observedName) }
+            ?? person
+        let speaker = Speaker(
+            id: request.speakerID,
+            meetingID: MeetingID(),
+            label: "S1",
+            displayName: linkedPerson.preferredName,
+            personID: linkedPerson.id)
+        return ConfirmedPersonLink(person: linkedPerson, speaker: speaker)
     }
 
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) throws {
@@ -316,6 +369,8 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedError {
     case renameMeeting
     case renameSpeaker
+    case findPeople
+    case linkPerson
     case setActionItem
     case deleteCompanion
     case deleteMeeting
@@ -328,6 +383,8 @@ private enum MeetingDetailModelCall: Equatable {
     case observe(MeetingID)
     case renameMeeting(String)
     case renameSpeaker(String?)
+    case findPeople(String)
+    case linkPerson(SpeakerID, PersonID?)
     case setActionItem(UUID, Bool)
     case deleteCompanion(UUID)
     case deleteMeeting(MeetingID)

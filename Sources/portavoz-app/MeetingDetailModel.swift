@@ -13,6 +13,10 @@ protocol MeetingDetailModelClient: AnyObject {
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws
     func renameMeetingDetailSpeaker(_ speaker: Speaker) async throws
+    func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person]
+    func linkMeetingDetailSpeaker(
+        _ request: LinkObservedSpeakerRequest
+    ) async throws -> ConfirmedPersonLink
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws
@@ -50,6 +54,11 @@ final class MeetingDetailModel {
         case acceptNameSuggestion(Speaker, name: String)
         case acceptVoiceSuggestion(Speaker, name: String)
         case renameSpeaker(Speaker, name: String)
+        case findCanonicalPeople(Speaker, source: PersonAliasSource)
+        case linkCanonicalPerson(
+            Speaker,
+            source: PersonAliasSource,
+            selection: CanonicalPersonSelection)
         case setActionItem(UUID, done: Bool)
         case removeCompanionCard(UUID)
         case deleteMeeting
@@ -61,6 +70,8 @@ final class MeetingDetailModel {
         case nameSuggestionAccepted(Speaker)
         case voiceSuggestionAccepted(Speaker)
         case speakerRenamed(Speaker)
+        case canonicalPeopleFound(Speaker, PersonAliasSource, [Person])
+        case canonicalPersonLinked(ConfirmedPersonLink)
         case meetingDeleted(MeetingID)
     }
 
@@ -122,6 +133,13 @@ final class MeetingDetailModel {
             return await acceptVoiceSuggestion(speaker, name: name)
         case .renameSpeaker(let speaker, let name):
             return await renameSpeaker(speaker, name: name)
+        case .findCanonicalPeople(let speaker, let source):
+            return await findCanonicalPeople(speaker, source: source)
+        case .linkCanonicalPerson(let speaker, let source, let selection):
+            return await linkCanonicalPerson(
+                speaker,
+                source: source,
+                selection: selection)
         case .setActionItem(let id, let done):
             await setActionItem(id, done: done)
             return nil
@@ -178,6 +196,43 @@ private extension MeetingDetailModel {
         }
         client.requestMeetingDetailSearchReindex()
         return .speakerRenamed(speaker)
+    }
+
+    func findCanonicalPeople(
+        _ speaker: Speaker,
+        source: PersonAliasSource
+    ) async -> Effect? {
+        guard let name = speaker.displayName else { return nil }
+        do {
+            let people = try await client.findMeetingDetailPeople(matchingAlias: name)
+            state.lastActionError = nil
+            return .canonicalPeopleFound(speaker, source, people)
+        } catch {
+            state.lastActionError = L10n.text("Could not look up remembered people.")
+            return nil
+        }
+    }
+
+    func linkCanonicalPerson(
+        _ speaker: Speaker,
+        source: PersonAliasSource,
+        selection: CanonicalPersonSelection
+    ) async -> Effect? {
+        guard let name = speaker.displayName else { return nil }
+        do {
+            let link = try await client.linkMeetingDetailSpeaker(
+                LinkObservedSpeakerRequest(
+                    speakerID: speaker.id,
+                    observedName: name,
+                    source: source,
+                    selection: selection))
+            state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
+            return .canonicalPersonLinked(link)
+        } catch {
+            state.lastActionError = L10n.text("Could not remember this person.")
+            return nil
+        }
     }
 
     func setActionItem(_ id: UUID, done: Bool) async {

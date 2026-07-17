@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 7
+    public static let version = 8
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -187,6 +187,14 @@ public enum StorageSchema {
         migrator.registerMigration("v7") { db in
             try createDataEgressEventTable(in: db)
             try createPrivacyReceiptCoverage(in: db)
+        }
+
+        // v8 (D86/Band 5A): canonical people are additive and confirmation-
+        // safe. Aliases are lookup evidence only; duplicate aliases across
+        // different people remain valid and never imply an automatic merge.
+        migrator.registerMigration("v8") { db in
+            try createPersonTables(in: db)
+            try addPersonReferenceToSpeaker(in: db)
         }
 
         return migrator
@@ -396,5 +404,46 @@ public enum StorageSchema {
         try db.execute(
             sql: "INSERT INTO privacyReceiptCoverage (id, trackingStartedAt) VALUES (?, ?)",
             arguments: ["meeting-content-egress", Date()])
+    }
+
+    private static func createPersonTables(in db: Database) throws {
+        try db.create(table: "person") { t in
+            t.primaryKey("id", .text)
+            t.column("preferredName", .text).notNull().check(
+                sql: "length(trim(preferredName)) > 0")
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+            t.column("deletedAt", .datetime)
+        }
+        try db.create(table: "personAlias") { t in
+            t.primaryKey("id", .text)
+            t.column("personID", .text).notNull()
+                .references("person", onDelete: .cascade)
+            t.column("normalizedAlias", .text).notNull().check(
+                sql: "length(trim(normalizedAlias)) > 0")
+            t.column("source", .text).notNull().check(
+                sql: "source IN ('manual-name', 'transcript-suggestion', 'voice-suggestion')")
+            t.column("confidence", .double).notNull().check(
+                sql: "confidence >= 0 AND confidence <= 1")
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+            t.column("deletedAt", .datetime)
+            t.uniqueKey(["personID", "normalizedAlias"])
+        }
+        try db.create(
+            index: "personAlias_on_normalizedAlias",
+            on: "personAlias",
+            columns: ["normalizedAlias"])
+    }
+
+    private static func addPersonReferenceToSpeaker(in db: Database) throws {
+        try db.alter(table: "speaker") { t in
+            t.add(column: "personID", .text)
+                .references("person", onDelete: .setNull)
+        }
+        try db.create(
+            index: "speaker_on_personID",
+            on: "speaker",
+            columns: ["personID"])
     }
 }

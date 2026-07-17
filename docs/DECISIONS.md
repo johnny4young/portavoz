@@ -210,7 +210,7 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 ## D30 — XcodeGen + XCUITest for UI verification (qualifies D20)
 
 **Context:** D20 keeps the macOS shell as an SPM target + `make-app.sh`, without an Xcode project. But verifying the UI manually (or worse, with computer-use-style screen control) is slow and fragile; XCUITest needs an Xcode project with a `bundle.ui-testing` target. The sibling Gancho project already solved this with **XcodeGen** (`project.yml` as the source of truth, generated and gitignored `.xcodeproj`).
-**Decision:** adopt the same pattern ONLY for verification tooling. `project.yml` generates `Portavoz.xcodeproj` (gitignored) with two targets: `Portavoz` (app, recompiles `Sources/portavoz-app` against the package's library products) and `PortavozUITests` (`bundle.ui-testing`, `SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated`, `GENERATE_INFOPLIST_FILE: YES` so Xcode signs the runner — Gatekeeper blocks unsigned runners). The app honors testing launch args: **`-use-temp-store`** (disposable DB, never touches the real library) and **`-seed-demo`** (seeds a deterministic meeting with transcript, summary, co-authorship bullet "▸", **and audio** — `AppServices.seedDemoIfRequested()`). Audio is isolated through the **`PORTAVOZ_AUDIO_ROOT`** env var (relocatable audio root, without touching your folder): the seed synthesizes a two-tone clip (mic 220 Hz / system 440 Hz, half and half → the waveform shows both colors) or **adopts a real recording** if one already exists in the root — a UITest points `PORTAVOZ_TEST_AUDIO_ROOT` to a real copy to exercise the player with real audio (verified: 8 real min, player + waveform OK). `make test-ui` runs `xcodebuild test`. Ad-hoc signing (`CODE_SIGN_IDENTITY: "-"`, no team, hardened runtime off) — local tooling, not distribution.
+**Decision:** adopt the same pattern ONLY for verification tooling. `project.yml` generates `Portavoz.xcodeproj` (gitignored) with two targets: `Portavoz` (app, recompiles `Sources/portavoz-app` against the package's library products) and `PortavozUITests` (`bundle.ui-testing`, `SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated`, `GENERATE_INFOPLIST_FILE: YES` so Xcode signs the runner — Gatekeeper blocks unsigned runners). The app honors testing launch args: **`-use-temp-store`** (disposable DB, never touches the real library, and treats the encrypted participant-voice gallery as empty so automation cannot inspect the host gallery or Keychain) and **`-seed-demo`** (seeds a deterministic meeting with transcript, summary, co-authorship bullet "▸", **and audio** — `AppServices.seedDemoIfRequested()`). Audio is isolated through the **`PORTAVOZ_AUDIO_ROOT`** env var (relocatable audio root, without touching your folder): the seed synthesizes a two-tone clip (mic 220 Hz / system 440 Hz, half and half → the waveform shows both colors) or **adopts a real recording** if one already exists in the root — a UITest points `PORTAVOZ_TEST_AUDIO_ROOT` to a real copy to exercise the player with real audio (verified: 8 real min, player + waveform OK). `make test-ui` runs `xcodebuild test`. Ad-hoc signing (`CODE_SIGN_IDENTITY: "-"`, no team, hardened runtime off) — local tooling, not distribution.
 **Rationale:** reproducible, automated UI verification without driving the screen. **Shipping remains `make-app.sh`** (signed + notarized, D20/D23 intact); this project is only for `make test-ui` and is not the release path. XCTest in the UI target coexists with the XCTest package suite (D13). Verified: `LibraryUITests` (library renders) and `MeetingDetailUITests` (transcript + summary + D28 co-authorship mark ▸) are green.
 
 ## D31 — IntegrationsKit is the only cross-Kit layer (Jul 2026)
@@ -2279,3 +2279,45 @@ snapshot memory shape if a future comparable 100,000-meeting run exceeds
 160 MiB absolute or 96 MiB incremental physical footprint. Any replacement
 must retain protected local storage, crash reconciliation, deletion parity,
 content equivalence, and isolated before/after evidence.
+
+## D86 — Remember people only through explicit, ambiguity-preserving links (Jul 2026)
+
+**Context:** Portavoz already had three different kinds of speaker evidence:
+meeting-local names proposed from transcript/calendar context, encrypted
+cross-meeting voice suggestions, and the structural `Me` attribution. None is
+a durable human identity. Treating an equal name, calendar attendee, diarizer
+label, or biometric match as authority would silently merge different people;
+the same display name can legitimately belong to several humans, and Refine
+creates fresh diarization speaker IDs whose labels are not stable identity.
+
+**Decision:** add an additive schema-v8 canonical-person boundary. Core owns
+`PersonID`, `Person`, `PersonAlias`, and the normalized-alias contract. Storage
+adds `person`, `personAlias`, and nullable indexed `speaker.personID` with
+`ON DELETE SET NULL`. Alias normalization trims and collapses whitespace, then
+folds case, diacritics, and width under the POSIX locale. The same normalized
+alias may belong to several people; only one copy per person is allowed.
+
+Candidate lookup and mutation remain separate ApplicationKit use cases.
+Meeting Detail offers an explicit Remember action only after the user has
+accepted a non-user speaker name. No match can create a distinct person only
+after that action; one or more exact matches open a chooser that also permits
+creating a separate person. A selected create/link writes the person, alias,
+and observed-speaker link atomically and canonicalizes that speaker's display
+name. Transcript, calendar, and voice suggestions retain their source label
+but can never call the link mutation automatically. `isMe` is excluded from
+this first other-participant vertical.
+
+Canonical person IDs are private device state: `.portavoz` export/import strips
+them while preserving meeting-local names. Encrypted `VoiceGallery` files stay
+outside SQLite and do not gain a person link or sync behavior in this slice.
+Refine replaces observed speakers with new IDs and deliberately does not carry
+the old `personID` by label, alias, or voice; the user confirms continuity
+again. Deleting a meeting therefore does not delete the person, while deleting
+a future person record will null its speaker links through the foreign key.
+
+**Rationale:** this is the smallest useful human-memory vertical that improves
+cross-meeting continuity without turning probabilistic evidence into identity.
+It keeps ambiguity representable, makes every durable merge reversible by
+future person-management UI, avoids biometric coupling, preserves bundle
+privacy, and leaves typed claim evidence as an independent next slice rather
+than hiding it in a generic identity graph.

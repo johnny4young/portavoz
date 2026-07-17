@@ -59,7 +59,17 @@ public struct MeetingBundle: Codable, Sendable {
         // Paths are machine-local (D4); optional audio travels as attachments.
         shared.audioDirectory = nil
         self.meeting = shared
-        self.speakers = speakers
+        // Canonical people are private library memory, not interchange data.
+        // Keep the meeting-local name while stripping every cross-meeting link.
+        self.speakers = speakers.map { speaker in
+            Speaker(
+                id: speaker.id,
+                meetingID: speaker.meetingID,
+                label: speaker.label,
+                displayName: speaker.displayName,
+                isMe: speaker.isMe,
+                personID: nil)
+        }
         self.segments = segments
         self.summary = summary
         self.contextItems = contextItems
@@ -113,7 +123,8 @@ public struct MeetingBundle: Codable, Sendable {
                 meetingID: newMeetingID,
                 label: speaker.label,
                 displayName: speaker.displayName,
-                isMe: speaker.isMe)
+                isMe: speaker.isMe,
+                personID: nil)
         }
         copy.segments = segments.map { segment in
             TranscriptSegment(

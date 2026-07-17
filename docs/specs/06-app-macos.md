@@ -444,6 +444,19 @@ temp-store processing fixture identifies its deterministic provider/model and
 exercises this same production path in the durable-resume XCUITest (D63).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items. Summary setup failures are typed: unavailable Apple, missing Ollama selection, missing MLX download, and local-engine failure open an actionable alert whose recovery button opens the native Settings scene at the exact Intelligence category instead of ending in a generic error (D72).
+- **Confirmed people (D86):** accepting a manual, transcript/calendar, or
+  encrypted-voice name may surface a separate `person-remember-offer`; neither
+  the name action nor its evidence auto-links a human. `MeetingDetailModel`
+  first sends `findCanonicalPeople`. With no exact normalized candidates, the
+  user's Remember click atomically creates a distinct person and links the
+  observed non-user speaker. Any candidate opens a second confirmation dialog
+  with one explicit existing-person choice per match plus “Create a separate
+  person.” Successful links reconcile Spotlight and render a checkmark plus
+  the localized “Linked to a remembered person” accessibility value. The
+  app does not expose this action for `Me`, never couples it to VoiceGallery,
+  and requires a new confirmation for fresh Refine speakers. Existing
+  VoiceGallery checks run off MainActor; disposable UI launches treat that
+  sensitive store as empty rather than reading the host file or Keychain.
 - **Refine (D7/D35/D47/D73 in-app)**: `ApplicationKit.RefineMeeting` prepares only required Whisper and re-transcribes retained non-silent channels (+vocabulary), then applies microphone noise/bleed filtering and requests only best-effort pyannote diarization; live Parakeet is never a prerequisite. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Companion refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
 - Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation and gateway-enforced meeting/document metadata.
 
@@ -509,16 +522,18 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 25 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 26 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
-advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
+advance), MeetingDetail (summary tabs reveal ▸, explicit confirmed-person
+memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
 Whisper preparation, custom structures, capture
 controls, redacted support export, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
-neither SQLite nor audio can touch the user's library. `-seed-recovery`,
+neither SQLite, audio, nor the encrypted participant-voice gallery can touch
+the user's library or Keychain. `-seed-recovery`,
 `-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`,
 `-seed-scale` with optional `-scale-auto-summary-update`,
 `-simulate-recording-start-failure`, and
@@ -534,7 +549,7 @@ channel) so there are two chapters and solo audio. Convention: all new
 interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
 assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
-Library, Insights, Meeting Detail, and post-meeting mirror checkpoints so unrelated desktop content
+Library, Insights, Meeting Detail, confirmed-person memory, and post-meeting mirror checkpoints so unrelated desktop content
 is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
 test language and region flags; the complete 25-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
