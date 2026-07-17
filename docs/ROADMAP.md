@@ -6,24 +6,21 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue architecture Band 6B with sub-slice 6B2B:
-persist opaque CKSyncEngine serialization, record system fields, exact
-in-flight generations, retry deadlines, and staged remote replay independently
-from the schema-v14 journal, then prove a dormant explicitly injected
-CKSyncEngine delegate across restart, partial failure, stale remote work, and
-account transitions. Band 6B2A already maps the fixed portable envelope to one
-deterministic private-zone record: small payloads and their digest are
-encrypted values, large payloads use a protected encrypted-by-default CKAsset,
-matching records preserve system fields, and deletion is a saved tombstone
-(D94). It creates no container, account request, engine, entitlement, network
-path, or UI. Band 6B1 is complete: exact-generation envelopes carry every live text-first
-artifact, deterministically round-trip, validate/replay in one transaction,
-preserve device-local derivations, defer live remote work behind unsent local
-work, and let remote deletion win without physical purge (D93). Band 6A adds transport-independent, content-free
-per-meeting generations, explicit initial seeding, generation-aware
-acknowledgement, typed-evidence detection, and purge-surviving deletion state
-without importing CloudKit or enabling network behavior (D92). Only the dormant
-6B2A codec imports CloudKit; none of these slices enables network behavior. The user's
+**Next concrete step:** begin architecture Band 6C with a macOS consent and
+status vertical that explicitly composes the already characterized 6B2
+transport. It must create the private CKContainer/CKSyncEngine only after
+account capability and account-scoped user opt-in, expose local-only, pending,
+synchronized, paused, retrying, and failed states, and make disable/remove-
+device behavior unambiguous. Initial library seeding remains a separate
+explicit action; no audio sync or iOS shell enters 6C. Band 6B2 is complete:
+IntegrationsKit now has encrypted private-zone records plus separately
+protected account/consent/seed, opaque engine/system-field, exact attempt,
+bounded retry, cursor, and deferred-replay state. A thin injected delegate is
+restart/partial-failure/account-transition characterized but no app composition
+creates a container, requests an account, adds an entitlement, or performs sync
+network work (D94/D95). Band 6B1 fixes deterministic aggregate/replay semantics
+(D93), and Band 6A keeps schema v14 as the content-free mutation authority with
+explicit initial seeding and generation-aware acknowledgement (D92). The user's
 separate product decision opened Band 6; each transport and platform step still
 ships as its own feature-parity-preserving slice. Band 5F completed Band 5 with
 card-identity-keyed, role-separated Companion evidence in schema v13: question
@@ -70,7 +67,21 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93/D94).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93/D94/D95).
+
+- **Architecture Band 6 slice 6B2B complete — delivery survives restart
+  without owning the meeting (Jul 17, 2026)**: a separate complete-protected
+  IntegrationsKit store persists content-free account-scoped consent/seed,
+  opaque engine serialization, CKRecord system fields, exact attempts, bounded
+  retries, replay cursors, and protected fetched deferrals. Account loss pauses;
+  a real switch clears old account metadata while preserving outgoing device
+  work. Exact-generation fences protect newer local and deferred work from late
+  callbacks, independent record failures do not collapse a batch, and physical
+  CKRecord deletion cannot delete meeting content. A thin explicitly injected
+  CKSyncEngine delegate forwards callbacks to StorageKit's replay authority.
+  Sixteen transport tests plus the D95 architecture ratchet join the 6B2A coverage.
+  No app-composed runtime, account request, entitlement, network side effect,
+  status UI, audio sync, or iOS target exists yet.
 
 - **Architecture Band 6 slice 6B2A complete — CloudKit receives one encrypted
   meeting tombstone (Jul 17, 2026)**: IntegrationsKit encodes each portable

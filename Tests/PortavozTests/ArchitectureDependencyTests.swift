@@ -910,7 +910,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             .filter { $0.module == "CloudKit" }
         XCTAssertEqual(
             cloudKitImports.map(\.file),
-            ["IntegrationsKit/CloudMeetingRecordCodec.swift"])
+            [
+                "IntegrationsKit/CloudMeetingRecordCodec.swift",
+                "IntegrationsKit/CloudMeetingSyncCoordinator.swift",
+                "IntegrationsKit/CloudMeetingSyncEngineDelegate.swift",
+                "IntegrationsKit/CloudMeetingSyncRuntime.swift",
+                "IntegrationsKit/CloudMeetingSyncStateStore+Persistence.swift",
+                "IntegrationsKit/CloudMeetingSyncStateStore.swift",
+                "IntegrationsKit/CloudRecordSystemFieldsCodec.swift",
+                "IntegrationsKit/CloudSyncFailureClassifier.swift",
+            ])
         XCTAssertTrue(decisions.contains("## D92"))
     }
 
@@ -961,6 +970,43 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(codec.contains("recordIDsToDelete"))
         XCTAssertFalse(storage.contains(where: { $0.module == "CloudKit" }))
         XCTAssertTrue(decisions.contains("## D94"))
+    }
+
+    func testCloudMeetingTransportStateStaysDurableAccountScopedAndDomainFree() throws {
+        let state = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncState.swift")
+        let store = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncStateStore.swift")
+        let persistence = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncStateStore+Persistence.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncCoordinator.swift")
+        let delegate = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncEngineDelegate.swift")
+        let runtime = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncRuntime.swift")
+        let cloudTransport = state + store + persistence + coordinator + delegate + runtime
+        let storageImports = try Self.imports(under: "Sources/StorageKit")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(state.contains("accountScopeFingerprint"))
+        XCTAssertTrue(state.contains("deferredReplays"))
+        XCTAssertTrue(store.contains("persistEngineState"))
+        XCTAssertTrue(store.contains("stageDeferredReplay"))
+        XCTAssertTrue(persistence.contains(".completeFileProtection"))
+        XCTAssertTrue(persistence.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(coordinator.contains("applyRemoteMeetingSyncEnvelope"))
+        XCTAssertTrue(coordinator.contains("markAllMeetingsForInitialSync"))
+        XCTAssertTrue(coordinator.contains("stageDeferredReplay"))
+        XCTAssertTrue(coordinator.contains("shouldRetry: false"))
+        XCTAssertTrue(delegate.contains("CKSyncEngineDelegate"))
+        XCTAssertTrue(delegate.contains("preparePendingChanges"))
+        XCTAssertFalse(delegate.contains("applyRemoteMeetingSyncEnvelope"))
+        XCTAssertTrue(runtime.contains("configuration.automaticallySync = false"))
+        XCTAssertTrue(runtime.contains("stateSerialization: try await"))
+        XCTAssertFalse(cloudTransport.contains("CKContainer("))
+        XCTAssertFalse(storageImports.contains(where: { $0.module == "CloudKit" }))
+        XCTAssertTrue(decisions.contains("## D95"))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

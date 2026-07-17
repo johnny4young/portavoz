@@ -2655,8 +2655,8 @@ not part of either inline or asset payload.
 This 6B2A slice is deliberately dormant. It creates no `CKContainer`, requests
 no account, initializes no `CKSyncEngine`, adds no entitlement, performs no
 network call, and exposes no sync UI. Persisted engine/system fields, exact
-in-flight generations, retry/replay state, account transitions, and the
-delegate/runtime are the next 6B2B slice.
+in-flight generations, retry/replay state, account transitions, and the thin
+delegate boundary arrive separately under D95; they are not codec behavior.
 
 **Rationale:** one record preserves CloudKit's native optimistic-concurrency
 boundary without splitting a meeting into partially visible chunks. The asset
@@ -2664,3 +2664,66 @@ fallback scales independently of transcript length, while encrypted placement
 and protected staging keep content out of indexes, logs, and ordinary local
 files. Tombstone saves preserve deletion evidence for deterministic conflict
 resolution; runtime and consent remain independently reviewable.
+
+## D95 — Persist CloudKit delivery state outside meeting storage (Jul 2026)
+
+**Context:** D94 fixes the record shape but not crash recovery. CKSyncEngine may
+checkpoint fetched work before Portavoz can apply it, save callbacks can arrive
+after a newer local generation exists, and account/system-field state is unsafe
+to reuse after an iCloud-account switch. Putting those concerns in schema v14
+would mix replaceable Apple transport metadata with the portable mutation
+authority and risk storing transcript content in ordinary JSON.
+
+**Decision:** IntegrationsKit owns a separate `CloudMeetingSyncStateStore`.
+Its complete-protection, backup-excluded JSON snapshot contains only hashed
+account scope/consent, explicit initial-seed state, Apple's opaque
+`CKSyncEngine.State.Serialization`, CKRecord system fields, exact outgoing
+generation/digest/file metadata, retry clocks/categories, deferred-replay
+metadata, and replay cursors keyed by meeting plus source device. Exact outgoing
+and deferred envelope bytes live in separately protected `0600` files and are
+validated against identity, byte count, digest, and deterministic filename on
+open. Snapshot mutations roll back if persistence fails; orphaned payload files
+are removed on restart.
+
+Consent is explicit and bound to a SHA-256 fingerprint of the current-user
+record name. Sign-out and temporary account loss pause delivery without erasing
+device-owned outgoing attempts. A real account switch clears old account-scoped
+engine state, system fields, replay cursors, deferred payloads, and seed state,
+then requires consent for the new account. Initial seeding is requested and
+completed explicitly; this adapter never opts an upgraded library in by itself.
+The coordinator's explicit request invokes StorageKit's
+`markAllMeetingsForInitialSync()` and marks the seed complete only after both
+the journal and protected attempts drain.
+
+Each outgoing attempt is exact-generation and idempotent. A late success may
+update system fields but can remove only its matching attempt; it cannot erase a
+newer generation or deferred remote work. Because CKSyncEngine pending changes
+are record-ID keyed, the delegate re-admits that record ID whenever a save
+callback leaves a newer exact attempt behind. Retry is deterministic exponential
+backoff with CloudKit retry-after support and a six-hour cap; partial record
+results remain independent. Pending preparation reconciles both the journal and
+protected outstanding attempts, so a crash between local acknowledgement and
+transport cleanup cannot strand a payload; callback persistence failures re-add
+the exact engine change. Fetched work crosses the StorageKit replay boundary
+through `CloudMeetingSyncCoordinator`. If StorageKit defers a live remote
+envelope behind unsent local work, its exact bytes are staged before the fetch
+checkpoint can be lost. Only a saved encrypted tombstone may delete domain
+content; a physical CKRecord deletion carries no authenticated payload and only
+invalidates stored system fields.
+
+`CloudMeetingSyncEngineDelegate` is a thin, explicitly injected callback
+adapter: it persists state updates, maps account transitions, prepares pending
+zone/record changes, builds batches, and forwards independent fetch/save
+results. `CloudMeetingSyncRuntime` may construct a manually driven engine only
+from an injected `CKDatabase`, restored state, and that delegate; automatic sync
+is disabled at construction. Conflict and ownership rules remain in
+StorageKit/coordinator. This slice creates no `CKContainer`, adds no entitlement,
+performs no network work from the app, and exposes no consent/status UI or iOS
+target.
+
+**Rationale:** separating durable delivery metadata from schema-v14 business
+state keeps CloudKit replaceable, makes restart/account boundaries auditable,
+and lets exact encrypted meeting bytes receive stronger filesystem protection
+without leaking them into logs or the metadata snapshot. A dormant delegate can
+be characterized thoroughly before any user opt-in or network side effect is
+composed.

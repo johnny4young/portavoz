@@ -157,6 +157,15 @@ of purging, settles the journal, and reports the discarded generation. Invalid
 relations and immutable collisions roll back. CloudKit/account/retry behavior
 is still absent (D93).
 
+Band 6B2 does not change schema v14 or move transport authority into StorageKit.
+IntegrationsKit separately protects account-scoped consent/seed policy, opaque
+CKSyncEngine/system fields, exact attempts, retries, replay cursors, and fetched
+deferrals. Its coordinator calls only the bounded projection,
+acknowledgement, and remote-replay APIs above. A thin CloudKit delegate cannot
+write GRDB or define conflict semantics directly. This separation keeps the
+portable journal usable by another transport and ensures account switches do
+not rewrite meeting content (D94/D95).
+
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
 states. `MeetingStore.beginRecording` inserts one `recording` meeting plus all

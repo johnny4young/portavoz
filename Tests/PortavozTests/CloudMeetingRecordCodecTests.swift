@@ -38,6 +38,10 @@ final class CloudMeetingRecordCodecTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: assetURL.path))
         XCTAssertTrue(try assetURL.resourceValues(
             forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        let permissions = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: assetURL.path)[.posixPermissions]
+                as? NSNumber)
+        XCTAssertEqual(permissions.intValue & 0o777, 0o600)
         XCTAssertTrue(encoded.record.allKeys().contains("payloadAsset"))
         XCTAssertFalse(encoded.record.encryptedValues.allKeys().contains("payload"))
         let decoded = try codec.decode(encoded.record)
@@ -55,6 +59,24 @@ final class CloudMeetingRecordCodecTests: XCTestCase {
 
         XCTAssertThrowsError(try codec.decode(encoded.record)) { error in
             XCTAssertEqual(error as? CloudMeetingRecordCodecError, .checksumMismatch)
+        }
+    }
+
+    func testMixedInlineAndAssetStorageFailsClosed() throws {
+        let envelope = makeEnvelope()
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let codec = CloudMeetingRecordCodec()
+        let encoded = try codec.encode(envelope, assetDirectory: directory)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true)
+        let foreignAsset = directory.appendingPathComponent("foreign")
+        try Data("not the payload".utf8).write(to: foreignAsset, options: .atomic)
+        encoded.record["payloadAsset"] = CKAsset(fileURL: foreignAsset)
+
+        XCTAssertThrowsError(try codec.decode(encoded.record)) { error in
+            XCTAssertEqual(error as? CloudMeetingRecordCodecError, .missingPayload)
         }
     }
 
