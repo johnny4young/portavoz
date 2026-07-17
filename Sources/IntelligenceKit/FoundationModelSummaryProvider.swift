@@ -204,7 +204,10 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             },
             decisionEvidence: StructuredSummary.translatedDecisionEvidence(
                 from: pivot,
-                into: sections))
+                into: sections),
+            actionItemEvidence: StructuredSummary.translatedActionItemEvidence(
+                from: pivot,
+                into: items))
     }
 
     /// Reduce phase over already-condensed notes (the live rolling summary
@@ -429,6 +432,11 @@ struct GeneratedActionItem {
     var text: String
     @Guide(description: "Speaker label of the owner (e.g. Me, S1), or empty string if not stated")
     var owner: String
+    @Guide(
+        description:
+            "Up to 4 exact E-tags from the material that directly support this commitment; empty when none apply"
+    )
+    var evidence: [String]
 }
 
 @available(macOS 26.0, iOS 26.0, *)
@@ -442,7 +450,9 @@ extension GeneratedSummary {
                     bullets: $0.bullets,
                     bulletEvidence: $0.bulletEvidence)
             },
-            actionItems: actionItems.map { .init(text: $0.text, owner: $0.owner) },
+            actionItems: actionItems.map {
+                .init(text: $0.text, owner: $0.owner, evidence: $0.evidence)
+            },
             overviewEvidence: overviewEvidence
         )
     }

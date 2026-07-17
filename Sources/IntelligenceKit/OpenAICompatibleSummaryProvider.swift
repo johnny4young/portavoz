@@ -53,7 +53,7 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
             {"overview": "…", "overviewEvidence": ["E1"], \
             "sections": [{"heading": "…", "bullets": ["…"], \
             "bulletEvidence": [["E2"]]}], \
-            "actionItems": [{"text": "…", "owner": "…"}]}
+            "actionItems": [{"text": "…", "owner": "…", "evidence": ["E3"]}]}
             Set "overviewEvidence" to the exact E-tags that directly support the overview, \
             at most 4. Use only tags present in the material; use [] when none apply. \
             For every section, "bulletEvidence" must have exactly one array per bullet, \
@@ -63,7 +63,8 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
             or key/value pair. Return one "sections" entry for every instructed recipe \
             section, in the instructed order, using empty arrays when nothing applies. \
             Action items go ONLY in "actionItems"; keep any corresponding recipe-section \
-            entry empty rather than omitting it. \
+            entry empty rather than omitting it. Give each supported action item up to 4 \
+            exact E-tags in "evidence", or [] when no direct source applies. \
             No markdown fences, no commentary.
             """
         return (

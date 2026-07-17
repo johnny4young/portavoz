@@ -6,13 +6,16 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** begin architecture Band 5 slice 5E by characterizing
-and extending typed evidence to action items, without yet widening the
-contract to Companion cards. Band 5D gives explicit built-in decision sections
-position-typed, source-revision-fenced transcript evidence in schema v11;
-provider shape mismatches fail closed, translations and bundles preserve valid
-coordinates with fresh IDs, and Meeting Detail jumps from a decision source to
-the exact transcript and audio without autoplay (D89). Band 5C gives the existing
+**Next concrete step:** begin architecture Band 5 slice 5F by characterizing
+Companion-card identity and evidence separately from summary artifacts. Band
+5E keys action-item evidence to stable task identity in schema v12; exact
+provider tags, revision/deletion fences, translation and bundle remapping, and
+Meeting Detail source navigation remain attached when the checkbox changes
+(D90). Band 5D gives explicit built-in decision sections position-typed,
+source-revision-fenced transcript evidence in schema v11; provider shape
+mismatches fail closed, translations and bundles preserve valid coordinates
+with fresh IDs, and Meeting Detail jumps from a decision source to the exact
+transcript and audio without autoplay (D89). Band 5C gives the existing
 overview claim one explicit, reversible local assessment: a bounded correction
 or an unsupported mark. Feedback never rewrites generated output or enters a
 model prompt, physically erases private correction text when cleared, and
@@ -47,7 +50,18 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90).
+
+- **Architecture Band 5 slice 5E complete — to-dos retain their meeting
+  proof (Jul 17, 2026)**: schema v12 keys a separate immutable evidence
+  aggregate to each durable action-item ID, with ordered nullable transcript
+  links and the shared source-revision fence. All summary providers emit exact
+  request-local tags additively; translation and format-v1 bundles remap fresh
+  task/evidence/segment identities. Completing a checkbox leaves evidence
+  attached. Meeting Detail navigates a current source to transcript/audio
+  without autoplay and disables stale or unavailable jumps. Core,
+  Intelligence, Storage, bundle, privacy, accessibility, and EN/ES UI coverage
+  protect D90.
 
 - **Architecture Band 5 slice 5D complete — decisions cite the exact meeting
   moment (Jul 17, 2026)**: schema v11 stores position-typed decision bullets

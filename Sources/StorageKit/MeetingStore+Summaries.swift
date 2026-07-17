@@ -173,6 +173,11 @@ extension MeetingStore {
                 deletedAt: nil)
             try record.insert(db)
         }
+        try insertSummaryActionItemEvidence(
+            draft.actionItemEvidence,
+            draft: draft,
+            at: timestamp,
+            in: db)
         try insertSummaryClaims(
             draft.claims,
             summaryID: summaryID,
@@ -363,6 +368,9 @@ extension MeetingStore {
             .filter(Column("deletedAt") == nil)
             .order(Column("createdAt"))
             .fetchAll(db).map { try $0.actionItem }
+        let actionEvidence = try summaryActionItemEvidence(
+            actionItems: items,
+            in: db)
         let claims = try summaryClaims(summaryID: record.id, in: db)
         let decisions = try summaryDecisionEvidence(summaryID: record.id, in: db)
         let draft = SummaryDraft(
@@ -373,7 +381,8 @@ extension MeetingStore {
             actionItems: items,
             fingerprint: record.fingerprint,
             claims: claims,
-            decisionEvidence: decisions)
+            decisionEvidence: decisions,
+            actionItemEvidence: actionEvidence)
         return (draft, record.version)
     }
 

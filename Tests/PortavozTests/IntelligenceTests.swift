@@ -22,6 +22,7 @@ final class PromptFactoryTests: XCTestCase {
         XCTAssertTrue(instructions.contains("Decisions"))
         XCTAssertTrue(instructions.contains("decision-bearing bullet"))
         XCTAssertTrue(instructions.contains("exactly one structured section entry"))
+        XCTAssertTrue(instructions.contains("every supported action item"))
     }
 
     /// The language reminder must ride at the END of the user prompt —
@@ -250,6 +251,35 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertTrue(malformed.draft(for: custom).decisionEvidence.isEmpty)
     }
 
+    func testDraftCreatesIdentityTypedActionItemEvidenceFromExactTags() throws {
+        let first = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "context",
+            startTime: 0, endTime: 1)
+        let second = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "Ana owns the rollout",
+            startTime: 2, endTime: 3)
+        let cited = StructuredSummary(
+            overview: "Overview",
+            sections: [],
+            actionItems: [
+                .init(
+                    text: "Prepare rollout",
+                    owner: "",
+                    evidence: ["E2", "E404", "E2"])
+            ])
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [first, second],
+            speakers: [],
+            recipe: .general)
+
+        let draft = cited.draft(for: request)
+        let evidence = try XCTUnwrap(draft.actionItemEvidence.first)
+        XCTAssertEqual(evidence.actionItemID, draft.actionItems[0].id)
+        XCTAssertEqual(evidence.evidenceSegmentIDs, [second.id])
+        XCTAssertTrue(cited.draft(for: request, includeEvidence: false).actionItemEvidence.isEmpty)
+    }
+
     func testTranslationPreservesValidDecisionCoordinatesWithFreshIdentity() throws {
         let sourceID = UUID()
         let original = SummaryDecisionEvidence(
@@ -281,6 +311,34 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertTrue(StructuredSummary.translatedDecisionEvidence(
             from: pivot,
             into: [.init(heading: "Decisiones", bullets: ["Primera"])]).isEmpty)
+    }
+
+    func testTranslationRemapsActionItemEvidenceToFreshTaskIdentity() throws {
+        let sourceID = UUID()
+        let oldItem = ActionItem(text: "Prepare rollout")
+        let original = SummaryActionItemEvidence(
+            actionItemID: oldItem.id,
+            sourceTranscriptRevision: 3,
+            evidenceSegmentIDs: [sourceID])
+        let pivot = SummaryDraft(
+            meetingID: meeting,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "Overview",
+            actionItems: [oldItem],
+            actionItemEvidence: [original])
+        let translatedItem = ActionItem(text: "Preparar rollout")
+
+        let carried = try XCTUnwrap(StructuredSummary.translatedActionItemEvidence(
+            from: pivot,
+            into: [translatedItem]).first)
+        XCTAssertNotEqual(carried.id, original.id)
+        XCTAssertEqual(carried.actionItemID, translatedItem.id)
+        XCTAssertEqual(carried.sourceTranscriptRevision, 3)
+        XCTAssertEqual(carried.evidenceSegmentIDs, [sourceID])
+        XCTAssertTrue(StructuredSummary.translatedActionItemEvidence(
+            from: pivot,
+            into: []).isEmpty)
     }
 }
 
@@ -819,6 +877,7 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         XCTAssertTrue(prompt.user.contains("[E1]"))
         XCTAssertTrue(prompt.system.contains("overviewEvidence"))
         XCTAssertTrue(prompt.system.contains("bulletEvidence"))
+        XCTAssertTrue(prompt.system.contains("\"evidence\""))
         XCTAssertTrue(prompt.system.contains("one \"sections\" entry for every instructed recipe"))
         XCTAssertFalse(prompt.user.contains("THE USER'S OWN NOTES"))
     }
@@ -840,11 +899,16 @@ final class OpenAICompatibleProviderTests: XCTestCase {
     }
 
     func testParsesFencedJSONResponses() throws {
-        let content = "```json\n{\"overview\": \"ok\", \"sections\": [], \"actionItems\": []}\n```"
+        let content = """
+            ```json
+            {"overview": "ok", "sections": [], "actionItems": [{"text": "ship", "owner": ""}]}
+            ```
+            """
         let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
         XCTAssertEqual(summary.overview, "ok")
         XCTAssertNil(summary.overviewEvidence, "older provider responses remain compatible")
         XCTAssertTrue(summary.sections.allSatisfy { $0.bulletEvidence == nil })
+        XCTAssertNil(summary.actionItems.first?.evidence)
     }
 
     func testRejectsNonJSONContent() {

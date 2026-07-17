@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **✅ Every to-do keeps its proof** — Action items can now show the exact transcript moments where the commitment was made. Completing a task never detaches its source, while changed or deleted evidence disables navigation instead of pointing at the wrong words.
 - **📌 Every decision points back to the meeting** — Decision bullets can now show the exact transcript moments that support them. Click a source to focus the matching words and audio; changed or deleted transcript evidence disables the jump instead of showing a misleading citation.
 - **✍️ Correct the claim, keep the original** — Add a private correction or mark a generated overview unsupported without rewriting what the model produced. Clear removes the correction text, and the review travels only when you explicitly export the `.portavoz` meeting.
 - **🔗 Summaries that show their work** — A generated overview can now show the exact transcript moments that support it. Click a source to focus the matching words and audio; if Refine changes the transcript or evidence disappears, Portavoz disables the jump instead of pretending the old source is still valid.

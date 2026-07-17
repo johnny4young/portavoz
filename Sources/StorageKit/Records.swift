@@ -435,6 +435,25 @@ struct SummaryDecisionEvidenceSegmentRecord: Codable, FetchableRecord, Persistab
     var createdAt: Date
 }
 
+struct SummaryActionItemEvidenceRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryActionItemEvidence"
+
+    var id: String
+    var actionItemID: String
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct SummaryActionItemEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryActionItemEvidenceSegment"
+
+    var id: String
+    var evidenceID: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
 struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "generationRun"
 

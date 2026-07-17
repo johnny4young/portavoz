@@ -169,17 +169,25 @@ public struct MeetingBundle: Codable, Sendable {
         segmentMap: [UUID: UUID]
     ) -> SummaryDraft? {
         guard let summary else { return nil }
+        let sourceActionItemIDs = summary.actionItems.map(\.id)
+        guard Set(sourceActionItemIDs).count == sourceActionItemIDs.count else { return nil }
+        let remappedActionItems = summary.actionItems.map { item in
+            (source: item, importedID: UUID())
+        }
+        let actionItemMap = Dictionary(uniqueKeysWithValues: remappedActionItems.map {
+            ($0.source.id, $0.importedID)
+        })
         return SummaryDraft(
             meetingID: meetingID,
             recipeID: summary.recipeID,
             language: summary.language,
             markdown: summary.markdown,
-            actionItems: summary.actionItems.map { item in
+            actionItems: remappedActionItems.map { item in
                 ActionItem(
-                    id: UUID(),
-                    text: item.text,
-                    ownerSpeakerID: item.ownerSpeakerID.flatMap { speakerMap[$0] },
-                    isDone: item.isDone)
+                    id: item.importedID,
+                    text: item.source.text,
+                    ownerSpeakerID: item.source.ownerSpeakerID.flatMap { speakerMap[$0] },
+                    isDone: item.source.isDone)
             },
             fingerprint: summary.fingerprint,
             claims: summary.claims.compactMap { claim in
@@ -201,6 +209,17 @@ public struct MeetingBundle: Codable, Sendable {
                 return SummaryDecisionEvidence(
                     sectionOrdinal: decision.sectionOrdinal,
                     bulletOrdinal: decision.bulletOrdinal,
+                    sourceTranscriptRevision: nil,
+                    evidenceSegmentIDs: evidenceIDs)
+            },
+            actionItemEvidence: summary.actionItemEvidence.compactMap { evidence in
+                let evidenceIDs = evidence.evidenceSegmentIDs.compactMap { segmentMap[$0] }
+                guard let actionItemID = actionItemMap[evidence.actionItemID],
+                      evidenceIDs.count == evidence.evidenceSegmentIDs.count,
+                      evidence.unavailableEvidenceCount == 0
+                else { return nil }
+                return SummaryActionItemEvidence(
+                    actionItemID: actionItemID,
                     sourceTranscriptRevision: nil,
                     evidenceSegmentIDs: evidenceIDs)
             })

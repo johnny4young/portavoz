@@ -77,13 +77,20 @@ extension AppServices {
                     - ▸ El rollout del modelo queda para el viernes.
                     - Se revisará el presupuesto de transcripción.
                     """,
-                actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ownerID)],
+                actionItems: [ActionItem(
+                    id: UUID(uuidString: "B5E00000-0000-4000-8000-000000000001")!,
+                    text: "Prepare the rollout",
+                    ownerSpeakerID: ownerID)],
                 claims: [SummaryClaim(
                     kind: .overview,
                     evidenceSegmentIDs: [citedSegmentID])],
                 decisionEvidence: [SummaryDecisionEvidence(
                     sectionOrdinal: 0,
                     bulletOrdinal: 0,
+                    evidenceSegmentIDs: [citedSegmentID])],
+                actionItemEvidence: [SummaryActionItemEvidence(
+                    actionItemID: UUID(
+                        uuidString: "B5E00000-0000-4000-8000-000000000001")!,
                     evidenceSegmentIDs: [citedSegmentID])]))
         await seedLatestRecipeSummaryIfRequested(for: meetingID)
     }

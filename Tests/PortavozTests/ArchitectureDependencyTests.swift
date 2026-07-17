@@ -805,6 +805,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(diagnostics.contains("SummaryDecisionEvidence"))
     }
 
+    func testActionItemEvidenceStaysIdentityTypedRevisionFencedAndPortable() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/SummaryTypes.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SummaryActionItemEvidence.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SummaryActionItemEvidence.swift")
+        let structured = try Self.contents(
+            of: "Sources/IntelligenceKit/StructuredSummary.swift")
+        let provider = try Self.contents(
+            of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
+        let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
+        let diagnostics = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
+
+        XCTAssertTrue(core.contains("struct SummaryActionItemEvidence"))
+        XCTAssertTrue(core.contains("actionItemID: UUID"))
+        XCTAssertTrue(schema.contains("table: \"summaryActionItemEvidence\""))
+        XCTAssertTrue(schema.contains("table: \"summaryActionItemEvidenceSegment\""))
+        XCTAssertTrue(storage.contains("action-item evidence identities and targets"))
+        XCTAssertTrue(storage.contains("validatedSummaryEvidence"))
+        XCTAssertTrue(structured.contains("typedActionItemEvidence"))
+        XCTAssertTrue(structured.contains("translatedActionItemEvidence"))
+        XCTAssertTrue(provider.contains("\"evidence\": [\"E3\"]"))
+        XCTAssertTrue(bundle.contains("actionItemMap[evidence.actionItemID]"))
+        XCTAssertTrue(detail.contains("summary-action-item-"))
+        XCTAssertFalse(companion.contains("SummaryActionItemEvidence"))
+        XCTAssertFalse(diagnostics.contains("SummaryActionItemEvidence"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")

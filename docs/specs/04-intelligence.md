@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -19,7 +19,7 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 **Guided generation**: `GeneratedSummary` (@Generable) → overview + up to four
 exact `overviewEvidence` E-tags + sections (instructed headings, bullets, and
 one `bulletEvidence` E-tag array per bullet) + actionItems
-(owner by label). `StructuredSummary.draft(for:)` resolves owners against
+(owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)` resolves owners against
 Speakers by label/displayName (case-insensitive) and admits only tags emitted
 for that request. Unknown, altered, repeated, or excess tags disappear; no
 valid tag or an empty overview produces no claim. Tag-shaped literals in
@@ -56,6 +56,22 @@ uses the same shape, and MLX reuses the OpenAI contract. Translation carries
 only coordinates that remain valid after positional bullet-count validation,
 mints fresh decision IDs, and preserves the source revision and ordered links.
 Storage remains authoritative for coordinate, meeting, and revision admission.
+
+## Typed action-item evidence (D90)
+
+`StructuredSummary.Item` carries one optional additive evidence-tag array, so
+older Ollama/BYOK/MLX responses remain decodable. Foundation Models guided
+generation exposes the same per-item shape. `draft(for:)` first creates each
+durable `ActionItem`, then resolves only exact request-local E-tags into a
+separate `SummaryActionItemEvidence` keyed to that new task ID. Unknown,
+duplicate, altered, empty, or rolling-note tags produce no evidence.
+
+Translation creates fresh action-item IDs and carries matching evidence by
+task position with fresh evidence IDs; bullet/Markdown coordinates are not
+involved. The source revision and ordered segment IDs remain intact until
+Storage validates them. Completing a task never invokes a provider and never
+changes its generated evidence. Companion-card provenance remains independent
+and is not inferred from this contract.
 
 ## Human claim feedback is not model material (D88)
 

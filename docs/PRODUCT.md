@@ -122,6 +122,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 10. **A summary that shows its work** (Band 5B): overview sources are compact timestamps; selecting one focuses the exact supporting transcript line and audio moment without interrupting the user's playback intent.
 11. **Correct the claim, preserve the record** (Band 5C): a private correction or unsupported mark stays visibly separate from generated text, can be cleared without hidden text history, and travels only through an explicit meeting export.
 12. **A decision you can verify in one click** (Band 5D): each supported decision bullet exposes its exact transcript and audio moments; stale or missing evidence disables navigation instead of presenting false certainty.
+13. **A to-do that remembers the commitment** (Band 5E): the source stays attached to the task even after its checkbox changes, so users can verify who committed to what without searching the meeting or trusting generated text blindly.
 
 ## Performance targets (world-class = numbers)
 

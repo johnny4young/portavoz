@@ -23,10 +23,11 @@ final class MeetingBundleTests: XCTestCase {
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
                 text: "Perfecto.", startTime: 3, endTime: 4, isFinal: true)
         ]
+        let actionItem = ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)
         let summary = SummaryDraft(
             meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
             markdown: "## Decisiones\n- Beta el lunes.",
-            actionItems: [ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)],
+            actionItems: [actionItem],
             claims: [SummaryClaim(
                 kind: .overview,
                 sourceTranscriptRevision: meeting.transcriptRevision,
@@ -36,6 +37,10 @@ final class MeetingBundleTests: XCTestCase {
             decisionEvidence: [SummaryDecisionEvidence(
                 sectionOrdinal: 0,
                 bulletOrdinal: 0,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segments[0].id])],
+            actionItemEvidence: [SummaryActionItemEvidence(
+                actionItemID: actionItem.id,
                 sourceTranscriptRevision: meeting.transcriptRevision,
                 evidenceSegmentIDs: [segments[0].id])])
         let note = ContextItem(
@@ -63,6 +68,12 @@ final class MeetingBundleTests: XCTestCase {
             "La beta se publica el martes.")
         XCTAssertEqual(
             decoded.summary?.decisionEvidence.first?.evidenceSegmentIDs,
+            [decoded.segments[0].id])
+        XCTAssertEqual(
+            decoded.summary?.actionItemEvidence.first?.actionItemID,
+            decoded.summary?.actionItems.first?.id)
+        XCTAssertEqual(
+            decoded.summary?.actionItemEvidence.first?.evidenceSegmentIDs,
             [decoded.segments[0].id])
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
         XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
@@ -133,6 +144,16 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNotEqual(
             remapped.summary?.decisionEvidence.first?.id,
             original.summary?.decisionEvidence.first?.id)
+        XCTAssertEqual(
+            remapped.summary?.actionItemEvidence.first?.actionItemID,
+            remapped.summary?.actionItems.first?.id)
+        XCTAssertEqual(
+            remapped.summary?.actionItemEvidence.first?.evidenceSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.summary?.actionItemEvidence.first?.sourceTranscriptRevision)
+        XCTAssertNotEqual(
+            remapped.summary?.actionItemEvidence.first?.id,
+            original.summary?.actionItemEvidence.first?.id)
         // "Me" flag survives.
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
         XCTAssertNotEqual(
@@ -187,5 +208,27 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNotEqual(first.meeting.id, second.meeting.id)
         XCTAssertTrue(
             Set(first.segments.map(\.id)).isDisjoint(with: second.segments.map(\.id)))
+    }
+
+    func testMalformedDuplicateActionIdentityDropsSummaryInsteadOfInventingRelation() throws {
+        var bundle = sample()
+        let original = try XCTUnwrap(bundle.summary)
+        let first = try XCTUnwrap(original.actionItems.first)
+        let duplicate = ActionItem(
+            id: first.id,
+            text: "Duplicated identity",
+            ownerSpeakerID: first.ownerSpeakerID)
+        bundle.summary = SummaryDraft(
+            meetingID: original.meetingID,
+            recipeID: original.recipeID,
+            language: original.language,
+            markdown: original.markdown,
+            actionItems: [first, duplicate],
+            fingerprint: original.fingerprint,
+            claims: original.claims,
+            decisionEvidence: original.decisionEvidence,
+            actionItemEvidence: original.actionItemEvidence)
+
+        XCTAssertNil(bundle.remappedForImport().summary)
     }
 }

@@ -82,12 +82,14 @@ final class CoreTypesTests: XCTestCase {
             JSONSerialization.jsonObject(with: JSONEncoder().encode(draft)) as? [String: Any])
         json.removeValue(forKey: "claims")
         json.removeValue(forKey: "decisionEvidence")
+        json.removeValue(forKey: "actionItemEvidence")
 
         let decoded = try JSONDecoder().decode(
             SummaryDraft.self,
             from: JSONSerialization.data(withJSONObject: json))
         XCTAssertTrue(decoded.claims.isEmpty)
         XCTAssertTrue(decoded.decisionEvidence.isEmpty)
+        XCTAssertTrue(decoded.actionItemEvidence.isEmpty)
     }
 
     func testSummaryDecisionEvidenceUsesTheSameRevisionFence() {
@@ -109,6 +111,29 @@ final class CoreTypesTests: XCTestCase {
             .stale)
         XCTAssertEqual(
             decision.resolveEvidence(currentTranscriptRevision: 2, segments: []).status,
+            .unavailable)
+    }
+
+    func testActionItemEvidenceUsesStableTaskIdentityAndRevisionFence() {
+        let meetingID = MeetingID()
+        let actionItemID = UUID()
+        let segment = TranscriptSegment(
+            meetingID: meetingID, channel: .system, text: "Ana owns the rollout",
+            startTime: 3, endTime: 6)
+        let evidence = SummaryActionItemEvidence(
+            actionItemID: actionItemID,
+            sourceTranscriptRevision: 2,
+            evidenceSegmentIDs: [segment.id])
+
+        XCTAssertEqual(evidence.actionItemID, actionItemID)
+        XCTAssertEqual(
+            evidence.resolveEvidence(currentTranscriptRevision: 2, segments: [segment]).status,
+            .current)
+        XCTAssertEqual(
+            evidence.resolveEvidence(currentTranscriptRevision: 3, segments: [segment]).status,
+            .stale)
+        XCTAssertEqual(
+            evidence.resolveEvidence(currentTranscriptRevision: 2, segments: []).status,
             .unavailable)
     }
 

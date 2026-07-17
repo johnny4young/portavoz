@@ -35,7 +35,11 @@ public enum PromptFactory {
                 + "never as a summary section.")
         lines.append(
             "When the material has [E#] tags, cite only exact tags that directly support "
-                + "the overview or a decision-bearing bullet; never invent or alter a tag.")
+                + "the overview, a decision-bearing bullet, or an action item; "
+                + "never invent or alter a tag.")
+        lines.append(
+            "Attach exact source tags to every supported action item in its dedicated field; "
+                + "use no tags when the commitment is not directly supported.")
         let decisionSections = recipe.decisionSectionIndexes.compactMap { index in
             recipe.sections.indices.contains(index) ? recipe.sections[index] : nil
         }

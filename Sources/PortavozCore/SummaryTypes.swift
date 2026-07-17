@@ -134,6 +134,9 @@ public struct SummaryDraft: Codable, Sendable {
     /// Exact transcript support for individual bullets in decision-bearing
     /// sections. Positions refer to the rendered, nonempty `##` sections.
     public let decisionEvidence: [SummaryDecisionEvidence]
+    /// Exact transcript support keyed to durable action-item identity.
+    /// Completion state can change without changing this generated evidence.
+    public let actionItemEvidence: [SummaryActionItemEvidence]
     /// Identity of the summarized MATERIAL + method (D25), language
     /// EXCLUDED — a snapshot with the same fingerprint in another language
     /// is a valid translation pivot. nil on pre-jul-2026 snapshots (they
@@ -144,7 +147,8 @@ public struct SummaryDraft: Codable, Sendable {
         meetingID: MeetingID, recipeID: String, language: String, markdown: String,
         actionItems: [ActionItem], fingerprint: String? = nil,
         claims: [SummaryClaim] = [],
-        decisionEvidence: [SummaryDecisionEvidence] = []
+        decisionEvidence: [SummaryDecisionEvidence] = [],
+        actionItemEvidence: [SummaryActionItemEvidence] = []
     ) {
         self.meetingID = meetingID
         self.recipeID = recipeID
@@ -154,11 +158,12 @@ public struct SummaryDraft: Codable, Sendable {
         self.fingerprint = fingerprint
         self.claims = claims
         self.decisionEvidence = decisionEvidence
+        self.actionItemEvidence = actionItemEvidence
     }
 
     private enum CodingKeys: String, CodingKey {
         case meetingID, recipeID, language, markdown, actionItems, fingerprint, claims
-        case decisionEvidence
+        case decisionEvidence, actionItemEvidence
     }
 
     public init(from decoder: Decoder) throws {
@@ -173,6 +178,9 @@ public struct SummaryDraft: Codable, Sendable {
         decisionEvidence = try container.decodeIfPresent(
             [SummaryDecisionEvidence].self,
             forKey: .decisionEvidence) ?? []
+        actionItemEvidence = try container.decodeIfPresent(
+            [SummaryActionItemEvidence].self,
+            forKey: .actionItemEvidence) ?? []
     }
 }
 
@@ -315,6 +323,32 @@ public struct SummaryDecisionEvidence: Codable, Sendable, Identifiable {
     }
 }
 
+/// Typed provenance for one action item, keyed independently from Markdown.
+///
+/// The task owns a stable identity because its completion state is mutable;
+/// this generated evidence remains immutable with the summary snapshot.
+public struct SummaryActionItemEvidence: Codable, Sendable, Identifiable {
+    public let id: SummaryActionItemEvidenceID
+    public let actionItemID: UUID
+    public let sourceTranscriptRevision: Int?
+    public let evidenceSegmentIDs: [UUID]
+    public let unavailableEvidenceCount: Int
+
+    public init(
+        id: SummaryActionItemEvidenceID = SummaryActionItemEvidenceID(),
+        actionItemID: UUID,
+        sourceTranscriptRevision: Int? = nil,
+        evidenceSegmentIDs: [UUID],
+        unavailableEvidenceCount: Int = 0
+    ) {
+        self.id = id
+        self.actionItemID = actionItemID
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.evidenceSegmentIDs = evidenceSegmentIDs
+        self.unavailableEvidenceCount = unavailableEvidenceCount
+    }
+}
+
 public enum SummaryClaimEvidenceStatus: Sendable, Equatable {
     case current
     case stale
@@ -349,6 +383,20 @@ extension SummaryClaim {
 }
 
 extension SummaryDecisionEvidence {
+    public func resolveEvidence(
+        currentTranscriptRevision: Int,
+        segments: [TranscriptSegment]
+    ) -> SummaryClaimEvidenceResolution {
+        resolveSummaryEvidence(
+            sourceTranscriptRevision: sourceTranscriptRevision,
+            evidenceSegmentIDs: evidenceSegmentIDs,
+            unavailableEvidenceCount: unavailableEvidenceCount,
+            currentTranscriptRevision: currentTranscriptRevision,
+            segments: segments)
+    }
+}
+
+extension SummaryActionItemEvidence {
     public func resolveEvidence(
         currentTranscriptRevision: Int,
         segments: [TranscriptSegment]

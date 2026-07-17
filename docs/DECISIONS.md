@@ -2448,3 +2448,41 @@ without duplicating generated content, depending on one language, or pretending
 every summary section has decision semantics. Dedicated tables keep the domain
 explicit and let action items or Companion cards earn their own typed evidence
 contracts instead of inheriting a generic EAV model.
+
+## D90 — Key action-item evidence to task identity, not Markdown (Jul 2026)
+
+**Context:** D89 made decisions inspectable by rendered bullet position, but
+action items already live outside Markdown as durable rows whose completion
+state changes independently. Reusing decision coordinates would detach a
+commitment from its checkbox identity. Adding evidence fields directly to
+`ActionItem` would also mix mutable task state with immutable generated
+provenance and weaken backward bundle decoding.
+
+**Decision:** add `SummaryActionItemEvidence` as a separate typed aggregate
+keyed by exactly one `ActionItem.id`. It owns a fresh evidence ID, source
+transcript revision, ordered segment IDs, and unavailable-link count. Provider
+action-item shapes gain an optional additive evidence-tag array. Shared,
+OpenAI-compatible, and Foundation Models instructions require only exact
+request-local E-tags; unknown, altered, duplicate, or empty references produce
+no evidence. Older provider responses remain valid.
+
+Schema v12 adds `summaryActionItemEvidence` and
+`summaryActionItemEvidenceSegment`. Summary persistence requires unique
+evidence and target IDs, a target action item in the same draft, and the D87
+live same-meeting segment/revision contract. The evidence commits with the
+immutable summary and action rows. Toggling `isDone` changes only the task;
+the evidence identity remains stable. Nullable links retain unavailable
+provenance after physical segment deletion.
+
+Translation creates fresh action-item and evidence IDs, then carries evidence
+by corresponding task position. Format-v1 `.portavoz` import remaps action,
+evidence, and segment IDs, clears the foreign revision, and lets local Storage
+stamp it. Meeting Detail renders sources beneath the matching checkbox; a
+current source focuses transcript/audio without autoplay, while stale or
+unavailable evidence cannot navigate. Companion cards, support diagnostics,
+telemetry, privacy receipts, and overview feedback remain outside this slice.
+
+**Rationale:** task identity is the smallest stable business key for a
+commitment. A dedicated aggregate keeps completion mutable, generated
+provenance immutable, portability explicit, and future Companion evidence free
+to adopt its own semantics rather than a generic evidence graph.

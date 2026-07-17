@@ -1379,12 +1379,34 @@ extension MeetingDetailView {
     private func summaryTabContent(_ summary: MeetingReviewSummary) -> some View {
         let parsed = SummarySections.parse(summary.draft.markdown)
         if summaryTabSelection == 1000 {
-            ForEach(summary.draft.actionItems) { item in
-                Toggle(isOn: actionBinding(item)) {
-                    Text(item.text).strikethrough(item.isDone)
+            let evidenceByItem = summary.draft.actionItemEvidence.reduce(
+                into: [UUID: SummaryActionItemEvidence]()
+            ) { result, evidence in
+                if result[evidence.actionItemID] == nil {
+                    result[evidence.actionItemID] = evidence
                 }
-                .toggleStyle(.checkbox)
-                .accessibilityIdentifier("action-item-\(item.id.uuidString)")
+            }
+            ForEach(summary.draft.actionItems) { item in
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: actionBinding(item)) {
+                        Text(item.text).strikethrough(item.isDone)
+                    }
+                    .toggleStyle(.checkbox)
+                    .accessibilityIdentifier("action-item-\(item.id.uuidString)")
+                    if let evidence = evidenceByItem[item.id], let detail {
+                        let resolution = evidence.resolveEvidence(
+                            currentTranscriptRevision: detail.meeting.transcriptRevision,
+                            segments: detail.segments)
+                        summaryEvidenceSources(
+                            resolution,
+                            sourceIdentifier:
+                                "summary-action-item-\(item.id.uuidString)-evidence",
+                            staleIdentifier:
+                                "summary-action-item-\(item.id.uuidString)-stale",
+                            unavailableIdentifier:
+                                "summary-action-item-\(item.id.uuidString)-unavailable")
+                    }
+                }
             }
         } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
             let sectionOrdinal = summaryTabSelection - 1

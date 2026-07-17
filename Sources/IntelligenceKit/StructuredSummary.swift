@@ -28,10 +28,13 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
         /// Speaker label as spoken in the transcript ("Me", "S1", a name);
         /// empty when ownership wasn't stated.
         public var owner: String
+        /// Exact request-local E-tags supporting this commitment.
+        public var evidence: [String]?
 
-        public init(text: String, owner: String = "") {
+        public init(text: String, owner: String = "", evidence: [String]? = nil) {
             self.text = text
             self.owner = owner
+            self.evidence = evidence
         }
     }
 
@@ -168,6 +171,10 @@ extension StructuredSummary {
             for: request,
             segmentIDsByTag: evidence.segmentIDsByTag,
             includeEvidence: includeEvidence)
+        let actionEvidence = typedActionItemEvidence(
+            items: items,
+            segmentIDsByTag: evidence.segmentIDsByTag,
+            includeEvidence: includeEvidence)
         return SummaryDraft(
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
@@ -175,8 +182,26 @@ extension StructuredSummary {
             markdown: markdown(recipe: request.recipe),
             actionItems: items,
             claims: claims,
-            decisionEvidence: decisions
+            decisionEvidence: decisions,
+            actionItemEvidence: actionEvidence
         )
+    }
+
+    private func typedActionItemEvidence(
+        items: [ActionItem],
+        segmentIDsByTag: [String: UUID],
+        includeEvidence: Bool
+    ) -> [SummaryActionItemEvidence] {
+        guard includeEvidence, items.count == actionItems.count else { return [] }
+        return zip(items, actionItems).compactMap { item, structured -> SummaryActionItemEvidence? in
+            let ids = TranscriptFormatter.resolveEvidenceTags(
+                structured.evidence ?? [],
+                segmentIDsByTag: segmentIDsByTag)
+            guard !ids.isEmpty else { return nil }
+            return SummaryActionItemEvidence(
+                actionItemID: item.id,
+                evidenceSegmentIDs: ids)
+        }
     }
 
     private func typedDecisionEvidence(
@@ -229,6 +254,30 @@ extension StructuredSummary {
                 sourceTranscriptRevision: decision.sourceTranscriptRevision,
                 evidenceSegmentIDs: decision.evidenceSegmentIDs,
                 unavailableEvidenceCount: decision.unavailableEvidenceCount)
+        }
+    }
+
+    /// Action items receive fresh IDs on translation; evidence follows the
+    /// corresponding item position rather than a rendered Markdown section.
+    static func translatedActionItemEvidence(
+        from pivot: SummaryDraft,
+        into items: [ActionItem]
+    ) -> [SummaryActionItemEvidence] {
+        guard pivot.actionItems.count == items.count else { return [] }
+        let evidenceByItem = pivot.actionItemEvidence.reduce(
+            into: [UUID: SummaryActionItemEvidence]()
+        ) { result, evidence in
+            if result[evidence.actionItemID] == nil {
+                result[evidence.actionItemID] = evidence
+            }
+        }
+        return zip(pivot.actionItems, items).compactMap { oldItem, newItem in
+            guard let evidence = evidenceByItem[oldItem.id] else { return nil }
+            return SummaryActionItemEvidence(
+                actionItemID: newItem.id,
+                sourceTranscriptRevision: evidence.sourceTranscriptRevision,
+                evidenceSegmentIDs: evidence.evidenceSegmentIDs,
+                unavailableEvidenceCount: evidence.unavailableEvidenceCount)
         }
     }
 }

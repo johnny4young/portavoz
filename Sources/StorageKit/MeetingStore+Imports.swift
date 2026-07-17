@@ -106,10 +106,23 @@ extension MeetingStore {
         segments: Set<UUID>
     ) throws {
         guard let summary else { return }
+        let actionItemIDs = Set(summary.actionItems.map(\.id))
         guard summary.meetingID == meetingID,
-            Set(summary.actionItems.map(\.id)).count == summary.actionItems.count,
+            actionItemIDs.count == summary.actionItems.count,
             summary.actionItems.allSatisfy({ item in
                 item.ownerSpeakerID.map(cast.contains) ?? true
+            }),
+            Set(summary.actionItemEvidence.map(\.id)).count
+                == summary.actionItemEvidence.count,
+            Set(summary.actionItemEvidence.map(\.actionItemID)).count
+                == summary.actionItemEvidence.count,
+            summary.actionItemEvidence.allSatisfy({ evidence in
+                actionItemIDs.contains(evidence.actionItemID)
+                    && evidence.unavailableEvidenceCount == 0
+                    && !evidence.evidenceSegmentIDs.isEmpty
+                    && Set(evidence.evidenceSegmentIDs).count
+                        == evidence.evidenceSegmentIDs.count
+                    && evidence.evidenceSegmentIDs.allSatisfy(segments.contains)
             }),
             summary.claims.count <= 1,
             Set(summary.claims.map(\.id)).count == summary.claims.count,
