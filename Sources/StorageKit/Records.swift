@@ -414,6 +414,27 @@ struct SummaryClaimFeedbackRecord: Codable, FetchableRecord, PersistableRecord {
     var deletedAt: Date?
 }
 
+struct SummaryDecisionEvidenceRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryDecisionEvidence"
+
+    var id: String
+    var summaryID: String
+    var sectionOrdinal: Int
+    var bulletOrdinal: Int
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct SummaryDecisionEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryDecisionEvidenceSegment"
+
+    var id: String
+    var decisionID: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
 struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "generationRun"
 

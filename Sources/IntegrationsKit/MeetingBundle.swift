@@ -192,6 +192,17 @@ public struct MeetingBundle: Codable, Sendable {
                     sourceTranscriptRevision: nil,
                     evidenceSegmentIDs: evidenceIDs,
                     feedback: claim.feedback)
+            },
+            decisionEvidence: summary.decisionEvidence.compactMap { decision in
+                let evidenceIDs = decision.evidenceSegmentIDs.compactMap { segmentMap[$0] }
+                guard evidenceIDs.count == decision.evidenceSegmentIDs.count,
+                      decision.unavailableEvidenceCount == 0
+                else { return nil }
+                return SummaryDecisionEvidence(
+                    sectionOrdinal: decision.sectionOrdinal,
+                    bulletOrdinal: decision.bulletOrdinal,
+                    sourceTranscriptRevision: nil,
+                    evidenceSegmentIDs: evidenceIDs)
             })
     }
 }

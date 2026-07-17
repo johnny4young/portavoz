@@ -32,7 +32,8 @@ extension MeetingStore {
             regions: [
                 Table("meeting"), Table("summary"), Table("actionItem"),
                 Table("summaryClaim"), Table("summaryClaimSegment"),
-                Table("summaryClaimFeedback")
+                Table("summaryClaimFeedback"), Table("summaryDecisionEvidence"),
+                Table("summaryDecisionEvidenceSegment")
             ],
             fetch: { database in
                 try Self.fetchMeetingReviewSummary(id, in: database)

@@ -201,7 +201,10 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     sourceTranscriptRevision: claim.sourceTranscriptRevision,
                     evidenceSegmentIDs: claim.evidenceSegmentIDs,
                     unavailableEvidenceCount: claim.unavailableEvidenceCount)
-            })
+            },
+            decisionEvidence: StructuredSummary.translatedDecisionEvidence(
+                from: pivot,
+                into: sections))
     }
 
     /// Reduce phase over already-condensed notes (the live rolling summary
@@ -392,7 +395,7 @@ struct GeneratedSummary {
     // swiftlint:disable line_length
     @Guide(
         description:
-            "One entry per instructed section heading, in the instructed order. Do NOT add a section for action items — they go in the actionItems field only"
+            "Exactly one entry per instructed section heading, in the instructed order. Keep bullets and bulletEvidence empty when nothing applies; commitments still go in actionItems"
     )
     var sections: [GeneratedSection]
 
@@ -411,6 +414,12 @@ struct GeneratedSection {
     var heading: String
     @Guide(description: "Terse factual bullet points; empty if nothing applies")
     var bullets: [String]
+    @Guide(
+        description:
+            "One exact E-tag array per bullet, same order and count; "
+            + "use tags only for instructed decision sections and [] otherwise"
+    )
+    var bulletEvidence: [[String]]
 }
 
 @available(macOS 26.0, iOS 26.0, *)
@@ -427,7 +436,12 @@ extension GeneratedSummary {
     var structured: StructuredSummary {
         StructuredSummary(
             overview: overview,
-            sections: sections.map { .init(heading: $0.heading, bullets: $0.bullets) },
+            sections: sections.map {
+                .init(
+                    heading: $0.heading,
+                    bullets: $0.bullets,
+                    bulletEvidence: $0.bulletEvidence)
+            },
             actionItems: actionItems.map { .init(text: $0.text, owner: $0.owner) },
             overviewEvidence: overviewEvidence
         )

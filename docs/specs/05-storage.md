@@ -1,12 +1,12 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence).
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v10` migrations in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v11` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -31,6 +31,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `summaryClaim` (v9) | id, summaryID (FK CASCADE), kind (`overview` only), sourceTranscriptRevision, createdAt; unique summary+kind |
 | `summaryClaimSegment` (v9) | id, claimID (FK CASCADE), segmentID? (FK SET NULL), ordinal, createdAt; unique claim+ordinal and claim+live-segment |
 | `summaryClaimFeedback` (v10) | claimID (PK/FK CASCADE), kind (`correction` or `unsupported`), correctionText?, createdAt/updatedAt/deletedAt; one current mutable assessment per immutable claim |
+| `summaryDecisionEvidence` (v11) | id, summaryID (FK CASCADE), sectionOrdinal, bulletOrdinal, sourceTranscriptRevision, createdAt; unique summary+section+bullet |
+| `summaryDecisionEvidenceSegment` (v11) | id, decisionID (FK CASCADE), segmentID? (FK SET NULL), ordinal, createdAt; unique decision+ordinal and decision+live-segment |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
@@ -75,6 +77,16 @@ Clear first sets `correctionText` to NULL and then tombstones the row,
 preserving nonsensitive future-sync evidence without retaining private
 free-form text. Generated summary saves reject feedback; validated bundle
 import is the explicit portable insertion boundary.
+
+Schema v11 is the additive decision-evidence migration (D89). It deliberately
+does not widen the schema-v9 one-overview table. The immutable summary
+transaction parses Markdown through `SummaryMarkdownOutline`, rejects duplicate
+decision IDs or rendered section/bullet positions, requires every coordinate
+to address a real bullet, and reuses the same nonempty unique live
+same-meeting-segment and source-revision validation as overview evidence. The
+database stamps the current meeting revision. Link order is durable and a
+physical segment deletion sets the link null, making the whole decision source
+unavailable rather than partially navigable.
 
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health
@@ -346,9 +358,10 @@ to ApplicationKit contracts; no GRDB projection reaches `InsightsView`.
 
 Meeting Detail has five independent observations (D59/D75/D76). Its live root, cast,
 and ordered transcript observe `meeting`, `speaker`, and `segment`; its newest
-immutable summary across recipes plus current action items and typed overview
-evidence observe `meeting`, `summary`, `actionItem`, `summaryClaim`, and
-`summaryClaimSegment`, and `summaryClaimFeedback`; persisted Companion cards observe `meeting` and
+immutable summary across recipes plus current action items and typed overview/
+decision evidence observe `meeting`, `summary`, `actionItem`, `summaryClaim`,
+`summaryClaimSegment`, `summaryClaimFeedback`, `summaryDecisionEvidence`, and
+`summaryDecisionEvidenceSegment`; persisted Companion cards observe `meeting` and
 `companionCard`; the privacy receipt observes `meeting`, `generationRun`,
 `dataEgressEvent`, and `privacyReceiptCoverage`; durable processing observes
 only `meeting` and `processingJob`. Every projection is filtered to one live meeting. The core and
@@ -364,7 +377,7 @@ schema and leaves all existing rows and query behavior unchanged.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview evidence and its current feedback, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, action item, note, and card IDs so that two imports are independent; claim links follow their fresh segments, feedback follows its fresh claim, the foreign source revision is cleared, and Storage stamps the imported meeting revision. An older v1 bundle without claims, feedback, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision evidence and current overview feedback, notes, Companion cards, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, note, and card IDs so that two imports are independent; evidence follows fresh segments, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. An older v1 bundle without claims, decisions, feedback, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
 
 ## Recordings folder — `RecordingsLocation`
 

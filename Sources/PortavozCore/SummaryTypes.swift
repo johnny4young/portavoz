@@ -70,6 +70,20 @@ public struct Recipe: Codable, Sendable, Identifiable {
         all.first { $0.id == id }
     }
 
+    /// Section positions whose bullets are decisions rather than general
+    /// narrative. Only built-ins have explicit semantics; custom structures
+    /// stay unclassified until their schema can declare a kind directly.
+    public var decisionSectionIndexes: [Int] {
+        switch id {
+        case Self.general.id, Self.planning.id:
+            [1]
+        case Self.oneOnOne.id:
+            [2]
+        default:
+            []
+        }
+    }
+
     /// Prefix that marks a user-authored structure, distinguishing it from
     /// the five built-ins.
     public static let customIDPrefix = "custom-"
@@ -117,6 +131,9 @@ public struct SummaryDraft: Codable, Sendable {
     /// deliberately narrow with the overview; later artifact kinds must earn
     /// their own domain shape instead of growing a generic EAV store.
     public let claims: [SummaryClaim]
+    /// Exact transcript support for individual bullets in decision-bearing
+    /// sections. Positions refer to the rendered, nonempty `##` sections.
+    public let decisionEvidence: [SummaryDecisionEvidence]
     /// Identity of the summarized MATERIAL + method (D25), language
     /// EXCLUDED — a snapshot with the same fingerprint in another language
     /// is a valid translation pivot. nil on pre-jul-2026 snapshots (they
@@ -126,7 +143,8 @@ public struct SummaryDraft: Codable, Sendable {
     public init(
         meetingID: MeetingID, recipeID: String, language: String, markdown: String,
         actionItems: [ActionItem], fingerprint: String? = nil,
-        claims: [SummaryClaim] = []
+        claims: [SummaryClaim] = [],
+        decisionEvidence: [SummaryDecisionEvidence] = []
     ) {
         self.meetingID = meetingID
         self.recipeID = recipeID
@@ -135,10 +153,12 @@ public struct SummaryDraft: Codable, Sendable {
         self.actionItems = actionItems
         self.fingerprint = fingerprint
         self.claims = claims
+        self.decisionEvidence = decisionEvidence
     }
 
     private enum CodingKeys: String, CodingKey {
         case meetingID, recipeID, language, markdown, actionItems, fingerprint, claims
+        case decisionEvidence
     }
 
     public init(from decoder: Decoder) throws {
@@ -150,6 +170,9 @@ public struct SummaryDraft: Codable, Sendable {
         actionItems = try container.decode([ActionItem].self, forKey: .actionItems)
         fingerprint = try container.decodeIfPresent(String.self, forKey: .fingerprint)
         claims = try container.decodeIfPresent([SummaryClaim].self, forKey: .claims) ?? []
+        decisionEvidence = try container.decodeIfPresent(
+            [SummaryDecisionEvidence].self,
+            forKey: .decisionEvidence) ?? []
     }
 }
 
@@ -263,6 +286,35 @@ public struct SummaryClaim: Codable, Sendable, Identifiable {
     }
 }
 
+/// Typed provenance for one decision bullet in the rendered summary.
+///
+/// The generated text remains owned by immutable Markdown. These coordinates
+/// identify that exact displayed bullet without duplicating or rewriting it.
+public struct SummaryDecisionEvidence: Codable, Sendable, Identifiable {
+    public let id: SummaryDecisionID
+    public let sectionOrdinal: Int
+    public let bulletOrdinal: Int
+    public let sourceTranscriptRevision: Int?
+    public let evidenceSegmentIDs: [UUID]
+    public let unavailableEvidenceCount: Int
+
+    public init(
+        id: SummaryDecisionID = SummaryDecisionID(),
+        sectionOrdinal: Int,
+        bulletOrdinal: Int,
+        sourceTranscriptRevision: Int? = nil,
+        evidenceSegmentIDs: [UUID],
+        unavailableEvidenceCount: Int = 0
+    ) {
+        self.id = id
+        self.sectionOrdinal = sectionOrdinal
+        self.bulletOrdinal = bulletOrdinal
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.evidenceSegmentIDs = evidenceSegmentIDs
+        self.unavailableEvidenceCount = unavailableEvidenceCount
+    }
+}
+
 public enum SummaryClaimEvidenceStatus: Sendable, Equatable {
     case current
     case stale
@@ -287,22 +339,51 @@ extension SummaryClaim {
         currentTranscriptRevision: Int,
         segments: [TranscriptSegment]
     ) -> SummaryClaimEvidenceResolution {
-        guard let sourceTranscriptRevision else {
-            return SummaryClaimEvidenceResolution(status: .unavailable)
-        }
-        guard sourceTranscriptRevision == currentTranscriptRevision else {
-            return SummaryClaimEvidenceResolution(status: .stale)
-        }
-        guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
-            return SummaryClaimEvidenceResolution(status: .unavailable)
-        }
-        let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
-        let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
-        guard resolved.count == evidenceSegmentIDs.count else {
-            return SummaryClaimEvidenceResolution(status: .unavailable)
-        }
-        return SummaryClaimEvidenceResolution(status: .current, segments: resolved)
+        resolveSummaryEvidence(
+            sourceTranscriptRevision: sourceTranscriptRevision,
+            evidenceSegmentIDs: evidenceSegmentIDs,
+            unavailableEvidenceCount: unavailableEvidenceCount,
+            currentTranscriptRevision: currentTranscriptRevision,
+            segments: segments)
     }
+}
+
+extension SummaryDecisionEvidence {
+    public func resolveEvidence(
+        currentTranscriptRevision: Int,
+        segments: [TranscriptSegment]
+    ) -> SummaryClaimEvidenceResolution {
+        resolveSummaryEvidence(
+            sourceTranscriptRevision: sourceTranscriptRevision,
+            evidenceSegmentIDs: evidenceSegmentIDs,
+            unavailableEvidenceCount: unavailableEvidenceCount,
+            currentTranscriptRevision: currentTranscriptRevision,
+            segments: segments)
+    }
+}
+
+private func resolveSummaryEvidence(
+    sourceTranscriptRevision: Int?,
+    evidenceSegmentIDs: [UUID],
+    unavailableEvidenceCount: Int,
+    currentTranscriptRevision: Int,
+    segments: [TranscriptSegment]
+) -> SummaryClaimEvidenceResolution {
+    guard let sourceTranscriptRevision else {
+        return SummaryClaimEvidenceResolution(status: .unavailable)
+    }
+    guard sourceTranscriptRevision == currentTranscriptRevision else {
+        return SummaryClaimEvidenceResolution(status: .stale)
+    }
+    guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
+        return SummaryClaimEvidenceResolution(status: .unavailable)
+    }
+    let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
+    let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
+    guard resolved.count == evidenceSegmentIDs.count else {
+        return SummaryClaimEvidenceResolution(status: .unavailable)
+    }
+    return SummaryClaimEvidenceResolution(status: .current, segments: resolved)
 }
 
 public struct ActionItem: Codable, Sendable, Identifiable {

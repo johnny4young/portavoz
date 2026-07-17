@@ -51,13 +51,19 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
         let schemaNote = """
             Respond with ONLY a JSON object shaped exactly like:
             {"overview": "…", "overviewEvidence": ["E1"], \
-            "sections": [{"heading": "…", "bullets": ["…"]}], \
+            "sections": [{"heading": "…", "bullets": ["…"], \
+            "bulletEvidence": [["E2"]]}], \
             "actionItems": [{"text": "…", "owner": "…"}]}
             Set "overviewEvidence" to the exact E-tags that directly support the overview, \
             at most 4. Use only tags present in the material; use [] when none apply. \
-            Use "" for an unknown action-item owner. Every "bullets" item is a plain \
-            string — never an object or key/value pair. Action items go ONLY in \
-            "actionItems"; never add an action-items section to "sections". \
+            For every section, "bulletEvidence" must have exactly one array per bullet, \
+            in the same order. Use up to 4 exact E-tags for bullets in the instructed \
+            decision sections and [] for every other bullet. Use "" for an unknown \
+            action-item owner. Every "bullets" item is a plain string — never an object \
+            or key/value pair. Return one "sections" entry for every instructed recipe \
+            section, in the instructed order, using empty arrays when nothing applies. \
+            Action items go ONLY in "actionItems"; keep any corresponding recipe-section \
+            entry empty rather than omitting it. \
             No markdown fences, no commentary.
             """
         return (

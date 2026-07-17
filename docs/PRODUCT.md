@@ -121,6 +121,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 9. **The receipt, not a privacy slogan** (Band 3H): each meeting states whether tracked work stayed local or a remote transfer was attempted, while legacy history shows its honest coverage boundary.
 10. **A summary that shows its work** (Band 5B): overview sources are compact timestamps; selecting one focuses the exact supporting transcript line and audio moment without interrupting the user's playback intent.
 11. **Correct the claim, preserve the record** (Band 5C): a private correction or unsupported mark stays visibly separate from generated text, can be cleared without hidden text history, and travels only through an explicit meeting export.
+12. **A decision you can verify in one click** (Band 5D): each supported decision bullet exposes its exact transcript and audio moments; stale or missing evidence disables navigation instead of presenting false certainty.
 
 ## Performance targets (world-class = numbers)
 

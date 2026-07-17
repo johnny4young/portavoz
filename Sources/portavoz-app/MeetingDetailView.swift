@@ -1387,11 +1387,52 @@ extension MeetingDetailView {
                 .accessibilityIdentifier("action-item-\(item.id.uuidString)")
             }
         } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
-            MarkdownText(text: parsed.sections[summaryTabSelection - 1].body)
+            let sectionOrdinal = summaryTabSelection - 1
+            summaryDecisionSection(
+                parsed.sections[sectionOrdinal],
+                sectionOrdinal: sectionOrdinal,
+                draft: summary.draft)
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
                 summaryEvidence(summary.draft)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func summaryDecisionSection(
+        _ section: SummarySections.Section,
+        sectionOrdinal: Int,
+        draft: SummaryDraft
+    ) -> some View {
+        let evidenceByBullet = draft.decisionEvidence
+            .filter { $0.sectionOrdinal == sectionOrdinal }
+            .reduce(into: [Int: SummaryDecisionEvidence]()) { result, evidence in
+                if result[evidence.bulletOrdinal] == nil {
+                    result[evidence.bulletOrdinal] = evidence
+                }
+            }
+        if evidenceByBullet.isEmpty {
+            MarkdownText(text: section.body)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(section.bulletLines.enumerated()), id: \.offset) { index, bullet in
+                    VStack(alignment: .leading, spacing: 6) {
+                        MarkdownText(text: bullet)
+                        if let evidence = evidenceByBullet[index], let detail {
+                            let resolution = evidence.resolveEvidence(
+                                currentTranscriptRevision: detail.meeting.transcriptRevision,
+                                segments: detail.segments)
+                            summaryEvidenceSources(
+                                resolution,
+                                sourceIdentifier: "summary-decision-\(sectionOrdinal)-\(index)-evidence",
+                                staleIdentifier: "summary-decision-\(sectionOrdinal)-\(index)-stale",
+                                unavailableIdentifier:
+                                    "summary-decision-\(sectionOrdinal)-\(index)-unavailable")
+                        }
+                    }
+                }
             }
         }
     }
@@ -1404,41 +1445,11 @@ extension MeetingDetailView {
                 currentTranscriptRevision: detail.meeting.transcriptRevision,
                 segments: detail.segments)
             VStack(alignment: .leading, spacing: 8) {
-                switch resolution.status {
-                case .current:
-                    HStack(spacing: 6) {
-                        Label("Sources", systemImage: "quote.bubble")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        ForEach(
-                            Array(resolution.segments.enumerated()),
-                            id: \.element.id
-                        ) { index, segment in
-                            Button(evidenceClock(segment.startTime)) {
-                                focusEvidence(segment)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-                            .help(segment.text)
-                            .accessibilityIdentifier("summary-evidence-\(index)")
-                            .accessibilityValue(segment.text)
-                        }
-                    }
-                case .stale:
-                    Label(
-                        "Sources are out of date after transcript changes.",
-                        systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("summary-evidence-stale")
-                case .unavailable:
-                    Label(
-                        "Sources are no longer available.",
-                        systemImage: "exclamationmark.triangle")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("summary-evidence-unavailable")
-                }
+                summaryEvidenceSources(
+                    resolution,
+                    sourceIdentifier: "summary-evidence",
+                    staleIdentifier: "summary-evidence-stale",
+                    unavailableIdentifier: "summary-evidence-unavailable")
                 SummaryClaimFeedbackView(claim: claim) { feedback in
                     let effect = await model.send(
                         .setSummaryClaimFeedback(claim.id, feedback))
@@ -1448,6 +1459,50 @@ extension MeetingDetailView {
                     return savedID == claim.id
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func summaryEvidenceSources(
+        _ resolution: SummaryClaimEvidenceResolution,
+        sourceIdentifier: String,
+        staleIdentifier: String,
+        unavailableIdentifier: String
+    ) -> some View {
+        switch resolution.status {
+        case .current:
+            HStack(spacing: 6) {
+                Label("Sources", systemImage: "quote.bubble")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(
+                    Array(resolution.segments.enumerated()),
+                    id: \.element.id
+                ) { index, segment in
+                    Button(evidenceClock(segment.startTime)) {
+                        focusEvidence(segment)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .help(segment.text)
+                    .accessibilityIdentifier("\(sourceIdentifier)-\(index)")
+                    .accessibilityValue(segment.text)
+                }
+            }
+        case .stale:
+            Label(
+                "Sources are out of date after transcript changes.",
+                systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(staleIdentifier)
+        case .unavailable:
+            Label(
+                "Sources are no longer available.",
+                systemImage: "exclamationmark.triangle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(unavailableIdentifier)
         }
     }
 

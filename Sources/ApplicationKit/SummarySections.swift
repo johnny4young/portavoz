@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Splits a summary's Markdown into its intro and `##`-delimited sections
 /// so the detail view can tab through them (design system: Resumen ·
@@ -10,6 +11,9 @@ public struct SummarySections: Sendable, Equatable {
         public let body: String
         /// Bullet lines in this section — the count the tab badge shows.
         public let bulletCount: Int
+        /// Exact Markdown bullet lines, in display order. Typed decision
+        /// evidence addresses this stable ordinal rather than matching text.
+        public let bulletLines: [String]
         public var id: String { heading }
     }
 
@@ -18,46 +22,15 @@ public struct SummarySections: Sendable, Equatable {
     public let sections: [Section]
 
     public static func parse(_ markdown: String) -> SummarySections {
-        var intro: [String] = []
-        var sections: [Section] = []
-        var currentHeading: String?
-        var currentBody: [String] = []
-
-        func flush() {
-            guard let heading = currentHeading else { return }
-            let body = currentBody.joined(separator: "\n").trimmingCharacters(in: .newlines)
-            sections.append(
-                Section(heading: heading, body: body, bulletCount: bulletCount(in: currentBody)))
-            currentBody = []
-        }
-
-        for line in markdown.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("## ") {
-                flush()
-                currentHeading = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-            } else if trimmed.hasPrefix("# ") {
-                // A top-level H1 title is chrome, not a section — skip it.
-                continue
-            } else if currentHeading == nil {
-                intro.append(line)
-            } else {
-                currentBody.append(line)
-            }
-        }
-        flush()
-
+        let outline = SummaryMarkdownOutline.parse(markdown)
         return SummarySections(
-            intro: intro.joined(separator: "\n").trimmingCharacters(in: .newlines),
-            sections: sections)
-    }
-
-    /// Counts bullet lines (`-`, `*`, `·`, or `▸` co-authored markers).
-    private static func bulletCount(in lines: [String]) -> Int {
-        lines.reduce(0) { count, line in
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let markers = ["- ", "* ", "· ", "▸ "]
-            return markers.contains(where: trimmed.hasPrefix) ? count + 1 : count
-        }
+            intro: outline.intro,
+            sections: outline.sections.map {
+                Section(
+                    heading: $0.heading,
+                    body: $0.body,
+                    bulletCount: $0.bulletLines.count,
+                    bulletLines: $0.bulletLines)
+            })
     }
 }

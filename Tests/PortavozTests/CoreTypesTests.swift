@@ -74,18 +74,55 @@ final class CoreTypesTests: XCTestCase {
             "en")
     }
 
-    func testSummaryDraftDecodesOlderSnapshotWithoutClaims() throws {
+    func testSummaryDraftDecodesOlderSnapshotWithoutTypedEvidence() throws {
         let draft = SummaryDraft(
             meetingID: MeetingID(), recipeID: "general", language: "en",
             markdown: "Overview", actionItems: [])
         var json = try XCTUnwrap(
             JSONSerialization.jsonObject(with: JSONEncoder().encode(draft)) as? [String: Any])
         json.removeValue(forKey: "claims")
+        json.removeValue(forKey: "decisionEvidence")
 
         let decoded = try JSONDecoder().decode(
             SummaryDraft.self,
             from: JSONSerialization.data(withJSONObject: json))
         XCTAssertTrue(decoded.claims.isEmpty)
+        XCTAssertTrue(decoded.decisionEvidence.isEmpty)
+    }
+
+    func testSummaryDecisionEvidenceUsesTheSameRevisionFence() {
+        let meetingID = MeetingID()
+        let segment = TranscriptSegment(
+            meetingID: meetingID, channel: .system, text: "Ship Friday",
+            startTime: 3, endTime: 6)
+        let decision = SummaryDecisionEvidence(
+            sectionOrdinal: 1,
+            bulletOrdinal: 0,
+            sourceTranscriptRevision: 2,
+            evidenceSegmentIDs: [segment.id])
+
+        XCTAssertEqual(
+            decision.resolveEvidence(currentTranscriptRevision: 2, segments: [segment]).status,
+            .current)
+        XCTAssertEqual(
+            decision.resolveEvidence(currentTranscriptRevision: 3, segments: [segment]).status,
+            .stale)
+        XCTAssertEqual(
+            decision.resolveEvidence(currentTranscriptRevision: 2, segments: []).status,
+            .unavailable)
+    }
+
+    func testBuiltInRecipesClassifyDecisionSectionsExplicitly() {
+        XCTAssertEqual(Recipe.general.decisionSectionIndexes, [1])
+        XCTAssertEqual(Recipe.planning.decisionSectionIndexes, [1])
+        XCTAssertEqual(Recipe.oneOnOne.decisionSectionIndexes, [2])
+        XCTAssertTrue(Recipe.standup.decisionSectionIndexes.isEmpty)
+        XCTAssertTrue(Recipe.interview.decisionSectionIndexes.isEmpty)
+        XCTAssertTrue(Recipe(
+            id: "custom-decisions",
+            displayName: "Custom",
+            sections: ["Decisions"],
+            instructions: "Capture decisions").decisionSectionIndexes.isEmpty)
     }
 
     func testSummaryClaimFailsClosedWhenRevisionOrEvidenceChanges() {

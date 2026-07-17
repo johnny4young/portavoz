@@ -180,6 +180,12 @@ extension MeetingStore {
             allowFeedback: allowClaimFeedback,
             at: timestamp,
             in: db)
+        try insertSummaryDecisionEvidence(
+            draft.decisionEvidence,
+            summaryID: summaryID,
+            draft: draft,
+            at: timestamp,
+            in: db)
         return version
     }
 
@@ -201,43 +207,22 @@ extension MeetingStore {
             throw StorageError.invalidSummaryClaim(
                 "generated summaries cannot write user feedback")
         }
-        let evidenceIDs = claim.evidenceSegmentIDs
-        guard claim.unavailableEvidenceCount == 0,
-              !evidenceIDs.isEmpty,
-              Set(evidenceIDs).count == evidenceIDs.count
-        else {
-            throw StorageError.invalidSummaryClaim(
-                "new evidence must be nonempty, available, and unique")
-        }
-        let meetingKey = meetingID.rawValue.uuidString
-        guard let meeting = try MeetingRecord.fetchOne(db, key: meetingKey) else {
-            throw StorageError.meetingNotFound(meetingID)
-        }
-        if let sourceRevision = claim.sourceTranscriptRevision,
-           sourceRevision != meeting.transcriptRevision {
-            throw StorageError.invalidSummaryClaim(
-                "source transcript revision does not match the meeting")
-        }
-        for evidenceID in evidenceIDs {
-            guard let segment = try SegmentRecord.fetchOne(
-                db, key: evidenceID.uuidString),
-                segment.meetingID == meetingKey,
-                segment.deletedAt == nil
-            else {
-                throw StorageError.invalidSummaryClaim(
-                    "evidence must reference a live segment in the same meeting")
-            }
-        }
+        let evidence = try validatedSummaryEvidence(
+            claim.evidenceSegmentIDs,
+            unavailableCount: claim.unavailableEvidenceCount,
+            sourceRevision: claim.sourceTranscriptRevision,
+            meetingID: meetingID,
+            in: db)
 
         let claimKey = claim.id.rawValue.uuidString
         try SummaryClaimRecord(
             id: claimKey,
             summaryID: summaryID,
             kind: claim.kind.rawValue,
-            sourceTranscriptRevision: meeting.transcriptRevision,
+            sourceTranscriptRevision: evidence.revision,
             createdAt: timestamp)
             .insert(db)
-        for (ordinal, evidenceID) in evidenceIDs.enumerated() {
+        for (ordinal, evidenceID) in evidence.ids.enumerated() {
             try SummaryClaimSegmentRecord(
                 id: UUID().uuidString,
                 claimID: claimKey,
@@ -379,6 +364,7 @@ extension MeetingStore {
             .order(Column("createdAt"))
             .fetchAll(db).map { try $0.actionItem }
         let claims = try summaryClaims(summaryID: record.id, in: db)
+        let decisions = try summaryDecisionEvidence(summaryID: record.id, in: db)
         let draft = SummaryDraft(
             meetingID: meetingID,
             recipeID: record.recipeID,
@@ -386,7 +372,8 @@ extension MeetingStore {
             markdown: record.markdown,
             actionItems: items,
             fingerprint: record.fingerprint,
-            claims: claims)
+            claims: claims,
+            decisionEvidence: decisions)
         return (draft, record.version)
     }
 

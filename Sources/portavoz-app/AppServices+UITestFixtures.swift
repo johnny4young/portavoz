@@ -80,6 +80,10 @@ extension AppServices {
                 actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ownerID)],
                 claims: [SummaryClaim(
                     kind: .overview,
+                    evidenceSegmentIDs: [citedSegmentID])],
+                decisionEvidence: [SummaryDecisionEvidence(
+                    sectionOrdinal: 0,
+                    bulletOrdinal: 0,
                     evidenceSegmentIDs: [citedSegmentID])]))
         await seedLatestRecipeSummaryIfRequested(for: meetingID)
     }

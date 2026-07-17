@@ -8,10 +8,18 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
     public struct Section: Codable, Sendable, Equatable {
         public var heading: String
         public var bullets: [String]
+        /// One exact E-tag list per bullet. Optional keeps responses created
+        /// before typed decision evidence decodable.
+        public var bulletEvidence: [[String]]?
 
-        public init(heading: String, bullets: [String]) {
+        public init(
+            heading: String,
+            bullets: [String],
+            bulletEvidence: [[String]]? = nil
+        ) {
             self.heading = heading
             self.bullets = bullets
+            self.bulletEvidence = bulletEvidence
         }
     }
 
@@ -156,13 +164,71 @@ extension StructuredSummary {
             || overview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? []
             : [SummaryClaim(kind: .overview, evidenceSegmentIDs: evidenceIDs)]
+        let decisions = typedDecisionEvidence(
+            for: request,
+            segmentIDsByTag: evidence.segmentIDsByTag,
+            includeEvidence: includeEvidence)
         return SummaryDraft(
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
             language: request.targetLanguage,
             markdown: markdown(recipe: request.recipe),
             actionItems: items,
-            claims: claims
+            claims: claims,
+            decisionEvidence: decisions
         )
+    }
+
+    private func typedDecisionEvidence(
+        for request: SummaryRequest,
+        segmentIDsByTag: [String: UUID],
+        includeEvidence: Bool
+    ) -> [SummaryDecisionEvidence] {
+        guard includeEvidence,
+              sections.count == request.recipe.sections.count,
+              !request.recipe.decisionSectionIndexes.isEmpty
+        else { return [] }
+
+        var result: [SummaryDecisionEvidence] = []
+        var renderedSectionOrdinal = 0
+        for (sectionIndex, section) in sections.enumerated() where !section.bullets.isEmpty {
+            if !actionItems.isEmpty, Self.isActionItemsHeading(section.heading) { continue }
+            defer { renderedSectionOrdinal += 1 }
+            guard request.recipe.decisionSectionIndexes.contains(sectionIndex),
+                  let bulletEvidence = section.bulletEvidence,
+                  bulletEvidence.count == section.bullets.count
+            else { continue }
+            for (bulletOrdinal, tags) in bulletEvidence.enumerated() {
+                let ids = TranscriptFormatter.resolveEvidenceTags(
+                    tags,
+                    segmentIDsByTag: segmentIDsByTag)
+                guard !ids.isEmpty else { continue }
+                result.append(SummaryDecisionEvidence(
+                    sectionOrdinal: renderedSectionOrdinal,
+                    bulletOrdinal: bulletOrdinal,
+                    evidenceSegmentIDs: ids))
+            }
+        }
+        return result
+    }
+
+    /// Translation preserves typed evidence only when the rendered section
+    /// and bullet coordinate still exists after positional validation.
+    static func translatedDecisionEvidence(
+        from pivot: SummaryDraft,
+        into sections: [Section]
+    ) -> [SummaryDecisionEvidence] {
+        pivot.decisionEvidence.compactMap { decision in
+            guard sections.indices.contains(decision.sectionOrdinal),
+                  sections[decision.sectionOrdinal].bullets.indices.contains(
+                    decision.bulletOrdinal)
+            else { return nil }
+            return SummaryDecisionEvidence(
+                sectionOrdinal: decision.sectionOrdinal,
+                bulletOrdinal: decision.bulletOrdinal,
+                sourceTranscriptRevision: decision.sourceTranscriptRevision,
+                evidenceSegmentIDs: decision.evidenceSegmentIDs,
+                unavailableEvidenceCount: decision.unavailableEvidenceCount)
+        }
     }
 }

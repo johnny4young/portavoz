@@ -712,7 +712,9 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testSummaryEvidenceStaysTypedRevisionFencedAndPortable() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/SummaryTypes.swift")
         let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+            + Self.contents(of: "Sources/StorageKit/Schema+SummaryClaim.swift")
         let storage = try Self.contents(of: "Sources/StorageKit/MeetingStore+Summaries.swift")
+            + Self.contents(of: "Sources/StorageKit/MeetingStore+SummaryDecisionEvidence.swift")
         let formatter = try Self.contents(of: "Sources/IntelligenceKit/TranscriptFormatter.swift")
         let provider = try Self.contents(
             of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
@@ -763,6 +765,44 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(try Self.sourceMatches(
             under: "Sources/IntelligenceKit",
             pattern: #"SummaryClaimFeedback"#).isEmpty)
+    }
+
+    func testDecisionEvidenceStaysPositionTypedRevisionFencedAndPortable() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/SummaryTypes.swift")
+        let outline = try Self.contents(
+            of: "Sources/PortavozCore/SummaryMarkdownOutline.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SummaryDecisionEvidence.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SummaryDecisionEvidence.swift")
+        let structured = try Self.contents(
+            of: "Sources/IntelligenceKit/StructuredSummary.swift")
+        let provider = try Self.contents(
+            of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
+        let translation = try Self.contents(
+            of: "Sources/IntelligenceKit/FoundationModelSummaryProvider.swift")
+        let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let diagnostics = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
+
+        XCTAssertTrue(core.contains("struct SummaryDecisionEvidence"))
+        XCTAssertTrue(core.contains("decisionSectionIndexes"))
+        XCTAssertTrue(outline.contains("bulletLines"))
+        XCTAssertTrue(schema.contains("table: \"summaryDecisionEvidence\""))
+        XCTAssertTrue(schema.contains("table: \"summaryDecisionEvidenceSegment\""))
+        XCTAssertTrue(storage.contains("must address a rendered summary bullet"))
+        XCTAssertTrue(storage.contains("validatedSummaryEvidence"))
+        XCTAssertTrue(structured.contains("sections.count == request.recipe.sections.count"))
+        XCTAssertTrue(structured.contains("resolveEvidenceTags"))
+        XCTAssertTrue(provider.contains("bulletEvidence"))
+        XCTAssertTrue(translation.contains("translatedDecisionEvidence"))
+        XCTAssertTrue(translation.contains("Exactly one entry per instructed section heading"))
+        XCTAssertFalse(translation.contains("Do NOT add a section for action items"))
+        XCTAssertTrue(bundle.contains("decisionEvidence: summary.decisionEvidence.compactMap"))
+        XCTAssertTrue(detail.contains("summary-decision-"))
+        XCTAssertTrue(detail.contains("focusEvidence(segment)"))
+        XCTAssertFalse(diagnostics.contains("SummaryDecisionEvidence"))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

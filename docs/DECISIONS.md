@@ -2408,3 +2408,43 @@ original generated artifact, makes human judgment visible and reversible,
 prevents private text from becoming hidden history, keeps remote/model behavior
 unchanged, and proves export semantics before evidence expands to decisions,
 action items, or Companion cards.
+
+## D89 — Address decision evidence by rendered position, not heading text (Jul 2026)
+
+**Context:** D87 proved provenance for one overview, while decisions remained
+untyped Markdown bullets. A generic evidence graph would erase the business
+meaning of a decision and weaken the schema-v9 one-overview invariant. Matching
+translated headings such as `Decisions` or `Decisiones` would also be brittle,
+and custom structures do not yet declare semantic section kinds.
+
+**Decision:** add `SummaryDecisionEvidence` as a separate typed aggregate. It
+addresses one rendered nonempty `##` section ordinal plus one bullet ordinal,
+owns a fresh ID, source transcript revision, ordered segment IDs, and an
+unavailable-link count. General and Planning classify recipe section index 1;
+1:1 classifies index 2. Standup, Interview, and custom recipes classify none.
+Provider output is admitted only when its section count exactly matches the
+recipe and its optional `bulletEvidence` array exactly matches each section's
+bullet count. Only exact request-local E-tags resolve; unknown, altered,
+duplicate, empty, or shape-mismatched references fail closed.
+
+Schema v11 adds `summaryDecisionEvidence` and
+`summaryDecisionEvidenceSegment`. Summary persistence validates each coordinate
+against the canonical Markdown outline, requires unique IDs and positions,
+reuses the live same-meeting evidence and revision fence from D87, and commits
+the complete immutable aggregate transactionally. Nullable segment links retain
+unavailable provenance after physical deletion. Translation preserves valid
+rendered coordinates with fresh decision IDs. Format-v1 `.portavoz` bundles
+additively carry and remap both decision and segment identities, clear the
+foreign revision, and let local Storage stamp it.
+
+Meeting Detail renders source timestamps directly beneath the addressed
+decision bullet. A current source focuses the exact transcript row and seeks
+retained audio without autoplay; stale or unavailable states expose no partial
+jump. Decision evidence does not gain correction feedback in this slice and
+does not enter support diagnostics, telemetry, or privacy receipts.
+
+**Rationale:** rendered coordinates bind provenance to the exact text users see
+without duplicating generated content, depending on one language, or pretending
+every summary section has decision semantics. Dedicated tables keep the domain
+explicit and let action items or Companion cards earn their own typed evidence
+contracts instead of inheriting a generic EAV model.

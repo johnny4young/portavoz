@@ -19,6 +19,9 @@ final class PromptFactoryTests: XCTestCase {
         XCTAssertTrue(instructions.contains("Parakeet, rollback"))
         XCTAssertTrue(instructions.contains("never invent"))
         XCTAssertTrue(instructions.contains("\"Me\" is the device owner"))
+        XCTAssertTrue(instructions.contains("Decisions"))
+        XCTAssertTrue(instructions.contains("decision-bearing bullet"))
+        XCTAssertTrue(instructions.contains("exactly one structured section entry"))
     }
 
     /// The language reminder must ride at the END of the user prompt —
@@ -183,6 +186,101 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(draft.claims.first?.kind, .overview)
         XCTAssertEqual(draft.claims.first?.evidenceSegmentIDs, [second.id])
         XCTAssertTrue(cited.draft(for: request, includeEvidence: false).claims.isEmpty)
+    }
+
+    func testDraftCreatesPositionTypedDecisionEvidenceFromExactTags() throws {
+        let first = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "context",
+            startTime: 0, endTime: 1)
+        let second = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "ship Friday",
+            startTime: 2, endTime: 3)
+        let cited = StructuredSummary(
+            overview: "Overview",
+            sections: [
+                .init(heading: "Overview", bullets: ["Context"]),
+                .init(
+                    heading: "Decisions",
+                    bullets: ["Ship Friday", "Keep local"],
+                    bulletEvidence: [["E2", "E404", "E2"], []]),
+                .init(heading: "Action Items", bullets: []),
+                .init(heading: "Open Questions", bullets: ["Budget?"])
+            ],
+            actionItems: [])
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [first, second],
+            speakers: [],
+            recipe: .general)
+
+        let evidence = try XCTUnwrap(cited.draft(for: request).decisionEvidence.first)
+        XCTAssertEqual(cited.draft(for: request).decisionEvidence.count, 1)
+        XCTAssertEqual(evidence.sectionOrdinal, 1)
+        XCTAssertEqual(evidence.bulletOrdinal, 0)
+        XCTAssertEqual(evidence.evidenceSegmentIDs, [second.id])
+        XCTAssertTrue(cited.draft(for: request, includeEvidence: false).decisionEvidence.isEmpty)
+    }
+
+    func testDecisionEvidenceFailsClosedWithoutAnExactRecipeShape() {
+        let segment = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "ship Friday",
+            startTime: 0, endTime: 1)
+        let malformed = StructuredSummary(
+            overview: "Overview",
+            sections: [
+                .init(
+                    heading: "Decisions",
+                    bullets: ["Ship Friday"],
+                    bulletEvidence: [["E1"]])
+            ],
+            actionItems: [])
+        let general = SummaryRequest(
+            meetingID: meeting, segments: [segment], speakers: [], recipe: .general)
+        let custom = SummaryRequest(
+            meetingID: meeting,
+            segments: [segment],
+            speakers: [],
+            recipe: Recipe(
+                id: "custom-decisions",
+                displayName: "Custom",
+                sections: ["Decisions"],
+                instructions: "Capture decisions"))
+
+        XCTAssertTrue(malformed.draft(for: general).decisionEvidence.isEmpty)
+        XCTAssertTrue(malformed.draft(for: custom).decisionEvidence.isEmpty)
+    }
+
+    func testTranslationPreservesValidDecisionCoordinatesWithFreshIdentity() throws {
+        let sourceID = UUID()
+        let original = SummaryDecisionEvidence(
+            sectionOrdinal: 0,
+            bulletOrdinal: 1,
+            sourceTranscriptRevision: 3,
+            evidenceSegmentIDs: [sourceID])
+        let pivot = SummaryDraft(
+            meetingID: meeting,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "## Decisions\n- First\n- Second",
+            actionItems: [],
+            decisionEvidence: [original])
+        let translatedSections = [
+            StructuredSummary.Section(
+                heading: "Decisiones",
+                bullets: ["Primera", "Segunda"])
+        ]
+
+        let carried = try XCTUnwrap(StructuredSummary.translatedDecisionEvidence(
+            from: pivot,
+            into: translatedSections).first)
+        XCTAssertNotEqual(carried.id, original.id)
+        XCTAssertEqual(carried.sectionOrdinal, 0)
+        XCTAssertEqual(carried.bulletOrdinal, 1)
+        XCTAssertEqual(carried.sourceTranscriptRevision, 3)
+        XCTAssertEqual(carried.evidenceSegmentIDs, [sourceID])
+        XCTAssertTrue(StructuredSummary.translatedDecisionEvidence(
+            from: pivot,
+            into: [.init(heading: "Decisiones", bullets: ["Primera"])]).isEmpty)
     }
 }
 
@@ -720,6 +818,8 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         XCTAssertTrue(prompt.user.contains("hola"))
         XCTAssertTrue(prompt.user.contains("[E1]"))
         XCTAssertTrue(prompt.system.contains("overviewEvidence"))
+        XCTAssertTrue(prompt.system.contains("bulletEvidence"))
+        XCTAssertTrue(prompt.system.contains("one \"sections\" entry for every instructed recipe"))
         XCTAssertFalse(prompt.user.contains("THE USER'S OWN NOTES"))
     }
 
@@ -744,6 +844,7 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
         XCTAssertEqual(summary.overview, "ok")
         XCTAssertNil(summary.overviewEvidence, "older provider responses remain compatible")
+        XCTAssertTrue(summary.sections.allSatisfy { $0.bulletEvidence == nil })
     }
 
     func testRejectsNonJSONContent() {

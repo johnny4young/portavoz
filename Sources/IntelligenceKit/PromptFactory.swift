@@ -22,6 +22,9 @@ public enum PromptFactory {
             "Structure the summary with these sections, in this order: "
                 + recipe.sections.joined(separator: ", ")
                 + ". Translate the headings into the output language.")
+        lines.append(
+            "Return exactly one structured section entry for every listed section, "
+                + "in the same order; keep its bullets empty when nothing applies.")
         lines.append(languageDirective(targetLanguage: targetLanguage, glossary: glossary))
         lines.append(
             "Speakers are labeled in the transcript (\"Me\" is the device owner). "
@@ -32,7 +35,18 @@ public enum PromptFactory {
                 + "never as a summary section.")
         lines.append(
             "When the material has [E#] tags, cite only exact tags that directly support "
-                + "the overview; never invent or alter a tag.")
+                + "the overview or a decision-bearing bullet; never invent or alter a tag.")
+        let decisionSections = recipe.decisionSectionIndexes.compactMap { index in
+            recipe.sections.indices.contains(index) ? recipe.sections[index] : nil
+        }
+        if decisionSections.isEmpty {
+            lines.append("This recipe has no typed decision section; section bullets need no evidence.")
+        } else {
+            lines.append(
+                "These instructed sections contain typed decisions: "
+                    + decisionSections.joined(separator: ", ")
+                    + ". Attach exact source tags to each supported bullet in those sections only.")
+        }
         return lines.joined(separator: "\n")
     }
 

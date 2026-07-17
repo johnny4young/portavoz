@@ -21,6 +21,11 @@ final class SummarySectionsTests: XCTestCase {
         XCTAssertEqual(parsed.sections.count, 2)
         XCTAssertEqual(parsed.sections[0].heading, "Decisiones")
         XCTAssertEqual(parsed.sections[0].bulletCount, 3)  // -, -, ▸
+        XCTAssertEqual(parsed.sections[0].bulletLines, [
+            "- La beta sale el lunes.",
+            "- Congelar el scope del sprint 15.",
+            "▸ El fix queda verificado."
+        ])
         XCTAssertEqual(parsed.sections[1].heading, "Preguntas abiertas")
         XCTAssertEqual(parsed.sections[1].bulletCount, 1)
         XCTAssertTrue(parsed.sections[1].body.contains("presupuesto"))

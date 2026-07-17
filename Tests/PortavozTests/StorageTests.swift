@@ -40,9 +40,9 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v10 summary evidence and review
+    // MARK: - Schema v9-v11 summary evidence and review
 
-    func testV8MigratesAdditivelyThroughClaimFeedbackSchema() throws {
+    func testV8MigratesAdditivelyThroughDecisionEvidenceSchema() throws {
         let database = try DatabaseQueue()
         let migrator = StorageSchema.migrator()
         try migrator.migrate(database, upTo: "v8")
@@ -88,7 +88,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 10)
+            XCTAssertEqual(StorageSchema.version, 11)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -101,6 +101,15 @@ final class MeetingStoreTests: XCTestCase {
                     "claimID", "kind", "correctionText", "createdAt", "updatedAt",
                     "deletedAt",
                 ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "summaryDecisionEvidence").map(\.name)),
+                [
+                    "id", "summaryID", "sectionOrdinal", "bulletOrdinal",
+                    "sourceTranscriptRevision", "createdAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "summaryDecisionEvidenceSegment").map(\.name)),
+                ["id", "decisionID", "segmentID", "ordinal", "createdAt"])
             XCTAssertEqual(
                 try String.fetchOne(
                     db, sql: "SELECT markdown FROM summary WHERE id = ?",
@@ -471,6 +480,92 @@ final class MeetingStoreTests: XCTestCase {
                 currentTranscriptRevision: 1,
                 segments: segments).status,
             .stale)
+    }
+
+    func testDecisionEvidencePersistsWithCoordinatesAndRevision() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: """
+                Resumen.
+
+                ## Decisiones
+                - El rollout queda para el viernes.
+                """,
+            actionItems: [],
+            decisionEvidence: [SummaryDecisionEvidence(
+                sectionOrdinal: 0,
+                bulletOrdinal: 0,
+                evidenceSegmentIDs: [segments[1].id])]))
+
+        let snapshot = try await store.summary(meeting.id)
+        let loaded = try XCTUnwrap(snapshot?.draft)
+        let evidence = try XCTUnwrap(loaded.decisionEvidence.first)
+        XCTAssertEqual(evidence.sectionOrdinal, 0)
+        XCTAssertEqual(evidence.bulletOrdinal, 0)
+        XCTAssertEqual(evidence.sourceTranscriptRevision, 0)
+        XCTAssertEqual(evidence.evidenceSegmentIDs, [segments[1].id])
+        XCTAssertEqual(
+            evidence.resolveEvidence(
+                currentTranscriptRevision: 0,
+                segments: segments).status,
+            .current)
+    }
+
+    func testInvalidDecisionCoordinateRejectsWholeSummary() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let invalid = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "## Decisions\n- Ship Friday.",
+            actionItems: [ActionItem(text: "Must roll back")],
+            decisionEvidence: [SummaryDecisionEvidence(
+                sectionOrdinal: 0,
+                bulletOrdinal: 1,
+                evidenceSegmentIDs: [segments[0].id])])
+
+        do {
+            _ = try await store.saveSummary(invalid)
+            XCTFail("an invalid coordinate must reject the immutable aggregate")
+        } catch let error as StorageError {
+            guard case .invalidSummaryClaim = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+        let persisted = try await store.summary(meeting.id)
+        XCTAssertNil(persisted)
+    }
+
+    func testPhysicallyDeletedDecisionEvidenceLoadsAsUnavailable() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "## Decisions\n- Ship Friday.",
+            actionItems: [],
+            decisionEvidence: [SummaryDecisionEvidence(
+                sectionOrdinal: 0,
+                bulletOrdinal: 0,
+                evidenceSegmentIDs: [segments[0].id])]))
+
+        try await store.database.write { db in
+            try db.execute(
+                sql: "DELETE FROM segment WHERE id = ?",
+                arguments: [segments[0].id.uuidString])
+        }
+        let snapshot = try await store.summary(meeting.id)
+        let loaded = try XCTUnwrap(snapshot?.draft)
+        let evidence = try XCTUnwrap(loaded.decisionEvidence.first)
+        XCTAssertEqual(evidence.unavailableEvidenceCount, 1)
+        XCTAssertEqual(
+            evidence.resolveEvidence(
+                currentTranscriptRevision: 0,
+                segments: Array(segments.dropFirst())).status,
+            .unavailable)
     }
 
     func testClaimFeedbackCanReplaceAndClearWithoutChangingGeneratedSummary() async throws {

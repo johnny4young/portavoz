@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -17,7 +17,8 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 - FRESH session per chunk (sessions accumulate context and overflow on the second chunk).
 
 **Guided generation**: `GeneratedSummary` (@Generable) → overview + up to four
-exact `overviewEvidence` E-tags + sections (instructed headings) + actionItems
+exact `overviewEvidence` E-tags + sections (instructed headings, bullets, and
+one `bulletEvidence` E-tag array per bullet) + actionItems
 (owner by label). `StructuredSummary.draft(for:)` resolves owners against
 Speakers by label/displayName (case-insensitive) and admits only tags emitted
 for that request. Unknown, altered, repeated, or excess tags disappear; no
@@ -37,6 +38,24 @@ without it. Strict resolution deduplicates in model order and caps four links.
 `summarizeNotes` deliberately disables claim creation because rolling compressed
 notes do not own one stable full-meeting tag map. Translation pivots clone the
 typed links with fresh claim IDs; Storage owns revision validation/stamping.
+
+## Typed decision evidence (D89)
+
+`Recipe.decisionSectionIndexes` classifies semantics explicitly: General and
+Planning index 1, and 1:1 index 2. Standup, Interview, and custom structures
+classify none; headings are never inferred across languages. A provider result
+must contain exactly the recipe's section count, and a classified section must
+contain exactly one evidence array per bullet. `StructuredSummary` then maps
+only exact request-local E-tags to the rendered nonempty section/bullet
+coordinate. Unknown, duplicate, empty, altered, shape-mismatched, unclassified,
+or rolling-note evidence yields no typed decision.
+
+OpenAI-compatible providers expose the optional additive `bulletEvidence` JSON
+field, so older responses still decode. Foundation Models guided generation
+uses the same shape, and MLX reuses the OpenAI contract. Translation carries
+only coordinates that remain valid after positional bullet-count validation,
+mints fresh decision IDs, and preserves the source revision and ordered links.
+Storage remains authoritative for coordinate, meeting, and revision admission.
 
 ## Human claim feedback is not model material (D88)
 

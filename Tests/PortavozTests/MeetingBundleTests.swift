@@ -32,7 +32,12 @@ final class MeetingBundleTests: XCTestCase {
                 sourceTranscriptRevision: meeting.transcriptRevision,
                 evidenceSegmentIDs: [segments[0].id],
                 feedback: SummaryClaimFeedback.correction(
-                    "La beta se publica el martes.")!)])
+                    "La beta se publica el martes.")!)],
+            decisionEvidence: [SummaryDecisionEvidence(
+                sectionOrdinal: 0,
+                bulletOrdinal: 0,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segments[0].id])])
         let note = ContextItem(
             meetingID: meeting.id, kind: .note, content: "congelar scope", timestamp: 12)
         let card = CompanionCard(
@@ -56,6 +61,9 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(
             decoded.summary?.claims.first?.feedback?.correctionText,
             "La beta se publica el martes.")
+        XCTAssertEqual(
+            decoded.summary?.decisionEvidence.first?.evidenceSegmentIDs,
+            [decoded.segments[0].id])
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
         XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
     }
@@ -118,6 +126,13 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(
             remapped.summary?.claims.first?.feedback,
             original.summary?.claims.first?.feedback)
+        XCTAssertEqual(
+            remapped.summary?.decisionEvidence.first?.evidenceSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.summary?.decisionEvidence.first?.sourceTranscriptRevision)
+        XCTAssertNotEqual(
+            remapped.summary?.decisionEvidence.first?.id,
+            original.summary?.decisionEvidence.first?.id)
         // "Me" flag survives.
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
         XCTAssertNotEqual(
