@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -89,6 +89,13 @@ claim. The concrete gateway validates first, writes the content-free attempt
 second, blocks every redirect, and transports last. Receipt failure prevents
 the request; HTTP failure retains the attempt because bytes may already have
 been transmitted.
+
+D76's support JSON is deliberately not an IntegrationsKit publisher and never
+crosses `DataEgressGateway`: the user explicitly saves a redacted local file
+through the native app panel. Portavoz performs no upload or sharing action.
+If the user later attaches that file to another application, that is a visible
+macOS file action outside Portavoz's transport graph. This keeps the existing
+privacy receipt as the only in-product network-egress truth.
 
 ## Known limitations
 

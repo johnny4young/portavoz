@@ -71,6 +71,7 @@ struct MeetingDetailView: View {
     /// atomic mutation and optional Companion refresh cross ApplicationKit.
     @State private var applying: String?
     @State private var actionError: String?
+    @State private var retryingProcessing = false
     @State private var editingTitle = false
     @State private var newTitle = ""
     /// Typed-recipe suggestion (M13b): detected once per visit, offered as
@@ -277,7 +278,7 @@ extension MeetingDetailView {
         }
     }
 
-    /// The right rail: privacy receipt + meeting health + ✦ chapters +
+    /// The right rail: processing recovery + privacy receipt + meeting health + ✦ chapters +
     /// the Companion's answers —
     /// the at-a-glance column beside the transcript. Hidden entirely when it
     /// would be empty. SCROLLS on its own so a long Companion list (many
@@ -287,9 +288,15 @@ extension MeetingDetailView {
     private func detailRail(_ detail: MeetingReviewReadModel) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
-        if detail.privacyReceipt != nil || hasHealth || hasChapters || !companionCards.isEmpty {
+        let hasProcessingState = detail.meeting.lifecycleState == .needsAttention
+            || detail.processingJobs.contains {
+                $0.state == .pending || $0.state == .running || $0.state == .failed
+            }
+        if hasProcessingState || detail.privacyReceipt != nil
+            || hasHealth || hasChapters || !companionCards.isEmpty {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    processingStatusSection(detail)
                     privacyReceiptSection(detail.privacyReceipt)
                     if hasHealth {
                         MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
@@ -300,6 +307,155 @@ extension MeetingDetailView {
             }
             .frame(width: 260)
             .frame(maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func processingStatusSection(_ detail: MeetingReviewReadModel) -> some View {
+        let failed = detail.processingJobs.filter { $0.state == .failed }
+        let active = detail.processingJobs.filter {
+            $0.state == .pending || $0.state == .running
+        }
+        if !failed.isEmpty {
+            failedProcessingCard(failed)
+        } else if !active.isEmpty {
+            activeProcessingCard(active)
+        } else if detail.meeting.lifecycleState == .needsAttention {
+            recordingRecoveryCard(detail)
+        }
+    }
+
+    private func failedProcessingCard(_ jobs: [ProcessingJob]) -> some View {
+        processingCard(tint: .orange) {
+            Label(
+                "Processing needs attention",
+                systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                .font(.headline)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("detail-processing-status")
+            Text(failedProcessingExplanation(jobs))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            retryProcessingButton
+        }
+    }
+
+    private var retryProcessingButton: some View {
+        Button {
+            retryingProcessing = true
+            Task {
+                await model.send(.retryProcessing)
+                retryingProcessing = false
+            }
+        } label: {
+            if retryingProcessing {
+                ProgressView().controlSize(.small)
+            } else {
+                Label("Retry processing", systemImage: "arrow.clockwise")
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.small)
+        .disabled(retryingProcessing)
+        .accessibilityIdentifier("detail-retry-processing")
+    }
+
+    private func activeProcessingCard(_ jobs: [ProcessingJob]) -> some View {
+        processingCard(tint: PVDesign.accent) {
+            Label("Processing on this Mac", systemImage: "gearshape.2")
+                .font(.headline)
+                .foregroundStyle(PVDesign.accent)
+                .accessibilityIdentifier("detail-processing-status")
+            Text(activeProcessingExplanation(jobs))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Keep Portavoz open; recovery continues automatically.")
+                .font(.caption.weight(.semibold))
+        }
+    }
+
+    @ViewBuilder
+    private func recordingRecoveryCard(_ detail: MeetingReviewReadModel) -> some View {
+        processingCard(tint: .orange) {
+            Label(
+                "Recording needs recovery",
+                systemImage: "waveform.badge.exclamationmark")
+                .font(.headline)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("detail-processing-status")
+            Text(recoveryExplanation(detail.meeting.lastProcessingError))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            processingRecoveryAction(detail)
+        }
+    }
+
+    @ViewBuilder
+    private func processingRecoveryAction(_ detail: MeetingReviewReadModel) -> some View {
+        if detail.meeting.audioDirectory != nil {
+            Button("Refine transcript") { refine(detail) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .accessibilityIdentifier("detail-recover-with-refine")
+        } else {
+            Button("Open support diagnostics") {
+                services.pendingSettingsCategory = .data
+                openSettings()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .accessibilityIdentifier("detail-open-support-diagnostics")
+        }
+    }
+
+    private func processingCard<Content: View>(
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8, content: content)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(tint.opacity(0.2), lineWidth: 1))
+    }
+
+    private func failedProcessingExplanation(_ jobs: [ProcessingJob]) -> String {
+        let kinds = Set(jobs.map(\.kind))
+        if kinds.contains(.transcription) {
+            // swiftlint:disable:next line_length
+            return L10n.text("Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.")
+        }
+        if kinds.contains(.diarization) {
+            return L10n.text(
+                "Speaker recovery stopped after repeated attempts. Your audio and transcript are still saved.")
+        }
+        return L10n.text(
+            "Background processing stopped after repeated attempts. Your meeting is still saved.")
+    }
+
+    private func activeProcessingExplanation(_ jobs: [ProcessingJob]) -> String {
+        if jobs.contains(where: { $0.kind == .transcription }) {
+            return L10n.text("Recovering the complete transcript from finalized audio.")
+        }
+        if jobs.contains(where: { $0.kind == .diarization }) {
+            return L10n.text("Recovering speaker attribution from finalized audio.")
+        }
+        return L10n.text("Finishing local background processing for this meeting.")
+    }
+
+    private func recoveryExplanation(_ code: String?) -> String {
+        switch code {
+        case "transcription.empty":
+            L10n.text("No reliable speech was found. Run Refine to review the saved audio again.")
+        case "capture.publication.failed":
+            L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
+        default:
+            L10n.text("Portavoz preserved the meeting, but automatic recovery could not finish.")
         }
     }
 

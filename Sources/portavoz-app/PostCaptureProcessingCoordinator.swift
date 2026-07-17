@@ -180,6 +180,8 @@ enum PostCaptureProcessingCoordinator {
 
     private static let logger = Logger(
         subsystem: "app.portavoz.mac", category: "post-capture-processing")
+    private static let signposter = OSSignposter(
+        subsystem: "app.portavoz.mac", category: .pointsOfInterest)
     private static let leaseDuration: TimeInterval = 120
     private static let heartbeatInterval: Duration = .seconds(30)
 
@@ -224,6 +226,9 @@ enum PostCaptureProcessingCoordinator {
     ) async -> Bool {
         let heartbeat = heartbeatTask(for: job, owner: owner, store: services.store)
         defer { heartbeat.cancel() }
+        let interval = signposter.beginInterval(
+            "Durable processing",
+            "kind=\(job.kind.rawValue, privacy: .public) attempt=\(job.attempt, privacy: .public)")
 
         do {
             switch job.kind {
@@ -237,17 +242,33 @@ enum PostCaptureProcessingCoordinator {
             default:
                 throw WorkerError.unsupportedKind(job.kind.rawValue)
             }
+            signposter.endInterval(
+                "Durable processing", interval,
+                "outcome=\("succeeded", privacy: .public)")
             return true
         } catch is CancellationError {
+            signposter.endInterval(
+                "Durable processing", interval,
+                "outcome=\("cancelled", privacy: .public)")
             return false
         } catch let error as StorageError where error.isLeaseLoss {
+            signposter.endInterval(
+                "Durable processing", interval,
+                "outcome=\("lease-lost", privacy: .public)")
             return false
         } catch {
-            return await preserveFailure(
+            let preserved = await preserveFailure(
                 error, for: job, owner: owner, services: services)
+            signposter.endInterval(
+                "Durable processing", interval,
+                "outcome=\("failed", privacy: .public) preserved=\(preserved, privacy: .public)")
+            return preserved
         }
     }
+}
 
+@MainActor
+private extension PostCaptureProcessingCoordinator {
     private static func heartbeatTask(
         for job: ProcessingJob,
         owner: String,

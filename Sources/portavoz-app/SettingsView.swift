@@ -124,6 +124,7 @@ struct SettingsView: View {
                     GitHubSection()
                 case .data:
                     LedgerSection()
+                    SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection
                 }

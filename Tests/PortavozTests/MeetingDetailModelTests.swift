@@ -23,6 +23,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(
             model.state.readModel?.privacyReceipt?.status,
             .allContentStayedOnDevice)
+        XCTAssertTrue(model.state.readModel?.processingJobs.isEmpty == true)
         XCTAssertEqual(client.calls, [.observe(fixture.meeting.id)])
     }
 
@@ -33,6 +34,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .failed(.summary),
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
+            .processingJobs([]),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -48,6 +50,7 @@ final class MeetingDetailModelTests: XCTestCase {
         let fixture = MeetingDetailModelFixture()
         let missingClient = MeetingDetailModelClientFake(updates: [
             .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
+            .processingJobs([]),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -88,7 +91,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 5)
+        XCTAssertEqual(model.state.revision, 6)
     }
 
     func testMutationActionsOwnPersistenceEffectsAndSearchInvalidation() async {
@@ -107,6 +110,7 @@ final class MeetingDetailModelTests: XCTestCase {
         await model.send(.removeCompanionCard(fixture.card.id))
         await model.send(.searchableContentChanged)
         let deleteEffect = await model.send(.deleteMeeting)
+        await model.send(.retryProcessing)
 
         XCTAssertEqual(client.calls, [
             .renameMeeting("Weekly planning"),
@@ -116,6 +120,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .setActionItem(fixture.actionItem.id, true),
             .deleteCompanion(fixture.card.id),
             .deleteMeeting(fixture.meeting.id),
+            .retryProcessing(fixture.meeting.id),
         ])
         XCTAssertEqual(client.searchReindexRequests, 7)
         XCTAssertEqual(effectSpeakerName(nameEffect), "Ana")
@@ -165,6 +170,12 @@ final class MeetingDetailModelTests: XCTestCase {
             model.state.lastActionError,
             L10n.text("Could not remove the card."))
         XCTAssertEqual(client.searchReindexRequests, 5)
+
+        await model.send(.retryProcessing)
+        XCTAssertEqual(
+            model.state.lastActionError,
+            L10n.text(
+                "Could not restart processing. Export a support file from Settings and try again."))
     }
 
     private func effectSpeakerName(_ effect: MeetingDetailModel.Effect?) -> String? {
@@ -225,7 +236,10 @@ private struct MeetingDetailModelFixture {
     }
 
     var updates: [MeetingReviewUpdate] {
-        [.core(core), .summary(summary), .companionCards([card]), .privacyReceipt(receipt)]
+        [
+            .core(core), .summary(summary), .companionCards([card]),
+            .privacyReceipt(receipt), .processingJobs([])
+        ]
     }
 
     var receipt: PrivacyReceipt {
@@ -285,6 +299,11 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         try fail(.deleteMeeting)
     }
 
+    func retryMeetingDetailProcessing(_ meetingID: MeetingID) throws {
+        calls.append(.retryProcessing(meetingID))
+        try fail(.retryProcessing)
+    }
+
     func requestMeetingDetailSearchReindex() {
         searchReindexRequests += 1
     }
@@ -300,6 +319,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case setActionItem
     case deleteCompanion
     case deleteMeeting
+    case retryProcessing
 
     var errorDescription: String? { "meeting-detail-model-\(rawValue)" }
 }
@@ -311,4 +331,5 @@ private enum MeetingDetailModelCall: Equatable {
     case setActionItem(UUID, Bool)
     case deleteCompanion(UUID)
     case deleteMeeting(MeetingID)
+    case retryProcessing(MeetingID)
 }

@@ -45,6 +45,35 @@ final class SettingsUITests: XCTestCase {
     }
 
     @MainActor
+    func testDataPaneExportsARedactedLocalSupportFile() throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-support-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let dataCategory = app.control(withIdentifier: "settings-category-data")
+        XCTAssertTrue(dataCategory.waitForExistence(timeout: 10))
+        dataCategory.click()
+
+        let export = app.buttons["settings-export-diagnostics"]
+        XCTAssertTrue(
+            export.waitForExistence(timeout: 5),
+            "the Your-data pane must offer an explicit redacted support export")
+        export.click()
+        XCTAssertTrue(
+            app.staticTexts["settings-diagnostics-status"].waitForExistence(timeout: 10),
+            "the export must confirm that no meeting content was included")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+        let text = try String(contentsOf: destination, encoding: .utf8)
+        XCTAssertTrue(text.contains("\"formatVersion\" : 1"))
+        XCTAssertFalse(text.contains("Revisemos el presupuesto de transcripción."))
+        attachScreenshot(of: app, named: "band-3i-redacted-support-export")
+    }
+
+    @MainActor
     func testIntelligencePaneCreatesACustomStructure() {
         // The Intelligence pane lets you author your own summary structures;
         // "Add structure" opens the editor sheet with a name field.

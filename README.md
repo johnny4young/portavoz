@@ -32,6 +32,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 - **Who-said-what, structurally.** Microphone and system audio are captured as separate channels: everything on your mic is *you*, by hardware truth. Remote voices are separated on-device with speaker diarization, then mapped to real names automatically.
 - **Local-first, with receipts.** Transcription, diarization, and summaries run on-device by default. Remote providers require explicit configuration or confirmation, and each meeting shows a content-free privacy receipt for tracked on-device processing and remote-transfer attempts. Local Ollama remains visibly local.
+- **Private when support is needed.** Export a redacted local support file without meeting text, generated output, prompts, secrets, full URLs, or paths. Stalled background work is visible in Meeting Detail and can be retried without replacing its durable safety evidence.
 - **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact.
 - **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, and exports any span as an audio clip.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
@@ -78,6 +79,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 **Reflect & review**
 - **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, violet = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
 - **🪞 Post-meeting mirror** (opt-in) — a private card at the end of a real meeting: your numbers next to your usual average, measured, never judged.
+- **Actionable recovery** — Meeting Detail tells you when local processing is active or exhausted, preserves the audio/transcript already saved, and offers one safe retry. Settings can save a redacted diagnostics JSON locally; Portavoz never uploads it.
 - **⌘K — ask your week** — a Spotlight-style palette over any view: instant results as you type, a full on-device answer with citation chips that jump to the exact moment.
 
 **Fits your workflow**
@@ -138,14 +140,14 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, speakers, audio, calendar-neutral upcoming events, durable processing jobs, privacy-safe generation provenance, content-free data-egress policy, and per-meeting privacy receipts), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library/Insights/Meeting Detail read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, redacted support diagnostics, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs, storage-independent Library/Insights/Meeting Detail read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, channel-colored waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite schema v7, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, durable leased job queue, local vector index |
+| `StorageKit` | GRDB/SQLite schema v7, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
 | `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked, receipt-before-transport outbound network adapter |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
@@ -154,8 +156,8 @@ independent GRDB observations to storage-independent ApplicationKit updates.
 Library observes meeting rows/voice mix, open items, trash, and active FTS;
 Insights observes meeting chronology, participant/commitment facts, talk
 balance, and scope-bounded finding evidence; Meeting Detail observes its
-transcript/cast, newest immutable summary, Companion cards, and privacy receipt
-independently.
+transcript/cast, newest immutable summary, Companion cards, privacy receipt,
+and durable processing independently.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume the global invalidation counter for reads.

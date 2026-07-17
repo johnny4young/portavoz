@@ -1849,3 +1849,44 @@ fail-closed persistence prevents invisible egress; redirect denial preserves
 the destination policy after validation; and a migration timestamp avoids
 rewriting unknown history as proof. Purpose-built, content-free projection
 keeps diagnostics useful without creating a second sensitive-data store.
+
+## D76 — Support evidence is local and redact-by-construction (Jul 2026)
+
+**Context:** D75 made per-meeting network evidence trustworthy, but support for
+a stalled recording still depended on screenshots or raw developer logs. Raw
+database exports, localized error strings, generation config/metrics, and
+OSLog messages can contain meeting text, prompts, endpoints, paths, or secrets.
+Durable jobs were observable by the worker but not independently actionable in
+Meeting Detail. Adding diagnostics by serializing existing records directly
+would create a second sensitive-data product and undermine the privacy receipt.
+
+**Decision:** ApplicationKit owns one `ExportSupportDiagnostics` use case over
+a single atomic StorageKit support snapshot. The versioned JSON may contain
+sanitized app/build/OS identity, model readiness, pseudonymous meeting
+references, lifecycle and transcript revision, stable error codes, durable job
+state, content-free generation provenance, and D75 privacy coverage/events.
+Meeting UUIDs and stored fingerprints are one-way rehashed for the report.
+Titles, transcript/summary/action/card text, prompts, raw error messages,
+secrets, configuration and metrics JSON, full URLs, local paths, stable
+database identities, and reusable fingerprints are excluded. The app exposes
+only an explicit native save action and performs no upload; the privacy receipt
+remains the sole user-facing network-egress claim.
+
+Meeting Detail observes `processingJob` as a fifth independent section. Active
+and failed jobs and `needsAttention` shells receive exact local explanations
+and one bounded recovery action. Manual retry resets only failed jobs, preserves
+job identity, idempotency key, kind, input fingerprint, and source revision,
+and returns lifecycle to processing before the normal owner-leased worker
+revalidates the fence. It does not invent a replacement operation or bypass
+retry validation. `OSSignposter` points-of-interest intervals may record only
+job kind, attempt, and terminal outcome; no meeting/job ID, path, provider
+secret, endpoint, or content is allowed.
+
+**Rationale:** a small allowlisted report is easier to audit and regression-test
+than a blacklist over raw records. One read snapshot makes support evidence
+internally consistent without N+1 reads, pseudonyms allow correlations inside
+one report without exposing durable identity, and preserving job evidence keeps
+manual recovery inside the existing lease/revision architecture. Independent
+observations make stalled work visible without reloading healthy transcript,
+summary, Companion, or privacy sections. Content-free signposts improve local
+performance diagnosis without turning unified logging into transcript storage.

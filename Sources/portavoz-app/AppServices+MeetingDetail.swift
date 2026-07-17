@@ -31,7 +31,8 @@ extension AppServices: MeetingDetailModelClient {
             core: store.observeMeetingReviewCore(meetingID),
             summary: store.observeMeetingReviewSummary(meetingID),
             companion: store.observeMeetingReviewCompanionCards(meetingID),
-            privacy: store.observeMeetingReviewPrivacyReceipt(meetingID))
+            privacy: store.observeMeetingReviewPrivacyReceipt(meetingID),
+            processing: store.observeMeetingReviewProcessingJobs(meetingID))
     }
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws {
@@ -57,13 +58,20 @@ extension AppServices: MeetingDetailModelClient {
     func requestMeetingDetailSearchReindex() {
         libraryVersion += 1
     }
+
+    func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws {
+        let jobs = try await store.retryFailedProcessingJobs(for: meetingID)
+        guard !jobs.isEmpty else { return }
+        kickPostCaptureProcessing()
+    }
 }
 
 private func makeApplicationMeetingReviewStream(
     core: AsyncThrowingStream<MeetingStore.MeetingReviewCore?, Error>,
     summary: AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error>,
     companion: AsyncThrowingStream<[CompanionCard], Error>,
-    privacy: AsyncThrowingStream<PrivacyReceipt?, Error>
+    privacy: AsyncThrowingStream<PrivacyReceipt?, Error>,
+    processing: AsyncThrowingStream<[ProcessingJob], Error>
 ) -> AsyncStream<MeetingReviewUpdate> {
     AsyncStream { continuation in
         let task = Task {
@@ -88,6 +96,13 @@ private func makeApplicationMeetingReviewStream(
                 group.addTask {
                     await forwardMeetingReview(privacy, to: continuation, section: .privacy) {
                         .privacyReceipt($0)
+                    }
+                }
+                group.addTask {
+                    await forwardMeetingReview(
+                        processing, to: continuation, section: .processing
+                    ) {
+                        .processingJobs($0)
                     }
                 }
             }

@@ -6,19 +6,17 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue architecture Band 3 at slice 3I in
-[refactor-20260714.md](refactor-20260714.md): turn the now-trustworthy
-content-free provenance and privacy receipts into actionable local diagnostics
-and processing signposts. The slice must export support evidence without
-meeting text, prompts, output, secrets, full URLs, or local paths; show durable
-processing failures and recovery states where the user can act on them; and
-retain the current privacy receipt as the single user-facing egress truth.
-Typed-error adoption and the App Sandbox capability spike remain later Band 3
-slices. Keep Spotlight independent; its incremental indexing/outbox adoption
-belongs with measured Band 4 scale work.
+**Next concrete step:** continue architecture Band 3 with bounded typed-error
+adoption in [refactor-20260714.md](refactor-20260714.md). Start with a small set
+of user-facing workflows whose raw error transport can be replaced by stable
+codes and localized recovery without expanding the diagnostics payload. The
+App Sandbox capability spike remains the final Band 3 investigation. Keep
+Spotlight independent; its incremental indexing/outbox adoption belongs with
+measured Band 4 scale work.
 
-Slices 3A–3H now cover attempt-level generation provenance, every current
-meeting-content HTTP path, and an honest per-meeting receipt. The Jul 16
+Slices 3A–3I now cover attempt-level generation provenance, every current
+meeting-content HTTP path, an honest per-meeting receipt, and local redacted
+support/recovery evidence. The Jul 16
 Sequoia stabilization interrupt fixed Stop timestamp identity, audio-first
 capture/recovery, proactive Whisper preparation, exact capability-aware
 Summary/Companion setup, role-specific speech-model readiness, and independent
@@ -29,7 +27,26 @@ app/DMG notarization. Band 2 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76).
+
+- **Architecture Band 3 slice 3I complete — private support evidence that can
+  recover work (Jul 16, 2026)**: Settings can explicitly save a local,
+  versioned JSON support file built from one read-consistent Store snapshot.
+  It pseudonymizes meeting identities, rehashes stored fingerprints, and keeps
+  only environment/readiness, lifecycle/revision, stable error codes, durable
+  job state, content-free generation provenance, and existing privacy events.
+  Meeting text, generated output, prompts, raw errors, secrets, config/metrics,
+  full URLs, and paths are excluded by construction. Meeting Detail now
+  observes durable jobs independently, explains active or exhausted work, and
+  exposes one retry that preserves identity/idempotency/input evidence for the
+  normal worker fence. Content-free signposts carry only kind, attempt, and
+  outcome. Adversarial redaction, persistence, observation, model,
+  localization, and EN/ES UI coverage plus the 29th architecture rule protect
+  the boundary. The complete gate is 667 package tests (13 gated), zero
+  strict-lint violations across 249 Swift source files, and all 23 XCUITest
+  cases in English and Spanish with inspected
+  `band-3i-redacted-support-export` and
+  `band-3i-actionable-processing` screenshots (D76).
 
 - **Architecture Band 3 slice 3H complete — every meeting has an honest
   privacy receipt (Jul 16, 2026)**: schema v7 persists immutable content-free

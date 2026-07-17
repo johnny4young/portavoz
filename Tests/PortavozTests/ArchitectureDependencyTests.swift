@@ -680,6 +680,53 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("spctl -a -vvv -t exec \"$APP_COPY\""))
     }
 
+    func testSupportDiagnosticsRemainRedactedLocalEvidence() throws {
+        let exporter = try Self.contents(
+            of: "Sources/ApplicationKit/ExportSupportDiagnostics.swift")
+        for forbidden in [
+            "title:", "segments:", "transcriptText", "summaryMarkdown", "actionItem",
+            "companionCard", "configJSON", "metricsJSON", "errorMessage",
+            "audioDirectory", "destinationURL", "apiKey"
+        ] {
+            XCTAssertFalse(exporter.contains(forbidden), "Exporter contains \(forbidden)")
+        }
+        XCTAssertTrue(exporter.contains("meeting.referenceDigest.prefix(12)"))
+        XCTAssertTrue(exporter.contains("job.inputFingerprintDigest"))
+        XCTAssertTrue(exporter.contains("run.inputFingerprintDigest"))
+
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
+        XCTAssertTrue(storage.contains("supportDigest(meetingID.rawValue.uuidString)"))
+        XCTAssertTrue(storage.contains("supportDigest(job.inputFingerprint)"))
+        XCTAssertTrue(storage.contains("supportDigest(run.inputFingerprint)"))
+        XCTAssertFalse(storage.contains("errorMessage:"))
+        XCTAssertFalse(storage.contains("configJSON:"))
+        XCTAssertFalse(storage.contains("metricsJSON:"))
+
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SupportDiagnosticsSection.swift")
+        XCTAssertTrue(settings.contains("NSSavePanel"))
+        XCTAssertFalse(settings.contains("URLSession"))
+        XCTAssertFalse(settings.contains("DataEgressGateway"))
+
+        let worker = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
+        guard let intervalStart = worker.range(
+            of: "let interval = signposter.beginInterval"),
+            let heartbeatStart = worker.range(
+                of: "private static func heartbeatTask",
+                range: intervalStart.upperBound..<worker.endIndex)
+        else {
+            return XCTFail("Durable-processing signpost boundary is missing")
+        }
+        let signpostedExecution = worker[intervalStart.lowerBound..<heartbeatStart.lowerBound]
+        XCTAssertTrue(signpostedExecution.contains("job.kind.rawValue"))
+        XCTAssertTrue(signpostedExecution.contains("job.attempt"))
+        XCTAssertFalse(signpostedExecution.contains("job.id"))
+        XCTAssertFalse(signpostedExecution.contains("job.meetingID"))
+        XCTAssertFalse(signpostedExecution.contains("localizedDescription"))
+    }
+
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
         let result = try await CharacterCount().execute("Portavoz")
         let callableResult = try await CharacterCount()("local first")

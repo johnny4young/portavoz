@@ -15,6 +15,7 @@ protocol MeetingDetailModelClient: AnyObject {
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws
+    func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws
     func requestMeetingDetailSearchReindex()
 }
 
@@ -47,6 +48,7 @@ final class MeetingDetailModel {
         case setActionItem(UUID, done: Bool)
         case removeCompanionCard(UUID)
         case deleteMeeting
+        case retryProcessing
         case searchableContentChanged
     }
 
@@ -69,6 +71,7 @@ final class MeetingDetailModel {
     private var summary: MeetingReviewSummary?
     private var companionCards: [CompanionCard] = []
     private var privacyReceipt: PrivacyReceipt?
+    private var processingJobs: [ProcessingJob] = []
 
     init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
         self.meetingID = meetingID
@@ -109,6 +112,9 @@ final class MeetingDetailModel {
         case .deleteMeeting:
             await deleteMeeting()
             return .meetingDeleted(meetingID)
+        case .retryProcessing:
+            await retryProcessing()
+            return nil
         case .searchableContentChanged:
             client.requestMeetingDetailSearchReindex()
             return nil
@@ -172,6 +178,16 @@ private extension MeetingDetailModel {
         _ = try? await client.deleteMeetingDetail(meetingID)
         client.requestMeetingDetailSearchReindex()
     }
+
+    func retryProcessing() async {
+        do {
+            try await client.retryMeetingDetailProcessing(meetingID)
+            state.lastActionError = nil
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not restart processing. Export a support file from Settings and try again.")
+        }
+    }
 }
 
 private extension MeetingDetailModel {
@@ -190,6 +206,9 @@ private extension MeetingDetailModel {
         case .privacyReceipt(let value):
             privacyReceipt = value
             markObserved(.privacy)
+        case .processingJobs(let value):
+            processingJobs = value
+            markObserved(.processing)
         case .failed(let section):
             failedSections.insert(section)
             observedSections.remove(section)
@@ -217,7 +236,8 @@ private extension MeetingDetailModel {
             core: core,
             summary: summary,
             companionCards: companionCards,
-            privacyReceipt: privacyReceipt)
+            privacyReceipt: privacyReceipt,
+            processingJobs: processingJobs)
     }
 
     func refreshPhase() {

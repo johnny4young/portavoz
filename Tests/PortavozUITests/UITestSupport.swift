@@ -25,6 +25,7 @@ extension XCUIApplication {
         seedJustRecorded: Bool = false,
         seedRecovery: Bool = false,
         seedProcessing: Bool = false,
+        seedProcessingFailure: Bool = false,
         seedWithoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         openSettings: Bool = false,
@@ -39,6 +40,7 @@ extension XCUIApplication {
         if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }
         if seedRecovery { app.launchArguments.append("-seed-recovery") }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
+        if seedProcessingFailure { app.launchArguments.append("-seed-processing-failure") }
         if seedWithoutSummary { app.launchArguments.append("-seed-without-summary") }
         if simulateSequoiaCapabilities {
             app.launchArguments.append("-simulate-sequoia-capabilities")

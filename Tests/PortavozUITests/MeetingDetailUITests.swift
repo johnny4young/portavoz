@@ -15,6 +15,7 @@ final class MeetingDetailUITests: XCTestCase {
         latestRecipe: Bool = false,
         refineRunning: Bool = false,
         justRecorded: Bool = false,
+        processingFailure: Bool = false,
         withoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         summaryEngine: String? = nil
@@ -24,6 +25,7 @@ final class MeetingDetailUITests: XCTestCase {
             seedLatestRecipe: latestRecipe,
             seedRefineRunning: refineRunning,
             seedJustRecorded: justRecorded,
+            seedProcessingFailure: processingFailure,
             seedWithoutSummary: withoutSummary,
             simulateSequoiaCapabilities: simulateSequoiaCapabilities)
         if justRecorded {
@@ -53,6 +55,23 @@ final class MeetingDetailUITests: XCTestCase {
         wait(for: [settled], timeout: 10)
         meeting.click()
         return app
+    }
+
+    @MainActor
+    func testFailedDurableProcessingOffersOneRecoveryAction() {
+        let app = launchOnSeededMeeting(processingFailure: true)
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-processing-status")
+                .waitForExistence(timeout: 10),
+            "a durable failure must be visible beside the meeting")
+        let retry = app.buttons["detail-retry-processing"]
+        XCTAssertTrue(
+            retry.waitForExistence(timeout: 5),
+            "a terminal durable failure must expose one explicit retry action")
+        attachScreenshot(of: app, named: "band-3i-actionable-processing")
+        retry.click()
     }
 
     @MainActor

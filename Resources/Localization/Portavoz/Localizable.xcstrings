@@ -4426,7 +4426,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transcript"
+            "value": "Transcripción"
           }
         }
       }
@@ -5617,6 +5617,256 @@
           "stringUnit": {
             "state": "translated",
             "value": "Actividad de modelos: %d · Transferencias locales: %d"
+          }
+        }
+      }
+    },
+    "Support diagnostics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnósticos de soporte"
+          }
+        }
+      }
+    },
+    "Export redacted support file…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar archivo de soporte redactado…"
+          }
+        }
+      }
+    },
+    "Preparing support file…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando archivo de soporte…"
+          }
+        }
+      }
+    },
+    "Includes app, macOS, model, processing, provenance, and privacy-receipt status. Never includes meeting text, generated output, prompts, secrets, full URLs, or file paths. Nothing is sent automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluye el estado de la app, macOS, modelos, procesamiento, procedencia y recibos de privacidad. Nunca incluye texto de reuniones, resultados generados, prompts, secretos, URL completas ni rutas de archivos. Nada se envía automáticamente."
+          }
+        }
+      }
+    },
+    "Support file saved — no meeting content included.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo de soporte guardado — no incluye contenido de reuniones."
+          }
+        }
+      }
+    },
+    "Could not create the support file. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo crear el archivo de soporte. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Save support file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar archivo de soporte"
+          }
+        }
+      }
+    },
+    "The file is redacted and stays on your Mac unless you choose to share it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo está redactado y permanece en tu Mac a menos que decidas compartirlo."
+          }
+        }
+      }
+    },
+    "Could not restart processing. Export a support file from Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo reiniciar el procesamiento. Exporta un archivo de soporte desde Ajustes e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Processing needs attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El procesamiento necesita atención"
+          }
+        }
+      }
+    },
+    "Retry processing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar procesamiento"
+          }
+        }
+      }
+    },
+    "Processing on this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesando en este Mac"
+          }
+        }
+      }
+    },
+    "Keep Portavoz open; recovery continues automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén Portavoz abierto; la recuperación continúa automáticamente."
+          }
+        }
+      }
+    },
+    "Recording needs recovery": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La grabación necesita recuperación"
+          }
+        }
+      }
+    },
+    "Refine transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refinar transcripción"
+          }
+        }
+      }
+    },
+    "Open support diagnostics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir diagnósticos de soporte"
+          }
+        }
+      }
+    },
+    "Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La recuperación de la transcripción se detuvo tras varios intentos. El audio y la transcripción actual siguen guardados."
+          }
+        }
+      }
+    },
+    "Speaker recovery stopped after repeated attempts. Your audio and transcript are still saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La recuperación de hablantes se detuvo tras varios intentos. El audio y la transcripción siguen guardados."
+          }
+        }
+      }
+    },
+    "Background processing stopped after repeated attempts. Your meeting is still saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El procesamiento en segundo plano se detuvo tras varios intentos. La reunión sigue guardada."
+          }
+        }
+      }
+    },
+    "Recovering the complete transcript from finalized audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperando la transcripción completa desde el audio finalizado."
+          }
+        }
+      }
+    },
+    "Recovering speaker attribution from finalized audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperando la atribución de hablantes desde el audio finalizado."
+          }
+        }
+      }
+    },
+    "Finishing local background processing for this meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalizando el procesamiento local en segundo plano de esta reunión."
+          }
+        }
+      }
+    },
+    "No reliable speech was found. Run Refine to review the saved audio again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró voz confiable. Ejecuta Refinar para revisar de nuevo el audio guardado."
+          }
+        }
+      }
+    },
+    "Portavoz preserved recovery evidence but could not finalize the recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz conservó la evidencia de recuperación, pero no pudo finalizar la grabación."
+          }
+        }
+      }
+    },
+    "Portavoz preserved the meeting, but automatic recovery could not finish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz conservó la reunión, pero la recuperación automática no pudo finalizar."
           }
         }
       }

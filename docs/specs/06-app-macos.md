@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts).
 
 ## Structure
 
@@ -115,6 +115,26 @@ and time plus the conservative warning that content may have left the Mac.
 Accessibility boundaries are `detail-privacy-receipt` and
 `privacy-remote-event-<index>`. English and Spanish catalog entries preserve
 the same evidence meaning.
+
+D76 composes one `ExportSupportDiagnostics` use case above StorageKit's atomic
+support projection. `AppServices` contributes app/build/OS identity and
+readiness for Parakeet, pyannote, Whisper, Foundation Models, MLX, and Ollama;
+it contributes no endpoint, model secret, Keychain value, or meeting content.
+Settings → Your data exposes the explicit `settings-export-diagnostics`
+action, writes the returned JSON through `NSSavePanel`, and confirms that the
+file remains on the Mac unless the user chooses to share it. The app never
+uploads the report. A deterministic temp-store destination lets XCUITest prove
+the file was created and contains no seeded transcript.
+
+The same slice adds processing as Meeting Detail's fifth independent update.
+The right rail distinguishes pending/running local recovery, exhausted durable
+jobs, and a `needsAttention` shell without a job. Exhausted work exposes one
+`detail-retry-processing` action through the route-owned model; retry preserves
+the job's identity/idempotency/input evidence and then kicks the normal worker.
+A recoverable audio shell instead offers Refine, while a shell without audio
+routes to support diagnostics. `OSSignposter` wraps durable execution with
+job-kind, attempt, and outcome metadata only; it never records meeting/job IDs,
+paths, provider secrets, or transcript material.
 
 Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
 `RecordingController` still flushes `RecordingSession`, closes live feeds, and
@@ -232,9 +252,9 @@ Slice 2S gives each selected meeting one read owner. `MeetingDetailView` owns
 an `@MainActor @Observable MeetingDetailModel` for the route identity and
 renders one storage-independent `MeetingReviewReadModel`. The model merges
 independent transcript/cast, newest cross-recipe summary/action-item, Companion,
-and privacy-receipt streams; distinguishes missing from failed state; rejects stale
+privacy-receipt, and durable-processing streams; distinguishes missing from failed state; rejects stale
 observation instances; and preserves healthy sections after a partial failure.
-`AppServices+MeetingDetail` maps the four StorageKit streams at composition.
+`AppServices+MeetingDetail` maps the five StorageKit streams at composition.
 The view no longer performs sequential detail/Companion/summary reads or keys
 its task to `libraryVersion`; player loading, two-column review, chapters,
 newest summary, exports, and visible errors remain unchanged. Accepted Refine
@@ -372,7 +392,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
 - **Refine (D7/D35/D47/D73 in-app)**: `ApplicationKit.RefineMeeting` prepares only required Whisper and re-transcribes retained non-silent channels (+vocabulary), then applies microphone noise/bleed filtering and requests only best-effort pyannote diarization; live Parakeet is never a prerequisite. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Companion refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
 - Export: Markdown / PDF (pure CoreText, compiles for iOS) / **Secret Gist** with explicit off-device confirmation and gateway-enforced meeting/document metadata.
 
-**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background progress, and stable `settings-whisper-*` accessibility identifiers (D71) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Companion activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key in Keychain, answer-provider opt-in disabled until everything and the Companion classifier are available; deleting key turns it off — spec 04) · GitHub (token in Keychain). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72).
+**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background progress, and stable `settings-whisper-*` accessibility identifiers (D71) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Companion activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key in Keychain, answer-provider opt-in disabled until everything and the Companion classifier are available; deleting key turns it off — spec 04) · GitHub (token in Keychain) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72).
 
 ## Verified in real world (Jul 2026)
 
@@ -386,14 +406,14 @@ exercises this same production path in the durable-resume XCUITest (D63).
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 21 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 23 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
-rail health+chapters, post-meeting mirror, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
+rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
 Whisper preparation, custom structures, capture
-controls, mirror, and live language switch via ⌘,). Every launch receives a
+controls, redacted support export, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
 neither SQLite nor audio can touch the user's library. `-seed-recovery`,
 `-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`, and

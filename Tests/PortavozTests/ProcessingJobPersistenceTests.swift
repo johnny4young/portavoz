@@ -140,6 +140,58 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         XCTAssertTrue(recordingJobs.isEmpty)
     }
 
+    func testManualRetryResetsOnlyFailedJobsAndRestoresProcessingLifecycle() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        _ = try await store.enqueueProcessingJobs(
+            for: captured.id,
+            requests: [ProcessingJobRequest(
+                kind: .transcription,
+                inputFingerprint: "retry-fingerprint",
+                maxAttempts: 1)],
+            at: now)
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.transcription],
+            owner: "worker-a",
+            leaseDuration: 30,
+            at: now)
+        let claimed = try XCTUnwrap(claimedValue)
+        _ = try await store.failProcessingJob(
+            claimed.id,
+            owner: "worker-a",
+            failure: ProcessingJobFailure(
+                code: "processing.transcription.failed",
+                message: "/private/customer/audio.caf"),
+            at: now.addingTimeInterval(1))
+
+        let failed = try await detail(captured.id, in: store)
+        XCTAssertEqual(failed.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(failed.meeting.lastProcessingError, "processing.transcription.failed")
+
+        let retried = try await store.retryFailedProcessingJobs(
+            for: captured.id,
+            at: now.addingTimeInterval(2))
+        let job = try XCTUnwrap(retried.first)
+        XCTAssertEqual(retried.count, 1)
+        XCTAssertEqual(job.id, claimed.id)
+        XCTAssertEqual(job.state, .pending)
+        XCTAssertEqual(job.attempt, 0)
+        XCTAssertEqual(job.notBefore, now.addingTimeInterval(2))
+        XCTAssertNil(job.errorCode)
+        XCTAssertNil(job.errorMessage)
+        XCTAssertNil(job.startedAt)
+        XCTAssertNil(job.finishedAt)
+
+        let processing = try await detail(captured.id, in: store)
+        XCTAssertEqual(processing.meeting.lifecycleState, .processing)
+        XCTAssertNil(processing.meeting.lastProcessingError)
+        let secondRetry = try await store.retryFailedProcessingJobs(
+            for: captured.id,
+            at: now.addingTimeInterval(3))
+        XCTAssertEqual(secondRetry.count, 0)
+    }
+
     func testLeaseClaimHeartbeatAndCompletionAreOwnerBound() async throws {
         let store = try MeetingStore.inMemory()
         let captured = meeting()

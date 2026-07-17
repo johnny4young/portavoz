@@ -5,6 +5,43 @@ import XCTest
 @testable import StorageKit
 
 final class MeetingDetailObservationTests: XCTestCase {
+    func testProcessingObservationPublishesDurableRecoveryState() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Recovery", startedAt: Date())
+        var processing = store.observeMeetingReviewProcessingJobs(
+            meeting.id).makeAsyncIterator()
+        let initial = try await nextProcessing(&processing)
+        XCTAssertTrue(initial.isEmpty)
+
+        try await store.save(meeting)
+        _ = try await nextProcessing(&processing)
+        _ = try await store.enqueueProcessingJobs(
+            for: meeting.id,
+            requests: [ProcessingJobRequest(
+                kind: .transcription,
+                inputFingerprint: "observation-recovery",
+                maxAttempts: 1)])
+        let pending = try await nextProcessing(&processing) {
+            $0.first?.state == .pending
+        }
+        XCTAssertEqual(pending.first?.kind, .transcription)
+
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.transcription],
+            owner: "observation-worker",
+            leaseDuration: 30)
+        let claimed = try XCTUnwrap(claimedValue)
+        _ = try await nextProcessing(&processing) { $0.first?.state == .running }
+        _ = try await store.failProcessingJob(
+            claimed.id,
+            owner: "observation-worker",
+            failure: ProcessingJobFailure(code: "processing.transcription.failed"))
+        let failed = try await nextProcessing(&processing) {
+            $0.first?.state == .failed
+        }
+        XCTAssertEqual(failed.first?.errorCode, "processing.transcription.failed")
+    }
+
     func testMeetingReviewObservationsTrackLifecycleAndIndependentContent() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Planning", startedAt: Date())
@@ -153,6 +190,18 @@ private func nextCore(
     for _ in 0..<12 {
         let value = try await iterator.next()
         if predicate(value ?? nil) { return value ?? nil }
+    }
+    throw MeetingDetailObservationTestError.expectedValue
+}
+
+private func nextProcessing(
+    _ iterator: inout AsyncThrowingStream<[ProcessingJob], Error>.Iterator,
+    until predicate: ([ProcessingJob]) -> Bool = { _ in true }
+) async throws -> [ProcessingJob] {
+    for _ in 0..<12 {
+        let candidate = try await iterator.next()
+        let value = try XCTUnwrap(candidate)
+        if predicate(value) { return value }
     }
     throw MeetingDetailObservationTestError.expectedValue
 }

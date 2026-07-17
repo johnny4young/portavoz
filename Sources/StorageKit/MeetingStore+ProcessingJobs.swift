@@ -54,6 +54,48 @@ extension MeetingStore {
         }
     }
 
+    /// Explicit user retry for terminal durable failures. The logical job and
+    /// idempotency key stay unchanged; only execution state is reset. Workers
+    /// still revalidate the current input fingerprint before publishing.
+    public func retryFailedProcessingJobs(
+        for meetingID: MeetingID,
+        at timestamp: Date = Date()
+    ) async throws -> [ProcessingJob] {
+        let key = meetingID.rawValue.uuidString
+        return try await database.write { db in
+            guard try MeetingRecord
+                .filter(Column("id") == key)
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db) > 0
+            else { throw StorageError.meetingNotFound(meetingID) }
+
+            let records = try ProcessingJobRecord
+                .filter(Column("meetingID") == key)
+                .filter(Column("state") == ProcessingJobState.failed.rawValue)
+                .order(Column("createdAt"), Column("id"))
+                .fetchAll(db)
+            var retried: [ProcessingJob] = []
+            for var record in records {
+                record.state = ProcessingJobState.pending.rawValue
+                record.progress = 0
+                record.attempt = 0
+                record.notBefore = timestamp
+                record.leaseOwner = nil
+                record.leaseExpiresAt = nil
+                record.errorCode = nil
+                record.errorMessage = nil
+                record.startedAt = nil
+                record.finishedAt = nil
+                record.updatedAt = timestamp
+                try record.update(db)
+                retried.append(try record.job)
+            }
+            try Self.reconcileProcessingLifecycle(
+                for: meetingID, at: timestamp, in: db)
+            return retried
+        }
+    }
+
     /// Atomically leases the highest-priority due job supported by a worker.
     /// A lease attempt increments exactly once and never claims deleted data.
     public func claimNextProcessingJob(

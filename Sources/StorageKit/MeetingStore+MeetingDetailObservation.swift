@@ -17,7 +17,7 @@ extension MeetingStore {
     ) -> AsyncThrowingStream<MeetingReviewCore?, Error> {
         let observation = ValueObservation.tracking(
             regions: [Table("meeting"), Table("speaker"), Table("segment")],
-            fetch: { database in
+            fetch: { database -> MeetingReviewCore? in
                 try Self.fetchMeetingReviewCore(id, in: database)
             })
         return observedStream(observation)
@@ -61,6 +61,25 @@ extension MeetingStore {
             ],
             fetch: { database in
                 try Self.fetchPrivacyReceipt(for: id, in: database)
+            })
+        return observedStream(observation)
+    }
+
+    /// Durable work and its stable failure codes update independently from
+    /// product content so Meeting Detail can show recovery without reloading
+    /// a large transcript or summary.
+    public func observeMeetingReviewProcessingJobs(
+        _ id: MeetingID
+    ) -> AsyncThrowingStream<[ProcessingJob], Error> {
+        let observation = ValueObservation.tracking(
+            regions: [Table("meeting"), Table("processingJob")],
+            fetch: { database -> [ProcessingJob] in
+                guard try Self.liveMeetingExists(id, in: database) else { return [] }
+                return try ProcessingJobRecord
+                    .filter(Column("meetingID") == id.rawValue.uuidString)
+                    .order(Column("createdAt"), Column("id"))
+                    .fetchAll(database)
+                    .map { try $0.job }
             })
         return observedStream(observation)
     }

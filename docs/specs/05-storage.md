@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry).
 
 ## Database
 
@@ -165,7 +165,11 @@ Durable work APIs are `enqueueProcessingJobs(for:requests:at:)`,
 `heartbeatProcessingJob`, `completeProcessingJob`,
 `completeTranscriptionJob`, `completeDiarizationJob`, `completeSummaryJob`, `failProcessingJob`, and
 `cancelProcessingJob`, `nextScheduledProcessingDate`, and
-`recoverExpiredProcessingJobs`. Claims and scheduled wakes are capability-
+`recoverExpiredProcessingJobs`. `retryFailedProcessingJobs(for:at:)` is the
+explicit user-recovery boundary: in one transaction it resets only exhausted
+jobs to pending, clears lease/attempt/error timing, preserves job identity,
+idempotency key, kind, input fingerprint, and source revision, and reconciles
+the meeting to processing. Claims and scheduled wakes are capability-
 filtered and owner-fenced; generated work must use its artifact completion API,
 while the generic completion path remains available only to non-content jobs.
 `completeTranscriptionJob` validates the exact meeting/fingerprint/source
@@ -197,6 +201,16 @@ fail-closed `DataEgressEventRecorder` implementation used by production network
 composition. Receipt reads include live generation runs but expose only their
 purpose-built provider/model/time/outcome projection, never raw config,
 fingerprints, metrics, or meeting content.
+
+`supportDiagnosticsSnapshot()` reads every support-safe live meeting, privacy
+coverage boundary, durable job, generation run, and egress event inside one
+SQLite snapshot, then groups rows in memory to avoid one query per meeting. The
+StorageKit projection contains structural state needed by ApplicationKit but
+does not fetch title, transcript, summary/action/card text, or filesystem paths.
+Before the projection crosses the Store, stable database identities and stored
+fingerprints are one-way hashed, labels/codes/hosts are sanitized, and raw
+prompt/config/metrics/error payloads are omitted. ApplicationKit applies the
+same allowlist again while encoding the public report (D76).
 
 External audio uses the dedicated
 `saveImportedMeeting(_:speakers:segments:)` Unit of Work. It validates the
@@ -272,12 +286,13 @@ helpers with the existing one-shot APIs, so live-root scope, ordering, and
 degradable optional-row behavior cannot drift. The app maps these projections
 to ApplicationKit contracts; no GRDB projection reaches `InsightsView`.
 
-Meeting Detail has four independent observations (D59/D75). Its live root, cast,
+Meeting Detail has five independent observations (D59/D75/D76). Its live root, cast,
 and ordered transcript observe `meeting`, `speaker`, and `segment`; its newest
 immutable summary across recipes plus current action items observe `meeting`,
 `summary`, and `actionItem`; persisted Companion cards observe `meeting` and
 `companionCard`; the privacy receipt observes `meeting`, `generationRun`,
-`dataEgressEvent`, and `privacyReceiptCoverage`. Every projection is filtered to one live meeting. The core and
+`dataEgressEvent`, and `privacyReceiptCoverage`; durable processing observes
+only `meeting` and `processingJob`. Every projection is filtered to one live meeting. The core and
 Companion helpers are shared with `detail` and `companionCards(for:)`, while
 the summary stream reuses `mostRecentSummarySnapshot`; one-shot and observed
 selection, ordering, tombstone scope, and strict decoding therefore remain
@@ -285,8 +300,8 @@ identical. The app maps these StorageKit edge values into storage-independent
 ApplicationKit review updates.
 
 The database remains a `DatabaseQueue`. The original scoped-observation slices
-added no migration; 3H adds only the schema-v7 receipt tables and leaves all
-existing rows and query behavior unchanged.
+added no migration; 3H adds only the schema-v7 receipt tables, while 3I adds no
+schema and leaves all existing rows and query behavior unchanged.
 
 ## `.portavoz` bundle (M15 L0)
 

@@ -62,9 +62,38 @@ extension AppServices {
                 kind: .context, source: "on-device", directed: true, askedAt: 200)
         ], for: meeting.id)
         await seedPrivacyReceipt(for: meeting.id)
+        await seedProcessingFailureIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         libraryVersion += 1
+    }
+
+    private func seedProcessingFailureIfRequested(for meetingID: MeetingID) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-processing-failure") else {
+            return
+        }
+        let owner = "ui-test-processing-failure"
+        do {
+            _ = try await store.enqueueProcessingJobs(
+                for: meetingID,
+                requests: [ProcessingJobRequest(
+                    kind: .transcription,
+                    inputFingerprint: "ui-test-processing-failure",
+                    maxAttempts: 1)])
+            guard let job = try await store.claimNextProcessingJob(
+                kinds: [.transcription],
+                owner: owner,
+                leaseDuration: 60)
+            else { return }
+            _ = try await store.failProcessingJob(
+                job.id,
+                owner: owner,
+                failure: ProcessingJobFailure(
+                    code: "processing.transcription.failed",
+                    message: "fixture detail must never reach diagnostics"))
+        } catch {
+            assertionFailure("Could not seed processing failure: \(error)")
+        }
     }
 
     private func seedPrivacyReceipt(for meetingID: MeetingID) async {
