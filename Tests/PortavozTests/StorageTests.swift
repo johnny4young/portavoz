@@ -40,6 +40,99 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
+    // MARK: - Schema v9 typed summary evidence
+
+    func testV8MigratesAdditivelyToTypedSummaryEvidenceSchema() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v8")
+
+        let legacyMeeting = Meeting(
+            title: "Legacy planning",
+            startedAt: Date(timeIntervalSince1970: 1_783_695_600))
+        let legacySegment = TranscriptSegment(
+            meetingID: legacyMeeting.id,
+            channel: .system,
+            text: "The rollout stays on Friday.",
+            startTime: 3,
+            endTime: 6,
+            isFinal: true)
+        let summaryID = UUID().uuidString
+        let timestamp = Date(timeIntervalSince1970: 1_783_695_606)
+        try database.write { db in
+            try MeetingRecord(
+                legacyMeeting,
+                createdAt: timestamp,
+                updatedAt: timestamp)
+                .insert(db)
+            try SegmentRecord(
+                legacySegment,
+                createdAt: timestamp,
+                updatedAt: timestamp)
+                .insert(db)
+            try SummaryRecord(
+                id: summaryID,
+                meetingID: legacyMeeting.id.rawValue.uuidString,
+                recipeID: Recipe.general.id,
+                language: "en",
+                markdown: "The rollout stays on Friday.",
+                version: 1,
+                fingerprint: "legacy-fingerprint",
+                generationRunID: nil,
+                createdAt: timestamp,
+                deletedAt: nil)
+                .insert(db)
+        }
+
+        try migrator.migrate(database)
+
+        let claimID = UUID().uuidString
+        try database.write { db in
+            XCTAssertEqual(
+                try Set(db.columns(in: "summaryClaim").map(\.name)),
+                ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "summaryClaimSegment").map(\.name)),
+                ["id", "claimID", "segmentID", "ordinal", "createdAt"])
+            XCTAssertEqual(
+                try String.fetchOne(
+                    db, sql: "SELECT markdown FROM summary WHERE id = ?",
+                    arguments: [summaryID]),
+                "The rollout stays on Friday.")
+            XCTAssertEqual(
+                try String.fetchOne(
+                    db, sql: "SELECT text FROM segment WHERE id = ?",
+                    arguments: [legacySegment.id.uuidString]),
+                "The rollout stays on Friday.")
+
+            try SummaryClaimRecord(
+                id: claimID,
+                summaryID: summaryID,
+                kind: SummaryClaimKind.overview.rawValue,
+                sourceTranscriptRevision: 0,
+                createdAt: timestamp)
+                .insert(db)
+            try SummaryClaimSegmentRecord(
+                id: UUID().uuidString,
+                claimID: claimID,
+                segmentID: legacySegment.id.uuidString,
+                ordinal: 0,
+                createdAt: timestamp)
+                .insert(db)
+            try db.execute(
+                sql: "DELETE FROM segment WHERE id = ?",
+                arguments: [legacySegment.id.uuidString])
+
+            let link = try XCTUnwrap(Row.fetchOne(
+                db,
+                sql: "SELECT segmentID FROM summaryClaimSegment WHERE claimID = ?",
+                arguments: [claimID]))
+            let segmentID: String? = link["segmentID"]
+            XCTAssertNil(segmentID, "physical deletion must retain an unavailable evidence link")
+            XCTAssertTrue(try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty)
+        }
+    }
+
     // MARK: - Roundtrips (UUID PKs, D4)
 
     func testMeetingRoundTripsWithTypedIDsAndRetention() async throws {
@@ -329,6 +422,91 @@ final class MeetingStoreTests: XCTestCase {
         XCTAssertNil(missES, "the es snapshot has no fingerprint and must not match")
         let missOther = try await store.latestSummary(meeting.id, fingerprint: "f-zzz")
         XCTAssertNil(missOther)
+    }
+
+    func testOverviewEvidencePersistsWithRevisionAndBecomesStale() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let draft = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: "El rollout queda para el viernes.",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[1].id])])
+
+        _ = try await store.saveSummary(draft)
+        let currentSnapshot = try await store.summary(meeting.id)
+        let current = try XCTUnwrap(currentSnapshot?.draft)
+        let claim = try XCTUnwrap(current.claims.first)
+        XCTAssertEqual(claim.sourceTranscriptRevision, 0)
+        XCTAssertEqual(
+            claim.resolveEvidence(
+                currentTranscriptRevision: 0,
+                segments: segments).status,
+            .current)
+
+        meeting.transcriptRevision = 1
+        try await store.save(meeting)
+        let staleSnapshot = try await store.summary(meeting.id)
+        let stale = try XCTUnwrap(staleSnapshot?.draft.claims.first)
+        XCTAssertEqual(
+            stale.resolveEvidence(
+                currentTranscriptRevision: 1,
+                segments: segments).status,
+            .stale)
+    }
+
+    func testOverviewEvidenceRejectsForeignSegmentAtomically() async throws {
+        _ = try await seedMeetingWithTranscript()
+        let invalid = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "Unsupported claim",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [UUID()])])
+
+        do {
+            _ = try await store.saveSummary(invalid)
+            XCTFail("foreign evidence must reject the whole summary snapshot")
+        } catch let error as StorageError {
+            guard case .invalidSummaryClaim = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+        let persisted = try await store.summary(meeting.id)
+        XCTAssertNil(persisted)
+    }
+
+    func testPhysicallyDeletedEvidenceLoadsAsUnavailable() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "Supported claim",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[0].id])]))
+
+        try await store.database.write { db in
+            try db.execute(
+                sql: "DELETE FROM segment WHERE id = ?",
+                arguments: [segments[0].id.uuidString])
+        }
+        let unavailableSnapshot = try await store.summary(meeting.id)
+        let claim = try XCTUnwrap(unavailableSnapshot?.draft.claims.first)
+        XCTAssertEqual(claim.unavailableEvidenceCount, 1)
+        XCTAssertEqual(
+            claim.resolveEvidence(
+                currentTranscriptRevision: 0,
+                segments: Array(segments.dropFirst())).status,
+            .unavailable)
     }
 
     func testSummaryRequiresExistingMeeting() async throws {

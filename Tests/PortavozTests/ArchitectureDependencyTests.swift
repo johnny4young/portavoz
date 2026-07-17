@@ -676,8 +676,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("requestMeetingDetailSearchReindex"))
         XCTAssertTrue(storage.contains(
             "regions: [Table(\"meeting\"), Table(\"speaker\"), Table(\"segment\")]"))
-        XCTAssertTrue(storage.contains(
-            "regions: [Table(\"meeting\"), Table(\"summary\"), Table(\"actionItem\")]"))
+        XCTAssertTrue(storage.contains("Table(\"summaryClaim\")"))
+        XCTAssertTrue(storage.contains("Table(\"summaryClaimSegment\")"))
         XCTAssertTrue(storage.contains(
             "regions: [Table(\"meeting\"), Table(\"companionCard\")]"))
     }
@@ -700,12 +700,41 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("Duplicate aliases across people are deliberate"))
         XCTAssertTrue(storage.contains("guard !speaker.isMe"))
         XCTAssertTrue(schema.contains("registerMigration(\"v8\")"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v9\")"))
         XCTAssertTrue(schema.contains("t.add(column: \"personID\", .text)"))
         XCTAssertTrue(bundle.contains("personID: nil"))
         XCTAssertFalse(calendar.contains("linkSpeaker("))
         XCTAssertFalse(calendar.contains("createPersonAndLink("))
         XCTAssertFalse(gallery.contains("linkSpeaker("))
         XCTAssertFalse(gallery.contains("createPersonAndLink("))
+    }
+
+    func testSummaryEvidenceStaysTypedRevisionFencedAndPortable() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/SummaryTypes.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let storage = try Self.contents(of: "Sources/StorageKit/MeetingStore+Summaries.swift")
+        let formatter = try Self.contents(of: "Sources/IntelligenceKit/TranscriptFormatter.swift")
+        let provider = try Self.contents(
+            of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
+        let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+
+        XCTAssertTrue(core.contains("enum SummaryClaimKind"))
+        XCTAssertTrue(core.contains("currentTranscriptRevision"))
+        XCTAssertTrue(core.contains("case stale"))
+        XCTAssertTrue(core.contains("case unavailable"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v9\")"))
+        XCTAssertTrue(schema.contains("table: \"summaryClaim\""))
+        XCTAssertTrue(schema.contains("table: \"summaryClaimSegment\""))
+        XCTAssertTrue(storage.contains("evidence must reference a live segment"))
+        XCTAssertTrue(storage.contains("meeting.transcriptRevision"))
+        XCTAssertTrue(formatter.contains("formatWithEvidence"))
+        XCTAssertTrue(formatter.contains("resolveEvidenceTags"))
+        XCTAssertTrue(provider.contains("overviewEvidence"))
+        XCTAssertTrue(bundle.contains("segmentMap"))
+        XCTAssertTrue(bundle.contains("sourceTranscriptRevision: nil"))
+        XCTAssertTrue(detail.contains("summary-evidence-stale"))
+        XCTAssertTrue(detail.contains("focusEvidence(segment)"))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

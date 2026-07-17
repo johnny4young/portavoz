@@ -48,12 +48,12 @@ final class CanonicalPeopleTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { db in
-            XCTAssertEqual(StorageSchema.version, 8)
+            XCTAssertEqual(StorageSchema.version, 9)
             XCTAssertEqual(
                 try String.fetchAll(
                     db,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
-                ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8"])
+                ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9"])
             XCTAssertEqual(
                 try Set(db.columns(in: "person").map(\.name)),
                 ["id", "preferredName", "createdAt", "updatedAt", "deletedAt"])

@@ -83,7 +83,11 @@ extension MeetingStore {
             throw StorageError.invalidImportedMeeting(
                 "segments must be unique, belong to the meeting, and reference its cast")
         }
-        try validateImportedSummary(snapshot.summary, meetingID: meetingID, cast: speakerIDs)
+        try validateImportedSummary(
+            snapshot.summary,
+            meetingID: meetingID,
+            cast: speakerIDs,
+            segments: Set(snapshot.segments.map(\.id)))
         guard Set(snapshot.contextItems.map(\.id)).count == snapshot.contextItems.count,
             snapshot.contextItems.allSatisfy({ $0.meetingID == meetingID })
         else {
@@ -98,17 +102,27 @@ extension MeetingStore {
     private static func validateImportedSummary(
         _ summary: SummaryDraft?,
         meetingID: MeetingID,
-        cast: Set<SpeakerID>
+        cast: Set<SpeakerID>,
+        segments: Set<UUID>
     ) throws {
         guard let summary else { return }
         guard summary.meetingID == meetingID,
             Set(summary.actionItems.map(\.id)).count == summary.actionItems.count,
             summary.actionItems.allSatisfy({ item in
                 item.ownerSpeakerID.map(cast.contains) ?? true
+            }),
+            summary.claims.count <= 1,
+            Set(summary.claims.map(\.id)).count == summary.claims.count,
+            summary.claims.allSatisfy({ claim in
+                claim.kind == .overview
+                    && claim.unavailableEvidenceCount == 0
+                    && !claim.evidenceSegmentIDs.isEmpty
+                    && Set(claim.evidenceSegmentIDs).count == claim.evidenceSegmentIDs.count
+                    && claim.evidenceSegmentIDs.allSatisfy(segments.contains)
             })
         else {
             throw StorageError.invalidImportedMeeting(
-                "summary and action items must belong to the imported aggregate")
+                "summary, action items, and evidence must belong to the imported aggregate")
         }
     }
 

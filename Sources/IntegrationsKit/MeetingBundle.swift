@@ -113,6 +113,7 @@ public struct MeetingBundle: Codable, Sendable {
         var copy = self
         let newMeetingID = MeetingID()
         var speakerMap: [SpeakerID: SpeakerID] = [:]
+        var segmentMap: [UUID: UUID] = [:]
 
         copy.meeting.id = newMeetingID
         copy.speakers = speakers.map { speaker in
@@ -127,8 +128,10 @@ public struct MeetingBundle: Codable, Sendable {
                 personID: nil)
         }
         copy.segments = segments.map { segment in
-            TranscriptSegment(
-                id: UUID(),
+            let newID = UUID()
+            segmentMap[segment.id] = newID
+            return TranscriptSegment(
+                id: newID,
                 meetingID: newMeetingID,
                 speakerID: segment.speakerID.flatMap { speakerMap[$0] },
                 channel: segment.channel,
@@ -139,21 +142,10 @@ public struct MeetingBundle: Codable, Sendable {
                 confidence: segment.confidence,
                 isFinal: segment.isFinal)
         }
-        if let summary {
-            copy.summary = SummaryDraft(
-                meetingID: newMeetingID,
-                recipeID: summary.recipeID,
-                language: summary.language,
-                markdown: summary.markdown,
-                actionItems: summary.actionItems.map { item in
-                    ActionItem(
-                        id: UUID(),
-                        text: item.text,
-                        ownerSpeakerID: item.ownerSpeakerID.flatMap { speakerMap[$0] },
-                        isDone: item.isDone)
-                },
-                fingerprint: summary.fingerprint)
-        }
+        copy.summary = remappedSummary(
+            meetingID: newMeetingID,
+            speakerMap: speakerMap,
+            segmentMap: segmentMap)
         copy.contextItems = contextItems.map { item in
             ContextItem(
                 id: UUID(),
@@ -169,5 +161,36 @@ public struct MeetingBundle: Codable, Sendable {
                 askedAt: card.askedAt)
         }
         return copy
+    }
+
+    private func remappedSummary(
+        meetingID: MeetingID,
+        speakerMap: [SpeakerID: SpeakerID],
+        segmentMap: [UUID: UUID]
+    ) -> SummaryDraft? {
+        guard let summary else { return nil }
+        return SummaryDraft(
+            meetingID: meetingID,
+            recipeID: summary.recipeID,
+            language: summary.language,
+            markdown: summary.markdown,
+            actionItems: summary.actionItems.map { item in
+                ActionItem(
+                    id: UUID(),
+                    text: item.text,
+                    ownerSpeakerID: item.ownerSpeakerID.flatMap { speakerMap[$0] },
+                    isDone: item.isDone)
+            },
+            fingerprint: summary.fingerprint,
+            claims: summary.claims.compactMap { claim in
+                let evidenceIDs = claim.evidenceSegmentIDs.compactMap { segmentMap[$0] }
+                guard evidenceIDs.count == claim.evidenceSegmentIDs.count,
+                      claim.unavailableEvidenceCount == 0
+                else { return nil }
+                return SummaryClaim(
+                    kind: claim.kind,
+                    sourceTranscriptRevision: nil,
+                    evidenceSegmentIDs: evidenceIDs)
+            })
     }
 }

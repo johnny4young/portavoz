@@ -29,7 +29,10 @@ extension MeetingStore {
         _ id: MeetingID
     ) -> AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error> {
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Table("summary"), Table("actionItem")],
+            regions: [
+                Table("meeting"), Table("summary"), Table("actionItem"),
+                Table("summaryClaim"), Table("summaryClaimSegment")
+            ],
             fetch: { database in
                 try Self.fetchMeetingReviewSummary(id, in: database)
             })

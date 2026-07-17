@@ -26,7 +26,11 @@ final class MeetingBundleTests: XCTestCase {
         let summary = SummaryDraft(
             meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
             markdown: "## Decisiones\n- Beta el lunes.",
-            actionItems: [ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)])
+            actionItems: [ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)],
+            claims: [SummaryClaim(
+                kind: .overview,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segments[0].id])])
         let note = ContextItem(
             meetingID: meeting.id, kind: .note, content: "congelar scope", timestamp: 12)
         let card = CompanionCard(
@@ -46,6 +50,7 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(decoded.speakers.map(\.label), ["Me", "S1"])
         XCTAssertEqual(decoded.segments.count, 2)
         XCTAssertEqual(decoded.summary?.actionItems.first?.text, "Preparar demo")
+        XCTAssertEqual(decoded.summary?.claims.first?.evidenceSegmentIDs, [decoded.segments[0].id])
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
         XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
     }
@@ -98,6 +103,13 @@ final class MeetingBundleTests: XCTestCase {
         let newMarta = remapped.speakers.first { $0.displayName == "Marta" }!
         XCTAssertEqual(remapped.segments[0].speakerID, newMarta.id)
         XCTAssertEqual(remapped.summary?.actionItems.first?.ownerSpeakerID, newMarta.id)
+        XCTAssertEqual(
+            remapped.summary?.claims.first?.evidenceSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.summary?.claims.first?.sourceTranscriptRevision)
+        XCTAssertNotEqual(
+            remapped.summary?.claims.first?.id,
+            original.summary?.claims.first?.id)
         // "Me" flag survives.
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
         XCTAssertNotEqual(

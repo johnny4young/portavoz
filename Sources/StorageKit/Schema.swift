@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 8
+    public static let version = 9
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -195,6 +195,13 @@ public enum StorageSchema {
         migrator.registerMigration("v8") { db in
             try createPersonTables(in: db)
             try addPersonReferenceToSpeaker(in: db)
+        }
+
+        // v9 (D87/Band 5B): typed overview provenance. The nullable segment
+        // reference preserves the fact that evidence once existed after a
+        // physical segment deletion, while revision fences prevent stale jumps.
+        migrator.registerMigration("v9") { db in
+            try createSummaryClaimTables(in: db)
         }
 
         return migrator
@@ -445,5 +452,29 @@ public enum StorageSchema {
             index: "speaker_on_personID",
             on: "speaker",
             columns: ["personID"])
+    }
+
+    private static func createSummaryClaimTables(in db: Database) throws {
+        try db.create(table: "summaryClaim") { t in
+            t.primaryKey("id", .text)
+            t.column("summaryID", .text).notNull().indexed()
+                .references("summary", onDelete: .cascade)
+            t.column("kind", .text).notNull().check(sql: "kind = 'overview'")
+            t.column("sourceTranscriptRevision", .integer).notNull().check(
+                sql: "sourceTranscriptRevision >= 0")
+            t.column("createdAt", .datetime).notNull()
+            t.uniqueKey(["summaryID", "kind"])
+        }
+        try db.create(table: "summaryClaimSegment") { t in
+            t.primaryKey("id", .text)
+            t.column("claimID", .text).notNull().indexed()
+                .references("summaryClaim", onDelete: .cascade)
+            t.column("segmentID", .text)
+                .references("segment", onDelete: .setNull)
+            t.column("ordinal", .integer).notNull().check(sql: "ordinal >= 0")
+            t.column("createdAt", .datetime).notNull()
+            t.uniqueKey(["claimID", "ordinal"])
+            t.uniqueKey(["claimID", "segmentID"])
+        }
     }
 }

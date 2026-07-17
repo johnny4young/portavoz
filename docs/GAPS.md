@@ -25,7 +25,7 @@ What Portavoz lacks (Jul 2026) compared with the state of the art measured in th
 | T2 | **Taps + VPIO in the same process** | MacParakeet declared them "reliably" incompatible; we have 1 OK sample | Active monitoring (see field verification below) + offline echo-cancel plan B (D27) |
 | T3 | ~~FM without a priority policy~~ | **RESOLVED (D29)**: single-flight `IntelligenceScheduler` with priorities, latest-wins per key, 7 tests | ✅ Jul 2026 |
 | T4 | ~~**Unmeasured Mac performance numbers**~~ | **RESOLVED for cold start, recording RAM, drift, DER, refine, summary, exact/lexical/semantic retrieval through 100k segments, 30m/2h/8h detail projections, a real 55.9-minute dual-channel waveform, and Spotlight through 100k meetings. Band 4B brings first content from 522.30 ms to 91.87 ms; Band 4C brings lexical Ask from p95 111.19 ms to 66.89 ms; Band 4E brings semantic wall/CPU p95 from 325.41/328.43 ms to 90.22/91.26 ms; Band 4F brings waveform repeat wall/CPU p95 from 747.53/754.79 ms to 70.11/71.33 ms without a cache; Band 4G brings Spotlight projection wall p95 from 22,085.35 ms to 425.64 ms without an outbox. Battery remains an iOS-phase measurement** | ✅ D79–D85/spec 08 |
-| T5 | ~~Brute-force O(n) semantic RAG~~ | **RESOLVED (D83): the exact adapter streams SQLite-owned BLOBs, scores with Accelerate, retains bounded top-k rowids, and fetches full passages only for winners. 100k wall/CPU p95 is 90.22/91.26 ms with 8.42 MiB incremental footprint** | ✅ Keep the exact Float32 vector layout in schema v8; reconsider sqlite-vec only after a future measured miss |
+| T5 | ~~Brute-force O(n) semantic RAG~~ | **RESOLVED (D83): the exact adapter streams SQLite-owned BLOBs, scores with Accelerate, retains bounded top-k rowids, and fetches full passages only for winners. 100k wall/CPU p95 is 90.22/91.26 ms with 8.42 MiB incremental footprint** | ✅ Keep the exact Float32 vector layout carried into schema v9; reconsider sqlite-vec only after a future measured miss |
 | T6 | ~~Audio storage 126 MB/channel/22 min~~ | **RESOLVED (Jul 2026)**: "Comprimir audio (AAC)" button in the detail view → transcodes to m4a (`AudioTranscoder`), deletes the original only after verified writing; `MeetingAudioLayout` prefers m4a | ✅ |
 | T7 | CI does not run model-gated tests | integration regressions are invisible in CI | self-hosted runner or monthly manual job — NOT PLANNED |
 | T8 | ~~No SwiftLint/format in CI~~ | **RESOLVED (Jul 2026)**: `.swiftlint.yml` calibrated to zero errors + `lint` job in CI (M9 prep) | ✅ |
@@ -64,6 +64,11 @@ Implemented and tested features whose final criterion can be closed only with a 
 - **Translated captions**: record with the "Traducir → …" picker (the 1st time, macOS may ask to download the language pair).
 - **Names from calendar**: event with attendees around a recording → "Sugerir nombres ✦" (requests calendar TCC).
 - **Confirmed person continuity (D86)**: name and explicitly remember a non-user speaker in one meeting, then confirm that the same normalized name in another meeting offers the existing person rather than linking automatically. Also verify that two distinct people with the same name remain selectable and that an accepted Refine asks for a fresh link because its speaker IDs are new observations.
+- **Real-model overview evidence quality (D87)**: generate summaries with Apple
+  Foundation Models, MLX, and the configured Ollama model over a copied real
+  meeting; verify that every visible source directly supports the overview,
+  unsupported overviews show no source rather than a weak one, and Refine turns
+  the prior links stale before the regenerated summary installs fresh links.
 - **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
 
 ## What are NOT gaps (deliberate decisions — do not "fix")

@@ -383,6 +383,26 @@ struct SummaryRecord: Codable, FetchableRecord, PersistableRecord {
     var deletedAt: Date?
 }
 
+struct SummaryClaimRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryClaim"
+
+    var id: String
+    var summaryID: String
+    var kind: String
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct SummaryClaimSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryClaimSegment"
+
+    var id: String
+    var claimID: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
 struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "generationRun"
 

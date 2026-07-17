@@ -22,12 +22,14 @@ extension AppServices {
         let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
         let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
         try? await store.save([me, ana])
-        try? await store.save([
+        let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
+        let seedSegments = [
             TranscriptSegment(
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
                 text: "Revisemos el presupuesto de transcripción.",
                 startTime: 0, endTime: 3, isFinal: true),
             TranscriptSegment(
+                id: citedSegmentID,
                 meetingID: meeting.id, speakerID: ana.id, channel: .system,
                 text: "El rollout del modelo queda para el viernes.",
                 startTime: 3, endTime: 6, isFinal: true),
@@ -35,21 +37,12 @@ extension AppServices {
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
                 text: "Cerremos con los próximos pasos del rollout.",
                 startTime: 200, endTime: 205, isFinal: true)
-        ])
-        if !ProcessInfo.processInfo.arguments.contains("-seed-without-summary") {
-            _ = try? await store.saveSummary(
-                SummaryDraft(
-                    meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
-                    markdown: """
-                        El equipo revisó el presupuesto y fijó el rollout.
-
-                        ## Decisiones
-                        - ▸ El rollout del modelo queda para el viernes.
-                        - Se revisará el presupuesto de transcripción.
-                        """,
-                    actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
-            await seedLatestRecipeSummaryIfRequested(for: meeting.id)
-        }
+        ]
+        try? await store.save(seedSegments)
+        await seedSummaryIfRequested(
+            meetingID: meeting.id,
+            ownerID: ana.id,
+            citedSegmentID: citedSegmentID)
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
@@ -66,6 +59,29 @@ extension AppServices {
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSpotlightReindex()
+    }
+
+    private func seedSummaryIfRequested(
+        meetingID: MeetingID,
+        ownerID: SpeakerID,
+        citedSegmentID: UUID
+    ) async {
+        guard !ProcessInfo.processInfo.arguments.contains("-seed-without-summary") else { return }
+        _ = try? await store.saveSummary(
+            SummaryDraft(
+                meetingID: meetingID, recipeID: Recipe.general.id, language: "es",
+                markdown: """
+                    El equipo revisó el presupuesto y fijó el rollout.
+
+                    ## Decisiones
+                    - ▸ El rollout del modelo queda para el viernes.
+                    - Se revisará el presupuesto de transcripción.
+                    """,
+                actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ownerID)],
+                claims: [SummaryClaim(
+                    kind: .overview,
+                    evidenceSegmentIDs: [citedSegmentID])]))
+        await seedLatestRecipeSummaryIfRequested(for: meetingID)
     }
 
     private func seedProcessingFailureIfRequested(for meetingID: MeetingID) async {

@@ -113,6 +113,10 @@ public struct SummaryDraft: Codable, Sendable {
     public let language: String
     public let markdown: String
     public let actionItems: [ActionItem]
+    /// Typed, source-fenced provenance for generated claims. Band 5B starts
+    /// deliberately narrow with the overview; later artifact kinds must earn
+    /// their own domain shape instead of growing a generic EAV store.
+    public let claims: [SummaryClaim]
     /// Identity of the summarized MATERIAL + method (D25), language
     /// EXCLUDED — a snapshot with the same fingerprint in another language
     /// is a valid translation pivot. nil on pre-jul-2026 snapshots (they
@@ -121,7 +125,8 @@ public struct SummaryDraft: Codable, Sendable {
 
     public init(
         meetingID: MeetingID, recipeID: String, language: String, markdown: String,
-        actionItems: [ActionItem], fingerprint: String? = nil
+        actionItems: [ActionItem], fingerprint: String? = nil,
+        claims: [SummaryClaim] = []
     ) {
         self.meetingID = meetingID
         self.recipeID = recipeID
@@ -129,6 +134,98 @@ public struct SummaryDraft: Codable, Sendable {
         self.markdown = markdown
         self.actionItems = actionItems
         self.fingerprint = fingerprint
+        self.claims = claims
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case meetingID, recipeID, language, markdown, actionItems, fingerprint, claims
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        meetingID = try container.decode(MeetingID.self, forKey: .meetingID)
+        recipeID = try container.decode(String.self, forKey: .recipeID)
+        language = try container.decode(String.self, forKey: .language)
+        markdown = try container.decode(String.self, forKey: .markdown)
+        actionItems = try container.decode([ActionItem].self, forKey: .actionItems)
+        fingerprint = try container.decodeIfPresent(String.self, forKey: .fingerprint)
+        claims = try container.decodeIfPresent([SummaryClaim].self, forKey: .claims) ?? []
+    }
+}
+
+/// The generated statement that the first evidence vertical can prove.
+public enum SummaryClaimKind: String, Codable, Sendable {
+    case overview
+}
+
+/// Ordered transcript evidence for one generated claim.
+///
+/// `sourceTranscriptRevision` is nil while a provider result is in memory;
+/// StorageKit validates the references and stamps the current revision in the
+/// same transaction as the immutable summary snapshot.
+public struct SummaryClaim: Codable, Sendable, Identifiable {
+    public let id: SummaryClaimID
+    public let kind: SummaryClaimKind
+    public let sourceTranscriptRevision: Int?
+    public let evidenceSegmentIDs: [UUID]
+    /// Links become NULL when their segment is physically removed. Keeping a
+    /// count lets the UI fail closed without manufacturing replacement IDs.
+    public let unavailableEvidenceCount: Int
+
+    public init(
+        id: SummaryClaimID = SummaryClaimID(),
+        kind: SummaryClaimKind,
+        sourceTranscriptRevision: Int? = nil,
+        evidenceSegmentIDs: [UUID],
+        unavailableEvidenceCount: Int = 0
+    ) {
+        self.id = id
+        self.kind = kind
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.evidenceSegmentIDs = evidenceSegmentIDs
+        self.unavailableEvidenceCount = unavailableEvidenceCount
+    }
+}
+
+public enum SummaryClaimEvidenceStatus: Sendable, Equatable {
+    case current
+    case stale
+    case unavailable
+}
+
+public struct SummaryClaimEvidenceResolution: Sendable {
+    public let status: SummaryClaimEvidenceStatus
+    public let segments: [TranscriptSegment]
+
+    public init(status: SummaryClaimEvidenceStatus, segments: [TranscriptSegment] = []) {
+        self.status = status
+        self.segments = segments
+    }
+}
+
+extension SummaryClaim {
+    /// Resolves links against one coherent Meeting Detail read model. A stale
+    /// revision or any missing/tombstoned link disables every jump: partial
+    /// citations would imply stronger provenance than Portavoz can prove.
+    public func resolveEvidence(
+        currentTranscriptRevision: Int,
+        segments: [TranscriptSegment]
+    ) -> SummaryClaimEvidenceResolution {
+        guard let sourceTranscriptRevision else {
+            return SummaryClaimEvidenceResolution(status: .unavailable)
+        }
+        guard sourceTranscriptRevision == currentTranscriptRevision else {
+            return SummaryClaimEvidenceResolution(status: .stale)
+        }
+        guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
+            return SummaryClaimEvidenceResolution(status: .unavailable)
+        }
+        let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
+        let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
+        guard resolved.count == evidenceSegmentIDs.count else {
+            return SummaryClaimEvidenceResolution(status: .unavailable)
+        }
+        return SummaryClaimEvidenceResolution(status: .current, segments: resolved)
     }
 }
 

@@ -2321,3 +2321,52 @@ It keeps ambiguity representable, makes every durable merge reversible by
 future person-management UI, avoids biometric coupling, preserves bundle
 privacy, and leaves typed claim evidence as an independent next slice rather
 than hiding it in a generic identity graph.
+
+## D87 — Admit generated evidence as typed, revision-fenced claims (Jul 2026)
+
+**Context:** immutable summaries knew which provider and material fingerprint
+produced them, but not which transcript statements supported a visible claim.
+Adding generic artifact/edge/value tables would make every generated sentence
+look equally trustworthy before deletion, Refine, import, model-output, and UI
+navigation semantics were proven. UUIDs in prompts are also expensive and easy
+for small models to alter.
+
+**Decision:** implement one narrow overview-claim vertical. Core owns
+`SummaryClaimID`, `SummaryClaimKind.overview`, the ordered evidence segment
+IDs, source transcript revision, unavailable-link count, and current/stale/
+unavailable resolution. Summary drafts remain backward compatible when claims
+are absent. Providers receive a separate transcript representation tagged
+`E1`, `E2`, and so on. Foundation Models guided generation and the shared
+Ollama/BYOK/MLX JSON contract may return at most four exact overview tags;
+unknown, altered, duplicate, or excess tags are discarded. No valid tag or no
+overview means no claim, never a fabricated citation. Rolling note summaries
+do not admit evidence because their compressed windows do not retain one
+stable tag map. Tag-shaped literals inside transcript text, speaker names, or
+user notes are escaped before prompting so content cannot masquerade as the
+provider-owned source namespace.
+
+Schema v9 adds `summaryClaim` and `summaryClaimSegment`, not a generic EAV
+store. A summary transaction accepts only one overview claim with nonempty,
+unique, live segments belonging to that meeting, rejects a mismatched incoming
+revision, and stamps the meeting's current revision. Link order is durable;
+the segment foreign key uses `ON DELETE SET NULL` so physical deletion remains
+distinguishable from a claim that never had evidence. A revision mismatch is
+stale. At the current revision, any null, missing, or tombstoned segment makes
+the entire claim unavailable; partial navigation is prohibited.
+
+Translation pivots preserve evidence with fresh claim IDs. `.portavoz` format
+v1 carries claims additively, remaps claim and segment IDs on import, clears the
+foreign source revision, and lets the atomic imported summary stamp its local
+revision. Canonical person IDs remain stripped independently. Meeting Detail
+shows localized source timestamps only for a complete current claim; selecting
+one focuses the exact transcript row and seeks retained audio without starting
+playback. Stale and
+unavailable states explain why navigation is disabled.
+
+**Rationale:** this is the smallest honest user-visible provenance slice. It
+makes generated output inspectable without pretending model-selected evidence
+is ground truth, fails closed across transcript evolution and deletion, stays
+portable, and proves the domain/storage/UI pattern before decisions, action
+items, Companion cards, or correction feedback adopt it. Generic evidence
+tables and broader artifact claims remain rejected until those typed semantics
+are implemented and characterized.

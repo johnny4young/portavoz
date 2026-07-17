@@ -172,7 +172,73 @@ extension MeetingStore {
                 deletedAt: nil)
             try record.insert(db)
         }
+        try insertSummaryClaims(
+            draft.claims,
+            summaryID: summaryID,
+            meetingID: draft.meetingID,
+            at: timestamp,
+            in: db)
         return version
+    }
+
+    private static func insertSummaryClaims(
+        _ claims: [SummaryClaim],
+        summaryID: String,
+        meetingID: MeetingID,
+        at timestamp: Date,
+        in db: Database
+    ) throws {
+        guard !claims.isEmpty else { return }
+        guard claims.count == 1, claims[0].kind == .overview else {
+            throw StorageError.invalidSummaryClaim(
+                "a summary may contain only one typed overview claim")
+        }
+        let claim = claims[0]
+        let evidenceIDs = claim.evidenceSegmentIDs
+        guard claim.unavailableEvidenceCount == 0,
+              !evidenceIDs.isEmpty,
+              Set(evidenceIDs).count == evidenceIDs.count
+        else {
+            throw StorageError.invalidSummaryClaim(
+                "new evidence must be nonempty, available, and unique")
+        }
+        let meetingKey = meetingID.rawValue.uuidString
+        guard let meeting = try MeetingRecord.fetchOne(db, key: meetingKey) else {
+            throw StorageError.meetingNotFound(meetingID)
+        }
+        if let sourceRevision = claim.sourceTranscriptRevision,
+           sourceRevision != meeting.transcriptRevision {
+            throw StorageError.invalidSummaryClaim(
+                "source transcript revision does not match the meeting")
+        }
+        for evidenceID in evidenceIDs {
+            guard let segment = try SegmentRecord.fetchOne(
+                db, key: evidenceID.uuidString),
+                segment.meetingID == meetingKey,
+                segment.deletedAt == nil
+            else {
+                throw StorageError.invalidSummaryClaim(
+                    "evidence must reference a live segment in the same meeting")
+            }
+        }
+
+        let claimKey = claim.id.rawValue.uuidString
+        try SummaryClaimRecord(
+            id: claimKey,
+            summaryID: summaryID,
+            kind: claim.kind.rawValue,
+            sourceTranscriptRevision: meeting.transcriptRevision,
+            createdAt: timestamp)
+            .insert(db)
+        for (ordinal, evidenceID) in evidenceIDs.enumerated() {
+            try SummaryClaimSegmentRecord(
+                id: UUID().uuidString,
+                claimID: claimKey,
+                segmentID: evidenceID.uuidString,
+                ordinal: ordinal,
+                createdAt: timestamp)
+                .insert(db)
+        }
     }
 
     static func validateTerminalGenerationRun(_ run: GenerationRun) throws {
@@ -300,14 +366,57 @@ extension MeetingStore {
             .filter(Column("deletedAt") == nil)
             .order(Column("createdAt"))
             .fetchAll(db).map { try $0.actionItem }
+        let claims = try summaryClaims(summaryID: record.id, in: db)
         let draft = SummaryDraft(
             meetingID: meetingID,
             recipeID: record.recipeID,
             language: record.language,
             markdown: record.markdown,
             actionItems: items,
-            fingerprint: record.fingerprint)
+            fingerprint: record.fingerprint,
+            claims: claims)
         return (draft, record.version)
+    }
+
+    private static func summaryClaims(
+        summaryID: String,
+        in db: Database
+    ) throws -> [SummaryClaim] {
+        try SummaryClaimRecord
+            .filter(Column("summaryID") == summaryID)
+            .order(Column("createdAt"), Column("id"))
+            .fetchAll(db)
+            .map { record in
+                guard let kind = SummaryClaimKind(rawValue: record.kind) else {
+                    throw StorageError.invalidPersistedValue(
+                        table: SummaryClaimRecord.databaseTableName,
+                        column: "kind",
+                        value: record.kind)
+                }
+                let links = try SummaryClaimSegmentRecord
+                    .filter(Column("claimID") == record.id)
+                    .order(Column("ordinal"))
+                    .fetchAll(db)
+                let evidenceIDs = try links.compactMap { link -> UUID? in
+                    guard let value = link.segmentID else { return nil }
+                    guard let id = UUID(uuidString: value) else {
+                        throw StorageError.invalidPersistedUUID(
+                            table: SummaryClaimSegmentRecord.databaseTableName,
+                            column: "segmentID",
+                            value: value)
+                    }
+                    return id
+                }
+                return SummaryClaim(
+                    id: SummaryClaimID(rawValue: try PersistedIdentity.required(
+                        record.id,
+                        table: SummaryClaimRecord.databaseTableName,
+                        column: "id")),
+                    kind: kind,
+                    sourceTranscriptRevision: record.sourceTranscriptRevision,
+                    evidenceSegmentIDs: evidenceIDs,
+                    unavailableEvidenceCount: links.count - evidenceIDs.count)
+            }
     }
 
     /// A pending commitment with the meeting it came from.

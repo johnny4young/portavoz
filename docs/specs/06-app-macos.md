@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79 (evidence-first detail scale changes), D80 (prefix-evidenced interruption scan).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation).
 
 ## Structure
 
@@ -444,6 +444,16 @@ temp-store processing fixture identifies its deterministic provider/model and
 exercises this same production path in the durable-resume XCUITest (D63).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items. Summary setup failures are typed: unavailable Apple, missing Ollama selection, missing MLX download, and local-engine failure open an actionable alert whose recovery button opens the native Settings scene at the exact Intelligence category instead of ending in a generic error (D72).
+- **Summary sources (D87):** the overview tab renders compact localized
+  timestamp buttons only when its typed claim matches the current transcript
+  revision and every ordered segment link remains live. Selecting a source
+  focuses that exact transcript row and seeks retained audio without starting
+  playback. Text-only
+  transcripts own a `ScrollViewReader` so the same action focuses without
+  moving the header or summary. Revision mismatch shows a stale explanation;
+  any missing/tombstoned/null link shows unavailable and exposes no partial
+  jump. Stable source, transcript-row, and current-playhead accessibility
+  identifiers protect the navigation in both app languages.
 - **Confirmed people (D86):** accepting a manual, transcript/calendar, or
   encrypted-voice name may surface a separate `person-remember-offer`; neither
   the name action nor its evidence auto-links a human. `MeetingDetailModel`
@@ -522,10 +532,10 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 26 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 27 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
-advance), MeetingDetail (summary tabs reveal ▸, explicit confirmed-person
+advance), MeetingDetail (summary tabs reveal ▸, typed summary-source transcript/audio navigation, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install

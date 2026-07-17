@@ -193,6 +193,39 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testSummarySourceJumpsToItsTranscriptAndAudio() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let source = app.control(withIdentifier: "summary-evidence-0")
+        guard source.waitForExistence(timeout: 10) else {
+            XCTFail("the overview must expose its persisted transcript source")
+            return
+        }
+        XCTAssertEqual(
+            source.value as? String,
+            "El rollout del modelo queda para el viernes.")
+        source.click()
+
+        let citedRow = app.control(
+            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
+        XCTAssertTrue(
+            citedRow.waitForExistence(timeout: 5),
+            "source navigation must focus the exact persisted transcript segment")
+        let focused = expectation(
+            for: NSPredicate(format: "isSelected == true"),
+            evaluatedWith: citedRow)
+        wait(for: [focused], timeout: 5)
+
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 5)
+        attachScreenshot(of: app, named: "band-5b-summary-evidence")
+    }
+
+    @MainActor
     func testNamedSpeakerCanBeRememberedAsCanonicalPerson() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }

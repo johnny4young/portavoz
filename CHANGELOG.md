@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **🔗 Summaries that show their work** — A generated overview can now show the exact transcript moments that support it. Click a source to focus the matching words and audio; if Refine changes the transcript or evidence disappears, Portavoz disables the jump instead of pretending the old source is still valid.
 - **🧠 Remember people, only when you say so** — After naming a speaker, explicitly link them to a private on-device person so future meetings can recognize the same name. Ambiguous matches always ask which person you mean, Refine never guesses that a new voice cluster is the same human, and encrypted voice-memory checks no longer block the meeting interface on Keychain access.
 - **🔎 Reliable private Spotlight** — Meeting search now refreshes through a protected on-device index that coalesces busy edit bursts, retries indexing failures, and stays responsive even for very large libraries. A measured 100,000-meeting projection falls from 22 seconds to 426 ms with the same searchable content.
 - **⚡ Hour-long waveforms without the wait** — Portavoz now scans each audio channel in vectorized bucket spans instead of visiting every sample in Swift. A measured 56-minute dual-channel recording generates its complete waveform in 109 ms, with repeated generation around 70 ms and no persisted cache to become stale.

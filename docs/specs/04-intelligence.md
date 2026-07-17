@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic cost gate), D83 (exact semantic adapter retained after budget pass).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -16,7 +16,27 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 - **Always greedy decoding** (`GenerationOptions(sampling: .greedy)`): with sampling, the 3B invents action items (observed). Strict guidance: "solo compromisos explícitos, array vacío si no hubo".
 - FRESH session per chunk (sessions accumulate context and overflow on the second chunk).
 
-**Guided generation**: `GeneratedSummary` (@Generable) → overview + sections (instructed headings) + actionItems (owner by label). `StructuredSummary.draft(for:)` resolves owners against Speakers by label/displayName (case-insensitive).
+**Guided generation**: `GeneratedSummary` (@Generable) → overview + up to four
+exact `overviewEvidence` E-tags + sections (instructed headings) + actionItems
+(owner by label). `StructuredSummary.draft(for:)` resolves owners against
+Speakers by label/displayName (case-insensitive) and admits only tags emitted
+for that request. Unknown, altered, repeated, or excess tags disappear; no
+valid tag or an empty overview produces no claim. Tag-shaped literals in
+transcript text, speaker names, and user notes are escaped before prompting,
+so content cannot impersonate the provider-owned namespace.
+
+## Typed overview evidence (D87)
+
+`TranscriptFormatter.formatWithEvidence` is separate from the canonical
+fingerprint/transcript formatter. It prefixes request rows with compact
+`[E1]`, `[E2]`, … tags and returns the exact tag-to-segment map. Map-phase
+instructions preserve those tags beside facts. Foundation Models uses the
+guided field above; `OpenAICompatibleSummaryProvider` exposes the same optional
+JSON field to Ollama, BYOK, and MLX while continuing to decode older responses
+without it. Strict resolution deduplicates in model order and caps four links.
+`summarizeNotes` deliberately disables claim creation because rolling compressed
+notes do not own one stable full-meeting tag map. Translation pivots clone the
+typed links with fresh claim IDs; Storage owns revision validation/stamping.
 
 **Incremental APIs** (for the rolling summary): `condenseWindow(segments…)` (one map pass over ONLY new content), `condenseNotes(text…)` (collapses the stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app uses them as follows (spec 06): note per 40 s tick over new closed rows → note stack → collapse at > 6000 chars → render; `LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one (visible monotonicity).
 

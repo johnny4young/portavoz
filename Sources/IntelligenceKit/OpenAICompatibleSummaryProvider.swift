@@ -43,15 +43,18 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
     // MARK: - Prompt/response contract (static + pure for tests)
 
     static func prompt(for request: SummaryRequest) -> (system: String, user: String) {
-        let transcript = TranscriptFormatter.format(
+        let transcript = TranscriptFormatter.formatWithEvidence(
             segments: request.segments, speakers: request.speakers)
         // The user's notes weave in exactly like on-device (D28); the cloud
         // window is roomy, but the same budgets keep both paths comparable.
         let notes = PromptFactory.notesBlock(request.contextItems)
         let schemaNote = """
             Respond with ONLY a JSON object shaped exactly like:
-            {"overview": "…", "sections": [{"heading": "…", "bullets": ["…"]}], \
+            {"overview": "…", "overviewEvidence": ["E1"], \
+            "sections": [{"heading": "…", "bullets": ["…"]}], \
             "actionItems": [{"text": "…", "owner": "…"}]}
+            Set "overviewEvidence" to the exact E-tags that directly support the overview, \
+            at most 4. Use only tags present in the material; use [] when none apply. \
             Use "" for an unknown action-item owner. Every "bullets" item is a plain \
             string — never an object or key/value pair. Action items go ONLY in \
             "actionItems"; never add an action-items section to "sections". \
@@ -64,7 +67,7 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
                 glossary: request.glossary,
                 hasUserNotes: !notes.isEmpty) + "\n" + schemaNote,
             user: PromptFactory.summaryPrompt(
-                transcriptOrNotes: transcript,
+                transcriptOrNotes: transcript.text,
                 targetLanguage: request.targetLanguage,
                 userNotes: notes)
         )

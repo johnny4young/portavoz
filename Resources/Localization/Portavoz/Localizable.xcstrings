@@ -3891,6 +3891,26 @@
         }
       }
     },
+    "Sources are no longer available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las fuentes ya no están disponibles."
+          }
+        }
+      }
+    },
+    "Sources are out of date after transcript changes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las fuentes quedaron desactualizadas tras los cambios del transcript."
+          }
+        }
+      }
+    },
     "Speakers": {
       "localizations": {
         "es": {

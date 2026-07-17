@@ -64,9 +64,13 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         _ request: SummaryRequest,
         priority: IntelligenceScheduler.Priority
     ) async throws -> SummaryDraft {
-        let transcript = TranscriptFormatter.format(
+        let transcript = TranscriptFormatter.formatWithEvidence(
             segments: request.segments, speakers: request.speakers)
-        var draft = try await summarizeMaterial(transcript, request: request, priority: priority)
+        var draft = try await summarizeMaterial(
+            transcript.text,
+            request: request,
+            priority: priority,
+            includeEvidence: true)
         draft.fingerprint = SummaryFingerprint.compute(
             request: request, providerID: Self.providerID)
         return draft
@@ -190,7 +194,14 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             language: targetLanguage,
             markdown: complete.markdown(recipe: .general),
             actionItems: items,
-            fingerprint: pivot.fingerprint)
+            fingerprint: pivot.fingerprint,
+            claims: pivot.claims.map { claim in
+                SummaryClaim(
+                    kind: claim.kind,
+                    sourceTranscriptRevision: claim.sourceTranscriptRevision,
+                    evidenceSegmentIDs: claim.evidenceSegmentIDs,
+                    unavailableEvidenceCount: claim.unavailableEvidenceCount)
+            })
     }
 
     /// Reduce phase over already-condensed notes (the live rolling summary
@@ -200,7 +211,11 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         request: SummaryRequest,
         priority: IntelligenceScheduler.Priority = .interactive
     ) async throws -> SummaryDraft {
-        try await summarizeMaterial(notes, request: request, priority: priority)
+        try await summarizeMaterial(
+            notes,
+            request: request,
+            priority: priority,
+            includeEvidence: false)
     }
 
     /// One map-phase pass: condenses a transcript window into dense notes
@@ -256,7 +271,8 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     private func summarizeMaterial(
         _ material: String,
         request: SummaryRequest,
-        priority: IntelligenceScheduler.Priority
+        priority: IntelligenceScheduler.Priority,
+        includeEvidence: Bool
     ) async throws -> SummaryDraft {
         if let reason = Self.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
@@ -287,7 +303,9 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     userNotes: notesBlock),
                 generating: GeneratedSummary.self,
                 options: GenerationOptions(sampling: .greedy))
-            return response.content.structured.draft(for: request)
+            return response.content.structured.draft(
+                for: request,
+                includeEvidence: includeEvidence)
         }
     }
 
@@ -363,6 +381,12 @@ struct GeneratedSummary {
     @Guide(description: "One-paragraph overview of what the meeting was about and its outcome")
     var overview: String
 
+    @Guide(
+        description:
+            "Up to 4 exact E-tags from the material that directly support the overview; empty when none apply"
+    )
+    var overviewEvidence: [String]
+
     // Schema guide descriptions (@Guide): one-line prompts;
     // partir el string no aporta y complica el prompt.
     // swiftlint:disable line_length
@@ -404,7 +428,8 @@ extension GeneratedSummary {
         StructuredSummary(
             overview: overview,
             sections: sections.map { .init(heading: $0.heading, bullets: $0.bullets) },
-            actionItems: actionItems.map { .init(text: $0.text, owner: $0.owner) }
+            actionItems: actionItems.map { .init(text: $0.text, owner: $0.owner) },
+            overviewEvidence: overviewEvidence
         )
     }
 }

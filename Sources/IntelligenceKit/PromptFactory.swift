@@ -30,6 +30,9 @@ public enum PromptFactory {
         lines.append(
             "Report commitments exclusively through the dedicated action-items field, "
                 + "never as a summary section.")
+        lines.append(
+            "When the material has [E#] tags, cite only exact tags that directly support "
+                + "the overview; never invent or alter a tag.")
         return lines.joined(separator: "\n")
     }
 
@@ -40,6 +43,7 @@ public enum PromptFactory {
         [
             "You compress meeting transcript excerpts into dense factual notes.",
             "Keep every decision, commitment, number, date, and open question, each attributed to its speaker label.",
+            "Preserve every source tag such as [E1] exactly beside the fact it supports.",
             "Write at most 10 terse bullet points, no preamble.",
             languageDirective(targetLanguage: targetLanguage, glossary: glossary)
         ].joined(separator: "\n")
@@ -99,7 +103,8 @@ public enum PromptFactory {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\n", with: " ")
             guard !content.isEmpty else { continue }
-            let clipped = String(content.prefix(perNoteLimit))
+            let safeContent = TranscriptFormatter.escapeEvidenceTags(in: content)
+            let clipped = String(safeContent.prefix(perNoteLimit))
             let total = Int(item.timestamp)
             let line = String(format: "[%02d:%02d] %@", total / 60, total % 60, clipped)
             guard used + line.count + 1 <= budget else { break }

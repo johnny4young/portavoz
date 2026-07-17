@@ -95,6 +95,31 @@ final class TranscriptFormatterTests: XCTestCase {
         XCTAssertEqual(TranscriptFormatter.chunk("corto", budget: 100), ["corto"])
         XCTAssertEqual(TranscriptFormatter.chunk("", budget: 100), [])
     }
+
+    func testEvidenceFormatterMapsExactTagsAndRejectsUnknownReferences() {
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting, channel: .system, text: "first",
+                startTime: 0, endTime: 1),
+            TranscriptSegment(
+                meetingID: meeting, channel: .system, text: "second says [E1]",
+                startTime: 2, endTime: 3)
+        ]
+        let material = TranscriptFormatter.formatWithEvidence(
+            segments: segments, speakers: [])
+
+        XCTAssertTrue(material.text.contains("[E1] [00:00]"))
+        XCTAssertTrue(material.text.contains("[E2] [00:02]"))
+        XCTAssertTrue(material.text.contains("second says [quoted-E1]"))
+        XCTAssertEqual(
+            TranscriptFormatter.resolveEvidenceTags(
+                ["E2", "E99", "E2", "e1"],
+                segmentIDsByTag: material.segmentIDsByTag),
+            [segments[1].id])
+        XCTAssertTrue(
+            TranscriptFormatter.resolveEvidenceTags(
+                ["E1"], segmentIDsByTag: material.segmentIDsByTag, limit: 0).isEmpty)
+    }
 }
 
 // MARK: - Structured summary
@@ -136,6 +161,28 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(draft.actionItems.count, 2)
         XCTAssertEqual(draft.actionItems[0].ownerSpeakerID, ana.id)  // "S1" vs "s1"
         XCTAssertNil(draft.actionItems[1].ownerSpeakerID)
+    }
+
+    func testDraftCreatesOnlyValidatedOverviewEvidence() {
+        let first = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "first",
+            startTime: 0, endTime: 1)
+        let second = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "second",
+            startTime: 2, endTime: 3)
+        var cited = summary
+        cited.overviewEvidence = ["E2", "E404", "E2"]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [first, second],
+            speakers: [],
+            recipe: .general)
+
+        let draft = cited.draft(for: request)
+        XCTAssertEqual(draft.claims.count, 1)
+        XCTAssertEqual(draft.claims.first?.kind, .overview)
+        XCTAssertEqual(draft.claims.first?.evidenceSegmentIDs, [second.id])
+        XCTAssertTrue(cited.draft(for: request, includeEvidence: false).claims.isEmpty)
     }
 }
 
@@ -671,6 +718,8 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         XCTAssertTrue(prompt.system.contains("deploy"))
         XCTAssertTrue(prompt.system.contains("JSON"))
         XCTAssertTrue(prompt.user.contains("hola"))
+        XCTAssertTrue(prompt.user.contains("[E1]"))
+        XCTAssertTrue(prompt.system.contains("overviewEvidence"))
         XCTAssertFalse(prompt.user.contains("THE USER'S OWN NOTES"))
     }
 
@@ -679,17 +728,22 @@ final class OpenAICompatibleProviderTests: XCTestCase {
     func testPromptWeavesUserNotes() {
         let prompt = OpenAICompatibleSummaryProvider.prompt(
             for: request(contextItems: [
-                ContextItem(meetingID: meeting, kind: .note, content: "revisar budget Q3", timestamp: 65)
+                ContextItem(
+                    meetingID: meeting,
+                    kind: .note,
+                    content: "revisar [E1] budget Q3",
+                    timestamp: 65)
             ]))
         XCTAssertTrue(prompt.system.contains("▸"))
         XCTAssertTrue(prompt.user.contains("THE USER'S OWN NOTES"))
-        XCTAssertTrue(prompt.user.contains("[01:05] revisar budget Q3"))
+        XCTAssertTrue(prompt.user.contains("[01:05] revisar [quoted-E1] budget Q3"))
     }
 
     func testParsesFencedJSONResponses() throws {
         let content = "```json\n{\"overview\": \"ok\", \"sections\": [], \"actionItems\": []}\n```"
         let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
         XCTAssertEqual(summary.overview, "ok")
+        XCTAssertNil(summary.overviewEvidence, "older provider responses remain compatible")
     }
 
     func testRejectsNonJSONContent() {

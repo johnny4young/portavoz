@@ -30,11 +30,20 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
     public var overview: String
     public var sections: [Section]
     public var actionItems: [Item]
+    /// Compact transcript tags (E1, E2, …) supporting only the overview.
+    /// Optional keeps older provider responses and local fixtures decodable.
+    public var overviewEvidence: [String]?
 
-    public init(overview: String, sections: [Section], actionItems: [Item]) {
+    public init(
+        overview: String,
+        sections: [Section],
+        actionItems: [Item],
+        overviewEvidence: [String]? = nil
+    ) {
         self.overview = overview
         self.sections = sections
         self.actionItems = actionItems
+        self.overviewEvidence = overviewEvidence
     }
 }
 
@@ -126,7 +135,8 @@ extension StructuredSummary {
     /// Builds the final draft, resolving action-item owners against the
     /// meeting's speakers by label or display name (case-insensitive).
     public func draft(
-        for request: SummaryRequest
+        for request: SummaryRequest,
+        includeEvidence: Bool = true
     ) -> SummaryDraft {
         let items = actionItems.map { item -> ActionItem in
             let owner = request.speakers.first { speaker in
@@ -135,12 +145,24 @@ extension StructuredSummary {
             }
             return ActionItem(text: item.text, ownerSpeakerID: owner?.id)
         }
+        let evidence = TranscriptFormatter.formatWithEvidence(
+            segments: request.segments,
+            speakers: request.speakers)
+        let evidenceIDs = includeEvidence
+            ? TranscriptFormatter.resolveEvidenceTags(
+                overviewEvidence ?? [], segmentIDsByTag: evidence.segmentIDsByTag)
+            : []
+        let claims = evidenceIDs.isEmpty
+            || overview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? []
+            : [SummaryClaim(kind: .overview, evidenceSegmentIDs: evidenceIDs)]
         return SummaryDraft(
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
             language: request.targetLanguage,
             markdown: markdown(recipe: request.recipe),
-            actionItems: items
+            actionItems: items,
+            claims: claims
         )
     }
 }

@@ -105,6 +105,10 @@ struct MeetingDetailView: View {
     @State private var personCandidates: [Person] = []
     @State private var choosingPerson: PersonRememberOffer?
     @State private var findingPerson = false
+    /// Explicit summary-source navigation. Audio meetings seek the playhead
+    /// without surprising playback; text-only meetings use this ID to focus
+    /// the cited row.
+    @State private var evidenceFocusSegmentID: UUID?
 
     init(
         services: AppServices,
@@ -283,7 +287,7 @@ extension MeetingDetailView {
                 transcriptLines(detail, carouselHeight: max(180, geometry.size.height))
             }
         } else {
-            ScrollView { transcriptLines(detail, carouselHeight: 440) }
+            transcriptLines(detail, carouselHeight: 440)
         }
     }
 
@@ -294,6 +298,7 @@ extension MeetingDetailView {
             segments: detail.segments,
             speakers: detail.speakers,
             player: player,
+            focusedSegmentID: evidenceFocusSegmentID,
             onSeek: { player?.seek(to: $0); player?.play() },
             onRenameTap: { speaker in
                 renamingSpeaker = speaker
@@ -1384,8 +1389,61 @@ extension MeetingDetailView {
         } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
             MarkdownText(text: parsed.sections[summaryTabSelection - 1].body)
         } else {
-            MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
+            VStack(alignment: .leading, spacing: 8) {
+                MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
+                summaryEvidence(summary.draft)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func summaryEvidence(_ draft: SummaryDraft) -> some View {
+        if let detail,
+           let claim = draft.claims.first(where: { $0.kind == .overview }) {
+            let resolution = claim.resolveEvidence(
+                currentTranscriptRevision: detail.meeting.transcriptRevision,
+                segments: detail.segments)
+            switch resolution.status {
+            case .current:
+                HStack(spacing: 6) {
+                    Label("Sources", systemImage: "quote.bubble")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(Array(resolution.segments.enumerated()), id: \.element.id) { index, segment in
+                        Button(evidenceClock(segment.startTime)) {
+                            focusEvidence(segment)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .help(segment.text)
+                        .accessibilityIdentifier("summary-evidence-\(index)")
+                        .accessibilityValue(segment.text)
+                    }
+                }
+            case .stale:
+                Label(
+                    "Sources are out of date after transcript changes.",
+                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("summary-evidence-stale")
+            case .unavailable:
+                Label("Sources are no longer available.", systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("summary-evidence-unavailable")
+            }
+        }
+    }
+
+    private func focusEvidence(_ segment: TranscriptSegment) {
+        evidenceFocusSegmentID = segment.id
+        player?.seek(to: segment.startTime)
+    }
+
+    private func evidenceClock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%d:%02d", total / 60, total % 60)
     }
 
     private enum ExportFormat { case markdown, pdf }

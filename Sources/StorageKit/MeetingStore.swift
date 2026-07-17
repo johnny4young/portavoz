@@ -14,6 +14,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidGenerationRun(String)
     case invalidDataEgressEvent(String)
     case invalidPersonLink(String)
+    case invalidSummaryClaim(String)
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
     case processingJobInputChanged(ProcessingJobID)
@@ -45,6 +46,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid data egress event: \(reason)"
         case .invalidPersonLink(let reason):
             return "invalid canonical person link: \(reason)"
+        case .invalidSummaryClaim(let reason):
+            return "invalid summary claim: \(reason)"
         case .processingJobNotFound(let id):
             return "no such processing job: \(id.rawValue.uuidString)"
         case .processingJobLeaseLost(let id):

@@ -31,6 +31,8 @@ struct MeetingPlayerBar: View {
                 Text(clock(player.currentTime))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("player-current-time")
+                    .accessibilityValue(clock(player.currentTime))
                 Spacer()
                 Toggle(isOn: Binding(get: { player.skipSilence }, set: { player.skipSilence = $0 })) {
                     Label("Skip silence", systemImage: "forward.fill")

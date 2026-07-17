@@ -73,6 +73,41 @@ final class CoreTypesTests: XCTestCase {
             fixed.resolve(spokenLanguage: "es", fallbackLanguage: "es").identifier,
             "en")
     }
+
+    func testSummaryDraftDecodesOlderSnapshotWithoutClaims() throws {
+        let draft = SummaryDraft(
+            meetingID: MeetingID(), recipeID: "general", language: "en",
+            markdown: "Overview", actionItems: [])
+        var json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(draft)) as? [String: Any])
+        json.removeValue(forKey: "claims")
+
+        let decoded = try JSONDecoder().decode(
+            SummaryDraft.self,
+            from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertTrue(decoded.claims.isEmpty)
+    }
+
+    func testSummaryClaimFailsClosedWhenRevisionOrEvidenceChanges() {
+        let meetingID = MeetingID()
+        let segment = TranscriptSegment(
+            meetingID: meetingID, channel: .system, text: "Ship Friday",
+            startTime: 3, endTime: 6)
+        let claim = SummaryClaim(
+            kind: .overview,
+            sourceTranscriptRevision: 2,
+            evidenceSegmentIDs: [segment.id])
+
+        XCTAssertEqual(
+            claim.resolveEvidence(currentTranscriptRevision: 2, segments: [segment]).status,
+            .current)
+        XCTAssertEqual(
+            claim.resolveEvidence(currentTranscriptRevision: 3, segments: [segment]).status,
+            .stale)
+        XCTAssertEqual(
+            claim.resolveEvidence(currentTranscriptRevision: 2, segments: []).status,
+            .unavailable)
+    }
 }
 
 final class IntelligenceTypesTests: XCTestCase {
