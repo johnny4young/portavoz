@@ -2578,3 +2578,49 @@ no privacy or network side effect, survives crashes and purges, and removes the
 lost-update race before transport complexity arrives. A specialized aggregate
 journal is simpler and safer than forcing sync semantics into an unused generic
 delivery table.
+
+## D93 — Freeze portable aggregate replay before CloudKit transport (Jul 2026)
+
+**Context:** a content-free dirty journal proves that a meeting changed, but it
+does not define which rows may leave the device, how one exact generation is
+encoded, or what happens when a remote mutation meets unsent local work. Putting
+those rules directly inside `CKSyncEngineDelegate` would make the Apple callback
+lifecycle the owner of domain conflict policy and would make deterministic
+tests require an iCloud account.
+
+**Decision:** StorageKit owns a versioned, text-first `MeetingSyncAggregate` and
+`MeetingSyncEnvelope`. The aggregate contains the live meeting root, observed
+speakers, transcript segments, every immutable summary version with action
+items and typed evidence/current claim feedback, context notes, and Companion
+cards with role-separated evidence. Every row carries original ordering/update
+timestamps. The envelope joins that aggregate, or a deletion mutation, to one
+exact local journal generation and one source-device identity. A stale caller
+cannot label newer content with an older generation.
+
+The projection clears `Meeting.audioDirectory` and `Speaker.personID`; it has
+no audio asset, embedding, generation-run, canonical-person, job, receipt,
+model-state, secret, or voiceprint shape. IntegrationsKit provides a stable
+sorted-key, millisecond-date JSON codec, but this slice imports no CloudKit and
+performs no network request.
+
+Remote replay validates the complete aggregate before writing and executes in
+one StorageKit transaction. With no unsent local generation, the remote live
+snapshot replaces the portable aggregate while preserving matching local audio
+paths, canonical-person links, segment embeddings/provenance, summary
+provenance, and Companion provenance. Its trigger noise is acknowledged in the
+same transaction, preventing an echo. A live remote update waits behind unsent
+local work rather than overwriting it. A remote deletion wins that race for
+privacy, soft-deletes the meeting so it remains recoverable, and records the
+discarded local generation. Reusing an immutable summary identity with
+different content, foreign relations, partial evidence, invalid format, or a
+non-current outgoing generation fails closed before replacement.
+
+This is the first 6B sub-slice, not functioning sync. Encrypted CKRecord
+construction, large-payload asset staging, persisted CKSyncEngine state,
+account/consent, retry/replay cursors, entitlement/runtime composition, status
+UI, and iOS remain unimplemented.
+
+**Rationale:** transport-independent projection and replay can be exhaustively
+characterized with two in-memory stores. CloudKit can then remain a replaceable
+adapter over an already fixed privacy boundary instead of becoming the place
+where Portavoz decides data ownership and conflict semantics.

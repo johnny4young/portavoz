@@ -912,6 +912,39 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D92"))
     }
 
+    func testMeetingSyncEnvelopeKeepsPortableReplayOutsideCloudKitCallbacks() throws {
+        let manifest = try Self.contents(of: "Package.swift")
+        let aggregate = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let replay = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncReplay.swift")
+        let codec = try Self.contents(
+            of: "Sources/IntegrationsKit/MeetingSyncEnvelopeCodec.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let storageBoundary = aggregate + replay
+
+        XCTAssertTrue(storageBoundary.contains("state.localGeneration == change.generation"))
+        XCTAssertTrue(storageBoundary.contains("meeting.audioDirectory = nil"))
+        XCTAssertTrue(storageBoundary.contains("speaker.personID = nil"))
+        XCTAssertTrue(storageBoundary.contains("localChangePending"))
+        XCTAssertTrue(storageBoundary.contains("deletionWon"))
+        XCTAssertTrue(storageBoundary.contains("validateImmutableRemoteSummaries"))
+        XCTAssertTrue(storageBoundary.contains(
+            "state.acknowledgedGeneration = state.localGeneration"))
+        for forbiddenType in [
+            "AudioAsset", "GenerationRun", "DataEgressEvent", "ProcessingJob", "Voiceprint",
+        ] {
+            XCTAssertFalse(
+                aggregate.contains("[MeetingSyncTimed<\(forbiddenType)"),
+                "portable aggregate must not carry \(forbiddenType)")
+        }
+        XCTAssertTrue(codec.contains(".millisecondsSince1970"))
+        XCTAssertTrue(codec.contains(".sortedKeys"))
+        XCTAssertFalse(codec.contains("import CloudKit"))
+        XCTAssertFalse(manifest.contains("SyncKit"))
+        XCTAssertTrue(decisions.contains("## D93"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")

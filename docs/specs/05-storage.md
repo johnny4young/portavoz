@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D92 (content-free generation-fenced meeting change journal).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay).
 
 ## Database
 
@@ -134,6 +134,28 @@ meeting-owned row while its final deletion state survives. All trigger writes
 share the aggregate transaction and therefore roll back with it. This version
 contains no CloudKit/CKSyncEngine state, transport, account behavior, conflict
 resolver, audio sync, SyncKit product, iOS target, or UI.
+
+Band 6B1 adds no schema migration. `meetingSyncEnvelope(for:sourceDeviceID:)`
+reads one journal row and its complete live portable aggregate in the same
+snapshot, requiring the requested generation to remain the newest pending
+generation. The versioned envelope contains source device, generation, change
+time, and either deletion or text-first aggregate mutation. The aggregate
+contains the root, observed speakers, ordered transcript, every live immutable
+summary version with action items/typed evidence/current claim feedback, notes,
+and Companion cards/evidence. It clears the local audio directory and canonical
+person link and has no audio asset, embedding, generation run, job, receipt,
+model, secret, or voiceprint type.
+
+`applyRemoteMeetingSyncEnvelope(_:)` validates format, identity, ownership,
+uniqueness, evidence completeness, and immutable-summary identity before one
+write transaction. With no unsent local generation, it replaces portable rows,
+preserves matching local paths/person links/embeddings/provenance, and advances
+the trigger-created generation to acknowledged before commit. A live remote
+aggregate returns `localChangePending` without writing when local work is
+unsent. Remote deletion is deliberately privacy-dominant, soft-deletes instead
+of purging, settles the journal, and reports the discarded generation. Invalid
+relations and immutable collisions roll back. CloudKit/account/retry behavior
+is still absent (D93).
 
 Band 1 slice 1B adopts the first v6 workflow surface. `AudioAssetID`,
 `AudioAsset`, and `AudioAssetRecord` map typed channels and strict health

@@ -194,6 +194,62 @@ extension MeetingStore {
         return version
     }
 
+    /// Installs one remote immutable summary with its original identity and
+    /// version. The caller has already resolved aggregate-level concurrency;
+    /// normal local generation provenance is preserved separately when valid.
+    static func insertSyncedSummary(
+        _ summary: MeetingSyncSummary,
+        generationRunID: String?,
+        in db: Database
+    ) throws {
+        let draft = summary.draft
+        let summaryKey = summary.id.uuidString
+        try SummaryRecord(
+            id: summaryKey,
+            meetingID: summary.meetingID.rawValue.uuidString,
+            recipeID: summary.recipeID,
+            language: summary.language,
+            markdown: summary.markdown,
+            version: summary.version,
+            fingerprint: summary.fingerprint,
+            generationRunID: generationRunID,
+            createdAt: summary.createdAt,
+            deletedAt: nil)
+            .insert(db)
+        for synced in summary.actionItems {
+            let item = synced.value
+            try ActionItemRecord(
+                id: item.id.uuidString,
+                summaryID: summaryKey,
+                meetingID: summary.meetingID.rawValue.uuidString,
+                text: item.text,
+                ownerSpeakerID: item.ownerSpeakerID?.rawValue.uuidString,
+                isDone: item.isDone,
+                createdAt: synced.createdAt,
+                updatedAt: synced.updatedAt,
+                deletedAt: nil)
+                .insert(db)
+        }
+        try insertSummaryActionItemEvidence(
+            summary.actionItemEvidence,
+            draft: draft,
+            at: summary.createdAt,
+            in: db)
+        try insertSummaryClaims(
+            summary.claims,
+            summaryID: summaryKey,
+            meetingID: summary.meetingID,
+            allowFeedback: true,
+            at: summary.createdAt,
+            in: db)
+        try insertSummaryDecisionEvidence(
+            summary.decisionEvidence,
+            summaryID: summaryKey,
+            draft: draft,
+            at: summary.createdAt,
+            in: db)
+    }
+
     private static func insertSummaryClaims(
         _ claims: [SummaryClaim],
         summaryID: String,

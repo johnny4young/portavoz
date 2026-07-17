@@ -6,15 +6,18 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement architecture Band 6B as the first bounded
-CloudKit adapter vertical: define encrypted portable-record codecs, persist
-CKSyncEngine state separately from the schema-v14 mutation journal, make
-account/consent and initial-seed behavior explicit, and characterize
-upload/download, retry, tombstone, and conflict semantics without adding the
-iOS shell yet. Band 6A is complete: it adds transport-independent, content-free
+**Next concrete step:** continue architecture Band 6B with the Apple transport
+sub-slice: encode the now-fixed portable envelope into encrypted inline
+CKRecord values with an encrypted-by-default CKAsset fallback for large
+meetings, persist CKSyncEngine state/retry/replay cursors separately from the
+schema-v14 journal, and keep account/consent plus initial upload explicit. Band
+6B1 is complete: exact-generation envelopes carry every live text-first
+artifact, deterministically round-trip, validate/replay in one transaction,
+preserve device-local derivations, defer live remote work behind unsent local
+work, and let remote deletion win without physical purge (D93). Band 6A adds transport-independent, content-free
 per-meeting generations, explicit initial seeding, generation-aware
 acknowledgement, typed-evidence detection, and purge-surviving deletion state
-without importing CloudKit or enabling network behavior (D92). The user's
+without importing CloudKit or enabling network behavior (D92). Neither slice imports CloudKit or enables network behavior. The user's
 separate product decision opened Band 6; each transport and platform step still
 ships as its own feature-parity-preserving slice. Band 5F completed Band 5 with
 card-identity-keyed, role-separated Companion evidence in schema v13: question
@@ -61,7 +64,18 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93).
+
+- **Architecture Band 6 slice 6B1 complete — transport cannot redefine the
+  meeting (Jul 17, 2026)**: StorageKit joins one current journal generation to
+  a versioned text-first aggregate containing the live cast, bilingual
+  transcript, every summary/action/evidence snapshot, notes, and Companion
+  cards/evidence. Paths, canonical people, embeddings, provenance, audio,
+  jobs, receipts, secrets, and voiceprints stay local. IntegrationsKit encodes
+  deterministic bytes; two-store tests prove atomic replay, echo suppression,
+  device-local preservation, deferred live/live conflict, privacy-dominant
+  deletion, validation rollback, and immutable-summary collision rejection.
+  D93 adds no CloudKit, account, network, UI, or iOS behavior.
 
 - **Architecture Band 6 slice 6A complete — no portable change can disappear
   behind an older acknowledgement (Jul 17, 2026)**: schema v14 owns one

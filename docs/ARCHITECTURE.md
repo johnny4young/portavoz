@@ -565,6 +565,19 @@ during migration; a purge-surviving deletion row remains after the meeting is
 physically removed. No CloudKit import, account behavior, network transport,
 conflict resolver, audio transfer, SyncKit product, or iOS target exists in
 this slice (D92).
+Band 6B1 now fixes the transport-neutral content and replay seam without
+enabling sync. StorageKit projects one complete text-first aggregate only when
+the requested journal generation is still current, strips local paths and
+canonical-person links by construction, and joins it to source-device and
+generation identity. IntegrationsKit owns deterministic sorted-key JSON
+encoding. Remote aggregate validation and replacement remain one StorageKit
+transaction: live remote work waits behind an unsent local generation, remote
+deletion wins that race but stays recoverable, matching device-local
+derivations survive replacement, immutable identity collisions fail closed,
+and accepted remote writes settle their trigger generations to prevent an
+echo. CloudKit, CKSyncEngine state, account/consent, retry cursors, entitlements,
+network behavior, status UI, audio transfer, and iOS composition remain absent
+(D93).
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -731,8 +744,11 @@ bundle remapping, summary/diagnostics isolation, and bilingual source
 navigation. Band 6A adds v13-to-v14 migration, transaction/rollback, false-
 positive exclusion, typed-evidence replacement, generation-race, explicit-
 seed, purge-tombstone, fail-closed API, and no-adapter architecture coverage.
-The current gate is 750 package tests (13 gated),
-zero strict-lint violations across 272 Swift source files, and 31
+Band 6B1 adds exact-generation envelope, privacy projection, deterministic
+codec, two-store replay, local-derivation preservation, remote-delete/local-
+edit, deferred live/live, rollback, immutable-collision, and no-CloudKit
+architecture coverage. The current gate is 759 package tests (13 gated),
+zero strict-lint violations across 275 Swift source files, and 31
 XCUITest cases passing in both English and Spanish. Throwaway
 `-use-temp-store` launches use a deterministic visible frame so persistent
 desktop overlays cannot cover the tested sidebar; production window placement
@@ -1198,6 +1214,7 @@ until a later Band 1 adoption slice.
 35. **Action-item evidence follows task identity, not presentation:** a commitment's generated provenance is a separate immutable aggregate keyed to one durable action-item ID. Checkbox completion cannot detach or rewrite it; admission requires exact request-local tags plus a unique local task target and the shared live same-meeting revision fence. Translation and bundles remap fresh task/evidence/segment identities, while stale, missing, deleted, or partial sources cannot navigate. Companion cards do not inherit this contract (D90).
 36. **Companion evidence separates trigger from answer support:** one card-identity-keyed immutable aggregate owns ordered question and answer roles behind the shared transcript-revision fence. Question links come from the exact closed/coalesced turn; answer links exist only for exact local-RAG citations and are empty for knowledge answers or directed pings. Storage validates live same-meeting links transactionally, physical deletion remains visible, bundles remap every identity, and stale, missing, deleted, or partial roles cannot navigate. Summary evidence, claim feedback, privacy receipts, and support diagnostics do not inherit this contract (D91).
 37. **Sync detects aggregate change before transport:** StorageKit owns one content-free, per-meeting generation fence updated transactionally by every portable root, child, feedback, and typed-evidence mutation. Migration never opts a library into sync; initial seeding is explicit. Acknowledging generation N cannot hide N+1, and a physical purge preserves deletion state without a meeting foreign key. Device-local paths, embeddings, model/provenance links, canonical people, jobs, receipts, audio, secrets, and voiceprints never dirty the journal. CloudKit state, account policy, conflict resolution, and iOS composition must arrive later through an implemented adapter vertical rather than a speculative package target (D92).
+38. **Sync projection and replay precede Apple transport:** one exact pending generation may produce one versioned text-first aggregate; stale generations fail before encoding. Portable replay validates before writing, preserves device-local derivations, defers live remote work behind unsent local work, lets a remote deletion win that race without physical purge, rejects immutable identity rewrites, and settles accepted remote-trigger generations atomically. IntegrationsKit owns deterministic bytes; CloudKit callbacks never own these business rules (D93).
 
 ## Refactor migration status
 
@@ -1214,7 +1231,7 @@ matching spec land together.
 | 3 — Provenance and privacy | Complete — 3A–3J implement generation provenance, gateway-only meeting-content egress, durable privacy receipts, redacted local support/recovery evidence, content-free signposts, and typed recording recovery; 3K records the measured App Sandbox defer gate (D62–D78) | Every generated/egress/recovery vertical in scope is auditable without copying meeting content. Production remains accurately non-sandboxed until a reversible feature-parity migration passes the explicit D78 gates |
 | 4 — Detail and scale | Complete — 4A records the baseline; 4B brings 5k first content to 91.87 ms; 4C brings 100k lexical p95 to 66.89 ms; 4D measures semantic cost; 4E brings semantic wall/CPU p95 to 90.22/91.26 ms; 4F brings a 55.9-minute waveform repeat p95 to 70.11/71.33 ms wall/CPU; 4G brings the exact 100k-meeting Spotlight projection from 22,085.35 ms to 425.64 ms and adopts protected launch-reconciled delivery (D79–D85) | Detail, lexical, exact semantic, waveform, and Spotlight budgets pass without a pool, cache, extension, sidecar, schema change, global invalidation counter, or Spotlight outbox |
 | 5 — Evidence and people | Complete — 5A through 5F: explicit canonical people, source-revision-fenced overview evidence/navigation, reversible local claim feedback, position-typed decision evidence, identity-typed action-item evidence, and role-separated Companion-card evidence/navigation (D86–D91) | Canonical identity preserves ambiguity and biometric separation. Typed overview, decision, action, and Companion provenance persists ordered same-meeting links in schema v9/v11/v12/v13, fails closed when stale/unavailable, and remaps through bundles. Schema v10 keeps the current overview assessment separate, active-claim fenced, text-erasing on clear, and explicitly portable. Companion question sources come from exact turns; answer sources come only from exact local-RAG citations |
-| 6 — Platform expansion | In progress — 6A durable mutation journal complete (D92) | Schema v14 detects and coalesces portable per-meeting changes behind a generation/ack fence and purge-surviving tombstone without enabling sync or adding an adapter. Next: 6B defines the encrypted CloudKit record codec, persisted CKSyncEngine state, account/consent boundary, and conflict tests in IntegrationsKit before any iOS shell |
+| 6 — Platform expansion | In progress — 6A journal and 6B1 portable aggregate/replay complete (D92–D93) | Schema v14 detects portable mutations; an exact-generation text-first envelope now strips device-local state, round-trips deterministically, replays atomically, preserves local derivations, defers live/live unsent conflicts, and makes deletion privacy-dominant. Next: encrypted CKRecord inline/asset codecs plus persisted CKSyncEngine/account/retry/replay state; no iOS shell yet |
 
 ## Documentation synchronization
 

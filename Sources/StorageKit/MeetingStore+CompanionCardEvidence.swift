@@ -128,7 +128,7 @@ extension MeetingStore {
         }
     }
 
-    private static func companionCardEvidence(
+    static func companionCardEvidence(
         cardID: UUID,
         in db: Database
     ) throws -> CompanionCardEvidence? {
