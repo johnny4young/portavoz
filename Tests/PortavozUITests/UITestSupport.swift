@@ -28,6 +28,7 @@ extension XCUIApplication {
         seedProcessingFailure: Bool = false,
         seedWithoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
+        simulateRecordingStartFailure: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -44,6 +45,9 @@ extension XCUIApplication {
         if seedWithoutSummary { app.launchArguments.append("-seed-without-summary") }
         if simulateSequoiaCapabilities {
             app.launchArguments.append("-simulate-sequoia-capabilities")
+        }
+        if simulateRecordingStartFailure {
+            app.launchArguments.append("-simulate-recording-start-failure")
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }

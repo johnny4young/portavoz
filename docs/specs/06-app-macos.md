@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery).
 
 ## Structure
 
@@ -135,6 +135,18 @@ A recoverable audio shell instead offers Refine, while a shell without audio
 routes to support diagnostics. `OSSignposter` wraps durable execution with
 job-kind, attempt, and outcome metadata only; it never records meeting/job IDs,
 paths, provider secrets, or transcript material.
+
+D77 keeps recording lifecycle error identity stable until presentation. Core's
+`FailureCategory` and `CodedFailure` define the small shared taxonomy;
+`ApplicationKit.StartRecordingFailure` and `StopRecordingFailure` classify the
+exact workflow stage without transporting a dependency-localized description.
+`RecordingController` maps each typed case to localized copy plus one recovery:
+retry, return to the Library when durable audio exists, or open Your data for
+local support diagnostics when state is uncertain. `RecordingView` shows the
+stable code as selectable “Error reference” text and exposes identifiers for
+the failure, reference, retry, Library, diagnostics, and Back controls. The
+`-simulate-recording-start-failure` fixture is accepted only with
+`-use-temp-store`, so production launches cannot synthesize a failure.
 
 Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
 `RecordingController` still flushes `RecordingSession`, closes live feeds, and
@@ -406,9 +418,9 @@ exercises this same production path in the durable-resume XCUITest (D63).
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 23 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 24 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
-resume), Insights (heatmap + interlocutors), Onboarding (first listen +
+resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
@@ -416,7 +428,8 @@ Whisper preparation, custom structures, capture
 controls, redacted support export, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
 neither SQLite nor audio can touch the user's library. `-seed-recovery`,
-`-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`, and
+`-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`,
+`-simulate-recording-start-failure`, and
 `-seed-without-summary` are
 accepted only with the temp
 store. `-simulate-sequoia-capabilities` makes the Foundation Models adapter
@@ -431,7 +444,7 @@ assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
 Library, Insights, Meeting Detail, and post-meeting mirror checkpoints so unrelated desktop content
 is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 21-case suite is green in the
+test language and region flags; the complete 24-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

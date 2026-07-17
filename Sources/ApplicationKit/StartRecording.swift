@@ -222,13 +222,47 @@ public struct StartRecordingCommit: Sendable {
     }
 }
 
+/// Stable recording-start failures. Dependency-localized descriptions never
+/// cross this boundary; the app maps each case to localized recovery copy.
+public enum StartRecordingFailure: Error, Equatable, CodedFailure, Sendable {
+    case preparationUnavailable
+    case reservationUnavailable
+    case captureUnavailable
+    case captureRecoveryPreserved
+    case captureRecoveryFailed
+
+    public var code: String {
+        switch self {
+        case .preparationUnavailable:
+            "recording.start.preparation.unavailable"
+        case .reservationUnavailable:
+            "recording.start.reservation.failed"
+        case .captureUnavailable:
+            "recording.start.capture.failed"
+        case .captureRecoveryPreserved:
+            "recording.start.capture.recovery.preserved"
+        case .captureRecoveryFailed:
+            "recording.start.capture.recovery.failed"
+        }
+    }
+
+    public var category: FailureCategory {
+        switch self {
+        case .preparationUnavailable, .reservationUnavailable, .captureUnavailable:
+            .recoverable
+        case .captureRecoveryPreserved, .captureRecoveryFailed:
+            .critical
+        }
+    }
+}
+
 /// Typed outcomes keep localized copy and broad view invalidation outside the
 /// workflow while preserving the released failure distinctions.
 public enum StartRecordingResult: Sendable {
     case started(StartRecordingCommit)
-    case preparationFailed(message: String)
+    case preparationFailed(StartRecordingFailure)
     case captureFailed(
-        message: String,
+        failure: StartRecordingFailure,
         reservation: StartRecordingReservation?,
         libraryInvalidations: Int
     )
@@ -285,7 +319,7 @@ public struct StartRecording: ApplicationUseCase {
         } catch {
             await runtime.cancelPreparation()
             await runtime.scheduleIdleRelease()
-            return .failed(.preparationFailed(message: error.localizedDescription))
+            return .failed(.preparationFailed(.preparationUnavailable))
         }
     }
 
@@ -306,7 +340,7 @@ public struct StartRecording: ApplicationUseCase {
             await runtime.cancelPreparation()
             await runtime.scheduleIdleRelease()
             return .captureFailed(
-                message: error.localizedDescription,
+                failure: .reservationUnavailable,
                 reservation: nil,
                 libraryInvalidations: 0)
         }
@@ -325,16 +359,12 @@ public struct StartRecording: ApplicationUseCase {
                 liveTranscriptionAvailable: prepared.liveTranscriptionAvailable))
         } catch {
             await runtime.cancelPreparation()
-            let captureMessage = error.localizedDescription
             let reconciliation = await reconcileFailedStart(
                 reservation,
                 timestamp: now())
             await runtime.scheduleIdleRelease()
-            let message = reconciliation.message.map {
-                "\(captureMessage) · \($0)"
-            } ?? captureMessage
             return .captureFailed(
-                message: message,
+                failure: reconciliation.failure ?? .captureUnavailable,
                 reservation: reconciliation.reservation,
                 libraryInvalidations: reconciliation.libraryInvalidations)
         }
@@ -391,12 +421,13 @@ public struct StartRecording: ApplicationUseCase {
                     reservation: StartRecordingReservation(
                         meeting: meeting,
                         assets: reservation.assets),
-                    libraryInvalidations: 2)
+                    libraryInvalidations: 2,
+                    failure: .captureRecoveryPreserved)
             } catch {
                 return StartRecordingReconciliation(
                     reservation: reservation,
                     libraryInvalidations: 1,
-                    message: error.localizedDescription)
+                    failure: .captureRecoveryFailed)
             }
         }
 
@@ -405,7 +436,7 @@ public struct StartRecording: ApplicationUseCase {
                 return StartRecordingReconciliation(
                     reservation: reservation,
                     libraryInvalidations: 1,
-                    message: "recording shell could not be reconciled")
+                    failure: .captureRecoveryFailed)
             }
             return StartRecordingReconciliation(
                 reservation: nil,
@@ -414,7 +445,7 @@ public struct StartRecording: ApplicationUseCase {
             return StartRecordingReconciliation(
                 reservation: reservation,
                 libraryInvalidations: 1,
-                message: error.localizedDescription)
+                failure: .captureRecoveryFailed)
         }
     }
 
@@ -438,16 +469,16 @@ public struct StartRecording: ApplicationUseCase {
 private struct StartRecordingReconciliation: Sendable {
     let reservation: StartRecordingReservation?
     let libraryInvalidations: Int
-    let message: String?
+    let failure: StartRecordingFailure?
 
     init(
         reservation: StartRecordingReservation?,
         libraryInvalidations: Int,
-        message: String? = nil
+        failure: StartRecordingFailure? = nil
     ) {
         self.reservation = reservation
         self.libraryInvalidations = libraryInvalidations
-        self.message = message
+        self.failure = failure
     }
 }
 

@@ -78,11 +78,13 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .preparationFailed(let message) = result else {
+        guard case .preparationFailed(let failure) = result else {
             return XCTFail("runtime preparation failure should stay distinct")
         }
         let state = await dependencies.state()
-        XCTAssertEqual(message, StartRecordingDependencyError.prepare.localizedDescription)
+        XCTAssertEqual(failure, .preparationUnavailable)
+        XCTAssertEqual(failure.code, "recording.start.preparation.unavailable")
+        XCTAssertEqual(failure.category, .recoverable)
         XCTAssertEqual(state.events, ["preferences", "prepare", "cancel", "release"])
         XCTAssertNil(state.reservedMeeting)
     }
@@ -116,11 +118,11 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .captureFailed(let message, let reservation, let invalidations) = result else {
+        guard case .captureFailed(let failure, let reservation, let invalidations) = result else {
             return XCTFail("reservation failure should be a capture-start failure")
         }
         let state = await dependencies.state()
-        XCTAssertEqual(message, StartRecordingDependencyError.reserve.localizedDescription)
+        XCTAssertEqual(failure, .reservationUnavailable)
         XCTAssertNil(reservation)
         XCTAssertEqual(invalidations, 0)
         XCTAssertEqual(
@@ -137,11 +139,11 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .captureFailed(let message, let reservation, let invalidations) = result else {
+        guard case .captureFailed(let failure, let reservation, let invalidations) = result else {
             return XCTFail("source failure should be explicit")
         }
         let state = await dependencies.state()
-        XCTAssertEqual(message, StartRecordingDependencyError.start.localizedDescription)
+        XCTAssertEqual(failure, .captureUnavailable)
         XCTAssertNil(reservation)
         XCTAssertEqual(invalidations, 2)
         XCTAssertEqual(state.discardCount, 1)
@@ -167,10 +169,12 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
             let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-            guard case .captureFailed(_, let reservation?, let invalidations) = result else {
+            guard case .captureFailed(let failure, let reservation?, let invalidations) = result else {
                 return XCTFail("filesystem evidence should preserve the reservation")
             }
             let state = await dependencies.state()
+            XCTAssertEqual(failure, .captureRecoveryPreserved)
+            XCTAssertEqual(failure.category, .critical)
             XCTAssertEqual(reservation.meeting.lifecycleState, .needsAttention)
             XCTAssertEqual(reservation.meeting.lastProcessingError, "capture.start.failed")
             XCTAssertEqual(invalidations, 2)
@@ -179,7 +183,7 @@ final class StartRecordingUseCaseTests: XCTestCase {
         }
     }
 
-    func testRefusedDiscardRetainsReservationAndAppendsReconciliationDetail() async {
+    func testRefusedDiscardRetainsReservationWithStableRecoveryFailure() async {
         let fixture = StartRecordingFixture()
         let dependencies = StartRecordingDependencies(
             preferences: fixture.preferences,
@@ -188,10 +192,11 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .captureFailed(let message, let reservation?, let invalidations) = result else {
+        guard case .captureFailed(let failure, let reservation?, let invalidations) = result else {
             return XCTFail("a protected shell must remain discoverable")
         }
-        XCTAssertTrue(message.hasSuffix(" · recording shell could not be reconciled"))
+        XCTAssertEqual(failure, .captureRecoveryFailed)
+        XCTAssertEqual(failure.code, "recording.start.capture.recovery.failed")
         XCTAssertEqual(reservation.meeting.lifecycleState, .recording)
         XCTAssertEqual(invalidations, 1)
     }
@@ -209,10 +214,10 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest())
 
-        guard case .captureFailed(let message, let reservation?, let invalidations) = result else {
+        guard case .captureFailed(let failure, let reservation?, let invalidations) = result else {
             return XCTFail("failed reconciliation should retain original shell truth")
         }
-        XCTAssertTrue(message.contains(StartRecordingDependencyError.mark.localizedDescription))
+        XCTAssertEqual(failure, .captureRecoveryFailed)
         XCTAssertEqual(reservation.meeting.lifecycleState, .recording)
         XCTAssertNil(reservation.meeting.lastProcessingError)
         XCTAssertEqual(invalidations, 1)

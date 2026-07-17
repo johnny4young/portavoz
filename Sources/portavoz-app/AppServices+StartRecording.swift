@@ -10,14 +10,40 @@ extension AppServices {
     /// Recording-start workflow composed from platform preferences, capture
     /// runtime, filesystem evidence, and the durable MeetingStore adapter.
     var startRecording: StartRecording {
-        StartRecording(
+        let runtime: any StartRecordingRuntime = isRecordingFailureFixture
+            ? UITestStartRecordingFailureRuntime()
+            : AppStartRecordingRuntime(
+                services: self,
+                audioRoot: Self.audioRoot)
+        return StartRecording(
             preferences: AppStartRecordingPreferences(),
             audioFiles: AppStartRecordingAudioFiles(root: Self.audioRoot),
             store: store,
-            runtime: AppStartRecordingRuntime(
-                services: self,
-                audioRoot: Self.audioRoot))
+            runtime: runtime)
     }
+
+    private var isRecordingFailureFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-recording-start-failure")
+    }
+}
+
+private struct UITestStartRecordingFailureRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        throw StartRecordingRuntimeError.preparationUnavailable
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        throw StartRecordingRuntimeError.preparationUnavailable
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
 }
 
 @MainActor

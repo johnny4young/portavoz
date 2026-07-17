@@ -5870,6 +5870,136 @@
           }
         }
       }
+    },
+    "Open Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir biblioteca"
+          }
+        }
+      }
+    },
+    "Error reference: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Referencia del error: %@"
+          }
+        }
+      }
+    },
+    "Portavoz could not prepare the recording devices. Check permissions and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo preparar los dispositivos de grabación. Revisa los permisos y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Portavoz could not create a safe local recording. Try again; no audio was started.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo crear una grabación local segura. Vuelve a intentarlo; no se inició ningún audio."
+          }
+        }
+      }
+    },
+    "Audio capture could not start. Check microphone and system audio permissions, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura de audio no pudo iniciar. Revisa los permisos del micrófono y del audio del sistema y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Audio capture could not start, but any partial audio was preserved in the Library.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura de audio no pudo iniciar, pero cualquier audio parcial se conservó en la biblioteca."
+          }
+        }
+      }
+    },
+    "Audio capture could not start and Portavoz could not verify its local recovery state. Open support diagnostics before quitting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura de audio no pudo iniciar y Portavoz no pudo verificar su estado local de recuperación. Abre los diagnósticos de soporte antes de salir."
+          }
+        }
+      }
+    },
+    "The recording could not be saved because its local state was unavailable. Open support diagnostics before quitting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar la grabación porque su estado local no estaba disponible. Abre los diagnósticos de soporte antes de salir."
+          }
+        }
+      }
+    },
+    "The audio was saved, but follow-up processing could not be scheduled. Open the meeting in the Library to recover it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio se guardó, pero no se pudo programar el procesamiento posterior. Abre la reunión en la biblioteca para recuperarla."
+          }
+        }
+      }
+    },
+    "The audio was preserved, but Portavoz could not finish saving its transcript. Open the meeting in the Library to recover it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio se conservó, pero Portavoz no pudo terminar de guardar su transcripción. Abre la reunión en la biblioteca para recuperarla."
+          }
+        }
+      }
+    },
+    "Portavoz could not finish saving the recording. Keep the app open and export support diagnostics.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo terminar de guardar la grabación. Mantén la app abierta y exporta los diagnósticos de soporte."
+          }
+        }
+      }
+    },
+    "Portavoz found partial audio but could not save its recovery state. Keep the app open and export support diagnostics.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz encontró audio parcial, pero no pudo guardar su estado de recuperación. Mantén la app abierta y exporta los diagnósticos de soporte."
+          }
+        }
+      }
+    },
+    "Portavoz could not safely reconcile an empty recording. Export support diagnostics before trying again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo reconciliar de forma segura una grabación vacía. Exporta los diagnósticos de soporte antes de volver a intentarlo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

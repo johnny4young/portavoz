@@ -27,6 +27,38 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecordingStartFailureOffersTypedRecovery() {
+        let app = XCUIApplication.portavoz(simulateRecordingStartFailure: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
+        record.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-failure").waitForExistence(timeout: 10),
+            "a deterministic start failure must become an actionable error state")
+        let expected = isSpanish
+            ? "Portavoz no pudo preparar los dispositivos de grabación. Revisa los permisos y vuelve a intentarlo."
+            : "Portavoz could not prepare the recording devices. Check permissions and try again."
+        XCTAssertTrue(app.staticTexts[expected].exists)
+        XCTAssertTrue(app.control(withIdentifier: "recording-retry").exists)
+        XCTAssertTrue(app.control(withIdentifier: "recording-back").exists)
+
+        // ContentUnavailableView can expose SwiftUI children as `.other` even
+        // when the underlying controls retain their stable identifiers.
+        let reference = app.control(withIdentifier: "recording-failure-reference")
+        XCTAssertTrue(reference.exists)
+        let expectedReference = isSpanish
+            ? "Referencia del error: recording.start.preparation.unavailable"
+            : "Error reference: recording.start.preparation.unavailable"
+        XCTAssertTrue(app.staticTexts[expectedReference].exists)
+        attachScreenshot(of: app, named: "band-3j-typed-recording-failure")
+    }
+
+    @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

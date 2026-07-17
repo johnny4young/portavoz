@@ -171,9 +171,11 @@ final class StopRecordingUseCaseTests: XCTestCase {
         let result = await fixture.useCase(dependencies).execute(
             fixture.request(capture: StopRecordingCapture(publishedFiles: [:])))
 
-        guard case .localStateUnavailable = result else {
+        guard case .localStateUnavailable(let failure) = result else {
             return XCTFail("a protected shell must not be reported as discarded")
         }
+        XCTAssertEqual(failure, .localStateUnavailable)
+        XCTAssertEqual(failure.category, .critical)
         let state = await dependencies.state()
         XCTAssertEqual(state.releaseCount, 1)
     }
@@ -191,9 +193,10 @@ final class StopRecordingUseCaseTests: XCTestCase {
             let dependencies = StopRecordingDependencies(shell: fixture.shell)
             let result = await fixture.useCase(dependencies).execute(request)
 
-            guard case .localStateUnavailable = result else {
+            guard case .localStateUnavailable(let failure) = result else {
                 return XCTFail("invalid local state should fail explicitly")
             }
+            XCTAssertEqual(failure.code, "recording.stop.local-state.unavailable")
             let state = await dependencies.state()
             XCTAssertEqual(state.releaseCount, 1)
         }
@@ -210,14 +213,76 @@ final class StopRecordingUseCaseTests: XCTestCase {
         let result = await fixture.useCase(dependencies).execute(
             fixture.request(capture: microphoneOnly))
 
-        guard case .processingFailed(_, let fallback?) = result else {
+        guard case .processingFailed(let failure, let fallback?) = result else {
             return XCTFail("pending system input should preserve a fallback")
         }
         let state = await dependencies.state()
+        XCTAssertEqual(failure, .processingInputInvalid)
+        XCTAssertEqual(failure.category, .recoverable)
         XCTAssertEqual(fallback.meeting.lastProcessingError, "capture.publication.failed")
         XCTAssertTrue(state.installs[0].requests.isEmpty)
         XCTAssertEqual(state.kickCount, 0)
         XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testInvalidProcessingInputWithFailedFallbackReportsPersistenceFailure() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(
+            shell: fixture.shell,
+            existingPaths: [fixture.assets[0].relativePath],
+            installFailuresRemaining: 1)
+        let microphoneOnly = StopRecordingCapture(
+            publishedFiles: [.microphone: fixture.publishedFile()])
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(capture: microphoneOnly))
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail("failed fallback persistence should replace the input failure")
+        }
+        let state = await dependencies.state()
+        XCTAssertEqual(failure, .snapshotPersistenceFailed)
+        XCTAssertEqual(failure.category, .critical)
+        XCTAssertNil(fallback)
+        XCTAssertEqual(state.installAttempts, 1)
+        XCTAssertTrue(state.installs.isEmpty)
+        XCTAssertEqual(state.kickCount, 0)
+        XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testRecoveryPersistenceFailureIsCriticalAndClaimsNoCommit() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(
+            shell: fixture.shell,
+            existingPaths: [fixture.assets[0].relativePath],
+            markError: .mark)
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(capture: StopRecordingCapture(publishedFiles: [:])))
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail("failed recovery persistence should remain explicit")
+        }
+        XCTAssertEqual(failure, .recoveryPersistenceFailed)
+        XCTAssertEqual(failure.category, .critical)
+        XCTAssertNil(fallback)
+    }
+
+    func testCleanupFailureIsDestructiveAndClaimsNoDiscard() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(
+            shell: fixture.shell,
+            discardError: .discard)
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(capture: StopRecordingCapture(publishedFiles: [:])))
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail("failed cleanup should remain explicit")
+        }
+        XCTAssertEqual(failure, .cleanupFailed)
+        XCTAssertEqual(failure.category, .destructive)
+        XCTAssertNil(fallback)
     }
 
     func testAdmissionFailureRollsBackThenInstallsNeedsAttentionFallback() async {
@@ -228,11 +293,13 @@ final class StopRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(fixture.request())
 
-        guard case .processingFailed(let message, let fallback?) = result else {
+        guard case .processingFailed(let failure, let fallback?) = result else {
             return XCTFail("failed admission should preserve a fallback")
         }
         let state = await dependencies.state()
-        XCTAssertEqual(message, StopRecordingDependencyError.install.localizedDescription)
+        XCTAssertEqual(failure, .snapshotPersistenceFailed)
+        XCTAssertEqual(failure.code, "recording.stop.snapshot.persistence.failed")
+        XCTAssertEqual(failure.category, .critical)
         XCTAssertEqual(fallback.meeting.lastProcessingError, "processing.enqueue.failed")
         XCTAssertEqual(state.installAttempts, 2)
         XCTAssertEqual(state.installs.count, 1)
@@ -275,8 +342,8 @@ final class StopRecordingUseCaseTests: XCTestCase {
         let result = await useCase.execute(fixture.request(assets: reservedAssets))
 
         guard case .completed = result else {
-            if case .processingFailed(let message, _) = result {
-                return XCTFail("real Unit of Work failed: \(message)")
+            if case .processingFailed(let failure, _) = result {
+                return XCTFail("real Unit of Work failed: \(failure.code)")
             }
             return XCTFail("real Unit of Work should complete: \(result)")
         }
@@ -433,6 +500,8 @@ private actor StopRecordingDependencies:
     private let shell: Meeting
     private let existingPaths: Set<String>
     private let discardResult: Bool
+    private let discardError: StopRecordingDependencyError?
+    private let markError: StopRecordingDependencyError?
     private var installFailuresRemaining: Int
     private var installs: [Install] = []
     private var installAttempts = 0
@@ -446,11 +515,15 @@ private actor StopRecordingDependencies:
         shell: Meeting,
         existingPaths: Set<String> = [],
         discardResult: Bool = true,
+        discardError: StopRecordingDependencyError? = nil,
+        markError: StopRecordingDependencyError? = nil,
         installFailuresRemaining: Int = 0
     ) {
         self.shell = shell
         self.existingPaths = existingPaths
         self.discardResult = discardResult
+        self.discardError = discardError
+        self.markError = markError
         self.installFailuresRemaining = installFailuresRemaining
     }
 
@@ -461,6 +534,7 @@ private actor StopRecordingDependencies:
     func discardUnstartedRecording(_ meetingID: MeetingID) async throws -> Bool {
         discardCount += 1
         events.append("discard")
+        if let discardError { throw discardError }
         return discardResult
     }
 
@@ -470,6 +544,7 @@ private actor StopRecordingDependencies:
         endedAt: Date,
         at timestamp: Date
     ) async throws -> Meeting {
+        if let markError { throw markError }
         markedErrorCode = errorCode
         events.append("mark")
         var marked = shell

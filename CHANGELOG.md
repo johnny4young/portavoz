@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 16, 2026
 
+- **🛟 Recording errors with a way forward** — Start and Stop failures now show a stable reference and the right next action: retry, open preserved audio in your Library, or open private local diagnostics. Raw system errors stay out of the interface and support file.
 - **🩺 Private recovery evidence** — Export a redacted local support file without meeting text, prompts, secrets, full URLs, or paths. Meeting Detail now explains stalled local processing and lets you safely retry it while preserving the recording, transcript, and durable job evidence already saved.
 - **🔐 A privacy receipt for every meeting** — Meeting Detail now says whether tracked processing stayed on your Mac or a remote transfer was attempted, including its purpose, destination host, and time without duplicating transcript or summary content. Older meetings clearly show when tracking began instead of making an unverifiable all-local claim.
 - **🍺 Homebrew that opens like the DMG** — The app inside every release now carries its own notarization ticket before the disk image is built. Package-manager installs no longer depend on Gatekeeper finding an online ticket that only the outer DMG had, and every release verifies the extracted app before publication.

@@ -153,6 +153,43 @@ public struct StopRecordingCommit: Sendable {
     }
 }
 
+/// Stable recording-stop failures. These cases classify the failed workflow
+/// stage without transporting dependency text or exposing local paths.
+public enum StopRecordingFailure: Error, Equatable, CodedFailure, Sendable {
+    case localStateUnavailable
+    case processingInputInvalid
+    case snapshotPersistenceFailed
+    case recoveryPersistenceFailed
+    case cleanupFailed
+
+    public var code: String {
+        switch self {
+        case .localStateUnavailable:
+            "recording.stop.local-state.unavailable"
+        case .processingInputInvalid:
+            "recording.stop.processing-input.invalid"
+        case .snapshotPersistenceFailed:
+            "recording.stop.snapshot.persistence.failed"
+        case .recoveryPersistenceFailed:
+            "recording.stop.recovery.persistence.failed"
+        case .cleanupFailed:
+            "recording.stop.cleanup.failed"
+        }
+    }
+
+    public var category: FailureCategory {
+        switch self {
+        case .processingInputInvalid:
+            .recoverable
+        case .localStateUnavailable, .snapshotPersistenceFailed,
+             .recoveryPersistenceFailed:
+            .critical
+        case .cleanupFailed:
+            .destructive
+        }
+    }
+}
+
 /// Explicit outcomes preserve the released user-visible failure policy while
 /// keeping localized copy outside ApplicationKit.
 public enum StopRecordingResult: Sendable {
@@ -160,8 +197,8 @@ public enum StopRecordingResult: Sendable {
     case audioRecoveryPreserved(StopRecordingCommit)
     case transcriptEmpty(StopRecordingCommit)
     case noAudioCaptured
-    case localStateUnavailable
-    case processingFailed(message: String, fallback: StopRecordingCommit?)
+    case localStateUnavailable(StopRecordingFailure)
+    case processingFailed(failure: StopRecordingFailure, fallback: StopRecordingCommit?)
 }
 
 public enum StopRecordingJobError: Error, Equatable, LocalizedError, Sendable {
@@ -249,10 +286,10 @@ public struct StopRecording: ApplicationUseCase {
         timestamp: Date
     ) async -> StopRecordingResult {
         guard var meeting = request.recordingShell else {
-            return .localStateUnavailable
+            return .localStateUnavailable(.localStateUnavailable)
         }
         guard let audioDirectory = meeting.audioDirectory else {
-            return .localStateUnavailable
+            return .localStateUnavailable(.localStateUnavailable)
         }
 
         guard !request.capture.publishedFiles.isEmpty else {
@@ -326,7 +363,8 @@ public struct StopRecording: ApplicationUseCase {
                 errorCode: hasPendingPublication
                     ? "capture.publication.failed" : "processing.enqueue.failed")
             return .processingFailed(
-                message: error.localizedDescription,
+                failure: fallback == nil
+                    ? .snapshotPersistenceFailed : .processingInputInvalid,
                 fallback: fallback)
         }
 
@@ -369,7 +407,7 @@ public struct StopRecording: ApplicationUseCase {
                 attribution: attribution,
                 errorCode: failureCode)
             return .processingFailed(
-                message: error.localizedDescription,
+                failure: .snapshotPersistenceFailed,
                 fallback: fallback)
         }
     }
@@ -402,7 +440,7 @@ public struct StopRecording: ApplicationUseCase {
                 attribution: attribution,
                 errorCode: "processing.transcription.enqueue.failed")
             return .processingFailed(
-                message: error.localizedDescription,
+                failure: .snapshotPersistenceFailed,
                 fallback: fallback)
         }
     }
@@ -427,7 +465,7 @@ public struct StopRecording: ApplicationUseCase {
             return .transcriptEmpty(
                 StopRecordingCommit(meeting: fallback, assets: assets))
         } catch {
-            return .processingFailed(message: error.localizedDescription, fallback: nil)
+            return .processingFailed(failure: .snapshotPersistenceFailed, fallback: nil)
         }
     }
 
@@ -447,17 +485,17 @@ public struct StopRecording: ApplicationUseCase {
                 return .audioRecoveryPreserved(
                     StopRecordingCommit(meeting: preserved, assets: assets))
             } catch {
-                return .processingFailed(message: error.localizedDescription, fallback: nil)
+                return .processingFailed(failure: .recoveryPersistenceFailed, fallback: nil)
             }
         }
 
         do {
             guard try await store.discardUnstartedRecording(meeting.id) else {
-                return .localStateUnavailable
+                return .localStateUnavailable(.localStateUnavailable)
             }
             return .noAudioCaptured
         } catch {
-            return .processingFailed(message: error.localizedDescription, fallback: nil)
+            return .processingFailed(failure: .cleanupFailed, fallback: nil)
         }
     }
 

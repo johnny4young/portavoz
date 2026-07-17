@@ -6,17 +6,18 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue architecture Band 3 with bounded typed-error
-adoption in [refactor-20260714.md](refactor-20260714.md). Start with a small set
-of user-facing workflows whose raw error transport can be replaced by stable
-codes and localized recovery without expanding the diagnostics payload. The
-App Sandbox capability spike remains the final Band 3 investigation. Keep
-Spotlight independent; its incremental indexing/outbox adoption belongs with
-measured Band 4 scale work.
+**Next concrete step:** complete architecture Band 3 with the App Sandbox
+capability spike in [refactor-20260714.md](refactor-20260714.md). Exercise real
+microphone and process-tap capture, model and recording storage, Sparkle,
+import/export panels, Keychain, calendar, and local Shortcut/MCP surfaces in a
+separately signed experimental build. Record measured pass/fail evidence and
+an explicit enable/defer decision; do not add the production sandbox
+entitlement from static analysis alone. Keep Spotlight independent; its
+incremental indexing/outbox adoption belongs with measured Band 4 scale work.
 
-Slices 3A–3I now cover attempt-level generation provenance, every current
+Slices 3A–3J now cover attempt-level generation provenance, every current
 meeting-content HTTP path, an honest per-meeting receipt, and local redacted
-support/recovery evidence. The Jul 16
+support/recovery evidence plus stable recording-lifecycle failures. The Jul 16
 Sequoia stabilization interrupt fixed Stop timestamp identity, audio-first
 capture/recovery, proactive Whisper preparation, exact capability-aware
 Summary/Companion setup, role-specific speech-model readiness, and independent
@@ -27,7 +28,21 @@ app/DMG notarization. Band 2 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77).
+
+- **Architecture Band 3 slice 3J complete — recording failures have stable
+  recovery contracts (Jul 16, 2026)**: Core now defines five product-level
+  failure categories, while ApplicationKit Start/Stop return stable coded
+  failures instead of dependency-localized text. Every existing durable
+  distinction remains intact, including preserved partial audio, fallback
+  commits, critical persistence loss, and destructive cleanup failure. The app
+  owns EN/ES copy and routes each case to retry, the Library, or local support
+  diagnostics; the failed screen exposes a selectable reference. Typed outcome,
+  architecture, localization, and EN/ES UI coverage plus the 30th architecture
+  rule protect the boundary. The complete gate is 671 package tests (13 gated),
+  zero strict-lint violations across 250 Swift source files, and all 24
+  XCUITest cases in English and Spanish with inspected
+  `band-3j-typed-recording-failure` screenshots (D77).
 
 - **Architecture Band 3 slice 3I complete — private support evidence that can
   recover work (Jul 16, 2026)**: Settings can explicitly save a local,

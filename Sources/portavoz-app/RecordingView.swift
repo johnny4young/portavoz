@@ -8,6 +8,7 @@ import SwiftUI
 struct RecordingView: View {
     @Environment(AppServices.self) private var services
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openSettings) private var openSettings
     @Binding var route: Route?
     /// Calendar event this recording came from (brief's "Record this
     /// meeting") — nil for a blank recording.
@@ -95,10 +96,20 @@ struct RecordingView: View {
                 Spacer()
                 ContentUnavailableView {
                     Label("Something went wrong", systemImage: "exclamationmark.triangle")
+                        .accessibilityIdentifier("recording-failure")
                 } description: {
-                    Text(message)
+                    VStack(spacing: 8) {
+                        Text(message)
+                        if let context = controller.failureContext {
+                            Text(L10n.format("Error reference: %@", context.code))
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                                .accessibilityIdentifier("recording-failure-reference")
+                        }
+                    }
                 } actions: {
-                    Button("Back") { route = nil }
+                    recordingFailureActions
                 }
                 Spacer()
             }
@@ -107,6 +118,33 @@ struct RecordingView: View {
         .liveTranslation(controller)
         .task { await controller.start(services: services, event: event) }
         .onDisappear { hud.close() }
+    }
+
+    @ViewBuilder
+    private var recordingFailureActions: some View {
+        if let context = controller.failureContext {
+            switch context.recovery {
+            case .retry:
+                Button("Try again") {
+                    Task { await controller.start(services: services, event: event) }
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("recording-retry")
+            case .library:
+                Button("Open Library") { route = nil }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("recording-open-library")
+            case .supportDiagnostics:
+                Button("Open support diagnostics") {
+                    services.pendingSettingsCategory = .data
+                    openSettings()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("recording-open-support-diagnostics")
+            }
+        }
+        Button("Back") { route = nil }
+            .accessibilityIdentifier("recording-back")
     }
 
     private var preparingText: String {

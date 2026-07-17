@@ -16,6 +16,18 @@ import TranscriptionKit
 @MainActor
 @Observable
 final class RecordingController {
+    enum FailureRecovery: Equatable {
+        case retry
+        case library
+        case supportDiagnostics
+    }
+
+    struct FailureContext: Equatable {
+        let code: String
+        let category: FailureCategory
+        let recovery: FailureRecovery
+    }
+
     enum Phase: Equatable {
         case idle
         case preparing
@@ -26,6 +38,7 @@ final class RecordingController {
     }
 
     private(set) var phase: Phase = .idle
+    private(set) var failureContext: FailureContext?
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
@@ -157,6 +170,7 @@ final class RecordingController {
         liveNotes = []
         recordingShell = nil
         reservedAssets = []
+        failureContext = nil
     }
 
     /// Enters the application-owned recording-start workflow. Concrete audio
@@ -233,6 +247,7 @@ final class RecordingController {
         tappedMeetingApps = []
         liveTranscriptDeferred = false
         micMuted = false
+        failureContext = nil
     }
 
     private func receiveLiveCaption(_ segment: TranscriptSegment) {
@@ -279,16 +294,51 @@ final class RecordingController {
             }
             phase = .recording
             startRollingSummaryIfAvailable()
-        case .preparationFailed(let message):
+        case .preparationFailed(let failure):
             diarizerFeed.finish()
-            phase = .failed(L10n.format("Could not prepare recording: %@", message))
-        case .captureFailed(let message, let reservation, let invalidations):
+            presentStartFailure(failure)
+        case .captureFailed(let failure, let reservation, let invalidations):
             diarizerFeed.finish()
             recordingShell = reservation?.meeting
             reservedAssets = reservation?.assets ?? []
             for _ in 0..<invalidations { services.libraryVersion += 1 }
-            phase = .failed(L10n.format("Could not start capture: %@", message))
+            presentStartFailure(failure)
         }
+    }
+
+    private func presentStartFailure(_ failure: StartRecordingFailure) {
+        let message: String
+        let recovery: FailureRecovery
+        // Catalog keys stay intact so extraction and lookup remain exact.
+        // swiftlint:disable line_length
+        switch failure {
+        case .preparationUnavailable:
+            message = L10n.text(
+                "Portavoz could not prepare the recording devices. Check permissions and try again.")
+            recovery = .retry
+        case .reservationUnavailable:
+            message = L10n.text(
+                "Portavoz could not create a safe local recording. Try again; no audio was started.")
+            recovery = .retry
+        case .captureUnavailable:
+            message = L10n.text(
+                "Audio capture could not start. Check microphone and system audio permissions, then try again.")
+            recovery = .retry
+        case .captureRecoveryPreserved:
+            message = L10n.text(
+                "Audio capture could not start, but any partial audio was preserved in the Library.")
+            recovery = .library
+        case .captureRecoveryFailed:
+            message = L10n.text(
+                "Audio capture could not start and Portavoz could not verify its local recovery state. Open support diagnostics before quitting.")
+            recovery = .supportDiagnostics
+        }
+        // swiftlint:enable line_length
+        presentFailure(
+            message,
+            code: failure.code,
+            category: failure.category,
+            recovery: recovery)
     }
 
     private func startRollingSummaryIfAvailable() {
@@ -502,29 +552,102 @@ extension RecordingController {
             phase = .done(commit.meeting.id)
         case .audioRecoveryPreserved(let commit):
             adoptStopRecordingCommit(commit, services: services)
-            phase = .failed(L10n.text(
-                "The audio could not be finalized, but its recovery file was preserved."))
+            presentFailure(
+                L10n.text(
+                    "The audio could not be finalized, but its recovery file was preserved."),
+                code: "capture.publication.failed",
+                category: .critical,
+                recovery: .library)
         case .transcriptEmpty(let commit):
             adoptStopRecordingCommit(commit, services: services)
-            phase = .failed(L10n.text(
-                // One-line user-visible recovery guidance.
-                // swiftlint:disable:next line_length
-                "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it."))
+            presentFailure(
+                L10n.text(
+                    // One-line user-visible recovery guidance.
+                    // swiftlint:disable:next line_length
+                    "The audio was saved, but no transcript was produced. Open the meeting from the library to play or export it."),
+                code: "transcription.empty",
+                category: .recoverable,
+                recovery: .library)
         case .noAudioCaptured:
             recordingShell = nil
             reservedAssets = []
             services.libraryVersion += 1
-            phase = .failed(L10n.text(
-                "No audio was captured. Check Portavoz microphone and system audio recording permissions."))
-        case .localStateUnavailable:
-            phase = .failed(L10n.text(
-                "The recording could not be saved because its local state was unavailable."))
-        case .processingFailed(let message, let fallback):
+            presentFailure(
+                L10n.text(
+                    "No audio was captured. Check Portavoz microphone and system audio recording permissions."),
+                code: "recording.stop.no-audio",
+                category: .recoverable,
+                recovery: .retry)
+        case .localStateUnavailable(let failure):
+            presentFailure(
+                L10n.text(
+                    // Catalog key stays intact so extraction and lookup remain exact.
+                    // swiftlint:disable:next line_length
+                    "The recording could not be saved because its local state was unavailable. Open support diagnostics before quitting."),
+                code: failure.code,
+                category: failure.category,
+                recovery: .supportDiagnostics)
+        case .processingFailed(let failure, let fallback):
             if let fallback {
                 adoptStopRecordingCommit(fallback, services: services)
             }
-            phase = .failed(L10n.format("Processing failed: %@", message))
+            presentStopFailure(failure, fallbackPreserved: fallback != nil)
         }
+    }
+
+    private func presentStopFailure(
+        _ failure: StopRecordingFailure,
+        fallbackPreserved: Bool
+    ) {
+        let message: String
+        let recovery: FailureRecovery
+        // Catalog keys stay intact so extraction and lookup remain exact.
+        // swiftlint:disable line_length
+        switch failure {
+        case .processingInputInvalid:
+            message = L10n.text(
+                "The audio was saved, but follow-up processing could not be scheduled. Open the meeting in the Library to recover it.")
+            recovery = .library
+        case .snapshotPersistenceFailed where fallbackPreserved:
+            message = L10n.text(
+                "The audio was preserved, but Portavoz could not finish saving its transcript. Open the meeting in the Library to recover it.")
+            recovery = .library
+        case .snapshotPersistenceFailed:
+            message = L10n.text(
+                "Portavoz could not finish saving the recording. Keep the app open and export support diagnostics.")
+            recovery = .supportDiagnostics
+        case .recoveryPersistenceFailed:
+            message = L10n.text(
+                "Portavoz found partial audio but could not save its recovery state. Keep the app open and export support diagnostics.")
+            recovery = .supportDiagnostics
+        case .cleanupFailed:
+            message = L10n.text(
+                "Portavoz could not safely reconcile an empty recording. Export support diagnostics before trying again.")
+            recovery = .supportDiagnostics
+        case .localStateUnavailable:
+            message = L10n.text(
+                "The recording could not be saved because its local state was unavailable. Open support diagnostics before quitting.")
+            recovery = .supportDiagnostics
+        }
+        // swiftlint:enable line_length
+        presentFailure(
+            message,
+            code: failure.code,
+            category: failure.category,
+            recovery: recovery)
+    }
+
+    private func presentFailure(
+        _ message: String,
+        code: String,
+        category: FailureCategory,
+        recovery: FailureRecovery
+    ) {
+        failureContext = FailureContext(
+            code: code,
+            category: category,
+            recovery: recovery)
+        phase = .failed(message)
     }
 
     private func adoptStopRecordingCommit(

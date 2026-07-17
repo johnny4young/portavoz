@@ -368,6 +368,15 @@ bounded retry that preserves job identity, idempotency key, and input
 fingerprint before the normal worker revalidates it. Content-free
 `OSSignposter` intervals record only job kind, attempt, and terminal outcome
 (D76).
+Slice 3J makes recording lifecycle failures stable before they reach
+presentation. Core owns five product-level failure categories and the
+`CodedFailure` contract. ApplicationKit maps Start and Stop dependency errors
+to bounded workflow enums with stable codes instead of transporting raw or
+dependency-localized descriptions. The macOS app alone owns localized copy and
+the exact retry, Library, or support-diagnostics route. Critical and
+destructive outcomes keep their durable fallback distinctions, and the failed
+recording screen exposes a selectable support reference without adding raw
+errors to diagnostics (D77).
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -500,12 +509,15 @@ presentation cases plus a 28th architecture rule that locks production
 composition and validation-before-receipt-before-transport order. Band 3I adds
 adversarial redaction, atomic support-snapshot, durable retry, fifth-section
 observation, model-action, localization, and EN/ES UI cases plus a 29th
-architecture rule that locks the diagnostics boundary. The current
-gate is 667 package tests (13 gated),
-zero strict-lint violations across 249 Swift source files, and 23 XCUITest
-cases passing in both English and Spanish. Throwaway `-use-temp-store` launches
-use a deterministic visible frame so persistent desktop overlays cannot cover
-the tested sidebar; production window placement remains unchanged.
+architecture rule that locks the diagnostics boundary. Band 3J adds typed
+Start/Stop outcome, critical/destructive persistence, localized recovery, and
+EN/ES failure-screen cases plus a 30th architecture rule that rejects raw
+dependency-localized error transport. The current gate is 671 package tests
+(13 gated), zero strict-lint violations across 250 Swift source files, and 24
+XCUITest cases passing in both English and Spanish. Throwaway
+`-use-temp-store` launches use a deterministic visible frame so persistent
+desktop overlays cannot cover the tested sidebar; production window placement
+remains unchanged.
 
 ## Target modular-monolith architecture (partially implemented)
 
@@ -936,6 +948,7 @@ until a later Band 1 adoption slice.
 19. **Every distribution boundary carries its own trust evidence:** a release app is Developer-ID signed, notarized, and stapled before packaging; the final DMG is then separately signed, notarized, and stapled. Release verification must copy the app out of the mounted image and independently pass strict codesign, stapler, and Gatekeeper assessment, because Homebrew does not launch within the outer DMG trust boundary. CI runs the package suite on the oldest supported release lane, macOS 15 Sequoia (D74).
 20. **Privacy evidence is conservative and content-free:** a meeting-content transfer validates policy, persists an immutable purpose/host/scope/consent/provider attempt, and only then reaches a redirect-blocked URLSession. Persistence failure fails closed; transport failure remains visible. New meetings may claim complete tracked coverage, while pre-v7 meetings disclose the exact later tracking boundary instead of treating absent history as proof (D75).
 21. **Support evidence is local, bounded, and redact-by-construction:** diagnostics read one atomic content-free projection and never serialize meeting text, generated output, prompts, raw failures, secrets, configuration/metrics payloads, full URLs, paths, stable database identities, or reusable fingerprints. Recovery observes durable jobs independently and may only reset exhausted work while preserving identity, idempotency, and input evidence for normal worker validation. Signposts carry job kind, attempt, and outcome only. The privacy receipt remains the sole user-facing egress claim (D76).
+22. **Workflow failures are coded before presentation:** Core owns the bounded product categories, while each adopted ApplicationKit workflow owns stable failure codes and exact durable outcome distinctions. Dependency-localized text, raw paths, and broad errors cannot cross that boundary. The app owns localized copy and an explicit recovery route; critical or destructive Start/Stop failures may not be hidden, collapsed into generic success, or added to support diagnostics as raw messages (D77).
 
 ## Refactor migration status
 
@@ -949,7 +962,7 @@ matching spec land together.
 | 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the current 667-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b plus Jul 16 field hardening: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, millisecond-canonical reservation matching, model-independent audio start, exact Parakeet-only durable first-pass transcript recovery for missing/failed live lanes, atomic captured-state/initial-job and recovered-transcript/dependent handoffs, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43/D70/D73) | Valid audio starts and remains durable before derivation or model readiness; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
 | 2 — Application layer | Complete — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import; 2L moves read-consistent `.portavoz` export; 2M gives each window one explicit Library state/action/effect owner; 2N scopes Library reads; 2O moves four meeting-review policies inward; 2P moves three Insights read policies inward; 2Q completes local policy ownership and moves the neutral event value to Core; 2R gives each window one Insights read owner; 2S gives each selected meeting one review read owner; 2T routes its persistence mutations through model actions and adapters; 2U removes two unimplemented package promises after a compatibility audit. Jul 16 capability hardening adds exact summary-provider setup states, one app-owned Foundation Models adapter, and role-specific speech-model readiness without broadening ApplicationKit's platform edge (D44–D61/D72/D73) | Nine implemented Kit libraries; no speculative boundary remains. Spotlight indexing and detail audio-path resolution stay measured Band 4 seams |
-| 3 — Provenance and privacy | In progress — 3A gives manual/post-refine regeneration typed attempt provenance; 3B makes durable post-capture provenance part of the existing job/artifact fence; 3C adds external-audio import summaries without weakening the required aggregate; 3D links accepted refined transcripts without weakening review or the source-revision fence; 3E links durable Companion cards and records actual BYOK fallback facts; 3F enforces content-free egress policy for Companion BYOK and records conservative destination scope; 3G-a enforces the same boundary for OpenAI-compatible summary generation; 3G-b completes explicit Gist/GitHub/Linear meeting-content network migration; 3H persists fail-closed attempts and shows an honest per-meeting privacy receipt with explicit historical coverage; 3I exports redacted local evidence and makes durable processing actionable with content-free signposts (D62–D76) | Privacy receipt and local support/recovery evidence are complete; bounded typed-error adoption and sandbox evidence remain |
+| 3 — Provenance and privacy | In progress — 3A gives manual/post-refine regeneration typed attempt provenance; 3B makes durable post-capture provenance part of the existing job/artifact fence; 3C adds external-audio import summaries without weakening the required aggregate; 3D links accepted refined transcripts without weakening review or the source-revision fence; 3E links durable Companion cards and records actual BYOK fallback facts; 3F enforces content-free egress policy for Companion BYOK and records conservative destination scope; 3G-a enforces the same boundary for OpenAI-compatible summary generation; 3G-b completes explicit Gist/GitHub/Linear meeting-content network migration; 3H persists fail-closed attempts and shows an honest per-meeting privacy receipt with explicit historical coverage; 3I exports redacted local evidence and makes durable processing actionable with content-free signposts; 3J gives recording Start/Stop stable typed failures and localized recovery (D62–D77) | Privacy receipt, local support/recovery evidence, and the bounded recording failure vertical are complete; App Sandbox capability evidence remains |
 | 4 — Detail and scale | Not started | Meeting Detail decomposition, content-addressable caches, incremental indexing, measured large-library performance |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |
 | 6 — Platform expansion | Deferred | CKSyncEngine/iOS built on durable state and tombstones |

@@ -321,6 +321,30 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
     }
 
+    func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/FailureCategory.swift")
+        let start = try Self.contents(of: "Sources/ApplicationKit/StartRecording.swift")
+        let stop = try Self.contents(of: "Sources/ApplicationKit/StopRecording.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+
+        for category in [
+            "critical", "recoverable", "degradable", "external", "destructive",
+        ] {
+            XCTAssertTrue(core.contains("case \(category)"))
+        }
+        XCTAssertTrue(core.contains("public protocol CodedFailure"))
+        XCTAssertTrue(start.contains("public enum StartRecordingFailure"))
+        XCTAssertTrue(stop.contains("public enum StopRecordingFailure"))
+        XCTAssertFalse(start.contains("error.localizedDescription"))
+        XCTAssertFalse(stop.contains("error.localizedDescription"))
+        XCTAssertFalse(start.contains("message: String"))
+        XCTAssertFalse(stop.contains("processingFailed(message:"))
+        XCTAssertTrue(controller.contains("presentStartFailure(failure)"))
+        XCTAssertTrue(controller.contains("presentStopFailure(failure"))
+        XCTAssertTrue(controller.contains("L10n.text("))
+    }
+
     func testSpeechModelReadinessIsScopedToTheWorkflowCapability() throws {
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
         let readiness = services

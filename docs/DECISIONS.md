@@ -1890,3 +1890,37 @@ manual recovery inside the existing lease/revision architecture. Independent
 observations make stalled work visible without reloading healthy transcript,
 summary, Companion, or privacy sections. Content-free signposts improve local
 performance diagnosis without turning unified logging into transcript storage.
+
+## D77 — Recording failures are coded before presentation (Jul 2026)
+
+**Context:** Start and Stop already preserved subtle audio-first outcomes, but
+their ApplicationKit results still transported dependency-localized strings.
+That coupled workflow contracts to platform wording, made EN/ES recovery
+inconsistent, and risked raw paths or provider details leaking into presentation
+or diagnostics. Replacing every error in one migration would be broad and could
+erase the durable distinctions that protect captured audio.
+
+**Decision:** Core owns five product-level `FailureCategory` values —
+`critical`, `recoverable`, `degradable`, `external`, and `destructive` — plus a
+minimal `CodedFailure` contract. ApplicationKit's adopted recording Start and
+Stop verticals map dependency failures to workflow-specific enums with stable
+codes and categories. They transport no dependency `localizedDescription`, raw
+path, endpoint, or provider prose. Their result enums retain the exact existing
+reservation, reconciliation, preserved-audio, fallback-commit, no-audio, and
+cleanup outcomes rather than collapsing them into a generic error.
+
+The macOS app is the only owner of localized failure copy and explicit recovery
+routes. Recoverable failures offer retry or the Library; uncertain critical or
+destructive state routes to the existing local support-diagnostics surface and
+asks the user to keep the app open when evidence may still be recoverable. The
+failed recording view exposes the stable code as a selectable support reference.
+Support JSON may include allowlisted stable codes/categories but never raw
+messages. New workflows adopt this taxonomy only as bounded vertical slices
+with characterization tests.
+
+**Rationale:** stable machine-readable identity makes failures testable,
+localizable, and supportable without widening the privacy surface. Keeping
+workflow enums preserves business meaning that a global `AppError` would erase;
+keeping presentation in the app prevents capability and persistence layers from
+depending on UI language. Incremental adoption avoids a risky error-system
+rewrite while establishing a ratchet against raw error transport.
