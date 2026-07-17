@@ -2624,3 +2624,43 @@ UI, and iOS remain unimplemented.
 characterized with two in-memory stores. CloudKit can then remain a replaceable
 adapter over an already fixed privacy boundary instead of becoming the place
 where Portavoz decides data ownership and conflict semantics.
+
+## D94 — Save one encrypted tombstone record per meeting (Jul 2026)
+
+**Context:** D93 fixes the portable bytes but not their CloudKit shape. A large
+meeting may exceed a conservative inline-record budget, encrypted fields cannot
+contain `CKAsset`, and deleting a CKRecord would remove the comparable
+tombstone that concurrent devices need for privacy-dominant conflict handling.
+The record codec must also preserve downloaded CKRecord system fields so the
+later sender can use CloudKit's change-tag conflict detection.
+
+**Decision:** IntegrationsKit owns one `MeetingReplica` record per meeting in a
+private custom `PortavozMeetings` zone. Its deterministic record name contains
+only the meeting UUID. Payloads up to the codec's conservative 512 KiB policy
+use `CKRecord.encryptedValues`; larger payloads use one `CKAsset`, which
+CloudKit encrypts by default. Asset staging uses a unique local file, complete
+file protection, and backup exclusion. The payload SHA-256 is also an encrypted
+field. Only format version, payload-storage selector, record type/identity, and
+the asset field itself remain outside `encryptedValues`; no transcript,
+summary, title, speaker, source-device, generation, or digest value is exposed
+as a regular queryable field.
+
+The codec accepts an existing record only when its type, zone, and deterministic
+identity match, so later sends can retain CloudKit system fields/change tags.
+It validates format, storage, checksum, and meeting identity before decoding.
+A meeting deletion remains an encrypted `.delete` envelope saved to that same
+record ID; the adapter must never translate it into a CKRecord delete. Audio is
+not part of either inline or asset payload.
+
+This 6B2A slice is deliberately dormant. It creates no `CKContainer`, requests
+no account, initializes no `CKSyncEngine`, adds no entitlement, performs no
+network call, and exposes no sync UI. Persisted engine/system fields, exact
+in-flight generations, retry/replay state, account transitions, and the
+delegate/runtime are the next 6B2B slice.
+
+**Rationale:** one record preserves CloudKit's native optimistic-concurrency
+boundary without splitting a meeting into partially visible chunks. The asset
+fallback scales independently of transcript length, while encrypted placement
+and protected staging keep content out of indexes, logs, and ordinary local
+files. Tombstone saves preserve deletion evidence for deterministic conflict
+resolution; runtime and consent remain independently reviewable.

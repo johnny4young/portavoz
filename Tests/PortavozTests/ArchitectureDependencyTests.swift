@@ -906,9 +906,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("change.generation <= record.localGeneration"))
         XCTAssertTrue(storage.contains("max("))
         XCTAssertFalse(manifest.contains("CloudKit"))
-        XCTAssertTrue(try Self.imports(under: "Sources")
+        let cloudKitImports = try Self.imports(under: "Sources")
             .filter { $0.module == "CloudKit" }
-            .isEmpty)
+        XCTAssertEqual(
+            cloudKitImports.map(\.file),
+            ["IntegrationsKit/CloudMeetingRecordCodec.swift"])
         XCTAssertTrue(decisions.contains("## D92"))
     }
 
@@ -943,6 +945,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(codec.contains("import CloudKit"))
         XCTAssertFalse(manifest.contains("SyncKit"))
         XCTAssertTrue(decisions.contains("## D93"))
+    }
+
+    func testCloudMeetingRecordCodecEncryptsContentWithoutOwningRuntime() throws {
+        let codec = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingRecordCodec.swift")
+        let storage = try Self.imports(under: "Sources/StorageKit")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(codec.contains("record.encryptedValues[Field.inlinePayload]"))
+        XCTAssertTrue(codec.contains("CKAsset(fileURL: assetURL)"))
+        XCTAssertTrue(codec.contains(".completeFileProtection"))
+        XCTAssertTrue(codec.contains("payloadSHA256"))
+        XCTAssertTrue(codec.contains("existingRecord.recordID == recordID"))
+        XCTAssertFalse(codec.contains("recordIDsToDelete"))
+        XCTAssertFalse(storage.contains(where: { $0.module == "CloudKit" }))
+        XCTAssertTrue(decisions.contains("## D94"))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

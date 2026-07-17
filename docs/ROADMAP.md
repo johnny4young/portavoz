@@ -6,18 +6,24 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue architecture Band 6B with the Apple transport
-sub-slice: encode the now-fixed portable envelope into encrypted inline
-CKRecord values with an encrypted-by-default CKAsset fallback for large
-meetings, persist CKSyncEngine state/retry/replay cursors separately from the
-schema-v14 journal, and keep account/consent plus initial upload explicit. Band
-6B1 is complete: exact-generation envelopes carry every live text-first
+**Next concrete step:** continue architecture Band 6B with sub-slice 6B2B:
+persist opaque CKSyncEngine serialization, record system fields, exact
+in-flight generations, retry deadlines, and staged remote replay independently
+from the schema-v14 journal, then prove a dormant explicitly injected
+CKSyncEngine delegate across restart, partial failure, stale remote work, and
+account transitions. Band 6B2A already maps the fixed portable envelope to one
+deterministic private-zone record: small payloads and their digest are
+encrypted values, large payloads use a protected encrypted-by-default CKAsset,
+matching records preserve system fields, and deletion is a saved tombstone
+(D94). It creates no container, account request, engine, entitlement, network
+path, or UI. Band 6B1 is complete: exact-generation envelopes carry every live text-first
 artifact, deterministically round-trip, validate/replay in one transaction,
 preserve device-local derivations, defer live remote work behind unsent local
 work, and let remote deletion win without physical purge (D93). Band 6A adds transport-independent, content-free
 per-meeting generations, explicit initial seeding, generation-aware
 acknowledgement, typed-evidence detection, and purge-surviving deletion state
-without importing CloudKit or enabling network behavior (D92). Neither slice imports CloudKit or enables network behavior. The user's
+without importing CloudKit or enabling network behavior (D92). Only the dormant
+6B2A codec imports CloudKit; none of these slices enables network behavior. The user's
 separate product decision opened Band 6; each transport and platform step still
 ships as its own feature-parity-preserving slice. Band 5F completed Band 5 with
 card-identity-keyed, role-separated Companion evidence in schema v13: question
@@ -64,7 +70,19 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93/D94).
+
+- **Architecture Band 6 slice 6B2A complete — CloudKit receives one encrypted
+  meeting tombstone (Jul 17, 2026)**: IntegrationsKit encodes each portable
+  envelope into one deterministic private-zone `MeetingReplica`. Payloads at
+  or below the 512 KiB policy and their digest use encrypted values; larger
+  payloads use a complete-protection, backup-excluded CKAsset staging file,
+  whose content CloudKit encrypts by default. Matching existing records are
+  reused for future change-tag conflict detection, malformed identity/storage/
+  checksum input fails closed, and deletion remains an encrypted record save.
+  Five codec tests and an architecture ownership ratchet protect D94. No
+  container, account request, CKSyncEngine, entitlement, network path, status
+  UI, audio sync, or iOS target exists yet.
 
 - **Architecture Band 6 slice 6B1 complete — transport cannot redefine the
   meeting (Jul 17, 2026)**: StorageKit joins one current journal generation to

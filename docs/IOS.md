@@ -34,7 +34,7 @@ Rules: live STT degrades BEFORE dropping the recording (saving WAV is always ine
 
 ## Sync (M14c): CKSyncEngine, no proprietary server
 
-**As built after Band 6B1 (D92–D93):** schema v14 has a content-free per-meeting
+**As built after Band 6B2A (D92–D94):** schema v14 has a content-free per-meeting
 mutation journal with monotonic local/acknowledged generations, explicit
 initial seeding, and deletion state that survives physical purge. Portable
 meeting roots and typed evidence update it in their own transaction;
@@ -47,29 +47,37 @@ and Companion cards/evidence. IntegrationsKit deterministically encodes that
 envelope; StorageKit validates and atomically replays it while preserving
 matching device-local derivations, deferring live remote work behind unsent
 local work, making remote deletion privacy-dominant, and suppressing accepted
-remote echo. There is still **no CloudKit
-import, CKSyncEngine state, account request, network transfer, sync status UI,
-server-conflict/retry coordinator, or iOS app target**.
+remote echo. IntegrationsKit now maps that envelope to one deterministic
+private-zone `MeetingReplica`: small payloads and their digest use encrypted
+values; large payloads use a protected, backup-excluded CKAsset staging file
+whose content CloudKit encrypts by default; matching records preserve system
+fields; deletion saves a tombstone. There is still **no CKContainer,
+CKSyncEngine state/delegate, account request, entitlement, network transfer,
+sync status UI, server-conflict/retry coordinator, or iOS app target**.
 
 **Planned execution:**
 
 - **6B1 complete — portable content/replay:** exact-generation aggregate,
   deterministic bytes, atomic validation/replay, local-derivation preservation,
   live/live deferral, deletion priority, and immutable identity fences (D93).
-- **6B2 — private CloudKit transport:** IntegrationsKit owns encrypted inline
-  CKRecord values, an encrypted-by-default CKAsset fallback for oversized
-  meetings, and persisted CKSyncEngine/account/retry/replay state; StorageKit
-  remains the mutation authority. Initial upload stays explicit.
+- **6B2A complete — dormant record codec:** IntegrationsKit owns encrypted
+  inline CKRecord values, an encrypted-by-default CKAsset fallback for
+  oversized meetings, strict validation, existing-record reuse, and saved
+  deletion tombstones without creating a runtime (D94).
+- **6B2B next — private CloudKit runtime:** persist opaque CKSyncEngine state,
+  record system fields, exact in-flight generations, retry deadlines, and
+  staged replay independently; StorageKit remains the mutation authority and
+  initial upload stays explicit.
 - **Encryption:** use encrypted record values for content fields. Do not claim
   end-to-end guarantees beyond the user's actual iCloud/Advanced Data
   Protection configuration.
 - **Conflicts:** 6B1 already rejects immutable identity rewrites, defers a live
   remote aggregate behind unsent local work, and lets remote deletion win that
   race without purging. CKRecord server-conflict replay and restart behavior
-  remain 6B2 work; broad field-level last-writer-wins is not the contract.
+  remain 6B2B work; broad field-level last-writer-wins is not the contract.
 - **Audio:** never part of initial sync. A later per-meeting CKAsset opt-in has
   its own size, retry, deletion, and consent contract.
-- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92/D93).
+- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D94).
 - **Later Companion control:** an ephemeral CloudKit command record may control
   Mac recording only after private data sync is field-proven; it is not part of
   6B and requires explicit device trust and replay protection.

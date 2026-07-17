@@ -1,16 +1,17 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 759 package tests passing (13 gated) + 31 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 31 cases and retained app-window-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 765 package tests passing (13 gated) + 31 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 31 cases and retained app-window-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 275 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 276 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention, audio/model/release/privacy boundaries, scoped feature ownership, explicit canonical-people, typed overview/decision/action-item/Companion evidence, private-feedback boundaries, the content-free generation-fenced sync journal with no CloudKit/SyncKit adapter, local diagnostics/signpost redaction, and measured Band 4 source/evidence gates |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention, audio/model/release/privacy boundaries, scoped feature ownership, explicit canonical-people, typed overview/decision/action-item/Companion evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the dormant IntegrationsKit record codec, no speculative SyncKit/runtime bypass, local diagnostics/signpost redaction, and measured Band 4 source/evidence gates |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, explicit live/deleted initial seed, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
 | MeetingSyncAggregateTests | Exact-current-generation envelope, deterministic codec, idempotent full-history replay, device-local path/person/embedding preservation, trigger-echo suppression, deferred live/live local-pending conflict, recoverable privacy-dominant remote deletion, invalid-relation rollback, and immutable summary-root/child collision rejection |
+| CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, protected backup-excluded CKAsset fallback, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
@@ -800,6 +801,16 @@ deletion wins without purge; and invalid relations or immutable identity
 rewrites fail before replacement. The full gate is 759 package tests (13
 gated), zero strict-lint violations across 275 Swift source files, and 31
 unchanged XCUITest cases per locale (D93).
+
+Band 6 slice 6B2A adds five CloudKit record-codec tests plus one architecture
+ratchet. They prove encrypted inline payload/digest placement, protected and
+backup-excluded CKAsset fallback, deterministic private-zone identity,
+matching-record reuse, checksum tamper rejection, strict metadata validation,
+and deletion as a saved encrypted tombstone rather than a CKRecord delete. The
+source ratchet permits CloudKit only in the IntegrationsKit codec, forbids it in
+StorageKit, and rejects a hidden runtime or delete path. The full gate is 765
+package tests (13 gated), zero strict-lint violations across 276 Swift source
+files, and 31 unchanged XCUITest cases per locale (D94).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
