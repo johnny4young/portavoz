@@ -81,11 +81,6 @@ struct ContentView: View {
         .task { positionUITestWindowIfNeeded() }
         .task { await services.purgeExpiredTrash() }
         .task { await services.seedShowcaseIfRequested() }
-        .task(id: services.libraryVersion) {
-            // M16: meetings searchable from Spotlight. Full rebuild — cheap
-            // (metadata only) and immune to delete drift.
-            await SpotlightIndexer.reindexAll(store: services.store)
-        }
         .onOpenURL { url in
             // M16: portavoz://record — Shortcuts/automation tools can start
             // a recording (the user still sees it; nothing records hidden).

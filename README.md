@@ -153,7 +153,7 @@ real vertical use case.
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite schema v7, FTS5 search, scoped Library/Insights/Meeting Detail observations, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
+| `StorageKit` | GRDB/SQLite schema v7, FTS5 search, scoped Library/Insights/Meeting Detail observations, a one-read Spotlight projection, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
 | `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, and the policy-checked, receipt-before-transport outbound network adapter |
 
 The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
@@ -166,9 +166,11 @@ transcript/cast, newest immutable summary, Companion cards, privacy receipt,
 and durable processing independently.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
-features no longer consume the global invalidation counter for reads.
-Spotlight retains that transitional seam until its measured Band 4 outbox
-slice.
+features no longer consume a global invalidation counter for reads. Spotlight
+uses a process-scoped actor, one consistent StorageKit snapshot, a named
+file-protected local index, bounded batches, compact client state, and retries.
+At 100,000 meetings the exact projection measures 426 ms instead of 22 seconds;
+no cloud service or transcript translation is involved.
 
 ## Build from source
 

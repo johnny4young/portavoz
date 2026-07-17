@@ -18,7 +18,7 @@ extension AppServices {
     func importBundle(from url: URL) async throws -> MeetingID {
         let meetingID = try await importMeetingBundleUseCase.execute(
             ImportMeetingBundleRequest(sourceURL: url))
-        libraryVersion += 1
+        requestSpotlightReindex()
         return meetingID
     }
 
@@ -181,7 +181,7 @@ extension AppServices {
             meetingID: meetingID,
             audioDirectory: audioDirectory)
         _ = try? await meetingPurge.purge(request)
-        libraryVersion += 1
+        requestSpotlightReindex()
     }
 
     /// Empties tombstones older than 30 days (rows + audio) — called once
@@ -189,6 +189,6 @@ extension AppServices {
     func purgeExpiredTrash() async {
         let cutoff = Date().addingTimeInterval(-30 * 86_400)
         let attempted = (try? await meetingPurge.expired(cutoff)) ?? 0
-        libraryVersion += attempted
+        if attempted > 0 { requestSpotlightReindex() }
     }
 }

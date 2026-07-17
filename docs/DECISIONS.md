@@ -2233,3 +2233,49 @@ Reconsider caching only if a future longer real-audio matrix misses an explicit
 budget after this adapter, and require comparable latency, memory, storage,
 replacement, migration, and deletion evidence before selecting it. Band 4
 proceeds to Spotlight delivery/backlog measurement rather than cache design.
+
+## D85 — Reconcile Spotlight through a protected measured snapshot (Jul 2026)
+
+**Context:** the released Spotlight adapter rebuilt the default prototype
+index from a window-owned `libraryVersion` task. Preparing one rebuild used a
+meeting-list read followed by up to two reads per meeting, loaded complete
+details, selected only the General summary, swallowed delivery errors, and had
+no durable comparison state. A disposable Release matrix measured projection
+wall/CPU p95 at 216.84/224.22 ms for 1,000 meetings,
+2,166.39/2,231.34 ms for 10,000, and 22,085.35/22,720.40 ms for 100,000.
+The existing v6 `outboxEvent` foundation could make each mutation incremental,
+but that would add producer coverage, delivery-state lifecycle, compaction,
+and support semantics before proving that a bounded full reconciliation was
+insufficient.
+
+**Decision:** keep Spotlight local and reconcile it from one consistent
+StorageKit snapshot. One SQL projection selects every live meeting, its newest
+live summary across recipes, and its first 40 live segments in deterministic
+order, with the released 4,000-character description cap. A process-scoped
+actor coalesces requests for 250 ms, computes a compact SHA-256 client state,
+skips unchanged publication, and retries failures after one and five seconds.
+It replaces the domain through a named `app.portavoz.meetings.v2` index with
+complete file protection and 500-item Core Spotlight batches. Launch always
+requests reconciliation, so a crash or missed mutation heals without a
+window. The released default-index domain is removed only after the protected
+index is ready. Search-hit identity and app-delegate navigation remain
+unchanged. Synthetic delivery evidence uses a unique named index and domain,
+contains no real meeting content, and is deleted after the run.
+
+The comparable snapshot projection preserves exact result fingerprints at
+1,000, 10,000, and 100,000 meetings. Wall/CPU p95 is 4.05/4.26 ms,
+38.06/39.96 ms, and 425.64/423.58 ms respectively; the 100,000-meeting path is
+51.9x faster and passes the 500 ms gate. At that extreme checkpoint absolute
+and incremental physical-footprint p95 are 141.14 MiB and 76.03 MiB. A
+1,000-item protected named-index delivery completes in 21.19 ms and its
+synthetic cleanup succeeds. `outboxEvent` remains unconsumed by Spotlight.
+
+**Rationale:** the measured snapshot is deterministic, self-healing, much
+simpler than a second durable delivery state machine, and already meets the
+published scale budget while preserving exact searchable content. Reconsider a
+Spotlight outbox only if field evidence shows stale results after the bounded
+retries or requires user-visible per-mutation delivery status. Reconsider the
+snapshot memory shape if a future comparable 100,000-meeting run exceeds
+160 MiB absolute or 96 MiB incremental physical footprint. Any replacement
+must retain protected local storage, crash reconciliation, deletion parity,
+content equivalence, and isolated before/after evidence.

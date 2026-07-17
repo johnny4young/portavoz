@@ -31,22 +31,22 @@ extension AppServices: LibraryModelClient {
     }
 
     func renameLibraryMeeting(_ meeting: Meeting) async throws {
-        defer { libraryVersion += 1 }
+        defer { requestSpotlightReindex() }
         try await store.save(meeting)
     }
 
     func setLibraryActionItem(_ id: UUID, done: Bool) async throws {
-        defer { libraryVersion += 1 }
+        defer { requestSpotlightReindex() }
         try await store.setActionItem(id, done: done)
     }
 
     func deleteLibraryMeeting(_ id: MeetingID) async throws {
-        defer { libraryVersion += 1 }
+        defer { requestSpotlightReindex() }
         try await meetingLifecycle.delete(id)
     }
 
     func restoreLibraryMeeting(_ id: MeetingID) async throws {
-        defer { libraryVersion += 1 }
+        defer { requestSpotlightReindex() }
         try await meetingLifecycle.restore(id)
     }
 

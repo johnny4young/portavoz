@@ -188,7 +188,7 @@ enum PostCaptureProcessingCoordinator {
     static func resumeAfterRecovery(services: AppServices) async {
         do {
             if try await seedFixtureIfRequested(services: services) {
-                services.libraryVersion += 1
+                services.requestSpotlightReindex()
             }
         } catch {
             logger.error("Could not prepare processing fixture: \(error.localizedDescription)")
@@ -211,7 +211,7 @@ enum PostCaptureProcessingCoordinator {
             guard let job else { return }
 
             let changed = await execute(job, owner: owner, services: services)
-            if changed { services.libraryVersion += 1 }
+            if changed { services.requestSpotlightReindex() }
         }
     }
 

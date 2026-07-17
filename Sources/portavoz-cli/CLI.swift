@@ -61,6 +61,8 @@ struct PortavozCLI {
             await BenchSemanticCommand.run(arguments)
         case "bench-waveform":
             await BenchWaveformCommand.run(arguments)
+        case "bench-spotlight":
+            await BenchSpotlightCommand.run(arguments)
         default:
             printUsage()
         }
@@ -82,6 +84,8 @@ struct PortavozCLI {
               portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--output <json>]
               portavoz-cli bench-waveform [--mic <audio>] [--system <audio>]
                                           [--buckets 600] [--runs 20] [--output <json>]
+              portavoz-cli bench-spotlight [--mode legacy|snapshot] [--meetings 100000]
+                                          [--runs 3] [--delivery-items 1000] [--output <json>]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

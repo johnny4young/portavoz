@@ -73,7 +73,7 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
         // Existing isn't enough on the coldest launch: seeding bumps
-        // libraryVersion, the list re-renders, and `click` re-resolves this
+        // the scoped observation, the list re-renders, and `click` re-resolves this
         // query — against a snapshot that can already be stale ("Failed to get
         // matching snapshot"). Waiting for hittable re-resolves until it settles.
         let settled = expectation(

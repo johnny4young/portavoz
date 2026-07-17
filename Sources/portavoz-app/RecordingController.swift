@@ -280,7 +280,7 @@ final class RecordingController {
             tappedMeetingApps = commit.tappedMeetingApps
             liveTranscriptDeferred = !commit.liveTranscriptionAvailable
             session = commit.session
-            services.libraryVersion += 1
+            services.requestSpotlightReindex()
             liveDiarizerFeed = diarizerFeed
             if commit.liveTranscriptionAvailable {
                 startLiveDiarization(
@@ -301,7 +301,7 @@ final class RecordingController {
             diarizerFeed.finish()
             recordingShell = reservation?.meeting
             reservedAssets = reservation?.assets ?? []
-            for _ in 0..<invalidations { services.libraryVersion += 1 }
+            if invalidations > 0 { services.requestSpotlightReindex() }
             presentStartFailure(failure)
         }
     }
@@ -571,7 +571,7 @@ extension RecordingController {
         case .noAudioCaptured:
             recordingShell = nil
             reservedAssets = []
-            services.libraryVersion += 1
+            services.requestSpotlightReindex()
             presentFailure(
                 L10n.text(
                     "No audio was captured. Check Portavoz microphone and system audio recording permissions."),
@@ -656,7 +656,7 @@ extension RecordingController {
     ) {
         recordingShell = commit.meeting
         reservedAssets = commit.assets
-        services.libraryVersion += 1
+        services.requestSpotlightReindex()
     }
 
 }

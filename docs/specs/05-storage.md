@@ -108,7 +108,8 @@ now reaches it through D43's atomic snapshot/initial-job handoff. The isolated
 characterization fixture uses the same exact request factory and normal queue
 admission without real capture evidence.
 Generation runs are consumed by summary producers and accepted Refine; outbox
-events and per-meeting preferences are not consumed yet.
+events and per-meeting preferences are not consumed yet. D85 explicitly keeps
+Spotlight off the outbox at the measured scale.
 
 The migration is verified both by a deterministic v5 fixture and by migrating
 a scratch copy of the real release database: legacy logical rows and meeting
@@ -194,6 +195,15 @@ database concern and remain behind the application filesystem port (D52).
 
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+
+`spotlightDocuments()` is the D85 read-side projection for local OS search. A
+single `DatabaseQueue.read` uses ranked CTEs to select every live meeting, its
+newest live summary across all recipes, and its first 40 live segments ordered
+by start time and rowid. Documents are ordered by meeting start and identity,
+and their summary-plus-transcript description retains the released 4,000-
+character cap. Tombstoned meetings, summaries, and segments are excluded.
+StorageKit returns platform-neutral `SpotlightDocument` values; Core Spotlight
+batching, protection, retry, and cleanup remain private app adapter concerns.
 
 Privacy evidence adds `recordDataEgressEvent(_:)`,
 `dataEgressEvents(for:)`, and `privacyReceipt(for:)`. The first is the

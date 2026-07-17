@@ -42,7 +42,19 @@ a separately signed product build. Production entitlements remain unchanged.
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
-DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), and `whisper` (runtime loaded only for Refine/Import). `modelsState` drives visible live-model preparation. Parakeet and pyannote each have an independently retained, process-scoped task: concurrent callers join the exact verified capability instead of loading a bundle. Recording samples only an already-resident transcriber and starts audio immediately; background preparation may request both afterward. Durable first-pass recovery and Dictation request Parakeet only; Refine/Import request pyannote only at their attribution boundary and never acquire live Parakeet as a side effect. Whisper Turbo/Compact preparation has its own app-scoped serialized task and observable state. Settings can proactively start/retry/delete a variant; the task survives that window, Refine/Import join it, and successful completion retains only an opaque verified token until runtime allocation. The heavyweight runtime keeps its two-minute idle-release policy. `libraryVersion` remains only as a compatibility trigger for Spotlight and mutation paths not yet extracted. Library, Insights, and Meeting Detail no longer consume it for reads: their feature models receive storage-independent updates from query-scoped Store observations.
+DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), and `whisper` (runtime loaded only for Refine/Import). `modelsState` drives visible live-model preparation. Parakeet and pyannote each have an independently retained, process-scoped task: concurrent callers join the exact verified capability instead of loading a bundle. Recording samples only an already-resident transcriber and starts audio immediately; background preparation may request both afterward. Durable first-pass recovery and Dictation request Parakeet only; Refine/Import request pyannote only at their attribution boundary and never acquire live Parakeet as a side effect. Whisper Turbo/Compact preparation has its own app-scoped serialized task and observable state. Settings can proactively start/retry/delete a variant; the task survives that window, Refine/Import join it, and successful completion retains only an opaque verified token until runtime allocation. The heavyweight runtime keeps its two-minute idle-release policy. Library, Insights, and Meeting Detail receive storage-independent updates from query-scoped Store observations; no app feature consumes a global `libraryVersion` counter.
+
+`AppServices` also owns one process-scoped `SpotlightIndexer` actor (D85).
+Launch and every searchable mutation call `requestSpotlightReindex()`; requests
+coalesce for 250 ms and are not tied to a `ContentView` lifecycle. The actor
+loads one consistent StorageKit projection, hashes its exact documents into a
+compact client state, skips unchanged publication, and retries failures after
+one and five seconds. Its private backend serializes access to the named
+`app.portavoz.meetings.v2` index, uses complete file protection and 500-item
+batches, and removes the released default-index domain only after the protected
+index is ready. Temporary UI-test stores disable OS indexing. Internal status
+and content-free OSLog attempts are diagnostic only; no meeting content is
+logged. A new request after terminal retry exhaustion starts a fresh recovery.
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -63,8 +75,8 @@ versus visible provider and persistence outcomes (D62).
 
 Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
 `AppServices` now only samples platform preferences, constructs private
-filesystem/model/provider adapters, localizes typed progress, increments
-`libraryVersion` once after success, and returns the ID used by the existing
+filesystem/model/provider adapters, localizes typed progress, requests
+Spotlight reconciliation after success, and returns the ID used by the existing
 Library navigation. The use case owns required transcription, degradable
 diarization and summary, independent transcript/summary languages, idle
 release, staged-audio rollback, and atomic meeting/cast/transcript installation.
@@ -206,7 +218,7 @@ session Stop, and synchronous mic mute. Launch recovery remains the next Band
 
 Slice 2K moves `.portavoz` import through
 `ApplicationKit.ImportMeetingBundle`. `AppServices` invokes one use case,
-increments `libraryVersion` once only after success, and returns the fresh ID;
+requests Spotlight reconciliation only after success, and returns the fresh ID;
 Library and app-delegate callers preserve their existing navigation order.
 The private document adapter reads, decodes, and remaps through IntegrationsKit
 on a detached utility task. Before files are created, ApplicationKit accepts
@@ -248,8 +260,9 @@ active FTS remains its own debounced query stream. A failed section preserves
 the most recent healthy data and degrades the load phase without stopping the
 other observations. Search continues to fence stale queries and now also
 updates while the same query remains active. Library no longer reads
-`libraryVersion`; mutation adapters still increment it for Meeting Detail,
-Insights, and Spotlight until those consumers migrate independently. No
+`libraryVersion`; at that slice mutation adapters still incremented it for
+Meeting Detail, Insights, and Spotlight until those consumers migrated. D85
+later removed the counter after Spotlight gained its process owner. No
 visible control, navigation behavior, or localized copy changed (D54).
 
 Slice 2O moves the deterministic meeting-review policy cluster into
@@ -264,7 +277,7 @@ Slice 2P moves the deterministic Insights read-policy cluster into
 ApplicationKit. `InsightsScope`, `LibraryStats`, and `InsightsFindings` retain
 their exact public APIs and calculations; `InsightsView` now imports only the
 inward boundary for those decisions. Store-backed facts, voice balance, and the
-existing `libraryVersion` refresh are unchanged. Twenty-one direct policy tests,
+then-existing broad refresh were unchanged. Twenty-one direct policy tests,
 a source-ownership/import architecture rule, and the retained heatmap screenshot
 guard behavior and the visible dashboard (D56).
 
@@ -287,7 +300,8 @@ observation IDs, preserves healthy sections after a source failure, and
 computes one storage-independent `InsightsReadModel`. `AppServices+Insights`
 maps the four Store streams at composition. The view no longer imports
 StorageKit, calls `services.store`, or reads `libraryVersion`; Meeting Detail
-and Spotlight retain the broad compatibility counter (D58).
+and Spotlight retained the broad compatibility counter at that slice (D58),
+before D59 and D85 removed the final consumers.
 
 Slice 2S gives each selected meeting one read owner. `MeetingDetailView` owns
 an `@MainActor @Observable MeetingDetailModel` for the route identity and
@@ -306,7 +320,7 @@ Slice 2T routes Meeting Detail persistence through the same route-owned model.
 Explicit actions/effects cover title and speaker rename, name/voice suggestion
 acceptance, action-item completion, Companion removal, meeting deletion, and
 searchable-content changes. `AppServices+MeetingDetail` adapts Store, the
-ApplicationKit lifecycle use case, and Spotlight's compatibility counter;
+ApplicationKit lifecycle use case, and the Spotlight reconciliation request;
 `MeetingDetailView` reaches none of them directly. The model preserves silent
 best-effort operations, visible manual-rename/Companion errors, explicit
 remember-voice consent, and delete navigation. Scoped observations, not

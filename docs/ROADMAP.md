@@ -6,15 +6,16 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement architecture Band 4 slice 4G: measure the
-current Spotlight full-rebuild delivery time, burst behavior, failure recovery,
-and pending-work visibility against disposable 1k/10k/100k meeting metadata
-before selecting an outbox consumer. Band 4F brings a real 55.9-minute
-dual-channel waveform from 747.53/754.79 ms repeat wall/CPU p95 to
-70.11/71.33 ms without a durable cache, so D84 retains stateless generation
-and rejects sidecars, schema/read-model changes, and invalidation lifecycle at
-the measured scale. Band 4E similarly retains schema-v7 Float32 BLOBs and
-rejects sqlite-vec, `segmentEmbedding`, `DatabasePool`, and vector caches.
+**Next concrete step:** begin architecture Band 5 slice 5A with a
+characterized canonical-person and alias boundary. Inventory every current
+speaker/name/voiceprint/calendar identity path, define confirmation-safe merge
+semantics and additive storage compatibility, then implement the smallest
+vertical that lets a user link an observed speaker to one person without any
+automatic merge or biometric sync. Band 4G closes the prior Spotlight gate:
+the exact 100,000-meeting projection falls from 22,085.35 ms to 425.64 ms wall
+p95, while a process-scoped actor now reconciles a named file-protected index
+with bounded batches, client state, retries, and launch repair. D85 therefore
+rejects a Spotlight outbox consumer at the measured scale. Band 4 is complete.
 D78 closes Band 3 by retaining the accurately documented
 non-sandboxed distribution until a reversible feature-parity migration passes
 its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
@@ -32,7 +33,21 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85).
+
+- **Architecture Band 4 slice 4G complete — private Spotlight search heals
+  itself and scales (Jul 17, 2026)**: StorageKit now projects every live
+  meeting, newest cross-recipe summary, and first 40 live segments from one
+  consistent SQL snapshot. A process-scoped actor coalesces edit bursts,
+  compares compact client state, retries transient failures, and publishes
+  500-item batches to a named `.complete`-protected index; launch repairs
+  missed work and cleanup removes the released default-index domain only after
+  success. Exact fingerprints match the legacy path at 1k/10k/100k meetings.
+  At 100k, wall/CPU p95 falls from 22,085.35/22,720.40 ms to
+  425.64/423.58 ms; absolute/incremental footprint is 141.14/76.03 MiB. Seven
+  focused tests, a synthetic-only 1,000-item delivery/cleanup, tracked evidence,
+  source guards, and D85 remove the global invalidation counter and reject a
+  Spotlight outbox at the measured scale.
 
 - **Architecture Band 4 slice 4F complete — long-meeting waveforms are
   stateless and inside budget (Jul 17, 2026)**: a privacy-safe Release harness

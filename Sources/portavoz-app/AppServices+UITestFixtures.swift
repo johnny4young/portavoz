@@ -65,7 +65,7 @@ extension AppServices {
         await seedProcessingFailureIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
-        libraryVersion += 1
+        requestSpotlightReindex()
     }
 
     private func seedProcessingFailureIfRequested(for meetingID: MeetingID) async {

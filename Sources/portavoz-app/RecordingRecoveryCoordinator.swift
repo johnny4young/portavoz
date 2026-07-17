@@ -29,7 +29,7 @@ enum RecordingRecoveryCoordinator {
             RecoverInterruptedMeetingsRequest())
         log(result.issues)
         if result.libraryInvalidationRequired {
-            services.libraryVersion += 1
+            services.requestSpotlightReindex()
         }
     }
 

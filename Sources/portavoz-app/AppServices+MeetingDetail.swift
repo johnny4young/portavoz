@@ -56,7 +56,7 @@ extension AppServices: MeetingDetailModelClient {
     }
 
     func requestMeetingDetailSearchReindex() {
-        libraryVersion += 1
+        requestSpotlightReindex()
     }
 
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws {

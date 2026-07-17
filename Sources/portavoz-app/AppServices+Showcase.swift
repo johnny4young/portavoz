@@ -96,7 +96,7 @@ extension AppServices {
                 meetingID: meeting.id, kind: .note,
                 content: "congelar scope sprint 15", timestamp: 280)
         ])
-        libraryVersion += 1
+        requestSpotlightReindex()
     }
     // swiftlint:enable function_body_length
 }

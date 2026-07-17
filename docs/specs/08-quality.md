@@ -688,6 +688,22 @@ UI contract per locale is unchanged. The focused player case retains a named
 app-window screenshot after playback starts so EN/ES band validation also
 proves the waveform surface renders without driving the desktop.
 
+Band 4 slice 4G adds three real-Store `SpotlightProjectionTests` and four actor
+`SpotlightIndexerTests`. Projection coverage proves newest cross-recipe
+summary selection, deterministic first-40 transcript order, tombstone scope,
+the 4,000-character cap, and the empty library. Actor coverage proves burst
+coalescing, client-state no-op plus legacy cleanup, transient retry, terminal
+failure, and recovery after a fresh request. The 32nd architecture case guards
+the one-snapshot SQL shape, process ownership, named complete-protected index,
+500-item batches, client state, retries, removal of `libraryVersion`, D85, and
+the tracked Release report. Exact fingerprints match the legacy result at
+1k/10k/100k meetings. At 100k, projection wall/CPU p95 is
+425.64/423.58 ms instead of 22,085.35/22,720.40 ms; absolute/incremental
+physical-footprint p95 is 141.14/76.03 MiB. A synthetic-only 1,000-item named
+index delivery completes in 21.19 ms with complete protection and successful
+cleanup. The package baseline is 690 tests (13 gated); 256 Swift sources are
+linted and the 25-case UI contract per locale is unchanged.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
@@ -703,6 +719,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 - `scripts/run-scale-baseline.sh`: Release production-schema library/detail matrix with disposable databases.
 - `scripts/run-detail-ui-baseline.sh`: Portavoz Dev-only 5k-detail signpost, Hangs, Time Profiler, and SwiftUI trace with a disposable store.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.
+- `scripts/run-spotlight-scale-baseline.sh`: isolated Release legacy/snapshot projection matrix at 1k/10k/100k meetings, exact fingerprint comparison, and optional synthetic-only protected-index delivery/cleanup.
 
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
@@ -721,6 +738,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | Lexical Ask at 100k segments | p95 < 100 ms | **p50 66.45 ms / p95 66.89 ms**, down from 111.19 ms through bounded per-term RRF (D81) |
 | Semantic cosine at 100k × 512 dimensions | p95 < 100 ms | ✅ **wall p50/p95 88.81/90.22 ms; CPU p50/p95 89.93/91.26 ms**, down from 307.05/325.41 and 311.46/328.43 ms; **8.42 MiB** incremental footprint p95 (D83) |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
+| Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
 | Detail first content, 2 h / 5k segments | p95 < 300 ms | **91.87 ms** single signpost run, down from 522.30 ms; **zero hangs**, down from one 515.86 ms hang (D80) |
 | Meeting health, 2 h / 5k → 8 h / 20k | derived-policy diagnostic | **p95 9.94 ms → 41.39 ms**, down from 347.58 ms → 5,385.76 ms |

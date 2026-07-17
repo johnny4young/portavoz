@@ -482,7 +482,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(view.contains("model.send(.observeLibrary)"))
         XCTAssertTrue(view.contains("model.send(.observeSearch)"))
         XCTAssertTrue(content.contains("@State private var libraryModel: LibraryModel"))
-        XCTAssertTrue(adapter.contains("defer { libraryVersion += 1 }"))
+        XCTAssertTrue(adapter.contains("defer { requestSpotlightReindex() }"))
         XCTAssertTrue(adapter.contains("makeApplicationLibraryStream("))
         XCTAssertTrue(readModels.contains("public enum LibraryUpdate"))
         XCTAssertTrue(observation.contains("func observeLibraryMeetings()"))
@@ -781,11 +781,15 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-cli/CLIBenchSemantic.swift")
         let waveformCLI = try Self.contents(
             of: "Sources/portavoz-cli/CLIBenchWaveform.swift")
+        let spotlightCLI = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchSpotlight.swift")
         let dispatch = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
         let package = try Self.contents(of: "Package.swift")
         let scaleRunner = try Self.contents(of: "scripts/run-scale-baseline.sh")
         let semanticRunner = try Self.contents(
             of: "scripts/run-semantic-scale-baseline.sh")
+        let spotlightRunner = try Self.contents(
+            of: "scripts/run-spotlight-scale-baseline.sh")
         let detailRunner = try Self.contents(of: "scripts/run-detail-ui-baseline.sh")
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
@@ -794,11 +798,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
         let ask = try Self.contents(of: "Sources/IntegrationsKit/AskPipeline.swift")
         let waveform = try Self.contents(of: "Sources/AudioPlaybackKit/Waveform.swift")
+        let spotlightProjection = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
+        let spotlightIndexer = try Self.contents(
+            of: "Sources/portavoz-app/SpotlightIndexer.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(dispatch.contains(#"case "bench-scale":"#))
         XCTAssertTrue(dispatch.contains(#"case "bench-semantic":"#))
         XCTAssertTrue(dispatch.contains(#"case "bench-waveform":"#))
+        XCTAssertTrue(dispatch.contains(#"case "bench-spotlight":"#))
+        XCTAssertTrue(dispatch.contains("[--mode legacy|snapshot]"))
+        XCTAssertTrue(dispatch.contains("[--delivery-items 1000]"))
         XCTAssertTrue(package.contains(#""StorageKit", "IntegrationsKit", "AudioPlaybackKit""#))
         XCTAssertTrue(cli.contains("withTemporaryDirectory(prefix:"))
         XCTAssertTrue(cli.contains("omittingEmptySubsequences: false"))
@@ -815,6 +828,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(waveformCLI.contains("FileManager.default.copyItem"))
         XCTAssertTrue(waveformCLI.contains("usage.ri_phys_footprint"))
         XCTAssertTrue(waveformCLI.contains("replacementFingerprint != first.fingerprint"))
+        XCTAssertTrue(spotlightCLI.contains("legacyDocuments(store:"))
+        XCTAssertTrue(spotlightCLI.contains(#"case "--delivery-items":"#))
+        XCTAssertTrue(spotlightCLI.contains("contentSource: \"synthetic-only\""))
+        XCTAssertTrue(spotlightCLI.contains("protectionClass: .complete"))
+        XCTAssertTrue(spotlightRunner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(spotlightRunner.contains("for mode in legacy snapshot"))
+        XCTAssertTrue(spotlightRunner.contains("resultFingerprintEquivalent"))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-seed-scale")"#))
         XCTAssertTrue(model.contains(#""Meeting Detail First Content""#))
@@ -827,6 +847,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D82 — Measure semantic cost before changing storage"))
         XCTAssertTrue(decisions.contains("## D83 — Keep exact vectors after the adapter passes"))
         XCTAssertTrue(decisions.contains("## D84 — Vectorize waveform envelopes before caching"))
+        XCTAssertTrue(decisions.contains(
+            "## D85 — Reconcile Spotlight through a protected measured snapshot"))
         XCTAssertTrue(health.contains("prefixMaximumEnd"))
         XCTAssertTrue(health.contains(
             "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
@@ -846,6 +868,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(cli.contains("AskPipeline.retrieveLexical"))
         XCTAssertTrue(waveform.contains("vDSP_maxmgv"))
         XCTAssertFalse(waveform.contains("WaveformCache"))
+        XCTAssertTrue(spotlightProjection.contains("func spotlightDocuments()"))
+        XCTAssertTrue(spotlightProjection.contains("ROW_NUMBER() OVER"))
+        XCTAssertTrue(spotlightProjection.contains("segmentRank <= 40"))
+        XCTAssertTrue(spotlightIndexer.contains("actor SpotlightIndexer"))
+        XCTAssertTrue(spotlightIndexer.contains(#"indexName = "app.portavoz.meetings.v2""#))
+        XCTAssertTrue(spotlightIndexer.contains("protectionClass: .complete"))
+        XCTAssertTrue(spotlightIndexer.contains("index.beginBatch()"))
+        XCTAssertTrue(spotlightIndexer.contains("endBatch(withClientState:"))
+        XCTAssertTrue(spotlightIndexer.contains("retryDelays"))
+        XCTAssertFalse(spotlightIndexer.contains("outboxEvent"))
+        XCTAssertTrue(services.contains("@ObservationIgnored let spotlightIndexer"))
+        XCTAssertTrue(services.contains("func requestSpotlightReindex()"))
+        XCTAssertFalse(services.contains("libraryVersion"))
+        XCTAssertFalse(content.contains("libraryVersion"))
 
         let scale = try Self.jsonObject(
             at: "docs/evidence/scale-baseline-20260716.json")
@@ -1021,6 +1057,58 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertNotEqual(
             waveformInvalidation["replacementFingerprint"] as? String,
             waveformAfterFirst["resultFingerprint"] as? String)
+
+        let spotlight = try Self.jsonObject(
+            at: "docs/evidence/spotlight-scale-after-snapshot-20260717.json")
+        XCTAssertEqual(spotlight["buildConfiguration"] as? String, "release")
+        let legacySpotlight = try XCTUnwrap(
+            spotlight["legacyCheckpoints"] as? [[String: Any]])
+        let snapshotSpotlight = try XCTUnwrap(
+            spotlight["snapshotCheckpoints"] as? [[String: Any]])
+        XCTAssertEqual(
+            legacySpotlight.compactMap { $0["meetingCount"] as? Int },
+            [1_000, 10_000, 100_000])
+        XCTAssertEqual(
+            snapshotSpotlight.compactMap { $0["meetingCount"] as? Int },
+            [1_000, 10_000, 100_000])
+        let legacySpotlightHundredThousand = try XCTUnwrap(legacySpotlight.last)
+        let snapshotSpotlightHundredThousand = try XCTUnwrap(snapshotSpotlight.last)
+        let legacySpotlightWall = try Self.p95(
+            in: legacySpotlightHundredThousand, key: "projection", nestedKey: "wallTime")
+        let snapshotSpotlightWall = try Self.p95(
+            in: snapshotSpotlightHundredThousand, key: "projection", nestedKey: "wallTime")
+        let snapshotSpotlightCPU = try Self.p95(
+            in: snapshotSpotlightHundredThousand,
+            key: "projection",
+            nestedKey: "processCPUTime")
+        XCTAssertGreaterThan(legacySpotlightWall, 20_000)
+        XCTAssertLessThan(snapshotSpotlightWall, 500)
+        XCTAssertLessThan(snapshotSpotlightCPU, 500)
+        XCTAssertLessThan(snapshotSpotlightWall, legacySpotlightWall / 40)
+        let snapshotSpotlightResources = try XCTUnwrap(
+            snapshotSpotlightHundredThousand["projection"] as? [String: Any])
+        XCTAssertLessThan(
+            try Self.p95Bytes(
+                in: snapshotSpotlightResources,
+                key: "peakPhysicalFootprint"),
+            160 * 1_048_576)
+        XCTAssertLessThan(
+            try Self.p95Bytes(
+                in: snapshotSpotlightResources,
+                key: "incrementalPeakPhysicalFootprint"),
+            96 * 1_048_576)
+        let spotlightEquivalence = try XCTUnwrap(
+            spotlight["equivalence"] as? [[String: Any]])
+        XCTAssertTrue(spotlightEquivalence.allSatisfy {
+            $0["resultFingerprintEquivalent"] as? Bool == true
+        })
+        let spotlightDelivery = try XCTUnwrap(
+            spotlight["syntheticDelivery"] as? [String: Any])
+        XCTAssertEqual(spotlightDelivery["status"] as? String, "completed")
+        XCTAssertEqual(spotlightDelivery["syntheticItemCount"] as? Int, 1_000)
+        XCTAssertEqual(spotlightDelivery["protection"] as? String, "complete")
+        XCTAssertEqual(spotlightDelivery["contentSource"] as? String, "synthetic-only")
+        XCTAssertEqual(spotlightDelivery["cleanupSucceeded"] as? Bool, true)
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
@@ -1057,6 +1145,20 @@ private extension ArchitectureDependencyTests {
     static func p95(in object: [String: Any], key: String) throws -> Double {
         let distribution = try XCTUnwrap(object[key] as? [String: Any])
         return try XCTUnwrap(distribution["p95Milliseconds"] as? Double)
+    }
+
+    static func p95(
+        in object: [String: Any],
+        key: String,
+        nestedKey: String
+    ) throws -> Double {
+        let nested = try XCTUnwrap(object[key] as? [String: Any])
+        return try p95(in: nested, key: nestedKey)
+    }
+
+    static func p95Bytes(in object: [String: Any], key: String) throws -> Int {
+        let distribution = try XCTUnwrap(object[key] as? [String: Any])
+        return try XCTUnwrap(distribution["p95Bytes"] as? Int)
     }
 
     static func imports(under relativeDirectory: String) throws -> [SourceImport] {

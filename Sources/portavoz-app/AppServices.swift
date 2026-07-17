@@ -57,9 +57,9 @@ final class AppServices {
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperProgressObserver] = [:]
     var whisperIdleGeneration = 0
 
-    /// Compatibility trigger for Spotlight's full local reindex. Library,
-    /// Insights, and Meeting Detail reads are scoped observations instead.
-    var libraryVersion = 0
+    /// Process-scoped, coalescing reconciliation for the protected local
+    /// Spotlight index. It is deliberately not owned by a SwiftUI window.
+    @ObservationIgnored let spotlightIndexer: SpotlightIndexer
     /// Navigation requested from OUTSIDE the window hierarchy (the
     /// pre-meeting banner): ContentView observes it, applies it to its
     /// route, and clears it.
@@ -111,8 +111,9 @@ final class AppServices {
     }
 
     init() {
+        let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
         do {
-            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+            if usesTemporaryStore {
                 // UI testing (`make test-ui`): a throwaway DB so a test run
                 // never touches the real library.
                 let url = FileManager.default.temporaryDirectory
@@ -126,6 +127,17 @@ final class AppServices {
             // worse than failing loudly at launch.
             fatalError("cannot open the Portavoz database: \(error)")
         }
+        spotlightIndexer = SpotlightIndexer(
+            store: store,
+            enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)
+        requestSpotlightReindex()
+    }
+
+    /// Searchable mutations request eventual reconciliation. The actor owns
+    /// burst coalescing, retries, and crash-resumable client state.
+    func requestSpotlightReindex() {
+        let indexer = spotlightIndexer
+        Task { await indexer.requestReindex() }
     }
 
     /// Loads only the live/batch first-pass transcriber. Offline quality
