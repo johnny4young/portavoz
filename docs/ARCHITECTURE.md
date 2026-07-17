@@ -433,6 +433,20 @@ embedding assets. At 100,000 segments, exact p95 falls from 38.38 ms to
 faster and passes the 100 ms target. D81 therefore retains FTS5, the existing
 schema, `DatabaseQueue`, and embedding layout. Semantic cosine ranking remains
 unmeasured at this scale and is Band 4D's next decision gate.
+Band 4D now closes that evidence gap without changing product behavior. A
+dedicated Release CLI stores deterministic normalized vectors at the production
+512 dimensions and measures the exact `MeetingStore.searchSemantic` path in a
+fresh process for each 1k/10k/50k/100k corpus. It validates the expected top
+result and records wall time, Mach-timebase-corrected process CPU, physical
+footprint, raw vector bytes, and database size. At 100,000 segments, semantic
+wall/CPU p95 is 325.41/328.43 ms, over 3x the 100 ms target. Incremental
+footprint p95 is only 8.50 MiB and absolute peak p95 50.05 MiB, while the
+512-dimensional payload occupies 195.31 MiB raw and 416.54 MiB in the complete
+SQLite directory. D82 therefore selects CPU/latency as the problem. Band 4E
+must first remove `fetchAll`, per-row Float-array decoding, and full-corpus
+sorting through streaming, allocation-free Accelerate scoring, and bounded
+top-k retention; sqlite-vec and `segmentEmbedding` remain conditional on the
+same after matrix still missing budget.
 Every refactor commit must update this file to reflect the
 dependency graph and migration status that actually exist in that commit,
 while the matching as-built spec records runtime behavior.
@@ -1012,6 +1026,7 @@ until a later Band 1 adoption slice.
 24. **Scale architecture follows measured bottlenecks:** performance changes begin with disposable Release evidence over the production schema and app projection. A cache, database pool, vector/index format, or view decomposition lands only when the relevant budget misses and the change includes a comparable before/after matrix. Tooling gaps remain explicit; an empty Instruments lane is never evidence of zero invalidation (D79).
 25. **Derived-performance indexes preserve product semantics:** an optimization may bound a scan only with evidence over the entire skipped range, not a convenient neighboring row. Adversarial characterization and comparable Release/app evidence must land with the change; once a target passes, speculative structural complexity is rejected (D80).
 26. **Retrieval policy is bounded at the integration edge:** StorageKit retains safe exact FTS and complete source content; IntegrationsKit owns local-RAG candidate selection. Normal question shapes fuse bounded per-term top-k lists and reward multi-term evidence, while unusually long questions keep the complete broad-OR fallback. A lexical budget pass cannot justify vector storage until semantic ranking itself is measured (D81).
+27. **Semantic storage follows isolated resource evidence:** vector-search decisions use the exact production dimensions and adapter in fresh Release processes, report wall/CPU/physical-footprint/storage cost separately, and validate retrieval correctness. An O(n) miss first removes adapter-level allocation and sorting amplification; sqlite-vec or a new persisted layout requires the comparable after matrix to keep missing (D82).
 
 ## Refactor migration status
 
@@ -1022,11 +1037,11 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the current 678-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the current 679-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b plus Jul 16 field hardening: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, millisecond-canonical reservation matching, model-independent audio start, exact Parakeet-only durable first-pass transcript recovery for missing/failed live lanes, atomic captured-state/initial-job and recovered-transcript/dependent handoffs, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43/D70/D73) | Valid audio starts and remains durable before derivation or model readiness; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
 | 2 — Application layer | Complete — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import; 2L moves read-consistent `.portavoz` export; 2M gives each window one explicit Library state/action/effect owner; 2N scopes Library reads; 2O moves four meeting-review policies inward; 2P moves three Insights read policies inward; 2Q completes local policy ownership and moves the neutral event value to Core; 2R gives each window one Insights read owner; 2S gives each selected meeting one review read owner; 2T routes its persistence mutations through model actions and adapters; 2U removes two unimplemented package promises after a compatibility audit. Jul 16 capability hardening adds exact summary-provider setup states, one app-owned Foundation Models adapter, and role-specific speech-model readiness without broadening ApplicationKit's platform edge (D44–D61/D72/D73) | Nine implemented Kit libraries; no speculative boundary remains. Spotlight indexing and detail audio-path resolution stay measured Band 4 seams |
 | 3 — Provenance and privacy | Complete — 3A–3J implement generation provenance, gateway-only meeting-content egress, durable privacy receipts, redacted local support/recovery evidence, content-free signposts, and typed recording recovery; 3K records the measured App Sandbox defer gate (D62–D78) | Every generated/egress/recovery vertical in scope is auditable without copying meeting content. Production remains accurately non-sandboxed until a reversible feature-parity migration passes the explicit D78 gates |
-| 4 — Detail and scale | In progress — 4A records the reproducible scale/app baseline; 4B reduces MeetingHealth p95 to 9.94 ms at 5k and first content to 91.87 ms with zero hangs; 4C moves lexical candidate policy to bounded per-term RRF and reduces 100k p95 from 111.19 ms to 66.89 ms (D79–D81) | Detail and lexical budgets now pass without decomposition, `DatabasePool`, caches, or a schema change. Band 4D measures semantic cosine ranking before vectors; waveform and Spotlight remain evidence-gated |
+| 4 — Detail and scale | In progress — 4A records the baseline; 4B brings 5k first content to 91.87 ms with zero hangs; 4C brings 100k lexical p95 to 66.89 ms; 4D measures semantic wall/CPU p95 at 325.41/328.43 ms with low incremental footprint (D79–D82) | Detail and lexical budgets pass. Semantic CPU/latency is the measured miss; 4E removes adapter amplification before sqlite-vec. `DatabasePool`, waveform caching, Spotlight replacement, and vector-layout changes remain evidence-gated |
 | 5 — Evidence and people | Not started | Canonical people, evidence links, source navigation, local feedback |
 | 6 — Platform expansion | Deferred | CKSyncEngine/iOS built on durable state and tombstones |
 

@@ -130,6 +130,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 | RAM while recording (Mac, LIVE STT + diarization) | < 800 MB peak while recording · < 200 MB idle post-meeting (target revised Jul 2026: the original 500 MB target was set without live diarization) | ✅ by phase (`--bench-record 60 --bench-log`, via `open -n`): 20 MB without models → ~515 MB engines → **569–795 MB peak while recording** → **140–160 MB after the meeting** (idle release + reclaimable CoreML pages). The embedded MLX summary uses ~2.4 GB transiently and is released only after 120 s (previously it remained resident forever) |
 | Battery (iPhone, live STT) | < 10%/hour (ANE) | phase 3 |
 | Search through 100k segments | exact p95 < 50 ms; lexical Ask p95 < 100 ms | ✅ exact p95 **30.99 ms**; lexical Ask p95 **66.89 ms**, down from 111.19 ms through bounded per-term candidates and reciprocal-rank fusion (`portavoz-cli bench-scale`, D81) |
+| Semantic retrieval through 100k embedded segments | p95 < 100 ms | ❌ wall/CPU p95 **325.41/328.43 ms**; footprint remains bounded at **8.50 MiB incremental p95**. Band 4E optimizes the adapter before sqlite-vec (D82) |
 | Meeting Detail first content, 2 h / 5k segments | < 300 ms | ✅ **91.87 ms**, down from 522.30 ms, with zero measured hangs; `MeetingHealth` p95 is 9.94 ms, down from 347.58 ms (D79/D80) |
 | Mic/system drift | < 50 ms in 30 min | ✅ 4 ms over an actual 22 min |
 | Diarization DER (4 speakers) | < 15%; user contributions 100% | ✅ AMI 7.6%; real meeting pending corrected RTTM |

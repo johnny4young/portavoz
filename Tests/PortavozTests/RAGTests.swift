@@ -159,6 +159,34 @@ final class SemanticStoreTests: XCTestCase {
         XCTAssertTrue(pending.isEmpty)
     }
 
+    func testProductionWidthSemanticRankingKeepsTopKAndSkipsMalformedVectors() async throws {
+        let segments = try await seed((0..<18).map {
+            "complete semantic passage \($0) with enough source context"
+        })
+        let dimension = 512
+        let embeddings = Dictionary(uniqueKeysWithValues:
+            segments.enumerated().map { index, segment -> (UUID, [Float]) in
+                if index == segments.count - 1 {
+                    return (segment.id, [1, 0])
+                }
+                let similarity = Float(segments.count - index) / Float(segments.count)
+                var vector = [Float](repeating: 0, count: dimension)
+                vector[0] = similarity
+                vector[1] = sqrt(1 - similarity * similarity)
+                return (segment.id, vector)
+            })
+        try await store.storeEmbeddings(embeddings)
+
+        var query = [Float](repeating: 0, count: dimension)
+        query[0] = 1
+        let hits = try await store.searchSemantic(query, limit: 5)
+
+        XCTAssertEqual(hits.count, 5)
+        XCTAssertEqual(hits.first?.segmentID, segments[0].id)
+        XCTAssertEqual(hits.first?.text, segments[0].text)
+        XCTAssertFalse(hits.contains { $0.segmentID == segments.last?.id })
+    }
+
     func testBlobRoundTrip() {
         let vector: [Float] = [0.25, -1, 3.5, .pi]
         XCTAssertEqual(MeetingStore.floats(from: MeetingStore.blob(from: vector)), vector)

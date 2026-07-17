@@ -777,8 +777,12 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testBandFourScaleBaselineStaysMeasuredAndDisposable() throws {
         let cli = try Self.contents(of: "Sources/portavoz-cli/CLIBenchScale.swift")
+        let semanticCLI = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchSemantic.swift")
         let dispatch = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
         let scaleRunner = try Self.contents(of: "scripts/run-scale-baseline.sh")
+        let semanticRunner = try Self.contents(
+            of: "scripts/run-semantic-scale-baseline.sh")
         let detailRunner = try Self.contents(of: "scripts/run-detail-ui-baseline.sh")
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
@@ -789,10 +793,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(dispatch.contains(#"case "bench-scale":"#))
+        XCTAssertTrue(dispatch.contains(#"case "bench-semantic":"#))
         XCTAssertTrue(cli.contains("withTemporaryDirectory(prefix:"))
         XCTAssertTrue(cli.contains("omittingEmptySubsequences: false"))
         XCTAssertTrue(scaleRunner.contains("swift build -c release --product portavoz-cli"))
         XCTAssertTrue(scaleRunner.contains(#""buildConfiguration") != "release""#))
+        XCTAssertTrue(semanticCLI.contains("let dimension = await embedder.dimension"))
+        XCTAssertTrue(semanticCLI.contains("store.searchSemantic(query, limit: resultLimit)"))
+        XCTAssertTrue(semanticCLI.contains("mach_timebase_info(&timebase)"))
+        XCTAssertTrue(semanticCLI.contains("usage.ri_phys_footprint"))
+        XCTAssertTrue(semanticRunner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(semanticRunner.contains(#"for raw_size in "${checkpoints[@]}""#))
+        XCTAssertTrue(semanticRunner.contains(#"report.get("buildConfiguration") != "release""#))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(fixture.contains(#"arguments.contains("-seed-scale")"#))
         XCTAssertTrue(model.contains(#""Meeting Detail First Content""#))
@@ -802,6 +814,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D79 — Scale changes follow measured bottlenecks"))
         XCTAssertTrue(decisions.contains("## D80 — Bound interruption scans with prefix evidence"))
         XCTAssertTrue(decisions.contains("## D81 — Bound broad retrieval before vector storage"))
+        XCTAssertTrue(decisions.contains("## D82 — Measure semantic cost before changing storage"))
         XCTAssertTrue(health.contains("prefixMaximumEnd"))
         XCTAssertTrue(health.contains(
             "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
@@ -875,6 +888,31 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertLessThan(
             try Self.p95(in: afterHundredThousand, key: "exactSearch"),
             50)
+
+        let semantic = try Self.jsonObject(
+            at: "docs/evidence/semantic-scale-baseline-20260716.json")
+        XCTAssertEqual(semantic["buildConfiguration"] as? String, "release")
+        let semanticConfiguration = try XCTUnwrap(
+            semantic["configuration"] as? [String: Any])
+        XCTAssertEqual(semanticConfiguration["embeddingDimension"] as? Int, 512)
+        XCTAssertEqual(semanticConfiguration["measurementRuns"] as? Int, 20)
+        let semanticCheckpoints = try XCTUnwrap(
+            semantic["checkpoints"] as? [[String: Any]])
+        XCTAssertEqual(semanticCheckpoints.compactMap { $0["totalSegments"] as? Int }, [
+            1_000, 10_000, 50_000, 100_000,
+        ])
+        let semanticHundredThousand = try XCTUnwrap(semanticCheckpoints.last)
+        XCTAssertGreaterThan(
+            try Self.p95(in: semanticHundredThousand, key: "wallTime"),
+            100)
+        XCTAssertGreaterThan(
+            try Self.p95(in: semanticHundredThousand, key: "processCPUTime"),
+            100)
+        let incrementalFootprint = try XCTUnwrap(
+            semanticHundredThousand["incrementalPeakPhysicalFootprint"] as? [String: Any])
+        XCTAssertLessThan(
+            incrementalFootprint["p95Bytes"] as? Int ?? .max,
+            64 * 1_048_576)
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

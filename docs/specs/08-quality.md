@@ -1,14 +1,14 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 678 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 25 cases and retained app-window-only Meeting Detail, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 679 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 25 cases and retained app-window-only Meeting Detail, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 252 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 253 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention, audio/model/release/privacy boundaries, scoped feature ownership, local diagnostics/signpost redaction, and the measured Band 4 source/evidence gates for prefix-bounded health plus Integration-owned lexical candidate selection |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention, audio/model/release/privacy boundaries, scoped feature ownership, local diagnostics/signpost redaction, and the measured Band 4 source/evidence gates for prefix-bounded health, Integration-owned lexical candidates, and isolated production-width semantic resources |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
@@ -49,7 +49,7 @@ Status: 678 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHu
 | RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode` and independent transcript/summary policies |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
-| RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
+| RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k and malformed-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
 Band 1 slice 1A additionally ran a manual storage acceptance smoke: copy the
@@ -653,6 +653,16 @@ versus 38.38/111.19 ms after Band 4B. The package baseline is 678 tests (13
 gated), 252 Swift source files remain in scope, and the unchanged 25-case EN/ES
 UI contract remains authoritative.
 
+Band 4 slice 4D extends the 32nd architecture case with the isolated semantic
+CLI, per-checkpoint Release-process runner, D82, Mach-timebase CPU conversion,
+physical-footprint counters, top-result validation, production dimension, and
+the tracked missed target. The 20-run matrix records semantic wall/CPU p95
+2.62/2.66 ms at 1k, 29.72/30.26 ms at 10k, 159.07/161.98 ms at 50k, and
+325.41/328.43 ms at 100k. The 100k incremental/absolute footprint p95 is
+8.50/50.05 MiB, raw vectors are 195.31 MiB, and the database is 416.54 MiB.
+The package/UI case counts are 679 (13 gated) and 25 per locale; 253 Swift
+source files are now linted.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
@@ -683,6 +693,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | FTS at 1k meetings (80k segments) | < 50 ms | **p50 22.8 ms / p95 23.9 ms** (`portavoz-cli bench-fts`) |
 | Exact FTS at 100k segments | p95 < 50 ms | **p50 30.25 ms / p95 30.99 ms** (`bench-scale`, D81) |
 | Lexical Ask at 100k segments | p95 < 100 ms | **p50 66.45 ms / p95 66.89 ms**, down from 111.19 ms through bounded per-term RRF (D81) |
+| Semantic cosine at 100k × 512 dimensions | p95 < 100 ms | **wall p50/p95 307.05/325.41 ms; CPU p50/p95 311.46/328.43 ms** — measured miss; **8.50 MiB** incremental footprint p95 (D82) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
 | Detail first content, 2 h / 5k segments | p95 < 300 ms | **91.87 ms** single signpost run, down from 522.30 ms; **zero hangs**, down from one 515.86 ms hang (D80) |
 | Meeting health, 2 h / 5k → 8 h / 20k | derived-policy diagnostic | **p95 9.94 ms → 41.39 ms**, down from 347.58 ms → 5,385.76 ms |

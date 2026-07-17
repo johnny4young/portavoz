@@ -6,13 +6,14 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement architecture Band 4 slice 4D: measure
-brute-force semantic cosine latency, CPU, and memory at the same
-1k/10k/50k/100k scale before considering sqlite-vec or a segment-layout
-migration. Band 4C now puts lexical Ask safely inside budget, while Band 4B
-puts 5k-detail first content inside budget; D79–D81 therefore reject
-speculative vector storage, view decomposition, `DatabasePool`, or chapter
-caching. D78 closes Band 3 by retaining the accurately documented
+**Next concrete step:** implement architecture Band 4 slice 4E: replace
+semantic `fetchAll`, per-row Float-array decoding, and complete-corpus sorting
+with streaming, allocation-free Accelerate scoring, and bounded top-k
+retention, then rerun the isolated 1k/10k/50k/100k matrix. Band 4D measures
+100k semantic wall/CPU p95 at 325.41/328.43 ms while incremental footprint is
+only 8.50 MiB, so D82 selects CPU/latency rather than memory, `DatabasePool`,
+or UI decomposition. sqlite-vec and a new embedding layout remain conditional
+on the after matrix still missing 100 ms. D78 closes Band 3 by retaining the accurately documented
 non-sandboxed distribution until a reversible feature-parity migration passes
 its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
 
@@ -29,7 +30,19 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82).
+
+- **Architecture Band 4 slice 4D complete — semantic scale has a real cost
+  model (Jul 16, 2026)**: an isolated Release harness now stores production
+  512-dimensional vectors and measures the exact brute-force cosine path in a
+  fresh process at each corpus size. At 100k segments, wall/CPU p95 is
+  325.41/328.43 ms, missing the 100 ms target by more than 3x; incremental
+  footprint p95 is only 8.50 MiB and absolute peak p95 50.05 MiB. Raw vectors
+  occupy 195.31 MiB and the complete database 416.54 MiB. Correct top-result
+  validation, Mach-timebase CPU conversion, per-size process isolation,
+  tracked evidence, source guards, and D82 protect the result. The evidence
+  chooses adapter-level streaming/vectorized top-k work next and keeps
+  sqlite-vec conditional.
 
 - **Architecture Band 4 slice 4C complete — Ask ranks evidence, not one huge
   OR union (Jul 16, 2026)**: StorageKit's exact FTS top-k uses the equivalent

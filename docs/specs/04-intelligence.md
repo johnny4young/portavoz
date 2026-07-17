@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic cost gate).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -292,10 +292,11 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 
 1. Meeting Detail cache lookup and translation pivot are Apple-FM-only;
    configured Ollama/MLX regeneration performs a new generation.
-2. Band 4C brings exact/lexical p95 to 30.99/66.89 ms at 100k segments, but the
-   matrix still excludes embedding generation and brute-force cosine ranking.
-   Band 4D must measure semantic latency, CPU, and memory at the same scale
-   before considering sqlite-vec or a persisted-vector migration.
+2. Band 4D measures the exact 512-dimensional brute-force cosine path in fresh
+   Release processes. At 100k segments, wall/CPU p95 is 325.41/328.43 ms,
+   missing the 100 ms target; incremental footprint p95 is only 8.50 MiB.
+   Band 4E removes fetch-all, per-vector allocation, and full-sort amplification
+   before sqlite-vec or a persisted-vector migration is selected (D82).
 
 ## Planned (not implemented)
 

@@ -57,6 +57,8 @@ struct PortavozCLI {
             await BenchFTSCommand.run(arguments)
         case "bench-scale":
             await BenchScaleCommand.run(arguments)
+        case "bench-semantic":
+            await BenchSemanticCommand.run(arguments)
         default:
             printUsage()
         }
@@ -75,6 +77,7 @@ struct PortavozCLI {
               portavoz-cli bench-fts [--meetings N] [--segments-per-meeting N]
               portavoz-cli bench-scale [--library-sizes 1000,10000,50000,100000]
                                         [--meeting-minutes 30,120,480] [--runs 20] [--output <json>]
+              portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--output <json>]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

@@ -2123,3 +2123,42 @@ avoids treating a RAG ranking rule as persistence. Since lexical retrieval now
 passes, Band 4D must measure brute-force semantic cosine latency, CPU, and
 memory at the same scale before sqlite-vec or a segment-layout migration can be
 selected.
+
+## D82 — Measure semantic cost before changing storage (Jul 2026)
+
+**Context:** D81 brought exact and lexical retrieval inside their 100k-segment
+budgets, but the production semantic path remained unmeasured. It reads every
+live embedding BLOB, decodes each 512-dimensional Float32 vector, computes a
+dot product, materializes every scored hit, and sorts the complete corpus before
+returning twelve passages. A synthetic two-dimensional unit fixture could not
+justify either retaining that design or adding sqlite-vec, a new extension,
+schema migration, packaging work, and persisted-vector compatibility risk.
+
+**Decision:** measure the exact `MeetingStore.searchSemantic` path before any
+storage change. `portavoz-cli bench-semantic` creates a production-schema
+throwaway corpus with deterministic normalized vectors whose dimension comes
+from `NLContextualEmbedding(script: .latin)` (512 on the reference host). It
+validates that the exact fixture vector ranks first, then records 20 Release
+runs of wall time, process CPU time, baseline/peak/ending physical footprint,
+incremental peak, database size, and raw vector bytes. CPU ticks from
+`proc_pid_rusage` are converted with the Mach timebase. The wrapper launches
+one process per 1k/10k/50k/100k checkpoint so allocator and SQLite state cannot
+leak between sizes.
+
+The tracked baseline records semantic wall/CPU p95 of 2.62/2.66 ms at 1k,
+29.72/30.26 ms at 10k, 159.07/161.98 ms at 50k, and 325.41/328.43 ms at 100k.
+The 100k path therefore misses the 100 ms interactive target by more than 3x.
+Its incremental physical-footprint p95 is only 8.50 MiB and absolute peak p95
+50.05 MiB, so memory is not the blocking resource. Persisted 512-dimensional
+vectors contribute 195.31 MiB of raw payload while the complete SQLite
+directory is 416.54 MiB.
+
+**Rationale:** the evidence selects CPU/latency work, not a cache, database
+pool, view decomposition, or memory workaround. Before accepting sqlite-vec's
+distribution and migration cost, Band 4E removes the current adapter's obvious
+algorithmic amplification: stream rows instead of `fetchAll`, score BLOB bytes
+without allocating a Float array per segment, use Accelerate for the dot
+product, and retain only the bounded top-k instead of sorting every hit. The
+same isolated matrix decides the result. If 100k semantic p95 still exceeds
+100 ms, the next slice may select sqlite-vec and the additive
+`segmentEmbedding` layout with measured before/after and compatibility tests.
