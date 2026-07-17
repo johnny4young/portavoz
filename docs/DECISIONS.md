@@ -2370,3 +2370,41 @@ portable, and proves the domain/storage/UI pattern before decisions, action
 items, Companion cards, or correction feedback adopt it. Generic evidence
 tables and broader artifact claims remain rejected until those typed semantics
 are implemented and characterized.
+
+## D88 — Keep claim feedback explicit, current, and outside generated output (Jul 2026)
+
+**Context:** D87 made one generated overview claim inspectable, but users still
+needed a safe way to say that it was wrong or unsupported. Rewriting the
+provider-owned Markdown would destroy the distinction between model output and
+human correction. An append-only feedback history would quietly accumulate
+sensitive free-form text, while sending corrections back into prompts,
+telemetry, or support diagnostics would violate the local review boundary.
+
+**Decision:** one immutable overview claim may have at most one mutable current
+`SummaryClaimFeedback`. Its kind is either `correction`, with trimmed nonblank
+text bounded to 2,000 Unicode scalars, or `unsupported`, with no text. The UI
+offers visible Add/Edit correction, Mark unsupported, and Clear actions. None
+changes generated Markdown, evidence, summaries, or generation history; no
+feedback enters provider prompts, telemetry, privacy receipts, or support
+diagnostics, and regeneration/translation does not inherit it.
+
+Schema v10 adds `summaryClaimFeedback`, keyed by claim ID with timestamps and a
+tombstone. Writes are transactionally fenced to the overview claim of the
+newest live summary across recipes, so a completion racing a newer generation
+fails instead of annotating hidden history. Replacing feedback updates that one
+row. Clearing physically removes `correctionText` before setting `deletedAt`,
+retaining only nonsensitive metadata for a future sync protocol. Normal
+generated-summary persistence rejects provider-supplied feedback; the validated
+bundle-import path is the sole insertion exception.
+
+`.portavoz` format v1 carries the current feedback additively inside its claim.
+Import remaps claim and segment identities while preserving the typed
+assessment. Older readers ignore it and old bundles remain valid. Canonical
+people remain device-local under D86; feedback portability does not weaken that
+separate identity boundary.
+
+**Rationale:** this is the smallest honest correction loop. It preserves the
+original generated artifact, makes human judgment visible and reversible,
+prevents private text from becoming hidden history, keeps remote/model behavior
+unchanged, and proves export semantics before evidence expands to decisions,
+action items, or Companion cards.

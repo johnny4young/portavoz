@@ -114,6 +114,8 @@ final class MeetingDetailModelTests: XCTestCase {
                 source: .manualName,
                 selection: .existing(fixture.person.id)))
         await model.send(.setActionItem(fixture.actionItem.id, done: true))
+        let feedbackEffect = await model.send(
+            .setSummaryClaimFeedback(fixture.claimID, .unsupported))
         await model.send(.removeCompanionCard(fixture.card.id))
         await model.send(.searchableContentChanged)
         let deleteEffect = await model.send(.deleteMeeting)
@@ -127,6 +129,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .findPeople("Ana"),
             .linkPerson(fixture.speaker.id, fixture.person.id),
             .setActionItem(fixture.actionItem.id, true),
+            .setClaimFeedback(fixture.claimID, .unsupported, fixture.meeting.id),
             .deleteCompanion(fixture.card.id),
             .deleteMeeting(fixture.meeting.id),
             .retryProcessing(fixture.meeting.id),
@@ -143,6 +146,10 @@ final class MeetingDetailModelTests: XCTestCase {
             return XCTFail("explicit linking must preserve its result")
         }
         XCTAssertEqual(link.person.id, fixture.person.id)
+        guard case .summaryClaimFeedbackSaved(let claimID) = feedbackEffect else {
+            return XCTFail("claim feedback must preserve its successful mutation effect")
+        }
+        XCTAssertEqual(claimID, fixture.claimID)
         guard case .meetingDeleted(let id) = deleteEffect else {
             return XCTFail("delete must preserve the navigation effect")
         }
@@ -171,6 +178,12 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertNil(model.state.lastActionError)
         XCTAssertEqual(client.searchReindexRequests, 5)
+        let feedbackEffect = await model.send(
+            .setSummaryClaimFeedback(fixture.claimID, .unsupported))
+        XCTAssertNil(feedbackEffect)
+        XCTAssertEqual(
+            model.state.lastActionError,
+            L10n.text("Could not save this summary feedback. The summary may have changed."))
 
         let renameEffect = await model.send(
             .renameSpeaker(fixture.speaker, name: "Carla"))
@@ -214,6 +227,7 @@ private struct MeetingDetailModelFixture {
     let card: CompanionCard
     let actionItem: ActionItem
     let person: Person
+    let claimID = SummaryClaimID()
 
     init() {
         meeting = Meeting(title: "Planning", startedAt: Date())
@@ -342,6 +356,15 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         try fail(.setActionItem)
     }
 
+    func setMeetingDetailSummaryClaimFeedback(
+        _ feedback: SummaryClaimFeedback?,
+        for claimID: SummaryClaimID,
+        meetingID: MeetingID
+    ) throws {
+        calls.append(.setClaimFeedback(claimID, feedback, meetingID))
+        try fail(.setClaimFeedback)
+    }
+
     func deleteMeetingDetailCompanionCard(_ id: UUID) throws {
         calls.append(.deleteCompanion(id))
         try fail(.deleteCompanion)
@@ -372,6 +395,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case findPeople
     case linkPerson
     case setActionItem
+    case setClaimFeedback
     case deleteCompanion
     case deleteMeeting
     case retryProcessing
@@ -386,6 +410,7 @@ private enum MeetingDetailModelCall: Equatable {
     case findPeople(String)
     case linkPerson(SpeakerID, PersonID?)
     case setActionItem(UUID, Bool)
+    case setClaimFeedback(SummaryClaimID, SummaryClaimFeedback?, MeetingID)
     case deleteCompanion(UUID)
     case deleteMeeting(MeetingID)
     case retryProcessing(MeetingID)

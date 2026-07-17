@@ -57,6 +57,17 @@ extension AppServices: MeetingDetailModelClient {
         try await store.setActionItem(id, done: done)
     }
 
+    func setMeetingDetailSummaryClaimFeedback(
+        _ feedback: SummaryClaimFeedback?,
+        for claimID: SummaryClaimID,
+        meetingID: MeetingID
+    ) async throws {
+        try await store.setSummaryClaimFeedback(
+            feedback,
+            for: claimID,
+            meetingID: meetingID)
+    }
+
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws {
         try await store.deleteCompanionCard(id)
     }

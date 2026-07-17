@@ -31,7 +31,8 @@ extension MeetingStore {
         let observation = ValueObservation.tracking(
             regions: [
                 Table("meeting"), Table("summary"), Table("actionItem"),
-                Table("summaryClaim"), Table("summaryClaimSegment")
+                Table("summaryClaim"), Table("summaryClaimSegment"),
+                Table("summaryClaimFeedback")
             ],
             fetch: { database in
                 try Self.fetchMeetingReviewSummary(id, in: database)

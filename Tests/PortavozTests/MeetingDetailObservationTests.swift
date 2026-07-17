@@ -104,7 +104,10 @@ final class MeetingDetailObservationTests: XCTestCase {
             recipeID: Recipe.general.id,
             language: "es",
             markdown: "## Resumen",
-            actionItems: [action]))
+            actionItems: [action],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segment.id])]))
         let firstSummary = try await nextSummary(&summary) { $0?.draft.actionItems.count == 1 }
         XCTAssertEqual(firstSummary?.version, 1)
         try await store.setActionItem(action.id, done: true)
@@ -112,6 +115,15 @@ final class MeetingDetailObservationTests: XCTestCase {
             $0?.draft.actionItems.first?.isDone == true
         }
         XCTAssertTrue(completed?.draft.actionItems.first?.isDone == true)
+        let claim = try XCTUnwrap(firstSummary?.draft.claims.first)
+        try await store.setSummaryClaimFeedback(
+            .unsupported,
+            for: claim.id,
+            meetingID: meeting.id)
+        let reviewed = try await nextSummary(&summary) {
+            $0?.draft.claims.first?.feedback?.kind == .unsupported
+        }
+        XCTAssertEqual(reviewed?.draft.markdown, "## Resumen")
 
         let card = CompanionCard(
             question: "¿Cuándo?",

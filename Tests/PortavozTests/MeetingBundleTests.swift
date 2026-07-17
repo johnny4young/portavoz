@@ -30,7 +30,9 @@ final class MeetingBundleTests: XCTestCase {
             claims: [SummaryClaim(
                 kind: .overview,
                 sourceTranscriptRevision: meeting.transcriptRevision,
-                evidenceSegmentIDs: [segments[0].id])])
+                evidenceSegmentIDs: [segments[0].id],
+                feedback: SummaryClaimFeedback.correction(
+                    "La beta se publica el martes.")!)])
         let note = ContextItem(
             meetingID: meeting.id, kind: .note, content: "congelar scope", timestamp: 12)
         let card = CompanionCard(
@@ -51,6 +53,9 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(decoded.segments.count, 2)
         XCTAssertEqual(decoded.summary?.actionItems.first?.text, "Preparar demo")
         XCTAssertEqual(decoded.summary?.claims.first?.evidenceSegmentIDs, [decoded.segments[0].id])
+        XCTAssertEqual(
+            decoded.summary?.claims.first?.feedback?.correctionText,
+            "La beta se publica el martes.")
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
         XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
     }
@@ -110,6 +115,9 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNotEqual(
             remapped.summary?.claims.first?.id,
             original.summary?.claims.first?.id)
+        XCTAssertEqual(
+            remapped.summary?.claims.first?.feedback,
+            original.summary?.claims.first?.feedback)
         // "Me" flag survives.
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
         XCTAssertNotEqual(

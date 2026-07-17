@@ -159,6 +159,9 @@ final class ImportMeetingBundleUseCaseTests: XCTestCase {
         XCTAssertEqual(detail?.segments.map(\.speakerID), [fixture.speaker.id])
         XCTAssertEqual(summary?.version, 1)
         XCTAssertEqual(summary?.draft.actionItems.first?.ownerSpeakerID, fixture.speaker.id)
+        XCTAssertEqual(
+            summary?.draft.claims.first?.feedback?.correctionText,
+            "Ship the beta after legal approval.")
         XCTAssertEqual(notes.map(\.content), ["Keep rollout private"])
         XCTAssertEqual(cards.map(\.question), ["When do we ship?"])
     }
@@ -261,7 +264,12 @@ private struct BundleImportFixture: Sendable {
             recipeID: Recipe.general.id,
             language: "en",
             markdown: "# Launch",
-            actionItems: [ActionItem(text: "Prepare rollout", ownerSpeakerID: speaker.id)])
+            actionItems: [ActionItem(text: "Prepare rollout", ownerSpeakerID: speaker.id)],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [self.segment.id],
+                feedback: SummaryClaimFeedback.correction(
+                    "Ship the beta after legal approval.")!)])
         self.note = ContextItem(
             meetingID: meeting.id,
             kind: .note,

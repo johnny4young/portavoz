@@ -737,6 +737,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(detail.contains("focusEvidence(segment)"))
     }
 
+    func testClaimFeedbackStaysSeparatePrivateAndExplicitlyPortable() throws {
+        let core = try Self.contents(of: "Sources/PortavozCore/SummaryTypes.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SummaryClaimFeedback.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SummaryClaimFeedback.swift")
+        let summaries = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Summaries.swift")
+        let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let diagnostics = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
+
+        XCTAssertTrue(core.contains("enum SummaryClaimFeedbackKind"))
+        XCTAssertTrue(core.contains("maximumCorrectionLength = 2_000"))
+        XCTAssertTrue(schema.contains("table: \"summaryClaimFeedback\""))
+        XCTAssertTrue(schema.contains("deletedAt IS NOT NULL AND correctionText IS NULL"))
+        XCTAssertTrue(storage.contains("ORDER BY createdAt DESC, rowid DESC"))
+        XCTAssertTrue(storage.contains("current.correctionText = nil"))
+        XCTAssertTrue(summaries.contains("generated summaries cannot write user feedback"))
+        XCTAssertTrue(bundle.contains("feedback: claim.feedback"))
+        XCTAssertTrue(model.contains("case setSummaryClaimFeedback"))
+        XCTAssertFalse(diagnostics.contains("SummaryClaimFeedback"))
+        XCTAssertTrue(try Self.sourceMatches(
+            under: "Sources/IntelligenceKit",
+            pattern: #"SummaryClaimFeedback"#).isEmpty)
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")

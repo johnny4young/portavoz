@@ -6140,6 +6140,146 @@
           }
         }
       }
+    },
+    "Review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisión"
+          }
+        }
+      }
+    },
+    "Edit correction…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar corrección…"
+          }
+        }
+      }
+    },
+    "Add correction…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir corrección…"
+          }
+        }
+      }
+    },
+    "Unsupported": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sustentado"
+          }
+        }
+      }
+    },
+    "Mark unsupported": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar como no sustentado"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar"
+          }
+        }
+      }
+    },
+    "Stays on this Mac. Included only when you export a .portavoz file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanece en este Mac. Solo se incluye cuando exportas un archivo .portavoz."
+          }
+        }
+      }
+    },
+    "Your correction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu corrección"
+          }
+        }
+      }
+    },
+    "Marked as unsupported": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcado como no sustentado"
+          }
+        }
+      }
+    },
+    "Correct the summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrige el resumen"
+          }
+        }
+      }
+    },
+    "Your correction stays separate, on this Mac, and only in explicit .portavoz exports.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu corrección se mantiene separada, en este Mac y solo en exportaciones .portavoz explícitas."
+          }
+        }
+      }
+    },
+    "Save correction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar corrección"
+          }
+        }
+      }
+    },
+    "Could not save this correction. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar esta corrección. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Could not save this summary feedback. The summary may have changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar esta revisión del resumen. Es posible que el resumen haya cambiado."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

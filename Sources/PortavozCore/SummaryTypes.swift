@@ -158,6 +158,77 @@ public enum SummaryClaimKind: String, Codable, Sendable {
     case overview
 }
 
+/// The user's current assessment of one generated claim.
+///
+/// This state is deliberately separate from generated Markdown: correcting or
+/// rejecting a claim never rewrites model output, enters another prompt, or
+/// becomes hidden training history. One claim has at most one reversible
+/// assessment, which explicit `.portavoz` export carries with the claim.
+public enum SummaryClaimFeedbackKind: String, Codable, Sendable {
+    case correction
+    case unsupported
+}
+
+public struct SummaryClaimFeedback: Codable, Equatable, Sendable {
+    public static let maximumCorrectionLength = 2_000
+
+    public let kind: SummaryClaimFeedbackKind
+    public let correctionText: String?
+
+    public static func correction(_ text: String) -> SummaryClaimFeedback? {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty,
+              normalized.unicodeScalars.count <= maximumCorrectionLength
+        else {
+            return nil
+        }
+        return SummaryClaimFeedback(kind: .correction, correctionText: normalized)
+    }
+
+    public static let unsupported = SummaryClaimFeedback(
+        kind: .unsupported,
+        correctionText: nil)
+
+    private init(kind: SummaryClaimFeedbackKind, correctionText: String?) {
+        self.kind = kind
+        self.correctionText = correctionText
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, correctionText
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(SummaryClaimFeedbackKind.self, forKey: .kind)
+        let correctionText = try container.decodeIfPresent(String.self, forKey: .correctionText)
+        switch kind {
+        case .correction:
+            guard let feedback = correctionText.flatMap(Self.correction) else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .correctionText,
+                    in: container,
+                    debugDescription: "correction feedback must contain 1...2000 characters")
+            }
+            self = feedback
+        case .unsupported:
+            guard correctionText == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .correctionText,
+                    in: container,
+                    debugDescription: "unsupported feedback cannot contain correction text")
+            }
+            self = .unsupported
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(kind, forKey: .kind)
+        try container.encodeIfPresent(correctionText, forKey: .correctionText)
+    }
+}
+
 /// Ordered transcript evidence for one generated claim.
 ///
 /// `sourceTranscriptRevision` is nil while a provider result is in memory;
@@ -171,19 +242,24 @@ public struct SummaryClaim: Codable, Sendable, Identifiable {
     /// Links become NULL when their segment is physically removed. Keeping a
     /// count lets the UI fail closed without manufacturing replacement IDs.
     public let unavailableEvidenceCount: Int
+    /// User-owned mutable metadata loaded beside this immutable generated
+    /// claim. Providers and translation pivots always create claims with nil.
+    public let feedback: SummaryClaimFeedback?
 
     public init(
         id: SummaryClaimID = SummaryClaimID(),
         kind: SummaryClaimKind,
         sourceTranscriptRevision: Int? = nil,
         evidenceSegmentIDs: [UUID],
-        unavailableEvidenceCount: Int = 0
+        unavailableEvidenceCount: Int = 0,
+        feedback: SummaryClaimFeedback? = nil
     ) {
         self.id = id
         self.kind = kind
         self.sourceTranscriptRevision = sourceTranscriptRevision
         self.evidenceSegmentIDs = evidenceSegmentIDs
         self.unavailableEvidenceCount = unavailableEvidenceCount
+        self.feedback = feedback
     }
 }
 

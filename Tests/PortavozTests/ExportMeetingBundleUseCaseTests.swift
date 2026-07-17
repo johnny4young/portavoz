@@ -167,6 +167,15 @@ final class ExportMeetingBundleUseCaseTests: XCTestCase {
             at: Date(timeIntervalSince1970: 1_000))
         _ = try await store.saveSummary(
             fixture.summary(markdown: "# Newest", recipeID: Recipe.standup.id))
+        let newestValue = try await store.summary(
+            fixture.meeting.id,
+            recipeID: Recipe.standup.id)
+        let newest = try XCTUnwrap(newestValue)
+        let claim = try XCTUnwrap(newest.draft.claims.first)
+        try await store.setSummaryClaimFeedback(
+            SummaryClaimFeedback.correction("Publicar después de QA."),
+            for: claim.id,
+            meetingID: fixture.meeting.id)
         let dependencies = BundleExportDependencies(content: nil)
 
         _ = try await fixture.useCase(
@@ -177,6 +186,9 @@ final class ExportMeetingBundleUseCaseTests: XCTestCase {
         let document = await dependencies.document()
         XCTAssertEqual(document?.summary?.markdown, "# Newest")
         XCTAssertEqual(document?.summary?.recipeID, Recipe.standup.id)
+        XCTAssertEqual(
+            document?.summary?.claims.first?.feedback?.correctionText,
+            "Publicar después de QA.")
         XCTAssertEqual(document?.speakers.map(\.id), [fixture.speaker.id])
         XCTAssertEqual(document?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(document?.contextItems.map(\.id), [fixture.note.id])
@@ -264,7 +276,10 @@ private struct BundleExportFixture {
             recipeID: Recipe.general.id,
             language: "es",
             markdown: "# Último",
-            actionItems: [ActionItem(text: "Publicar", ownerSpeakerID: speaker.id)])
+            actionItems: [ActionItem(text: "Publicar", ownerSpeakerID: speaker.id)],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [self.segment.id])])
         self.note = ContextItem(
             meetingID: meeting.id,
             kind: .note,
@@ -298,7 +313,10 @@ private struct BundleExportFixture {
             recipeID: recipeID,
             language: "es",
             markdown: markdown,
-            actionItems: [ActionItem(text: "Publicar", ownerSpeakerID: speaker.id)])
+            actionItems: [ActionItem(text: "Publicar", ownerSpeakerID: speaker.id)],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segment.id])])
     }
 
     func request(includeAudio: Bool) -> ExportMeetingBundleRequest {

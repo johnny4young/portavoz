@@ -40,9 +40,9 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9 typed summary evidence
+    // MARK: - Schema v9-v10 summary evidence and review
 
-    func testV8MigratesAdditivelyToTypedSummaryEvidenceSchema() throws {
+    func testV8MigratesAdditivelyThroughClaimFeedbackSchema() throws {
         let database = try DatabaseQueue()
         let migrator = StorageSchema.migrator()
         try migrator.migrate(database, upTo: "v8")
@@ -88,12 +88,19 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
+            XCTAssertEqual(StorageSchema.version, 10)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaimSegment").map(\.name)),
                 ["id", "claimID", "segmentID", "ordinal", "createdAt"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "summaryClaimFeedback").map(\.name)),
+                [
+                    "claimID", "kind", "correctionText", "createdAt", "updatedAt",
+                    "deletedAt",
+                ])
             XCTAssertEqual(
                 try String.fetchOne(
                     db, sql: "SELECT markdown FROM summary WHERE id = ?",
@@ -118,6 +125,14 @@ final class MeetingStoreTests: XCTestCase {
                 segmentID: legacySegment.id.uuidString,
                 ordinal: 0,
                 createdAt: timestamp)
+                .insert(db)
+            try SummaryClaimFeedbackRecord(
+                claimID: claimID,
+                kind: SummaryClaimFeedbackKind.correction.rawValue,
+                correctionText: "The rollout is Monday.",
+                createdAt: timestamp,
+                updatedAt: timestamp,
+                deletedAt: nil)
                 .insert(db)
             try db.execute(
                 sql: "DELETE FROM segment WHERE id = ?",
@@ -456,6 +471,143 @@ final class MeetingStoreTests: XCTestCase {
                 currentTranscriptRevision: 1,
                 segments: segments).status,
             .stale)
+    }
+
+    func testClaimFeedbackCanReplaceAndClearWithoutChangingGeneratedSummary() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: "El rollout queda para el viernes.",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[1].id])]))
+        let originalValue = try await store.summary(meeting.id)
+        let original = try XCTUnwrap(originalValue)
+        let claim = try XCTUnwrap(original.draft.claims.first)
+
+        try await store.setSummaryClaimFeedback(
+            SummaryClaimFeedback.correction("El rollout queda para el lunes."),
+            for: claim.id,
+            meetingID: meeting.id)
+        let correctedValue = try await store.summary(meeting.id)
+        let corrected = try XCTUnwrap(correctedValue)
+        XCTAssertEqual(corrected.draft.markdown, original.draft.markdown)
+        XCTAssertEqual(
+            corrected.draft.claims.first?.feedback?.correctionText,
+            "El rollout queda para el lunes.")
+
+        try await store.setSummaryClaimFeedback(
+            .unsupported,
+            for: claim.id,
+            meetingID: meeting.id)
+        let unsupported = try await store.summary(meeting.id)
+        XCTAssertEqual(unsupported?.draft.claims.first?.feedback?.kind, .unsupported)
+
+        try await store.setSummaryClaimFeedback(
+            nil,
+            for: claim.id,
+            meetingID: meeting.id)
+        let cleared = try await store.summary(meeting.id)
+        XCTAssertNil(cleared?.draft.claims.first?.feedback)
+        try await store.database.read { db in
+            let record = try XCTUnwrap(SummaryClaimFeedbackRecord.fetchOne(
+                db,
+                key: claim.id.rawValue.uuidString))
+            XCTAssertNotNil(record.deletedAt, "clearing must leave a future-sync tombstone")
+            XCTAssertNil(record.correctionText, "clearing must erase the private correction text")
+        }
+    }
+
+    func testClaimFeedbackSchemaRejectsInvalidShapes() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "The rollout is Friday.",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[0].id])]))
+        let summary = try await store.summary(meeting.id)
+        let claimID = try XCTUnwrap(summary?.draft.claims.first?.id)
+
+        await assertClaimFeedbackConstraintRejects(
+            claimID: claimID, kind: "unknown", correctionText: nil, deleted: false)
+        await assertClaimFeedbackConstraintRejects(
+            claimID: claimID, kind: "unsupported", correctionText: "hidden", deleted: false)
+        await assertClaimFeedbackConstraintRejects(
+            claimID: claimID, kind: "correction", correctionText: " \t\n ", deleted: false)
+        await assertClaimFeedbackConstraintRejects(
+            claimID: claimID,
+            kind: "correction",
+            correctionText: String(repeating: "x", count: 2_001),
+            deleted: false)
+        await assertClaimFeedbackConstraintRejects(
+            claimID: claimID, kind: "correction", correctionText: "hidden", deleted: true)
+    }
+
+    func testClaimFeedbackRejectsGeneratedAndNoLongerActiveClaims() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let providerOwnedFeedback = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "Provider-owned feedback must fail.",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[0].id],
+                feedback: .unsupported)])
+        do {
+            _ = try await store.saveSummary(providerOwnedFeedback)
+            XCTFail("generated summaries must not write user feedback")
+        } catch let error as StorageError {
+            guard case .invalidSummaryClaim = error else {
+                return XCTFail("unexpected storage error: \(error)")
+            }
+        }
+
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "Version one",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[0].id])]))
+        let firstValue = try await store.summary(meeting.id)
+        let firstClaim = try XCTUnwrap(firstValue?.draft.claims.first)
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.standup.id,
+            language: "en",
+            markdown: "Newest cross-recipe version",
+            actionItems: [],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [segments[1].id])]))
+
+        do {
+            try await store.setSummaryClaimFeedback(
+                .unsupported,
+                for: firstClaim.id,
+                meetingID: meeting.id)
+            XCTFail("feedback must not land on a summary hidden by a newer snapshot")
+        } catch let error as StorageError {
+            guard case .invalidSummaryClaim = error else {
+                return XCTFail("unexpected storage error: \(error)")
+            }
+        }
+        let historical = try await store.summary(
+            meeting.id,
+            recipeID: Recipe.general.id,
+            version: 1)
+        XCTAssertNil(historical?.draft.claims.first?.feedback)
     }
 
     func testOverviewEvidenceRejectsForeignSegmentAtomically() async throws {
@@ -970,5 +1122,31 @@ extension MeetingStoreTests {
             finishedAt: timestamp.addingTimeInterval(1),
             outcome: outcome,
             metricsJSON: #"{"answerUTF8Bytes":12,"questionUTF8Bytes":12}"#)
+    }
+
+    private func assertClaimFeedbackConstraintRejects(
+        claimID: SummaryClaimID,
+        kind: String,
+        correctionText: String?,
+        deleted: Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        do {
+            let timestamp = Date(timeIntervalSince1970: 1_700_000_100)
+            try await store.database.write { db in
+                try SummaryClaimFeedbackRecord(
+                    claimID: claimID.rawValue.uuidString,
+                    kind: kind,
+                    correctionText: correctionText,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
+                    deletedAt: deleted ? timestamp : nil)
+                    .insert(db)
+            }
+            XCTFail("invalid claim feedback must fail its schema constraint", file: file, line: line)
+        } catch {
+            XCTAssertTrue(error is DatabaseError, "unexpected error: \(error)", file: file, line: line)
+        }
     }
 }

@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback).
 
 ## Structure
 
@@ -454,6 +454,16 @@ exercises this same production path in the durable-resume XCUITest (D63).
   any missing/tombstoned/null link shows unavailable and exposes no partial
   jump. Stable source, transcript-row, and current-playhead accessibility
   identifiers protect the navigation in both app languages.
+- **Claim review (D88):** beneath a current evidenced overview, direct
+  Add/Edit correction and Mark unsupported controls keep the user's assessment
+  visibly separate from generated Markdown. The correction sheet explains that
+  text stays on this Mac unless the user explicitly exports a `.portavoz`
+  bundle, enforces the 2,000-scalar bound, and saves through a
+  `MeetingDetailModel` action/effect instead of touching StorageKit from the
+  view. Clear removes the visible assessment and physically erases correction
+  text while retaining its nonsensitive tombstone. Native selected state and
+  distinct editor/status/value accessibility elements preserve keyboard,
+  VoiceOver, and EN/ES XCUITest reachability.
 - **Confirmed people (D86):** accepting a manual, transcript/calendar, or
   encrypted-voice name may surface a separate `person-remember-offer`; neither
   the name action nor its evidence auto-links a human. `MeetingDetailModel`
@@ -532,10 +542,10 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 27 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 28 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
-advance), MeetingDetail (summary tabs reveal ▸, typed summary-source transcript/audio navigation, explicit confirmed-person
+advance), MeetingDetail (summary tabs reveal ▸, typed summary-source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install

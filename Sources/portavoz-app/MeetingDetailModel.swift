@@ -18,6 +18,11 @@ protocol MeetingDetailModelClient: AnyObject {
         _ request: LinkObservedSpeakerRequest
     ) async throws -> ConfirmedPersonLink
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws
+    func setMeetingDetailSummaryClaimFeedback(
+        _ feedback: SummaryClaimFeedback?,
+        for claimID: SummaryClaimID,
+        meetingID: MeetingID
+    ) async throws
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws
@@ -60,6 +65,7 @@ final class MeetingDetailModel {
             source: PersonAliasSource,
             selection: CanonicalPersonSelection)
         case setActionItem(UUID, done: Bool)
+        case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
         case removeCompanionCard(UUID)
         case deleteMeeting
         case retryProcessing
@@ -72,6 +78,7 @@ final class MeetingDetailModel {
         case speakerRenamed(Speaker)
         case canonicalPeopleFound(Speaker, PersonAliasSource, [Person])
         case canonicalPersonLinked(ConfirmedPersonLink)
+        case summaryClaimFeedbackSaved(SummaryClaimID)
         case meetingDeleted(MeetingID)
     }
 
@@ -143,6 +150,8 @@ final class MeetingDetailModel {
         case .setActionItem(let id, let done):
             await setActionItem(id, done: done)
             return nil
+        case .setSummaryClaimFeedback(let claimID, let feedback):
+            return await setSummaryClaimFeedback(feedback, for: claimID)
         case .removeCompanionCard(let id):
             await removeCompanionCard(id)
             return nil
@@ -238,6 +247,24 @@ private extension MeetingDetailModel {
     func setActionItem(_ id: UUID, done: Bool) async {
         _ = try? await client.setMeetingDetailActionItem(id, done: done)
         client.requestMeetingDetailSearchReindex()
+    }
+
+    func setSummaryClaimFeedback(
+        _ feedback: SummaryClaimFeedback?,
+        for claimID: SummaryClaimID
+    ) async -> Effect? {
+        do {
+            try await client.setMeetingDetailSummaryClaimFeedback(
+                feedback,
+                for: claimID,
+                meetingID: meetingID)
+            state.lastActionError = nil
+            return .summaryClaimFeedbackSaved(claimID)
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not save this summary feedback. The summary may have changed.")
+            return nil
+        }
     }
 
     func removeCompanionCard(_ id: UUID) async {

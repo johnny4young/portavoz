@@ -108,6 +108,41 @@ final class CoreTypesTests: XCTestCase {
             claim.resolveEvidence(currentTranscriptRevision: 2, segments: []).status,
             .unavailable)
     }
+
+    func testSummaryClaimFeedbackIsBoundedNormalizedAndBackwardCompatible() throws {
+        let correction = try XCTUnwrap(
+            SummaryClaimFeedback.correction("  The rollout is next Monday.  "))
+        XCTAssertEqual(correction.kind, .correction)
+        XCTAssertEqual(correction.correctionText, "The rollout is next Monday.")
+        XCTAssertNil(SummaryClaimFeedback.correction(" \n "))
+        XCTAssertNil(SummaryClaimFeedback.correction(
+            String(repeating: "x", count: SummaryClaimFeedback.maximumCorrectionLength + 1)))
+
+        let claim = SummaryClaim(
+            kind: .overview,
+            evidenceSegmentIDs: [UUID()])
+        let data = try JSONEncoder().encode(claim)
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("feedback"))
+        XCTAssertNil(try JSONDecoder().decode(SummaryClaim.self, from: data).feedback)
+
+        let reviewed = SummaryClaim(
+            kind: .overview,
+            evidenceSegmentIDs: [UUID()],
+            feedback: correction)
+        let decoded = try JSONDecoder().decode(
+            SummaryClaim.self,
+            from: JSONEncoder().encode(reviewed))
+        XCTAssertEqual(decoded.feedback, correction)
+    }
+
+    func testMalformedSummaryClaimFeedbackFailsClosed() throws {
+        let invalid = """
+            {"kind":"unsupported","correctionText":"hidden correction"}
+            """
+        XCTAssertThrowsError(try JSONDecoder().decode(
+            SummaryClaimFeedback.self,
+            from: Data(invalid.utf8)))
+    }
 }
 
 final class IntelligenceTypesTests: XCTestCase {

@@ -147,7 +147,11 @@ extension MeetingStore {
             try SegmentRecord(segment, createdAt: timestamp, updatedAt: timestamp).insert(db)
         }
         if let summary = snapshot.summary {
-            _ = try insertSummarySnapshot(summary, at: timestamp, in: db)
+            _ = try insertSummarySnapshot(
+                summary,
+                at: timestamp,
+                allowClaimFeedback: true,
+                in: db)
         }
         for item in snapshot.contextItems {
             try ContextItemRecord(item, createdAt: timestamp, updatedAt: timestamp).insert(db)

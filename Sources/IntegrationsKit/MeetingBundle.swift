@@ -190,7 +190,8 @@ public struct MeetingBundle: Codable, Sendable {
                 return SummaryClaim(
                     kind: claim.kind,
                     sourceTranscriptRevision: nil,
-                    evidenceSegmentIDs: evidenceIDs)
+                    evidenceSegmentIDs: evidenceIDs,
+                    feedback: claim.feedback)
             })
     }
 }

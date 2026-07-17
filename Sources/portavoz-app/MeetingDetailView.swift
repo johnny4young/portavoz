@@ -1403,35 +1403,50 @@ extension MeetingDetailView {
             let resolution = claim.resolveEvidence(
                 currentTranscriptRevision: detail.meeting.transcriptRevision,
                 segments: detail.segments)
-            switch resolution.status {
-            case .current:
-                HStack(spacing: 6) {
-                    Label("Sources", systemImage: "quote.bubble")
+            VStack(alignment: .leading, spacing: 8) {
+                switch resolution.status {
+                case .current:
+                    HStack(spacing: 6) {
+                        Label("Sources", systemImage: "quote.bubble")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        ForEach(
+                            Array(resolution.segments.enumerated()),
+                            id: \.element.id
+                        ) { index, segment in
+                            Button(evidenceClock(segment.startTime)) {
+                                focusEvidence(segment)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                            .help(segment.text)
+                            .accessibilityIdentifier("summary-evidence-\(index)")
+                            .accessibilityValue(segment.text)
+                        }
+                    }
+                case .stale:
+                    Label(
+                        "Sources are out of date after transcript changes.",
+                        systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    ForEach(Array(resolution.segments.enumerated()), id: \.element.id) { index, segment in
-                        Button(evidenceClock(segment.startTime)) {
-                            focusEvidence(segment)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
-                        .help(segment.text)
-                        .accessibilityIdentifier("summary-evidence-\(index)")
-                        .accessibilityValue(segment.text)
-                    }
+                        .accessibilityIdentifier("summary-evidence-stale")
+                case .unavailable:
+                    Label(
+                        "Sources are no longer available.",
+                        systemImage: "exclamationmark.triangle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("summary-evidence-unavailable")
                 }
-            case .stale:
-                Label(
-                    "Sources are out of date after transcript changes.",
-                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("summary-evidence-stale")
-            case .unavailable:
-                Label("Sources are no longer available.", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("summary-evidence-unavailable")
+                SummaryClaimFeedbackView(claim: claim) { feedback in
+                    let effect = await model.send(
+                        .setSummaryClaimFeedback(claim.id, feedback))
+                    guard case .summaryClaimFeedbackSaved(let savedID) = effect else {
+                        return false
+                    }
+                    return savedID == claim.id
+                }
             }
         }
     }

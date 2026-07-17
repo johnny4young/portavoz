@@ -403,6 +403,17 @@ struct SummaryClaimSegmentRecord: Codable, FetchableRecord, PersistableRecord {
     var createdAt: Date
 }
 
+struct SummaryClaimFeedbackRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryClaimFeedback"
+
+    var claimID: String
+    var kind: String
+    var correctionText: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+}
+
 struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "generationRun"
 

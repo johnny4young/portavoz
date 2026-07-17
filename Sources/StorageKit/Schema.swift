@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 9
+    public static let version = 10
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -202,6 +202,13 @@ public enum StorageSchema {
         // physical segment deletion, while revision fences prevent stale jumps.
         migrator.registerMigration("v9") { db in
             try createSummaryClaimTables(in: db)
+        }
+
+        // v10 (D88/Band 5C): one reversible user assessment per generated
+        // claim. Tombstones keep removal explicit for future sync without
+        // accumulating a hidden history of correction text.
+        migrator.registerMigration("v10") { db in
+            try createSummaryClaimFeedbackTable(in: db)
         }
 
         return migrator
@@ -477,4 +484,5 @@ public enum StorageSchema {
             t.uniqueKey(["claimID", "segmentID"])
         }
     }
+
 }

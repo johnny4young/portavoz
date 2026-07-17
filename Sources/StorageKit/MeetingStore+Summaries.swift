@@ -136,6 +136,7 @@ extension MeetingStore {
         _ draft: SummaryDraft,
         at timestamp: Date,
         generationRunID: GenerationRunID? = nil,
+        allowClaimFeedback: Bool = false,
         in db: Database
     ) throws -> Int {
         let meetingKey = draft.meetingID.rawValue.uuidString
@@ -176,6 +177,7 @@ extension MeetingStore {
             draft.claims,
             summaryID: summaryID,
             meetingID: draft.meetingID,
+            allowFeedback: allowClaimFeedback,
             at: timestamp,
             in: db)
         return version
@@ -185,6 +187,7 @@ extension MeetingStore {
         _ claims: [SummaryClaim],
         summaryID: String,
         meetingID: MeetingID,
+        allowFeedback: Bool,
         at timestamp: Date,
         in db: Database
     ) throws {
@@ -194,6 +197,10 @@ extension MeetingStore {
                 "a summary may contain only one typed overview claim")
         }
         let claim = claims[0]
+        guard allowFeedback || claim.feedback == nil else {
+            throw StorageError.invalidSummaryClaim(
+                "generated summaries cannot write user feedback")
+        }
         let evidenceIDs = claim.evidenceSegmentIDs
         guard claim.unavailableEvidenceCount == 0,
               !evidenceIDs.isEmpty,
@@ -239,6 +246,11 @@ extension MeetingStore {
                 createdAt: timestamp)
                 .insert(db)
         }
+        try insertInitialSummaryClaimFeedback(
+            claim.feedback,
+            claimKey: claimKey,
+            at: timestamp,
+            in: db)
     }
 
     static func validateTerminalGenerationRun(_ run: GenerationRun) throws {
@@ -415,7 +427,8 @@ extension MeetingStore {
                     kind: kind,
                     sourceTranscriptRevision: record.sourceTranscriptRevision,
                     evidenceSegmentIDs: evidenceIDs,
-                    unavailableEvidenceCount: links.count - evidenceIDs.count)
+                    unavailableEvidenceCount: links.count - evidenceIDs.count,
+                    feedback: try summaryClaimFeedback(claimID: record.id, in: db))
             }
     }
 

@@ -226,6 +226,53 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testSummaryFeedbackIsExplicitReversibleAndLocal() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let unsupported = app.control(withIdentifier: "summary-feedback-unsupported")
+        XCTAssertTrue(
+            unsupported.waitForExistence(timeout: 10),
+            "an evidenced overview must expose explicit review controls")
+        unsupported.click()
+        let selected = expectation(
+            for: NSPredicate(format: "isSelected == true"),
+            evaluatedWith: unsupported)
+        wait(for: [selected], timeout: 5)
+        XCTAssertTrue(
+            app.control(withIdentifier: "summary-feedback-status").exists,
+            "the unsupported assessment must stay visibly attached to the claim")
+
+        app.control(withIdentifier: "summary-feedback-correction").click()
+        let sheet = app.sheets.firstMatch
+        XCTAssertTrue(
+            sheet.waitForExistence(timeout: 5),
+            "correction must use an explicit editor instead of rewriting generated text")
+        let editor = sheet.descendants(matching: .any)
+            .matching(identifier: "summary-feedback-correction-text")
+            .firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.click()
+        editor.typeText("El rollout queda para el lunes después de QA.")
+        app.control(withIdentifier: "summary-feedback-save").click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout queda para el lunes después de QA."]
+                .waitForExistence(timeout: 5),
+            "the saved correction must be visible without replacing the generated overview")
+        XCTAssertTrue(
+            app.staticTexts["El equipo revisó el presupuesto y fijó el rollout."].exists,
+            "feedback must not mutate the immutable generated summary")
+        attachScreenshot(of: app, named: "band-5c-local-summary-feedback")
+
+        app.control(withIdentifier: "summary-feedback-clear").click()
+        let cleared = expectation(
+            for: NSPredicate(format: "exists == false"),
+            evaluatedWith: app.control(withIdentifier: "summary-feedback-status"))
+        wait(for: [cleared], timeout: 5)
+    }
+
+    @MainActor
     func testNamedSpeakerCanBeRememberedAsCanonicalPerson() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
