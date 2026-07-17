@@ -1,0 +1,171 @@
+{
+  "buildConfiguration" : "release",
+  "configuration" : {
+    "algorithmRuns" : 3,
+    "detailSegmentsPerTwoHours" : 5000,
+    "measurementRuns" : 20,
+    "segmentsPerLibraryMeeting" : 200
+  },
+  "generatedAt" : "2026-07-17T03:20:59Z",
+  "host" : {
+    "architecture" : "arm64",
+    "operatingSystem" : "Version 26.5.2 (Build 25F84)",
+    "physicalMemoryBytes" : 38654705664,
+    "processorCount" : 14
+  },
+  "library" : [
+    {
+      "cumulativeSeedMilliseconds" : 84.062791,
+      "databaseBytes" : 798720,
+      "exactSearch" : {
+        "maximumMilliseconds" : 0.730917,
+        "p50Milliseconds" : 0.373084,
+        "p95Milliseconds" : 0.476875,
+        "sampleCount" : 20
+      },
+      "meetingCount" : 5,
+      "questionRetrieval" : {
+        "maximumMilliseconds" : 1.150416,
+        "p50Milliseconds" : 0.971709,
+        "p95Milliseconds" : 1.142167,
+        "sampleCount" : 20
+      },
+      "totalSegments" : 1000
+    },
+    {
+      "cumulativeSeedMilliseconds" : 860.857458,
+      "databaseBytes" : 5648384,
+      "exactSearch" : {
+        "maximumMilliseconds" : 2.745334,
+        "p50Milliseconds" : 2.538292,
+        "p95Milliseconds" : 2.635791,
+        "sampleCount" : 20
+      },
+      "meetingCount" : 50,
+      "questionRetrieval" : {
+        "maximumMilliseconds" : 8.227209,
+        "p50Milliseconds" : 7.603166,
+        "p95Milliseconds" : 8.034209,
+        "sampleCount" : 20
+      },
+      "totalSegments" : 10000
+    },
+    {
+      "cumulativeSeedMilliseconds" : 4909.4243750000005,
+      "databaseBytes" : 27668480,
+      "exactSearch" : {
+        "maximumMilliseconds" : 14.594875,
+        "p50Milliseconds" : 14.0675,
+        "p95Milliseconds" : 14.498542,
+        "sampleCount" : 20
+      },
+      "meetingCount" : 250,
+      "questionRetrieval" : {
+        "maximumMilliseconds" : 53.903792,
+        "p50Milliseconds" : 52.195333,
+        "p95Milliseconds" : 53.586792,
+        "sampleCount" : 20
+      },
+      "totalSegments" : 50000
+    },
+    {
+      "cumulativeSeedMilliseconds" : 10457.464292,
+      "databaseBytes" : 54931456,
+      "exactSearch" : {
+        "maximumMilliseconds" : 38.958625,
+        "p50Milliseconds" : 37.576625,
+        "p95Milliseconds" : 38.383667,
+        "sampleCount" : 20
+      },
+      "meetingCount" : 500,
+      "questionRetrieval" : {
+        "maximumMilliseconds" : 121.873542,
+        "p50Milliseconds" : 106.917792,
+        "p95Milliseconds" : 111.186834,
+        "sampleCount" : 20
+      },
+      "totalSegments" : 100000
+    }
+  ],
+  "longMeetings" : [
+    {
+      "chapterCount" : 6,
+      "chapterExtraction" : {
+        "maximumMilliseconds" : 0.202083,
+        "p50Milliseconds" : 0.192416,
+        "p95Milliseconds" : 0.202083,
+        "sampleCount" : 3
+      },
+      "databaseBytes" : 933888,
+      "detailInitialObservation" : {
+        "maximumMilliseconds" : 4.201166,
+        "p50Milliseconds" : 4.008458,
+        "p95Milliseconds" : 4.186334,
+        "sampleCount" : 20
+      },
+      "durationMinutes" : 30,
+      "healthSpeakerCount" : 4,
+      "meetingHealth" : {
+        "maximumMilliseconds" : 2.549208,
+        "p50Milliseconds" : 2.449834,
+        "p95Milliseconds" : 2.549208,
+        "sampleCount" : 3
+      },
+      "seedMilliseconds" : 92.660166,
+      "segmentCount" : 1250
+    },
+    {
+      "chapterCount" : 24,
+      "chapterExtraction" : {
+        "maximumMilliseconds" : 0.793166,
+        "p50Milliseconds" : 0.752209,
+        "p95Milliseconds" : 0.793166,
+        "sampleCount" : 3
+      },
+      "databaseBytes" : 2916352,
+      "detailInitialObservation" : {
+        "maximumMilliseconds" : 16.331875,
+        "p50Milliseconds" : 16.06075,
+        "p95Milliseconds" : 16.267791,
+        "sampleCount" : 20
+      },
+      "durationMinutes" : 120,
+      "healthSpeakerCount" : 4,
+      "meetingHealth" : {
+        "maximumMilliseconds" : 9.938625,
+        "p50Milliseconds" : 9.847667,
+        "p95Milliseconds" : 9.938625,
+        "sampleCount" : 3
+      },
+      "seedMilliseconds" : 331.84275,
+      "segmentCount" : 5000
+    },
+    {
+      "chapterCount" : 96,
+      "chapterExtraction" : {
+        "maximumMilliseconds" : 3.312125,
+        "p50Milliseconds" : 3.234334,
+        "p95Milliseconds" : 3.312125,
+        "sampleCount" : 3
+      },
+      "databaseBytes" : 12636160,
+      "detailInitialObservation" : {
+        "maximumMilliseconds" : 64.971916,
+        "p50Milliseconds" : 64.349666,
+        "p95Milliseconds" : 64.9055,
+        "sampleCount" : 20
+      },
+      "durationMinutes" : 480,
+      "healthSpeakerCount" : 4,
+      "meetingHealth" : {
+        "maximumMilliseconds" : 41.393875,
+        "p50Milliseconds" : 40.589083,
+        "p95Milliseconds" : 41.393875,
+        "sampleCount" : 3
+      },
+      "seedMilliseconds" : 1325.503834,
+      "segmentCount" : 20000
+    }
+  ],
+  "schemaVersion" : 1
+}

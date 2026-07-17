@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -265,6 +265,23 @@ cross-operation consent. The 23rd architecture rule prevents IntelligenceKit,
 app composition, or CLI composition from restoring a direct summary network
 path. D69 subsequently moves explicit publishing through the same port under
 separate contracts; see spec 07.
+
+## Meeting health at scale (D80)
+
+`MeetingHealth` remains a pure local projection over attributed transcript
+segments; no model, database, or persisted cache participates. Talk time,
+questions, longest monologue, and the released 0.5-second interruption
+threshold are unchanged. Interruption detection precomputes the maximum end
+time for each sorted prefix and stops reverse inspection only when that entire
+prefix cannot overlap the current segment. A newer ended neighbor alone is not
+enough to stop, because an older long turn may still span it.
+
+The adversarial edge is characterized directly. On the full Release matrix,
+health p95 falls from 24.25/347.58/5,385.76 ms to 2.55/9.94/41.39 ms at
+1,250/5,000/20,000 segments. Fully overlapping pathological input can still
+require quadratic inspection; ordinary sequential meetings are near-linear.
+The same native 5k detail reaches first content in 91.87 ms with no measured
+hang, so no detail decomposition or health cache is selected.
 
 ## Naming
 

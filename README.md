@@ -108,7 +108,7 @@ Measured on a MacBook Pro **M4 Max, 36 GB, macOS 26** (July 2026). Everything be
 | **Summary** | Foundation Models (on-device, 3B) | structured summary **3.8 s** after meeting end | `portavoz-cli summarize --file meeting.wav` |
 | **Dual-channel drift** | AVAudioEngine + Core Audio tap | **4 ms** over 30 min (target < 50 ms) | 30-min `portavoz-cli record --system` |
 | **Library search at 100k segments** | SQLite FTS5 | exact p95 **44.35 ms**; broad OR p95 **121.64 ms** | `scripts/run-scale-baseline.sh` |
-| **Meeting Detail at 5k segments** | scoped GRDB read + SwiftUI | core read p95 **17.22 ms**; first content **522.30 ms** (target < 300 ms; health optimization next) | `make install && scripts/run-detail-ui-baseline.sh` |
+| **Meeting Detail at 5k segments** | scoped GRDB read + SwiftUI | core read p95 **16.27 ms**; health p95 **9.94 ms**; first content **91.87 ms** with no measured hang | `make install && scripts/run-detail-ui-baseline.sh` |
 
 An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked head-to-head against Parakeet in [docs/specs/02-transcription.md](docs/specs/02-transcription.md#speechanalyzer-spike-m12d25--status-and-findings-jul-2026): both stay under 1 s p95; Parakeet keeps the finalization-latency crown, SpeechAnalyzer wins on zero-download and rich volatile captions.
 

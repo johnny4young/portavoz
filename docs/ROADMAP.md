@@ -6,11 +6,11 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** implement architecture Band 4 slice 4B: preserve exact
-interruption semantics while removing the measured `MeetingHealth` quadratic
-common case, then rerun the 4A Release and app-detail reports. D79 keeps
-`DatabaseQueue`, chapter derivation, vectors, and Spotlight unchanged until
-their own budgets miss. D78 closes Band 3 by retaining the accurately documented
+**Next concrete step:** implement architecture Band 4 slice 4C: improve broad
+OR retrieval selectivity against the tracked 100k-segment miss before
+considering sqlite-vec or a segment-layout migration. Band 4B now puts the
+5k-detail first-content path safely inside budget, so D79/D80 reject speculative
+view decomposition, `DatabasePool`, or chapter caching. D78 closes Band 3 by retaining the accurately documented
 non-sandboxed distribution until a reversible feature-parity migration passes
 its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
 
@@ -27,7 +27,20 @@ app/DMG notarization. Band 3 is complete.
 complete. Every slice
 preserves all v0.6.0 features and updates
 `ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79).
+commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80).
+
+- **Architecture Band 4 slice 4B complete — long details are linear in the
+  common case (Jul 16, 2026)**: interruption detection now uses a prefix
+  maximum-end boundary to skip only transcript history that provably cannot
+  overlap. It still detects an older long segment behind a newer ended one.
+  Release p95 falls from 24.25/347.58/5,385.76 ms to
+  2.55/9.94/41.39 ms at 1,250/5,000/20,000 segments: 9.5×/35×/130× faster.
+  The same native 5k fixture now reaches first content in 91.87 ms instead of
+  522.30 ms and records zero hangs instead of one 515.86 ms hang. Before/after
+  reports, two health-conservation characterizations, 675 package tests, D80, and
+  the unchanged 25-case EN/ES XCUITest baseline protect the result. Because
+  the 300 ms target now passes, speculative Meeting Detail decomposition is
+  not the next slice; broad OR retrieval is.
 
 - **Architecture Band 4 slice 4A complete — scale decisions now start with
   evidence (Jul 16, 2026)**: a Release CLI matrix measures the production

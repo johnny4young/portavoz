@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 673 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 25 cases and retained app-window-only Meeting Detail, 5k-segment scale detail, Library, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 675 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 25 cases and retained app-window-only Meeting Detail, 5k-segment scale detail, Library, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 252 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -41,7 +41,7 @@ Status: 673 package tests passing (13 gated) + 25 XCUITest UI cases. CI on GitHu
 | MeetingDetailObservationTests | live-rooted transcript/cast, newest-summary/action-item, Companion, and privacy-receipt observations; independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
 | BriefRelevanceTests / ReminderPolicyTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, reminder lead window/session deduplication/off state, mirror qualification/notable delta, and factual English/Spanish synthesis |
 | MeetingBundleTests | round-trip/remap of text, audio, notes, and Companion cards; additive compatibility of format v1 |
-| MeetingHealthTests | 6 cases: talk-time/share, ES/EN questions, thresholded interruptions, chained monologues, unattributed excluded |
+| MeetingHealthTests | 8 cases: talk-time/share, ES/EN questions, thresholded interruptions, older-long-overlap conservation behind an ended neighbor, 200 dense timelines matched to the exhaustive reference, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
 | StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36/D37/D38/D39/D40/D41/D43/D63/D64/D65/D66/D70/D75 contract: strict persisted IDs/enums, tombstones plus guarded provisional rollback, versioning, hostile FTS, retention, paths, delete/restore conservation, schema-v6 v5-fixture migration plus additive schema-v7 privacy evidence, lifecycle/path/language/idempotency constraints, atomic pre-capture reservations, all-or-nothing captured/recovered snapshot installation including Companion runs/card links, atomic initial-job admission, ready-state protection, owner-leased durable jobs with cancellation/scheduled-wake control, stale-safe atomic first-pass transcription/diarization/summary completion including dependent enqueue, required-artifact fences, durable run linkage and late-commit rollback, generated-summary transaction reuse after imported-aggregate commit, revision-fenced accepted Refine run/segment linkage, current-revision Companion replacement, link retention, and injected rollback |
@@ -630,6 +630,17 @@ Profiler records 15,908 rows and the expected symbols, but its SwiftUI template
 emits `Trace file had no SwiftUI data`; D79 therefore leaves update-cause scope
 open instead of treating zero rows as a pass.
 
+Band 4 slice 4B adds two semantic characterizations and extends the 32nd
+architecture case with the prefix-boundary source contract, D80, comparable
+after reports, a >10× 5k health improvement, a sub-300 ms first-content gate,
+and zero measured hangs. The full Release after-report records health p95
+2.55/9.94/41.39 ms at 1,250/5,000/20,000 segments versus
+24.25/347.58/5,385.76 ms before. The installed-app after-report records
+91.87 ms first content and no hang versus 522.30 ms and one 515.86 ms hang.
+The package baseline is 675 tests (13 gated); the user-visible fixture and the
+25-case EN/ES UI contract are unchanged. Xcode 26.6 still reports no SwiftUI
+update rows, so that limitation remains explicit.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
@@ -661,8 +672,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | Exact FTS at 100k segments | p95 < 50 ms | **p50 39.90 ms / p95 44.35 ms** (`bench-scale`) |
 | Broad OR retrieval at 100k segments | p95 < 100 ms semantic-search target | **p50 111.69 ms / p95 121.64 ms** — measured miss; query selectivity is next (D79) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
-| Detail first content, 2 h / 5k segments | p95 < 300 ms | **522.30 ms single signpost run** + one **515.86 ms** initial hang; Band 4B targets the measured health hotspot |
-| Meeting health, 2 h / 5k → 8 h / 20k | derived-policy diagnostic | **p95 347.58 ms → 5,385.76 ms** |
+| Detail first content, 2 h / 5k segments | p95 < 300 ms | **91.87 ms** single signpost run, down from 522.30 ms; **zero hangs**, down from one 515.86 ms hang (D80) |
+| Meeting health, 2 h / 5k → 8 h / 20k | derived-policy diagnostic | **p95 9.94 ms → 41.39 ms**, down from 347.58 ms → 5,385.76 ms |
 | RAM by phase (`--bench-record 60 --bench-log <file>`, via `open -n`) | < 800 MB peak while recording / < 200 MB idle post-meeting | **20 MB without models → ~515 MB engines loaded → 569–795 MB peak while recording (LIVE diarization included) → 140–160 MB after the meeting**. The original target (500 MB) was set before adding live diarization; revised Jul 2026 |
 | Embedded summary RAM (MLX) | transient, not resident | **~2.4 GB during generation**; `MLXModelCache` releases it only after 120 s idle (previously it remained resident forever) |
 

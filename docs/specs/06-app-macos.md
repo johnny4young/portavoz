@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79 (evidence-first detail scale changes).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79 (evidence-first detail scale changes), D80 (prefix-evidenced interruption scan).
 
 ## Structure
 
@@ -465,6 +465,14 @@ initial hang. Time Profiler captures 15,908 samples with Meeting Detail and
 transcript symbols. The SwiftUI template emits `Trace file had no SwiftUI data`
 and zero update rows on this toolchain, so exact view-body invalidation remains
 unmeasured rather than being represented as zero (D79).
+
+Band 4B reruns the same installed Dev fixture after changing only the pure
+`MeetingHealth` scan. `docs/evidence/detail-ui-baseline-20260716-after-health.json`
+records first content at 91.87 ms instead of 522.30 ms and zero potential hangs
+instead of one 515.86 ms hang. Time Profiler remains populated; the Xcode 26.6
+SwiftUI lane retains the same explicit no-data limitation. The detail now
+passes its 300 ms budget without view decomposition, a cache, or broader state,
+so D80 leaves those structures unchanged.
 
 The 25th XCUITest waits for the 5,000-segment title, transcript, chapter rail,
 and delayed summary revision 2, then retains the

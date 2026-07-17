@@ -2042,3 +2042,38 @@ baseline identifies a specific algorithmic hotspot and a specific broad-query
 miss while showing that several proposed infrastructure changes would add
 complexity without evidence. Explicitly recording the Instruments limitation
 is more trustworthy than converting an empty lane into a success claim.
+
+## D80 — Bound interruption scans with prefix evidence (Jul 2026)
+
+**Context:** D79 identified `MeetingHealth` as the dominant 5k/20k Meeting
+Detail cost. Its interruption heuristic inspected every newer segment against
+all prior segments in reverse. Ordinary non-overlapping transcripts therefore
+paid quadratic work even though almost all prior speech had already ended. A
+simple `break` on the nearest ended segment would be faster but wrong: an older
+long turn may still overlap behind that newer short segment.
+
+**Decision:** compute the maximum end time of every sorted transcript prefix.
+For each new segment, reverse inspection may stop only when the maximum end of
+the entire remaining prefix is less than or equal to the new start time. Ended
+neighbors are still skipped individually, and the existing first qualifying
+different-speaker overlap of at least 0.5 seconds remains the sole interruption
+criterion. An adversarial test must retain the older-long-overlap case. No
+schema, cache, feature model, UI, or persisted output changes.
+
+The comparable tracked reports are
+`docs/evidence/scale-baseline-20260716-after-health.json` and
+`docs/evidence/detail-ui-baseline-20260716-after-health.json`. Release p95
+changes from 24.25/347.58/5,385.76 ms to 2.55/9.94/41.39 ms at
+1,250/5,000/20,000 segments, or 9.5×/35.0×/130.1× faster. The same native 5k
+fixture reaches first content in 91.87 ms instead of 522.30 ms and reports zero
+potential hangs instead of one 515.86 ms hang. The Xcode 26.6 SwiftUI update
+lane remains explicitly unavailable; the first-content signpost, Hangs, and
+Time Profiler lanes remain valid.
+
+**Rationale:** a small data-structure index removes the measured bottleneck
+without changing product semantics or adding architectural layers. Fully
+overlapping pathological transcripts can still require quadratic inspection,
+but ordinary sequential meetings become near-linear and now pass the 300 ms
+first-content target. Because that target passes, Meeting Detail decomposition,
+a `DatabasePool`, and chapter caching are not justified next; broad OR
+retrieval selectivity remains the next measured Band 4 miss.

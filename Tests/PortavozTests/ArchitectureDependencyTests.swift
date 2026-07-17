@@ -783,6 +783,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
         let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(dispatch.contains(#"case "bench-scale":"#))
@@ -797,6 +798,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(detailRunner.contains(#""$APP" == "/Applications/Portavoz.app""#))
         XCTAssertTrue(detailRunner.contains("Trace file had no SwiftUI data"))
         XCTAssertTrue(decisions.contains("## D79 — Scale changes follow measured bottlenecks"))
+        XCTAssertTrue(decisions.contains("## D80 — Bound interruption scans with prefix evidence"))
+        XCTAssertTrue(health.contains("prefixMaximumEnd"))
+        XCTAssertTrue(health.contains(
+            "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
 
         let scale = try Self.jsonObject(
             at: "docs/evidence/scale-baseline-20260716.json")
@@ -820,6 +825,27 @@ final class ArchitectureDependencyTests: XCTestCase {
         if status == "unavailable-toolchain" {
             XCTAssertFalse((detail["limitations"] as? [String] ?? []).isEmpty)
         }
+
+        let afterScale = try Self.jsonObject(
+            at: "docs/evidence/scale-baseline-20260716-after-health.json")
+        let afterMeetings = try XCTUnwrap(afterScale["longMeetings"] as? [[String: Any]])
+        let beforeFiveThousand = try XCTUnwrap(meetings.first {
+            $0["segmentCount"] as? Int == 5_000
+        })
+        let afterFiveThousand = try XCTUnwrap(afterMeetings.first {
+            $0["segmentCount"] as? Int == 5_000
+        })
+        XCTAssertLessThan(
+            try Self.p95(in: afterFiveThousand, key: "meetingHealth"),
+            try Self.p95(in: beforeFiveThousand, key: "meetingHealth") / 10)
+
+        let afterDetail = try Self.jsonObject(
+            at: "docs/evidence/detail-ui-baseline-20260716-after-health.json")
+        let afterFirstContent = try XCTUnwrap(afterDetail["firstContent"] as? [String: Any])
+        XCTAssertLessThan(afterFirstContent["durationMilliseconds"] as? Double ?? .infinity, 300)
+        let afterResponsiveness = try XCTUnwrap(
+            afterDetail["responsiveness"] as? [String: Any])
+        XCTAssertEqual(afterResponsiveness["potentialHangCount"] as? Int, 0)
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {
@@ -851,6 +877,11 @@ private extension ArchitectureDependencyTests {
         let data = try Data(contentsOf: repoRoot.appendingPathComponent(relativePath))
         return try XCTUnwrap(
             JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
+    static func p95(in object: [String: Any], key: String) throws -> Double {
+        let distribution = try XCTUnwrap(object[key] as? [String: Any])
+        return try XCTUnwrap(distribution["p95Milliseconds"] as? Double)
     }
 
     static func imports(under relativeDirectory: String) throws -> [SourceImport] {
