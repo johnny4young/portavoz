@@ -7,7 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 18, 2026
 
-- **🛡️ Models that are truly ready** — Portavoz now marks Whisper and built-in summary models available only after every pinned artifact passes SHA-256 verification, and shows an honest checking state instead of trusting one file or a partial download.
+- **🛡️ Models that are truly ready** — Portavoz now marks Whisper and built-in summary models available only after every pinned artifact passes SHA-256 verification, serializes install/delete races, and shows an honest checking state instead of trusting one file, a stale check, or a partial download.
 - **🛡️ Audio compression keeps every original safe** — Portavoz now converts all meeting channels as one operation, refuses to replace an existing file, and removes raw audio only after every compressed channel verifies; a failure leaves the complete recording ready to retry.
 - **✏️ Honest meeting titles** — AI title, structure, and chapter suggestions stay tied to the meeting revision that produced them; a failed title save keeps its chip and error visible instead of looking accepted.
 - **🛡️ Settings actions that tell the truth** — Microphone discovery, recording-folder moves, and remembered-voice deletion now keep device work behind one reliable workflow; choosing the current folder is a safe no-op, and failed destructive voice actions stay visible instead of looking successful.

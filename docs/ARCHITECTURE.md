@@ -392,18 +392,22 @@ a remote provider.
 `ModelStoreKit` is the only source of local-model installation truth. Every
 catalog descriptor fixes its revision and enumerates every artifact with an
 expected byte count and SHA-256 digest. `ModelStore` streams each digest,
-downloads only missing or corrupt artifacts, verifies downloads before an
-atomic move, and performs a complete verification pass before returning a
-loadable directory.
+downloads only missing or corrupt artifacts into a same-directory sibling,
+verifies the staged bytes, publishes them with one atomic rename or replacement,
+and performs a complete verification pass before returning a loadable directory.
 
 `VerifiedModelLifecycle` wraps the process's shared `ModelStore`. It emits an
 installation value only after the complete descriptor passes verification,
 keys successful evidence by descriptor identity and revision, coalesces
 concurrent checks, and caches only successful results. Missing or corrupt
-results remain re-checkable. Explicit installation, deletion, invalidation, or
-forced verification prevents stale in-flight evidence from becoming current.
-This avoids hashing multi-gigabyte weights for every consumer without treating
-a directory, one expected filename, or aggregate file size as proof.
+results remain re-checkable. Mutating operations for one descriptor execute in
+invocation order, while explicit installation, deletion, invalidation, or
+forced verification supersedes older checks; an awaiting consumer loops to the
+current result instead of receiving stale evidence. Cancellation remains
+effective before publication but cannot report false failure after a verified
+installation crosses its filesystem commit point. This avoids hashing
+multi-gigabyte weights for every consumer without treating a directory, one
+expected filename, or aggregate file size as proof.
 
 The macOS composition root owns one store and lifecycle for Settings, summary
 provider resolution, import, durable post-capture work, support diagnostics,
@@ -829,7 +833,7 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 964 package tests pass, with 13 real-model/environment cases gated;
+- 968 package tests pass, with 13 real-model/environment cases gated;
 - strict SwiftLint reports zero violations across 343 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and

@@ -178,25 +178,43 @@ public actor ModelStore {
         }
         defer { try? FileManager.default.removeItem(at: temporary) }
 
-        let size = (try? FileManager.default.attributesOfItem(atPath: temporary.path)[.size] as? Int) ?? -1
+        try Task.checkCancellation()
+        let parent = destination.deletingLastPathComponent()
+        try FileManager.default.createDirectory(
+            at: parent,
+            withIntermediateDirectories: true)
+        let staged = parent.appendingPathComponent(
+            ".\(destination.lastPathComponent).download-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: staged) }
+        do {
+            try FileManager.default.moveItem(at: temporary, to: staged)
+        } catch {
+            try? FileManager.default.removeItem(at: staged)
+            try FileManager.default.copyItem(at: temporary, to: staged)
+        }
+
+        let size = (try? FileManager.default.attributesOfItem(atPath: staged.path)[.size] as? Int) ?? -1
         guard size == artifact.sizeBytes else {
             throw ModelStoreError.sizeMismatch(
                 path: artifact.path, expected: artifact.sizeBytes, actual: size)
         }
 
-        let digest = try Self.sha256(of: temporary)
+        let digest = try Self.sha256(of: staged)
         guard digest == artifact.sha256 else {
             throw ModelStoreError.checksumMismatch(
                 path: artifact.path, expected: artifact.sha256, actual: digest)
         }
 
-        // Verified — move into place atomically (replacing a corrupt copy if any).
-        try FileManager.default.createDirectory(
-            at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        // The verified sibling is on the destination volume, so publication is
+        // one atomic rename/replace and a failed repair preserves the old file.
+        try Task.checkCancellation()
         if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
+            _ = try FileManager.default.replaceItemAt(
+                destination,
+                withItemAt: staged)
+        } else {
+            try FileManager.default.moveItem(at: staged, to: destination)
         }
-        try FileManager.default.moveItem(at: temporary, to: destination)
     }
 
     /// Streaming SHA-256 (1 MiB reads) so a 445 MB weight file never has to

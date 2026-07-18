@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 964 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
+Status: 968 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English
@@ -1101,6 +1101,14 @@ construction, direct persistence calls, and imports of lower-level adapter
 frameworks. The audit found no remaining boundary violation in the implemented
 macOS graph. The full gate is 964 package tests (13 gated), and strict lint
 remains clean across 343 Swift source files (D114).
+
+Verified-model concurrency hardening adds four deterministic actor tests. They
+prove invalidation and forced verification cannot return obsolete in-flight
+evidence, a later removal waits for an earlier installation of the same
+descriptor, and cancellation after the verified filesystem commit reports
+success rather than a false failure. The existing repair case also rejects
+leftover sibling staging files. The current full gate is 968 package tests (13
+gated), with strict lint still clean across 343 Swift source files.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

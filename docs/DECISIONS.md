@@ -3387,9 +3387,15 @@ streaming SHA-256 verification. `ModelStoreKit.VerifiedModelLifecycle` owns the
 process-scoped store relationship, coalesces concurrent descriptor checks, and
 caches only successful evidence by descriptor ID and revision. Missing or
 corrupt results are not cached. Explicit install, remove, invalidate, and
-forced-verification operations fence older in-flight evidence; install may
-publish evidence directly because `ensureAvailable` performs a final complete
-verification before returning. The macOS composition root creates one store and
+forced-verification operations fence older in-flight evidence, and a superseded
+waiter resolves current state instead of returning its obsolete result. Install
+and remove operations for the same descriptor execute in invocation order;
+installation may publish evidence directly because `ensureAvailable` performs
+a final complete verification before returning. Cancellation stays effective
+before publication but reports success once that irreversible verified install
+has committed. Artifact repair stages and verifies a sibling on the destination
+volume, then atomically renames or replaces it so failed publication cannot
+create a missing-file window. The macOS composition root creates one store and
 lifecycle and shares them with Settings, MLX summary resolution, Import,
 post-capture processing, diagnostics, transcription, diarization, and
 participant-voice extraction. Disposable automation receives a unique empty

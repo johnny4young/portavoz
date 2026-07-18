@@ -25,19 +25,21 @@ bilingual UI gates (D33–D114).
   remaining production boundary violation after the model-lifecycle work;
   concrete construction remains intentionally confined to executable
   composition, nonvisual live capability owners, diagnostics, and disposable
-  benchmarks. The verified baseline is 964 package tests with 13 gated and
+  benchmarks. The verified baseline is 968 package tests with 13 gated and
   strict lint is clean across 343 Swift source files (D114).
 
 - **Local-model readiness has one verified lifecycle (Jul 18, 2026):**
   `ModelStoreKit.VerifiedModelLifecycle` coalesces complete catalog checks,
   returns installation evidence only after every artifact in the exact revision
-  passes SHA-256, caches only successful evidence, and fences install, remove,
-  invalidate, and forced re-verification. The macOS composition root shares one
+  passes SHA-256, caches only successful evidence, serializes install/remove for
+  each descriptor, and makes invalidated or forcibly superseded waiters resolve
+  current state. A late cancellation cannot report failure after verified
+  publication. The macOS composition root shares one
   lifecycle across Settings, summary resolution, Import, durable processing,
   support diagnostics, speech engines, and voice-memory extraction. Disposable
   UI launches use an isolated empty model root, and Settings shows an explicit
   integrity-checking state rather than inferring readiness from one file or
-  aggregate size. The verified package baseline is 962 tests with 13 gated,
+  aggregate size. The verified package baseline is 968 tests with 13 gated,
   strict lint is clean across 343 Swift source files, and the bilingual Settings
   smoke retains clean-install download controls (D113).
 

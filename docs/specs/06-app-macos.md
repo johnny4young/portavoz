@@ -23,7 +23,10 @@ directory, one expected filename, nor aggregate byte counts are accepted as
 proof. Successful evidence is cached by descriptor ID and revision to avoid
 re-hashing multi-gigabyte weights for each consumer, while missing/corrupt
 results remain re-checkable and explicit install/remove/invalidate operations
-fence older checks.
+fence older checks. Install and remove operations for one descriptor execute in
+invocation order, and any waiter whose check was superseded resolves the current
+result instead of surfacing stale readiness. Cancellation before publication
+stops preparation; cancellation after verified publication remains success.
 
 Settings performs integrity checks asynchronously and shows a localized
 checking row instead of briefly offering a false download state. A disposable
