@@ -31,6 +31,9 @@ protocol MeetingDetailModelClient: AnyObject {
         format: MeetingDocumentFormat
     ) async throws -> PreparedMeetingDocument
     func publishMeetingDetailGist(_ meetingID: MeetingID) async throws -> URL
+    func meetingDetailNameSuggestions(
+        _ meetingID: MeetingID
+    ) async throws -> [MeetingNameSuggestion]
     func meetingDetailVoiceSuggestions(
         _ meetingID: MeetingID
     ) async throws -> [MeetingVoiceSuggestion]
@@ -63,6 +66,8 @@ final class MeetingDetailModel {
     struct State {
         fileprivate(set) var phase: LoadPhase = .idle
         fileprivate(set) var readModel: MeetingReviewReadModel?
+        fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
+        fileprivate(set) var isSuggestingNames = false
         fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
@@ -88,6 +93,7 @@ final class MeetingDetailModel {
         case retryProcessing
         case prepareDocument(MeetingDocumentFormat)
         case publishGist
+        case loadNameSuggestions
         case loadVoiceSuggestions
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
@@ -155,6 +161,7 @@ final class MeetingDetailModel {
         }
 
         static var publishGist: Self { .review(.publishGist) }
+        static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
         static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
 
         static func checkVoiceMemoryOffer(name: String) -> Self {
@@ -176,6 +183,7 @@ final class MeetingDetailModel {
         case meetingDeleted(MeetingID)
         case documentPrepared(PreparedMeetingDocument)
         case gistPublished(URL)
+        case nameSuggestionsLoaded
         case voiceMemoryOfferChecked(Bool)
         case voiceRemembered
         case voiceMemoryInsufficientAudio
@@ -283,6 +291,8 @@ final class MeetingDetailModel {
             return await prepareDocument(format)
         case .publishGist:
             return await publishGist()
+        case .loadNameSuggestions:
+            return await loadNameSuggestions()
         case .loadVoiceSuggestions:
             await loadVoiceSuggestions()
             return nil
@@ -306,7 +316,15 @@ private extension MeetingDetailModel {
     func acceptNameSuggestion(_ original: Speaker, name: String) async -> Effect {
         var speaker = original
         speaker.displayName = name
-        _ = try? await client.renameMeetingDetailSpeaker(speaker)
+        do {
+            try await client.renameMeetingDetailSpeaker(speaker)
+        } catch {
+            let message = L10n.text("Could not apply this name suggestion.")
+            state.lastActionError = message
+            return .operationFailed(message)
+        }
+        state.lastActionError = nil
+        state.nameSuggestions.removeAll { $0.label == original.label }
         client.requestMeetingDetailSearchReindex()
         return .nameSuggestionAccepted(speaker)
     }
@@ -314,7 +332,14 @@ private extension MeetingDetailModel {
     func acceptVoiceSuggestion(_ original: Speaker, name: String) async -> Effect {
         var speaker = original
         speaker.displayName = name
-        _ = try? await client.renameMeetingDetailSpeaker(speaker)
+        do {
+            try await client.renameMeetingDetailSpeaker(speaker)
+        } catch {
+            let message = L10n.text("Could not apply this voice suggestion.")
+            state.lastActionError = message
+            return .operationFailed(message)
+        }
+        state.lastActionError = nil
         state.voiceSuggestions.removeAll { $0.speakerLabel == original.label }
         client.requestMeetingDetailSearchReindex()
         return .voiceSuggestionAccepted(speaker)
@@ -431,6 +456,23 @@ private extension MeetingDetailModel {
     func publishGist() async -> Effect {
         do {
             return .gistPublished(try await client.publishMeetingDetailGist(meetingID))
+        } catch {
+            return .operationFailed(L10n.text(error.localizedDescription))
+        }
+    }
+
+    func loadNameSuggestions() async -> Effect? {
+        guard !state.isSuggestingNames else { return nil }
+        state.isSuggestingNames = true
+        defer { state.isSuggestingNames = false }
+        do {
+            state.nameSuggestions = try await client.meetingDetailNameSuggestions(meetingID)
+            guard !state.nameSuggestions.isEmpty else {
+                return .operationFailed(L10n.text(
+                    "No verified name suggestions were found — you can rename the pills manually."))
+            }
+            state.lastActionError = nil
+            return .nameSuggestionsLoaded
         } catch {
             return .operationFailed(L10n.text(error.localizedDescription))
         }

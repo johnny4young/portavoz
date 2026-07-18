@@ -272,10 +272,28 @@ final class NameSuggestionFilterTests: XCTestCase {
 
     func testRejectsFabricatedNames() {
         let kept = NameSuggestionFilter.validSuggestions(
-            [NameSuggestion(label: "S2", name: "John", evidence: "fabricated")],
-            transcript: transcript, unnamedLabels: ["S1", "S2"],
+            [
+                NameSuggestion(label: "S2", name: "John", evidence: "fabricated"),
+                NameSuggestion(label: "S3", name: "Ana", evidence: "substring"),
+            ],
+            transcript: transcript + " The analysis is complete.",
+            unnamedLabels: ["S1", "S2", "S3"],
             attendeeCandidates: ["Pedro Gómez"])
         XCTAssertTrue(kept.isEmpty)
+    }
+
+    func testNormalizesWhitespaceAndKeepsOnlyOneSuggestionPerLabel() {
+        let kept = NameSuggestionFilter.validSuggestions(
+            [
+                NameSuggestion(label: " S1 ", name: " Carolina ", evidence: " first "),
+                NameSuggestion(label: "S1", name: "Carolina", evidence: "duplicate"),
+            ],
+            transcript: transcript,
+            unnamedLabels: ["S1"])
+
+        XCTAssertEqual(kept, [
+            NameSuggestion(label: "S1", name: "Carolina", evidence: "first"),
+        ])
     }
 
     func testRejectsLabelsAlreadyNamedOrUnknown() {

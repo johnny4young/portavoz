@@ -708,6 +708,38 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("import ModelStoreKit"))
     }
 
+    func testMeetingNameSuggestionsEnterThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/SuggestMeetingSpeakerNames.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingNames.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailView.swift")
+
+        XCTAssertTrue(workflow.contains("struct SuggestMeetingSpeakerNames"))
+        XCTAssertTrue(workflow.contains("func proposeNames("))
+        XCTAssertTrue(workflow.contains("static func verified("))
+        XCTAssertTrue(workflow.contains("enum MeetingNameSuggestionEvidence"))
+        XCTAssertTrue(workflow.contains("struct MeetingNameProposal"))
+        XCTAssertTrue(workflow.contains("PersonNameEvidenceMatcher.contains"))
+        XCTAssertFalse(workflow.contains("proposal.evidence"))
+        XCTAssertTrue(adapter.contains("CalendarAttendeeSource().attendees("))
+        XCTAssertTrue(adapter.contains("SpeakerNamer().suggestNames("))
+        XCTAssertTrue(adapter.contains("MeetingNameProposal(label:"))
+        XCTAssertTrue(model.contains("case loadNameSuggestions"))
+        XCTAssertTrue(model.contains("state.nameSuggestions"))
+        XCTAssertTrue(view.contains("model.send(.loadNameSuggestions)"))
+        XCTAssertTrue(view.contains("model.state.nameSuggestions"))
+        for bypass in [
+            "CalendarAttendeeSource", "SpeakerNamer", "NameSuggestionFilter",
+            "@State private var nameSuggestions", "@State private var suggestingNames",
+        ] {
+            XCTAssertFalse(view.contains(bypass), bypass)
+        }
+    }
+
     func testLibraryFeatureOwnsStateAndActionsOutsideSwiftUI() throws {
         let model = try Self.contents(
             of: "Sources/portavoz-app/LibraryModel.swift")

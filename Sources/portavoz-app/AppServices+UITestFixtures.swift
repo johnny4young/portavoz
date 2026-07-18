@@ -21,7 +21,12 @@ extension AppServices {
         try? await store.save(meeting)
 
         let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
-        let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
+        let ana = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: ProcessInfo.processInfo.arguments.contains("-seed-unnamed-speaker")
+                ? nil
+                : "Ana")
         try? await store.save([me, ana])
         let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
         let companionQuestionID = UUID(

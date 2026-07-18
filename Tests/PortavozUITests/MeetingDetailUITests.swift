@@ -44,6 +44,7 @@ final class MeetingDetailUITests: XCTestCase {
         processingFailure: Bool = false,
         withoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
+        unnamedSpeaker: Bool = false,
         summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
@@ -56,6 +57,9 @@ final class MeetingDetailUITests: XCTestCase {
             simulateSequoiaCapabilities: simulateSequoiaCapabilities)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
+        }
+        if unnamedSpeaker {
+            app.launchArguments.append("-seed-unnamed-speaker")
         }
         if let summaryEngine {
             app.launchArguments += ["-summaryEngine", summaryEngine]
@@ -83,6 +87,24 @@ final class MeetingDetailUITests: XCTestCase {
         wait(for: [settled], timeout: 10)
         meeting.click()
         return app
+    }
+
+    @MainActor
+    func testUnnamedSpeakerOffersExplicitNameSuggestions() {
+        let app = launchOnSeededMeeting(unnamedSpeaker: true)
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-suggest-names")
+                .waitForExistence(timeout: 10),
+            "an unnamed remote speaker must retain the explicit suggestion action")
+        XCTAssertFalse(
+            app.control(withIdentifier: "cast-speaker-Me").label.isEmpty,
+            "the local speaker remains distinct from remote naming candidates")
+        // Let the NavigationSplitView selection animation finish so visual
+        // evidence never captures the title/sidebar midway through transition.
+        Thread.sleep(forTimeInterval: 0.5)
+        attachScreenshot(of: app, named: "meeting-name-suggestions")
     }
 
     @MainActor

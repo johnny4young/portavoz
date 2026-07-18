@@ -148,7 +148,7 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
@@ -203,6 +203,15 @@ recording paths, transient embedding extraction, and model construction while
 the route-owned `MeetingDetailModel` owns one-shot suggestion state and typed
 actions/effects. SwiftUI owns only chips, confirmation, native panels, and
 localized outcomes.
+Transcript/calendar name suggestions also enter ApplicationKit. The workflow
+loads one coherent meeting snapshot, excludes `Me` and already named speakers,
+combines optional calendar candidates with an injected on-device proposer, and
+rejects every proposal whose normalized name does not occur as complete tokens
+in a real transcript line or calendar candidate. It derives typed evidence from
+that local source rather than trusting model-authored prose. The route-owned
+model keeps loading and suggestion state, removes a chip only after persistence
+succeeds, and preserves transcript-versus-calendar provenance; SwiftUI never
+requests EventKit access, constructs the proposer, or applies a name by itself.
 The user's own voice enrollment also enters ApplicationKit. Settings requests
 its fresh echo-cancelled sample and Onboarding either reuses the first-listen
 sample or requests a fresh raw sample; app composition owns microphone lifetime,

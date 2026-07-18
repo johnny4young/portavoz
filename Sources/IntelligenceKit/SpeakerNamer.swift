@@ -1,8 +1,9 @@
 import Foundation
 import PortavozCore
 
-/// A proposed label → real-name mapping, always backed by a quote from
-/// the transcript. The user accepts with one tap; nothing applies itself.
+/// An untrusted label → real-name proposal from the concrete generator.
+/// The application boundary independently derives trusted transcript or
+/// calendar evidence before presenting it, and nothing applies itself.
 public struct NameSuggestion: Codable, Sendable, Equatable {
     public let label: String
     public let name: String
@@ -15,11 +16,9 @@ public struct NameSuggestion: Codable, Sendable, Equatable {
     }
 }
 
-/// Never-trust-verify for name suggestions, shared by every entry point
-/// and unit-testable without a model: a proposed name must literally
-/// appear in the transcript OR among the calendar attendee candidates —
-/// the model fabricates names with fabricated evidence otherwise
-/// (observed: "John" out of thin air).
+/// Defense-in-depth filtering for the concrete generator. The application
+/// workflow repeats admission independently and replaces model-authored prose
+/// with typed evidence from the real transcript or calendar candidate set.
 public enum NameSuggestionFilter {
     public static func validSuggestions(
         _ suggestions: [NameSuggestion],
@@ -27,16 +26,24 @@ public enum NameSuggestionFilter {
         unnamedLabels: Set<String>,
         attendeeCandidates: [String] = []
     ) -> [NameSuggestion] {
-        let haystack = transcript.lowercased()
-        let candidates = Set(attendeeCandidates.map { $0.lowercased() })
-        return suggestions.filter { suggestion in
-            guard unnamedLabels.contains(suggestion.label), suggestion.name.count > 1 else {
-                return false
+        var admittedLabels: Set<String> = []
+        return suggestions.compactMap { suggestion in
+            let label = suggestion.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let name = PersonAliasNormalizer.displayName(suggestion.name),
+                  unnamedLabels.contains(label),
+                  !admittedLabels.contains(label),
+                  PersonNameEvidenceMatcher.contains(name, in: transcript)
+                    || attendeeCandidates.contains(where: {
+                        PersonNameEvidenceMatcher.contains(name, in: $0)
+                    })
+            else {
+                return nil
             }
-            let name = suggestion.name.lowercased()
-            return haystack.contains(name)
-                || candidates.contains(name)
-                || candidates.contains { $0.hasPrefix(name + " ") || $0.contains(" " + name) }
+            admittedLabels.insert(label)
+            return NameSuggestion(
+                label: label,
+                name: name,
+                evidence: suggestion.evidence.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
 }
@@ -99,9 +106,9 @@ import FoundationModels
 public struct SpeakerNamer: Sendable {
     public init() {}
 
-    /// `attendeeCandidates` (M6/EventKit): names from calendar events
-    /// around the meeting. They widen what the verifier accepts and are
-    /// offered to the model as hints — evidence is still required.
+    /// `attendeeCandidates` (M6/EventKit): names from calendar events around
+    /// the meeting. They widen the candidate set but remain suggestions, not
+    /// identity proof; the user still confirms every accepted result.
     public func suggestNames(
         segments: [TranscriptSegment],
         speakers: [Speaker],
@@ -143,10 +150,10 @@ public struct SpeakerNamer: Sendable {
         var prompt = "Transcript:\n\n\(excerpt)\n\n"
         if !attendees.isEmpty {
             prompt +=
-                "Calendar attendees (candidates — transcript proof is still required): "
+                "Calendar attendees (possible names, not identity proof): "
                 + attendees.prefix(12).joined(separator: ", ") + "\n\n"
         }
-        prompt += "Name the speaker labels you can prove."
+        prompt += "Suggest only labels supported by the transcript or calendar candidates."
         let finalPrompt = prompt
 
         let session = LanguageModelSession(instructions: PromptFactory.namingInstructions())
@@ -164,23 +171,25 @@ public struct SpeakerNamer: Sendable {
 }
 
 @available(macOS 26.0, iOS 26.0, *)
-@Generable(description: "Speaker label to real name mappings proven by the transcript")
+@Generable(description: "Speaker label to possible real-name mappings for user review")
 struct GeneratedNameSuggestions {
     @Guide(
         description:
-            "One entry per label whose real name the transcript PROVES. Empty array when nothing is provable"
+            "One entry per label supported by transcript wording "
+                + "or a supplied calendar candidate. "
+                + "Empty array when unsupported"
     )
     var suggestions: [GeneratedNameSuggestion]
 }
 
 @available(macOS 26.0, iOS 26.0, *)
-@Generable(description: "One proven label→name mapping")
+@Generable(description: "One proposed label→name mapping")
 struct GeneratedNameSuggestion {
     @Guide(description: "The speaker label exactly as it appears, e.g. S1")
     var label: String
-    @Guide(description: "The person's real name as stated in the transcript")
+    @Guide(description: "The possible real name from the transcript or calendar candidates")
     var name: String
-    @Guide(description: "The exact transcript quote that proves it")
+    @Guide(description: "The exact transcript quote or calendar candidate that supports it")
     var evidence: String
 }
 #endif

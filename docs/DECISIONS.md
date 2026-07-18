@@ -126,6 +126,12 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 **Context:** M6 requires recognizing the user beyond the mic channel (hybrid meetings where their voice arrives through room/system) and 1-tap mapping of speakers to names.
 **Decision (voiceprint):** enrollment extracts a 256-dim WeSpeaker embedding (`extractSpeakerEmbedding`) from ~12 s of isolated speech — the source audio is not retained. `VoiceprintStore` encrypts it with AES-GCM using a 256-bit key that lives ONLY in the Keychain (`WhenUnlockedThisDeviceOnly`): file without key = unreadable by construction; `delete()` destroys the file and key in one action (D8: biometric, on-device, never synced, deletable). The diarizer registers it through `initializeKnownSpeakers` with reserved id `me`/`isPermanent` → its turns receive the label "Me", and `SpeakerAttributor` merges them with the mic's structural "Me" into a single `Speaker`.
 **Decision (names):** `SpeakerNamer` (FM, greedy) proposes label→name ONLY with transcript evidence (self-introduction or being named around their turn), with the golden rule **never trust, verify**: every suggestion whose name does not appear literally in the transcript is discarded in code — the integration test caught the 3B inventing "John" with fabricated evidence despite the prompt. Nothing is auto-applied: chips "S1 → ¿Carolina?" with evidence in a tooltip, one tap to accept (M6 criterion).
+**Amendment (D107):** calendar attendees later widened the reviewable candidate
+set. Candidate membership is explicitly labeled as calendar evidence, never
+identity proof. The application verifier now requires complete normalized name
+tokens in a real transcript line or calendar candidate, derives typed evidence
+from that source, and ignores model-authored evidence prose. The user still
+confirms every suggestion.
 **Verified (2026-07-07, TTS + real models):** Samantha enrolled from an isolated clip → her turns in a 2-voice conversation return 100% as "Me" (CLI and gated test); the namer finds a self-introduced "Carolina" and, after filtering, no longer invents names for anyone who was never named.
 **Rationale:** structural identity where hardware reaches (D5) + opt-in biometrics where it does not; and with small models, the validity of a claim is verified outside the model rather than asking it nicely.
 
@@ -3158,3 +3164,39 @@ and failure behavior testable without a microphone, model, filesystem, or
 Keychain. Biometric storage remains explicit and device-local, source audio is
 not retained, and SwiftUI cannot accidentally leak a capture or mutate model
 state during view recreation.
+
+## D107 — Treat generated speaker names as untrusted application input (Jul 2026)
+
+**Context:** Meeting Detail requested EventKit attendee candidates, invoked the
+Foundation Models speaker namer, verified the result, and retained loading and
+suggestion state in SwiftUI. The visible chip was explicit and safe, but the
+identity-admission rule depended on a view lifetime and one concrete generator.
+The model has previously fabricated plausible names and prose evidence, so the
+application boundary must not treat generator output as identity truth.
+
+**Decision:** `ApplicationKit.SuggestMeetingSpeakerNames` loads one coherent
+meeting projection, excludes the local and already named speakers before
+optional work, obtains calendar candidates through a narrow port, and invokes
+an untrusted proposer. It trims and deduplicates eligible labels, then admits a
+proposal only when the normalized name occurs as complete tokens in a real
+transcript line or calendar candidate. The resulting value carries typed
+evidence derived from that source; model-authored evidence prose never crosses
+the application boundary. A missing meeting is typed, proposer failure remains
+visible, and an empty verified result states only that no verified suggestion
+was found. No result mutates a speaker. The app adapter retains EventKit
+authorization and the concrete Foundation Models proposer, whose shared
+whole-token filter remains a defense-in-depth check. The route-owned
+`MeetingDetailModel` owns loading and suggestion state, removes a chip only
+after its explicit rename persists, and keeps failed confirmation visible.
+SwiftUI retains the button, inert evidence chip, explicit acceptance gesture,
+and localized presentation only. A confirmed calendar candidate carries
+`calendarSuggestion` alias provenance instead of being mislabeled as transcript
+evidence.
+
+**Rationale:** calendar access, generation, and identity verification are now
+characterizable without EventKit or Foundation Models, cannot diverge across
+future interfaces, and survive view recreation. Complete-token matching avoids
+short-name substring false positives, typed evidence keeps the UI honest, and
+persistence-aware removal prevents a failed rename from looking accepted. The
+released one-click UX, `Me` exclusion, calendar widening, manual fallback, and
+never-auto-apply contract remain unchanged.

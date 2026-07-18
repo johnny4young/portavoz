@@ -157,13 +157,14 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
-    func testDocumentAndVoiceActionsStayBehindTheFeatureOwner() async {
+    func testDocumentNameAndVoiceActionsStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
         let document = await model.send(.prepareDocument(.markdown))
         let gist = await model.send(.publishGist)
+        let names = await model.send(.loadNameSuggestions)
         await model.send(.loadVoiceSuggestions)
         await model.send(.loadVoiceSuggestions)
         let offer = await model.send(.checkVoiceMemoryOffer(name: "Ana"))
@@ -179,6 +180,11 @@ final class MeetingDetailModelTests: XCTestCase {
             return XCTFail("explicit publication must return its URL as an effect")
         }
         XCTAssertEqual(url.absoluteString, "https://gist.github.com/portavoz/test")
+        guard case .nameSuggestionsLoaded = names else {
+            return XCTFail("name generation must return a typed loaded effect")
+        }
+        XCTAssertEqual(model.state.nameSuggestions.map(\.name), ["Ana"])
+        XCTAssertFalse(model.state.isSuggestingNames)
         guard case .voiceMemoryOfferChecked(true) = offer else {
             return XCTFail("the feature owner must preserve duplicate-offer admission")
         }
@@ -189,6 +195,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(client.calls, [
             .prepareDocument(fixture.meeting.id, .markdown),
             .publishGist(fixture.meeting.id),
+            .loadNameSuggestions(fixture.meeting.id),
             .loadVoiceSuggestions(fixture.meeting.id),
             .checkVoiceMemoryOffer("Ana"),
             .rememberVoice(fixture.meeting.id, fixture.speaker.id),
@@ -196,16 +203,19 @@ final class MeetingDetailModelTests: XCTestCase {
         ])
     }
 
-    func testDocumentAndVoiceEffectsPreserveFailureAndDegradationPolicy() async {
+    func testDocumentNameAndVoiceEffectsPreserveFailureAndDegradationPolicy() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
-        client.failures = [.prepareDocument, .publishGist, .loadVoiceSuggestions]
+        client.failures = [
+            .prepareDocument, .publishGist, .loadNameSuggestions, .loadVoiceSuggestions,
+        ]
         client.canRememberVoiceResult = false
         client.rememberVoiceResult = .insufficientAudio
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
         let document = await model.send(.prepareDocument(.pdf))
         let gist = await model.send(.publishGist)
+        let names = await model.send(.loadNameSuggestions)
         await model.send(.loadVoiceSuggestions)
         let offer = await model.send(.checkVoiceMemoryOffer(name: "Ana"))
         let remembered = await model.send(.rememberVoice(fixture.speaker.id))
@@ -218,6 +228,12 @@ final class MeetingDetailModelTests: XCTestCase {
             return XCTFail("Gist failure must remain visible")
         }
         XCTAssertTrue(gistError.contains("publishGist"))
+        guard case .operationFailed(let nameError) = names else {
+            return XCTFail("name-generation failure must remain visible")
+        }
+        XCTAssertTrue(nameError.contains("loadNameSuggestions"))
+        XCTAssertTrue(model.state.nameSuggestions.isEmpty)
+        XCTAssertFalse(model.state.isSuggestingNames)
         XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
         guard case .voiceMemoryOfferChecked(false) = offer else {
             return XCTFail("duplicate-offer admission must remain explicit")
@@ -230,8 +246,10 @@ final class MeetingDetailModelTests: XCTestCase {
     func testMutationFailuresPreserveSilentAndVisiblePolicies() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
-        client.failures = Set(MeetingDetailModelFailure.allCases)
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        _ = await model.send(.loadNameSuggestions)
+        await model.send(.loadVoiceSuggestions)
+        client.failures = Set(MeetingDetailModelFailure.allCases)
 
         await model.send(.renameMeeting(fixture.meeting, title: "Ignored failure"))
         let nameEffect = await model.send(
@@ -241,13 +259,23 @@ final class MeetingDetailModelTests: XCTestCase {
         await model.send(.setActionItem(fixture.actionItem.id, done: true))
         let deleteEffect = await model.send(.deleteMeeting)
 
-        XCTAssertEqual(effectSpeakerName(nameEffect), "Ana")
-        XCTAssertEqual(effectSpeakerName(voiceEffect), "Bea")
+        guard case .operationFailed(let nameMessage) = nameEffect else {
+            return XCTFail("a failed name confirmation must stay visible")
+        }
+        XCTAssertEqual(nameMessage, L10n.text("Could not apply this name suggestion."))
+        guard case .operationFailed(let voiceMessage) = voiceEffect else {
+            return XCTFail("a failed voice confirmation must stay visible")
+        }
+        XCTAssertEqual(voiceMessage, L10n.text("Could not apply this voice suggestion."))
+        XCTAssertEqual(model.state.nameSuggestions.map(\.name), ["Ana"])
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
         guard case .meetingDeleted = deleteEffect else {
             return XCTFail("best-effort delete must preserve its navigation effect")
         }
-        XCTAssertNil(model.state.lastActionError)
-        XCTAssertEqual(client.searchReindexRequests, 5)
+        XCTAssertEqual(
+            model.state.lastActionError,
+            L10n.text("Could not apply this voice suggestion."))
+        XCTAssertEqual(client.searchReindexRequests, 3)
         let feedbackEffect = await model.send(
             .setSummaryClaimFeedback(fixture.claimID, .unsupported))
         XCTAssertNil(feedbackEffect)
@@ -263,13 +291,13 @@ final class MeetingDetailModelTests: XCTestCase {
             L10n.format(
                 "Could not rename: %@",
                 MeetingDetailModelFailure.renameSpeaker.localizedDescription))
-        XCTAssertEqual(client.searchReindexRequests, 5)
+        XCTAssertEqual(client.searchReindexRequests, 3)
 
         await model.send(.removeCompanionCard(fixture.card.id))
         XCTAssertEqual(
             model.state.lastActionError,
             L10n.text("Could not remove the card."))
-        XCTAssertEqual(client.searchReindexRequests, 5)
+        XCTAssertEqual(client.searchReindexRequests, 3)
 
         await model.send(.retryProcessing)
         XCTAssertEqual(
@@ -364,6 +392,12 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var searchReindexRequests = 0
     var canRememberVoiceResult = true
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
+    var nameSuggestionsResult: [MeetingNameSuggestion] = [
+        MeetingNameSuggestion(
+            label: "S1",
+            name: "Ana",
+            evidence: .transcript("soy Ana")),
+    ]
     private let person: Person
 
     init(
@@ -469,6 +503,14 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         return URL(string: "https://gist.github.com/portavoz/test")!
     }
 
+    func meetingDetailNameSuggestions(
+        _ meetingID: MeetingID
+    ) throws -> [MeetingNameSuggestion] {
+        calls.append(.loadNameSuggestions(meetingID))
+        try fail(.loadNameSuggestions)
+        return nameSuggestionsResult
+    }
+
     func meetingDetailVoiceSuggestions(
         _ meetingID: MeetingID
     ) throws -> [MeetingVoiceSuggestion] {
@@ -512,6 +554,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case retryProcessing
     case prepareDocument
     case publishGist
+    case loadNameSuggestions
     case loadVoiceSuggestions
     case rememberVoice
 
@@ -531,6 +574,7 @@ private enum MeetingDetailModelCall: Equatable {
     case retryProcessing(MeetingID)
     case prepareDocument(MeetingID, MeetingDocumentFormat)
     case publishGist(MeetingID)
+    case loadNameSuggestions(MeetingID)
     case loadVoiceSuggestions(MeetingID)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)

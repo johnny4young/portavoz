@@ -681,6 +681,16 @@
         }
       }
     },
+    "Calendar candidate: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Candidato del calendario: %@"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "es": {
@@ -1077,6 +1087,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo aplicar el refine: %@"
+          }
+        }
+      }
+    },
+    "Could not apply this name suggestion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo aplicar esta sugerencia de nombre."
+          }
+        }
+      }
+    },
+    "Could not apply this voice suggestion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo aplicar esta sugerencia de voz."
           }
         }
       }
@@ -2707,6 +2737,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se capturó audio. Revisa los permisos de micrófono y grabación de audio del sistema de Portavoz."
+          }
+        }
+      }
+    },
+    "No verified name suggestions were found — you can rename the pills manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontraron sugerencias de nombres verificadas — puedes renombrar las etiquetas manualmente."
           }
         }
       }
@@ -4667,6 +4707,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Transcripción"
+          }
+        }
+      }
+    },
+    "Transcript: “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcripción: “%@”"
           }
         }
       }

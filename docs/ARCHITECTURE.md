@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, local voice capture/enrollment/status/deletion, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -166,6 +166,10 @@ The implemented application workflows include:
   a bounded captured sample; typed progress, sample validation,
   status/deletion, and ordered pinned-model inspection/installation all use
   capability-neutral ports;
+- speaker-name suggestion from one coherent meeting projection, optional
+  calendar candidates, an injected untrusted proposer, and application-owned
+  whole-token verification against currently unnamed remote speakers with
+  typed transcript or calendar-candidate evidence;
 - degradable participant-voice suggestions, duplicate-offer admission, and
   explicit remembered-voice persistence without automatic speaker mutation;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
@@ -263,6 +267,22 @@ owns recording-path resolution, model loading, transient embedding extraction,
 encrypted gallery access, and disposable-test isolation. `MeetingDetailModel`
 owns one-shot loading, suggestion state, duplicate-offer checks, and explicit
 remember effects; SwiftUI never calls those adapters directly.
+
+Meeting Detail transcript/calendar naming enters another application workflow.
+It reads one coherent meeting projection, excludes the local and already named
+speakers before using optional capabilities, asks an injected calendar source
+for candidates around the meeting, and treats every generated proposal as
+untrusted. A proposal is returned only when its label is still eligible and its
+normalized name appears as complete tokens in a real transcript line or
+calendar candidate. The workflow derives typed evidence from that source,
+deduplicates labels, and never exposes generator-authored evidence prose. The
+app adapter owns EventKit authorization and the concrete on-device proposer.
+The route-owned `MeetingDetailModel` owns loading and suggestion state, removes
+a chip only after its explicit rename persists, and keeps a failed confirmation
+visible. SwiftUI renders inert chips, labels transcript versus calendar
+evidence, and sends explicit actions. Calendar-backed confirmations retain
+calendar provenance when the user later creates a canonical-person alias. No
+suggestion names or links a person automatically.
 
 The user's own voice enrollment also enters an application workflow. The
 workflow bounds requested capture time, requires at least four seconds of
@@ -656,6 +676,9 @@ behind aspirational diagrams:
 - Meeting Detail participant-voice suggestions and explicit memory enter
   ApplicationKit. The SwiftUI view does not read the encrypted gallery,
   resolve recording files, load a diarization model, or match embeddings.
+- Meeting Detail transcript/calendar name suggestions enter ApplicationKit.
+  The SwiftUI view does not request calendar access, construct a name proposer,
+  trust generator-authored evidence, or verify generated identity claims.
 - Settings and Onboarding local-voice enrollment enter ApplicationKit. Their
   SwiftUI views do not construct microphone, model, embedding, or encrypted
   identity capabilities; those remain in app composition adapters.
@@ -668,9 +691,9 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 911 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 329 Swift source files;
-- 38 XCUITest cases pass in English and 38 in Spanish;
+- 918 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 331 Swift source files;
+- 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,

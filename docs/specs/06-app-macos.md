@@ -161,6 +161,18 @@ acceptance and remember gestures, and localized results without handling
 biometric storage or model policy. The route-owned model keeps one-shot
 suggestion state and every voice-memory action/effect.
 
+Transcript/calendar speaker naming enters ApplicationKit (D107). The workflow
+loads one coherent meeting detail, excludes `Me` and already named speakers,
+requests optional attendee candidates through a port, invokes an untrusted
+proposer, and independently verifies each normalized name as complete tokens in
+a real transcript line or calendar candidate. The workflow derives typed
+evidence from that source, not model-authored prose. The app adapter owns
+EventKit authorization and the Foundation Models proposer. The route-owned
+model owns loading, suggestions, removal only after successful explicit
+persistence, and visible failure effects. Meeting Detail retains only inert
+chips, typed evidence presentation, and the explicit acceptance gesture;
+calendar-backed confirmations retain calendar alias provenance.
+
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
 capability dependencies only with characterized vertical workflows.

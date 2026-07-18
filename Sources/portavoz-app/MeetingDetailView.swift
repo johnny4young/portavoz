@@ -56,8 +56,6 @@ struct MeetingDetailView: View {
     @State private var gistError: String?
     @State private var summaryNotice: String?
     @State private var summarySetupIssue: SummarySetupIssue?
-    @State private var nameSuggestions: [NameSuggestion] = []
-    @State private var suggestingNames = false
     /// Refine state lives in RefineService (keyed by meeting) so the work
     /// and its draft survive navigating away from this view.
     private var refinePhase: RefineService.Phase? { services.refines.phase(for: meetingID) }
@@ -957,27 +955,29 @@ extension MeetingDetailView {
                 }
             }
             if !unnamed.isEmpty {
-                if suggestingNames {
+                if model.state.isSuggestingNames {
                     ProgressView().controlSize(.small)
-                } else if nameSuggestions.isEmpty {
+                } else if model.state.nameSuggestions.isEmpty {
                     Button {
-                        Task { await suggestNames(detail) }
+                        Task { await suggestNames() }
                     } label: {
                         Label("Suggest names", systemImage: "sparkles")
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("detail-suggest-names")
                 }
             }
-            ForEach(nameSuggestions, id: \.label) { suggestion in
+            ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
                 Button {
                     Task { await apply(suggestion, in: detail) }
                 } label: {
                     ChipLabel(kind: .ai, text: "\(suggestion.label) → \(suggestion.name)?")
                 }
                 .buttonStyle(.plain)
-                .help("Evidence: \(suggestion.evidence)")
+                .help(nameSuggestionHelp(suggestion))
+                .accessibilityIdentifier("detail-name-suggestion-\(suggestion.label)")
             }
             // Cross-meeting voice matches: same chip contract, waveform icon
             // marks the evidence as "their voice", not the transcript.
@@ -1079,40 +1079,42 @@ extension MeetingDetailView {
         }
     }
 
-    private func suggestNames(_ detail: MeetingReviewReadModel) async {
-        guard #available(macOS 26.0, *) else {
-            gistError = L10n.text("Name suggestions require macOS 26.")
-            return
-        }
-        suggestingNames = true
-        defer { suggestingNames = false }
-        do {
-            // Calendar attendees around the meeting widen the candidate
-            // pool (TCC prompt on first use; denial = empty list).
-            let attendees = await CalendarAttendeeSource()
-                .attendees(around: detail.meeting.startedAt)
-            nameSuggestions = try await SpeakerNamer().suggestNames(
-                segments: detail.segments, speakers: detail.speakers,
-                attendeeCandidates: attendees)
-            if nameSuggestions.isEmpty {
-                gistError = L10n.text(
-                    "The transcript does not prove any names — you can rename the pills manually.")
-            }
-        } catch {
-            gistError = error.localizedDescription
+    private func suggestNames() async {
+        if case .operationFailed(let message) = await model.send(.loadNameSuggestions) {
+            gistError = message
         }
     }
 
-    private func apply(_ suggestion: NameSuggestion, in detail: MeetingReviewReadModel) async {
+    private func apply(
+        _ suggestion: MeetingNameSuggestion,
+        in detail: MeetingReviewReadModel
+    ) async {
         guard let speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
             return
         }
         let effect = await model.send(
             .acceptNameSuggestion(speaker, name: suggestion.name))
-        nameSuggestions.removeAll { $0.label == suggestion.label }
-        if case .nameSuggestionAccepted(let renamed) = effect {
-            offerToRememberPerson(renamed, source: .transcriptSuggestion)
+        switch effect {
+        case .nameSuggestionAccepted(let renamed):
+            let source: PersonAliasSource = switch suggestion.evidence {
+            case .transcript: .transcriptSuggestion
+            case .calendarCandidate: .calendarSuggestion
+            }
+            offerToRememberPerson(renamed, source: source)
             await offerToRememberVoice(renamed)
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
+        }
+    }
+
+    private func nameSuggestionHelp(_ suggestion: MeetingNameSuggestion) -> String {
+        switch suggestion.evidence {
+        case .transcript(let quote):
+            L10n.format("Transcript: “%@”", quote)
+        case .calendarCandidate(let candidate):
+            L10n.format("Calendar candidate: %@", candidate)
         }
     }
 
@@ -1124,8 +1126,13 @@ extension MeetingDetailView {
         }
         let effect = await model.send(
             .acceptVoiceSuggestion(speaker, name: match.name))
-        if case .voiceSuggestionAccepted(let renamed) = effect {
+        switch effect {
+        case .voiceSuggestionAccepted(let renamed):
             offerToRememberPerson(renamed, source: .voiceSuggestion)
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
         }
     }
 

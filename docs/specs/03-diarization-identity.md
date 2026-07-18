@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -91,16 +91,38 @@ Field request: remember a participant's voice across meetings to autosuggest the
   `MeetingDetailModel` to load suggestions once and renders "S1 → ¿Marta?"
   chips with a waveform icon (the evidence is the voice, not the transcript —
   therefore it does NOT pass through `NameSuggestionFilter`). The model owns
-  suggestion state and explicit actions/effects. Same D21 contract: chip,
-  click, never applied automatically. SwiftUI does not read the gallery,
+  suggestion state and explicit actions/effects, removes a chip only after the
+  rename persists, and keeps a failed confirmation visible. Same D21 contract:
+  chip, click, never applied automatically. SwiftUI does not read the gallery,
   resolve audio files, load a model, extract embeddings, or perform matching.
 
-## Automatic names (D21) — IntelligenceKit
+## Automatic names (D21/D107)
 
-- `SpeakerNamer.suggestNames`: proposes label→name ONLY with evidence. `NamingExcerpt` builds the context: first 3 substantial interventions (≥25 chars) per speaker + lines that mention calendar candidates, chronological, capped at 2000 chars (a blind prefix overflowed the 4096 window and saw only the beginning). Retry with an excerpt half the size if it still overflows.
-- **Never-trust-verify** (`NameSuggestionFilter`, pure and tested): the proposed name must appear LITERALLY in the full transcript OR among the calendar attendees (the model fabricates names with fabricated evidence — observed: "John" from nowhere).
-- `CalendarAttendeeSource` (IntegrationsKit): attendees of EventKit events around the meeting as candidates (requests calendar TCC).
-- UI: "S1 → ¿Ana?" chips with evidence in a tooltip; one click applies; nothing is applied automatically.
+- `SpeakerNamer.suggestNames`: proposes label→name candidates for explicit
+  review. `NamingExcerpt` builds the context: first 3 substantial interventions
+  (≥25 chars) per speaker + lines that mention calendar candidates,
+  chronological, capped at 2000 chars (a blind prefix overflowed the 4096
+  window and saw only the beginning). Retry with an excerpt half the size if it
+  still overflows.
+- **Application workflow:** `SuggestMeetingSpeakerNames` loads one coherent
+  meeting detail, excludes `Me` and already named speakers before optional
+  work, obtains calendar candidates through a port, invokes an untrusted
+  proposer, trims and deduplicates eligible labels, and independently verifies
+  each normalized name as complete tokens in a real transcript line or calendar
+  candidate. It derives typed evidence from that exact source and ignores
+  generator-authored evidence prose. Missing meetings are typed; generation
+  failure remains visible; no proposal mutates a speaker.
+- **Defense in depth:** `NameSuggestionFilter` also verifies the concrete
+  Foundation Models output before the app adapter maps it into the application
+  contract. The model has fabricated names with fabricated evidence, so neither
+  layer trusts substring matches or prose evidence alone.
+- `CalendarAttendeeSource` (IntegrationsKit) owns EventKit candidates and the
+  explicit TCC request. The route-owned `MeetingDetailModel` owns loading and
+  suggestion state, removes a chip only after the rename persists, and keeps a
+  failed confirmation visible. SwiftUI renders "S1 → ¿Ana?" chips with a
+  localized transcript or calendar-candidate tooltip; one click applies, and
+  nothing is applied automatically. Accepted calendar candidates use
+  `PersonAliasSource.calendarSuggestion`, not transcript provenance.
 
 ## Canonical people (Band 5A / D86)
 
