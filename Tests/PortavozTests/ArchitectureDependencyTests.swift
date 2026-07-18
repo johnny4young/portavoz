@@ -61,6 +61,78 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Capability targets must not depend on ApplicationKit: \(violations)")
     }
 
+    func testProductionTargetGraphMatchesTheCurrentArchitecture() throws {
+        let targets = try TargetManifestParser.declarations(
+            in: Self.contents(of: "Package.swift"))
+        let productionTargets = Set([
+            "PortavozCore", "ApplicationKit", "PlatformKit", "ModelStoreKit",
+            "AudioCaptureKit", "TranscriptionKit", "DiarizationKit",
+            "IntelligenceKit", "StorageKit", "AudioPlaybackKit",
+            "IntegrationsKit", "portavoz-app", "portavoz-cli",
+        ])
+        let expected: [String: Set<String>] = [
+            "PortavozCore": [],
+            "PlatformKit": ["PortavozCore"],
+            "ModelStoreKit": ["PortavozCore"],
+            "AudioCaptureKit": ["PortavozCore"],
+            "TranscriptionKit": ["ModelStoreKit", "PortavozCore"],
+            "DiarizationKit": ["ModelStoreKit", "PortavozCore"],
+            "IntelligenceKit": ["PortavozCore"],
+            "StorageKit": ["PortavozCore"],
+            "AudioPlaybackKit": ["PortavozCore"],
+            "IntegrationsKit": ["IntelligenceKit", "PortavozCore", "StorageKit"],
+            "ApplicationKit": [
+                "AudioPlaybackKit", "DiarizationKit", "IntelligenceKit",
+                "PortavozCore", "StorageKit", "TranscriptionKit",
+            ],
+            "portavoz-app": productionTargets.subtracting(["portavoz-app", "portavoz-cli"]),
+            "portavoz-cli": productionTargets.subtracting(["portavoz-app", "portavoz-cli"]),
+        ]
+
+        XCTAssertEqual(Set(expected.keys), productionTargets)
+        for (target, expectedDependencies) in expected {
+            let declaration = try XCTUnwrap(targets[target], target)
+            XCTAssertEqual(
+                declaration.dependencies.intersection(productionTargets),
+                expectedDependencies,
+                "\(target) drifted from the implemented dependency graph")
+        }
+    }
+
+    func testSwiftUIPresentationDoesNotConstructCapabilitiesOrCallPersistence() throws {
+        let viewFiles = Set(try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\bstruct\s+[A-Za-z_][A-Za-z0-9_]*(?:\s*<[^>]+>)?\s*:\s*View\b"#))
+        XCTAssertFalse(viewFiles.isEmpty)
+
+        let concreteCapabilities = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\b(?:MeetingStore|ModelStore|ParakeetEngine|WhisperEngine|PyannoteDiarizer|MLXSummaryProvider|FoundationModelSummaryProvider|OllamaService|MeetingPlayer|AudioTranscoder|AudioClipExporter|MicrophoneSource|RecordingSession|KeychainSecretStore|CalendarAttendeeSource|URLSessionDataEgressGateway|GistPublisher|MeetingExporter|VoiceGallery|VoiceprintStore)\s*\("#)
+        let persistenceCalls = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\b(?:services\.)?store\.[A-Za-z_][A-Za-z0-9_]*\s*\("#)
+        let forbiddenFrameworkImports = try Self.imports(under: "Sources/portavoz-app")
+            .filter { viewFiles.contains($0.file) }
+            .filter {
+                [
+                    "AVFoundation", "CloudKit", "CoreAudio", "EventKit",
+                    "GRDB", "Network", "Security",
+                ].contains($0.module)
+            }
+            .map { "\($0.file): \($0.module)" }
+            .sorted()
+
+        XCTAssertTrue(
+            viewFiles.intersection(concreteCapabilities).isEmpty,
+            "SwiftUI presentation constructed a concrete capability: \(concreteCapabilities)")
+        XCTAssertTrue(
+            viewFiles.intersection(persistenceCalls).isEmpty,
+            "SwiftUI presentation called persistence directly: \(persistenceCalls)")
+        XCTAssertTrue(
+            forbiddenFrameworkImports.isEmpty,
+            "SwiftUI presentation imported an adapter framework: \(forbiddenFrameworkImports)")
+    }
+
     func testCoreForbiddenImportsRemainAtDocumentedBaseline() throws {
         let forbidden = Set([
             "AppKit", "SwiftUI", "GRDB", "Security", "Network", "FoundationNetworking",

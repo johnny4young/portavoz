@@ -3405,3 +3405,34 @@ process-local caching avoids repeated large hashes and explicit re-verification
 remains available when an audit is required. Sharing one lifecycle also makes
 download, deletion, provider availability, and diagnostics agree without
 turning model preparation into a launch or recording prerequisite.
+
+## D114 — Freeze the implemented macOS dependency and presentation boundaries (Jul 2026)
+
+**Context:** the incremental macOS extraction had accumulated focused source
+ratchets for individual workflows, but no single executable check compared the
+complete SwiftPM production graph with the as-built architecture. The final
+review also needed to distinguish legitimate executable composition and
+nonvisual live capability ownership from accidental construction or persistence
+coordination inside SwiftUI presentation.
+
+**Decision:** package tests now assert the exact internal dependency set for
+every production target. `PortavozCore` remains the inward root; capability
+targets keep their documented Core and model/storage/intelligence edges;
+`ApplicationKit` keeps only the capability dependencies used by implemented
+workflows; capability targets cannot depend back on it; and the macOS app and
+CLI remain the two concrete composition roots. A second repository-wide rule
+identifies every SwiftUI `View` type and rejects concrete storage, model,
+capture, playback, calendar, egress, or security construction; direct
+`MeetingStore` calls; and database/platform-adapter framework imports there.
+Concrete construction remains valid in executable composition, nonvisual live
+capture and dictation owners, diagnostics, and disposable benchmark harnesses.
+Any intentional graph or presentation-boundary change must update the as-built
+architecture and the exact ratchet together.
+
+**Rationale:** an exact graph turns the architecture diagram into executable
+truth rather than an interpretation, while the presentation rule protects the
+business boundary without forcing native panels, AppStorage, or live session
+ownership into artificial modules. The audit found no additional production
+boundary violation after the verified-model extraction, so closing the macOS
+convergence work with broad guards is safer and simpler than adding speculative
+packages or moving legitimate edge adapters inward.

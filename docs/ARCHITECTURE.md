@@ -758,6 +758,13 @@ behind aspirational diagrams:
   adapters; command implementations contain parsing and presentation only.
   Capture diagnostics and benchmark harnesses keep direct capability access so
   their measurement construction remains explicit and disposable.
+- The SwiftPM production graph is asserted exactly, including both executable
+  composition roots, every inward Kit edge, and the absence of capability-to-
+  application back edges. SwiftUI `View` types do not construct concrete
+  storage, model, capture, playback, calendar, egress, or security adapters;
+  call `MeetingStore`; or import database and platform-adapter frameworks.
+  Concrete construction remains in executable composition, nonvisual live
+  capability owners, diagnostics, and disposable benchmark harnesses.
 - IntegrationsKit's CloudKit capability probe imports Security only to inspect
   signed entitlements; it does not own or store secrets.
 - Durable post-capture product policy enters
@@ -822,7 +829,7 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 962 package tests pass, with 13 real-model/environment cases gated;
+- 964 package tests pass, with 13 real-model/environment cases gated;
 - strict SwiftLint reports zero violations across 343 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and

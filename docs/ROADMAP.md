@@ -6,31 +6,27 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** run the final macOS conformance audit against the
-implemented package graph and close only evidence-backed boundary violations.
-Local-provider discovery, calendar-backed speaker naming, and local voice
-enrollment now enter characterized ApplicationKit workflows. Settings
-microphone discovery, recording-root changes, and remembered-voice management
-also enter characterized ApplicationKit workflows. The pre-meeting reminder
-controller now receives one deterministic application notice instead of
-reading EventKit, preferences, and the clock directly. Meeting Detail title,
-structure, and chapter suggestions now use one revision-fenced application
-workflow instead of view-owned model coordination (D111).
-Meeting Detail playback, waveform/filter preparation, all-channel compression,
-and clip export now enter ApplicationKit; the route model owns lifecycle state
-and SwiftUI retains rendering, transport controls, and the native save panel.
-Model readiness now comes from one process-scoped `ModelStoreKit` lifecycle:
-every pinned artifact must pass SHA-256 verification before Settings, MLX
-summary resolution, support diagnostics, or durable work can treat a model as
-installed. Missing and corrupt results remain recoverable, while successful
-evidence avoids repeated multi-gigabyte hashing.
-Direct capability construction remains valid in composition, live capture,
-diagnostics, and benchmark harnesses. The
-later iOS in-person recorder shell remains described in `docs/IOS.md` and is
-not the current focus. Before a public sync release, retain the independent
-field gate for a real production CloudKit container/profile/account and
-two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D113).
+**Next concrete step:** the implemented macOS architecture convergence is
+closed. Preserve its exact dependency and presentation ratchets while working
+on product behavior; add a new architecture boundary only with a concrete
+vertical use case. The next independent release gate is real production
+CloudKit container/profile/account validation and two-Mac convergence. The iOS
+in-person recorder shell remains deferred in `docs/IOS.md`, and audio remains
+outside sync. All released v0.6.0 behavior remains covered by package and
+bilingual UI gates (D33–D114).
+
+- **The macOS dependency and presentation boundaries are executable truth
+  (Jul 18, 2026):** the complete SwiftPM production graph now has one exact
+  repository ratchet, including inward capability edges, both executable
+  composition roots, and the prohibition on capability-to-ApplicationKit back
+  edges. A second repository-wide ratchet identifies every SwiftUI `View` type
+  and prevents concrete capability construction, direct persistence calls, and
+  database/platform-adapter framework imports there. The audit found no
+  remaining production boundary violation after the model-lifecycle work;
+  concrete construction remains intentionally confined to executable
+  composition, nonvisual live capability owners, diagnostics, and disposable
+  benchmarks. The verified baseline is 964 package tests with 13 gated and
+  strict lint is clean across 343 Swift source files (D114).
 
 - **Local-model readiness has one verified lifecycle (Jul 18, 2026):**
   `ModelStoreKit.VerifiedModelLifecycle` coalesces complete catalog checks,

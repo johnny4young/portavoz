@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 962 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
+Status: 964 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English
@@ -1092,6 +1092,15 @@ records a capability skip only for the system
 `fmt?` failure; failure-safe batch semantics do not rely on that integration.
 The full gate is 962 package tests, and strict lint is
 clean across 343 Swift source files (D113).
+
+The final macOS architecture conformance audit adds two repository-wide
+ratchets. One asserts the complete internal dependency graph for every
+production target, including the app and CLI composition roots. The other
+inspects every SwiftUI `View` source and rejects concrete capability
+construction, direct persistence calls, and imports of lower-level adapter
+frameworks. The audit found no remaining boundary violation in the implemented
+macOS graph. The full gate is 964 package tests (13 gated), and strict lint
+remains clean across 343 Swift source files (D114).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

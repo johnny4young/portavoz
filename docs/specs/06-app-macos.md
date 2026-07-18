@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries).
 
 ## Structure
 
@@ -30,6 +30,25 @@ checking row instead of briefly offering a false download state. A disposable
 XCUITest launch receives a unique empty model root, so clean-install assertions
 cannot inspect or mutate host models. The initial check never gates app launch
 or audio capture.
+
+### Executable dependency and presentation boundaries (D114)
+
+The macOS app and CLI are executable composition roots. They connect
+ApplicationKit workflows to concrete StorageKit, ModelStoreKit, capture,
+transcription, diarization, intelligence, playback, integration, and platform
+adapters. ApplicationKit owns use cases, durable workflow coordination, policy,
+and narrow capability ports; it does not import executable presentation code or
+construct app-specific adapters.
+
+SwiftUI `View` types remain presentation-only: they render observable state and
+send intents through injected models or application clients. Repository-wide
+source tests reject concrete capability construction, direct `MeetingStore`
+calls, and imports of lower-level persistence, audio, calendar, networking, and
+security frameworks from those views. Concrete construction is limited to the
+two executable roots, nonvisual live capture and dictation process owners,
+diagnostics, and benchmarks. A package-graph test also asserts the complete
+internal production dependency graph so a new dependency cannot silently
+reverse a boundary.
 
 ### CloudKit signing and launch boundary (D97)
 
