@@ -19,13 +19,31 @@ workflow instead of view-owned model coordination (D111).
 Meeting Detail playback, waveform/filter preparation, all-channel compression,
 and clip export now enter ApplicationKit; the route model owns lifecycle state
 and SwiftUI retains rendering, transport controls, and the native save panel.
+Model readiness now comes from one process-scoped `ModelStoreKit` lifecycle:
+every pinned artifact must pass SHA-256 verification before Settings, MLX
+summary resolution, support diagnostics, or durable work can treat a model as
+installed. Missing and corrupt results remain recoverable, while successful
+evidence avoids repeated multi-gigabyte hashing.
 Direct capability construction remains valid in composition, live capture,
 diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D112).
+behavior remain covered by package and bilingual UI gates (D33–D113).
+
+- **Local-model readiness has one verified lifecycle (Jul 18, 2026):**
+  `ModelStoreKit.VerifiedModelLifecycle` coalesces complete catalog checks,
+  returns installation evidence only after every artifact in the exact revision
+  passes SHA-256, caches only successful evidence, and fences install, remove,
+  invalidate, and forced re-verification. The macOS composition root shares one
+  lifecycle across Settings, summary resolution, Import, durable processing,
+  support diagnostics, speech engines, and voice-memory extraction. Disposable
+  UI launches use an isolated empty model root, and Settings shows an explicit
+  integrity-checking state rather than inferring readiness from one file or
+  aggregate size. The verified package baseline is 962 tests with 13 gated,
+  strict lint is clean across 343 Swift source files, and the bilingual Settings
+  smoke retains clean-install download controls (D113).
 
 - **Meeting Detail audio has one application boundary on macOS
   (Jul 18, 2026):** `PrepareMeetingPlayback`, `CompressMeetingAudio`, and

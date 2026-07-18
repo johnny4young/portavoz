@@ -36,7 +36,7 @@ extension AppServices {
             memory: AppRememberedVoiceMemory(
                 gallery: voiceGallery,
                 disabled: ProcessInfo.processInfo.arguments.contains("-use-temp-store")),
-            extractor: AppMeetingVoiceprintExtractor())
+            extractor: AppMeetingVoiceprintExtractor(modelStore: modelStore))
     }
 }
 
@@ -62,6 +62,8 @@ private struct AppRememberedVoiceMemory: RememberedVoiceMemory {
 }
 
 private struct AppMeetingVoiceprintExtractor: MeetingVoiceprintExtracting {
+    let modelStore: ModelStore
+
     func extractVoiceprints(
         from detail: MeetingLibraryDetail,
         speakerLabels: [String]
@@ -88,7 +90,7 @@ private struct AppMeetingVoiceprintExtractor: MeetingVoiceprintExtracting {
         }
         guard !ranges.isEmpty else { return [:] }
 
-        let diarizer = try await PyannoteDiarizer.loadRecommended(store: ModelStore())
+        let diarizer = try await PyannoteDiarizer.loadRecommended(store: modelStore)
         return try await diarizer.extractVoiceprints(
             fromFile: systemURL,
             rangesBySpeaker: ranges)

@@ -37,9 +37,9 @@ extension AppServices {
         let resolver = AppSummaryRegenerationProviderResolver(
             defaultEngine: summaryEngine,
             ollamaModel: ollamaModel,
-            mlxModelDirectory: mlxDownloaded
-                ? Self.modelDir(ModelCatalog.mlxQwen35)
-                : nil,
+            mlxModelDirectory: { [modelLifecycle] in
+                await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
+            },
             foundationModelsCapability: foundationModelsCapability,
             gateway: dataEgressGateway)
         return ImportMeeting(
@@ -181,9 +181,9 @@ private struct AppImportMeetingSummaryProviderResolver:
     ImportMeetingSummaryProviderResolver {
     let resolver: AppSummaryRegenerationProviderResolver
 
-    func resolveImportMeetingSummaryProvider()
+    func resolveImportMeetingSummaryProvider() async
         -> ImportMeetingSummaryProviderResolution {
-        switch resolver.resolve(override: nil) {
+        switch await resolver.resolve(override: nil) {
         case .available(let provider):
             return .available(AppImportMeetingSummaryProvider(provider: provider))
         case .unavailable:

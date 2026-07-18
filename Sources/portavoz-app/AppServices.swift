@@ -40,6 +40,10 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// One process-wide verified model store and lifecycle. Disposable
+    /// automation receives its own empty root and never inspects host models.
+    @ObservationIgnored let modelStore: ModelStore
+    @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
     /// The only concrete Security adapter in the app process. Capability Kits
     /// receive the Core port rather than importing or constructing Keychain.
     @ObservationIgnored let secretStorage: KeychainSecretStore
@@ -83,6 +87,7 @@ final class AppServices {
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperProgressObserver] = [:]
     var whisperIdleGeneration = 0
+    private(set) var mlxDownloaded = false
 
     /// Process-scoped, coalescing reconciliation for the protected local
     /// Spotlight index. It is deliberately not owned by a SwiftUI window.
@@ -139,6 +144,14 @@ final class AppServices {
 
     init() {
         let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
+        let modelStore = usesTemporaryStore
+            ? ModelStore(rootDirectory: FileManager.default.temporaryDirectory
+                .appendingPathComponent(
+                    "portavoz-uitest-models-\(UUID().uuidString)",
+                    isDirectory: true))
+            : ModelStore()
+        self.modelStore = modelStore
+        modelLifecycle = VerifiedModelLifecycle(store: modelStore)
         let secretStorage = KeychainSecretStore()
         self.secretStorage = secretStorage
         microphonePermissions = MicrophonePermissionClient()
@@ -190,6 +203,9 @@ final class AppServices {
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)
         requestSpotlightReindex()
+        Task { @MainActor [weak self] in
+            await self?.refreshMLXReadiness()
+        }
     }
 
     /// Searchable mutations request eventual reconciliation. The actor owns
@@ -212,7 +228,7 @@ final class AppServices {
 
         modelsState = .downloading(L10n.text("Preparing models…"))
         let task = Task { @MainActor in
-            try await ParakeetEngine.loadRecommended(store: ModelStore()) { progress in
+            try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
                 let percent = Int(progress.fraction * 100)
                 Task { @MainActor [weak self] in
                     self?.modelsState = .downloading(
@@ -249,7 +265,7 @@ final class AppServices {
         let voiceprint = try? voiceprintStore.load()
         let task = Task { @MainActor in
             try await PyannoteDiarizer.loadRecommended(
-                store: ModelStore(), voiceprint: voiceprint
+                store: modelStore, voiceprint: voiceprint
             ) { progress in
                 let percent = Int(progress.fraction * 100)
                 Task { @MainActor [weak self] in
@@ -360,30 +376,31 @@ final class AppServices {
 
     // MARK: - Embedded MLX model (D25 last mile)
 
-    static func modelDir(_ descriptor: ModelDescriptor) -> URL {
-        ModelStore.defaultRootDirectory.appendingPathComponent(
-            descriptor.folderName, isDirectory: true)
-    }
-
-    var mlxDownloaded: Bool {
-        FileManager.default.fileExists(
-            atPath: Self.modelDir(ModelCatalog.mlxQwen35)
-                .appendingPathComponent("model.safetensors").path)
+    @discardableResult
+    func refreshMLXReadiness(forceVerification: Bool = false) async -> Bool {
+        let installation = await modelLifecycle.installation(
+            for: ModelCatalog.mlxQwen35,
+            forceVerification: forceVerification)
+        guard !Task.isCancelled else { return mlxDownloaded }
+        mlxDownloaded = installation != nil
+        return mlxDownloaded
     }
 
     /// Verified download (D7) with progress, same UX as the Whisper variants.
     func downloadMLX(progress: @escaping @MainActor (String) -> Void) async throws {
-        _ = try await ModelStore().ensureAvailable(ModelCatalog.mlxQwen35) { update in
+        _ = try await modelLifecycle.install(ModelCatalog.mlxQwen35) { update in
             guard update.totalBytes > 0 else { return }
             let percent = Int(update.fraction * 100)
             Task { @MainActor in
                 progress(L10n.format("Downloading embedded model (2.3 GB, one time only)… %d%%", percent))
             }
         }
+        mlxDownloaded = true
     }
 
-    func deleteMLXModel() {
-        try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen35))
+    func deleteMLXModel() async throws {
+        try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
+        mlxDownloaded = false
     }
 
 }

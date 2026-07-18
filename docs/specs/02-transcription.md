@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle).
 
 ## Roles and engines (D7)
 
@@ -12,8 +12,9 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 
 ## Model registry — ModelStoreKit
 
-- `ModelCatalog` with 4 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperTokenizer` (3 files). Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` pinned to an exact HF commit.
+- `ModelCatalog` with 7 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, and the retained `mlxQwen3` A/B alternative. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit.
 - `ModelStore` (actor): download per artifact → verify size + sha256 (CryptoKit streaming 1 MiB) → atomic move. `verify()` re-hashes; `ensureAvailable()` heals missing/corrupt artifacts. Installed in `~/Library/Application Support/Portavoz/Models/` (`--models-dir` override).
+- `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Install/remove/invalidate and forced verification fence stale in-flight evidence. No app readiness path infers installation from one filename or aggregate size.
 - **Gotcha protected by a test**: Parakeet's `folderName` must be `parakeet-tdt-0.6b-v3` (WITHOUT the `-coreml` suffix) — FluidAudio resolves the folder that way, and if it does not find the files it **re-downloads the entire repository without verification** into a sibling directory.
 - The sha256 values come from the HF tree API (`/api/models/<repo>/tree/<rev>?recursive=true`): LFS provides `lfs.oid`; small files are hashed manually. Procedure in the doc comment for `ModelCatalog.parakeetTdtV3`.
 
@@ -106,9 +107,11 @@ transfer. Successful verification leaves the opaque token app-scoped so the
 first later quality pass does not hash the full model again, while the loaded
 Whisper runtime still releases after two idle minutes. Deleting that variant
 invalidates its token and runtime. Persisted readiness is conservative: every
-pinned model and tokenizer artifact must exist at its exact expected size;
+pinned model and tokenizer artifact must pass its expected SHA-256 digest;
 actual preparation always re-enters `ModelStore` verification/repair before a
-new token can be produced.
+new token can be produced. Settings inventory, support diagnostics, and MLX
+provider resolution use the shared verified lifecycle rather than separate
+filesystem probes.
 
 ### Role-specific speech readiness (D73)
 

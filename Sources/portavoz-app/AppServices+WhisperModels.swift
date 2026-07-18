@@ -73,29 +73,46 @@ extension AppServices {
             : ModelCatalog.whisperLargeV3Turbo
     }
 
-    func whisperVariants() -> [WhisperVariant] {
+    func whisperVariants() async -> [WhisperVariant] {
         let forcedMissing = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
-        let tokenizerReady = !forcedMissing
-            && Self.modelArtifactsAreComplete(ModelCatalog.whisperTokenizer)
+        if forcedMissing {
+            return [
+                Self.whisperVariant(
+                    ModelCatalog.whisperLargeV3Turbo,
+                    compact: false,
+                    downloaded: false),
+                Self.whisperVariant(
+                    ModelCatalog.whisperLargeV3_626MB,
+                    compact: true,
+                    downloaded: false)
+            ]
+        }
+        async let tokenizer = modelLifecycle.installation(
+            for: ModelCatalog.whisperTokenizer)
+        async let turbo = modelLifecycle.installation(
+            for: ModelCatalog.whisperLargeV3Turbo)
+        async let compact = modelLifecycle.installation(
+            for: ModelCatalog.whisperLargeV3_626MB)
+        let (tokenizerInstallation, turboInstallation, compactInstallation) =
+            await (tokenizer, turbo, compact)
+        let tokenizerReady = tokenizerInstallation != nil
         return [
             Self.whisperVariant(
                 ModelCatalog.whisperLargeV3Turbo,
                 compact: false,
-                tokenizerReady: tokenizerReady,
-                forcedMissing: forcedMissing),
+                downloaded: tokenizerReady && turboInstallation != nil),
             Self.whisperVariant(
                 ModelCatalog.whisperLargeV3_626MB,
                 compact: true,
-                tokenizerReady: tokenizerReady,
-                forcedMissing: forcedMissing)
+                downloaded: tokenizerReady && compactInstallation != nil)
         ]
     }
 
-    func deleteWhisperVariant(_ id: String) {
+    func deleteWhisperVariant(_ id: String) async {
         guard let descriptor = Self.whisperDescriptor(id) else { return }
         if case .downloading(let activeID, _, _) = whisperDownloadState,
             activeID == id { return }
-        try? FileManager.default.removeItem(at: Self.modelDir(descriptor))
+        try? await modelLifecycle.remove(descriptor)
         if whisperVariantID == id {
             whisper = nil
             whisperVariantID = nil
@@ -168,7 +185,7 @@ extension AppServices {
             percent: 0)
         let task = Task {
             try await WhisperEngine.prepare(
-                store: ModelStore(),
+                store: modelStore,
                 descriptor: descriptor
             ) { update in
                 let percent = min(100, max(0, Int(update.fraction * 100)))
@@ -245,43 +262,12 @@ extension AppServices {
     private static func whisperVariant(
         _ descriptor: ModelDescriptor,
         compact: Bool,
-        tokenizerReady: Bool,
-        forcedMissing: Bool
+        downloaded: Bool
     ) -> WhisperVariant {
-        let downloaded = !forcedMissing && tokenizerReady
-            && modelArtifactsAreComplete(descriptor)
-        let directory = modelDir(descriptor)
         return WhisperVariant(
             id: descriptor.id,
             compact: compact,
             downloaded: downloaded,
-            bytes: downloaded
-                ? directorySize(directory)
-                : Int64(descriptor.totalSizeBytes))
-    }
-
-    private static func modelArtifactsAreComplete(_ descriptor: ModelDescriptor) -> Bool {
-        let directory = modelDir(descriptor)
-        return descriptor.artifacts.allSatisfy { artifact in
-            let file = directory.appendingPathComponent(artifact.path)
-            guard let attributes = try? FileManager.default.attributesOfItem(
-                atPath: file.path),
-                let size = attributes[.size] as? NSNumber
-            else { return false }
-            return size.intValue == artifact.sizeBytes
-        }
-    }
-
-    private static func directorySize(_ url: URL) -> Int64 {
-        guard let enumerator = FileManager.default.enumerator(
-            at: url,
-            includingPropertiesForKeys: [.fileSizeKey])
-        else { return 0 }
-        var total: Int64 = 0
-        for case let file as URL in enumerator {
-            total += Int64(
-                (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
-        }
-        return total
+            bytes: Int64(descriptor.totalSizeBytes))
     }
 }

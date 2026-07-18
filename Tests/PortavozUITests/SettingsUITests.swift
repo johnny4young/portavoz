@@ -72,10 +72,28 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-whisper-turbo").waitForExistence(timeout: 5),
             "the Intelligence pane must expose the Turbo Whisper variant")
+        let whisperDownload = app.control(withIdentifier: "settings-whisper-download-turbo")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-whisper-download-turbo").exists,
+            whisperDownload.exists,
             "a clean install must offer proactive Whisper preparation before Refine")
-        let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        let settingsWindow = app.windows.containing(
+            .any,
+            identifier: "settings-whisper-turbo"
+        ).firstMatch
+        XCTAssertTrue(settingsWindow.exists)
+        // The first scroll view is the category sidebar; the second is the
+        // grouped Form that owns the model controls.
+        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
+        XCTAssertTrue(settingsForm.exists)
+        for _ in 0..<12 where !whisperDownload.isHittable {
+            settingsForm.scroll(byDeltaX: 0, deltaY: -6)
+        }
+        XCTAssertTrue(
+            whisperDownload.isHittable,
+            "the proactive Whisper action must be visible before capturing UI evidence")
+        settingsForm.scroll(byDeltaX: 0, deltaY: -6)
+        settingsForm.scroll(byDeltaX: 0, deltaY: -6)
+        let attachment = XCTAttachment(screenshot: settingsWindow.screenshot())
         attachment.name = "sequoia-whisper-background-settings"
         attachment.lifetime = .keepAlways
         add(attachment)

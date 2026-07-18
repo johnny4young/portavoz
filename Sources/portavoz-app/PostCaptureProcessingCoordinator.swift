@@ -199,7 +199,7 @@ extension AppServices {
         postCaptureProcessing.kick(services: self)
     }
 
-    func processingPostCaptureSummaryProviderSelection() -> PostCaptureSummaryProviderSelection? {
+    func processingPostCaptureSummaryProviderSelection() async -> PostCaptureSummaryProviderSelection? {
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-seed-processing"), arguments.contains("-use-temp-store") {
             return PostCaptureSummaryProviderSelection(
@@ -221,10 +221,12 @@ extension AppServices {
                 modelID: model,
                 modelRevision: nil)
         case .mlx:
-            guard mlxDownloaded else { return nil }
+            guard let installation = await modelLifecycle.installation(
+                for: ModelCatalog.mlxQwen35)
+            else { return nil }
             return PostCaptureSummaryProviderSelection(
                 provider: MLXSummaryProvider(
-                    modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35)),
+                    modelDirectory: installation.directory),
                 providerID: MLXSummaryProvider.providerID,
                 modelID: ModelCatalog.mlxQwen35.id,
                 modelRevision: ModelCatalog.mlxQwen35.revision)

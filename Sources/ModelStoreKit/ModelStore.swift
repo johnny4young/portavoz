@@ -32,6 +32,27 @@ public actor ModelStore {
         public var isComplete: Bool { missing.isEmpty && corrupted.isEmpty }
     }
 
+    /// A directory that passed the complete pinned descriptor, not merely a
+    /// path that happens to contain one expected filename.
+    public struct VerifiedInstallation: Equatable, Sendable {
+        public let descriptorID: String
+        public let descriptorRevision: String
+        public let directory: URL
+        public let artifactBytes: Int64
+
+        init(
+            descriptorID: String,
+            descriptorRevision: String,
+            directory: URL,
+            artifactBytes: Int64
+        ) {
+            self.descriptorID = descriptorID
+            self.descriptorRevision = descriptorRevision
+            self.directory = directory
+            self.artifactBytes = artifactBytes
+        }
+    }
+
     public struct DownloadProgress: Sendable {
         public let completedBytes: Int
         public let totalBytes: Int
@@ -84,6 +105,20 @@ public actor ModelStore {
             }
         }
         return VerificationReport(missing: missing, corrupted: corrupted)
+    }
+
+    /// Returns loadable installation evidence only after every pinned artifact
+    /// has been re-hashed. Callers must not infer readiness from directory,
+    /// filename, or byte-count checks of their own.
+    public func verifiedInstallation(
+        _ descriptor: ModelDescriptor
+    ) -> VerifiedInstallation? {
+        guard verify(descriptor).isComplete else { return nil }
+        return VerifiedInstallation(
+            descriptorID: descriptor.id,
+            descriptorRevision: descriptor.revision,
+            directory: directory(for: descriptor),
+            artifactBytes: Int64(descriptor.totalSizeBytes))
     }
 
     /// Ensures the model is installed and verified, downloading whatever is

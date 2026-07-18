@@ -20,9 +20,9 @@ extension AppServices {
             providers: AppSummaryRegenerationProviderResolver(
                 defaultEngine: summaryEngine,
                 ollamaModel: ollamaModel,
-                mlxModelDirectory: mlxDownloaded
-                    ? Self.modelDir(ModelCatalog.mlxQwen35)
-                    : nil,
+                mlxModelDirectory: { [modelLifecycle] in
+                    await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
+                },
                 foundationModelsCapability: foundationModelsCapability,
                 gateway: dataEgressGateway))
     }
@@ -59,13 +59,13 @@ private struct AppSummaryRegenerationPreferences: SummaryRegenerationPreferences
 struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolver {
     let defaultEngine: SummaryEngine
     let ollamaModel: String?
-    let mlxModelDirectory: URL?
+    let mlxModelDirectory: @Sendable () async -> URL?
     let foundationModelsCapability: FoundationModelsCapability
     let gateway: any DataEgressGateway
 
     func resolve(
         override: SummaryEngine?
-    ) -> SummaryRegenerationProviderResolution {
+    ) async -> SummaryRegenerationProviderResolution {
         switch override ?? defaultEngine {
         case .ollama:
             guard let ollamaModel else {
@@ -81,7 +81,7 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
                     modelID: ollamaModel,
                     modelRevision: nil))
         case .mlx:
-            guard let mlxModelDirectory else {
+            guard let mlxModelDirectory = await mlxModelDirectory() else {
                 return .unavailable(.mlxModelNotDownloaded)
             }
             return .available(

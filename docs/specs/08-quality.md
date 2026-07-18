@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 959 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
+Status: 962 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English
@@ -18,7 +18,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 342 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 343 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -555,6 +555,16 @@ remain the integrity contract. The complete baseline is 647 package tests (13
 gated), strict SwiftLint is clean across 240 Swift source files, and all 20
 XCUITest cases pass (D71).
 
+Catalog-verified readiness adds direct `VerifiedModelLifecycle` coverage and an
+architecture ratchet over every production app consumer. Tests prove that
+installation evidence is unavailable for missing/corrupt artifacts, successful
+evidence is keyed to the exact revision, explicit forced verification detects
+post-check corruption, installation repairs it, and removal invalidates it.
+The app ratchet forbids one-file and size-only readiness probes and limits bare
+`ModelStore()` construction to composition plus the isolated benchmark harness.
+The Settings smoke retains its clean-install Turbo/Compact download controls
+while disposable composition uses an empty model root (D113).
+
 The capability-aware intelligence stabilization adds five pure app-policy
 cases and one end-to-end UI case. They prove the deterministic Sequoia fixture,
 clean-install chat-model choice, OCR-only Ollama rejection, and that selected
@@ -1080,8 +1090,8 @@ without deleting any original. The direct AAC integration uses the exact mono
 Int16 CAF emitted by production capture when the host encoder is available and
 records a capability skip only for the system
 `fmt?` failure; failure-safe batch semantics do not rely on that integration.
-The full gate is 959 package tests, and strict lint is
-clean across 342 Swift source files (D112).
+The full gate is 962 package tests, and strict lint is
+clean across 343 Swift source files (D113).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

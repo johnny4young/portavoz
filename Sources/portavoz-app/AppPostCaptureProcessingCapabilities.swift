@@ -60,8 +60,8 @@ final class AppPostCaptureProcessingCapabilities:
         return (try? await diarizer.diarizeFile(at: url)) ?? []
     }
 
-    func postCaptureSummaryProvider() -> PostCaptureSummaryProviderSelection? {
-        services?.processingPostCaptureSummaryProviderSelection()
+    func postCaptureSummaryProvider() async -> PostCaptureSummaryProviderSelection? {
+        await services?.processingPostCaptureSummaryProviderSelection()
     }
 
     func postCaptureSummaryPreferences(

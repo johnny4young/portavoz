@@ -536,6 +536,36 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(engine.contains("return try await loadPrepared(prepared)"))
     }
 
+    func testAppModelReadinessComesOnlyFromVerifiedCatalogInstallations() throws {
+        let store = try Self.contents(of: "Sources/ModelStoreKit/ModelStore.swift")
+        let lifecycle = try Self.contents(
+            of: "Sources/ModelStoreKit/VerifiedModelLifecycle.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let whisper = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
+        let summary = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Application.swift")
+
+        XCTAssertTrue(store.contains("func verifiedInstallation("))
+        XCTAssertTrue(store.contains("guard verify(descriptor).isComplete"))
+        XCTAssertTrue(lifecycle.contains("store.verifiedInstallation(descriptor)"))
+        XCTAssertFalse(lifecycle.contains("FileManager"))
+        XCTAssertTrue(services.contains("let modelStore: ModelStore"))
+        XCTAssertTrue(services.contains("let modelLifecycle: VerifiedModelLifecycle"))
+        XCTAssertFalse(services.contains("model.safetensors"))
+        XCTAssertFalse(whisper.contains("modelArtifactsAreComplete"))
+        XCTAssertFalse(whisper.contains("attributesOfItem"))
+        XCTAssertTrue(summary.contains("await mlxModelDirectory()"))
+
+        let directStores = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\bModelStore\s*\(\s*\)"#)
+        XCTAssertEqual(
+            directStores.sorted(),
+            ["AppServices.swift", "BenchMode.swift"],
+            "production model consumers must share app-scoped verified readiness")
+    }
+
     func testLocalVoiceEnrollmentEntersThroughApplicationKit() throws {
         let workflow = try Self.contents(
             of: "Sources/ApplicationKit/ManageLocalVoiceAndModels.swift")

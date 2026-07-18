@@ -3,7 +3,6 @@ import DiarizationKit
 import Foundation
 import IntegrationsKit
 import IntelligenceKit
-import ModelStoreKit
 import Observation
 import PortavozCore
 import StorageKit
@@ -368,8 +367,9 @@ final class RecordingController {
             guard let self else { return }
             let voiceprint = await session.voiceprint()
             guard
+                let modelStore = self.services?.modelStore,
                 let diarizer = try? await PyannoteDiarizer.loadRecommended(
-                    store: ModelStore(),
+                    store: modelStore,
                     voiceprint: voiceprint)
             else {
                 self.liveDiarizerFeed?.finish()

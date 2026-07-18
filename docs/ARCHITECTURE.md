@@ -115,7 +115,7 @@ for issue-export formatting.
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
-| `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
+| `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
@@ -123,7 +123,7 @@ for issue-export formatting.
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
-| `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-readiness composition, and background supervisors. |
+| `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
 ## Application boundary
@@ -386,6 +386,33 @@ meeting-row behavior, so opening a brief cannot race the sidebar's meeting
 route. Persistent privacy seals use local-first and explicit opt-in language;
 feature-specific on-device claims remain limited to operations that cannot use
 a remote provider.
+
+## Verified model lifecycle
+
+`ModelStoreKit` is the only source of local-model installation truth. Every
+catalog descriptor fixes its revision and enumerates every artifact with an
+expected byte count and SHA-256 digest. `ModelStore` streams each digest,
+downloads only missing or corrupt artifacts, verifies downloads before an
+atomic move, and performs a complete verification pass before returning a
+loadable directory.
+
+`VerifiedModelLifecycle` wraps the process's shared `ModelStore`. It emits an
+installation value only after the complete descriptor passes verification,
+keys successful evidence by descriptor identity and revision, coalesces
+concurrent checks, and caches only successful results. Missing or corrupt
+results remain re-checkable. Explicit installation, deletion, invalidation, or
+forced verification prevents stale in-flight evidence from becoming current.
+This avoids hashing multi-gigabyte weights for every consumer without treating
+a directory, one expected filename, or aggregate file size as proof.
+
+The macOS composition root owns one store and lifecycle for Settings, summary
+provider resolution, import, durable post-capture work, support diagnostics,
+live transcription, diarization, refinement, and voice-memory extraction.
+Disposable automation receives an isolated empty model root and never inspects
+host installations. Settings verifies in the background and renders a checking
+state until evidence exists; it never exposes a partial installation as
+downloaded. Recording remains audio-first and does not await any of these
+checks.
 
 ## Persistence and aggregate integrity
 
@@ -782,6 +809,10 @@ behind aspirational diagrams:
   clocks and does not apply reminder policy. Those concerns enter one
   ApplicationKit workflow through a private app adapter; AppKit retains only
   panel and route presentation.
+- Model readiness comes only from `ModelStoreKit.VerifiedModelLifecycle`
+  evidence over the full pinned descriptor. App consumers share one process
+  lifecycle; Settings does not inspect filenames or byte counts, and summary
+  providers do not receive a model directory without verified evidence.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -791,8 +822,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 959 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 342 Swift source files;
+- 962 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 343 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

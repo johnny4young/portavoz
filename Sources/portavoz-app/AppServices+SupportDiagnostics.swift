@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import ModelStoreKit
 
 extension AppServices {
     func exportSupportDiagnostics() async throws -> Data {
@@ -13,11 +14,15 @@ extension AppServices {
                         forInfoDictionaryKey: "CFBundleVersion") as? String
                         ?? "development",
                     operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
-                    models: supportModelReadiness())))
+                    models: await supportModelReadiness())))
     }
 
-    private func supportModelReadiness() -> [SupportModelReadiness] {
-        let variants = whisperVariants()
+    private func supportModelReadiness() async -> [SupportModelReadiness] {
+        async let variants = whisperVariants()
+        async let mlxInstallation = modelLifecycle.installation(
+            for: ModelCatalog.mlxQwen35)
+        let resolvedVariants = await variants
+        let mlxIsInstalled = await mlxInstallation != nil
         return [
             SupportModelReadiness(
                 capability: "live-transcription-runtime",
@@ -31,17 +36,17 @@ extension AppServices {
             SupportModelReadiness(
                 capability: "whisper-turbo",
                 state: whisperState(
-                    for: variants.first(where: { !$0.compact }))),
+                    for: resolvedVariants.first(where: { !$0.compact }))),
             SupportModelReadiness(
                 capability: "whisper-compact",
                 state: whisperState(
-                    for: variants.first(where: \.compact))),
+                    for: resolvedVariants.first(where: \.compact))),
             SupportModelReadiness(
                 capability: "apple-foundation-models",
                 state: foundationModelsCapability.isAvailable ? .available : .unavailable),
             SupportModelReadiness(
                 capability: "embedded-mlx-summary",
-                state: mlxDownloaded ? .installed : .notInstalled),
+                state: mlxIsInstalled ? .installed : .notInstalled),
             SupportModelReadiness(
                 capability: "ollama-summary",
                 state: ollamaModel == nil ? .notConfigured : .configured)

@@ -3368,3 +3368,40 @@ failure preserves a healthy text transcript, and a codec failure cannot strand
 or overwrite user-owned recording data. The player, waveform, skip-silence,
 microphone-only playback, clip marks, compression control, import behavior,
 and native save experience remain unchanged.
+
+## D113 — Treat complete catalog verification as the only model-readiness evidence (Jul 2026)
+
+**Context:** the model loaders already downloaded exact pinned artifacts through
+`ModelStore`, but several app surfaces separately inferred persisted readiness.
+The embedded MLX path trusted the presence of `model.safetensors`, and Settings
+treated Whisper artifact sizes as sufficient. A partial or same-sized corrupt
+installation could therefore be displayed or supplied as ready even though the
+catalog's complete SHA-256 contract had not passed. Creating independent
+`ModelStore` instances also scattered process ownership, while re-hashing
+multi-gigabyte installations for every presentation read would be needlessly
+expensive.
+
+**Decision:** `ModelStore` exposes a `VerifiedInstallation` value that only the
+module can construct after every artifact in the exact descriptor passes a
+streaming SHA-256 verification. `ModelStoreKit.VerifiedModelLifecycle` owns the
+process-scoped store relationship, coalesces concurrent descriptor checks, and
+caches only successful evidence by descriptor ID and revision. Missing or
+corrupt results are not cached. Explicit install, remove, invalidate, and
+forced-verification operations fence older in-flight evidence; install may
+publish evidence directly because `ensureAvailable` performs a final complete
+verification before returning. The macOS composition root creates one store and
+lifecycle and shares them with Settings, MLX summary resolution, Import,
+post-capture processing, diagnostics, transcription, diarization, and
+participant-voice extraction. Disposable automation receives a unique empty
+model root. Settings performs checks asynchronously and renders an explicit
+integrity-checking state until the result is known. Terminal product workflows
+retain their existing catalog-verifying adapters; benchmark construction remains
+an explicit isolated exception.
+
+**Rationale:** one artifact, directory existence, and aggregate byte counts are
+not executable-code integrity evidence. A typed module-owned value makes the
+security claim unforgeable outside `ModelStoreKit`, while successful
+process-local caching avoids repeated large hashes and explicit re-verification
+remains available when an audit is required. Sharing one lifecycle also makes
+download, deletion, provider availability, and diagnostics agree without
+turning model preparation into a launch or recording prerequisite.

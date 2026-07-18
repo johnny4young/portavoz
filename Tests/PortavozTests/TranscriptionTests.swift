@@ -186,6 +186,10 @@ final class ModelStoreTests: XCTestCase {
 
         let report = await store.verify(descriptor)
         XCTAssertTrue(report.isComplete)
+        let installation = await store.verifiedInstallation(descriptor)
+        XCTAssertEqual(installation?.directory, directory)
+        XCTAssertEqual(installation?.descriptorRevision, descriptor.revision)
+        XCTAssertEqual(installation?.artifactBytes, Int64(descriptor.totalSizeBytes))
     }
 
     func testVerifyDetectsMissingAndCorrupted() async throws {
@@ -202,11 +206,45 @@ final class ModelStoreTests: XCTestCase {
         XCTAssertEqual(report.corrupted, ["bundle.mlmodelc/weights/weight.bin"])
         XCTAssertEqual(report.missing, ["vocab.json"])
         XCTAssertFalse(report.isComplete)
+        let corruptedInstallation = await store.verifiedInstallation(descriptor)
+        XCTAssertNil(corruptedInstallation)
 
         // A second ensureAvailable heals both.
         _ = try await store.ensureAvailable(descriptor)
         let healed = await store.verify(descriptor)
         XCTAssertTrue(healed.isComplete)
+        let healedInstallation = await store.verifiedInstallation(descriptor)
+        XCTAssertNotNil(healedInstallation)
+    }
+
+    func testVerifiedLifecycleCachesOnlySuccessAndSupportsExplicitReverification() async throws {
+        let (descriptor, _) = try makeFixtureModel()
+        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"))
+        let lifecycle = VerifiedModelLifecycle(store: store)
+
+        let missing = await lifecycle.installation(for: descriptor)
+        XCTAssertNil(missing)
+        let installed = try await lifecycle.install(descriptor)
+        XCTAssertEqual(installed.descriptorRevision, descriptor.revision)
+
+        try Data("tampered".utf8).write(
+            to: installed.directory
+                .appendingPathComponent("bundle.mlmodelc/weights/weight.bin"))
+        let cached = await lifecycle.installation(for: descriptor)
+        XCTAssertEqual(
+            cached,
+            installed,
+            "successful process evidence should avoid re-hashing on every consumer")
+        let corrupted = await lifecycle.installation(
+            for: descriptor,
+            forceVerification: true)
+        XCTAssertNil(corrupted)
+
+        let healed = try await lifecycle.install(descriptor)
+        XCTAssertEqual(healed.directory, installed.directory)
+        try await lifecycle.remove(descriptor)
+        let removed = await lifecycle.installation(for: descriptor)
+        XCTAssertNil(removed)
     }
 
     func testChecksumMismatchRejectsDownload() async throws {

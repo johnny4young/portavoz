@@ -155,8 +155,8 @@ struct SettingsView: View {
                     suggestedTerms = await services.mineVocabularySuggestions()
                 }
             }
-            whisperVariants = services.whisperVariants()
             Task {
+                whisperVariants = await services.whisperVariants()
                 recordingStorage = await services.recordingStorageLocation()
                 await refreshLocalSummaryProviders(
                     showOllamaStatus: summaryEngine == SummaryEngine.ollama.rawValue)
@@ -164,7 +164,9 @@ struct SettingsView: View {
         }
         .onChange(of: services.whisperDownloadState) { _, state in
             if case .ready = state {
-                whisperVariants = services.whisperVariants()
+                Task {
+                    whisperVariants = await services.whisperVariants()
+                }
             }
         }
         .onChange(of: services.pendingSettingsCategory) { _, _ in
@@ -685,6 +687,15 @@ extension SettingsView {
             Divider()
             Text("Refine model (Whisper large-v3)")
                 .font(.callout.weight(.medium))
+            if whisperVariants.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying model integrity…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityIdentifier("settings-whisper-verifying")
+            }
             ForEach(whisperVariants) { variant in
                 WhisperModelRow(
                     variant: variant,
@@ -693,8 +704,10 @@ extension SettingsView {
                     select: { whisperCompact = variant.compact },
                     download: { services.prepareWhisperVariant(variant.id) },
                     delete: {
-                        services.deleteWhisperVariant(variant.id)
-                        whisperVariants = services.whisperVariants()
+                        Task {
+                            await services.deleteWhisperVariant(variant.id)
+                            whisperVariants = await services.whisperVariants()
+                        }
                     })
             }
             Text(

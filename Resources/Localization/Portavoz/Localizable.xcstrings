@@ -4841,6 +4841,16 @@
         }
       }
     },
+    "Verifying model integrity…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando la integridad del modelo…"
+          }
+        }
+      }
+    },
     "Vocabulary": {
       "localizations": {
         "es": {
