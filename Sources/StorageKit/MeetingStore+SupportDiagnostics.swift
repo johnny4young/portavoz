@@ -116,7 +116,7 @@ extension MeetingStore {
             }
 
             let jobsByMeeting = try Dictionary(grouping: ProcessingJobRecord
-                .order(Column("createdAt"), Column("id"))
+                .order(Column("createdAt"), Column.rowID)
                 .fetchAll(db), by: \.meetingID)
             let runsByMeeting = try Dictionary(grouping: GenerationRunRecord
                 .order(Column("startedAt"), Column("rowid"))

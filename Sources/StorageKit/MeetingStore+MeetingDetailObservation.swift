@@ -86,7 +86,7 @@ extension MeetingStore {
                 guard try Self.liveMeetingExists(id, in: database) else { return [] }
                 return try ProcessingJobRecord
                     .filter(Column("meetingID") == id.rawValue.uuidString)
-                    .order(Column("createdAt"), Column("id"))
+                    .order(Column("createdAt"), Column.rowID)
                     .fetchAll(database)
                     .map { try $0.job }
             })

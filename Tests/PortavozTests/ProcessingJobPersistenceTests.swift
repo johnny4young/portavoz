@@ -97,6 +97,7 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         XCTAssertTrue(first.allSatisfy { $0.state == .pending && $0.attempt == 0 })
         let jobs = try await store.processingJobs(for: captured.id)
         XCTAssertEqual(jobs.count, 2)
+        XCTAssertEqual(jobs.map(\.id), first.map(\.id))
         let storedDetail = try await detail(captured.id, in: store)
         XCTAssertEqual(storedDetail.meeting.lifecycleState, .processing)
         XCTAssertNil(storedDetail.meeting.lastProcessingError)

@@ -48,7 +48,7 @@ extension MeetingStore {
             else { return [] }
             return try ProcessingJobRecord
                 .filter(Column("meetingID") == key)
-                .order(Column("createdAt"), Column("id"))
+                .order(Column("createdAt"), Column.rowID)
                 .fetchAll(db)
                 .map { try $0.job }
         }
@@ -72,7 +72,7 @@ extension MeetingStore {
             let records = try ProcessingJobRecord
                 .filter(Column("meetingID") == key)
                 .filter(Column("state") == ProcessingJobState.failed.rawValue)
-                .order(Column("createdAt"), Column("id"))
+                .order(Column("createdAt"), Column.rowID)
                 .fetchAll(db)
             var retried: [ProcessingJob] = []
             for var record in records {
