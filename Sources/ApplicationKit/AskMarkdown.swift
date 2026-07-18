@@ -1,17 +1,16 @@
 import Foundation
-import IntelligenceKit
 
 /// Formats a palette answer as Markdown for ⌘C — the answer plus its
 /// citations, so a pasted response never loses its receipts.
 public enum AskMarkdown {
     public static func format(
-        question: String, answer: String, passages: [RAGPassage]
+        question: String, answer: String, citations: [AskCitation]
     ) -> String {
         var lines = ["> \(question)", "", answer]
-        if !passages.isEmpty {
+        if !citations.isEmpty {
             lines.append("")
-            for passage in passages {
-                lines.append("- \(passage.meetingTitle) · \(clock(passage.timestamp))")
+            for citation in citations {
+                lines.append("- \(citation.meetingTitle) · \(clock(citation.timestamp))")
             }
         }
         return lines.joined(separator: "\n")

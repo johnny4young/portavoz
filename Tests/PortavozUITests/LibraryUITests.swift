@@ -89,6 +89,73 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testAskConversationAnswersAndSeeksToExactCitation() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-ask-button"].click()
+        let field = app.textFields["ask-question-field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.click()
+        field.typeText("viernes")
+        app.buttons["ask-submit"].click()
+
+        XCTAssertTrue(
+            app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
+                .waitForExistence(timeout: 10),
+            "the full Ask model must publish the seeded local answer")
+        let citation = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-citation-'"))
+            .firstMatch
+        XCTAssertTrue(citation.waitForExistence(timeout: 5))
+        XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
+        attachScreenshot(of: app, named: "band-6c5-full-ask-answer")
+
+        citation.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        XCTAssertEqual(currentTime.value as? String, "0:03")
+    }
+
+    @MainActor
+    func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.typeKey("k", modifierFlags: .command)
+        let field = app.textFields["palette-query-field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.click()
+        field.typeText("viernes")
+        XCTAssertTrue(
+            app.buttons["palette-hit-0"].waitForExistence(timeout: 10),
+            "the palette must publish instant local FTS results")
+        field.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(
+            app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
+                .waitForExistence(timeout: 10),
+            "Enter must use the same full Ask workflow")
+        XCTAssertTrue(app.buttons["palette-copy-answer"].exists)
+        let citation = app.buttons["palette-citation-0"]
+        XCTAssertTrue(citation.exists)
+        XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
+        let paletteWindow = app.windows["command-palette-window"]
+        XCTAssertTrue(
+            paletteWindow.waitForExistence(timeout: 5),
+            "the palette window must remain visible while showing its answer")
+        attachElementScreenshot(of: paletteWindow, named: "band-6c5-command-palette-answer")
+
+        citation.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        XCTAssertEqual(currentTime.value as? String, "0:03")
+    }
+
+    @MainActor
     func testLaunchRecoversInterruptedStagingAudio() {
         let app = XCUIApplication.portavoz(seedRecovery: true)
         app.launchPortavoz()

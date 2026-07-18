@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import IntegrationsKit
 import IntelligenceKit
@@ -130,18 +131,16 @@ enum MeetingToolbox {
             ) { data in
                 struct Args: Decodable { var question: String }
                 let args = try JSONDecoder().decode(Args.self, from: data)
-                let passages = try await AskPipeline.retrieve(
-                    question: args.question, store: store, limit: 6)
-                guard !passages.isEmpty else {
+                let result = try await AskMeetings.local(store: store).answer(
+                    args.question,
+                    limit: 6)
+                guard !result.citations.isEmpty else {
                     return "Nothing related found in the meeting library."
                 }
-                let sources = passages.enumerated().map { index, passage in
-                    "[\(index + 1)] \(passage.meetingTitle) · \(timestamp(passage.timestamp)) · \(passage.text)"
+                let sources = result.citations.enumerated().map { index, citation in
+                    "[\(index + 1)] \(citation.meetingTitle) · \(timestamp(citation.timestamp)) · \(citation.text)"
                 }.joined(separator: "\n")
-                if #available(macOS 26.0, *),
-                    FoundationModelSummaryProvider.unavailabilityReason() == nil {
-                    let answer = try await RAGAnswerer().answer(
-                        question: args.question, passages: passages)
+                if let answer = result.generatedText {
                     return "\(answer)\n\nSources:\n\(sources)"
                 }
                 return "Most relevant passages (no on-device model available):\n\(sources)"

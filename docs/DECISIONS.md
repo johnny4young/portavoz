@@ -219,6 +219,8 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 
 **Decision:** IntegrationsKit is the only Kit authorized to depend on non-foundational capability sibling Kits (`IntelligenceKit` + `StorageKit`). It is the cross-cutting integration layer over stored meetings (export, RAG retrieval, calendar). `TranscriptionKit` and `DiarizationKit` additionally depend on the foundational `ModelStoreKit`; all other capability Kits depend only on Core. `AskPipeline` lives in IntegrationsKit once; the CLI and app consume it.
 
+**Current qualification:** D33 later introduced ApplicationKit as the authorized application-orchestration fan-in. D100 moves Ask coordination and local retrieval there. IntegrationsKit remains the only *capability* module that depends on sibling capabilities, but it no longer owns the Ask application workflow.
+
 ## D32 — Embedded MLX lives in IntelligenceKit (Jul 2026)
 
 **Context:** D25 called for a 100% local summary engine for Macs with neither Apple Intelligence NOR Ollama. The embedded provider needs the prompt/parsing stack (`PromptFactory`, `StructuredSummary`, `SummaryFingerprint`) that lives in IntelligenceKit; a separate Kit would have forced all of that into Core.
@@ -2097,7 +2099,7 @@ snippet for UI surfaces and the complete segment text for downstream retrieval.
 Hostile quoted input, tombstone exclusion, and exact AND behavior remain
 unchanged.
 
-IntegrationsKit's `AskPipeline` owns lexical RAG selection. It extracts words
+ApplicationKit's `LocalAskMeetingRetrieval` owns lexical RAG selection; D100 moved the unchanged policy inward from the former IntegrationsKit `AskPipeline`. It extracts words
 of at least four characters exactly as before, normalizes and deduplicates
 them, retrieves a bounded top-k list per term, and fuses those lists with
 reciprocal-rank scoring (`k = 60`). A segment supported by multiple question
@@ -2118,7 +2120,7 @@ database concurrency model, persisted vector, model, or UI hierarchy changes.
 **Rationale:** bounded per-term top-k selection directly removes the measured
 lexical amplification and improves relevance for multi-term evidence while an
 explicit fallback protects unusual long questions. Keeping that policy at the
-integration edge preserves StorageKit as a safe exact-search capability and
+application edge preserves StorageKit as a safe exact-search capability and
 avoids treating a RAG ranking rule as persistence. Since lexical retrieval now
 passes, Band 4D must measure brute-force semantic cosine latency, CPU, and
 memory at the same scale before sqlite-vec or a segment-layout migration can be
@@ -2885,3 +2887,41 @@ coherent, per-item results preserve useful work without lying, same-directory
 publication prevents partial files from becoming visible, and process ownership
 keeps a long backup independent of a transient Settings window while preserving
 the released General-summary and one-file-per-meeting behavior.
+
+## D100 — Give every Ask surface one evidence-preserving application workflow (Jul 2026)
+
+**Context:** the full Ask route, resident command palette, CLI command, local
+MCP tool, and upcoming-meeting brief all needed the same local retrieval
+behavior, but coordinated Store, embedding, query expansion, answer generation,
+and fallback in different executable paths. The macOS views also owned
+unstructured tasks; closing and reopening the palette could allow work from the
+previous invocation to publish into the new panel. Presentation received
+StorageKit hits or IntelligenceKit passages, so moving or testing a surface
+required concrete persistence and model dependencies.
+
+**Decision:** `ApplicationKit.AskMeetings` is the single workflow for trimmed
+instant search, hybrid evidence retrieval, and optional local answer generation.
+Its request and result values carry only meeting/segment identity, title,
+timestamp, snippet or complete evidence, and optional generated text.
+`LocalAskMeetingRetrieval` owns indexing, bounded lexical candidates, semantic
+retrieval, multi-query expansion, and rank fusion; the on-device intelligence
+adapter owns expansion and final generation. Ordinary generation failure or
+unavailability returns the successful citations rather than failing retrieval;
+`CancellationError` remains control flow and propagates unchanged.
+
+The full Ask route owns one per-window `AskModel`; the command palette owns one
+process-scoped `CommandPaletteModel`. Both own and cancel their tasks and fence
+publication by generation. The palette uses a key-capable borderless panel so
+its visible query field remains a reliable keyboard destination; AppKit owns
+only panel lifetime, clipboard behavior, route selection, and exact evidence
+seeking. CLI and MCP
+construct the workflow and format its storage-independent response. Disposable
+UI composition uses real temporary FTS with deterministic answer generation,
+and retained visual evidence captures only the app window or identified panel.
+
+**Rationale:** one workflow keeps search ranking, evidence completeness,
+fallback, and navigation semantics consistent across every interface without
+making presentation depend on persistence or model records. Evidence-first
+degradation preserves useful local truth when generation is unavailable, while cancellation remains honest control flow and
+explicit task ownership prevents stale asynchronous state from crossing window
+or panel lifetimes.

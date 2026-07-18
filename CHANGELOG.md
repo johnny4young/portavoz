@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **⌘K that always listens** — Ask and the command palette now share one local answer path with exact source jumps; the floating field reliably accepts typing, and closing or reopening it cancels stale searches instead of letting an old answer appear later.
+- **🔎 One Ask, everywhere** — The full Ask view, ⌘K palette, CLI, and local MCP now use the same private search-and-answer path. Closing or replacing the palette cancels stale work, generation failures keep useful citations, and every source still jumps to the exact meeting moment.
 - **🗄️ Backups that finish safely** — Export your whole library with visible progress and a truthful partial-result count; Portavoz now keeps existing files untouched, isolates an unreadable meeting, and publishes each portable Markdown file atomically.
 - **📌 A menu bar that stays current** — Recent meetings and pending commitments now refresh from live local data when the resident panel opens or your library changes, instead of keeping an old one-shot snapshot.
 - **🧭 Sync commands never get stuck** — If Pause makes an already queued sync unnecessary, Portavoz now skips that stale step and continues with your next explicit sync action in order.

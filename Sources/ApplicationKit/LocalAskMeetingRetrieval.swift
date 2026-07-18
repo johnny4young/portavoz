@@ -3,16 +3,34 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
-/// Retrieval shared by the app's Ask view, the CLI `ask` command and the
-/// MCP `ask` tool (M8): index what's new, query both ways, fuse by
-/// reciprocal rank. Lives here because IntegrationsKit is the one Kit
-/// allowed to see both StorageKit and IntelligenceKit (D31).
-public enum AskPipeline {
-    /// Index what's new, query lexically and semantically (multi-query,
-    /// cross-lingual when FM is around), fuse by reciprocal rank.
-    public static func retrieve(
-        question: String, store: MeetingStore, limit: Int = 6
-    ) async throws -> [RAGPassage] {
+/// Local hybrid retrieval adapter owned by the Ask application workflow:
+/// index what's new, query both ways, then fuse by reciprocal rank.
+public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
+    private let store: MeetingStore
+    private let queryExpander: any AskQueryExpanding
+
+    public init(
+        store: MeetingStore,
+        queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence()
+    ) {
+        self.store = store
+        self.queryExpander = queryExpander
+    }
+
+    public func search(
+        query: String,
+        limit: Int
+    ) async throws -> [AskSearchResult] {
+        guard limit > 0 else { return [] }
+        return try await store.search(query, limit: limit).map(Self.searchResult)
+    }
+
+    public func retrieve(
+        question: String,
+        limit: Int
+    ) async throws -> [AskCitation] {
+        // Index what's new, query lexically and semantically (multi-query,
+        // cross-lingual when FM is around), then fuse by reciprocal rank.
         let embedder = try SentenceEmbedder()
         try await embedder.prepare()
 
@@ -32,16 +50,12 @@ public enum AskPipeline {
             if missing.count < 256 { break }
         }
 
-        var queries = [question]
-        if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil {
-            queries = await RAGAnswerer().expandQuery(question)
-        }
+        let queries = await queryExpander.expand(question)
 
         // Lexical: term-level top-k candidates over CONTENT words only.
         // Multi-term evidence climbs through reciprocal-rank fusion without
         // forcing FTS5 to score the entire broad OR union before LIMIT.
-        let lexical = try await retrieveLexical(
+        let lexical = try await Self.retrieveLexical(
             queries: queries,
             store: store,
             limit: 12 * queries.count)
@@ -68,12 +82,22 @@ public enum AskPipeline {
             limit: limit)
 
         return fused.compactMap { hitsByID[$0] }.map { hit in
-            RAGPassage(
+            AskCitation(
+                segmentID: hit.segmentID,
                 meetingID: hit.meetingID,
                 meetingTitle: hit.meetingTitle,
                 timestamp: hit.startTime,
                 text: hit.text)
         }
+    }
+
+    private static func searchResult(_ hit: SearchHit) -> AskSearchResult {
+        AskSearchResult(
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            segmentID: hit.segmentID,
+            snippet: hit.snippet,
+            timestamp: hit.startTime)
     }
 
     /// Lexical half of local RAG, public so the scale harness can measure the

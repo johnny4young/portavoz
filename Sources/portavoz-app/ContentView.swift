@@ -18,6 +18,7 @@ struct ContentView: View {
     @State private var route: Route?
     @State private var libraryModel: LibraryModel
     @State private var insightsModel: InsightsModel
+    @State private var askModel: AskModel
     @State private var reminder = MeetingReminderController()
     @State private var showOnboarding = false
 
@@ -25,6 +26,7 @@ struct ContentView: View {
         self.services = services
         _libraryModel = State(initialValue: services.makeLibraryModel())
         _insightsModel = State(initialValue: services.makeInsightsModel())
+        _askModel = State(initialValue: services.makeAskModel())
     }
 
     var body: some View {
@@ -46,7 +48,12 @@ struct ContentView: View {
                         route: $route)
                         .id(id)  // reload state when switching meetings
                 case .ask:
-                    AskView(route: $route)
+                    AskView(
+                        model: askModel,
+                        onOpenCitation: { citation in
+                            services.pendingSeek = citation.timestamp
+                            route = .meeting(citation.meetingID)
+                        })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
                 case nil:
@@ -74,6 +81,10 @@ struct ContentView: View {
                     openWindow(id: "main")
                 }
                 NSApp.activate(ignoringOtherApps: true)
+            }
+            services.palette.onOpenCitation = { citation in
+                services.pendingSeek = citation.timestamp
+                services.pendingRoute = .meeting(citation.meetingID)
             }
         }
         .task { await services.seedDemoIfRequested() }

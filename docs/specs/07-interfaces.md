@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Companion evidence).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Companion evidence), D100 (shared Ask workflow across app, CLI, and MCP).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -24,7 +24,7 @@ SPM binary (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`
 | `models` | `download \| verify \| path` — complete sha256 catalog |
 | `bench-m2` | M2 acceptance harness (live lag + concurrent batch) |
 | `bench-fts` | `[--meetings N] [--segments-per-meeting N]` — legacy disposable FTS harness |
-| `bench-scale` | `[--library-sizes 1000,10000,50000,100000] [--meeting-minutes 30,120,480] [--runs 20] [--output report.json]` — Release-only tracked scale matrix over throwaway databases; lexical timing calls the exact IntegrationsKit candidate policy without loading embeddings (D79/D81) |
+| `bench-scale` | `[--library-sizes 1000,10000,50000,100000] [--meeting-minutes 30,120,480] [--runs 20] [--output report.json]` — Release-only tracked scale matrix over throwaway databases; lexical timing calls the exact ApplicationKit candidate policy without loading embeddings (D79/D81) |
 | `bench-semantic` | `[--segments 100000] [--runs 20] [--output checkpoint.json]` — one production-schema semantic checkpoint with 512-dimensional deterministic vectors, exact-top-result validation, wall/CPU/footprint metrics; `scripts/run-semantic-scale-baseline.sh` isolates and aggregates comparable 1k/10k/50k/100k Release matrices (D82/D83) |
 | `bench-waveform` | `[--mic <audio>] [--system <audio>] [--buckets 600] [--runs 20] [--output report.json]` — Release waveform probe that copies one or both channels to a unique throwaway directory, reports format/size/duration but no source paths or content, separates first/repeat wall/CPU/footprint distributions, fingerprints the exact buckets, and replaces its scratch input to characterize invalidation (D84) |
 | `bench-spotlight` | `[--mode legacy|snapshot] [--meetings N] [--runs N] [--delivery-items N] [--output report.json]` — Release projection probe over a throwaway production-schema database. The wrapper runs isolated 1k/10k/100k legacy and snapshot processes, checks exact fingerprints, and may publish only synthetic items to a unique protected named index before deleting them (D85) |
@@ -35,11 +35,17 @@ Work as the app boundary. Language, cast, transcript, and
 `transcriptRevision` therefore commit atomically, and a concurrent transcript
 change rejects the stale CLI result instead of overwriting newer truth (D47).
 
+The `ask` command opens the requested Store at composition and then enters the
+same `ApplicationKit.AskMeetings` workflow as the macOS Ask surfaces. The CLI
+formats only the returned storage-independent answer and citations. An
+unavailable or failed on-device answer keeps and prints the most relevant
+evidence instead of discarding successful retrieval (D100).
+
 ## MCP server — `portavoz-cli mcp`
 
 - Transport: **JSON-RPC 2.0 over stdio, newline-delimited**; protocolVersion `2024-11-05`. Storage-agnostic protocol layer in IntegrationsKit (`MCPServer`, `MCPTool` with Data→String handlers, raw JSON schemas); the toolbox is assembled in the CLI (`MeetingToolbox`).
 - Registration with an agent: `claude mcp add portavoz -- portavoz-cli mcp`.
-- **6 tools**: `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest snapshot + action items) · `get_action_items` (global pending items) · `ask` (hybrid on-device RAG with bounded per-term lexical candidates, complete selected segments, and citations).
+- **6 tools**: `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations).
 - Verified E2E: an MCP agent answered "what did we agree about the transcription budget?" with the correct sources.
 
 ## Exporters — IntegrationsKit

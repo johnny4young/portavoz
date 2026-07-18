@@ -1,12 +1,11 @@
 import Foundation
-import IntelligenceKit
 import PortavozCore
 
 /// Ranks which past meetings are genuinely related to an upcoming event
 /// (field bug jul 2026: naive FTS-by-hit-count surfaced a "blood tests" 1:1
 /// as related to a sprint demo). Deterministic and explainable:
 ///
-/// - Passages come from the HYBRID retriever (`AskPipeline`, lexical +
+/// - Citations come from the `AskMeetings` hybrid retriever (lexical +
 ///   semantic), so paraphrases still match.
 /// - Each candidate meeting is scored `passages + 2 × matched terms`, where
 ///   terms are the event's title words and attendee names actually found in
@@ -44,12 +43,12 @@ public enum BriefRelevance {
     }
 
     public static func rank(
-        passages: [RAGPassage],
+        passages: [AskCitation],
         terms: [String],
         limit: Int = 3,
         minimumScore: Int = 3
     ) -> [Related] {
-        var grouped: [MeetingID: (title: String, passages: [RAGPassage])] = [:]
+        var grouped: [MeetingID: (title: String, passages: [AskCitation])] = [:]
         for passage in passages {
             grouped[passage.meetingID, default: (passage.meetingTitle, [])].passages
                 .append(passage)

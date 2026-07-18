@@ -7,28 +7,35 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue the requested macOS-only architecture
-convergence with Band 6C5: give the full Ask and command-palette experience one
-ApplicationKit query/answer workflow plus storage-independent presentation
-models, removing Store, IntegrationsKit, and IntelligenceKit coordination from
-SwiftUI while preserving instant FTS, local RAG, citations, copy, and exact
-seek navigation. Band 6C4 now gives whole-library Markdown backup one
-read-consistent application workflow, injected format/filesystem adapters,
-portable atomic non-replacing publication, typed partial results, and a
-process-scoped owner behind the native Settings folder picker (D99). Band 6D remains the later iOS in-person
-recorder shell described in `docs/IOS.md`; it must reuse the proven text-first
-codec/lifecycle without importing macOS call capture or device-local voice
-identity. Before a public sync release, retain the independent field gate for a
-real production CloudKit container/profile/account and two-Mac convergence.
-Band 6C2 composes private macOS meeting sync through one inert fail-closed
-CKContainer owner, one process-scoped lifecycle model, content-free wakeups,
-exact Developer ID capability verification, and an explicit bilingual Settings
-surface (D97). Local and XCUITest builds remain profile-free and make no CloudKit
-request; audio, paths, voiceprints, secrets, and embeddings remain device-local.
-Bands 6A–6C2 therefore complete the macOS text-first sync vertical; 6C3 starts
-the remaining macOS shell convergence before Band 6D adds a second-device
-product surface. Every prior architecture band and
-all released v0.6.0 behavior remain covered by the current package and bilingual
-UI gates (D33–D99).
+convergence with Band 6C6: move first-run eligibility, the local Settings
+ledger, and complete pre-meeting brief assembly behind storage-independent
+application/presentation owners. Preserve first-listen, record-immediately,
+clean-install model guidance, exact local counts, related meetings/open
+commitments, and EventKit's no-prompt rule; onboarding must never make a speech-
+model download a prerequisite for capture. Band 6C5 now gives full Ask, the resident command
+palette, CLI `ask`, MCP `ask`, and meeting-brief evidence one shared
+ApplicationKit workflow, storage-independent results/citations, owned and
+cancellation-fenced presentation tasks, and exact evidence navigation (D100).
+Band 6D remains the later iOS in-person recorder shell described in
+`docs/IOS.md`; it must reuse the proven text-first codec/lifecycle without
+importing macOS call capture or device-local voice identity. Before a public
+sync release, retain the independent field gate for a real production CloudKit
+container/profile/account and two-Mac convergence. Every prior architecture
+band and all released v0.6.0 behavior remain covered by the current package and
+bilingual UI gates (D33–D100).
+
+- **Architecture Band 6 slice 6C5 complete — every Ask surface shares one
+  local truth (Jul 17, 2026)**: `ApplicationKit.AskMeetings` now owns instant
+  search, hybrid evidence, and optional on-device answers for full Ask, the
+  resident command palette, CLI, MCP, and meeting briefs. Storage-independent
+  results and citations preserve exact segment, meeting, and timestamp identity;
+  ordinary generation failure keeps useful evidence while cancellation remains
+  cancellation. Per-window and process-scoped presentation models own their
+  tasks, and the palette cancels plus generation-fences stale work across
+  close/reopen. The key-capable panel reliably accepts keyboard input, copies
+  Markdown receipts, and both macOS Ask surfaces navigate to the exact audio
+  moment. Nine new package cases and two bilingual XCUITest flows establish
+  D100. Band 6C6 is next; iOS remains deferred while macOS convergence continues.
 
 - **Architecture Band 6 slice 6C4 complete — an open-format backup cannot lie
   or overwrite (Jul 17, 2026)**: `ExportLibraryMarkdownBackup` now owns one
@@ -40,7 +47,7 @@ UI gates (D33–D99).
   the operation alive across Settings windows, while SwiftUI retains only the
   native folder picker and localized state. Eleven direct/package cases plus an
   architecture ratchet and a bilingual real-app export smoke establish D99.
-  Band 6C5 is next; Band 6D remains deferred while macOS convergence continues.
+  Band 6C5 followed; Band 6D remains deferred while macOS convergence continues.
 
 - **Architecture Band 6 slice 6C3 complete — the menu bar reads current local
   truth (Jul 17, 2026)**: `MenuBarContent` now renders one scene-scoped

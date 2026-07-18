@@ -1,30 +1,19 @@
-import IntegrationsKit
-import IntelligenceKit
-import PortavozCore
+import ApplicationKit
+import Foundation
 import SwiftUI
 
-/// "Ask your meetings" (M8's local RAG, surfaced in the UI): natural-language
-/// questions answered on-device, citing meeting + moment. Citations navigate
-/// straight to the meeting. Nothing leaves the Mac.
+/// "Ask your meetings": one storage-independent presentation model renders
+/// conversation state and sends questions through the shared application
+/// workflow. Citations navigate to the exact meeting moment.
 struct AskView: View {
-    @Environment(AppServices.self) private var services
-    @Binding var route: Route?
+    let model: AskModel
+    let onOpenCitation: (AskCitation) -> Void
 
-    @State private var question = ""
-    @State private var exchanges: [AskExchange] = []
-    @State private var asking = false
     @FocusState private var questionFocused: Bool
-
-    struct AskExchange: Identifiable {
-        let id = UUID()
-        let question: String
-        let answer: String
-        let passages: [RAGPassage]
-    }
 
     var body: some View {
         VStack(spacing: 0) {
-            if exchanges.isEmpty && !asking {
+            if model.state.exchanges.isEmpty && !model.state.isAsking {
                 ContentUnavailableView(
                     "Ask your meetings",
                     systemImage: "bubble.left.and.text.bubble.right",
@@ -45,29 +34,30 @@ struct AskView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    ForEach(exchanges) { exchange in
+                    ForEach(model.state.exchanges) { exchange in
                         exchangeView(exchange)
                     }
-                    if asking {
+                    if model.state.isAsking {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
                             Text("Searching your meetings…").foregroundStyle(.secondary)
                         }
+                        .accessibilityIdentifier("ask-progress")
                         .id("asking")
                     }
                 }
                 .padding(16)
                 .frame(maxWidth: 720, alignment: .leading)
             }
-            .onChange(of: exchanges.count) { _, _ in
-                if let last = exchanges.last?.id {
+            .onChange(of: model.state.exchanges.count) { _, _ in
+                if let last = model.state.exchanges.last?.id {
                     withAnimation { proxy.scrollTo(last, anchor: .bottom) }
                 }
             }
         }
     }
 
-    private func exchangeView(_ exchange: AskExchange) -> some View {
+    private func exchangeView(_ exchange: AskModel.Exchange) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(exchange.question)
                 .font(.callout.weight(.semibold))
@@ -75,24 +65,27 @@ struct AskView: View {
                 .background(PVDesign.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             Text(exchange.answer)
                 .textSelection(.enabled)
-            if !exchange.passages.isEmpty {
+                .accessibilityIdentifier("ask-answer-\(exchange.id.uuidString)")
+            if !exchange.citations.isEmpty {
                 Text("Sources")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(Array(exchange.passages.enumerated()), id: \.offset) { _, passage in
+                ForEach(Array(exchange.citations.enumerated()), id: \.offset) { index, citation in
                     Button {
-                        route = .meeting(passage.meetingID)
+                        onOpenCitation(citation)
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.turn.down.right")
-                            Text("\(passage.meetingTitle) · \(clock(passage.timestamp))")
+                            Text("\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
                                 .lineLimit(1)
                         }
                         .font(.caption)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(PVDesign.accent)
-                    .help(passage.text)
+                    .help(citation.text)
+                    .accessibilityIdentifier(
+                        "ask-citation-\(exchange.id.uuidString)-\(index)")
                 }
             }
         }
@@ -101,55 +94,25 @@ struct AskView: View {
 
     private var inputBar: some View {
         HStack(spacing: 8) {
-            TextField("Ask about your meetings…", text: $question)
+            TextField(
+                "Ask about your meetings…",
+                text: Binding(
+                    get: { model.state.draft },
+                    set: { model.updateDraft($0) }))
                 .textFieldStyle(.roundedBorder)
                 .focused($questionFocused)
-                .onSubmit(ask)
-            Button(action: ask) {
+                .onSubmit { model.submit() }
+                .accessibilityIdentifier("ask-question-field")
+            Button {
+                model.submit()
+            } label: {
                 Image(systemName: "paperplane.fill")
             }
-            .disabled(asking || question.trimmingCharacters(in: .whitespaces).isEmpty)
+            .disabled(
+                model.state.isAsking
+                    || model.state.draft.trimmingCharacters(in: .whitespaces).isEmpty)
+            .accessibilityIdentifier("ask-submit")
         }
         .padding(12)
-    }
-
-    private func ask() {
-        let text = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !asking else { return }
-        question = ""
-        asking = true
-        Task {
-            defer { asking = false }
-            do {
-                let passages = try await AskPipeline.retrieve(
-                    question: text, store: services.store)
-                guard !passages.isEmpty else {
-                    exchanges.append(AskExchange(
-                        question: text,
-                        answer: L10n.text("Nothing related in your meetings yet."),
-                        passages: []))
-                    return
-                }
-                var answer: String?
-                if #available(macOS 26.0, *),
-                    FoundationModelSummaryProvider.unavailabilityReason() == nil {
-                    answer = try? await RAGAnswerer().answer(question: text, passages: passages)
-                }
-                exchanges.append(AskExchange(
-                    question: text,
-                    answer: answer ?? L10n.text("Closest passages from your meetings:"),
-                    passages: passages))
-            } catch {
-                exchanges.append(AskExchange(
-                    question: text,
-                    answer: L10n.format("Search failed: %@", error.localizedDescription),
-                    passages: []))
-            }
-        }
-    }
-
-    private func clock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }

@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state).
 
 ## Structure
 
@@ -95,6 +95,14 @@ filesystem adapter returns a collision instead of replacing disk content, so
 the application allocator advances its portable suffix. Temporary-store UI
 tests may inject only the destination path; production always uses the native
 folder panel.
+
+`AppServices` composes one `AskMeetings` workflow and exposes it through one
+main-actor app client. Each `ContentView` owns a per-window `AskModel`; the
+resident command palette owns one process-scoped `CommandPaletteModel`. The
+models own answer/search tasks and generations, and the palette resets both on
+close/reopen. AppKit owns panel lifetime, keyboard activation, clipboard, and
+window navigation only. Full Ask and palette citations set the same exact
+one-shot seek before opening Meeting Detail (D100).
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -419,7 +427,26 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 ## Palette ⌘K «Pregúntale a tu semana» (Jul 2026 — design system 6a-1)
 
-`CommandPaletteController` in AppServices (works with closed window) + `NSPanel` Spotlight-style (620 pt, radius 16, `.regularMaterial`, non-activating but key — closes on key loss and state DISCARDED, spec). ⌘K via CommandGroup in menu (works without window). Two lanes: FTS instant while typing (`store.search`, 6 hits with snippet·title·mm:ss, keystroke stale guard) and Enter → full RAG (`AskPipeline.retrieve` + `RAGAnswerer`, answers in question language). Citations as capsules `↗ título · mm:ss` → `pendingRoute` + `pendingSeek` (one-shot consumed by detail after player loads to jump to cited moment) + window reopen ONLY if none visible (openWindow always creates — gotcha). ⌘C copies response+citations in Markdown (`AskMarkdown`, IntegrationsKit). Verified E2E with seed: FTS instant, response IS correct with 6 citations, navigation to detail.
+`CommandPaletteController` is process-scoped in `AppServices` and works with
+the main window closed. Its borderless 620 pt `NSPanel` remains a real key
+window for text input, closes on key loss, and has a stable window identifier
+for app-only visual evidence. ⌘K is registered through `CommandGroup`, so it
+also works without a main window. `CommandPaletteModel` owns query, instant
+results, answer state, search/answer tasks, and a generation fence; every close
+or new query cancels old work, so a result from a prior panel cannot publish
+into a later invocation. `AskModel` separately owns the full Ask route's draft,
+conversation, progress, and answer task for one main window.
+
+Both surfaces use `ApplicationKit.AskMeetings`. Typing requests up to six FTS
+results with snippet, title, and timestamp; Enter requests hybrid local evidence
+and an optional on-device answer. Missing generation degrades to complete
+evidence rather than losing citations. Citation controls pass storage-
+independent identity and time to composition, then set the one-shot detail seek;
+the palette reopens a main window only when none is visible. ⌘C copies the
+answer and citations through `ApplicationKit.AskMarkdown`. The views and panel
+import no StorageKit, IntegrationsKit, or IntelligenceKit. Disposable bilingual
+UI coverage verifies the full Ask answer, instant palette results, generated
+answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
 ## Insights (Jul 2026) — library dashboard
 
@@ -625,9 +652,10 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 33 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
-chips + time grouping + interrupted staging recovery + durable post-capture
-resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
+defines 35 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+chips + time grouping + full Ask and command-palette answer/citation paths +
+interrupted staging recovery + durable post-capture resume + typed recording-
+start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
@@ -653,10 +681,11 @@ resume. Seed-demo includes deterministic question and answer sources plus a
 third segment at 200 s (mic channel) so there are two chapters and solo audio. Convention: all new
 interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
 assertion in the corresponding `*UITests.swift`; computer-use is the last
-resort. Feature-band evidence retains app-window-only screenshots at asserted
-Library, Insights, Meeting Detail, Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints so unrelated desktop content
-is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 32-case suite is green in the
+resort. Feature-band evidence retains app-only screenshots at asserted
+Library, the identified command-palette panel, Insights, Meeting Detail,
+Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints
+so unrelated desktop content is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
+test language and region flags; the complete 35-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

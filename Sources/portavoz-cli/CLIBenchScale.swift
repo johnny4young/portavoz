@@ -1,6 +1,5 @@
 import ApplicationKit
 import Foundation
-import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 import StorageKit
@@ -257,7 +256,7 @@ private enum ScaleBenchmark {
                     _ = try await store.search("presupuesto transcripción", requireAll: true)
                 },
                 questionRetrieval: measureAsync(runs: options.runs) {
-                    _ = try await AskPipeline.retrieveLexical(
+                    _ = try await LocalAskMeetingRetrieval.retrieveLexical(
                         queries: ["qué acordamos sobre el presupuesto del proyecto"],
                         store: store,
                         limit: 20)

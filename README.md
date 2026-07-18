@@ -148,7 +148,7 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, and per-meeting privacy receipts), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, coherent whole-library Markdown backup with typed partial results, redacted support diagnostics, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, coherent whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, redacted support diagnostics, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic meeting-review, Insights, brief-relevance, reminder, and post-meeting-mirror policies over narrow capability ports |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
@@ -156,9 +156,9 @@ real vertical use case.
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
 | `AudioPlaybackKit` | Synchronized player, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
 | `StorageKit` | GRDB/SQLite schema v14, FTS5 search, additive canonical people/aliases, typed source-revision-fenced overview, decision, action-item, and role-separated Companion evidence with separate reversible overview feedback, a content-free generation-fenced per-meeting mutation journal plus exact-generation text-first aggregate projection/atomic remote replay (the separate CloudKit adapter cannot redefine these rules), scoped Library/Insights/Meeting Detail observations, one-read Spotlight and whole-library backup projections, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
-| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, RAG, bundle/export, MCP, deterministic meeting-sync envelopes, and the private-zone CloudKit boundary: encrypted inline/protected-asset records, complete-protected account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
+| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, bundle/export formats, MCP protocol handling, deterministic meeting-sync envelopes, and the private-zone CloudKit boundary: encrypted inline/protected-asset records, complete-protected account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
 
-The macOS app owns per-window `LibraryModel` and `InsightsModel` state owners.
+The macOS app owns per-window `LibraryModel`, `InsightsModel`, and `AskModel` state owners plus one process-scoped `CommandPaletteModel`.
 SwiftUI views render and present native controls; app composition adapters map
 independent GRDB observations to storage-independent ApplicationKit updates.
 Library observes meeting rows/voice mix, open items, trash, and active FTS;
@@ -167,7 +167,10 @@ balance, and scope-bounded finding evidence; Meeting Detail observes its
 transcript/cast, newest immutable summary, Companion cards, privacy receipt,
 and durable processing independently. Whole-library backup uses a process-scoped
 model and private document/filesystem adapters, so closing Settings does not
-cancel it and SwiftUI never coordinates Store or export-format work.
+cancel it and SwiftUI never coordinates Store or export-format work. Full Ask,
+⌘K, CLI, MCP, and briefs share one ApplicationKit search/evidence/answer
+workflow; stale palette work is cancelled and exact citations retain their
+meeting timestamp.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume a global invalidation counter for reads. Spotlight

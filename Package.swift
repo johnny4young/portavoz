@@ -52,8 +52,7 @@ let package = Package(
 
         // Application workflows enter through this boundary. Dependencies
         // are added one capability at a time with each extracted use case;
-        // trash lifecycle, summary regeneration, and audio import are the
-        // first ratcheted capability slices.
+        // local Ask now joins lifecycle, processing, reads, import, and export.
         .target(
             name: "ApplicationKit",
             dependencies: [
@@ -106,9 +105,9 @@ let package = Package(
         // audio into one timeline, generates waveforms, exports clips.
         .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
 
-        // IntegrationsKit is the outbound adapter layer over stored meetings
-        // (export, MCP surfaces, RAG retrieval): the ONLY Kit allowed to
-        // depend on sibling Kits (IntelligenceKit + StorageKit, D31).
+        // IntegrationsKit is the outbound-adapter layer over stored meetings
+        // (export, MCP protocol, providers, private sync transport). Application
+        // orchestration belongs to ApplicationKit, including local Ask.
         .target(
             name: "IntegrationsKit",
             dependencies: ["PortavozCore", "IntelligenceKit", "StorageKit"]),

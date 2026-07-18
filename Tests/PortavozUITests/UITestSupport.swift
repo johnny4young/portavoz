@@ -155,4 +155,13 @@ extension XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
+
+    @MainActor
+    func attachElementScreenshot(of element: XCUIElement, named name: String) {
+        XCTAssertTrue(element.exists, "the app element must exist before capturing evidence")
+        let attachment = XCTAttachment(screenshot: element.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
 }

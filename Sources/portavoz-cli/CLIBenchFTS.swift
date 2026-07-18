@@ -1,5 +1,5 @@
+import ApplicationKit
 import Foundation
-import IntegrationsKit
 import PortavozCore
 import StorageKit
 
@@ -77,7 +77,7 @@ enum BenchFTSCommand {
                 if requireAll {
                     _ = try await store.search(query, limit: 20)
                 } else {
-                    _ = try await AskPipeline.retrieveLexical(
+                    _ = try await LocalAskMeetingRetrieval.retrieveLexical(
                         queries: [query], store: store, limit: 20)
                 }
                 let label = requireAll ? "exact search (AND)" : "question retrieval (OR)"

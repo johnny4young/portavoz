@@ -146,6 +146,11 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("resumen de standup sigue visible")
                 || line.contains("presupuesto de transcripción ya fue revisado")
         }
+        if relative == "Sources/portavoz-app/AppServices+Ask.swift" {
+            // The disposable Ask adapter returns deterministic Spanish seed
+            // data so both locales verify answer content without a model.
+            return line.contains("El presupuesto se revisó")
+        }
         if relative == "Sources/portavoz-app/BenchMode.swift" {
             // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
             return line.contains("Revisemos el presupuesto")

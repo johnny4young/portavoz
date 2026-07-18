@@ -576,6 +576,50 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("import StorageKit"))
     }
 
+    func testAskSurfacesUseOneStorageIndependentApplicationWorkflow() throws {
+        let workflow = try Self.contents(of: "Sources/ApplicationKit/AskMeetings.swift")
+        let retrieval = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let appAdapter = try Self.contents(of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let askModel = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
+        let paletteModel = try Self.contents(
+            of: "Sources/portavoz-app/CommandPaletteModel.swift")
+        let askView = try Self.contents(of: "Sources/portavoz-app/AskView.swift")
+        let palette = try Self.contents(of: "Sources/portavoz-app/CommandPalette.swift")
+        let cli = try Self.contents(of: "Sources/portavoz-cli/CLIAsk.swift")
+        let mcp = try Self.contents(of: "Sources/portavoz-cli/CLIMcp.swift")
+        let brief = try Self.contents(of: "Sources/portavoz-app/MeetingBriefView.swift")
+
+        XCTAssertTrue(workflow.contains("struct AskMeetings: ApplicationUseCase"))
+        XCTAssertTrue(workflow.contains("struct AskSearchResult"))
+        XCTAssertTrue(workflow.contains("struct AskCitation"))
+        XCTAssertTrue(workflow.contains("struct AskMeetingAnswer"))
+        XCTAssertTrue(retrieval.contains("struct LocalAskMeetingRetrieval"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
+            .appendingPathComponent("Sources/IntegrationsKit/AskPipeline.swift").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
+            .appendingPathComponent("Sources/IntegrationsKit/AskMarkdown.swift").path))
+        XCTAssertTrue(appAdapter.contains("AskMeetings"))
+        XCTAssertTrue(askModel.contains("@Observable"))
+        XCTAssertTrue(paletteModel.contains("@Observable"))
+        XCTAssertTrue(paletteModel.contains("searchTask?.cancel()"))
+        XCTAssertTrue(paletteModel.contains("answerTask?.cancel()"))
+        XCTAssertTrue(paletteModel.contains("generation == requestGeneration"))
+        for source in [askView, palette] {
+            XCTAssertFalse(source.contains("services.store"))
+            XCTAssertFalse(source.contains("AskPipeline"))
+            XCTAssertFalse(source.contains("RAGAnswerer"))
+            XCTAssertFalse(source.contains("import IntegrationsKit"))
+            XCTAssertFalse(source.contains("import IntelligenceKit"))
+            XCTAssertFalse(source.contains("import StorageKit"))
+        }
+        XCTAssertTrue(cli.contains("AskMeetings.local(store: store).answer"))
+        XCTAssertTrue(mcp.contains("AskMeetings.local(store: store).answer"))
+        XCTAssertTrue(brief.contains("AskMeetings.local(store: store).evidence"))
+        XCTAssertTrue(askView.contains("onOpenCitation(citation)"))
+        XCTAssertTrue(palette.contains("onOpenCitation?(citation)"))
+    }
+
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {
         let policies = [
             "ChapterExtractor", "PlaybackRanges", "SummarySections", "VoiceHue",
@@ -1312,7 +1356,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
         let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
         let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
-        let ask = try Self.contents(of: "Sources/IntegrationsKit/AskPipeline.swift")
+        let ask = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
         let waveform = try Self.contents(of: "Sources/AudioPlaybackKit/Waveform.swift")
         let spotlightProjection = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
@@ -1381,7 +1426,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(ask.contains("public static func retrieveLexical"))
         XCTAssertTrue(ask.contains("guard terms.count <= 8"))
         XCTAssertTrue(ask.contains("1.0 / Double(60 + rank)"))
-        XCTAssertTrue(cli.contains("AskPipeline.retrieveLexical"))
+        XCTAssertTrue(cli.contains("LocalAskMeetingRetrieval.retrieveLexical"))
         XCTAssertTrue(waveform.contains("vDSP_maxmgv"))
         XCTAssertFalse(waveform.contains("WaveformCache"))
         XCTAssertTrue(spotlightProjection.contains("func spotlightDocuments()"))

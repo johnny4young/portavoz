@@ -1,5 +1,4 @@
 import ApplicationKit
-import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 import StorageKit
@@ -46,9 +45,9 @@ struct MeetingBrief {
         // surfaced as "related" by raw FTS hit count).
         let terms = BriefRelevance.terms(eventTitle: event.title, attendees: event.attendees)
         let query = ([event.title] + event.attendees).joined(separator: " ")
-        let passages =
-            (try? await AskPipeline.retrieve(question: query, store: store, limit: 12)) ?? []
-        let ranked = BriefRelevance.rank(passages: passages, terms: terms)
+        let citations =
+            (try? await AskMeetings.local(store: store).evidence(query, limit: 12)) ?? []
+        let ranked = BriefRelevance.rank(passages: citations, terms: terms)
 
         var related: [RelatedMeeting] = []
         for candidate in ranked {

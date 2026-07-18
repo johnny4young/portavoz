@@ -39,6 +39,8 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// One Ask application workflow feeds every macOS Ask presentation model.
+    @ObservationIgnored let askClient: AppAskModelClient
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -92,9 +94,9 @@ final class AppServices {
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
     let recording = RecordingController()
-    /// ⌘K palette (design system 6a-1): floats over any view; state lives
-    /// here so it works with the library window closed.
-    let palette = CommandPaletteController()
+    /// ⌘K palette (design system 6a-1): floats over any view; state and owned
+    /// tasks live here so it works safely with the library window closed.
+    let palette: CommandPaletteController
     /// One-shot seek consumed by the detail view when a palette citation
     /// navigates to a meeting — jump to the cited moment.
     var pendingSeek: TimeInterval?
@@ -134,6 +136,12 @@ final class AppServices {
             // worse than failing loudly at launch.
             fatalError("cannot open the Portavoz database: \(error)")
         }
+        let askUseCase = Self.makeAskUseCase(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore)
+        askClient = AppAskModelClient(useCase: askUseCase)
+        palette = CommandPaletteController(
+            model: CommandPaletteModel(client: askClient))
         meetingSync = Self.makeMeetingSyncModel(
             store: store,
             usesTemporaryStore: usesTemporaryStore)

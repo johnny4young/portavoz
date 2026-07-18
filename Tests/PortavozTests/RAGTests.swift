@@ -2,8 +2,8 @@ import Foundation
 import PortavozCore
 import XCTest
 
+@testable import ApplicationKit
 @testable import IntelligenceKit
-@testable import IntegrationsKit
 @testable import StorageKit
 
 final class RAGFusionTests: XCTestCase {
@@ -58,7 +58,7 @@ final class LexicalRAGCandidateTests: XCTestCase {
         }
         try await store.save([relevant] + budgetOnly + projectOnly)
 
-        let hits = try await AskPipeline.retrieveLexical(
+        let hits = try await LocalAskMeetingRetrieval.retrieveLexical(
             queries: [
                 "¿Qué acordamos sobre presupuesto y proyecto?",
                 "PRESUPUESTO proyecto",
@@ -85,7 +85,7 @@ final class LexicalRAGCandidateTests: XCTestCase {
         try await store.save(meeting)
         try await store.save([segment])
 
-        let hits = try await AskPipeline.retrieveLexical(
+        let hits = try await LocalAskMeetingRetrieval.retrieveLexical(
             queries: [
                 "alpha bravo charlie delta echoo foxtrot golfxx hotelx ninthword",
             ],

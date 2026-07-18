@@ -56,7 +56,7 @@ struct PortavozApp: App {
             CheckForUpdatesCommand()
             CommandGroup(after: .newItem) {
                 Button("Ask your week…") {
-                    services.palette.toggle(services: services)
+                    services.palette.toggle()
                 }
                 .keyboardShortcut("k")
             }
