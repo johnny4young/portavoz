@@ -1141,6 +1141,16 @@
         }
       }
     },
+    "Could not remember the voice.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo recordar la voz."
+          }
+        }
+      }
+    },
     "Could not remember the voice: %@": {
       "localizations": {
         "es": {

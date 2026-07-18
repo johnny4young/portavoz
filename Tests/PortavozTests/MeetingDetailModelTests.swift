@@ -157,6 +157,76 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
+    func testDocumentAndVoiceActionsStayBehindTheFeatureOwner() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let document = await model.send(.prepareDocument(.markdown))
+        let gist = await model.send(.publishGist)
+        await model.send(.loadVoiceSuggestions)
+        await model.send(.loadVoiceSuggestions)
+        let offer = await model.send(.checkVoiceMemoryOffer(name: "Ana"))
+        let remembered = await model.send(.rememberVoice(fixture.speaker.id))
+        _ = await model.send(.acceptVoiceSuggestion(fixture.speaker, name: "Ana"))
+
+        guard case .documentPrepared(let prepared) = document else {
+            return XCTFail("the native save surface must receive a prepared document effect")
+        }
+        XCTAssertEqual(prepared.filename, "planning.md")
+        XCTAssertEqual(String(decoding: prepared.data, as: UTF8.self), "prepared")
+        guard case .gistPublished(let url) = gist else {
+            return XCTFail("explicit publication must return its URL as an effect")
+        }
+        XCTAssertEqual(url.absoluteString, "https://gist.github.com/portavoz/test")
+        guard case .voiceMemoryOfferChecked(true) = offer else {
+            return XCTFail("the feature owner must preserve duplicate-offer admission")
+        }
+        guard case .voiceRemembered = remembered else {
+            return XCTFail("the feature owner must preserve explicit voice-memory success")
+        }
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+        XCTAssertEqual(client.calls, [
+            .prepareDocument(fixture.meeting.id, .markdown),
+            .publishGist(fixture.meeting.id),
+            .loadVoiceSuggestions(fixture.meeting.id),
+            .checkVoiceMemoryOffer("Ana"),
+            .rememberVoice(fixture.meeting.id, fixture.speaker.id),
+            .renameSpeaker("Ana"),
+        ])
+    }
+
+    func testDocumentAndVoiceEffectsPreserveFailureAndDegradationPolicy() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.failures = [.prepareDocument, .publishGist, .loadVoiceSuggestions]
+        client.canRememberVoiceResult = false
+        client.rememberVoiceResult = .insufficientAudio
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let document = await model.send(.prepareDocument(.pdf))
+        let gist = await model.send(.publishGist)
+        await model.send(.loadVoiceSuggestions)
+        let offer = await model.send(.checkVoiceMemoryOffer(name: "Ana"))
+        let remembered = await model.send(.rememberVoice(fixture.speaker.id))
+
+        guard case .operationFailed(let documentError) = document else {
+            return XCTFail("document failure must remain visible")
+        }
+        XCTAssertTrue(documentError.contains("prepareDocument"))
+        guard case .operationFailed(let gistError) = gist else {
+            return XCTFail("Gist failure must remain visible")
+        }
+        XCTAssertTrue(gistError.contains("publishGist"))
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+        guard case .voiceMemoryOfferChecked(false) = offer else {
+            return XCTFail("duplicate-offer admission must remain explicit")
+        }
+        guard case .voiceMemoryInsufficientAudio = remembered else {
+            return XCTFail("insufficient audio must remain a typed effect")
+        }
+    }
+
     func testMutationFailuresPreserveSilentAndVisiblePolicies() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -292,6 +362,8 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
+    var canRememberVoiceResult = true
+    var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
     private let person: Person
 
     init(
@@ -380,6 +452,45 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         try fail(.retryProcessing)
     }
 
+    func prepareMeetingDetailDocument(
+        _ meetingID: MeetingID,
+        format: MeetingDocumentFormat
+    ) throws -> PreparedMeetingDocument {
+        calls.append(.prepareDocument(meetingID, format))
+        try fail(.prepareDocument)
+        return PreparedMeetingDocument(
+            data: Data("prepared".utf8),
+            filename: "planning.\(format == .markdown ? "md" : "pdf")")
+    }
+
+    func publishMeetingDetailGist(_ meetingID: MeetingID) throws -> URL {
+        calls.append(.publishGist(meetingID))
+        try fail(.publishGist)
+        return URL(string: "https://gist.github.com/portavoz/test")!
+    }
+
+    func meetingDetailVoiceSuggestions(
+        _ meetingID: MeetingID
+    ) throws -> [MeetingVoiceSuggestion] {
+        calls.append(.loadVoiceSuggestions(meetingID))
+        try fail(.loadVoiceSuggestions)
+        return [MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0)]
+    }
+
+    func canRememberMeetingDetailVoice(named name: String) -> Bool {
+        calls.append(.checkVoiceMemoryOffer(name))
+        return canRememberVoiceResult
+    }
+
+    func rememberMeetingDetailVoice(
+        meetingID: MeetingID,
+        speakerID: SpeakerID
+    ) throws -> ManageMeetingVoiceMemoryResult {
+        calls.append(.rememberVoice(meetingID, speakerID))
+        try fail(.rememberVoice)
+        return rememberVoiceResult
+    }
+
     func requestMeetingDetailSearchReindex() {
         searchReindexRequests += 1
     }
@@ -399,6 +510,10 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case deleteCompanion
     case deleteMeeting
     case retryProcessing
+    case prepareDocument
+    case publishGist
+    case loadVoiceSuggestions
+    case rememberVoice
 
     var errorDescription: String? { "meeting-detail-model-\(rawValue)" }
 }
@@ -414,4 +529,9 @@ private enum MeetingDetailModelCall: Equatable {
     case deleteCompanion(UUID)
     case deleteMeeting(MeetingID)
     case retryProcessing(MeetingID)
+    case prepareDocument(MeetingID, MeetingDocumentFormat)
+    case publishGist(MeetingID)
+    case loadVoiceSuggestions(MeetingID)
+    case checkVoiceMemoryOffer(String)
+    case rememberVoice(MeetingID, SpeakerID)
 }

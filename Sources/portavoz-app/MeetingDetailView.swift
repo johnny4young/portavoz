@@ -1,10 +1,8 @@
 import AppKit
 import ApplicationKit
 import AudioPlaybackKit
-import DiarizationKit
 import IntegrationsKit
 import IntelligenceKit
-import ModelStoreKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -91,10 +89,6 @@ struct MeetingDetailView: View {
     /// Which summary tab is showing (0 = overview · 1…N = `##` sections ·
     /// 1000 = action items).
     @State private var summaryTabSelection = 0
-    /// Cross-meeting voice matches (D8/D21): computed once per visit when
-    /// the gallery has voices and unnamed speakers exist — chips only.
-    @State private var voiceSuggestions: [VoiceMatcher.Match] = []
-    @State private var voiceMatchedOnce = false
     /// After the user confirms a name (rename or chip), offer — never do —
     /// remembering that speaker's voice for future meetings.
     @State private var rememberOffer: Speaker?
@@ -692,7 +686,7 @@ extension MeetingDetailView {
 
     @ViewBuilder
     private func gistConfirmButtons(_ detail: MeetingReviewReadModel) -> some View {
-        Button("Publish secret gist") { Task { await publishGist(detail) } }
+        Button("Publish secret gist") { Task { await publishGist() } }
         Button("Cancel", role: .cancel) {}
     }
 
@@ -887,8 +881,8 @@ extension MeetingDetailView {
             refineMenu(detail)
 
             Menu {
-                Button("Export Markdown…") { export(detail, as: .markdown) }
-                Button("Export PDF…") { export(detail, as: .pdf) }
+                Button("Export Markdown…") { export(as: .markdown) }
+                Button("Export PDF…") { export(as: .pdf) }
                 Button("Export meeting file (.portavoz)…") {
                     Task { await exportBundle(detail, includeAudio: false) }
                 }
@@ -987,11 +981,11 @@ extension MeetingDetailView {
             }
             // Cross-meeting voice matches: same chip contract, waveform icon
             // marks the evidence as "their voice", not the transcript.
-            ForEach(voiceSuggestions, id: \.voiceLabel) { match in
+            ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
                 Button {
                     Task { await apply(match, in: detail) }
                 } label: {
-                    ChipLabel(kind: .voice, text: "\(match.voiceLabel) → \(match.name)?")
+                    ChipLabel(kind: .voice, text: "\(match.speakerLabel) → \(match.name)?")
                 }
                 .buttonStyle(.plain)
                 .help(L10n.format(
@@ -1124,13 +1118,12 @@ extension MeetingDetailView {
 
     // MARK: Cross-meeting voices (D8/D21)
 
-    private func apply(_ match: VoiceMatcher.Match, in detail: MeetingReviewReadModel) async {
-        guard let speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
+    private func apply(_ match: MeetingVoiceSuggestion, in detail: MeetingReviewReadModel) async {
+        guard let speaker = detail.speakers.first(where: { $0.label == match.speakerLabel }) else {
             return
         }
         let effect = await model.send(
             .acceptVoiceSuggestion(speaker, name: match.name))
-        voiceSuggestions.removeAll { $0.voiceLabel == match.voiceLabel }
         if case .voiceSuggestionAccepted(let renamed) = effect {
             offerToRememberPerson(renamed, source: .voiceSuggestion)
         }
@@ -1185,10 +1178,8 @@ extension MeetingDetailView {
             rememberOffer = nil
             return
         }
-        let remembered = await loadRememberedVoices()
-        guard !remembered.contains(where: {
-            $0.name.compare(name, options: .caseInsensitive) == .orderedSame
-        }) else {
+        let effect = await model.send(.checkVoiceMemoryOffer(name: name))
+        guard case .voiceMemoryOfferChecked(true) = effect else {
             rememberOffer = nil
             return
         }
@@ -1196,23 +1187,21 @@ extension MeetingDetailView {
     }
 
     private func rememberVoice(of speaker: Speaker) async {
-        guard let detail, let name = speaker.displayName else { return }
+        guard detail != nil, speaker.displayName?.isEmpty == false else { return }
         rememberingVoice = true
         defer {
             rememberingVoice = false
             rememberOffer = nil
         }
-        let prints = await extractVoiceprints(detail, speakers: [speaker])
-        guard let voiceprint = prints[speaker.label] else {
+        let effect = await model.send(.rememberVoice(speaker.id))
+        switch effect {
+        case .voiceMemoryInsufficientAudio:
             gistError = L10n.text(
                 "Not enough clear audio from that voice to remember it (about 5 seconds are needed).")
-            return
-        }
-        do {
-            try services.voiceGallery.remember(
-                RememberedVoice(name: name, embedding: voiceprint.embedding))
-        } catch {
-            gistError = L10n.format("Could not remember the voice: %@", error.localizedDescription)
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
         }
     }
 
@@ -1220,57 +1209,8 @@ extension MeetingDetailView {
     /// has remembered voices, unnamed speakers exist, and the meeting keeps
     /// its system audio. Uses a throwaway diarizer (~14 MB models; the
     /// heavy recording engines are NOT loaded for this).
-    private func suggestFromVoicesIfUseful() async {
-        guard !voiceMatchedOnce, let detail else { return }
-        let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
-        guard !unnamed.isEmpty else { return }
-        let gallery = await loadRememberedVoices()
-        guard !gallery.isEmpty else { return }
-        voiceMatchedOnce = true
-        let prints = await extractVoiceprints(detail, speakers: unnamed)
-        guard !prints.isEmpty else { return }
-        voiceSuggestions = VoiceMatcher.matches(
-            speakers: prints.map { ($0.key, $0.value.embedding) },
-            gallery: gallery)
-    }
-
-    /// Keychain access may wait for securityd or user interaction. Keep it
-    /// off MainActor, and never let disposable UI fixtures inspect the real
-    /// user's encrypted gallery.
-    private func loadRememberedVoices() async -> [RememberedVoice] {
-        guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return [] }
-        let gallery = services.voiceGallery
-        return await Task.detached(priority: .utility) {
-            (try? gallery.voices()) ?? []
-        }.value
-    }
-
-    /// One embedding per requested speaker from their system-channel spans.
-    /// Embeddings are transient: nothing is persisted here (persisting is
-    /// the explicit "Remember" gesture only).
-    private func extractVoiceprints(
-        _ detail: MeetingReviewReadModel, speakers: [Speaker]
-    ) async -> [String: Voiceprint] {
-        guard let relative = detail.meeting.audioDirectory else { return [:] }
-        let base = RecordingsLocation.shared.resolve(relative)
-        guard let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base) else {
-            return [:]
-        }
-        var ranges: [String: [ClosedRange<TimeInterval>]] = [:]
-        for speaker in speakers {
-            let spans = detail.segments
-                .filter {
-                    $0.speakerID == speaker.id && $0.channel == .system
-                        && $0.endTime > $0.startTime
-                }
-                .map { $0.startTime...$0.endTime }
-            if !spans.isEmpty { ranges[speaker.label] = spans }
-        }
-        guard !ranges.isEmpty,
-            let diarizer = try? await PyannoteDiarizer.loadRecommended(store: ModelStore())
-        else { return [:] }
-        return (try? await diarizer.extractVoiceprints(
-            fromFile: systemURL, rangesBySpeaker: ranges)) ?? [:]
+    private func loadVoiceSuggestions() async {
+        await model.send(.loadVoiceSuggestions)
     }
 }
 
@@ -1551,24 +1491,25 @@ extension MeetingDetailView {
 
     private enum ExportFormat { case markdown, pdf }
 
-    private func export(_ detail: MeetingReviewReadModel, as format: ExportFormat) {
-        let markdown = MeetingExporter.markdown(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: summary?.draft,
-            summaryVersion: summary?.version
-        )
-        switch format {
-        case .markdown:
-            exportType = .plainText
-            exportName = "\(detail.meeting.title).md"
-            exportDocument = ExportDocument(data: Data(markdown.utf8))
-        case .pdf:
-            guard let data = try? MeetingExporter.pdf(fromMarkdown: markdown) else { return }
-            exportType = .pdf
-            exportName = "\(detail.meeting.title).pdf"
-            exportDocument = ExportDocument(data: data)
+    private func export(as format: ExportFormat) {
+        Task {
+            let effect = await model.send(.prepareDocument(
+                format == .markdown ? .markdown : .pdf))
+            switch effect {
+            case .documentPrepared(let document):
+                switch format {
+                case .markdown:
+                    exportType = .plainText
+                case .pdf:
+                    exportType = .pdf
+                }
+                exportName = document.filename
+                exportDocument = ExportDocument(data: document.data)
+            case .operationFailed(let message):
+                gistError = message
+            default:
+                break
+            }
         }
     }
 
@@ -1840,34 +1781,14 @@ extension MeetingDetailView {
 // MARK: - Gist, rename, playback & lifecycle
 
 extension MeetingDetailView {
-    private func publishGist(_ detail: MeetingReviewReadModel) async {
-        guard
-            let token = try? await services.secrets.value(for: .gitHubToken),
-            !token.isEmpty
-        else {
-            gistError = L10n.text("Configure your GitHub token in Settings (⌘,) first.")
-            return
-        }
-        let markdown = MeetingExporter.markdown(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: summary?.draft,
-            summaryVersion: summary?.version
-        )
-        do {
-            gistResult = try await GistPublisher(
-                token: token,
-                gateway: services.dataEgressGateway
-            ).publish(
-                meetingID: detail.meeting.id,
-                markdown: markdown,
-                filename: "\(detail.meeting.title).md",
-                description: detail.meeting.title,
-                isPublic: false
-            )
-        } catch {
-            gistError = error.localizedDescription
+    private func publishGist() async {
+        switch await model.send(.publishGist) {
+        case .gistPublished(let url):
+            gistResult = url
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
         }
     }
 
@@ -1971,7 +1892,7 @@ extension MeetingDetailView {
         }
         await suggestRecipeIfUseful()
         await suggestTitleIfUseful()
-        await suggestFromVoicesIfUseful()
+        await loadVoiceSuggestions()
         await titleChaptersIfNeeded()
     }
 

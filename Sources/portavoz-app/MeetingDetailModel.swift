@@ -26,6 +26,19 @@ protocol MeetingDetailModelClient: AnyObject {
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws
+    func prepareMeetingDetailDocument(
+        _ meetingID: MeetingID,
+        format: MeetingDocumentFormat
+    ) async throws -> PreparedMeetingDocument
+    func publishMeetingDetailGist(_ meetingID: MeetingID) async throws -> URL
+    func meetingDetailVoiceSuggestions(
+        _ meetingID: MeetingID
+    ) async throws -> [MeetingVoiceSuggestion]
+    func canRememberMeetingDetailVoice(named name: String) async -> Bool
+    func rememberMeetingDetailVoice(
+        meetingID: MeetingID,
+        speakerID: SpeakerID
+    ) async throws -> ManageMeetingVoiceMemoryResult
     func requestMeetingDetailSearchReindex()
 }
 
@@ -50,11 +63,12 @@ final class MeetingDetailModel {
     struct State {
         fileprivate(set) var phase: LoadPhase = .idle
         fileprivate(set) var readModel: MeetingReviewReadModel?
+        fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
     }
 
-    enum Action {
+    enum ContentAction {
         case renameMeeting(Meeting, title: String)
         case acceptNameSuggestion(Speaker, name: String)
         case acceptVoiceSuggestion(Speaker, name: String)
@@ -67,9 +81,89 @@ final class MeetingDetailModel {
         case setActionItem(UUID, done: Bool)
         case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
         case removeCompanionCard(UUID)
+    }
+
+    enum ReviewAction {
         case deleteMeeting
         case retryProcessing
+        case prepareDocument(MeetingDocumentFormat)
+        case publishGist
+        case loadVoiceSuggestions
+        case checkVoiceMemoryOffer(name: String)
+        case rememberVoice(SpeakerID)
+    }
+
+    enum Action {
+        case content(ContentAction)
+        case review(ReviewAction)
         case searchableContentChanged
+
+        static func renameMeeting(_ meeting: Meeting, title: String) -> Self {
+            .content(.renameMeeting(meeting, title: title))
+        }
+
+        static func acceptNameSuggestion(_ speaker: Speaker, name: String) -> Self {
+            .content(.acceptNameSuggestion(speaker, name: name))
+        }
+
+        static func acceptVoiceSuggestion(_ speaker: Speaker, name: String) -> Self {
+            .content(.acceptVoiceSuggestion(speaker, name: name))
+        }
+
+        static func renameSpeaker(_ speaker: Speaker, name: String) -> Self {
+            .content(.renameSpeaker(speaker, name: name))
+        }
+
+        static func findCanonicalPeople(
+            _ speaker: Speaker,
+            source: PersonAliasSource
+        ) -> Self {
+            .content(.findCanonicalPeople(speaker, source: source))
+        }
+
+        static func linkCanonicalPerson(
+            _ speaker: Speaker,
+            source: PersonAliasSource,
+            selection: CanonicalPersonSelection
+        ) -> Self {
+            .content(.linkCanonicalPerson(
+                speaker,
+                source: source,
+                selection: selection))
+        }
+
+        static func setActionItem(_ id: UUID, done: Bool) -> Self {
+            .content(.setActionItem(id, done: done))
+        }
+
+        static func setSummaryClaimFeedback(
+            _ claimID: SummaryClaimID,
+            _ feedback: SummaryClaimFeedback?
+        ) -> Self {
+            .content(.setSummaryClaimFeedback(claimID, feedback))
+        }
+
+        static func removeCompanionCard(_ id: UUID) -> Self {
+            .content(.removeCompanionCard(id))
+        }
+
+        static var deleteMeeting: Self { .review(.deleteMeeting) }
+        static var retryProcessing: Self { .review(.retryProcessing) }
+
+        static func prepareDocument(_ format: MeetingDocumentFormat) -> Self {
+            .review(.prepareDocument(format))
+        }
+
+        static var publishGist: Self { .review(.publishGist) }
+        static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
+
+        static func checkVoiceMemoryOffer(name: String) -> Self {
+            .review(.checkVoiceMemoryOffer(name: name))
+        }
+
+        static func rememberVoice(_ speakerID: SpeakerID) -> Self {
+            .review(.rememberVoice(speakerID))
+        }
     }
 
     enum Effect {
@@ -80,6 +174,12 @@ final class MeetingDetailModel {
         case canonicalPersonLinked(ConfirmedPersonLink)
         case summaryClaimFeedbackSaved(SummaryClaimID)
         case meetingDeleted(MeetingID)
+        case documentPrepared(PreparedMeetingDocument)
+        case gistPublished(URL)
+        case voiceMemoryOfferChecked(Bool)
+        case voiceRemembered
+        case voiceMemoryInsufficientAudio
+        case operationFailed(String)
     }
 
     private(set) var state = State()
@@ -97,6 +197,7 @@ final class MeetingDetailModel {
     private var companionCards: [CompanionCard] = []
     private var privacyReceipt: PrivacyReceipt?
     private var processingJobs: [ProcessingJob] = []
+    private var didLoadVoiceSuggestions = false
 
     init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
         self.meetingID = meetingID
@@ -131,6 +232,18 @@ final class MeetingDetailModel {
     @discardableResult
     func send(_ action: Action) async -> Effect? {
         switch action {
+        case .content(let contentAction):
+            return await sendContentAction(contentAction)
+        case .review(let reviewAction):
+            return await sendReviewAction(reviewAction)
+        case .searchableContentChanged:
+            client.requestMeetingDetailSearchReindex()
+            return nil
+        }
+    }
+
+    private func sendContentAction(_ action: ContentAction) async -> Effect? {
+        switch action {
         case .renameMeeting(let meeting, let title):
             await renameMeeting(meeting, title: title)
             return nil
@@ -155,15 +268,29 @@ final class MeetingDetailModel {
         case .removeCompanionCard(let id):
             await removeCompanionCard(id)
             return nil
+        }
+    }
+
+    private func sendReviewAction(_ action: ReviewAction) async -> Effect? {
+        switch action {
         case .deleteMeeting:
             await deleteMeeting()
             return .meetingDeleted(meetingID)
         case .retryProcessing:
             await retryProcessing()
             return nil
-        case .searchableContentChanged:
-            client.requestMeetingDetailSearchReindex()
+        case .prepareDocument(let format):
+            return await prepareDocument(format)
+        case .publishGist:
+            return await publishGist()
+        case .loadVoiceSuggestions:
+            await loadVoiceSuggestions()
             return nil
+        case .checkVoiceMemoryOffer(let name):
+            return .voiceMemoryOfferChecked(
+                await client.canRememberMeetingDetailVoice(named: name))
+        case .rememberVoice(let speakerID):
+            return await rememberVoice(speakerID)
         }
     }
 }
@@ -188,6 +315,7 @@ private extension MeetingDetailModel {
         var speaker = original
         speaker.displayName = name
         _ = try? await client.renameMeetingDetailSpeaker(speaker)
+        state.voiceSuggestions.removeAll { $0.speakerLabel == original.label }
         client.requestMeetingDetailSearchReindex()
         return .voiceSuggestionAccepted(speaker)
     }
@@ -287,6 +415,50 @@ private extension MeetingDetailModel {
         } catch {
             state.lastActionError = L10n.text(
                 "Could not restart processing. Export a support file from Settings and try again.")
+        }
+    }
+
+    func prepareDocument(_ format: MeetingDocumentFormat) async -> Effect {
+        do {
+            return .documentPrepared(try await client.prepareMeetingDetailDocument(
+                meetingID,
+                format: format))
+        } catch {
+            return .operationFailed(error.localizedDescription)
+        }
+    }
+
+    func publishGist() async -> Effect {
+        do {
+            return .gistPublished(try await client.publishMeetingDetailGist(meetingID))
+        } catch {
+            return .operationFailed(L10n.text(error.localizedDescription))
+        }
+    }
+
+    func loadVoiceSuggestions() async {
+        guard !didLoadVoiceSuggestions else { return }
+        didLoadVoiceSuggestions = true
+        state.voiceSuggestions = (try? await client.meetingDetailVoiceSuggestions(
+            meetingID)) ?? []
+    }
+
+    func rememberVoice(_ speakerID: SpeakerID) async -> Effect {
+        do {
+            switch try await client.rememberMeetingDetailVoice(
+                meetingID: meetingID,
+                speakerID: speakerID) {
+            case .remembered:
+                return .voiceRemembered
+            case .insufficientAudio:
+                return .voiceMemoryInsufficientAudio
+            case .suggestions, .canRemember:
+                return .operationFailed(L10n.text("Could not remember the voice."))
+            }
+        } catch {
+            return .operationFailed(L10n.format(
+                "Could not remember the voice: %@",
+                error.localizedDescription))
         }
     }
 }

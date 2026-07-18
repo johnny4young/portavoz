@@ -4,6 +4,45 @@ import PortavozCore
 import XCTest
 
 final class PublishMeetingContentUseCaseTests: XCTestCase {
+    func testPrepareDocumentPreservesReleasedFilenameAndExactBytes() async throws {
+        let fixture = PublishingFixture(title: "Weekly Sync / Q3")
+        let useCase = PrepareMeetingDocument(
+            library: fixture.library,
+            documents: MeetingDocumentsFake())
+
+        let markdown = try await useCase.execute(.init(
+            meetingID: fixture.meetingID,
+            format: .markdown))
+        let pdf = try await useCase.execute(.init(
+            meetingID: fixture.meetingID,
+            format: .pdf))
+
+        XCTAssertEqual(markdown.filename, "Weekly Sync / Q3.md")
+        XCTAssertEqual(markdown.data, Data("# Weekly Sync".utf8))
+        XCTAssertEqual(pdf.filename, "Weekly Sync / Q3.pdf")
+        XCTAssertEqual(pdf.data, Data([1, 2, 3]))
+    }
+
+    func testPrepareDocumentRejectsMissingMeetingBeforeRendering() async {
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: QueryMeetingLibrary(reader: PublishingReaderFake(detail: nil)),
+            documents: documents)
+
+        do {
+            _ = try await useCase.execute(.init(
+                meetingID: MeetingID(),
+                format: .markdown))
+            XCTFail("expected missing meeting")
+        } catch let error as ExportMeetingDocumentError {
+            XCTAssertEqual(error, .meetingNotFound)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        let markdownCalls = await documents.markdownCalls
+        XCTAssertEqual(markdownCalls, 0)
+    }
+
     func testExportReturnsMarkdownWithoutTouchingFilesystem() async throws {
         let fixture = PublishingFixture()
         let files = OutputFilesSpy()
@@ -55,7 +94,6 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
         let useCase = ExportMeetingDocument(
             library: fixture.library,
             documents: MeetingDocumentsFake(),
-            files: OutputFilesSpy(),
             publisher: publisher)
 
         let result = try await useCase.execute(ExportMeetingDocumentRequest(

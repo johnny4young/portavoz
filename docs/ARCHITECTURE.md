@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle and document import/export, explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, secret/voice/model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, local voice identity, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -159,10 +159,13 @@ The implemented application workflows include:
   injected processors;
 - persisted meeting refinement that loads one current detail, accepts optional
   external audio, creates a revision-fenced draft, and applies it atomically;
-- canonical meeting-document export, explicit Gist publication, and pending
-  action-item publication from one coherent meeting projection;
+- canonical meeting-document preparation for native save surfaces, explicit
+  Gist publication, and pending action-item publication from one coherent
+  meeting projection;
 - local voice enrollment/status/deletion and ordered pinned-model
   inspection/installation through capability-neutral ports;
+- degradable participant-voice suggestions, duplicate-offer admission, and
+  explicit remembered-voice persistence without automatic speaker mutation;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
   over an injected device-local storage port;
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
@@ -237,6 +240,27 @@ summary provenance, retries, cancellations, lifecycle outcomes, and
 post-meeting action timing. The app adapter owns concrete recording paths,
 filesystem checks, model loading, user preferences, Shortcut invocation, idle
 engine release, deterministic UI fixtures, and content-free signposts.
+
+Meeting Detail document actions also enter the application boundary. One
+workflow loads the selected meeting and latest General summary coherently,
+renders the canonical Markdown once, and returns either Markdown or PDF bytes
+with the released title-based suggested filename for the native save surface.
+Explicit secret-Gist publication uses the same coherent source and renderer.
+The app adapter owns utility-priority rendering, lazy credential resolution, gateway-backed
+publisher construction, and native platform presentation. The route-owned
+`MeetingDetailModel` owns document actions and typed effects; SwiftUI owns the
+user gesture, off-device confirmation, save panel state, and localized result.
+
+Meeting Detail voice memory enters a separate application workflow. It reads
+one coherent meeting projection, limits candidates to unnamed remote speakers,
+loads the encrypted gallery through an injected port, asks an injected
+extractor only for relevant labels, applies one-to-one voice matching, and
+returns suggestions without mutating the cast. Remembering a voice requires a
+separate explicit request for a currently named remote speaker. The app adapter
+owns recording-path resolution, model loading, transient embedding extraction,
+encrypted gallery access, and disposable-test isolation. `MeetingDetailModel`
+owns one-shot loading, suggestion state, duplicate-offer checks, and explicit
+remember effects; SwiftUI never calls those adapters directly.
 
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
@@ -428,17 +452,19 @@ carry a versioned relational aggregate with canonical identity remapping and
 optional audio. Machine-local paths, canonical-person links, voiceprints,
 secrets, embeddings, and transport state are not portable.
 
-Single-meeting terminal export and explicit publication enter
-`ApplicationKit.ExportMeetingDocument`. The workflow loads one coherent detail
-projection, renders through an injected document port, and either returns
-Markdown, writes Markdown/PDF through an injected filesystem port, or invokes
-an explicit publisher. Pending action-item publication similarly reads one
-current detail and summary, resolves owners from that snapshot, and publishes
-only unfinished items in stable order. Both remote paths complete local
-admission and no-op checks before the publisher prepares its credential; only a
-prepared destination emits presentation progress and proceeds to transport.
-Missing meetings and empty pending-item sets therefore do not touch Keychain or
-announce egress.
+Single-meeting rendering and explicit publication enter ApplicationKit. The
+macOS detail workflow loads one coherent detail projection, renders through an
+injected document port, and returns Markdown or PDF bytes plus the released
+title-based suggested filename for the native save surface. Secret-Gist
+publication and terminal export use the same coherent projection and canonical
+renderer; terminal export may return Markdown, write Markdown/PDF through an injected filesystem
+port, or invoke an explicit publisher. Pending action-item publication
+similarly reads one current detail and summary, resolves owners from that
+snapshot, and publishes only unfinished items in stable order. Remote paths
+complete local admission and no-op checks before the publisher prepares its
+credential; only a prepared destination emits presentation progress and
+proceeds to transport. Missing meetings and empty pending-item sets therefore
+do not touch Keychain or announce egress.
 
 Whole-library Markdown backup is coordinated by
 `ApplicationKit.ExportLibraryMarkdownBackup`. StorageKit provides one
@@ -480,6 +506,9 @@ publishing-command paths do not block their actor on Security.framework calls.
 CLI publishing adapters resolve a credential lazily only after ApplicationKit
 has admitted the local document or pending work, preserving local errors and
 no-op behavior before any device-secret read.
+The macOS meeting-document adapter follows the same ordering: local
+Markdown/PDF preparation never reads a credential, and secret-Gist publication
+resolves the GitHub token only after the coherent meeting document exists.
 Encrypted voice stores receive the Core port directly; other capability clients
 receive resolved credential values, and no capability module constructs
 Keychain. SQLite and UserDefaults do not store secrets. Voiceprints are
@@ -605,6 +634,12 @@ behind aspirational diagrams:
   process lifetime, and maps content-free events to OSLog/signposts; it does
   not claim jobs or decide retries, fingerprints, dependencies, publication,
   or terminal outcomes.
+- Meeting Detail Markdown/PDF preparation and secret-Gist publication enter
+  ApplicationKit. The SwiftUI view does not construct the canonical renderer,
+  publisher, or network gateway and does not read the publishing credential.
+- Meeting Detail participant-voice suggestions and explicit memory enter
+  ApplicationKit. The SwiftUI view does not read the encrypted gallery,
+  resolve recording files, load a diarization model, or match embeddings.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -614,8 +649,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 891 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 325 Swift source files;
+- 903 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 328 Swift source files;
 - 37 XCUITest cases pass in English and 37 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

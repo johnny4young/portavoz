@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 891 package tests passing (13 gated) + 37 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 37 cases and retained app-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 903 package tests passing (13 gated) + 37 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 37 cases and retained app-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 325 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 328 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -55,7 +55,7 @@ Status: 891 package tests passing (13 gated) + 37 XCUITest UI cases. CI on GitHu
 | InsightsReadModelTests | complete scoped projection, current/previous totals, decision evidence from summaries/actions, recurring-topic extraction, and confirmed-participant exclusion |
 | InsightsModelTests | complete/empty/degraded/failed phases, one read snapshot, section-local replacement, scope restart, and no-global-version behavior through a database-free client fake |
 | InsightsObservationTests | independent live-rooted meeting/fact/voice/finding observations, delete/restore conservation, and active-scope finding bounds through real `MeetingStore` adaptation |
-| MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence and canonical-person candidate/link actions/effects, exact silent versus visible failure policy, and Spotlight reconciliation requests through a database-free client fake |
+| MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence, canonical-person, document, and participant-voice actions/effects, one-shot voice suggestions, exact silent versus visible failure/degradation policy, and Spotlight reconciliation requests through a database-free client fake |
 | MeetingDetailObservationTests | live-rooted transcript/cast, newest-summary/action-item, Companion card/evidence, and privacy-receipt observations; evidence-link-only and independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
 | BriefRelevanceTests / ReminderPolicyTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, reminder lead window/session deduplication/off state, mirror qualification/notable delta, and factual English/Spanish synthesis |
 | MeetingBundleTests | round-trip/remap of text, audio, notes, and Companion cards with role-separated evidence; malformed source-card target rejection; canonical-person link stripping; additive compatibility of format v1 |
@@ -958,6 +958,22 @@ and keeps concrete files, models, preferences, Shortcuts, and telemetry in the
 app adapter. The full gate is 891 package tests (13 gated) and zero strict-lint
 violations across 325 Swift source files; the behavior-preserving composition
 change retains the 37 XCUITest cases per locale (D104).
+
+The macOS review-workflow conformance unit adds two direct document-preparation
+cases, seven participant-voice-memory cases, two feature-owner cases, one new
+dependency case, and a strengthened document-publication ratchet. They
+prove coherent detail/General-summary loading, released suggested filenames,
+exact rendered bytes, missing-meeting short circuiting, degradable gallery and
+extraction reads, one-to-one unnamed-remote suggestions, case-insensitive
+duplicate admission, explicit named-remote persistence, `Me`/unnamed rejection,
+visible encrypted-gallery write failure, typed insufficient audio, one-shot
+suggestion state, and typed presentation effects. The source rules reject
+direct canonical renderer, Gist publisher, gateway, credential, encrypted
+gallery, recording-path, diarization-model, and
+embedding-matcher coordination in Meeting Detail SwiftUI. The full gate is 903
+package tests (13 gated) and zero strict-lint violations across 328 Swift source
+files; the behavior-neutral composition change retains the 37 XCUITest cases
+per locale (D105).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

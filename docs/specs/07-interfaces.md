@@ -89,7 +89,16 @@ reported (D75/D103).
 ## Exporters — IntegrationsKit
 
 - `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
-- **Single-meeting terminal export/publication (D103):** ApplicationKit loads one coherent current detail/General-summary projection, then returns Markdown, writes Markdown/PDF through an injected file port, or invokes an explicit Gist publisher. Pending issue publication uses the same projection shape, resolves owner names from its cast, filters unfinished actions, and preserves their stored order. Command files do not read Store or construct IntegrationsKit publishers.
+- **Single-meeting document preparation/publication (D103/D105):**
+  ApplicationKit loads one coherent current detail/General-summary projection.
+  Meeting Detail receives canonical Markdown/PDF bytes and its released
+  title-based suggested filename for the native save surface. Terminal export
+  returns Markdown, writes Markdown/PDF through an injected file port, or
+  invokes an explicit Gist publisher. Secret-Gist adapters resolve credentials only after the local
+  document exists. Pending issue publication uses the same projection shape,
+  resolves owner names from its cast, filters unfinished actions, and preserves
+  their stored order. SwiftUI and command files do not read Store, render the
+  canonical document, or construct IntegrationsKit publishers.
 - **Whole-library Markdown backup (D99):** ApplicationKit receives the canonical renderer through `LibraryMarkdownBackupDocuments` and filesystem publication through `LibraryMarkdownBackupFiles`; IntegrationsKit and `FileManager` never enter Settings SwiftUI. The app renderer runs at utility priority. The filesystem adapter enumerates visible existing Markdown names, atomically writes a UUID temporary file in the chosen directory, and moves it to the final portable name without replacement. A collision advances the application allocator; source, document, and publication failures remain typed per meeting while healthy files continue.
 - `GistPublisher`: exact `https://api.github.com/gists`, secret by default, explicit `--public`; token from Keychain. Construction requires a `DataEgressGateway`, and publication requires the source `MeetingID`.
 - `GitHubIssuesExporter` (canonical REST `https://api.github.com/repos/{owner}/{repo}/issues`) and `LinearExporter` (exact GraphQL `https://api.linear.app/graphql`; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Both require a gateway and source meeting. Tested offline; real publishing pending the user's tokens.

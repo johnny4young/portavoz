@@ -77,18 +77,73 @@ public enum ExportMeetingDocumentResult: Equatable, Sendable {
     case published(URL)
 }
 
+public struct PreparedMeetingDocument: Equatable, Sendable {
+    public let data: Data
+    public let filename: String
+
+    public init(data: Data, filename: String) {
+        self.data = data
+        self.filename = filename
+    }
+}
+
+public struct PrepareMeetingDocumentRequest: Sendable {
+    public let meetingID: MeetingID
+    public let format: MeetingDocumentFormat
+
+    public init(meetingID: MeetingID, format: MeetingDocumentFormat) {
+        self.meetingID = meetingID
+        self.format = format
+    }
+}
+
+/// Produces an in-memory document from one read-consistent meeting snapshot.
+/// Native presentation surfaces retain ownership of save panels and clipboard
+/// access; document selection, rendering, and suggested naming stay here.
+public struct PrepareMeetingDocument: ApplicationUseCase {
+    private let library: QueryMeetingLibrary
+    private let documents: any MeetingDocumentRendering
+
+    public init(
+        library: QueryMeetingLibrary,
+        documents: any MeetingDocumentRendering
+    ) {
+        self.library = library
+        self.documents = documents
+    }
+
+    public func execute(
+        _ request: PrepareMeetingDocumentRequest
+    ) async throws -> PreparedMeetingDocument {
+        guard let detail = try await library.detail(request.meetingID) else {
+            throw ExportMeetingDocumentError.meetingNotFound
+        }
+        let markdown = try await documents.markdown(from: detail)
+        switch request.format {
+        case .markdown:
+            return PreparedMeetingDocument(
+                data: Data(markdown.utf8),
+                filename: "\(detail.meeting.title).md")
+        case .pdf:
+            return PreparedMeetingDocument(
+                data: try await documents.pdf(fromMarkdown: markdown),
+                filename: "\(detail.meeting.title).pdf")
+        }
+    }
+}
+
 /// Read one coherent meeting document, then return it, publish it explicitly,
 /// or write it through an injected filesystem port.
 public struct ExportMeetingDocument: ApplicationUseCase {
     private let library: QueryMeetingLibrary
     private let documents: any MeetingDocumentRendering
-    private let files: any ApplicationOutputFileWriting
+    private let files: (any ApplicationOutputFileWriting)?
     private let publisher: (any MeetingDocumentPublishing)?
 
     public init(
         library: QueryMeetingLibrary,
         documents: any MeetingDocumentRendering,
-        files: any ApplicationOutputFileWriting,
+        files: (any ApplicationOutputFileWriting)? = nil,
         publisher: (any MeetingDocumentPublishing)? = nil
     ) {
         self.library = library
@@ -119,11 +174,17 @@ public struct ExportMeetingDocument: ApplicationUseCase {
             guard let outputURL = request.outputURL else {
                 return .markdown(markdown)
             }
+            guard let files else {
+                throw ExportMeetingDocumentError.outputFileRequired
+            }
             let data = Data(markdown.utf8)
             try await files.write(data, to: outputURL)
             return .written(path: outputURL.path, bytes: data.count)
         case .pdf:
             guard let outputURL = request.outputURL else {
+                throw ExportMeetingDocumentError.outputFileRequired
+            }
+            guard let files else {
                 throw ExportMeetingDocumentError.outputFileRequired
             }
             let data = try await documents.pdf(fromMarkdown: markdown)

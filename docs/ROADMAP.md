@@ -6,19 +6,38 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** run the repository-wide macOS conformance audit after
-closing the durable post-capture application boundary. Product commands and
-the restart-safe transcription/diarization/summary state machine now enter
-narrow ApplicationKit workflows; executable code retains presentation,
-process supervision, concrete files, models, storage adapters, preferences,
-Shortcuts, integrations, telemetry, and platform composition (D103–D104).
-Remove only proven policy bypasses; direct capability construction remains
-valid in composition, live capture, diagnostics, and benchmark harnesses. The
+**Next concrete step:** move local voice enrollment, calendar-backed speaker
+name suggestions, and local-provider discovery behind application boundaries.
+The macOS conformance audit found that those flows still coordinate capture,
+models, attendee evidence, or provider probing in SwiftUI. Extract them without
+changing enrollment UX, suggestion chips, explicit confirmation, `Me`
+exclusion, or local-only storage. Meeting documents and participant voice
+memory now enter characterized ApplicationKit workflows (D105). Direct
+capability construction remains valid in
+composition, live capture, diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D104).
+behavior remain covered by package and bilingual UI gates (D33–D105).
+
+- **Meeting review actions have application boundaries on macOS
+  (Jul 18, 2026):** `PrepareMeetingDocument` now loads one coherent selected
+  detail and latest General summary, renders canonical Markdown once, and
+  returns Markdown/PDF bytes plus the released suggested filename to the native
+  save surface. Secret-Gist publication reuses `ExportMeetingDocument`; the app
+  adapter owns utility-priority rendering, post-admission credential
+  resolution, and gateway-backed publication. Meeting Detail retains explicit
+  off-device confirmation, native panels, and localized results without
+  constructing exporters, integrations, or network policy.
+  `ManageMeetingVoiceMemory` separately owns degradable suggestions,
+  duplicate-offer admission, one-to-one matching, and explicit persistence;
+  the app adapter retains encrypted gallery access, recording paths, model
+  loading, and transient embedding extraction. `MeetingDetailModel` owns all
+  document and voice-memory actions/effects plus one-shot suggestion state.
+  Eleven focused workflow/model cases and two architecture ratchets establish
+  D105. The verified baseline is 903 package tests with 13 gated, and strict
+  lint is clean across 328 Swift source files.
 
 - **Durable post-capture execution has one application owner (Jul 18, 2026):**
   `ProcessPostCaptureJobs` now owns serial claim/heartbeat execution, exact

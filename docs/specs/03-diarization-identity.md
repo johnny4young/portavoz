@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -83,10 +83,17 @@ batch identity cannot accidentally sample different enrollment state (D49).
 
 Field request: remember a participant's voice across meetings to autosuggest their name. STRICTER rules than for the user's own voiceprint (storing third-party biometrics is more sensitive, D8):
 
-- **`VoiceGallery`** (`voice-gallery.enc`, same pattern as VoiceprintStore: AES-GCM, key only in Keychain service `app.portavoz.voice-gallery-key`, never sync). It receives the same injected Core secret port. A voice is added ONLY through an explicit gesture: the "Remember X's voice?" chip that appears after confirming a name (manual rename or applied chip). Rerecording someone REPLACES their embedding (one per person, case-insensitive). Individually removable (context menu in Ajustes → "Remembered voices"), and "Forget all voices" destroys the file + key in one action. Meeting Detail performs gallery reads on a utility executor so the encrypted file and securityd cannot block MainActor; `-use-temp-store` returns an empty gallery and never inspects the host biometric file or key.
+- **`VoiceGallery`** (`voice-gallery.enc`, same pattern as VoiceprintStore: AES-GCM, key only in Keychain service `app.portavoz.voice-gallery-key`, never sync). It receives the same injected Core secret port. A voice is added ONLY through an explicit gesture: the "Remember X's voice?" chip that appears after confirming a name (manual rename or applied chip). Rerecording someone REPLACES their embedding (one per person, case-insensitive). Individually removable (context menu in Ajustes → "Remembered voices"), and "Forget all voices" destroys the file + key in one action. The app adapter performs gallery reads and writes on a utility executor so the encrypted file and securityd cannot block MainActor; `-use-temp-store` returns an empty gallery and never inspects the host biometric file or key.
 - **`PyannoteDiarizer.extractVoiceprints(fromFile:rangesBySpeaker:minimumSeconds:maximumSeconds:)`**: one embedding per speaker from their system-channel spans — resamples the file ONCE, slices by ranges (longest first up to 20 s; < 5 s is discarded: a short embedding would match noise). Embeddings are transient: NOTHING is persisted here.
 - **`VoiceMatcher`** (pure, 5 tests): its own cosine distance (outside FluidAudio — internal clustering does not work cross-meeting), threshold `maxCosineDistance = 0.54` (the same effective yardstick as D17 clustering; pending field calibration). Each speaker receives at most their closest voice, and each gallery voice is suggested for at most one speaker (two speakers cannot both be "Marta"). Degenerate embeddings (norm 0, different dimensions) never match.
-- **UI (MeetingDetailView)**: when opening a detail with unnamed speakers + a nonempty gallery, an EPHEMERAL diarizer (~14 MB; heavy engines are NOT loaded) extracts and matches once per visit → "S1 → ¿Marta?" chips with a waveform icon (the evidence is the voice, not the transcript — therefore it does NOT pass through `NameSuggestionFilter`). Same D21 contract: chip, click, never applied automatically.
+- **Application workflow (D105):** `ManageMeetingVoiceMemory` loads one coherent detail, considers only unnamed non-user speakers, degrades gallery/extraction failure to no suggestions, and applies `VoiceMatcher` one-to-one. An explicit remember request must still identify a currently named non-user speaker; insufficient audio is typed and a gallery write failure remains visible. The app adapter owns recording-path resolution, the ephemeral diarizer (~14 MB; heavy engines are NOT loaded), transient extraction, encrypted storage, and disposable-test isolation.
+- **UI (MeetingDetailView):** opening an eligible detail asks the route-owned
+  `MeetingDetailModel` to load suggestions once and renders "S1 → ¿Marta?"
+  chips with a waveform icon (the evidence is the voice, not the transcript —
+  therefore it does NOT pass through `NameSuggestionFilter`). The model owns
+  suggestion state and explicit actions/effects. Same D21 contract: chip,
+  click, never applied automatically. SwiftUI does not read the gallery,
+  resolve audio files, load a model, extract embeddings, or perform matching.
 
 ## Automatic names (D21) — IntelligenceKit
 

@@ -283,6 +283,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let gist = try Self.contents(of: "Sources/IntegrationsKit/GistPublisher.swift")
         let issues = try Self.contents(of: "Sources/IntegrationsKit/IssueExporters.swift")
         let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let appDocuments = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDocuments.swift")
+        let applicationDocuments = try Self.contents(
+            of: "Sources/ApplicationKit/PublishMeetingContent.swift")
         let cliExport = try Self.contents(of: "Sources/portavoz-cli/CLIExport.swift")
         let cliIssues = try Self.contents(of: "Sources/portavoz-cli/CLIIssues.swift")
         let cliComposition = try Self.contents(
@@ -300,8 +304,17 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(publisher.contains("URLSession"))
             XCTAssertFalse(publisher.contains("data(for:"))
         }
-        XCTAssertTrue(detail.contains("gateway: services.dataEgressGateway"))
-        XCTAssertTrue(detail.contains("meetingID: detail.meeting.id"))
+        XCTAssertTrue(detail.contains("model.send(.publishGist)"))
+        XCTAssertTrue(detail.contains("model.send(.prepareDocument("))
+        XCTAssertFalse(detail.contains("services.publishMeetingDetailGist("))
+        XCTAssertFalse(detail.contains("services.prepareMeetingDetailDocument("))
+        XCTAssertFalse(detail.contains("GistPublisher("))
+        XCTAssertFalse(detail.contains("MeetingExporter.markdown("))
+        XCTAssertFalse(detail.contains("gateway: services.dataEgressGateway"))
+        XCTAssertTrue(appDocuments.contains("PrepareMeetingDocument("))
+        XCTAssertTrue(appDocuments.contains("ExportMeetingDocument("))
+        XCTAssertTrue(appDocuments.contains("GistPublisher(token: token, gateway: gateway)"))
+        XCTAssertTrue(applicationDocuments.contains("struct PrepareMeetingDocument"))
         XCTAssertTrue(cliExport.contains("application.exportMeetingDocument("))
         XCTAssertTrue(cliExport.contains("meetingID: meetingID"))
         XCTAssertTrue(cliIssues.contains("application.publishMeetingActionItems("))
@@ -622,6 +635,36 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("Task.detached(priority: .utility)"))
         XCTAssertFalse(adapter.contains("store.contextItems(for:"))
         XCTAssertFalse(adapter.contains("store.companionCards(for:"))
+    }
+
+    func testMeetingVoiceMemoryEntersThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ManageMeetingVoiceMemory.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailView.swift")
+
+        XCTAssertTrue(workflow.contains("struct ManageMeetingVoiceMemory"))
+        XCTAssertTrue(workflow.contains("VoiceMatcher.matches("))
+        XCTAssertTrue(workflow.contains("case remember(meetingID: MeetingID"))
+        XCTAssertTrue(adapter.contains("ManageMeetingVoiceMemory("))
+        XCTAssertTrue(adapter.contains("PyannoteDiarizer.loadRecommended"))
+        XCTAssertTrue(adapter.contains("RecordingsLocation.shared.resolve"))
+        XCTAssertTrue(adapter.contains("gallery.remember(voice)"))
+        XCTAssertTrue(view.contains("model.send(.loadVoiceSuggestions)"))
+        XCTAssertTrue(view.contains("model.send(.rememberVoice("))
+        XCTAssertFalse(view.contains("suggestFromVoicesIfUseful"))
+        XCTAssertFalse(view.contains("services.meetingDetailVoiceSuggestions("))
+        XCTAssertFalse(view.contains("services.rememberMeetingDetailVoice("))
+        for bypass in [
+            "VoiceMatcher.matches(", "PyannoteDiarizer.loadRecommended",
+            "ModelStore()", "services.voiceGallery", "extractVoiceprints(",
+        ] {
+            XCTAssertFalse(view.contains(bypass), bypass)
+        }
+        XCTAssertFalse(view.contains("import DiarizationKit"))
+        XCTAssertFalse(view.contains("import ModelStoreKit"))
     }
 
     func testLibraryFeatureOwnsStateAndActionsOutsideSwiftUI() throws {
@@ -980,6 +1023,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/MeetingDetailReadModels.swift")
         let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
         let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let voiceAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
@@ -1002,8 +1047,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("services.store"))
         XCTAssertFalse(view.contains("services.libraryVersion"))
         XCTAssertFalse(view.contains("services.meetingLifecycle"))
-        XCTAssertTrue(view.contains("Task.detached(priority: .utility)"))
-        XCTAssertTrue(view.contains(#"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(voiceAdapter.contains("Task.detached(priority: .utility)"))
+        XCTAssertTrue(voiceAdapter.contains(#"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(model.contains("enum Action"))
         XCTAssertTrue(model.contains("case renameMeeting"))
         XCTAssertTrue(model.contains("case renameSpeaker"))
@@ -1012,6 +1057,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("case setActionItem"))
         XCTAssertTrue(model.contains("case removeCompanionCard"))
         XCTAssertTrue(model.contains("case deleteMeeting"))
+        XCTAssertTrue(model.contains("case prepareDocument"))
+        XCTAssertTrue(model.contains("case publishGist"))
+        XCTAssertTrue(model.contains("case loadVoiceSuggestions"))
+        XCTAssertTrue(model.contains("case rememberVoice"))
+        XCTAssertFalse(model.contains("Unexpected Meeting Detail"))
         XCTAssertTrue(adapter.contains("renameMeetingDetailMeeting"))
         XCTAssertTrue(adapter.contains("renameMeetingDetailSpeaker"))
         XCTAssertTrue(adapter.contains("FindCanonicalPeople(store: store)"))

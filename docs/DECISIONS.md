@@ -3085,3 +3085,43 @@ the Apple/model composition boundary. Lease loss, superseded input, provider
 unavailability, and optional-summary exhaustion can be characterized without
 real media or models, and the released audio-first, degradable-attribution,
 mixed-language, provenance, Shortcut, and no-poll behavior remains unchanged.
+
+## D105 — Keep review documents and participant voice memory behind application contracts (Jul 2026)
+
+**Context:** Meeting Detail already consumed a scoped read model, but two
+cross-capability actions still assembled product policy in SwiftUI. Markdown,
+PDF, and secret-Gist actions rendered the current view snapshot, read the
+GitHub credential, and constructed the publisher beside save-panel state.
+Participant voice suggestions and explicit memory read the encrypted gallery,
+resolved recording files, loaded pyannote models, extracted embeddings, and
+matched names beside chip presentation. These paths duplicated terminal
+document admission and made biometric policy depend on a view lifetime.
+
+**Decision:** `ApplicationKit.PrepareMeetingDocument` loads one coherent
+meeting projection and returns canonical Markdown or PDF bytes with the
+released title-based suggested filename. Secret-Gist publication enters the
+existing `ExportMeetingDocument` workflow, so the coherent local document
+exists before the app publisher resolves its credential and crosses the
+data-egress gateway.
+The route-owned `MeetingDetailModel` owns document actions and typed effects.
+SwiftUI retains the explicit off-device confirmation, native save panel,
+clipboard, localized errors, and exact released title-based default filename.
+
+`ApplicationKit.ManageMeetingVoiceMemory` is the single owner of participant
+voice suggestions, duplicate-offer admission, and explicit memory. It considers
+only unnamed non-user speakers, loads the gallery before requesting transient
+embeddings, applies the existing one-to-one match threshold, never mutates a
+speaker, and accepts persistence only for an explicitly requested currently
+named non-user speaker. Read or extraction failure degrades to no suggestion;
+insufficient audio is typed; gallery write failure remains visible. App adapters
+retain recording-path resolution, pyannote/ModelStore loading, Keychain-backed
+gallery access, utility scheduling, and disposable-test isolation.
+`MeetingDetailModel` owns one-shot suggestion state and every explicit
+voice-memory action/effect, so the view never coordinates those adapters.
+
+**Rationale:** coherent document and biometric policy now survive view
+recreation, are independently characterizable without network, Keychain,
+models, or real recordings, and cannot silently bypass local admission,
+explicit consent, or one-to-one identity rules. The UI and concrete Apple/model
+composition remain native while released export, secret-Gist, suggestion-chip,
+and remember-voice behavior stays intact.

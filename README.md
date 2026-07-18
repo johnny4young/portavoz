@@ -148,7 +148,7 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document/action publication, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/local-voice/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, participant voice-memory suggestion/admission/persistence, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/local-voice/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
@@ -192,6 +192,17 @@ cancellations, and terminal action timing. The macOS process supervisor only
 coalesces kicks and schedules the next persisted wake; its adapter retains
 recording paths, concrete engines/providers, preferences, Shortcuts, and
 content-free telemetry.
+Meeting Detail Markdown/PDF preparation and secret-Gist publication also load
+one coherent snapshot through ApplicationKit. The macOS adapter owns canonical
+rendering, post-admission credentials, and gateway-backed publication while
+SwiftUI retains the explicit confirmation, native save panel, and localized
+result.
+Participant voice-memory suggestions and explicit persistence enter a separate
+ApplicationKit workflow; the macOS adapter owns encrypted gallery access,
+recording paths, transient embedding extraction, and model construction while
+the route-owned `MeetingDetailModel` owns one-shot suggestion state and typed
+actions/effects. SwiftUI owns only chips, confirmation, native panels, and
+localized outcomes.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume a global invalidation counter for reads. Spotlight
