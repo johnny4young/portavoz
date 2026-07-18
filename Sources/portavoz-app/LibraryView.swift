@@ -222,7 +222,12 @@ struct LibraryView: View {
             }
         }
         .buttonStyle(.plain)
+        // Agenda actions live inside the selectable meeting List but are not
+        // meeting routes. Prevent AppKit's row-selection gesture from racing
+        // the async brief action and opening the adjacent meeting instead.
+        .selectionDisabled()
         .help("Brief for this meeting: who's coming, related meetings, open to-dos")
+        .accessibilityIdentifier("library-upcoming-\(event.id)")
     }
 
     private func openBrief(for event: UpcomingEvent) {
@@ -470,7 +475,7 @@ extension LibraryView {
     private var localFooter: some View {
         HStack(spacing: 7) {
             Circle().fill(.green).frame(width: 7, height: 7)
-            Text("100% local — nothing leaves your Mac")
+            Text("Local-first · transfers require opt-in")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

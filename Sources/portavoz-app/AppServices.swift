@@ -39,8 +39,16 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// One process-wide decision prevents competing welcome sheets when macOS
+    /// restores more than one main window.
+    let firstRun: FirstRunModel
+    /// One process-wide truthful receipt is shared by every Settings window.
+    let localDataLedger: LocalDataLedgerModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
+    /// Upcoming-meeting preparation shares Ask retrieval and returns only
+    /// storage-independent ApplicationKit values.
+    @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -139,7 +147,20 @@ final class AppServices {
         let askUseCase = Self.makeAskUseCase(
             store: store,
             usesTemporaryStore: usesTemporaryStore)
+        firstRun = FirstRunModel(client: AppFirstRunModelClient(
+            useCase: ResolveFirstRunExperience(
+                library: AppFirstRunLibraryReader(store: store))))
+        localDataLedger = LocalDataLedgerModel(
+            client: AppLocalDataLedgerModelClient(useCase: LoadLocalDataLedger(
+                meetings: AppLocalMeetingCounter(store: store),
+                audio: AppLocalAudioUsageMeter(),
+                voices: AppLocalVoiceCounter(
+                    usesTemporaryStore: usesTemporaryStore))))
         askClient = AppAskModelClient(useCase: askUseCase)
+        meetingBriefUseCase = PrepareMeetingBrief(
+            ask: askUseCase,
+            library: AppMeetingBriefLibraryReader(store: store),
+            synthesizer: AppOnDeviceMeetingBriefSynthesizer())
         palette = CommandPaletteController(
             model: CommandPaletteModel(client: askClient))
         meetingSync = Self.makeMeetingSyncModel(

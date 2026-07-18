@@ -67,6 +67,15 @@ extension AppServices: LibraryModelClient {
     }
 
     func libraryAgenda() -> LibraryModel.Agenda? {
+        if ProcessInfo.processInfo.arguments.contains("-seed-brief") {
+            return LibraryModel.Agenda(
+                offerCalendar: false,
+                today: [UpcomingEvent(
+                    title: "Presupuesto rollout",
+                    startDate: Date().addingTimeInterval(15 * 60),
+                    attendees: ["Ana"])],
+                tomorrow: [])
+        }
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else {
             return nil
         }
@@ -84,7 +93,7 @@ extension AppServices: LibraryModelClient {
     }
 
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief? {
-        await MeetingBrief.build(for: event, store: store)
+        try? await meetingBriefUseCase.execute(event)
     }
 }
 

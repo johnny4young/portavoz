@@ -141,22 +141,12 @@
         }
       }
     },
-    "100% local · 0 B to the network today": {
+    "Local-first · transfers require opt-in": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "100% local · 0 B a la red hoy"
-          }
-        }
-      }
-    },
-    "100% local — nothing leaves your Mac": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "100% local — nada sale de tu Mac"
+            "value": "Local primero · las transferencias requieren activación"
           }
         }
       }
@@ -331,12 +321,12 @@
         }
       }
     },
-    "All local": {
+    "Local-first": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todo local"
+            "value": "Local primero"
           }
         }
       }
@@ -2771,12 +2761,12 @@
         }
       }
     },
-    "Nothing leaves this Mac except what you send yourself: gists you export, questions you ask an external model, and the update check.": {
+    "Nothing auto-uploads. Network transfers happen only after an action or opt-in, and Portavoz keeps local receipts.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "De este Mac no sale nada salvo lo que tú mismo envíes: los gists que exportes, las preguntas que hagas a un modelo externo y la comprobación de updates."
+            "value": "Nada se sube automáticamente. Las transferencias por red solo ocurren tras una acción o activación, y Portavoz conserva recibos locales."
           }
         }
       }
@@ -2907,6 +2897,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abrir"
+          }
+        }
+      }
+    },
+    "Opt-in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con activación"
           }
         }
       }
@@ -4711,6 +4711,16 @@
         }
       }
     },
+    "Unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No disponible"
+          }
+        }
+      }
+    },
     "Unavailable — using system default": {
       "localizations": {
         "es": {
@@ -5281,6 +5291,16 @@
         }
       }
     },
+    "network transfers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "transferencias por red"
+          }
+        }
+      }
+    },
     "questions you asked": {
       "localizations": {
         "es": {
@@ -5337,16 +5357,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "balance de habla"
-          }
-        }
-      }
-    },
-    "to the network": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "enviados a la red"
           }
         }
       }

@@ -7,6 +7,9 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **📅 Preparation that opens, every time** — Upcoming agenda rows now open their source-grounded meeting brief without a native sidebar selection race sending you into the neighboring recording.
+- **👋 One welcome, whichever window stays open** — First-run guidance resolves once for the app and follows an active main window if the window that started it closes, instead of disappearing or competing with another sheet.
+- **🔐 A privacy ledger that never guesses** — Settings now counts live meetings, allocated recording space, and encrypted voices independently; an unreadable source says unavailable instead of pretending it is zero, and persistent app surfaces say local-first with explicit opt-in transfers instead of making an absolute network claim.
 - **⌘K that always listens** — Ask and the command palette now share one local answer path with exact source jumps; the floating field reliably accepts typing, and closing or reopening it cancels stale searches instead of letting an old answer appear later.
 - **🔎 One Ask, everywhere** — The full Ask view, ⌘K palette, CLI, and local MCP now use the same private search-and-answer path. Closing or replacing the palette cancels stale work, generation failures keep useful citations, and every source still jumps to the exact meeting moment.
 - **🗄️ Backups that finish safely** — Export your whole library with visible progress and a truthful partial-result count; Portavoz now keeps existing files untouched, isolates an unreadable meeting, and publishes each portable Markdown file atomically.

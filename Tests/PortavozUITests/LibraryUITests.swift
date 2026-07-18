@@ -6,6 +6,37 @@ import XCTest
 /// touches the real library.
 final class LibraryUITests: XCTestCase {
     @MainActor
+    func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() {
+        let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let upcoming = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-upcoming-'"))
+            .firstMatch
+        XCTAssertTrue(upcoming.waitForExistence(timeout: 10))
+        upcoming.click()
+
+        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
+        let related = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'brief-related-'"))
+            .firstMatch
+        XCTAssertTrue(
+            related.waitForExistence(timeout: 10),
+            "the brief must surface the related seeded meeting")
+        XCTAssertTrue(app.staticTexts["Test meeting"].exists)
+        let commitment = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'brief-open-'"))
+            .firstMatch
+        XCTAssertTrue(commitment.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
+        XCTAssertTrue(app.buttons["brief-record-button"].exists)
+        attachScreenshot(of: app, named: "meeting-preparation-brief")
+    }
+
+    @MainActor
     func testLibraryRendersRecordButtonAndActionChips() {
         let app = XCUIApplication.portavoz()
         app.launchPortavoz()

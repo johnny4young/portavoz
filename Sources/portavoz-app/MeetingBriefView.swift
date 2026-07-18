@@ -1,7 +1,5 @@
 import ApplicationKit
-import IntelligenceKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 
 /// Pre-meeting brief (M13b, Granola Briefs pattern): before your next
@@ -9,94 +7,6 @@ import SwiftUI
 /// related past meetings, what's still open with them, and an on-device
 /// "what to know" synthesis. Loads only when calendar access was already
 /// granted (never prompts on its own).
-struct MeetingBrief {
-    let event: UpcomingEvent
-    let related: [RelatedMeeting]
-    let openItems: [MeetingStore.OpenActionItem]
-    /// "What to know" bullets, each citing the meeting it came from —
-    /// ungrounded/filler bullets are gated out by BriefSynthesizer.
-    let whatToKnow: [KnowPoint]
-
-    struct KnowPoint: Identifiable {
-        let id = UUID()
-        let text: String
-        let meetingID: MeetingID
-        let meetingTitle: String
-    }
-
-    struct RelatedMeeting: Identifiable {
-        var id: MeetingID { meetingID }
-        let meetingID: MeetingID
-        let title: String
-        let overview: String
-        /// Why it surfaced: matched event terms, or a passage snippet when
-        /// the match is purely semantic.
-        let reason: String
-    }
-
-    /// Related = meetings whose transcripts mention the event's attendees
-    /// or title words, ranked by hit count. Pure store work; the optional
-    /// FM synthesis reuses the RAG answerer (already gated-tested).
-    static func build(for event: UpcomingEvent, store: MeetingStore) async -> MeetingBrief? {
-
-        // Hybrid retrieval (lexical + semantic, same engine as Ask) scored
-        // and thresholded by BriefRelevance — weak single-passage matches
-        // are dropped instead of shown (field bug: an unrelated 1:1
-        // surfaced as "related" by raw FTS hit count).
-        let terms = BriefRelevance.terms(eventTitle: event.title, attendees: event.attendees)
-        let query = ([event.title] + event.attendees).joined(separator: " ")
-        let citations =
-            (try? await AskMeetings.local(store: store).evidence(query, limit: 12)) ?? []
-        let ranked = BriefRelevance.rank(passages: citations, terms: terms)
-
-        var related: [RelatedMeeting] = []
-        for candidate in ranked {
-            guard let summary = try? await store.summary(candidate.meetingID) else { continue }
-            let overview = summary.draft.markdown
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .first { !$0.hasPrefix("#") }
-                .map(String.init) ?? ""
-            let reason = candidate.matchedTerms.isEmpty
-                ? String(candidate.snippet.prefix(90))
-                : L10n.format("Mentions: %@", candidate.matchedTerms.joined(separator: ", "))
-            related.append(RelatedMeeting(
-                meetingID: candidate.meetingID, title: candidate.title,
-                overview: overview, reason: reason))
-        }
-
-        let relatedIDs = Set(related.map(\.meetingID))
-        let openItems = ((try? await store.openActionItems(limit: 50)) ?? [])
-            .filter { relatedIDs.contains($0.meetingID) }
-            .prefix(8)
-
-        var whatToKnow: [KnowPoint] = []
-        if !related.isEmpty, #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil {
-            let passages = related.map {
-                RAGPassage(
-                    meetingID: $0.meetingID, meetingTitle: $0.title,
-                    timestamp: 0, text: $0.overview)
-            }
-            let points = await BriefSynthesizer.whatToKnow(
-                eventTitle: event.title, passages: passages)
-            whatToKnow = points.map { point in
-                let source = passages[point.passageIndex - 1]
-                return KnowPoint(
-                    text: point.text,
-                    meetingID: source.meetingID,
-                    meetingTitle: source.meetingTitle)
-            }
-        }
-
-        return MeetingBrief(
-            event: event,
-            related: related,
-            openItems: Array(openItems),
-            whatToKnow: whatToKnow)
-    }
-
-}
-
 /// The sheet the sidebar's "Next meeting" row opens.
 struct MeetingBriefView: View {
     let brief: MeetingBrief
@@ -121,6 +31,7 @@ struct MeetingBriefView: View {
             .buttonStyle(.plain)
             .foregroundStyle(PVDesign.accent)
             .padding(.leading, 12)
+            .accessibilityIdentifier("brief-knowledge-\(point.id.uuidString)")
         }
     }
 
@@ -129,6 +40,7 @@ struct MeetingBriefView: View {
             HStack {
                 Label(brief.event.title, systemImage: "calendar")
                     .font(.title3.weight(.semibold))
+                    .accessibilityIdentifier("brief-title")
                 Spacer()
                 Text(brief.event.startDate.formatted(date: .omitted, time: .shortened))
                     .font(.headline)
@@ -162,7 +74,7 @@ struct MeetingBriefView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(related.title).font(.callout.weight(.medium))
-                            Text(related.reason)
+                            Text(reasonText(related))
                                 .font(.caption2)
                                 .foregroundStyle(PVDesign.accent.opacity(0.9))
                                 .lineLimit(1)
@@ -176,21 +88,25 @@ struct MeetingBriefView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(
+                        "brief-related-\(related.meetingID.rawValue.uuidString)")
                 }
             }
             if !brief.openItems.isEmpty {
                 Text("Still open")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(brief.openItems, id: \.item.id) { open in
-                    Label(open.item.text, systemImage: "circle")
+                ForEach(brief.openItems) { open in
+                    Label(open.text, systemImage: "circle")
                         .font(.caption)
                         .lineLimit(2)
+                        .accessibilityIdentifier("brief-open-\(open.id.uuidString)")
                 }
             }
             HStack {
                 Spacer()
                 Button("Close") { dismiss() }
+                    .accessibilityIdentifier("brief-close-button")
                 Button {
                     dismiss()
                     route = .recording(brief.event)
@@ -204,5 +120,14 @@ struct MeetingBriefView: View {
         }
         .padding(20)
         .frame(width: 440)
+    }
+
+    private func reasonText(_ related: MeetingBrief.RelatedMeeting) -> String {
+        if !related.matchedTerms.isEmpty {
+            return L10n.format(
+                "Mentions: %@",
+                related.matchedTerms.joined(separator: ", "))
+        }
+        return related.snippet
     }
 }

@@ -5,6 +5,46 @@ import XCTest
 /// app-only language override updates SwiftUI text live.
 final class SettingsUITests: XCTestCase {
     @MainActor
+    func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.typeKey(",", modifierFlags: .command)
+        let data = app.control(withIdentifier: "settings-category-data")
+        XCTAssertTrue(data.waitForExistence(timeout: 10))
+        data.click()
+
+        let localFirstSeal = Locale.current.identifier.hasPrefix("es")
+            ? "Local primero"
+            : "Local-first"
+        XCTAssertTrue(
+            app.staticTexts[localFirstSeal].exists,
+            "the standing privacy seal must describe the opt-in architecture without an absolute all-local claim")
+
+        let meetings = app.control(withIdentifier: "settings-ledger-meetings")
+        XCTAssertTrue(meetings.waitForExistence(timeout: 10))
+        let loadedMeetings = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == '1'"),
+            object: meetings)
+        XCTAssertEqual(XCTWaiter.wait(for: [loadedMeetings], timeout: 10), .completed)
+        let audio = app.control(withIdentifier: "settings-ledger-audio")
+        XCTAssertTrue(audio.exists)
+        XCTAssertFalse((audio.value as? String)?.isEmpty ?? true)
+        XCTAssertNotEqual(audio.value as? String, "…")
+        let voices = app.control(withIdentifier: "settings-ledger-voices")
+        XCTAssertEqual(voices.value as? String, "0")
+        let network = app.control(withIdentifier: "settings-ledger-network-policy")
+        XCTAssertTrue(network.exists)
+        let expectedPolicy = Locale.current.identifier.hasPrefix("es")
+            ? "Con activación"
+            : "Opt-in"
+        XCTAssertEqual(network.value as? String, expectedPolicy)
+        attachScreenshot(of: app, named: "local-data-ledger")
+    }
+
+    @MainActor
     func testCategoryNavigationRevealsEachPane() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()

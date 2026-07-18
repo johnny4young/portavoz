@@ -1,7 +1,5 @@
-import AudioCaptureKit
-import DiarizationKit
-import PortavozCore
-import StorageKit
+import ApplicationKit
+import Foundation
 import SwiftUI
 
 /// The Settings categories (design system 2a: "from an endless scroll to
@@ -98,43 +96,58 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 /// made interface): what exists, where it lives, in numbers read from the
 /// real disk and database — never a promise.
 struct LedgerSection: View {
-    @Environment(AppServices.self) private var services
-    @State private var audioBytes: Int64?
-    @State private var meetingCount: Int?
-    @State private var rememberedVoices = 0
-    @State private var voiceEnrolled = false
+    let model: LocalDataLedgerModel
 
     var body: some View {
         Section {
-            // The DS's privacy ledger: four tiles read from the real disk
-            // and database — never a promise. The "to the network" tile is
-            // a structural fact (nothing auto-uploads), the green receipt.
+            // The DS's privacy ledger: three exact local facts plus the
+            // explicit network policy. Sync makes a zero-byte claim untrue.
             HStack(spacing: 10) {
-                tile(audioText, "audio on your disk")
-                tile(meetingText, "meetings in your database")
-                tile("0 B", "to the network", tint: .green)
-                tile(voiceText, "voices, encrypted here")
+                tile(
+                    audioText,
+                    "audio on your disk",
+                    identifier: "settings-ledger-audio")
+                tile(
+                    meetingText,
+                    "meetings in your database",
+                    identifier: "settings-ledger-meetings")
+                tile(
+                    L10n.text("Opt-in"),
+                    "network transfers",
+                    identifier: "settings-ledger-network-policy",
+                    tint: .green)
+                tile(
+                    voiceText,
+                    "voices, encrypted here",
+                    identifier: "settings-ledger-voices")
             }
             .padding(.vertical, 4)
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Nothing leaves this Mac except what you send yourself: gists you export, questions you ask an external model, and the update check."
+                "Nothing auto-uploads. Network transfers happen only after an action or opt-in, and Portavoz keeps local receipts."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
         } header: {
             Text("Your data, on this Mac")
         }
-        .task { await load() }
+        .task { await model.load() }
     }
 
     /// One ledger tile: a big tabular number over a quiet caption.
-    private func tile(_ value: String, _ label: LocalizedStringKey, tint: Color = .primary) -> some View {
+    private func tile(
+        _ value: String,
+        _ label: LocalizedStringKey,
+        identifier: String,
+        tint: Color = .primary
+    ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value)
                 .font(.title3.weight(.bold).monospacedDigit())
                 .foregroundStyle(tint)
+                .accessibilityLabel(Text(verbatim: value))
+                .accessibilityIdentifier(identifier)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -145,47 +158,23 @@ struct LedgerSection: View {
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
     }
 
+    private var snapshot: LocalDataLedgerSnapshot? { model.snapshot }
+
     private var audioText: String {
-        guard let audioBytes else { return "…" }
+        guard let snapshot else { return "…" }
+        guard let audioBytes = snapshot.audioBytes else { return L10n.text("Unavailable") }
         return ByteCountFormatter.string(fromByteCount: audioBytes, countStyle: .file)
     }
 
     private var meetingText: String {
-        guard let meetingCount else { return "…" }
+        guard let snapshot else { return "…" }
+        guard let meetingCount = snapshot.meetingCount else { return L10n.text("Unavailable") }
         return String(meetingCount)
     }
 
     private var voiceText: String {
-        String(rememberedVoices + (voiceEnrolled ? 1 : 0))
+        guard let snapshot else { return "…" }
+        guard let voiceCount = snapshot.voiceCount else { return L10n.text("Unavailable") }
+        return String(voiceCount)
     }
-
-    private func load() async {
-        meetingCount = (try? await services.store.meetings().count) ?? 0
-        if !ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
-            rememberedVoices = (try? VoiceGallery().voices().count) ?? 0
-            voiceEnrolled = (try? VoiceprintStore().load()) != nil
-        }
-        let root = RecordingsLocation.shared.currentRoot()
-        audioBytes = await Task.detached(priority: .utility) {
-            directorySize(of: root)
-        }.value
-    }
-}
-
-/// Total on-disk size of a directory tree; the ledger's "audio on your
-/// disk" number comes from the real file system, not bookkeeping.
-private func directorySize(of root: URL) -> Int64 {
-    let keys: Set<URLResourceKey> = [.totalFileAllocatedSizeKey, .isRegularFileKey]
-    guard
-        let enumerator = FileManager.default.enumerator(
-            at: root, includingPropertiesForKeys: Array(keys))
-    else { return 0 }
-    var total: Int64 = 0
-    for case let url as URL in enumerator {
-        guard let values = try? url.resourceValues(forKeys: keys),
-            values.isRegularFile == true
-        else { continue }
-        total += Int64(values.totalFileAllocatedSize ?? 0)
-    }
-    return total
 }

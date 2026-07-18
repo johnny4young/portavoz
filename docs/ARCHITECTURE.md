@@ -108,7 +108,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, and sync values. It also contains the current Keychain-backed `SecretStore` implementation. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, meeting-bundle import/export, whole-library Markdown backup, Ask search/evidence/answer coordination, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, meeting-bundle import/export, whole-library Markdown backup, Ask search/evidence/answer coordination, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
@@ -140,6 +140,10 @@ The implemented application workflows include:
 - canonical-person lookup and explicit speaker-to-person linking;
 - instant Ask search, hybrid evidence retrieval, and optional local answer
   generation with evidence-preserving degradation;
+- first-run eligibility without model or permission prerequisites;
+- independent exact local-data receipt metrics with per-source degradation;
+- pre-meeting preparation from shared Ask evidence, batched current summaries,
+  open commitments, and source-indexed optional synthesis;
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
 - meeting-review, brief, reminder, mirror, and Insights policies.
 
@@ -159,6 +163,8 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Meeting Detail | `MeetingDetailModel` | one selected meeting route |
 | Ask conversation | `AskModel` | one main window |
 | Command palette | `CommandPaletteModel` | application process |
+| First-run welcome | `FirstRunModel` | application process |
+| Local-data receipt | `LocalDataLedgerModel` | application process |
 | Resident menu bar | `MenuBarModel` | menu-bar scene |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
@@ -193,6 +199,27 @@ their terminal or protocol responses.
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
 native folder picker and localized presentation.
+
+The first-run owner resolves one process-wide presentation decision so restored
+windows cannot compete to show setup. It tracks active main-window hosts and
+hands the single sheet to another active host if its current window closes.
+Existing-library detection uses only a live-meeting count, and model readiness
+never blocks launch or recording. The
+Settings data receipt loads meeting count, allocated audio bytes, and encrypted
+voice count concurrently; an unavailable source affects only its own tile and
+is never rendered as a verified zero. Network behavior is presented separately
+as an explicit-transfer and opt-in policy backed by local receipts.
+
+Upcoming-meeting preparation belongs to the Library owner and enters
+`PrepareMeetingBrief`. EventKit remains at the macOS adapter and is queried only
+after access already exists. The workflow ranks shared Ask evidence, loads
+current live summaries in one bounded database projection, overlaps commitment
+loading, and admits generated context only when its source index resolves to a
+navigable related meeting. Agenda buttons explicitly opt out of selectable
+meeting-row behavior, so opening a brief cannot race the sidebar's meeting
+route. Persistent privacy seals use local-first and explicit opt-in language;
+feature-specific on-device claims remain limited to operations that cannot use
+a remote provider.
 
 ## Persistence and aggregate integrity
 
@@ -467,7 +494,7 @@ library or Keychain.
 20. Every architecture-changing commit updates this document and every other
     source of truth whose current facts changed.
 
-## Current boundary exceptions
+## Concrete dependency edges
 
 The following facts are part of the implemented architecture and are not hidden
 behind aspirational diagrams:
@@ -477,12 +504,9 @@ behind aspirational diagrams:
 - `portavoz-app` combines SwiftUI presentation and concrete macOS composition
   in one executable target, so the target links every capability module.
 - `portavoz-cli` constructs concrete capabilities and also links every module.
-- First-run eligibility, the local Settings ledger, and pre-meeting brief
-  assembly still perform direct Store/capability reads in app presentation
-  files; their surrounding Library state is already scoped.
 - The durable post-capture executor remains app-composed and talks to concrete
-  capability and StorageKit APIs by design; further extraction remains
-  evidence-gated.
+  capability and StorageKit APIs because it executes persisted jobs and commits
+  their typed artifacts.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -492,9 +516,9 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 834 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 302 Swift source files;
-- 35 XCUITest cases pass in English and 35 in Spanish;
+- 856 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 311 Swift source files;
+- 37 XCUITest cases pass in English and 37 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,

@@ -482,6 +482,15 @@ The database remains a `DatabaseQueue`. The original scoped-observation slices
 added no migration; 3H adds only the schema-v7 receipt tables, while 3I adds no
 schema and leaves all existing rows and query behavior unchanged.
 
+Launch and presentation receipts use bounded aggregate projections (D101).
+`liveMeetingCount()` counts only non-tombstoned roots without materializing the
+library. `meetingBriefSummaryMarkdowns(for:)` deduplicates a bounded ID set and
+returns the newest live General-recipe Markdown per meeting in one database
+read; tombstoned roots, deleted summaries, other recipes, and superseded
+versions are excluded. The app maps both projections to content-independent
+ApplicationKit contracts, and brief commitments continue to use the existing
+latest-summary-only `openActionItems(limit:)` query.
+
 ## `.portavoz` bundle (M15 L0)
 
 `MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Companion cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Companion evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Companion evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).

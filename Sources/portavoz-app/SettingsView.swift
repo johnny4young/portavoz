@@ -125,7 +125,7 @@ struct SettingsView: View {
                 case .sync:
                     MeetingSyncSettingsSection()
                 case .data:
-                    LedgerSection()
+                    LedgerSection(model: services.localDataLedger)
                     SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection

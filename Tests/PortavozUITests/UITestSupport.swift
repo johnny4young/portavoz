@@ -23,6 +23,7 @@ extension XCUIApplication {
         seedScale: Bool = false,
         scaleAutoSummaryUpdate: Bool = false,
         seedLatestRecipe: Bool = false,
+        seedBrief: Bool = false,
         seedRefineRunning: Bool = false,
         seedJustRecorded: Bool = false,
         seedRecovery: Bool = false,
@@ -45,6 +46,7 @@ extension XCUIApplication {
         if seedScale { app.launchArguments.append("-seed-scale") }
         if scaleAutoSummaryUpdate { app.launchArguments.append("-scale-auto-summary-update") }
         if seedLatestRecipe { app.launchArguments.append("-seed-latest-recipe") }
+        if seedBrief { app.launchArguments.append("-seed-brief") }
         if seedRefineRunning { app.launchArguments.append("-seed-refine-running") }
         if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }
         if seedRecovery { app.launchArguments.append("-seed-recovery") }

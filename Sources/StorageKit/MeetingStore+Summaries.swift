@@ -351,6 +351,47 @@ extension MeetingStore {
         }
     }
 
+    /// Latest live General-summary text for a bounded set of meetings. This
+    /// query-specific projection avoids one database round trip per brief row.
+    public func meetingBriefSummaryMarkdowns(
+        for meetingIDs: [MeetingID]
+    ) async throws -> [MeetingID: String] {
+        let meetingKeys = Array(Set(meetingIDs.map { $0.rawValue.uuidString }))
+        guard !meetingKeys.isEmpty else { return [:] }
+        return try await database.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT summary.meetingID AS meetingID,
+                           summary.markdown AS markdown
+                    FROM summary
+                    JOIN meeting ON meeting.id = summary.meetingID
+                        AND meeting.deletedAt IS NULL
+                    WHERE summary.deletedAt IS NULL
+                      AND summary.recipeID = ?
+                      AND summary.meetingID IN (
+                          \(databaseQuestionMarks(count: meetingKeys.count))
+                      )
+                      AND summary.version = (
+                          SELECT MAX(latest.version)
+                          FROM summary latest
+                          WHERE latest.meetingID = summary.meetingID
+                            AND latest.recipeID = summary.recipeID
+                            AND latest.deletedAt IS NULL
+                      )
+                    """,
+                arguments: StatementArguments([Recipe.general.id] + meetingKeys))
+            var result: [MeetingID: String] = [:]
+            result.reserveCapacity(rows.count)
+            for row in rows {
+                let id = MeetingID(rawValue: try PersistedIdentity.required(
+                    row["meetingID"], table: "summary", column: "meetingID"))
+                result[id] = row["markdown"]
+            }
+            return result
+        }
+    }
+
     /// Loads the most recently created live snapshot across every recipe.
     /// Meeting Detail uses this as its active structure after regeneration;
     /// recipe-specific history remains addressable through `summary`.

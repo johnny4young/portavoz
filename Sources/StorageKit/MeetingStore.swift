@@ -198,6 +198,16 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    /// Content-free aggregate used by launch eligibility and local receipts.
+    /// Avoids materializing an entire library when only its cardinality matters.
+    public func liveMeetingCount() async throws -> Int {
+        try await database.read { db in
+            try MeetingRecord
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db)
+        }
+    }
+
     static func fetchMeetings(
         in database: Database,
         includeDeleted: Bool = false

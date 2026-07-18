@@ -588,7 +588,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         let palette = try Self.contents(of: "Sources/portavoz-app/CommandPalette.swift")
         let cli = try Self.contents(of: "Sources/portavoz-cli/CLIAsk.swift")
         let mcp = try Self.contents(of: "Sources/portavoz-cli/CLIMcp.swift")
-        let brief = try Self.contents(of: "Sources/portavoz-app/MeetingBriefView.swift")
+        let brief = try Self.contents(of: "Sources/ApplicationKit/PrepareMeetingBrief.swift")
+        let briefView = try Self.contents(
+            of: "Sources/portavoz-app/MeetingBriefView.swift")
 
         XCTAssertTrue(workflow.contains("struct AskMeetings: ApplicationUseCase"))
         XCTAssertTrue(workflow.contains("struct AskSearchResult"))
@@ -615,9 +617,76 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         XCTAssertTrue(cli.contains("AskMeetings.local(store: store).answer"))
         XCTAssertTrue(mcp.contains("AskMeetings.local(store: store).answer"))
-        XCTAssertTrue(brief.contains("AskMeetings.local(store: store).evidence"))
+        XCTAssertTrue(brief.contains("ask.evidence(query, limit: 12)"))
+        XCTAssertFalse(briefView.contains("AskMeetings.local"))
         XCTAssertTrue(askView.contains("onOpenCitation(citation)"))
         XCTAssertTrue(palette.contains("onOpenCitation?(citation)"))
+    }
+
+    func testFirstRunLedgerAndBriefStayBehindApplicationOwners() throws {
+        let firstRun = try Self.contents(
+            of: "Sources/ApplicationKit/FirstRunExperience.swift")
+        let firstRunPolicy = try Self.contents(
+            of: "Sources/ApplicationKit/FirstRunOnboarding.swift")
+        let ledger = try Self.contents(
+            of: "Sources/ApplicationKit/LocalDataLedger.swift")
+        let brief = try Self.contents(
+            of: "Sources/ApplicationKit/PrepareMeetingBrief.swift")
+        let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
+        let onboarding = try Self.contents(of: "Sources/portavoz-app/OnboardingView.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsCategories.swift")
+        let briefView = try Self.contents(
+            of: "Sources/portavoz-app/MeetingBriefView.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let firstRunAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+FirstRun.swift")
+        let ledgerAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LocalDataLedger.swift")
+        let briefAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingBrief.swift")
+
+        XCTAssertTrue(firstRun.contains("struct ResolveFirstRunExperience: ApplicationUseCase"))
+        XCTAssertTrue(firstRunPolicy.contains("enum FirstRunOnboardingPolicy"))
+        XCTAssertTrue(ledger.contains("struct LoadLocalDataLedger: ApplicationUseCase"))
+        XCTAssertTrue(brief.contains("struct PrepareMeetingBrief: ApplicationUseCase"))
+        for contract in [firstRun, firstRunPolicy, ledger, brief] {
+            XCTAssertFalse(contract.contains("import StorageKit"))
+            XCTAssertFalse(contract.contains("import GRDB"))
+        }
+        XCTAssertTrue(services.contains("let firstRun: FirstRunModel"))
+        XCTAssertTrue(services.contains("let localDataLedger: LocalDataLedgerModel"))
+        XCTAssertTrue(services.contains("let meetingBriefUseCase: PrepareMeetingBrief"))
+        XCTAssertTrue(firstRunAdapter.contains("store.liveMeetingCount()"))
+        XCTAssertTrue(ledgerAdapter.contains("store.liveMeetingCount()"))
+        XCTAssertTrue(briefAdapter.contains("AppMeetingBriefLibraryReader"))
+        XCTAssertTrue(briefAdapter.contains("AppOnDeviceMeetingBriefSynthesizer"))
+        XCTAssertFalse(content.contains("services.store"))
+        XCTAssertFalse(content.contains("UserDefaults"))
+        XCTAssertFalse(content.contains("decideOnboarding"))
+        XCTAssertFalse(onboarding.contains("UserDefaults"))
+        XCTAssertFalse(settings.contains("services.store"))
+        XCTAssertFalse(settings.contains("directorySize"))
+        XCTAssertFalse(settings.contains("VoiceGallery"))
+        XCTAssertFalse(settings.contains("RecordingsLocation"))
+        XCTAssertFalse(settings.contains("import AudioCaptureKit"))
+        XCTAssertFalse(settings.contains("import DiarizationKit"))
+        XCTAssertFalse(settings.contains("import StorageKit"))
+        XCTAssertFalse(briefView.contains("MeetingStore"))
+        XCTAssertFalse(briefView.contains("AskMeetings"))
+        XCTAssertFalse(briefView.contains("BriefSynthesizer"))
+        XCTAssertFalse(briefView.contains("import IntelligenceKit"))
+        XCTAssertFalse(briefView.contains("import StorageKit"))
+    }
+
+    func testArchitectureDocumentUsesOnlyDurableTechnicalVocabulary() throws {
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let forbidden = try NSRegularExpression(
+            pattern: #"(?i)\b(band|slice|ticket|phase)\b|\b[DM][0-9]+\b|target architecture|next program|\bplanned\b"#)
+        let range = NSRange(architecture.startIndex..., in: architecture)
+        XCTAssertNil(
+            forbidden.firstMatch(in: architecture, range: range),
+            "ARCHITECTURE.md must describe only durable as-built technical facts")
     }
 
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {

@@ -20,7 +20,7 @@ struct ContentView: View {
     @State private var insightsModel: InsightsModel
     @State private var askModel: AskModel
     @State private var reminder = MeetingReminderController()
-    @State private var showOnboarding = false
+    @State private var firstRunHostID = UUID()
 
     init(services: AppServices) {
         self.services = services
@@ -121,9 +121,14 @@ struct ContentView: View {
             // so it must live in the view; it exits the process when done.
             BenchMode.reportStartupIfRequested()
         }
-        .task { await decideOnboarding() }
-        .sheet(isPresented: $showOnboarding) {
-            OnboardingView(isPresented: $showOnboarding)
+        .onAppear { services.firstRun.register(hostID: firstRunHostID) }
+        .task { await services.firstRun.resolve(in: firstRunHostID) }
+        .onDisappear { services.firstRun.unregister(hostID: firstRunHostID) }
+        .sheet(isPresented: Binding(
+            get: { services.firstRun.isPresented(in: firstRunHostID) },
+            set: { services.firstRun.setPresented($0, in: firstRunHostID) }
+        )) {
+            OnboardingView(onFinish: services.firstRun.finish)
                 .portavozLocalized()
                 .environment(services)
                 .tint(PVDesign.accent)
@@ -134,26 +139,6 @@ struct ContentView: View {
                 services.pendingRoute = nil
             }
         }
-    }
-
-    /// First-run setup shows once (GAPS #6). `-show-onboarding` forces it
-    /// (dev/UITest); `-use-temp-store` suppresses it so the coordinate-based
-    /// UI tests never race a surprise sheet; a library that already has
-    /// meetings marks itself onboarded — that user needs no welcome tour.
-    private func decideOnboarding() async {
-        let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-show-onboarding") {
-            showOnboarding = true
-            return
-        }
-        guard !arguments.contains("-use-temp-store"),
-            !UserDefaults.standard.bool(forKey: "hasOnboarded")
-        else { return }
-        if let meetings = try? await services.store.meetings(), !meetings.isEmpty {
-            UserDefaults.standard.set(true, forKey: "hasOnboarded")
-            return
-        }
-        showOnboarding = true
     }
 
     /// Keep the throwaway XCUITest window clear of persistent desktop

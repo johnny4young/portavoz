@@ -46,7 +46,7 @@ struct MenuBarContent: View {
                     .font(.subheadline.weight(.semibold))
                 HStack(spacing: 4) {
                     Image(systemName: "lock.fill").font(.system(size: 9))
-                    Text("100% local · 0 B to the network today")
+                    Text("Local-first · transfers require opt-in")
                         .font(.caption2)
                 }
                 .foregroundStyle(Color.green)

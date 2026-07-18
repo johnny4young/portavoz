@@ -2925,3 +2925,47 @@ making presentation depend on persistence or model records. Evidence-first
 degradation preserves useful local truth when generation is unavailable, while cancellation remains honest control flow and
 explicit task ownership prevents stale asynchronous state from crossing window
 or panel lifetimes.
+
+## D101 — Keep launch guidance, local receipts, and meeting preparation behind application contracts (Jul 2026)
+
+**Context:** the main Library state was already feature-owned, but three
+supporting flows still assembled persistence and capability facts at the macOS
+presentation edge. First-run setup inspected the database and preferences from
+the root view, the Settings privacy ledger counted records and files from the
+view, and meeting preparation combined Store summaries, commitments, Ask
+evidence, and optional generation in app presentation code. This made restored
+windows compete for setup, conflated unavailable metrics with zero, serialized
+summary reads per related meeting, and made the brief difficult to validate
+without concrete storage and models.
+
+**Decision:** `ApplicationKit.ResolveFirstRunExperience` owns deterministic
+first-run eligibility over one content-free library fact. Forced developer
+presentation wins; disposable automation and a remembered completion suppress
+setup; an existing live library suppresses and records completion. A failed
+eligibility read keeps guidance available, cancellation propagates, and neither
+speech-model readiness nor permissions participate in the decision. One
+process-scoped `FirstRunModel` owns resolution and assigns presentation to one
+restored window. Active main windows register with that owner; if the assigned
+window closes while guidance is visible, ownership moves to another active
+window instead of losing the process-wide decision or opening duplicate sheets.
+
+`ApplicationKit.LoadLocalDataLedger` loads live meeting count, allocated audio
+bytes, and local encrypted-voice count through independent ports. The metrics
+run concurrently, ordinary failure makes only that value unavailable, and
+zero remains a measured zero. One process-scoped model survives Settings
+windows. Network activity is not fabricated as a byte counter: the UI states
+the implemented explicit-action/opt-in policy and points to local receipts.
+
+`ApplicationKit.PrepareMeetingBrief` owns relevance, related-meeting admission,
+open-commitment filtering, and source-index validation. It reuses the shared Ask
+evidence workflow, loads the latest live General summaries for all bounded
+candidates in one StorageKit projection while commitments load independently,
+and treats synthesis as optional. The macOS adapter retains already-authorized
+EventKit access and Foundation Models construction; SwiftUI receives only
+storage-independent brief values with navigable meeting identity.
+
+**Rationale:** these flows are product policy even when they are read-only.
+Application ownership makes launch and window behavior deterministic, keeps
+privacy claims exact under partial failure, removes the brief's N+1 storage
+path, and lets presentation remain declarative without making setup dependent
+on a large model download.

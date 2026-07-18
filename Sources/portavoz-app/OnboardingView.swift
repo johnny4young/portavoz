@@ -12,7 +12,7 @@ import SwiftUI
 /// silently — their user already knows the app.
 struct OnboardingView: View {
     @Environment(AppServices.self) private var services
-    @Binding var isPresented: Bool
+    let onFinish: () -> Void
 
     @State private var step = 0
     @State private var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
@@ -375,8 +375,7 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        UserDefaults.standard.set(true, forKey: "hasOnboarded")
-        isPresented = false
+        onFinish()
     }
 }
 

@@ -93,7 +93,7 @@ struct SettingsSidebar: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Label(
-                    services.meetingSync.status.isEnabled ? "Private iCloud sync" : "All local",
+                    services.meetingSync.status.isEnabled ? "Private iCloud sync" : "Local-first",
                     systemImage: services.meetingSync.status.isEnabled ? "checkmark.icloud" : "lock.shield")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(
