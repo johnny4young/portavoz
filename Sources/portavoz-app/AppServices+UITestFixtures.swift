@@ -8,6 +8,7 @@ extension AppServices {
     /// summary, action-item, chapter, and Companion evidence.
     func seedDemoIfRequested() async {
         guard ProcessInfo.processInfo.arguments.contains("-seed-demo") else { return }
+        defer { markUITestSeedReady() }
         guard ((try? await store.meetings()) ?? []).isEmpty else { return }
 
         let audioDirectory = Self.prepareSeedAudio()
@@ -62,6 +63,17 @@ extension AppServices {
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSpotlightReindex()
+    }
+
+    /// XCUITest waits for the complete aggregate rather than racing the first
+    /// meeting-row write while summary, evidence, and receipts are still being
+    /// inserted. Production launches never provide this scratch path.
+    private func markUITestSeedReady() {
+        guard ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
+              let path = ProcessInfo.processInfo.environment[
+                  "PORTAVOZ_UI_TEST_SEED_READY_PATH"]
+        else { return }
+        _ = FileManager.default.createFile(atPath: path, contents: Data())
     }
 
     private func seedCompanionCards(

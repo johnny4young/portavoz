@@ -42,5 +42,6 @@ mounted=false
 codesign --verify --deep --strict --verbose=2 "$APP_COPY"
 xcrun stapler validate "$APP_COPY"
 spctl -a -vvv -t exec "$APP_COPY"
+scripts/verify-cloudkit-capabilities.sh "$APP_COPY"
 
-echo "OK → $DMG and extracted Portavoz.app are self-contained for Gatekeeper."
+echo "OK → $DMG and extracted Portavoz.app are self-contained for Gatekeeper and CloudKit."

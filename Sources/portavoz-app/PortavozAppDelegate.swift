@@ -42,4 +42,16 @@ final class PortavozAppDelegate: NSObject, NSApplicationDelegate {
         }
         return true
     }
+
+    /// CKSyncEngine's silent push contains no Portavoz payload. It only wakes
+    /// the same serialized manual cycle used by journal and explicit actions.
+    func application(
+        _ application: NSApplication,
+        didReceiveRemoteNotification userInfo: [String: Any]
+    ) {
+        _ = userInfo
+        MainActor.assumeIsolated {
+            Self.services?.meetingSync.remoteChangeReceived()
+        }
+    }
 }

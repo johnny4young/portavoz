@@ -64,14 +64,16 @@ final class MeetingDetailUITests: XCTestCase {
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_AUDIO_ROOT"]
             ?? (NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)")
         app.launchPortavoz()
+        XCTAssertTrue(
+            app.waitForSeededLibraryToSettle(),
+            "the complete seeded aggregate must settle before selecting it")
         // Select the real library row by structure, not the duplicated title
         // text (it also appears under To-dos and can point at a stale scroll
         // snapshot during rapid relaunches).
         let meeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        XCTAssertTrue(
-            meeting.waitForExistence(timeout: 15), "the seeded meeting must appear in the library")
+        XCTAssertTrue(meeting.exists, "the seeded meeting must appear in the library")
         // Existing isn't enough on the coldest launch: seeding bumps
         // the scoped observation, the list re-renders, and `click` re-resolves this
         // query — against a snapshot that can already be stale ("Failed to get
@@ -487,7 +489,14 @@ final class MeetingDetailUITests: XCTestCase {
         defer { app.terminate() }
 
         let refine = app.control(withIdentifier: "detail-refine")
-        XCTAssertEqual(refine.value as? String, "cancel")
+        XCTAssertTrue(refine.waitForExistence(timeout: 10))
+        let enteredRunningState = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == 'cancel'"),
+            object: refine)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [enteredRunningState], timeout: 10),
+            .completed,
+            "the injected running refine must settle before cancellation")
         refine.click()
 
         let returnedToRefine = expectation(

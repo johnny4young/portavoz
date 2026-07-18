@@ -20,6 +20,23 @@ struct LibraryView: View {
 
     private var state: LibraryModel.State { model.state }
 
+    /// The sidebar List owns meeting selection only. `route` also represents
+    /// Ask, Insights, and Recording; binding the List directly to that broader
+    /// state lets a transient list refresh write `nil` and dismiss those
+    /// destinations. Ignore those native deselection writes while explicit
+    /// navigation and deletion continue to own the full route.
+    private var meetingSelection: Binding<Route?> {
+        Binding(
+            get: {
+                guard let route, case .meeting = route else { return nil }
+                return route
+            },
+            set: { selection in
+                guard let selection, case .meeting = selection else { return }
+                route = selection
+            })
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             recordButton
@@ -72,7 +89,7 @@ struct LibraryView: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
 
-            List(selection: $route) {
+            List(selection: meetingSelection) {
                 if !state.query.isEmpty {
                     Section("Results") {
                         if state.hits.isEmpty {

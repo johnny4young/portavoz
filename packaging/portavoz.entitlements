@@ -10,5 +10,20 @@
          for the prep agenda / name suggestions can never appear. -->
     <key>com.apple.security.personal-information.calendars</key>
     <true/>
+    <!-- D97: CKSyncEngine requires CloudKit and macOS remote-notification
+         capabilities. Developer ID distribution also requires an embedded
+         provisioning profile that authorizes these exact values. -->
+    <key>com.apple.developer.icloud-container-identifiers</key>
+    <array>
+        <string>iCloud.app.portavoz.mac</string>
+    </array>
+    <key>com.apple.developer.icloud-services</key>
+    <array>
+        <string>CloudKit</string>
+    </array>
+    <key>com.apple.developer.icloud-container-environment</key>
+    <string>Production</string>
+    <key>com.apple.developer.aps-environment</key>
+    <string>production</string>
 </dict>
 </plist>

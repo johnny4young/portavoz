@@ -2765,3 +2765,57 @@ exposes no UI. The macOS platform adapter and status surface arrive in 6C2.
 semantics independently testable, keeps views declarative, and leaves the real
 CloudKit composition thin enough to fail closed without changing business
 behavior.
+
+## D97 — Compose CloudKit only through a provisioned opt-in macOS boundary (Jul 2026)
+
+**Context:** D96 fixes lifecycle semantics but deliberately has no Apple
+runtime, signing capability, process owner, push wake, or user surface. A naïve
+composition could create `CKContainer.default()` at launch, ship an entitlement
+that its Developer ID profile does not authorize, let SwiftUI own observers, or
+imply that audio and every existing meeting upload automatically.
+
+**Decision:** IntegrationsKit owns the sole production
+`CloudKitMeetingSyncPlatform`. Its initializer is inert. Only a previously
+consented lifecycle resume or explicit Enable action may ask it for an account.
+Before constructing the named `iCloud.app.portavoz.mac` container, it reads the
+running signature and bundle and fails closed unless the CloudKit service,
+exact container, container environment, macOS push environment, and embedded
+Developer ID provisioning profile are present. It checks account status before
+requesting the current-user record identity, and it gives the D95 runtime only
+the private database. One bounded manual cycle prepares and sends staged work,
+fetches remote work, then prepares and sends deterministic replay output.
+
+`AppServices` owns one process-scoped `MeetingSyncModel`; SwiftUI owns no
+container, lifecycle, journal observer, account observer, APNs registration, or
+retry timer. The model serializes lifecycle operations, coalesces content-free
+journal/account/push wakeups, and preserves explicit user actions in FIFO order
+while work is in flight. `CKAccountChanged` and silent pushes carry no meeting
+payload and only request that same manual cycle. The throwaway XCUITest
+composition injects a deterministic in-memory client and never probes signing,
+iCloud, APNs, or the host transport directory.
+
+Settings exposes local-only, pending, synchronized, paused, retrying, and
+failed states plus separate Enable, Sync now, Retry, Include existing library,
+Pause, and Remove this Mac actions in English and Spanish. Opt-in covers future
+portable text/metadata changes only; importing the existing library remains a
+second confirmation. The surface names the exclusions: audio, local paths,
+voiceprints, secrets, and embeddings never sync. Pause revokes this Mac's
+consent without deleting a queue; Remove clears only this Mac's protected
+transport state and consent. Neither action deletes local meetings or remote
+records.
+
+Developer and XCUITest bundles use `portavoz-local.entitlements` and therefore
+remain launchable and local-only without a profile. A distributable build uses
+the exact production CloudKit/APNs entitlements only when it embeds a supplied
+Developer ID provisioning profile. Release creation requires a real Developer
+ID identity, notary profile, and CloudKit profile; a fail-closed gate decodes
+the profile, rejects expiration, and compares the exact container, service,
+production environment, and push values against the signed app before
+notarization and again after DMG extraction.
+
+**Rationale:** separating local development from restricted distribution
+capabilities preserves the zero-cloud default and avoids an app that builds but
+cannot launch. A single process owner and one already-characterized lifecycle
+keep Apple callbacks as wakeups rather than business policy. Exact signing
+verification makes the public artifact—not an Xcode checkbox—the release
+contract.

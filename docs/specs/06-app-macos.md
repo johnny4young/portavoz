@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition).
 
 ## Structure
 
@@ -8,9 +8,23 @@ Status: implemented, signed with Developer ID, and used in real meetings; publis
 
 - Signature: by SHA-1 of cert (`PORTAVOZ_SIGN_IDENTITY`) — there are TWO Developer IDs with the same name on the machine and the name is ambiguous.
 - `make install`: renames only the freshly built bundle to `Portavoz Dev`, re-signs it with Hardened Runtime and a secure timestamp, deep/strict-verifies `dist/Portavoz.app`, copies it to `/Applications/Portavoz Dev.app`, deep/strict-verifies the installed copy, and only then launches it. It never writes `/Applications/Portavoz.app`.
-- `make-dmg.sh`: with `PORTAVOZ_NOTARY_PROFILE`, archives the signed app, notarizes/staples/validates it, then creates the UDZO DMG + `/Applications` symlink and separately signs/notarizes/staples the image. `verify-distribution.sh` mounts the final DMG, copies the app out like Homebrew Cask, and independently requires codesign, stapler, and Gatekeeper acceptance for both artifacts.
-- `make-release.sh <v>`: stamps version, DMG, `generate_appcast --account portavoz` (dedicated EdDSA key — the default from Keychain is for ANOTHER project), cask with sha256 → `dist/release/`.
+- `make-dmg.sh`: with `PORTAVOZ_NOTARY_PROFILE`, first verifies the embedded CloudKit profile and exact signed production capabilities, then archives the app, notarizes/staples/validates it, creates the UDZO DMG + `/Applications` symlink, and separately signs/notarizes/staples the image. `verify-distribution.sh` mounts the final DMG, copies the app out like Homebrew Cask, and independently requires codesign, stapler, Gatekeeper, and CloudKit-profile acceptance.
+- `make-release.sh <v>`: requires a Developer ID identity, notary profile, and Developer ID CloudKit/APNs provisioning profile; stamps version, DMG, `generate_appcast --account portavoz` (dedicated EdDSA key — the default from Keychain is for ANOTHER project), cask with sha256 → `dist/release/`.
 - Sparkle 2.9: menu "Buscar actualizaciones…" (`SPUStandardUpdaterController`); `SUFeedURL` points to GitHub release; public key in `assets/sparkle-public-key`.
+
+### CloudKit signing and launch boundary (D97)
+
+Ordinary `make app`, `make install`, and XCUITest builds use
+`packaging/portavoz-local.entitlements`: microphone and Calendar remain
+available, while restricted CloudKit/APNs capabilities are absent and Sync
+truthfully reports that the build is not provisioned. Supplying
+`PORTAVOZ_PROVISIONING_PROFILE` selects the tracked production entitlements,
+embeds the profile at `Contents/embedded.provisionprofile`, and runs
+`verify-cloudkit-capabilities.sh` after signing. That gate decodes both the app
+and profile, requires exact `iCloud.app.portavoz.mac`, CloudKit, Production, and
+production-push values, and rejects an expired profile. Public release creation
+requires that profile plus real signing and notarization credentials; the same
+gate runs before notarization and against the app copied from the final DMG.
 
 ### App Sandbox capability state (D78)
 
@@ -39,7 +53,8 @@ does not configure Sparkle's sandbox installer launcher and communication
 requirements. A future adoption must additionally prove real process-tap
 capture, cross-app dictation paste, configured post-meeting Shortcut, EventKit
 permission, panels/bookmarks, model preparation, and Sparkle update install in
-a separately signed product build. Production entitlements remain unchanged.
+a separately signed product build. The production bundle remains non-sandboxed;
+D97's restricted CloudKit/APNs capabilities do not change the D78 decision.
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
@@ -56,6 +71,18 @@ batches, and removes the released default-index domain only after the protected
 index is ready. Temporary UI-test stores disable OS indexing. Internal status
 and content-free OSLog attempts are diagnostic only; no meeting content is
 logged. A new request after terminal retry exhaustion starts a fresh recovery.
+
+`AppServices` also owns one process-scoped `MeetingSyncModel` (D97). Production
+composition creates the platform-neutral D96 lifecycle and an inert
+`CloudKitMeetingSyncPlatform`; no container or account request occurs until
+stored account-scoped consent or explicit Enable permits it. The model
+serializes manual lifecycle work, preserves explicit actions FIFO while an
+operation is suspended, and coalesces content-free StorageKit journal,
+`CKAccountChanged`, retry-clock, and silent-push wakeups into the same bounded
+cycle. It registers for remote notifications only while sync is enabled.
+Temporary-store/XCUITest composition injects a deterministic in-memory client,
+never probes the host signature/account/APNs/transport root, and exercises the
+same bilingual Settings states and actions.
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -250,7 +277,12 @@ on-demand briefs, and navigation effects. `LibraryView` and `TrashSection`
 render the snapshot, retain native AppKit panels and SwiftUI presentation, and
 send actions instead of invoking Store, lifecycle, import, or EventKit-backed
 services. `ContentView` creates a fresh model per `WindowGroup` instance, so
-transient search/rename/import state is not global.
+transient search/rename/import state is not global. The sidebar's native List
+binds only to meeting routes: transient `nil` writes and non-meeting routes are
+ignored, while tagged meeting/search rows retain native selection and deletion
+updates the broader route explicitly. This keeps Meeting Detail, Ask, Insights,
+and Recording stable through feedback writes and independent Library refreshes
+without sacrificing native sidebar selection during row rebuilds.
 
 Slice 2N replaces the temporary Library read seam. ApplicationKit defines the
 storage-independent meeting-row/voice-mix, open-item, trash, search, section,
@@ -460,7 +492,8 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source
   focuses that exact transcript row and seeks retained audio without starting
-  playback. Text-only
+  playback; when waveform preparation is still running, the view retains the
+  exact pending seek and applies it as soon as the player is ready. Text-only
   transcripts own a `ScrollViewReader` so the same action focuses without
   moving the header or summary. Revision mismatch shows a stale explanation;
   any missing/tombstoned/null link shows unavailable and exposes no partial
@@ -568,14 +601,15 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 31 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 32 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + interrupted staging recovery + durable post-capture
 resume + typed recording-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
-Whisper preparation, custom structures, capture
+Whisper preparation, explicit iCloud sync opt-in/existing-library separation,
+custom structures, capture
 controls, redacted support export, mirror, and live language switch via ⌘,). Every launch receives a
 unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
 neither SQLite, audio, nor the encrypted participant-voice gallery can touch
@@ -597,7 +631,7 @@ assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-window-only screenshots at asserted
 Library, Insights, Meeting Detail, Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints so unrelated desktop content
 is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 31-case suite is green in the
+test language and region flags; the complete 32-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

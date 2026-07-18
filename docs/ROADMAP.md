@@ -6,69 +6,36 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** complete architecture Band 6C2 by composing the private
-macOS CKContainer/CKSyncEngine behind the already characterized lifecycle,
-capability checks, entitlements, and account-scoped user opt-in. Add one
-bilingual Settings surface for local-only, pending, synchronized, paused,
-retrying, and failed states plus explicit enable, existing-library seed,
-retry, pause, and remove-this-device actions. Band 6C1 now owns those semantics
-outside SwiftUI and performs zero platform work on an unconsented launch (D96).
-No audio sync or iOS shell enters 6C. Band 6B2 is complete:
-IntegrationsKit now has encrypted private-zone records plus separately
-protected account/consent/seed, opaque engine/system-field, exact attempt,
-bounded retry, cursor, and deferred-replay state. A thin injected delegate is
-restart/partial-failure/account-transition characterized but no app composition
-creates a container, requests an account, adds an entitlement, or performs sync
-network work (D94/D95). Band 6B1 fixes deterministic aggregate/replay semantics
-(D93), and Band 6A keeps schema v14 as the content-free mutation authority with
-explicit initial seeding and generation-aware acknowledgement (D92). The user's
-separate product decision opened Band 6; each transport and platform step still
-ships as its own feature-parity-preserving slice. Band 5F completed Band 5 with
-card-identity-keyed, role-separated Companion evidence in schema v13: question
-sources identify what triggered a card, while only exact local
-RAG citations become answer sources (D91). Band 5E keys action-item evidence to stable task identity in schema v12; exact
-provider tags, revision/deletion fences, translation and bundle remapping, and
-Meeting Detail source navigation remain attached when the checkbox changes
-(D90). Band 5D gives explicit built-in decision sections position-typed,
-source-revision-fenced transcript evidence in schema v11; provider shape
-mismatches fail closed, translations and bundles preserve valid coordinates
-with fresh IDs, and Meeting Detail jumps from a decision source to the exact
-transcript and audio without autoplay (D89). Band 5C gives the existing
-overview claim one explicit, reversible local assessment: a bounded correction
-or an unsupported mark. Feedback never rewrites generated output or enters a
-model prompt, physically erases private correction text when cleared, and
-travels only through an explicit `.portavoz` export (D88). Band 5B provides
-the prerequisite provenance boundary: schema v9 stores one source-revision-
-fenced overview claim and ordered transcript links; providers may cite only
-exact request-local E-tags, stale or unavailable links fail closed, bundles
-remap portable evidence, and Meeting Detail jumps to the supporting transcript
-and audio (D87). Band 5A provides the human
-memory boundary: schema v8 stores canonical people and duplicate-safe aliases,
-while only an explicit Meeting Detail action may create or link a non-user
-speaker. Exact aliases are candidates, not automatic merges; bundles strip the
-device-local link and Refine requires fresh confirmation (D86). Band 4G closes the prior Spotlight gate:
-the exact 100,000-meeting projection falls from 22,085.35 ms to 425.64 ms wall
-p95, while a process-scoped actor now reconciles a named file-protected index
-with bounded batches, client state, retries, and launch repair. D85 therefore
-rejects a Spotlight outbox consumer at the measured scale. Band 4 is complete.
-D78 closes Band 3 by retaining the accurately documented
-non-sandboxed distribution until a reversible feature-parity migration passes
-its app/CLI/MCP storage, custom-folder, Sparkle, capture, and automation gates.
+**Next concrete step:** begin architecture Band 6D with the iOS in-person
+recorder shell described in `docs/IOS.md`, reusing the now-proven text-first
+codec and lifecycle without importing macOS call capture or device-local voice
+identity. Before a public sync release, retain the independent field gate for a
+real production CloudKit container/profile/account and two-Mac convergence.
+Band 6C2 now composes private macOS meeting sync through one inert fail-closed
+CKContainer owner, one process-scoped lifecycle model, content-free wakeups,
+exact Developer ID capability verification, and an explicit bilingual Settings
+surface (D97). Local and XCUITest builds remain profile-free and make no CloudKit
+request; audio, paths, voiceprints, secrets, and embeddings remain device-local.
+Bands 6A–6C therefore complete the macOS text-first sync vertical while Band 6D
+adds the first second-device product surface. Every prior architecture band and
+all released v0.6.0 behavior remain covered by the current package and bilingual
+UI gates (D33–D97).
 
-Slices 3A–3K now cover attempt-level generation provenance, every current
-meeting-content HTTP path, an honest per-meeting receipt, and local redacted
-support/recovery evidence plus stable recording-lifecycle failures. The Jul 16
-Sequoia stabilization interrupt fixed Stop timestamp identity, audio-first
-capture/recovery, proactive Whisper preparation, exact capability-aware
-Summary/Companion setup, role-specific speech-model readiness, and independent
-app/DMG notarization. Band 3 is complete.
-`LibraryModel`, scoped Library observation, `ExportMeetingBundle`, `ImportMeetingBundle`,
-`RecoverInterruptedMeetings`, `StartRecording`, `StopRecording`,
-`RefineMeeting`, `ImportMeeting`, and T16 are complete; Bands 0–2 are
-complete. Every slice
-preserves all v0.6.0 features and updates
-`ARCHITECTURE.md` plus every affected source-of-truth document in the same
-commit (D33/D34/D36/D37/D38/D39/D40/D41/D42/D43/D44/D45/D46/D47/D48/D49/D50/D51/D52/D53/D54/D55/D56/D57/D58/D59/D60/D61/D62/D63/D64/D65/D66/D67/D68/D69/D70/D71/D72/D73/D74/D75/D76/D77/D78/D79/D80/D81/D82/D83/D84/D85/D86/D87/D88/D89/D90/D91/D92/D93/D94/D95/D96).
+- **Architecture Band 6 slice 6C2 complete — private sync is visible, opt-in,
+  and provisioned (Jul 17, 2026)**: one inert IntegrationsKit actor is the sole
+  owner of `iCloud.app.portavoz.mac`; it checks the signed capability/profile
+  boundary before container creation, asks account status before identity, and
+  drives only the private database through bounded manual send/fetch cycles.
+  One process-scoped app model serializes D96 actions, coalesces content-free
+  journal/account/retry/silent-push wakeups, and preserves queued user actions
+  in FIFO order. Settings now explains six states and keeps Enable, existing-
+  library seed, retry, pause, and remove-this-Mac explicit in English and
+  Spanish. Local/XCUITest bundles remain no-cloud; release scripts require and
+  verify an unexpired Developer ID profile whose exact production container,
+  CloudKit, and APNs values match the signed app before notarization and after
+  extraction. Fourteen new package tests and one new XCUITest flow establish D97.
+  Real production account/two-Mac convergence remains field evidence before a
+  public sync release; Band 6D is next and audio sync remains excluded.
 
 - **Architecture Band 6 slice 6C1 complete — sync cannot touch iCloud before
   consent or hide its state (Jul 17, 2026)**: a platform-neutral IntegrationsKit

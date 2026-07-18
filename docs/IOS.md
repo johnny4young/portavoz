@@ -34,7 +34,7 @@ Rules: live STT degrades BEFORE dropping the recording (saving WAV is always ine
 
 ## Sync (M14c): CKSyncEngine, no proprietary server
 
-**As built after Band 6C1 (D92–D96):** schema v14 has a content-free per-meeting
+**As built after Band 6C2 (D92–D97):** schema v14 has a content-free per-meeting
 mutation journal with monotonic local/acknowledged generations, explicit
 initial seeding, and deletion state that survives physical purge. Portable
 meeting roots and typed evidence update it in their own transaction;
@@ -57,13 +57,17 @@ opaque CKSyncEngine serialization, record system fields, exact attempts,
 bounded retries, replay cursors, and protected remote deferrals. Exact envelope
 bytes use validated `0600` files. Account loss pauses work and a real switch
 clears old account-scoped metadata; callbacks pass through a thin injected
-delegate to StorageKit's replay authority. There is still **no app-composed
-CKContainer/CKSyncEngine, account request, entitlement, network transfer, sync
-status UI, user-triggered initial upload, audio sync, or iOS app target**.
-Above that dormant boundary, a platform-neutral lifecycle now owns
+delegate to StorageKit's replay authority. A platform-neutral lifecycle owns
 zero-platform local-only launch, explicit enable/seed/retry/pause/remove-device,
-account transitions, and truthful content-free status. It does not yet compose
-CloudKit on macOS or add any iOS target.
+account transitions, and truthful content-free status. macOS now composes that
+boundary through one inert signed-capability/account-gated private-container
+actor and one process-scoped serialized owner for journal, account, retry, and
+silent-push wakeups. Its bilingual Settings pane keeps future-change enablement
+and existing-library upload separate. Production packaging requires an
+unexpired Developer ID profile whose exact CloudKit/container/environment/push
+values match the signed app, while local/XCUITest builds remain no-cloud. There
+is still **no audio sync or iOS app target**; production two-Mac convergence is
+a field gate, not a unit-test claim.
 
 **Planned execution:**
 
@@ -82,10 +86,15 @@ CloudKit on macOS or add any iOS target.
 - **6C1 complete — shared lifecycle policy:** account/driver protocols, six
   truthful phases, and explicit enable/seed/retry/pause/remove-device semantics
   are independent of SwiftUI and CloudKit composition (D96).
-- **6C2 next — macOS consent/status/runtime:** explicitly create the container
-  and engine only after capability plus account-scoped opt-in; expose local-only,
-  pending, synchronized, paused, retrying, and failed states. Initial seeding is
-  a separate action and disable/remove-device semantics must be explicit.
+- **6C2 complete — macOS consent/status/runtime:** the inert container/engine
+  owner admits only exact signed capability evidence after account-scoped
+  opt-in; one process model owns content-free wakes; six truthful phases and
+  explicit enable/manual sync/retry/seed/pause/remove actions are bilingual
+  (D97).
+- **6D next — iOS in-person recorder shell:** add the Xcode target and reuse the
+  codec/lifecycle without importing macOS call-capture assumptions. Keep voice
+  enrollment device-local and validate mobile thermal, battery, background-
+  audio, interruption, and profile/push behavior on real hardware.
 - **Encryption:** use encrypted record values for content fields. Do not claim
   end-to-end guarantees beyond the user's actual iCloud/Advanced Data
   Protection configuration.
@@ -97,7 +106,7 @@ CloudKit on macOS or add any iOS target.
   last-writer-wins is not the contract.
 - **Audio:** never part of initial sync. A later per-meeting CKAsset opt-in has
   its own size, retry, deletion, and consent contract.
-- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D96).
+- **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D97).
 - **Later Companion control:** an ephemeral CloudKit command record may control
   Mac recording only after private data sync is field-proven; it is not part of
   6B and requires explicit device trust and replay protection.

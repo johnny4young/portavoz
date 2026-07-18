@@ -109,6 +109,9 @@ struct MeetingDetailView: View {
     /// without surprising playback; text-only meetings use this ID to focus
     /// the cited row.
     @State private var evidenceFocusSegmentID: UUID?
+    /// Evidence can be clicked before a long waveform finishes preparing.
+    /// Keep the exact seek until the player exists instead of dropping it.
+    @State private var pendingEvidenceSeek: TimeInterval?
 
     init(
         services: AppServices,
@@ -1530,7 +1533,14 @@ extension MeetingDetailView {
 
     private func focusEvidence(_ segment: TranscriptSegment) {
         evidenceFocusSegmentID = segment.id
-        player?.seek(to: segment.startTime)
+        pendingEvidenceSeek = segment.startTime
+        applyPendingEvidenceSeekIfPossible()
+    }
+
+    private func applyPendingEvidenceSeekIfPossible() {
+        guard let seconds = pendingEvidenceSeek, let player else { return }
+        player.seek(to: seconds)
+        pendingEvidenceSeek = nil
     }
 
     private func evidenceClock(_ seconds: TimeInterval) -> String {
@@ -2123,6 +2133,7 @@ extension MeetingDetailView {
         }
         channelURLs = files
         player = loadedPlayer
+        applyPendingEvidenceSeekIfPossible()
         waveform = loadedWaveform
         loadedPlayer?.setSilentRanges(
             Waveform.silentRanges(loadedWaveform, duration: loadedPlayer?.duration ?? 0))

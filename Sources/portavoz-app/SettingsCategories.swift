@@ -15,6 +15,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case voice
     case agenda
     case integrations
+    case sync
     case data
 
     var id: String { rawValue }
@@ -27,6 +28,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .voice: L10n.text("My voice & Companion")
         case .agenda: L10n.text("Agenda & automation")
         case .integrations: L10n.text("Integrations")
+        case .sync: L10n.text("Sync")
         case .data: L10n.text("Your data")
         }
     }
@@ -39,6 +41,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .voice: "person.wave.2"
         case .agenda: "calendar.badge.clock"
         case .integrations: "link"
+        case .sync: "icloud"
         case .data: "lock.shield"
         }
     }
@@ -53,6 +56,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .voice: L10n.text("Enrolled voice · your name · Companion")
         case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
         case .integrations: L10n.text("BYOK OpenAI-compatible · GitHub gists · MCP")
+        case .sync: L10n.text("iCloud · status · existing library")
         case .data: L10n.text("Export Markdown · recordings folder · trash")
         }
     }
@@ -74,6 +78,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             "reminder calendar shortcut title template"
         case .integrations:
             "byok api key github gist token mcp endpoint openai"
+        case .sync:
+            "icloud cloud sync status existing library encrypted devices pause remove"
         case .data:
             "export markdown backup folder recordings trash privacy local"
         }

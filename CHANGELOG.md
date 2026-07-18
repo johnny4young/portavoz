@@ -7,6 +7,9 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **🔗 Source jumps never get lost** — Click a summary, decision, to-do, or Companion source as soon as a meeting opens and Portavoz now remembers the exact audio moment while a long waveform finishes preparing, instead of focusing the words but leaving the playhead behind.
+- **☁️ iCloud sync that asks first** — Opt in from a bilingual Settings pane, see whether this Mac is local-only, syncing, paused, retrying, or needs attention, and choose separately whether to include older meetings. Only encrypted meeting text and portable metadata use your private iCloud database; audio, local paths, voiceprints, secrets, and embeddings stay on this Mac.
+- **📍 Your current view stays put** — Transcript evidence, corrections, and background library refreshes no longer kick you out of Meeting Detail, Ask, Insights, or a recording.
 - **🧭 Summary history stays in order** — Meeting Detail now uses a stable version tie-break when two summary snapshots land within the same millisecond, so the newest version cannot appear behind an older one after import or sync replay.
 - **💬 Companion answers show their sources** — Saved Companion cards now separate the exact question moment from the transcript passages that supported a context answer. Click either source to focus its words and audio; changed or deleted evidence disables the jump instead of pointing somewhere misleading.
 - **✅ Every to-do keeps its proof** — Action items can now show the exact transcript moments where the commitment was made. Completing a task never detaches its source, while changed or deleted evidence disables navigation instead of pointing at the wrong words.

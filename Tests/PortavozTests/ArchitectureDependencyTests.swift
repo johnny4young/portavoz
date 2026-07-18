@@ -911,6 +911,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             cloudKitImports.map(\.file),
             [
+                "IntegrationsKit/CloudKitMeetingSyncPlatform.swift",
                 "IntegrationsKit/CloudMeetingRecordCodec.swift",
                 "IntegrationsKit/CloudMeetingSyncCoordinator.swift",
                 "IntegrationsKit/CloudMeetingSyncEngineDelegate.swift",
@@ -919,6 +920,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "IntegrationsKit/CloudMeetingSyncStateStore.swift",
                 "IntegrationsKit/CloudRecordSystemFieldsCodec.swift",
                 "IntegrationsKit/CloudSyncFailureClassifier.swift",
+                "portavoz-app/MeetingSyncModel.swift",
             ])
         XCTAssertTrue(decisions.contains("## D92"))
     }
@@ -1027,6 +1029,82 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D96"))
     }
 
+    func testCloudKitCompositionIsProvisionedLazyAndExplicitlyControlled() throws {
+        let platform = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudKitMeetingSyncPlatform.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/MeetingSyncModel.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingSync.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/MeetingSyncSettingsSection.swift")
+        let entitlements = try Self.contents(of: "packaging/portavoz.entitlements")
+        let localEntitlements = try Self.contents(
+            of: "packaging/portavoz-local.entitlements")
+        let builder = try Self.contents(of: "scripts/make-app.sh")
+        let verifier = try Self.contents(
+            of: "scripts/verify-cloudkit-capabilities.sh")
+        let release = try Self.contents(of: "scripts/make-release.sh")
+        let diskImage = try Self.contents(of: "scripts/make-dmg.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        let capabilityCheck = try XCTUnwrap(platform.range(
+            of: "CloudKitMeetingSyncCapabilityProbe.current()"))
+        XCTAssertNotNil(platform.range(
+            of: "CKContainer(\n            identifier:",
+            range: capabilityCheck.upperBound..<platform.endIndex))
+        let accountStatus = try XCTUnwrap(platform.range(of: "container.accountStatus()"))
+        XCTAssertNotNil(platform.range(
+            of: "container.userRecordID()",
+            range: accountStatus.upperBound..<platform.endIndex))
+        XCTAssertFalse(platform.contains("automaticallySync = true"))
+        XCTAssertTrue(platform.contains("engine.sendChanges()"))
+        XCTAssertTrue(platform.contains("engine.fetchChanges()"))
+
+        XCTAssertTrue(model.contains("guard !didStart"))
+        XCTAssertTrue(model.contains("guard status.isEnabled"))
+        XCTAssertTrue(model.contains("UITestMeetingSyncClient"))
+        XCTAssertTrue(composition.contains("usesTemporaryStore"))
+        XCTAssertTrue(composition.contains("CloudKitMeetingSyncPlatform()"))
+        XCTAssertFalse(composition.contains("CKContainer("))
+
+        for identifier in [
+            "settings-sync-status", "settings-sync-enable", "settings-sync-now",
+            "settings-sync-seed", "settings-sync-retry", "settings-sync-pause",
+            "settings-sync-remove",
+        ] {
+            XCTAssertTrue(settings.contains(identifier))
+        }
+        XCTAssertTrue(settings.contains("Audio, local file paths, voiceprints"))
+
+        for capability in [
+            "com.apple.developer.icloud-container-identifiers",
+            "iCloud.app.portavoz.mac",
+            "com.apple.developer.icloud-services",
+            "CloudKit",
+            "com.apple.developer.icloud-container-environment",
+            "com.apple.developer.aps-environment",
+        ] {
+            XCTAssertTrue(entitlements.contains(capability))
+            if capability.hasPrefix("com.apple.developer") {
+                XCTAssertFalse(localEntitlements.contains(capability))
+            }
+        }
+        XCTAssertTrue(builder.contains("PORTAVOZ_PROVISIONING_PROFILE"))
+        XCTAssertTrue(builder.contains("packaging/portavoz-local.entitlements"))
+        XCTAssertTrue(verifier.contains("embedded.provisionprofile"))
+        XCTAssertTrue(verifier.contains("security cms -D"))
+        XCTAssertTrue(verifier.contains("profile.get(\"ExpirationDate\")"))
+        XCTAssertTrue(verifier.contains("actual.get(key) != value"))
+        XCTAssertTrue(release.contains("PORTAVOZ_SIGN_IDENTITY:?"))
+        XCTAssertTrue(release.contains("PORTAVOZ_NOTARY_PROFILE:?"))
+        let preflight = try XCTUnwrap(diskImage.range(
+            of: "scripts/verify-cloudkit-capabilities.sh dist/Portavoz.app"))
+        XCTAssertNotNil(diskImage.range(
+            of: "notarytool submit \"$APP_ARCHIVE\"",
+            range: preflight.upperBound..<diskImage.endIndex))
+        XCTAssertTrue(decisions.contains("## D97"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
@@ -1053,6 +1131,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("codesign --verify --deep --strict"))
         XCTAssertTrue(verifier.contains("stapler validate \"$APP_COPY\""))
         XCTAssertTrue(verifier.contains("spctl -a -vvv -t exec \"$APP_COPY\""))
+        XCTAssertTrue(verifier.contains(
+            "scripts/verify-cloudkit-capabilities.sh \"$APP_COPY\""))
     }
 
     func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {

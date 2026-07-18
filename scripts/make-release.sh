@@ -8,6 +8,7 @@
 # For a real (distributable) release also export:
 #   PORTAVOZ_SIGN_IDENTITY="Developer ID Application: …"
 #   PORTAVOZ_NOTARY_PROFILE=<notarytool keychain profile>
+#   PORTAVOZ_PROVISIONING_PROFILE=<Developer ID .provisionprofile with CloudKit + APNs>
 #
 # Publishing checklist afterwards:
 #   1. git tag v<version> && push (repo + tag)
@@ -20,7 +21,16 @@ VERSION="${1:?usage: scripts/make-release.sh <version>}"
 BUILD="${PORTAVOZ_BUILD:-$(date +%Y%m%d%H%M)}"
 GENERATE_APPCAST="${GENERATE_APPCAST:-$HOME/.local/bin/generate_appcast}"
 
-scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
+: "${PORTAVOZ_PROVISIONING_PROFILE:?A release requires the Developer ID CloudKit provisioning profile}"
+: "${PORTAVOZ_SIGN_IDENTITY:?A release requires a Developer ID Application identity}"
+: "${PORTAVOZ_NOTARY_PROFILE:?A release requires a notarytool keychain profile}"
+if [[ "$PORTAVOZ_SIGN_IDENTITY" == "-" ]]; then
+  echo "A release cannot use an ad-hoc signing identity." >&2
+  exit 64
+fi
+
+PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
+  scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
 scripts/make-dmg.sh --skip-build
 
 RELEASE_DIR=dist/release

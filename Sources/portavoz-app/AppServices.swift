@@ -39,6 +39,10 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// Process-scoped opt-in CloudKit policy and wakeup owner. The XCUITest
+    /// composition is an explicit in-memory fake and production construction
+    /// remains CKContainer-free until prior consent or Enable.
+    let meetingSync: MeetingSyncModel
     var dataEgressGateway: URLSessionDataEgressGateway {
         URLSessionDataEgressGateway(receiptRecorder: store)
     }
@@ -127,6 +131,9 @@ final class AppServices {
             // worse than failing loudly at launch.
             fatalError("cannot open the Portavoz database: \(error)")
         }
+        meetingSync = Self.makeMeetingSyncModel(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore)
         spotlightIndexer = SpotlightIndexer(
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)

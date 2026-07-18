@@ -6300,6 +6300,426 @@
           }
         }
       }
+    },
+    "Sync": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronización"
+          }
+        }
+      }
+    },
+    "iCloud · status · existing library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud · estado · biblioteca existente"
+          }
+        }
+      }
+    },
+    "icloud cloud sync status existing library encrypted devices pause remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "icloud nube sincronización estado biblioteca existente cifrado dispositivos pausar quitar"
+          }
+        }
+      }
+    },
+    "iCloud sync": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronización con iCloud"
+          }
+        }
+      }
+    },
+    "Encrypted meeting text and portable metadata sync through your private iCloud database. Audio, local file paths, voiceprints, secrets, and embeddings never sync.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto cifrado de las reuniones y los metadatos portátiles se sincronizan mediante tu base de datos privada de iCloud. El audio, las rutas de archivos locales, las huellas de voz, los secretos y los embeddings nunca se sincronizan."
+          }
+        }
+      }
+    },
+    "Controls": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controles"
+          }
+        }
+      }
+    },
+    "Include existing library…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir biblioteca existente…"
+          }
+        }
+      }
+    },
+    "This Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este Mac"
+          }
+        }
+      }
+    },
+    "Remove this Mac from sync…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar este Mac de la sincronización…"
+          }
+        }
+      }
+    },
+    "This clears only this Mac's protected sync queue and consent. Local meetings stay here, and encrypted records already in iCloud are not deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto borra solo la cola protegida de sincronización y el consentimiento de este Mac. Las reuniones locales permanecen aquí y los registros cifrados que ya están en iCloud no se eliminan."
+          }
+        }
+      }
+    },
+    "Include existing library?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Incluir la biblioteca existente?"
+          }
+        }
+      }
+    },
+    "Include existing library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir biblioteca existente"
+          }
+        }
+      }
+    },
+    "Future changes already sync. This one-time action also encrypts and queues meetings that existed before sync was enabled; audio is never included.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los cambios futuros ya se sincronizan. Esta acción única también cifra y pone en cola las reuniones que existían antes de activar la sincronización; el audio nunca se incluye."
+          }
+        }
+      }
+    },
+    "Remove this Mac from sync?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar este Mac de la sincronización?"
+          }
+        }
+      }
+    },
+    "Remove this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar este Mac"
+          }
+        }
+      }
+    },
+    "Your local meetings and recordings will stay on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus reuniones y grabaciones locales permanecerán en este Mac."
+          }
+        }
+      }
+    },
+    "Local only": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo local"
+          }
+        }
+      }
+    },
+    "Syncing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizando"
+          }
+        }
+      }
+    },
+    "Up to date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al día"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pausa"
+          }
+        }
+      }
+    },
+    "Waiting to retry": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando para reintentar"
+          }
+        }
+      }
+    },
+    "Needs attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere atención"
+          }
+        }
+      }
+    },
+    "Off. Portavoz has not contacted iCloud for meeting sync.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactivada. Portavoz no ha contactado iCloud para sincronizar reuniones."
+          }
+        }
+      }
+    },
+    "Connected to your private iCloud database.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectado a tu base de datos privada de iCloud."
+          }
+        }
+      }
+    },
+    "Sign in to iCloud on this Mac to continue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión en iCloud en este Mac para continuar."
+          }
+        }
+      }
+    },
+    "iCloud access is restricted on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso a iCloud está restringido en este Mac."
+          }
+        }
+      }
+    },
+    "iCloud is temporarily unavailable. Portavoz will retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud no está disponible temporalmente. Portavoz volverá a intentarlo."
+          }
+        }
+      }
+    },
+    "Waiting for iCloud account status.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando el estado de la cuenta de iCloud."
+          }
+        }
+      }
+    },
+    "This build is not provisioned for iCloud sync. Install a signed Portavoz release with CloudKit enabled.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta compilación no está aprovisionada para sincronizar con iCloud. Instala una versión firmada de Portavoz con CloudKit activado."
+          }
+        }
+      }
+    },
+    "Portavoz could not check the iCloud account. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo comprobar la cuenta de iCloud. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The current iCloud account could not be identified.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo identificar la cuenta de iCloud actual."
+          }
+        }
+      }
+    },
+    "Portavoz could not prepare the private iCloud transport.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo preparar el transporte privado de iCloud."
+          }
+        }
+      }
+    },
+    "The last sync did not finish. Your local data is safe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La última sincronización no terminó. Tus datos locales están seguros."
+          }
+        }
+      }
+    },
+    "The local change journal could not be read.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer el registro local de cambios."
+          }
+        }
+      }
+    },
+    "Protected sync state is damaged. Remove this Mac from sync to reset only that state.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El estado protegido de sincronización está dañado. Quita este Mac de la sincronización para restablecer solo ese estado."
+          }
+        }
+      }
+    },
+    "%d local · %d queued · %d retrying · %d failed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d locales · %d en cola · %d reintentando · %d fallidos"
+          }
+        }
+      }
+    },
+    "Enable iCloud sync": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar sincronización con iCloud"
+          }
+        }
+      }
+    },
+    "Sync now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizar ahora"
+          }
+        }
+      }
+    },
+    "Retry now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar ahora"
+          }
+        }
+      }
+    },
+    "Pause on this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar en este Mac"
+          }
+        }
+      }
+    },
+    "Private iCloud sync": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronización privada con iCloud"
+          }
+        }
+      }
+    },
+    "Meeting text syncs privately. Audio and device-only data stay here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto de las reuniones se sincroniza de forma privada. El audio y los datos exclusivos del dispositivo permanecen aquí."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

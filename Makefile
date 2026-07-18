@@ -81,7 +81,7 @@ install:
 	# Editing Info.plist invalidates the signature; re-sign or TCC grants
 	# (mic, screen recording) will not stick to the dev app.
 	codesign --force --options runtime --timestamp --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
-		--entitlements packaging/portavoz.entitlements dist/Portavoz.app
+		--entitlements "$$(cat dist/.portavoz-sign-entitlements)" dist/Portavoz.app
 	# Verify before copying. Besides failing closed on a bad nested signature,
 	# this provides a read-after-write barrier for the freshly signed bundle.
 	codesign --verify --deep --strict --verbose=2 dist/Portavoz.app

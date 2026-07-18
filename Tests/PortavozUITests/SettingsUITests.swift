@@ -16,6 +16,7 @@ final class SettingsUITests: XCTestCase {
             intelligence.waitForExistence(timeout: 10),
             "the Settings category sidebar must render (2a)")
         XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
+        XCTAssertTrue(app.control(withIdentifier: "settings-category-sync").exists)
 
         // …and picking Intelligence reveals the summary-engine picker, which
         // now lives in that pane rather than one long scroll (M12).
@@ -42,6 +43,49 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.buttons["settings-export-all-button"].waitForExistence(timeout: 5),
             "the Your-data pane must show the export-all action")
+    }
+
+    @MainActor
+    func testSyncPaneKeepsOptInAndExistingLibrarySeparate() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let sync = app.control(withIdentifier: "settings-category-sync")
+        XCTAssertTrue(
+            sync.waitForExistence(timeout: 10),
+            "Settings must expose a dedicated iCloud sync pane")
+        sync.click()
+
+        XCTAssertTrue(
+            app.staticTexts["settings-sync-status"].waitForExistence(timeout: 5),
+            "the sync pane must show truthful local-only status before opt-in")
+        let enable = app.buttons["settings-sync-enable"]
+        XCTAssertTrue(
+            enable.waitForExistence(timeout: 5),
+            "a local-only library must require an explicit Enable action")
+        XCTAssertFalse(app.buttons["settings-sync-seed"].exists)
+
+        enable.click()
+
+        XCTAssertTrue(
+            app.buttons["settings-sync-now"].waitForExistence(timeout: 5),
+            "enablement must reveal a manual sync action")
+        XCTAssertTrue(
+            app.buttons["settings-sync-seed"].waitForExistence(timeout: 5),
+            "existing meetings must remain a separate explicit action")
+        XCTAssertTrue(app.buttons["settings-sync-pause"].exists)
+        XCTAssertTrue(app.buttons["settings-sync-remove"].exists)
+        let privacySeal = app.buttons["settings-privacy-seal"]
+        XCTAssertTrue(privacySeal.waitForExistence(timeout: 5))
+        let reflectsCloudSync = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "iCloud"),
+            object: privacySeal)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [reflectsCloudSync], timeout: 5),
+            .completed,
+            "the standing privacy seal must stop claiming that everything is local")
+        attachScreenshot(of: app, named: "band-6c-cloud-sync")
     }
 
     @MainActor

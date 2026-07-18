@@ -67,6 +67,9 @@ mkdir -p "$STAGE"
 trap 'rm -rf "$WORK"' EXIT
 
 if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" ]]; then
+  # Fail before spending a notarization round trip when the extracted app
+  # would be unable to launch or reach its production CloudKit container.
+  scripts/verify-cloudkit-capabilities.sh dist/Portavoz.app
   APP_ARCHIVE="$WORK/Portavoz.zip"
   echo "Notarizing app bundle (profile: $PORTAVOZ_NOTARY_PROFILE)…"
   ditto -c -k --sequesterRsrc --keepParent dist/Portavoz.app "$APP_ARCHIVE"

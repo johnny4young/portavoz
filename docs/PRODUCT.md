@@ -146,8 +146,9 @@ The moments that make people say "no one else does this" — each maps to a mile
 ## Security (commitments)
 
 Keychain for secrets; `NSFileProtectionComplete` (iOS) / optional SQLCipher
-(macOS); on-device-only, deletable voiceprints; planned CloudKit
-`encryptedValues` (+ADP); sha256-pinned models; Hardened Runtime,
+(macOS); on-device-only, deletable voiceprints; implemented opt-in private
+CloudKit meeting-text transport on macOS using `encryptedValues` (+ADP), pending
+production two-Mac field proof; sha256-pinned models; Hardened Runtime,
 notarization, signed releases, and SECURITY.md; local MCP over process stdio
 with no network listener; content-free egress receipts persisted before a
 redirect-blocked transport; opt-in telemetry; recording disclosure with jurisdiction

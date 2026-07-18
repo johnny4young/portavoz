@@ -54,10 +54,39 @@ BIN="$BIN_DIR/portavoz-app"
 # Ad-hoc by default; export PORTAVOZ_SIGN_IDENTITY="Developer ID Application: …"
 # for a real distribution signature.
 SIGN_ID="${PORTAVOZ_SIGN_IDENTITY:--}"
+PROVISIONING_PROFILE="${PORTAVOZ_PROVISIONING_PROFILE:-}"
+REQUIRE_CLOUDKIT_PROFILE="${PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE:-0}"
+if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" ]]; then
+  REQUIRE_CLOUDKIT_PROFILE=1
+fi
 
 APP=dist/Portavoz.app
 rm -rf "$APP"
+rm -f dist/.portavoz-sign-entitlements
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
+
+# CloudKit and APNs are restricted Developer ID capabilities. A public build
+# must embed the matching profile; ordinary local/dev builds deliberately sign
+# with the unrestricted entitlements and stay local-only.
+SIGN_ENTITLEMENTS=packaging/portavoz-local.entitlements
+if [[ -n "$PROVISIONING_PROFILE" ]]; then
+  if [[ "$SIGN_ID" == "-" ]]; then
+    echo "PORTAVOZ_PROVISIONING_PROFILE requires a real signing identity." >&2
+    exit 64
+  fi
+  if [[ ! -f "$PROVISIONING_PROFILE" ]]; then
+    echo "provisioning profile not found: $PROVISIONING_PROFILE" >&2
+    exit 66
+  fi
+  cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
+  SIGN_ENTITLEMENTS=packaging/portavoz.entitlements
+elif [[ "$REQUIRE_CLOUDKIT_PROFILE" == "1" ]]; then
+  echo "A public CloudKit build requires PORTAVOZ_PROVISIONING_PROFILE." >&2
+  exit 64
+elif [[ "$SIGN_ID" != "-" ]]; then
+  echo "warning: no CloudKit provisioning profile; signing a local-only developer app." >&2
+fi
+printf '%s\n' "$SIGN_ENTITLEMENTS" > dist/.portavoz-sign-entitlements
 
 # Sparkle ships as a dynamic framework; embed it and make sure the
 # binary can find it relative to itself.
@@ -228,7 +257,11 @@ codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" 2>/dev/null || true
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.framework"
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" \
-  --entitlements packaging/portavoz.entitlements "$APP"
+  --entitlements "$SIGN_ENTITLEMENTS" "$APP"
+
+if [[ "$SIGN_ENTITLEMENTS" == "packaging/portavoz.entitlements" ]]; then
+  scripts/verify-cloudkit-capabilities.sh "$APP"
+fi
 
 echo "OK → $APP (signature: $SIGN_ID)"
 echo "Run it with: open $APP"

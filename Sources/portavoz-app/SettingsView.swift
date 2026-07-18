@@ -122,6 +122,8 @@ struct SettingsView: View {
                 case .integrations:
                     byokSection
                     GitHubSection()
+                case .sync:
+                    MeetingSyncSettingsSection()
                 case .data:
                     LedgerSection()
                     SupportDiagnosticsSection()
