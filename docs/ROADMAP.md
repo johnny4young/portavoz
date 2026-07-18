@@ -7,12 +7,14 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue the requested macOS-only architecture
-convergence with Band 6C4: move whole-library Markdown backup behind one
-ApplicationKit workflow and injected format/filesystem adapters, while keeping
-the native Settings folder picker and visible progress. Band 6C3 now gives the
-resident menu bar one storage-independent presentation owner, bounded live
-meeting/action observations, and partial-failure isolation instead of Store or
-EventKit calls from SwiftUI (D98). Band 6D remains the later iOS in-person
+convergence with Band 6C5: give the full Ask and command-palette experience one
+ApplicationKit query/answer workflow plus storage-independent presentation
+models, removing Store, IntegrationsKit, and IntelligenceKit coordination from
+SwiftUI while preserving instant FTS, local RAG, citations, copy, and exact
+seek navigation. Band 6C4 now gives whole-library Markdown backup one
+read-consistent application workflow, injected format/filesystem adapters,
+portable atomic non-replacing publication, typed partial results, and a
+process-scoped owner behind the native Settings folder picker (D99). Band 6D remains the later iOS in-person
 recorder shell described in `docs/IOS.md`; it must reuse the proven text-first
 codec/lifecycle without importing macOS call capture or device-local voice
 identity. Before a public sync release, retain the independent field gate for a
@@ -26,7 +28,19 @@ Bands 6A–6C2 therefore complete the macOS text-first sync vertical; 6C3 starts
 the remaining macOS shell convergence before Band 6D adds a second-device
 product surface. Every prior architecture band and
 all released v0.6.0 behavior remain covered by the current package and bilingual
-UI gates (D33–D98).
+UI gates (D33–D99).
+
+- **Architecture Band 6 slice 6C4 complete — an open-format backup cannot lie
+  or overwrite (Jul 17, 2026)**: `ExportLibraryMarkdownBackup` now owns one
+  newest-first SQLite snapshot, General-summary parity, portable filename
+  allocation, typed partial results, and progress behind storage, document, and
+  filesystem ports. The app publishes each Markdown document through an atomic
+  temporary file plus same-directory non-replacing move; existing names and
+  concurrent collisions advance to a safe suffix. A process-scoped model keeps
+  the operation alive across Settings windows, while SwiftUI retains only the
+  native folder picker and localized state. Eleven direct/package cases plus an
+  architecture ratchet and a bilingual real-app export smoke establish D99.
+  Band 6C5 is next; Band 6D remains deferred while macOS convergence continues.
 
 - **Architecture Band 6 slice 6C3 complete — the menu bar reads current local
   truth (Jul 17, 2026)**: `MenuBarContent` now renders one scene-scoped

@@ -1,6 +1,26 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "1 meeting exported.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 reunión exportada."
+          }
+        }
+      }
+    },
+    "%d exported · %d could not be exported.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportadas: %d · No se pudieron exportar: %d."
+          }
+        }
+      }
+    },
     "%@ in meetings with no decision": {
       "localizations": {
         "es": {
@@ -1181,6 +1201,36 @@
         }
       }
     },
+    "Couldn’t export the library. Your meetings were not changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo exportar la biblioteca. Tus reuniones no se modificaron."
+          }
+        }
+      }
+    },
+    "Couldn’t read the library. Your meetings were not changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer la biblioteca. Tus reuniones no se modificaron."
+          }
+        }
+      }
+    },
+    "Couldn’t use that folder. Choose another folder and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo usar esa carpeta. Elige otra carpeta e inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "Covered speech": {
       "localizations": {
         "es": {
@@ -1857,6 +1907,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Exportando… %d"
+          }
+        }
+      }
+    },
+    "Exporting… %d of %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportando… %d de %d"
           }
         }
       }

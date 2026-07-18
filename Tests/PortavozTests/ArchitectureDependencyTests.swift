@@ -542,6 +542,40 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(storage.contains("Table(\"speaker\")"))
     }
 
+    func testWholeLibraryMarkdownBackupUsesOneApplicationWorkflow() throws {
+        let useCase = try Self.contents(
+            of: "Sources/ApplicationKit/ExportLibraryMarkdownBackup.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+LibraryMarkdownBackup.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LibraryMarkdownBackup.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/LibraryMarkdownBackupModel.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/BackupSection.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+
+        XCTAssertTrue(useCase.contains("struct ExportLibraryMarkdownBackup"))
+        XCTAssertTrue(useCase.contains("LibraryMarkdownBackupSourceSnapshot"))
+        XCTAssertTrue(useCase.contains("LibraryMarkdownBackupFailureStage"))
+        XCTAssertTrue(useCase.contains("existingMarkdownFileNames"))
+        XCTAssertTrue(useCase.contains("case .nameCollision: continue"))
+        XCTAssertTrue(storage.contains("database.read"))
+        XCTAssertTrue(storage.contains("for record in records"))
+        XCTAssertTrue(storage.contains("generalSummarySnapshot"))
+        XCTAssertTrue(adapter.contains("MeetingExporter.markdown"))
+        XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
+        XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
+        XCTAssertTrue(model.contains("@Observable"))
+        XCTAssertTrue(services.contains("let libraryMarkdownBackup: LibraryMarkdownBackupModel"))
+        XCTAssertTrue(view.contains("services.libraryMarkdownBackup"))
+        XCTAssertTrue(view.contains("NSOpenPanel"))
+        XCTAssertFalse(view.contains("services.store"))
+        XCTAssertFalse(view.contains("MeetingExporter"))
+        XCTAssertFalse(view.contains("Data(markdown"))
+        XCTAssertFalse(view.contains("import IntegrationsKit"))
+        XCTAssertFalse(view.contains("import StorageKit"))
+    }
+
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {
         let policies = [
             "ChapterExtractor", "PlaybackRanges", "SummarySections", "VoiceHue",

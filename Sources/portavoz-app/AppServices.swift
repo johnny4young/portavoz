@@ -39,6 +39,9 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// Whole-library export state outlives Settings windows so closing a pane
+    /// cannot cancel publication or start a competing backup.
+    let libraryMarkdownBackup: LibraryMarkdownBackupModel
     /// Process-scoped opt-in CloudKit policy and wakeup owner. The XCUITest
     /// composition is an explicit in-memory fake and production construction
     /// remains CKContainer-free until prior consent or Enable.
@@ -134,6 +137,8 @@ final class AppServices {
         meetingSync = Self.makeMeetingSyncModel(
             store: store,
             usesTemporaryStore: usesTemporaryStore)
+        libraryMarkdownBackup = LibraryMarkdownBackupModel(
+            client: AppLibraryMarkdownBackupClient(store: store))
         spotlightIndexer = SpotlightIndexer(
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)

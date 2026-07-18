@@ -1,16 +1,16 @@
 import AppKit
-import IntegrationsKit
-import PortavozCore
+import ApplicationKit
 import SwiftUI
 
-/// Settings section: export the WHOLE library as Markdown — one readable
-/// file per meeting (summary, action items, transcript), no Portavoz
-/// needed to read them ever again. The living proof of "your history is
-/// never hostage".
+/// Settings keeps only the native destination picker and declarative state.
+/// Snapshot, rendering, naming, partial failure, and publication live behind
+/// the process-scoped application workflow.
 struct BackupSection: View {
     @Environment(AppServices.self) private var services
-    @State private var status: String?
-    @State private var running = false
+
+    private var model: LibraryMarkdownBackupModel {
+        services.libraryMarkdownBackup
+    }
 
     var body: some View {
         Section("Your data") {
@@ -19,10 +19,15 @@ struct BackupSection: View {
             } label: {
                 Label("Export all meetings (Markdown)…", systemImage: "externaldrive")
             }
-            .disabled(running)
+            .disabled(model.isRunning)
             .accessibilityIdentifier("settings-export-all-button")
-            if let status {
-                Text(status).font(.caption).foregroundStyle(.secondary)
+
+            progressView
+            if let statusText {
+                Text(statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings-backup-status")
             }
             Text(
                 // One-line UI help text.
@@ -34,58 +39,72 @@ struct BackupSection: View {
         }
     }
 
+    @ViewBuilder
+    private var progressView: some View {
+        if case .running(let event) = model.phase {
+            switch event {
+            case .preparing:
+                ProgressView("Exporting…")
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-backup-progress")
+            case .exporting(let progress):
+                ProgressView(
+                    value: Double(progress.completedMeetings),
+                    total: Double(max(1, progress.totalMeetings))
+                ) {
+                    Text(L10n.format(
+                        "Exporting… %d of %d",
+                        progress.completedMeetings,
+                        progress.totalMeetings))
+                }
+                .controlSize(.small)
+                .accessibilityIdentifier("settings-backup-progress")
+            }
+        }
+    }
+
+    private var statusText: String? {
+        switch model.phase {
+        case .idle, .running:
+            nil
+        case .completed(let result)
+            where result.failures.isEmpty && result.exportedCount == 1:
+            L10n.text("1 meeting exported.")
+        case .completed(let result) where result.failures.isEmpty:
+            L10n.format("%d meetings exported.", result.exportedCount)
+        case .completed(let result):
+            L10n.format(
+                "%d exported · %d could not be exported.",
+                result.exportedCount,
+                result.failures.count)
+        case .failed(.libraryUnavailable):
+            L10n.text("Couldn’t read the library. Your meetings were not changed.")
+        case .failed(.destinationUnavailable):
+            L10n.text("Couldn’t use that folder. Choose another folder and try again.")
+        case .failed(.unexpected):
+            L10n.text("Couldn’t export the library. Your meetings were not changed.")
+        }
+    }
+
     private func chooseFolderAndExport() {
+        guard !model.isRunning, let folder = chooseDestination() else { return }
+        Task { await model.export(to: folder) }
+    }
+
+    @MainActor
+    private func chooseDestination() -> URL? {
+        let process = ProcessInfo.processInfo
+        if process.arguments.contains("-use-temp-store"),
+           let path = process.environment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] {
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = L10n.text("Export here")
-        guard panel.runModal() == .OK, let folder = panel.url else { return }
-        running = true
-        status = L10n.text("Exporting…")
-        Task {
-            let count = await exportAll(to: folder)
-            running = false
-            status = L10n.format("%d meetings exported.", count)
-        }
-    }
-
-    /// One `.md` per meeting; duplicate titles get " 2", " 3"… suffixes so
-    /// nothing is ever overwritten.
-    private func exportAll(to folder: URL) async -> Int {
-        let meetings = (try? await services.store.meetings()) ?? []
-        var used: Set<String> = []
-        var exported = 0
-        for meeting in meetings {
-            guard let detail = try? await services.store.detail(meeting.id) else { continue }
-            let summary = try? await services.store.summary(meeting.id)
-            let markdown = MeetingExporter.markdown(
-                meeting: detail.meeting,
-                speakers: detail.speakers,
-                segments: detail.segments,
-                summary: summary?.draft,
-                summaryVersion: summary?.version)
-            var name = sanitized(meeting.title)
-            var attempt = 2
-            while used.contains(name.lowercased()) {
-                name = "\(sanitized(meeting.title)) \(attempt)"
-                attempt += 1
-            }
-            used.insert(name.lowercased())
-            let url = folder.appendingPathComponent("\(name).md")
-            if (try? Data(markdown.utf8).write(to: url)) != nil {
-                exported += 1
-                status = L10n.format("Exporting… %d", exported)
-            }
-        }
-        return exported
-    }
-
-    private func sanitized(_ title: String) -> String {
-        let bad = CharacterSet(charactersIn: "/:\\?%*|\"<>")
-        let cleaned = title.components(separatedBy: bad).joined(separator: "-")
-            .trimmingCharacters(in: .whitespaces)
-        return cleaned.isEmpty ? "meeting" : String(cleaned.prefix(120))
+        return panel.runModal() == .OK ? panel.url : nil
     }
 }

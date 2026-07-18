@@ -118,6 +118,50 @@ final class SettingsUITests: XCTestCase {
     }
 
     @MainActor
+    func testDataPaneExportsAReadableWholeLibraryMarkdownBackup() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-backup-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let dataCategory = app.control(withIdentifier: "settings-category-data")
+        XCTAssertTrue(dataCategory.waitForExistence(timeout: 10))
+        dataCategory.click()
+
+        let export = app.buttons["settings-export-all-button"]
+        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        export.click()
+        let status = app.staticTexts["settings-backup-status"]
+        XCTAssertTrue(
+            status.waitForExistence(timeout: 15),
+            "the backup must finish with a visible result")
+        let expectedStatus = Locale.current.identifier.hasPrefix("es")
+            ? "1 reunión exportada."
+            : "1 meeting exported."
+        XCTAssertTrue(
+            app.staticTexts[expectedStatus].exists,
+            "the completion copy must use the locale-correct singular form")
+
+        let markdownFiles = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension.lowercased() == "md" }
+        XCTAssertFalse(markdownFiles.isEmpty)
+        let exportedText = try markdownFiles.map {
+            try String(contentsOf: $0, encoding: .utf8)
+        }.joined(separator: "\n")
+        XCTAssertTrue(exportedText.contains("# Test meeting"))
+        XCTAssertTrue(exportedText.contains("Revisemos el presupuesto de transcripción."))
+        attachScreenshot(of: app, named: "band-6c4-markdown-backup")
+    }
+
+    @MainActor
     func testIntelligencePaneCreatesACustomStructure() {
         // The Intelligence pane lets you author your own summary structures;
         // "Add structure" opens the editor sheet with a name field.

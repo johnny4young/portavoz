@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **🗄️ Backups that finish safely** — Export your whole library with visible progress and a truthful partial-result count; Portavoz now keeps existing files untouched, isolates an unreadable meeting, and publishes each portable Markdown file atomically.
 - **📌 A menu bar that stays current** — Recent meetings and pending commitments now refresh from live local data when the resident panel opens or your library changes, instead of keeping an old one-shot snapshot.
 - **🧭 Sync commands never get stuck** — If Pause makes an already queued sync unnecessary, Portavoz now skips that stale step and continues with your next explicit sync action in order.
 - **🔗 Source jumps never get lost** — Click a summary, decision, to-do, or Companion source as soon as a meeting opens and Portavoz now remembers the exact audio moment while a long waveform finishes preparing, instead of focusing the words but leaving the playhead behind.

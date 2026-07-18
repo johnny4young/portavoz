@@ -2846,3 +2846,42 @@ query regions avoid transcript/speaker churn, partial-failure isolation keeps
 useful controls available, and keeping EventKit at composition preserves the
 same no-prompt privacy rule while continuing the target's presentation-only
 SwiftUI direction.
+
+## D99 — Make whole-library backup one restart-independent application workflow (Jul 2026)
+
+**Context:** Settings previously loaded the live meeting list, then issued a
+separate detail and summary read for every row, rendered IntegrationsKit
+Markdown, and wrote files directly from a SwiftUI-owned task. Closing Settings
+could discard visible state; every read observed a different database moment;
+existing files on disk were not part of name allocation and could be replaced;
+and swallowed per-meeting failures made a partial backup look complete.
+
+**Decision:** `ApplicationKit.ExportLibraryMarkdownBackup` owns the complete
+workflow behind injected source, Markdown-document, and filesystem ports.
+StorageKit supplies one newest-first SQLite snapshot of all live meetings,
+their cast, ordered transcript, and latest General-recipe summary, preserving
+the released export selection. Strict meeting/cast/transcript corruption is
+isolated as a content-free per-meeting source failure; optional summary decode
+failure degrades to no summary. The workflow allocates portable filenames
+against existing and newly claimed Markdown names using canonical Unicode,
+case, and width collision keys; unsafe/empty/hidden/device names receive a
+readable fallback. It reports typed source/document/publication failures while
+continuing healthy meetings and reserves thrown errors for a library or
+destination that cannot be opened.
+
+The macOS filesystem adapter writes a UUID temporary file atomically in the
+chosen directory, then publishes it with a same-directory non-replacing move;
+a destination collision is returned to the allocator for the next suffix. It
+must not combine Foundation's `.atomic` and `.withoutOverwriting` options,
+which trap rather than throw on the supported Swift/Foundation runtime.
+`AppServices` owns one process-scoped `LibraryMarkdownBackupModel`, so closing
+or reopening Settings cannot cancel publication or create a competing export.
+SwiftUI retains the native `NSOpenPanel`, visible progress, localized terminal
+state, and no Store, StorageKit, or IntegrationsKit reach-through.
+
+**Rationale:** an open-format escape hatch is a product integrity boundary, not
+a convenience loop in presentation. One read moment makes the exported set
+coherent, per-item results preserve useful work without lying, same-directory
+publication prevents partial files from becoming visible, and process ownership
+keeps a long backup independent of a transient Settings window while preserving
+the released General-summary and one-file-per-meeting behavior.
