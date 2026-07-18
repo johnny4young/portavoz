@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle and document import/export, explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, secret/voice/model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle and document import/export, explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, secret/voice/model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -142,6 +142,9 @@ The implemented application workflows include:
 - pre-capture recording reservation and failure reconciliation;
 - audio-first stop, durable processing admission, and terminal recovery state;
 - launch recovery for interrupted capture and expired processing leases;
+- serial post-capture transcription, diarization, and summary execution with
+  owner leases, heartbeats, exact input fingerprints, dependency admission,
+  bounded retries, supersession cancellation, and scheduled wakes;
 - canonical-person lookup and explicit speaker-to-person linking;
 - instant Ask search, hybrid evidence retrieval, and optional local answer
   generation with evidence-preserving degradation;
@@ -187,7 +190,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
-| Post-capture processing | worker supervisor | application process |
+| Post-capture processing | `PostCaptureProcessingSupervisor` | application process |
 | Whisper preparation | shared readiness owner | application process |
 
 Library combines independently observed meeting rows, open commitments, trash,
@@ -225,6 +228,15 @@ retain argument parsing and terminal/protocol formatting. Concrete filesystem,
 model, storage, voice, provider, integration, hashing, and platform behavior is
 confined to `CLIComposition` and `CLIProductAdapters`. Capture diagnostics and
 benchmark harnesses retain isolated direct capability construction.
+
+The post-capture supervisor coalesces producer notifications, starts one
+application workflow drain, and schedules the next persisted wake without
+polling. `ProcessPostCaptureJobs` owns job order, lease maintenance, operation
+identity, transcript cleanup and attribution policy, dependency admission,
+summary provenance, retries, cancellations, lifecycle outcomes, and
+post-meeting action timing. The app adapter owns concrete recording paths,
+filesystem checks, model loading, user preferences, Shortcut invocation, idle
+engine release, deterministic UI fixtures, and content-free signposts.
 
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
@@ -308,10 +320,15 @@ its checksum and level/health evidence, and performs a same-directory
 non-overwriting move to `<channel>.caf`. Stop then installs finalized assets,
 provisional live content, and initial durable work atomically.
 
-At launch, expired leases are recovered before the worker resumes. The private
-macOS filesystem adapter revalidates staged/final files and reconciles them
-with persisted lifecycle state. Usable audio remains playable and exportable
-when derived work fails.
+At launch, expired leases are recovered before the application workflow
+resumes. It claims supported work serially, renews each lease, recomputes the
+input fingerprint before capability work, publishes through owner- and
+revision-fenced StorageKit transactions, and derives the next dependency or
+terminal lifecycle outcome. Failed required work receives bounded persisted
+retry dates; superseded work and exhausted optional summaries are cancelled
+without hiding the captured meeting. The private macOS filesystem adapter
+revalidates staged/final files and reconciles them with persisted lifecycle
+state. Usable audio remains playable and exportable when derived work fails.
 
 ## Audio, transcription, and attribution
 
@@ -339,7 +356,12 @@ Live transcription and batch work use separate scheduler capacity. One model
 role cannot block another. Refine requires Whisper; attribution is degradable.
 Import requests its required transcriber and optional diarizer independently.
 Durable first-pass recovery and dictation request Parakeet without acquiring
-unrelated models.
+unrelated models. `ProcessPostCaptureJobs` keeps automatic recognition
+unhinted, removes nonlexical microphone fragments and periodic mic bleed,
+preserves each segment's detected language, and sets meeting-level language
+only when the attributed transcript is homogeneous. Diarization failure
+degrades to an unattributed system channel; missing finalized audio remains a
+durable failure.
 
 Transcript recognition language and generated-output language are independent.
 Automatic transcript policy leaves mixed-language meetings unhinted so each
@@ -577,9 +599,12 @@ behind aspirational diagrams:
   their measurement construction remains explicit and disposable.
 - IntegrationsKit's CloudKit capability probe imports Security only to inspect
   signed entitlements; it does not own or store secrets.
-- The durable post-capture executor remains app-composed and talks to concrete
-  capability and StorageKit APIs because it executes persisted jobs and commits
-  their typed artifacts.
+- Durable post-capture product policy enters
+  `ApplicationKit.ProcessPostCaptureJobs`. The app composes its StorageKit port
+  and concrete audio/model/preference/automation capabilities, supervises the
+  process lifetime, and maps content-free events to OSLog/signposts; it does
+  not claim jobs or decide retries, fingerprints, dependencies, publication,
+  or terminal outcomes.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -589,8 +614,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 882 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 322 Swift source files;
+- 891 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 325 Swift source files;
 - 37 XCUITest cases pass in English and 37 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

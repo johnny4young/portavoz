@@ -6,21 +6,33 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** continue the requested macOS-only architecture
-convergence after completing the CLI product boundary. File analysis, persisted
-refinement, meeting export/publication, issue publication, local voice
-management, and pinned-model lifecycle now enter narrow ApplicationKit
-workflows; command files retain parsing and terminal output, while executable
-adapters own concrete files, models, storage, providers, integrations, and
-platform access (D103). Audit the process-scoped post-capture executor against
-the same boundary and move its cross-capability durable-workflow policy inward
-without moving concrete engines, filesystem access, Shortcut invocation, or
-live capture out of app composition. The later iOS in-person recorder shell
-remains described in `docs/IOS.md` and is not the current focus. Before a public sync release, retain
-the independent field gate for a real production CloudKit
-container/profile/account and two-Mac convergence. Every completed architecture
-unit and all released v0.6.0 behavior remain covered by the package and
-bilingual UI gates (D33–D103).
+**Next concrete step:** run the repository-wide macOS conformance audit after
+closing the durable post-capture application boundary. Product commands and
+the restart-safe transcription/diarization/summary state machine now enter
+narrow ApplicationKit workflows; executable code retains presentation,
+process supervision, concrete files, models, storage adapters, preferences,
+Shortcuts, integrations, telemetry, and platform composition (D103–D104).
+Remove only proven policy bypasses; direct capability construction remains
+valid in composition, live capture, diagnostics, and benchmark harnesses. The
+later iOS in-person recorder shell remains described in `docs/IOS.md` and is
+not the current focus. Before a public sync release, retain the independent
+field gate for a real production CloudKit container/profile/account and
+two-Mac convergence. Every completed architecture unit and all released v0.6.0
+behavior remain covered by package and bilingual UI gates (D33–D104).
+
+- **Durable post-capture execution has one application owner (Jul 18, 2026):**
+  `ProcessPostCaptureJobs` now owns serial claim/heartbeat execution, exact
+  operation fingerprints, transcript cleanup and attribution, dependent-job
+  admission, summary provenance, retries, cancellations, terminal actions,
+  engine-release timing, and scheduled wakes through narrow ports. StorageKit
+  retains owner/revision-fenced atomic artifact publication. The macOS app
+  retains only one process supervisor plus concrete recording-path, model,
+  preference, Shortcut, fixture, and content-free telemetry adapters. Focused
+  workflow and architecture tests cover mixed-language recovery, chained
+  diarization/summary publication, lease loss, supersession, provider retry,
+  optional-summary degradation, diagnostic issues, and no-poll scheduling
+  (D104). The verified baseline is 891 package tests with 13 gated and strict
+  lint is clean across 325 Swift source files.
 
 - **Architecture Band 6 slice 6C7 complete — terminal product workflows have
   one application boundary (Jul 18, 2026)**: transcription, diarization with

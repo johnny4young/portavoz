@@ -235,5 +235,6 @@ final class LibraryUITests: XCTestCase {
             app.staticTexts["Durable processing finished."]
                 .waitForExistence(timeout: 15),
             "the resumed worker must publish its dependent summary and refresh the detail")
+        attachScreenshot(of: app, named: "durable-post-capture-recovery")
     }
 }

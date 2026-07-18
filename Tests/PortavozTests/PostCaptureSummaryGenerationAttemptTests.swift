@@ -1,4 +1,5 @@
 import Foundation
+import ApplicationKit
 import IntelligenceKit
 import PortavozCore
 import XCTest
@@ -28,7 +29,9 @@ final class PostCaptureSummaryGenerationAttemptTests: XCTestCase {
         XCTAssertEqual(run.outcome, .succeeded)
         XCTAssertEqual(
             run.configJSON,
-            #"{"attempt":2,"jobID":"31313131-3131-3131-3131-313131313131","operation":"generate","recipeID":"general","sourceTranscriptRevision":7,"workflow":"post-capture"}"#)
+            #"{"attempt":2,"jobID":"31313131-3131-3131-3131-313131313131","#
+                + #""operation":"generate","recipeID":"general","#
+                + #""sourceTranscriptRevision":7,"workflow":"post-capture"}"#)
         XCTAssertEqual(
             run.metricsJSON,
             #"{"actionItemCount":1,"outputUTF8Bytes":16}"#)
@@ -88,7 +91,7 @@ private struct Fixture {
             inputFingerprint: "summary-operation-fingerprint",
             state: .running,
             attempt: 2)
-        let selection = SummaryProviderSelection(
+        let selection = PostCaptureSummaryProviderSelection(
             provider: ProviderStub(),
             providerID: "durable-provider",
             modelID: "durable-model",

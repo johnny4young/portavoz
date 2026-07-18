@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -131,17 +131,21 @@ system-audio health/hash/duration evidence, and enrolled voiceprint. Pending or
 incomplete runnable audio evidence cannot produce a job identity; no system
 asset and terminal missing/corrupt evidence are explicit stable states.
 
-After launch recovery, the process worker claims a matching diarization job,
-keeps its lease alive, and checks the identity again. It runs only finalized
-system audio longer than one second. Silent or absent remote audio produces no
-turns. Model load/inference failure retains the released best-effort behavior
-and publishes honest unattributed system segments; a finalized audio path that
-has disappeared is a durable retryable failure. `SpeakerAttributor` output,
+After launch recovery, `ApplicationKit.ProcessPostCaptureJobs` claims a matching
+diarization job, keeps its lease alive, and checks the identity again. It asks
+the app capability adapter to process only finalized system audio longer than
+one second. Silent or absent remote audio produces no turns. Model
+load/inference failure retains the released best-effort behavior and publishes
+honest unattributed system segments; a finalized audio path that has
+disappeared is a durable retryable failure. `SpeakerAttributor` output,
 homogeneous language, transcript revision increment, job success, and the exact
-dependent summary enqueue share one StorageKit transaction. For normal capture,
+dependent summary enqueue share one StorageKit transaction. The application
+workflow owns lease, dependency, retry, cancellation, and completion policy;
+the adapter owns recording-path resolution, the encrypted voiceprint read,
+pyannote loading, and inference. For normal capture,
 `ApplicationKit.StopRecordingJobFactory` produces the first exact job and
 `StopRecording` admits it atomically with captured content, using the same
-recording-scoped voiceprint future that seeded live diarization (D48/D49).
+recording-scoped voiceprint future that seeded live diarization (D48/D49/D104).
 
 ## Known limits
 

@@ -3048,3 +3048,40 @@ presentation adapters; concrete Apple/model/storage integrations stay visible
 at composition; and focused workflow tests can characterize every branch
 without downloading a model, reading a real biometric secret, or publishing
 outside the device.
+
+## D104 — Keep durable post-capture policy in one application workflow (Jul 2026)
+
+**Context:** the persisted processing queue and atomic artifact transactions
+already protected restart recovery, but the macOS coordinator still decided
+which transcription, diarization, and summary job to claim; how to maintain its
+lease; how to fingerprint and chain inputs; when to retry or cancel; and when
+to run the post-meeting action. Those are product and lifecycle rules rather
+than process supervision or model-adapter concerns. Keeping them beside
+filesystem, UserDefaults, model construction, Shortcut, and signpost code made
+the durable path difficult to reuse or test without the app executable.
+
+**Decision:** `ApplicationKit.ProcessPostCaptureJobs` is the single owner of
+serial supported-job execution, owner lease and heartbeat policy, exact
+transcription/diarization/summary fingerprints, transcript cleanup and
+attribution, dependent-job admission, summary attempt provenance, bounded
+retry dates, supersession and optional-summary cancellation, terminal action
+timing, engine-release timing, and the next persisted wake. It depends on
+narrow storage and capability ports. `MeetingStore` adapts the storage port and
+retains the atomic owner/revision-fenced artifact transactions.
+
+The macOS executable retains one process-scoped supervisor that coalesces
+kicks and schedules the returned wake without polling. Its concrete adapter
+resolves recording files, prepares Parakeet/pyannote/provider implementations,
+reads language and vocabulary preferences, invokes the user's Shortcut,
+releases engines, admits safe temporary-store fixtures, and maps only
+content-free workflow events to OSLog/signposts. Live capture and immediate
+captioning remain separate from this batch workflow. Mixed-language speech is
+preserved per segment; meeting-level language is stored only for a homogeneous
+attributed transcript.
+
+**Rationale:** the application layer now owns one deterministic durable state
+machine while StorageKit remains the transaction authority and the app remains
+the Apple/model composition boundary. Lease loss, superseded input, provider
+unavailability, and optional-summary exhaustion can be characterized without
+real media or models, and the released audio-first, degradable-attribution,
+mixed-language, provenance, Shortcut, and no-poll behavior remains unchanged.

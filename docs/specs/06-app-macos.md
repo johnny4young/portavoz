@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy).
 
 ## Structure
 
@@ -535,17 +535,24 @@ adapter scans configured and fallback roots and revalidates staging-only or
 final-only CAF evidence off the main actor. Missing files are explicit;
 staging plus final or duplicate-root evidence is preserved as
 `capture.recovery.ambiguous` without overwrite or deletion. The coordinator
-maps typed issues to OSLog and one broad invalidation. Only after the awaited
-pass does the process supervisor resume owner-leased diarization/summary work
-with durable retries and one scheduled wake instead of polling. Optional
-initial summary-provider discovery runs only after recovery and durable
-worker resume, so a local Ollama probe cannot delay finalized-audio or
-transcript recovery. The user's post-meeting Shortcut runs after terminal
+maps typed issues to OSLog and one broad invalidation. Only after the awaited pass does `PostCaptureProcessingSupervisor` invoke
+`ApplicationKit.ProcessPostCaptureJobs`. The workflow serially owns
+transcription, diarization, and summary claims; lease heartbeats; exact input
+fingerprints; cleanup, attribution, and dependency admission; provenance;
+retry/cancellation outcomes; terminal action and engine-release timing; and
+the next scheduled wake. `AppPostCaptureProcessingCapabilities` retains
+recording-path resolution, filesystem checks, concrete Parakeet/pyannote and
+summary-provider construction, language/vocabulary preferences, Shortcut
+invocation, and idle engine release. The supervisor only coalesces kicks,
+schedules the returned wake without polling, and maps content-free events to
+telemetry. Optional initial summary-provider discovery runs only after recovery
+and durable workflow resume, so a local Ollama probe cannot delay finalized
+audio or transcript recovery. The user's post-meeting Shortcut runs after terminal
 derived work, including
 transcript-only completion when summary is unavailable; temp-store launches
 suppress real host Shortcuts (D50).
 
-Each actual durable summary model attempt begins only after the worker has
+Each actual durable summary model attempt begins only after the workflow has
 validated its meeting, request, provider, and recomputed operation fingerprint.
 Immediately before the provider call it snapshots content-free provider/model,
 job ID/attempt, recipe, output-language, and transcript-revision metadata. Its

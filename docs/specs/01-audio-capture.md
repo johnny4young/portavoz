@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution).
 
 ## Channel model (D5)
 
@@ -137,9 +137,13 @@ language without translating per-turn text, and installs assets, transcript,
 notes, retained Companion cards and their question/answer evidence, their successful generation-run links,
 completed failed/cancelled Companion attempts, and the exact first diarization
 job in one StorageKit transaction. Unlinked legacy/bundle-style cards remain
-valid. It then kicks the process worker and schedules engine release;
-the controller navigates immediately from the typed success. Relaunch resumes
-the same owner-leased work after capture recovery. Job-admission failure cannot
+valid. It then kicks the process supervisor; the controller navigates
+immediately from the typed success. Relaunch resumes the same owner-leased work
+after capture recovery through `ApplicationKit.ProcessPostCaptureJobs`. That
+workflow owns lease heartbeats, exact fingerprints, dependent-job admission,
+retry/cancellation policy, terminal action timing, and engine-release timing;
+the app retains concrete files, models, preferences, Shortcut, and process
+supervision. Job-admission failure cannot
 expose a half-installed captured snapshot, and the use case attempts an
 explicit `needsAttention` snapshot fallback without deleting audio. Empty
 publication evidence preserves staging/final recovery files or discards only

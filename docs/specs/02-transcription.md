@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution).
 
 ## Roles and engines (D7)
 
@@ -52,15 +52,19 @@ mode, no vocabulary, and the current finalized channel IDs, health, checksums,
 durations, and byte counts. Pending evidence, missing-only evidence, and purely
 silent audio cannot produce runnable work.
 
-The process worker revalidates that fingerprint, joins only verified Parakeet loading,
-and transcribes healthy/clipped system and microphone files through the serial
-batch scheduler while preserving their real `AudioChannel`. Automatic mode
+`ApplicationKit.ProcessPostCaptureJobs` revalidates that fingerprint and asks
+the app capability adapter to join only verified Parakeet loading and transcribe
+healthy/clipped system and microphone files through the serial batch scheduler
+while preserving their real `AudioChannel`. Automatic mode
 uses no fixed language and no vocabulary so a mixed Spanish/English meeting is
 not biased or translated. Mic fragments pass `TranscriptNoiseFilter` and
 `MicBleedFilter`; StorageKit then atomically publishes the complete attributed
 cast/transcript, advances `transcriptRevision`, completes the owned lease, and
-enqueues exact diarization. Whisper Refine remains the explicit reviewable
-quality pass and is not replaced by this safety net.
+enqueues exact diarization. The application workflow owns job leases,
+dependency admission, retry/cancellation, and publication order; the adapter
+owns recording paths, filesystem validation, engines, and preferences. Whisper
+Refine remains the explicit reviewable quality pass and is not replaced by this
+safety net.
 
 ## Quality: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
 

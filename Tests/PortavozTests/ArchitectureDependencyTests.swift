@@ -472,7 +472,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let importAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ImportMeeting.swift")
         let recovery = try Self.contents(
-            of: "Sources/portavoz-app/PostCaptureTranscriptionProcessor.swift")
+            of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
 
         let refinePrepareStart = try XCTUnwrap(refine.range(of: "func prepare("))
         let refineTranscribeStart = try XCTUnwrap(refine.range(
@@ -545,6 +545,53 @@ final class ArchitectureDependencyTests: XCTestCase {
             "appServices.configureInitialSummaryEngineIfNeeded"))
         XCTAssertLessThan(recovery.lowerBound, worker.lowerBound)
         XCTAssertLessThan(worker.lowerBound, recommendation.lowerBound)
+    }
+
+    func testAppPostCaptureExecutionEntersThroughApplicationKit() throws {
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessPostCaptureJobs.swift")
+
+        XCTAssertTrue(coordinator.contains("services.processPostCaptureJobs.execute"))
+        XCTAssertTrue(coordinator.contains("processPostCaptureJobs.nextScheduledDate"))
+        for bypass in [
+            "claimNextProcessingJob", "heartbeatProcessingJob",
+            "completeTranscriptionJob", "completeDiarizationJob",
+            "completeSummaryJob", "failProcessingJob",
+            "cancelProcessingJob", "nextScheduledProcessingDate"
+        ] {
+            XCTAssertFalse(
+                coordinator.contains(bypass),
+                "Post-capture product policy bypasses ApplicationKit through \(bypass)")
+        }
+
+        for ownedPolicy in [
+            "claimPostCaptureJob", "heartbeatPostCaptureJob",
+            "processTranscription", "processDiarization", "processSummary",
+            "SummaryOperationFingerprint.compute", "retryDate",
+            "cancelPostCaptureJob", "failPostCaptureJob"
+        ] {
+            XCTAssertTrue(
+                workflow.contains(ownedPolicy),
+                "Application workflow is missing \(ownedPolicy)")
+        }
+        for concreteDependency in [
+            "RecordingsLocation", "FileManager", "UserDefaults",
+            "PostMeetingShortcut", "OSSignposter", "AppServices"
+        ] {
+            XCTAssertFalse(
+                workflow.contains(concreteDependency),
+                "Application workflow contains concrete app dependency \(concreteDependency)")
+        }
+        for adapterDependency in [
+            "RecordingsLocation", "FileManager", "loadTranscriberIfNeeded",
+            "loadDiarizerIfNeeded", "PostMeetingShortcut.runIfConfigured"
+        ] {
+            XCTAssertTrue(adapter.contains(adapterDependency))
+        }
     }
 
     func testAppMeetingBundleImportEntersThroughApplicationKit() throws {
@@ -1509,17 +1556,19 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         let worker = try Self.contents(
             of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
-        guard let intervalStart = worker.range(
-            of: "let interval = signposter.beginInterval"),
-            let heartbeatStart = worker.range(
-                of: "private static func heartbeatTask",
-                range: intervalStart.upperBound..<worker.endIndex)
+        guard let telemetryStart = worker.range(
+            of: "private final class PostCaptureProcessingTelemetry"),
+            let compositionStart = worker.range(
+                of: "extension AppServices",
+                range: telemetryStart.upperBound..<worker.endIndex)
         else {
             return XCTFail("Durable-processing signpost boundary is missing")
         }
-        let signpostedExecution = worker[intervalStart.lowerBound..<heartbeatStart.lowerBound]
-        XCTAssertTrue(signpostedExecution.contains("job.kind.rawValue"))
-        XCTAssertTrue(signpostedExecution.contains("job.attempt"))
+        let signpostedExecution = worker[
+            telemetryStart.lowerBound..<compositionStart.lowerBound]
+        XCTAssertTrue(signpostedExecution.contains("kind.rawValue"))
+        XCTAssertTrue(signpostedExecution.contains("attempt"))
+        XCTAssertTrue(signpostedExecution.contains("outcome.rawValue"))
         XCTAssertFalse(signpostedExecution.contains("job.id"))
         XCTAssertFalse(signpostedExecution.contains("job.meetingID"))
         XCTAssertFalse(signpostedExecution.contains("localizedDescription"))

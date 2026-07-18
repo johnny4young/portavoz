@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -162,7 +162,7 @@ result, and provider failures retain their existing silent versus visible
 presentation. Accepted Refine invokes this same regeneration use case after its
 transcript commit, so its follow-up summary is covered.
 
-The durable post-capture executor uses the same envelope with a different
+`ApplicationKit.ProcessPostCaptureJobs` uses the same envelope with a different
 operation identity. It snapshots the selected provider/model, durable job ID
 and attempt, `generate` operation, General recipe, target language, source
 transcript revision, and exact `SummaryOperationFingerprint` immediately before
@@ -177,7 +177,7 @@ lease/source-revision-fenced transaction. A provider or publish failure after
 model start writes a best-effort failed run; task cancellation, lease loss, or
 superseded input writes a cancelled run. Provider unavailability or input
 supersession before the attempt produces no run. Every retry therefore receives
-its real durable attempt number without changing the worker's released retry,
+its real durable attempt number without changing the workflow's released retry,
 optional degradation, provider fallback, immediate-detail, or Shortcut policy.
 
 External-audio import uses the same envelope after a different business fence.
@@ -222,10 +222,11 @@ output language, and source transcript revision, so a durable worker cannot
 publish a summary produced for a stale cast, provider, or language. Ollama's
 identity exactly mirrors the provider's `localhost/<model>` cache identity.
 After successful diarization, D42 atomically enqueues this exact operation. The
-process worker recomputes it before generation and completes through the D41
-summary Unit of Work. Transient provider failure retries durably; exhausted
-summary work cancels without failing the meeting because the released product
-already treats a transcript without a summary as valid.
+`ProcessPostCaptureJobs` workflow recomputes it before generation and completes
+through the D41 summary Unit of Work. Transient provider failure retries
+durably; exhausted summary work cancels without failing the meeting because the
+released product already treats a transcript without a summary as valid
+(D104).
 
 D43 preserves post-meeting Shortcut behavior after Stop becomes asynchronous.
 When no summary provider is available, the Shortcut receives transcript-only
