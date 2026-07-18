@@ -743,44 +743,6 @@ final class BYOKSettingsTests: XCTestCase {
     }
 }
 
-// MARK: - Hardware recommender (M12)
-
-final class HardwareRecommenderTests: XCTestCase {
-    func testAppleIntelligenceWins() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 36, appleIntelligence: true, ollamaAvailable: true, freeDiskGB: 500))
-        XCTAssertEqual(advice.engine, .apple)
-    }
-
-    func testFallsBackToOllamaWithoutAppleIntelligence() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 16, appleIntelligence: false, ollamaAvailable: true, freeDiskGB: 100))
-        XCTAssertEqual(advice.engine, .ollama)
-    }
-
-    func testRecommendsEmbeddedMLXWhenNeitherAvailable() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 8, appleIntelligence: false, ollamaAvailable: false, freeDiskGB: 100))
-        XCTAssertEqual(advice.engine, .mlx)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("3 GB") })
-    }
-
-    func testNoneWhenRAMIsTooSmallForEmbeddedModel() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 4, appleIntelligence: false, ollamaAvailable: false, freeDiskGB: 100))
-        XCTAssertEqual(advice.engine, .none)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("Ollama") })
-    }
-
-    func testLowRamAndLowDiskWarnings() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 8, appleIntelligence: false, ollamaAvailable: true, freeDiskGB: 4))
-        XCTAssertTrue(advice.whisperLowDisk)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("8B") }, "low-RAM Ollama warning")
-        XCTAssertTrue(advice.reasons.contains { $0.contains("626 MB") }, "low-disk Whisper hint")
-    }
-}
-
 // MARK: - Ollama first-class (M12)
 
 final class OllamaServiceTests: XCTestCase {

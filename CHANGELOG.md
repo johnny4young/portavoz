@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 18, 2026
 
+- **🧭 Local intelligence that is actually ready** — Portavoz now recommends Ollama only when a chat-capable model exists, keeps every explicit provider choice intact, and gives RAM/disk guidance in the app's selected language instead of mixing languages.
 - **🪪 Speaker names with honest evidence** — Name suggestions now distinguish a real transcript line from a calendar candidate, reject short-name substring accidents, and keep name or voice chips visible when saving fails instead of looking accepted.
 - **🗣️ Voice enrollment that tells the truth** — Portavoz now rejects unusably short or invalid samples before saving your identity, keeps personalized Companion guidance in your chosen language, and leaves a failed delete visibly enrolled instead of falsely claiming your encrypted voice and key are gone.
 

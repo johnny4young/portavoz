@@ -6,19 +6,33 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** move local-provider discovery behind an application
-boundary. The macOS conformance audit found that provider probing still occurs
-beside presentation. Extract it without changing explicit provider selection,
-capability-compatible clean-install defaults, Sequoia recovery, or local-only
-behavior. Calendar-backed speaker naming and local voice enrollment now enter
-characterized ApplicationKit workflows (D106–D107). Direct
-capability construction remains valid in
-composition, live capture, diagnostics, and benchmark harnesses. The
+**Next concrete step:** run the final macOS conformance audit against the
+implemented package graph and close only evidence-backed boundary violations.
+Local-provider discovery, calendar-backed speaker naming, and local voice
+enrollment now enter characterized ApplicationKit workflows (D106–D108).
+Direct capability construction remains valid in composition, live capture,
+diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D107).
+behavior remain covered by package and bilingual UI gates (D33–D108).
+
+- **Local summary-provider discovery has one application boundary on macOS
+  (Jul 18, 2026):** `DiscoverLocalSummaryProviders` returns one typed profile
+  and recommendation to Settings and Onboarding. The shared policy admits
+  Ollama only when its running service exposes a nonempty model not classified
+  as OCR, embedding, reranking, or Whisper work,
+  otherwise recommends verified Apple Foundation Models or hardware-eligible
+  MLX with typed memory/disk guidance. `ConfigureInitialSummaryProvider`
+  initializes only an absent preference; its main-actor store re-checks at the
+  guarded write and reports whether it won, so an explicit user choice cannot
+  be overwritten by a concurrent clean-start probe. The app adapter retains
+  Foundation Models capability, content-free
+  localhost discovery, RAM/disk facts, DTO mapping, and UserDefaults;
+  presentation localizes typed reasons. Eleven focused cases and one exact
+  architecture ratchet establish D108. The verified package baseline is 923
+  tests with 13 gated and strict lint is clean across 333 Swift source files.
 
 - **Calendar-backed speaker naming has one application boundary on macOS
   (Jul 18, 2026):** `SuggestMeetingSpeakerNames` loads one coherent meeting

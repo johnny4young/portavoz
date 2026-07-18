@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 918 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, explicit Meeting Detail name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 923 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, shared local-provider recommendations, explicit Meeting Detail name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 331 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 333 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -30,7 +30,8 @@ Status: 918 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHu
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, successful/failed/cancelled provenance, exact-cache no-run semantics, validation, transactional rollback, and real MeetingStore summary/run linkage |
-| SummaryCapabilityTests | Deterministic Sequoia capability, clean-install Ollama chat-model selection, OCR-only Ollama fallback to MLX, and exact no-fallthrough behavior for selected but unconfigured Ollama/MLX engines |
+| SummaryCapabilityTests | Deterministic Sequoia capability and exact no-fallthrough behavior for selected but unconfigured Ollama/MLX engines |
+| LocalSummaryProvidersTests | Typed Apple/Ollama/MLX discovery, deterministic Ollama model-name admission, hardware and disk guidance, explicit-preference preservation before and after asynchronous probing, and no write when no compatible provider exists |
 | CompanionGenerationProvenanceTests | Exact ordered private-material fingerprints including question segment identity; external-provider sensitivity; exact local-RAG citation-to-answer-source mapping; role-separated evidence construction; content-free classifier/provider/egress configuration; aggregate-only metrics; remote success, on-device fallback, and cancelled external-provider attribution |
 | DataEgressGatewayTests | Conservative loopback classification; exact remote/local Companion, summary, and explicit-publishing metadata; decoded question-only and full-summary request bodies; operation/classification/destination/provider/model/consent mismatch and non-HTTP rejection; required meeting identity; canonical publishing endpoint policy; content-free receipt-before-transport ordering; fail-closed recorder behavior; retained attempts on transport failure; redirect denial; and real gateway-backed summary response parsing |
 | PrivacyReceiptTests | v6→latest migration and schema constraints; honest complete-versus-since coverage; content-free local/remote attempt and generation aggregation; strict missing/unknown/forged event rejection; and zero partial writes |
@@ -1000,6 +1001,19 @@ and suggestion state in Meeting Detail SwiftUI. The full gate is 918 package
 tests (13 gated) and zero strict-lint violations across 331
 Swift source files; an isolated unnamed-speaker fixture retains the explicit
 action and screenshot in all 39 XCUITest cases per locale (D107).
+
+The local summary-provider boundary adds eleven focused policy/use-case cases
+and one exact architecture ratchet. They prove Apple priority, deterministic
+Ollama model-name admission, blank/OCR/embedding/reranking/Whisper rejection,
+MLX hardware/disk eligibility, typed low-resource guidance, one shared discovery
+result, explicit-preference preservation both before and after asynchronous
+probing, and no write when no compatible provider exists. The source rule
+rejects direct Ollama probing, hardware recommendation, and clean-install
+provider selection in Settings and Onboarding, and requires disposable
+automation to avoid the host Ollama and hardware profile. The full gate is 923
+package tests (13 gated) and zero strict-lint violations across 333 Swift source
+files; the 39 XCUITest cases per locale retain the shared localized intelligence
+recommendation and exact setup actions (D108).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

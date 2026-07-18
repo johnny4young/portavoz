@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery).
 
 ## Structure
 
@@ -73,6 +73,25 @@ twelve-second echo-cancelled path. Onboarding preserves both first-listen sample
 reuse and fresh twelve-second raw capture. These views render progress/results
 without importing AudioCaptureKit or DiarizationKit. Temporary-store launches
 return no enrolled identity and never inspect or mutate host biometric state.
+
+Local summary-provider discovery is composed in
+`AppServices+LocalSummaryProviders` and enters
+`ApplicationKit.DiscoverLocalSummaryProviders`. One typed profile describes
+Apple Foundation Models availability, the running Ollama models, physical
+memory, and available disk. The pure policy admits Ollama only when at least
+one nonempty model name is not classified as OCR, embedding, reranking, or
+Whisper work; models in those categories are not presented as summary-ready.
+`ConfigureInitialSummaryProvider` writes only when the preference is absent.
+Its main-actor UserDefaults adapter re-checks at the guarded write and reports
+whether the write won, preserving an explicit user choice made during startup.
+The app adapter retains Foundation Models checks, content-free localhost
+requests, hardware/disk facts, model DTO mapping, and UserDefaults persistence.
+Settings and Onboarding consume the same typed recommendation and localize its
+headline, reasons, and setup action; neither surface probes providers or owns
+clean-install policy (D108).
+Disposable UI-test composition never probes host Ollama, memory, or disk; it
+uses a bounded profile while preserving the explicitly simulated Apple
+capability, so provider guidance and screenshots are reproducible.
 
 `AppServices` also owns one process-scoped `SpotlightIndexer` actor (D85).
 Launch and every searchable mutation call `requestSpotlightReindex()`; requests

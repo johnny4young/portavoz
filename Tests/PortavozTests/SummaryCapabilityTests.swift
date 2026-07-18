@@ -12,36 +12,6 @@ final class SummaryCapabilityTests: XCTestCase {
             .requiresMacOS26)
     }
 
-    func testInitialPolicyUsesInstalledOllamaChatModel() {
-        let choice = InitialSummaryEnginePolicy.choose(
-            profile: HardwareProfile(
-                memoryGB: 16,
-                appleIntelligence: false,
-                ollamaAvailable: true,
-                freeDiskGB: 100),
-            ollamaModels: ["minicpm-v:ocr", "llama3.2:latest"])
-
-        XCTAssertEqual(
-            choice,
-            InitialSummaryEngineConfiguration(
-                engine: .ollama,
-                ollamaModel: "llama3.2:latest"))
-    }
-
-    func testInitialPolicyFallsBackToMLXWhenOllamaHasNoChatModel() {
-        let choice = InitialSummaryEnginePolicy.choose(
-            profile: HardwareProfile(
-                memoryGB: 16,
-                appleIntelligence: false,
-                ollamaAvailable: true,
-                freeDiskGB: 100),
-            ollamaModels: ["MINICPM-OCR"])
-
-        XCTAssertEqual(
-            choice,
-            InitialSummaryEngineConfiguration(engine: .mlx, ollamaModel: nil))
-    }
-
     func testSelectedOllamaWithoutModelDoesNotFallThroughToApple() {
         let resolver = AppSummaryRegenerationProviderResolver(
             defaultEngine: .ollama,

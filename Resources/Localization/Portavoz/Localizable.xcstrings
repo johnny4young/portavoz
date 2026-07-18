@@ -5781,6 +5781,56 @@
         }
       }
     },
+    "Ollama is running, but it has no chat-capable model.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama está ejecutándose, pero no tiene un modelo compatible con chat."
+          }
+        }
+      }
+    },
+    "Your Mac can run the built-in model after one verified 3 GB download, entirely on-device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu Mac puede ejecutar el modelo integrado después de una descarga verificada de 3 GB, completamente en el dispositivo."
+          }
+        }
+      }
+    },
+    "No compatible local summary provider is ready. Install an Ollama chat model or free enough memory and disk for the built-in model.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un proveedor local de resúmenes compatible listo. Instala un modelo de chat en Ollama o libera suficiente memoria y disco para el modelo integrado."
+          }
+        }
+      }
+    },
+    "With %d GB of RAM, prefer Ollama models up to 8B to keep Portavoz responsive.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con %d GB de RAM, prefiere modelos Ollama de hasta 8B para mantener Portavoz fluido."
+          }
+        }
+      }
+    },
+    "Only %d GB of free disk remains; use Compact Whisper to save about 1 GB.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo quedan %d GB de disco libre; usa Whisper Compact para ahorrar cerca de 1 GB."
+          }
+        }
+      }
+    },
     "Privacy receipt": {
       "localizations": {
         "es": {

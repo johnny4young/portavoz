@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -135,6 +135,8 @@ The implemented application workflows include:
 
 - meeting delete, restore, manual purge, and expiry purge;
 - summary regeneration with explicit provider availability and provenance;
+- local summary-provider discovery, typed recommendation, and first-selection
+  persistence without overwriting an existing choice;
 - external-audio import with required transcription and degradable derivation;
 - relational `.portavoz` bundle import and read-consistent bundle export;
 - read-consistent whole-library Markdown backup with typed partial results;
@@ -682,6 +684,20 @@ behind aspirational diagrams:
 - Settings and Onboarding local-voice enrollment enter ApplicationKit. Their
   SwiftUI views do not construct microphone, model, embedding, or encrypted
   identity capabilities; those remain in app composition adapters.
+- Settings and Onboarding local summary-provider discovery enters
+  ApplicationKit as one coherent typed profile and deterministic
+  recommendation. A running Ollama service is eligible only when it exposes a
+  nonempty model whose normalized name is not classified as OCR, embedding,
+  reranking, or Whisper work. A separate use case persists a clean-install
+  recommendation only while no selection exists; the main-actor adapter
+  rechecks UserDefaults at the guarded write and reports whether that write won.
+  Existing choices remain authoritative. The app adapter retains Foundation
+  Models capability checks, content-free localhost requests,
+  process/filesystem facts, provider DTO mapping, and UserDefaults persistence.
+  SwiftUI localizes typed reasons and renders explicit actions without probing
+  providers or recomputing policy. Discovery downloads nothing and never
+  substitutes the configured engine. Disposable automation substitutes a
+  bounded profile and never probes the host's Ollama models, memory, or disk.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -691,8 +707,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 918 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 331 Swift source files;
+- 923 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 333 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

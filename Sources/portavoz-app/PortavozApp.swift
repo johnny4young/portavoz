@@ -35,7 +35,7 @@ struct PortavozApp: App {
                 services: appServices)
             // Optional local-provider discovery must never delay recovery of
             // finalized audio or resumption of its durable transcript work.
-            await appServices.configureInitialSummaryEngineIfNeeded()
+            await appServices.configureInitialSummaryProviderIfNeeded()
         }
         // Global feature, not a window feature: ⌥⌘D must work even with
         // the library window closed.

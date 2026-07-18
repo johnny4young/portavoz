@@ -596,9 +596,43 @@ final class ArchitectureDependencyTests: XCTestCase {
         let worker = try XCTUnwrap(launch.range(of:
             "PostCaptureProcessingCoordinator.resumeAfterRecovery"))
         let recommendation = try XCTUnwrap(launch.range(of:
-            "appServices.configureInitialSummaryEngineIfNeeded"))
+            "appServices.configureInitialSummaryProviderIfNeeded"))
         XCTAssertLessThan(recovery.lowerBound, worker.lowerBound)
         XCTAssertLessThan(worker.lowerBound, recommendation.lowerBound)
+    }
+
+    func testLocalSummaryProviderDiscoveryEntersThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/LocalSummaryProviders.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LocalSummaryProviders.swift")
+        let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
+        let onboarding = try Self.contents(of: "Sources/portavoz-app/OnboardingView.swift")
+
+        XCTAssertTrue(workflow.contains("struct DiscoverLocalSummaryProviders"))
+        XCTAssertTrue(workflow.contains("struct ConfigureInitialSummaryProvider"))
+        XCTAssertTrue(workflow.contains("enum LocalSummaryProviderPolicy"))
+        XCTAssertTrue(workflow.contains("enum LocalSummaryRecommendationReason"))
+        XCTAssertTrue(workflow.contains("func saveInitialSummaryProviderSelection"))
+        for concrete in [
+            "OllamaService", "UserDefaults", "ProcessInfo", "NSHomeDirectory",
+        ] {
+            XCTAssertFalse(workflow.contains(concrete), concrete)
+            XCTAssertTrue(adapter.contains(concrete), concrete)
+        }
+        XCTAssertFalse(workflow.contains("FoundationModelsCapability"))
+        XCTAssertTrue(adapter.contains("foundationModelsCapability.isAvailable"))
+        XCTAssertTrue(adapter.contains("contains(\"-use-temp-store\")"))
+        XCTAssertTrue(adapter.contains("ollama: .unavailable"))
+        XCTAssertTrue(adapter.contains("@MainActor"))
+        XCTAssertTrue(adapter.contains("struct AppSummaryProviderSelectionStore"))
+        for presentation in [settings, onboarding] {
+            XCTAssertTrue(presentation.contains("discoverLocalSummaryProviders"))
+            XCTAssertFalse(presentation.contains("HardwareRecommender"))
+            XCTAssertFalse(presentation.contains("currentHardwareProfile"))
+            XCTAssertFalse(presentation.contains("InitialSummaryEnginePolicy"))
+            XCTAssertFalse(presentation.contains("OllamaService"))
+        }
     }
 
     func testAppPostCaptureExecutionEntersThroughApplicationKit() throws {

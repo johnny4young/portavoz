@@ -63,14 +63,13 @@ struct SettingsView: View {
     @State var customStructures: [Recipe] = CustomRecipeStore.custom()
     @State var editingStructure: Recipe?
     @State var showingStructureSheet = false
-    @AppStorage("summaryEngine") private var summaryEngine =
-        FoundationModelsCapability.current().defaultSummaryEngine.rawValue
+    @AppStorage("summaryEngine") private var summaryEngine = SummaryEngine.mlx.rawValue
     @AppStorage("ollamaModel") private var ollamaModel = ""
     @AppStorage("whisperCompact") private var whisperCompact = false
-    @State private var ollamaModels: [OllamaService.Model] = []
+    @State private var ollamaModels: [LocalSummaryModel] = []
     @State private var ollamaStatus: String?
     @State private var detectingOllama = false
-    @State private var advice: EngineAdvice?
+    @State private var providerRecommendation: LocalSummaryProviderRecommendation?
     @State private var whisperVariants: [AppServices.WhisperVariant] = []
 
     /// 2a: category navigation instead of one endless scroll. The search
@@ -157,9 +156,11 @@ struct SettingsView: View {
                     suggestedTerms = await services.mineVocabularySuggestions()
                 }
             }
-            if summaryEngine == "ollama" { detectOllama() }
             whisperVariants = services.whisperVariants()
-            Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
+            Task {
+                await refreshLocalSummaryProviders(
+                    showOllamaStatus: summaryEngine == SummaryEngine.ollama.rawValue)
+            }
         }
         .onChange(of: services.whisperDownloadState) { _, state in
             if case .ready = state {
@@ -604,15 +605,19 @@ extension SettingsView {
 
     private var summaryEngineSection: some View {
         Section("Summary engine") {
-            if let advice {
+            if let providerRecommendation {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(L10n.text(advice.headline), systemImage: "wand.and.stars.inverse")
+                    Label(
+                        providerRecommendation.localizedHeadline,
+                        systemImage: "wand.and.stars.inverse")
                         .font(.callout.weight(.medium))
-                    ForEach(advice.reasons, id: \.self) { reason in
-                        Text("• \(L10n.text(reason))").font(.caption).foregroundStyle(.secondary)
+                    ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
+                        Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
                     }
-                    if advice.engine != .none {
-                        Button("Apply recommendation") { applyRecommendation(advice) }
+                    if providerRecommendation.selection != nil {
+                        Button("Apply recommendation") {
+                            applyRecommendation(providerRecommendation)
+                        }
                             .controlSize(.small)
                             .buttonStyle(.borderedProminent)
                             .accessibilityIdentifier("settings-apply-summary-recommendation")
@@ -628,7 +633,9 @@ extension SettingsView {
             .pickerStyle(.radioGroup)
             .accessibilityIdentifier("settings-summary-engine-picker")
             .onChange(of: summaryEngine) { _, engine in
-                if engine == "ollama" { detectOllama() }
+                if engine == SummaryEngine.ollama.rawValue {
+                    Task { await refreshLocalSummaryProviders() }
+                }
             }
             SummaryEngineCapabilityNotice(
                 engine: summaryEngine,
@@ -636,7 +643,7 @@ extension SettingsView {
             if summaryEngine == "ollama" {
                 HStack {
                     Button {
-                        detectOllama()
+                        Task { await refreshLocalSummaryProviders() }
                     } label: {
                         if detectingOllama {
                             ProgressView().controlSize(.small)
@@ -698,47 +705,27 @@ extension SettingsView {
         }
     }
 
-    private func detectOllama(autoSelect: Bool = false) {
+    private func refreshLocalSummaryProviders(
+        showOllamaStatus: Bool = true
+    ) async {
         detectingOllama = true
-        ollamaStatus = nil
-        Task {
-            defer { detectingOllama = false }
-            guard await OllamaService.isRunning() else {
-                ollamaModels = []
-                ollamaStatus =
-                    L10n.text("Ollama is not responding on localhost:11434. Install it and run “ollama serve”.")
-                return
-            }
-            ollamaModels = await OllamaService.models()
-            // When applying the recommendation, pick a sensible default
-            // (skip OCR-only models, which can't chat).
-            if autoSelect, ollamaModel.isEmpty,
-                let first = ollamaModels.first(where: {
-                    InitialSummaryEnginePolicy.isChatModel($0.name)
-                }) {
-                ollamaModel = first.name
-            }
-            ollamaStatus =
-                ollamaModels.isEmpty
-                ? L10n.text("Ollama is running but has no models. Download one with “ollama pull llama3.2”.")
-                : L10n.format("%d model(s) available.", ollamaModels.count)
+        if showOllamaStatus { ollamaStatus = nil }
+        defer { detectingOllama = false }
+        let discovery = await services.discoverLocalSummaryProviders()
+        providerRecommendation = discovery.recommendation
+        ollamaModels = discovery.profile.ollama.models
+        if showOllamaStatus {
+            ollamaStatus = discovery.localizedOllamaStatus
         }
     }
 
-    private func applyRecommendation(_ advice: EngineAdvice) {
-        switch advice.engine {
-        case .mlx:
-            summaryEngine = "mlx"
-        case .apple:
-            summaryEngine = "appleOnDevice"
-        case .ollama:
-            summaryEngine = "ollama"
-            detectOllama(autoSelect: true)
-        case .none:
-            break
+    private func applyRecommendation(_ recommendation: LocalSummaryProviderRecommendation) {
+        guard let selection = recommendation.selection else { return }
+        summaryEngine = selection.engine.rawValue
+        if let model = selection.ollamaModel {
+            ollamaModel = model
         }
-        // Low disk → the compact Whisper for the refine, too.
-        if advice.whisperLowDisk { whisperCompact = true }
+        if recommendation.preferCompactWhisper { whisperCompact = true }
     }
 }
 

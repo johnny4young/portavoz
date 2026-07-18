@@ -1,5 +1,4 @@
 import ApplicationKit
-import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
@@ -14,7 +13,7 @@ struct OnboardingView: View {
     @State private var step = 0
     @State private var micGranted = false
     @State private var calendarConnected = false
-    @State private var advice: EngineAdvice?
+    @State private var providerRecommendation: LocalSummaryProviderRecommendation?
     @State private var downloadingModels = false
     @State private var modelsReady = false
     @State private var enrolling = false
@@ -32,7 +31,10 @@ struct OnboardingView: View {
             footer
         }
         .frame(width: 520, height: 480)
-        .task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
+        .task {
+            providerRecommendation = await services
+                .discoverLocalSummaryProviders().recommendation
+        }
         .onDisappear { listen.cancel() }
     }
 
@@ -188,12 +190,14 @@ struct OnboardingView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            if let advice {
+            if let providerRecommendation {
                 Divider()
-                Label(L10n.text(advice.headline), systemImage: "wand.and.stars.inverse")
+                Label(
+                    providerRecommendation.localizedHeadline,
+                    systemImage: "wand.and.stars.inverse")
                     .font(.callout.weight(.medium))
-                ForEach(advice.reasons, id: \.self) { reason in
-                    Text("• \(L10n.text(reason))").font(.caption).foregroundStyle(.secondary)
+                ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
+                    Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("You can change the summary engine anytime in Settings.")
                     .font(.caption).foregroundStyle(.secondary)

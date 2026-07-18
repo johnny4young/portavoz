@@ -3200,3 +3200,40 @@ short-name substring false positives, typed evidence keeps the UI honest, and
 persistence-aware removal prevents a failed rename from looking accepted. The
 released one-click UX, `Me` exclusion, calendar widening, manual fallback, and
 never-auto-apply contract remain unchanged.
+
+## D108 — Keep local summary-provider discovery behind one application contract (Jul 2026)
+
+**Context:** Settings, Onboarding, and launch composition each needed the same
+answer to a product question: which local summary provider is actually usable
+on this Mac? The answer had been assembled beside SwiftUI from Apple
+Foundation Models capability, Ollama process/model discovery, RAM, disk, and a
+clean-install preference rule. Treating a running Ollama server as readiness
+could recommend a blank, OCR, embedding, reranking, or Whisper model, and
+duplicating the rule made an explicit user choice vulnerable to an asynchronous
+startup probe.
+
+**Decision:** `ApplicationKit.LocalSummaryProviderPolicy` evaluates one typed,
+capability-neutral profile and returns a typed recommendation with stable
+reasons. Available Apple Foundation Models wins. Ollama is admitted only when
+its running service exposes a nonempty model whose normalized name is not
+classified as OCR, embedding, reranking, or Whisper work. Embedded MLX is
+recommended only when memory and disk meet its local requirements;
+otherwise the result carries typed setup guidance rather than localized prose.
+`DiscoverLocalSummaryProviders` provides the same result to Settings and
+Onboarding. `ConfigureInitialSummaryProvider` initializes only an absent
+preference, re-checks it after asynchronous discovery, and performs no write
+when no compatible provider exists. Its selection port reports whether the
+guarded write won instead of letting the workflow claim an unsaved selection.
+
+The macOS adapter owns concrete Foundation Models capability, content-free
+localhost health/model requests, RAM and disk facts, provider DTO mapping, and
+main-actor UserDefaults persistence shared with SwiftUI's `@AppStorage`.
+SwiftUI owns localization and explicit user actions only. Existing provider
+choices remain authoritative and provider execution continues to use the exact
+configured engine without fallback.
+
+**Rationale:** one deterministic application policy prevents presentation
+surfaces from disagreeing, distinguishes service availability from generation
+readiness, and makes startup races and low-resource guidance testable without
+Foundation Models, Ollama, UserDefaults, or real hardware. The change preserves
+local-only behavior, Sequoia setup recovery, and every explicit provider choice.
