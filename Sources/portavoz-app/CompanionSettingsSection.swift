@@ -30,7 +30,6 @@ struct CompanionSettingsSection: View {
                     companionUserName.isEmpty ? NSFullUserName() : companionUserName))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("settings-companion-name-guidance")
             }
 
             Toggle("Mirror after each meeting", isOn: $mirrorAfterMeeting)
