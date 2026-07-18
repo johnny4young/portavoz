@@ -1,14 +1,15 @@
-import DiarizationKit
+import ApplicationKit
 import SwiftUI
 
 /// Settings section: voices of OTHER participants the user explicitly
 /// asked to remember (D8: stricter rules than "My voice" — see
-/// `VoiceGallery`). Self-contained: it loads its own list, shows nothing
+/// the encrypted voice gallery). It loads its own list, shows nothing
 /// while the gallery is empty, and voices only ever enter the gallery via
 /// the "Remember this voice" chip in a meeting.
 struct RememberedVoicesSection: View {
     @Environment(AppServices.self) private var services
-    @State private var voices: [RememberedVoice] = []
+    @State private var voices: [RememberedVoiceSummary] = []
+    @State private var errorMessage: String?
 
     var body: some View {
         Group {
@@ -21,15 +22,14 @@ struct RememberedVoicesSection: View {
                         )
                         .contextMenu {
                             Button(L10n.format("Forget %@", voice.name), role: .destructive) {
-                                try? services.voiceGallery.remove(id: voice.id)
-                                reload()
+                                remove(voice.id)
                             }
                         }
                     }
                     Button("Forget all voices", role: .destructive) {
-                        try? services.voiceGallery.deleteAll()
-                        voices = []
+                        removeAll()
                     }
+                    .accessibilityIdentifier("settings-remembered-voices-delete-all")
                     Text(
                         // One-line UI help text.
                         // swiftlint:disable:next line_length
@@ -37,14 +37,47 @@ struct RememberedVoicesSection: View {
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("settings-remembered-voices-error")
+                    }
                 }
             }
         }
-        .onAppear { reload() }
+        .task { await reload() }
     }
 
-    private func reload() {
-        guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return }
-        voices = (try? services.voiceGallery.voices()) ?? []
+    private func reload() async {
+        do {
+            voices = try await services.rememberedVoiceSummaries()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func remove(_ id: UUID) {
+        Task {
+            do {
+                try await services.removeRememberedVoice(id: id)
+                await reload()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func removeAll() {
+        Task {
+            do {
+                try await services.removeAllRememberedVoices()
+                voices = []
+                errorMessage = nil
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 }

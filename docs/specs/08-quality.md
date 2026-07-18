@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 923 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, shared local-provider recommendations, explicit Meeting Detail name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 934 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, shared local-provider recommendations, application-owned Settings device resources, explicit Meeting Detail name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 333 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 335 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -32,6 +32,7 @@ Status: 923 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHu
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, successful/failed/cancelled provenance, exact-cache no-run semantics, validation, transactional rollback, and real MeetingStore summary/run linkage |
 | SummaryCapabilityTests | Deterministic Sequoia capability and exact no-fallthrough behavior for selected but unconfigured Ollama/MLX engines |
 | LocalSummaryProvidersTests | Typed Apple/Ollama/MLX discovery, deterministic Ollama model-name admission, hardware and disk guidance, explicit-preference preservation before and after asynchronous probing, and no write when no compatible provider exists |
+| SettingsResourcesTests | Capability-neutral microphone choices, recording-root inspection and ordered resumable updates, unchanged location after failure, privacy-safe remembered-voice projections, and unsuppressed destructive failures |
 | CompanionGenerationProvenanceTests | Exact ordered private-material fingerprints including question segment identity; external-provider sensitivity; exact local-RAG citation-to-answer-source mapping; role-separated evidence construction; content-free classifier/provider/egress configuration; aggregate-only metrics; remote success, on-device fallback, and cancelled external-provider attribution |
 | DataEgressGatewayTests | Conservative loopback classification; exact remote/local Companion, summary, and explicit-publishing metadata; decoded question-only and full-summary request bodies; operation/classification/destination/provider/model/consent mismatch and non-HTTP rejection; required meeting identity; canonical publishing endpoint policy; content-free receipt-before-transport ordering; fail-closed recorder behavior; retained attempts on transport failure; redirect denial; and real gateway-backed summary response parsing |
 | PrivacyReceiptTests | v6→latest migration and schema constraints; honest complete-versus-since coverage; content-free local/remote attempt and generation aggregation; strict missing/unknown/forged event rejection; and zero partial writes |
@@ -67,7 +68,7 @@ Status: 923 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHu
 | StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36–D43/D63–D66/D70/D75 contract: strict persistence, tombstones, hostile FTS, hidden-rank/BM25 top-k equivalence, complete-text plus highlighted-snippet search hits, retention, paths, migration, lifecycle/idempotency constraints, atomic recording/artifact handoffs, owner-leased durable work, provenance linkage, revision fences, and injected rollback |
 | PostCaptureSummaryGenerationAttemptTests | Content-free durable provider/model/job/revision/config metadata, aggregate-only success metrics, and distinct failed/cancelled terminal attempts without invented output metrics |
 | ProcessPostCaptureJobsUseCaseTests | Mixed-language first-pass cleanup/attribution and follow-up admission; real-Store diarization-to-summary publication; provider retry; optional-summary exhaustion; supersession; lease loss; typed diagnostics; and injected-clock no-poll scheduling |
-| RecordingsLocationTests | 7: marker, fallback, resolve, resumable migration |
+| RecordingsLocationTests | 9: marker, fallback, resolve, resumable migration, and safe same-root aliases |
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode`, canonical person/alias normalization, independent transcript/summary policies, and backward-compatible role-separated Companion evidence resolution |
 | LocalizationTests / EnglishSourceTests | EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
@@ -1014,6 +1015,20 @@ automation to avoid the host Ollama and hardware profile. The full gate is 923
 package tests (13 gated) and zero strict-lint violations across 333 Swift source
 files; the 39 XCUITest cases per locale retain the shared localized intelligence
 recommendation and exact setup actions (D108).
+
+The Settings device-resource boundary adds eight focused workflow cases and one
+exact architecture ratchet. They prove capability-neutral microphone mapping
+and failure propagation, recording-root inspection without migration, ordered
+progress before a successful terminal result, unchanged application state after
+migration failure, nonnegative progress, embedding-free remembered-voice
+projections, and unsuppressed single/all deletion failures. The source rule
+rejects direct `AudioDeviceCatalog`, `RecordingsLocation`, `VoiceGallery`, and
+destructive `try?` coordination from the three SwiftUI surfaces. The full gate
+also includes two storage regressions proving that normalized and symlinked
+same-root destinations preserve every recording without reporting progress.
+The full gate is 934 package tests (13 gated) and zero strict-lint violations
+across 335 Swift source files; all 39 XCUITest cases per locale retain Settings
+navigation and a `settings-recording-storage` screenshot (D109).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

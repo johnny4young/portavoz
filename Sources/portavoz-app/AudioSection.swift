@@ -1,13 +1,14 @@
-import AudioCaptureKit
+import ApplicationKit
 import SwiftUI
 
 /// Settings section: audio capture options — which microphone to record from,
 /// what to capture for the other side, and echo cancellation (D24).
 struct AudioSection: View {
+    @Environment(AppServices.self) private var services
     @AppStorage("aecEnabled") private var aecEnabled = true
     @AppStorage("preferredInputUID") private var preferredInputUID = "default"
     @AppStorage("captureMode") private var captureMode = "auto"
-    @State private var inputs: [AudioInputDevice] = []
+    @State private var inputs: [AudioInputOption] = []
 
     var body: some View {
         Section("Audio") {
@@ -46,6 +47,6 @@ struct AudioSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .onAppear { inputs = (try? AudioDeviceCatalog.inputDevices()) ?? [] }
+        .task { inputs = await services.audioInputOptions() }
     }
 }

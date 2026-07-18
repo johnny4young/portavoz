@@ -85,6 +85,10 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.buttons["settings-export-all-button"].waitForExistence(timeout: 5),
             "the Your-data pane must show the export-all action")
+        XCTAssertTrue(
+            app.buttons["settings-recordings-change"].waitForExistence(timeout: 5),
+            "recording storage must load through the application boundary")
+        attachScreenshot(of: app, named: "settings-recording-storage")
     }
 
     @MainActor

@@ -3237,3 +3237,34 @@ surfaces from disagreeing, distinguishes service availability from generation
 readiness, and makes startup races and low-resource guidance testable without
 Foundation Models, Ollama, UserDefaults, or real hardware. The change preserves
 local-only behavior, Sequoia setup recovery, and every explicit provider choice.
+
+## D109 — Keep Settings device resources behind application workflows (Jul 2026)
+
+**Context:** three Settings sections still coordinated concrete capabilities
+from SwiftUI. Audio settings enumerated Core Audio devices directly, recording
+storage moved files and changed the shared root marker from the view, and
+remembered-voice settings called the encrypted gallery while discarding delete
+failures. These operations span hardware, durable filesystem state, and
+third-party biometric data, so view recreation must not define their ordering
+or success semantics.
+
+**Decision:** ApplicationKit exposes three narrow workflows. Audio input
+listing returns only stable UIDs and display names. Recording-storage
+management returns current/default locations, performs an optional root change,
+and forwards ordered progress through a capability-neutral port. Remembered-
+voice management lists privacy-safe summaries containing no embedding and
+performs explicit single/all deletion without suppressing errors. The macOS app
+adapters retain `AudioDeviceCatalog`, `RecordingsLocation`, and `VoiceGallery`.
+Recording migration is completed before the shared marker changes, and every
+queued progress update is delivered before the terminal result. A destination
+that resolves to the current root, including a symlink alias, is a no-op rather
+than entering resumable cleanup against its own source. Encrypted
+gallery work runs off the main actor; temporary UI-test composition returns an
+empty gallery and never reads or mutates host biometric state. SwiftUI retains
+preferences, the native folder picker, localized progress, and visible results.
+
+**Rationale:** the application layer now owns observable operation order and
+failure truth without absorbing Core Audio, filesystem, Keychain, or biometric
+implementations. A failed migration cannot publish a new root, a failed voice
+deletion cannot look successful, embeddings cannot leak into presentation, and
+the same workflows remain characterizable without real devices or user data.

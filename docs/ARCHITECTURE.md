@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -168,6 +168,9 @@ The implemented application workflows include:
   a bounded captured sample; typed progress, sample validation,
   status/deletion, and ordered pinned-model inspection/installation all use
   capability-neutral ports;
+- microphone discovery as capability-neutral identifiers and names, resumable
+  recording-root inspection and update with ordered progress, and remembered-
+  voice listing/deletion through a projection that excludes embeddings;
 - speaker-name suggestion from one coherent meeting projection, optional
   calendar candidates, an injected untrusted proposer, and application-owned
   whole-token verification against currently unnamed remote speakers with
@@ -299,6 +302,17 @@ either reuses its already captured first-listen sample or requests a fresh
 twelve-second raw capture. Neither SwiftUI surface constructs a microphone,
 loads a model, extracts an embedding, or reads the encrypted voice store.
 Disposable UI composition never reads or writes the host voice identity.
+
+Settings obtains microphone choices, recording-root state, and remembered-
+voice summaries through application workflows. The macOS adapter retains Core
+Audio enumeration, marker-file and filesystem migration behavior, and the
+encrypted gallery. Recording-root progress is drained in order before the
+workflow returns, and the active marker changes only after migration succeeds.
+A destination that resolves to the active root, including a symlink alias, is
+a no-op and cannot enter resumable cleanup against its own source.
+The gallery projection contains identity, display name, and creation time but
+never an embedding. SwiftUI owns the folder panel and localized state; failed
+destructive gallery actions remain visible and preserve the current list.
 
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
@@ -698,6 +712,10 @@ behind aspirational diagrams:
   providers or recomputing policy. Discovery downloads nothing and never
   substitutes the configured engine. Disposable automation substitutes a
   bounded profile and never probes the host's Ollama models, memory, or disk.
+- Settings microphone enumeration, recording-root changes, and remembered-
+  voice management enter ApplicationKit. Their SwiftUI views do not construct
+  Core Audio, storage-location, or encrypted-gallery capabilities and do not
+  discard destructive failures.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -707,8 +725,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 923 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 333 Swift source files;
+- 934 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 335 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

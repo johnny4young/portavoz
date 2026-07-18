@@ -3,7 +3,6 @@ import ApplicationKit
 import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 import TranscriptionKit
 
@@ -42,7 +41,7 @@ struct SettingsView: View {
     @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
     @State private var showTitleHelp = false
 
-    @State private var recordingsRoot = RecordingsLocation.shared.currentRoot()
+    @State private var recordingStorage: RecordingStorageLocation?
     @State private var migrationStatus: String?
     @State private var migrating = false
 
@@ -158,6 +157,7 @@ struct SettingsView: View {
             }
             whisperVariants = services.whisperVariants()
             Task {
+                recordingStorage = await services.recordingStorageLocation()
                 await refreshLocalSummaryProviders(
                     showOllamaStatus: summaryEngine == SummaryEngine.ollama.rawValue)
             }
@@ -247,20 +247,26 @@ extension SettingsView {
     private var recordingsSection: some View {
         Section("Recordings") {
             LabeledContent("Save recordings in") {
-                Text(recordingsRoot.path)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .foregroundStyle(.secondary)
-                    .help(recordingsRoot.path)
+                if let recordingStorage {
+                    Text(recordingStorage.currentRoot.path)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .foregroundStyle(.secondary)
+                        .help(recordingStorage.currentRoot.path)
+                } else {
+                    ProgressView().controlSize(.small)
+                }
             }
             HStack {
                 Button("Change…") { chooseRecordingsFolder() }
-                    .disabled(migrating)
-                if RecordingsLocation.shared.isCustom {
+                    .disabled(migrating || recordingStorage == nil)
+                    .accessibilityIdentifier("settings-recordings-change")
+                if recordingStorage?.isCustom == true {
                     Button("Use default folder") {
-                        moveRecordings(to: RecordingsLocation.shared.defaultRoot, custom: false)
+                        moveRecordings(to: nil)
                     }
                     .disabled(migrating)
+                    .accessibilityIdentifier("settings-recordings-use-default")
                 }
                 if migrating {
                     ProgressView().controlSize(.small)
@@ -285,43 +291,39 @@ extension SettingsView {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = recordingsRoot
+        panel.directoryURL = recordingStorage?.currentRoot
         panel.prompt = L10n.text("Choose")
         panel.message = L10n.text("Choose the folder where Portavoz will store your recordings")
         guard panel.runModal() == .OK, let chosen = panel.url else { return }
-        moveRecordings(to: chosen, custom: true)
+        moveRecordings(to: chosen)
     }
 
-    private func moveRecordings(to destination: URL, custom: Bool) {
+    private func moveRecordings(to destination: URL?) {
         guard !migrating else { return }
         migrating = true
         migrationStatus = L10n.text("Preparing…")
-        let origin = RecordingsLocation.shared.currentRoot()
-        Task.detached(priority: .userInitiated) {
-            let location = RecordingsLocation.shared
+        Task {
             do {
-                let moved = try location.migrateAudio(from: origin, to: destination) { index, total in
-                    Task { @MainActor in
-                        migrationStatus = L10n.format("Moving recording %d of %d…", index, total)
-                    }
+                let update = try await services.updateRecordingStorage(to: destination) { progress in
+                    migrationStatus = L10n.format(
+                        "Moving recording %d of %d…",
+                        progress.completed,
+                        progress.total)
                 }
-                try location.setRoot(custom ? destination : nil)
-                await MainActor.run {
-                    recordingsRoot = location.currentRoot()
-                    migrationStatus =
-                        moved > 0
-                        ? L10n.format("Done: moved %d recording(s).", moved)
-                        : L10n.text("Done: folder updated.")
-                    migrating = false
-                }
+                recordingStorage = update.location
+                migrationStatus =
+                    update.recordingCount > 0
+                    ? L10n.format(
+                        "Done: moved %d recording(s).",
+                        update.recordingCount)
+                    : L10n.text("Done: folder updated.")
+                migrating = false
             } catch {
-                await MainActor.run {
-                    migrationStatus =
-                        // One-line UI error.
-                        // swiftlint:disable:next line_length
-                        L10n.format("Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.", error.localizedDescription)
-                    migrating = false
-                }
+                migrationStatus =
+                    // One-line UI error.
+                    // swiftlint:disable:next line_length
+                    L10n.format("Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.", error.localizedDescription)
+                migrating = false
             }
         }
     }

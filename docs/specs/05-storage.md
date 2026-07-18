@@ -508,7 +508,15 @@ latest-summary-only `openActionItems(limit:)` query.
 
 - User-selectable root; persists as a plain absolute path in `recordings-root.txt` NEXT TO THE DB (file, not UserDefaults → the CLI honors the same folder). No security-scoped bookmark: the app has hardened runtime but is NOT sandboxed; TCC prompts once for protected folders (usage strings in Info.plist, including external drives).
 - `currentRoot()` falls back to the default if the marker points to a missing folder (disconnected drive). `resolve(relative)` tries the current root → default (an interrupted migration remains fully readable).
-- `migrateAudio(from:to:progress:)` is resumable: one meeting directory (immutable UUID) at a time; cross-volume copies to `.partial-<n>` and publishes with an atomic rename; existing destination = already migrated (skips and cleans the source). 7 tests.
+- `migrateAudio(from:to:progress:)` is resumable: one meeting directory (immutable UUID) at a time; cross-volume copies to `.partial-<n>` and publishes with an atomic rename; existing destination = already migrated (skips and cleans the source). A destination that resolves to the current root, including a symlink alias, is a no-op so it can never trigger the resume cleanup against its own source. 9 tests.
+
+The macOS Settings surface enters `ApplicationKit.ManageRecordingStorage` to
+inspect or change the root. SwiftUI retains the native folder panel and
+localized progress only. The private app adapter drains migration progress in
+order, waits for migration completion, and updates `recordings-root.txt` only
+after success. A failure leaves the marker unchanged; already moved directories
+remain at the destination, and retry resumes the remaining source directories
+before publishing the marker.
 
 ## Audio layout — `MeetingAudioLayout`
 

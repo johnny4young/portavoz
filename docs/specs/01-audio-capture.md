@@ -118,6 +118,12 @@ cannot misrepresent preserved audio or a successful recovery write.
 
 `RecordingsLocation` (StorageKit, spec 05): configurable root with a marker file shared by app/CLI, fallback resolution, and resumable migration.
 
+Settings enumerates microphones through `ApplicationKit.LoadAudioInputOptions`.
+The workflow exposes only stable UIDs and display names; the private macOS app
+adapter maps `AudioDeviceCatalog` results off the main actor. SwiftUI keeps the
+system-default choice and the selected UID, but it does not import Core Audio
+capture types or enumerate devices directly.
+
 ## Known limitations and risks
 
 1. **⚠️ Taps + VPIO in the same process**: MacParakeet rejected them because they "do not coexist reliably." Our evidence (1 real meeting with both) is insufficient — monitor glitches/dropouts on the system channel with AEC active. Plan B (D27): offline post-recording echo cancellation.

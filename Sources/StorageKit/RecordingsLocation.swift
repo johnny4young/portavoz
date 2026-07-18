@@ -90,6 +90,11 @@ public struct RecordingsLocation: Sendable {
         to destination: URL,
         progress: ((Int, Int) -> Void)? = nil
     ) throws -> Int {
+        let canonicalOrigin = origin.standardizedFileURL.resolvingSymlinksInPath()
+        let canonicalDestination = destination.standardizedFileURL.resolvingSymlinksInPath()
+        guard canonicalOrigin != canonicalDestination else {
+            return 0
+        }
         let manager = FileManager.default
         let sourceAudio = origin.appendingPathComponent("Audio", isDirectory: true)
         let targetAudio = destination.appendingPathComponent("Audio", isDirectory: true)

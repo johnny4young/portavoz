@@ -635,6 +635,51 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testSettingsResourcesEnterThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/SettingsResources.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SettingsResources.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsView.swift")
+        let audio = try Self.contents(
+            of: "Sources/portavoz-app/AudioSection.swift")
+        let voices = try Self.contents(
+            of: "Sources/portavoz-app/RememberedVoicesSection.swift")
+
+        for useCase in [
+            "struct LoadAudioInputOptions",
+            "struct ManageRecordingStorage",
+            "struct ManageRememberedVoices",
+        ] {
+            XCTAssertTrue(workflow.contains(useCase), useCase)
+        }
+        for concreteImport in [
+            "import AudioCaptureKit", "import DiarizationKit", "import StorageKit",
+        ] {
+            XCTAssertFalse(workflow.contains(concreteImport), concreteImport)
+        }
+        for concrete in [
+            "AudioDeviceCatalog", "RecordingsLocation", "VoiceGallery",
+        ] {
+            XCTAssertTrue(adapter.contains(concrete), concrete)
+        }
+        XCTAssertTrue(adapter.contains("AsyncStream<RecordingStorageProgress>"))
+        XCTAssertTrue(settings.contains("services.updateRecordingStorage"))
+        XCTAssertFalse(settings.contains("RecordingsLocation"))
+        XCTAssertFalse(settings.contains("Task.detached"))
+        XCTAssertFalse(settings.contains("import StorageKit"))
+        XCTAssertTrue(audio.contains("services.audioInputOptions()"))
+        XCTAssertFalse(audio.contains("AudioDeviceCatalog"))
+        XCTAssertFalse(audio.contains("import AudioCaptureKit"))
+        XCTAssertTrue(voices.contains("services.rememberedVoiceSummaries()"))
+        XCTAssertTrue(voices.contains("services.removeRememberedVoice"))
+        XCTAssertTrue(voices.contains("services.removeAllRememberedVoices"))
+        XCTAssertFalse(voices.contains("services.voiceGallery"))
+        XCTAssertFalse(voices.contains("import DiarizationKit"))
+        XCTAssertFalse(voices.contains("try?"))
+    }
+
     func testAppPostCaptureExecutionEntersThroughApplicationKit() throws {
         let coordinator = try Self.contents(
             of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")

@@ -9,14 +9,30 @@ Single source of truth for progress — it previously lived in a session HANDOFF
 **Next concrete step:** run the final macOS conformance audit against the
 implemented package graph and close only evidence-backed boundary violations.
 Local-provider discovery, calendar-backed speaker naming, and local voice
-enrollment now enter characterized ApplicationKit workflows (D106–D108).
+enrollment now enter characterized ApplicationKit workflows. Settings
+microphone discovery, recording-root changes, and remembered-voice management
+also enter characterized ApplicationKit workflows (D106–D109).
 Direct capability construction remains valid in composition, live capture,
 diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D108).
+behavior remain covered by package and bilingual UI gates (D33–D109).
+
+- **Settings device resources have application boundaries on macOS
+  (Jul 18, 2026):** `LoadAudioInputOptions` returns only stable UIDs and display
+  names; `ManageRecordingStorage` owns inspection, ordered progress, and root
+  changes; `ManageRememberedVoices` returns embedding-free summaries and keeps
+  destructive failures visible. Private app adapters retain Core Audio,
+  resumable filesystem migration and marker publication, and encrypted gallery
+  access; normalized and symlinked same-root destinations are safe no-ops.
+  SwiftUI retains native folder selection, preferences, localization, and
+  presentation only. Eight workflow cases, two storage regressions, and one
+  exact architecture ratchet establish D109. The verified package baseline is
+  934 tests with 13 gated and
+  strict lint is clean across 335 Swift source files; all 39 UI cases pass in
+  English and Spanish with an inspected `settings-recording-storage` screenshot.
 
 - **Local summary-provider discovery has one application boundary on macOS
   (Jul 18, 2026):** `DiscoverLocalSummaryProviders` returns one typed profile
