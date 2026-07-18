@@ -3125,3 +3125,36 @@ models, or real recordings, and cannot silently bypass local admission,
 explicit consent, or one-to-one identity rules. The UI and concrete Apple/model
 composition remain native while released export, secret-Gist, suggestion-chip,
 and remember-voice behavior stays intact.
+
+## D106 — Keep local voice enrollment behind one application contract (Jul 2026)
+
+**Context:** the CLI already entered an application workflow for file-based
+voice enrollment, but Settings and Onboarding still coordinated microphone
+capture, diarization-model loading, embedding extraction, encrypted storage,
+and model-cache invalidation in SwiftUI. The two app surfaces intentionally use
+different capture behavior: Settings records a fresh echo-cancelled sample,
+while Onboarding may reuse the first-listen sample or record a fresh raw sample.
+Those released distinctions had to remain explicit without making view lifetime
+responsible for a biometric workflow.
+
+**Decision:** `ApplicationKit.ManageLocalVoiceIdentity` accepts an admitted
+file, a supplied in-memory sample, or a bounded captured sample through narrow
+ports. It bounds requested capture to 1...60 seconds, requires at least four
+seconds of finite audio, owns typed capture/extraction/persistence progress,
+and persists only after successful
+extraction. Status and delete remain model-free. The macOS adapter owns
+`MicrophoneSource`, the requested raw or echo-cancelled mode, guaranteed stop
+on success/failure/cancellation, verified diarizer loading, transient embedding
+extraction, the Keychain-backed encrypted store, and cached-diarizer
+invalidation after successful mutation. Disposable UI composition returns an
+empty identity and never accesses the host biometric file or key. Settings and
+Onboarding submit requests and render localized outcomes only. A failed
+destructive request leaves the enrolled state visible instead of reporting a
+successful file-and-key deletion.
+
+**Rationale:** one deterministic application contract preserves the exact
+enrollment UX while making capture order, invalid-sample rejection, persistence,
+and failure behavior testable without a microphone, model, filesystem, or
+Keychain. Biometric storage remains explicit and device-local, source audio is
+not retained, and SwiftUI cannot accidentally leak a capture or mutate model
+state during view recreation.

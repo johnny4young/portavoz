@@ -24,9 +24,13 @@ struct CompanionSettingsSection: View {
                     prompt: Text(NSFullUserName())
                 )
                 .autocorrectionDisabled()
-                Text("When someone asks for you by name (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), what do you think?\"), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.")
+                Text(L10n.format(
+                    // swiftlint:disable:next line_length
+                    "When someone asks for you by name (\"%@\", what do you think?), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.",
+                    companionUserName.isEmpty ? NSFullUserName() : companionUserName))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings-companion-name-guidance")
             }
 
             Toggle("Mirror after each meeting", isOn: $mirrorAfterMeeting)

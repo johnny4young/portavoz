@@ -36,4 +36,23 @@ final class OnboardingUITests: XCTestCase {
             firstListen.waitForExistence(timeout: 2),
             "Continue must move off the first-listen step")
     }
+
+    @MainActor
+    func testVoiceStepOffersLocalEnrollmentWithoutStartingCapture() {
+        let app = XCUIApplication.portavoz(showOnboarding: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "onboarding-first-listen").waitForExistence(timeout: 15))
+        for _ in 0..<3 {
+            app.control(withIdentifier: "onboarding-continue").click()
+        }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "onboarding-voice-enroll").waitForExistence(timeout: 5),
+            "the optional voice step must offer application-owned enrollment")
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-skip").exists)
+        attachScreenshot(of: app, named: "onboarding-local-voice-enrollment")
+    }
 }

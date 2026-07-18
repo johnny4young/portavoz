@@ -1,5 +1,4 @@
-import AudioCaptureKit
-import DiarizationKit
+import ApplicationKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
@@ -205,7 +204,10 @@ struct OnboardingView: View {
     /// Whether the first-listen captured enough audio to enroll from directly
     /// (≥ 4 s), so the user needn't speak a second time.
     private var canReuseFirstListen: Bool {
-        Double(listen.capturedSamples.count) >= listen.capturedSampleRate * 4
+        LocalVoiceSample(
+            samples: listen.capturedSamples,
+            sampleRate: listen.capturedSampleRate
+        ).duration >= LocalVoiceSample.minimumEnrollmentDuration
     }
 
     private var voice: some View {
@@ -231,14 +233,17 @@ struct OnboardingView: View {
                         Button("Use my first listen") { enrollVoice(reusingFirstListen: true) }
                             .buttonStyle(.borderedProminent)
                             .tint(PVDesign.accent)
+                            .accessibilityIdentifier("onboarding-voice-reuse")
                         Text("Reuses what you just said — no need to speak again.")
                             .font(.caption).foregroundStyle(.secondary)
                         Button("Record a fresh 12 seconds") { enrollVoice(reusingFirstListen: false) }
                             .buttonStyle(.bordered)
+                            .accessibilityIdentifier("onboarding-voice-record-fresh")
                     } else {
                         Button("Enroll my voice") { enrollVoice(reusingFirstListen: false) }
                             .buttonStyle(.borderedProminent)
                             .tint(PVDesign.accent)
+                            .accessibilityIdentifier("onboarding-voice-enroll")
                     }
                 }
             }
@@ -335,41 +340,20 @@ struct OnboardingView: View {
         Task { @MainActor in
             defer { enrolling = false }
             do {
-                let diarizer = try await services.loadDiarizerIfNeeded()
-                let samples: [Float]
-                let sampleRate: Double
                 if reusingFirstListen {
-                    samples = listen.capturedSamples
-                    sampleRate = listen.capturedSampleRate
+                    _ = try await services.enrollLocalVoice(from: LocalVoiceSample(
+                        samples: listen.capturedSamples,
+                        sampleRate: listen.capturedSampleRate))
                 } else {
-                    (samples, sampleRate) = try await recordEnrollmentSample()
+                    _ = try await services.recordAndEnrollLocalVoice(
+                        seconds: 12,
+                        mode: .raw)
                 }
-                let voiceprint = try await diarizer.extractVoiceprint(
-                    fromSamples: samples, sampleRate: sampleRate)
-                try services.voiceprintStore.save(voiceprint)
-                services.invalidateDiarizer()
                 enrolled = true
             } catch {
                 enrollMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
             }
         }
-    }
-
-    /// Records a fresh 12 s microphone sample for enrollment (the path when
-    /// the user opts to speak again rather than reuse the first listen).
-    private func recordEnrollmentSample() async throws -> (samples: [Float], sampleRate: Double) {
-        let microphone = MicrophoneSource(voiceProcessing: false)
-        let stream = try await microphone.start()
-        var samples: [Float] = []
-        var sampleRate = 16_000.0
-        let deadline = Date().addingTimeInterval(12)
-        for try await chunk in stream {
-            samples.append(contentsOf: chunk.samples)
-            sampleRate = chunk.sampleRate
-            if Date() >= deadline { break }
-        }
-        await microphone.stop()
-        return (samples, sampleRate)
     }
 
     private func finish() {

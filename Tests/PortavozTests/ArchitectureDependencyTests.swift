@@ -536,6 +536,47 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(engine.contains("return try await loadPrepared(prepared)"))
     }
 
+    func testLocalVoiceEnrollmentEntersThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ManageLocalVoiceAndModels.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LocalVoiceIdentity.swift")
+        let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
+        let onboarding = try Self.contents(of: "Sources/portavoz-app/OnboardingView.swift")
+
+        XCTAssertTrue(workflow.contains("case recordAndEnroll("))
+        XCTAssertTrue(workflow.contains("case enrollSample("))
+        XCTAssertTrue(workflow.contains("LocalVoiceSampleCapturing"))
+        XCTAssertTrue(workflow.contains("LocalVoiceSampleIdentityExtracting"))
+        XCTAssertTrue(adapter.contains("ManageLocalVoiceIdentity("))
+        XCTAssertTrue(adapter.contains("MicrophoneSource("))
+        XCTAssertTrue(adapter.contains("voiceProcessing: mode == .echoCancelled"))
+        XCTAssertTrue(adapter.contains("ContinuousClock()"))
+        XCTAssertEqual(
+            adapter.components(separatedBy: "await microphone.stop()").count - 1,
+            2)
+        XCTAssertTrue(adapter.contains("loadDiarizerIfNeeded()"))
+        XCTAssertTrue(adapter.contains("Task.detached(priority: .utility)"))
+        XCTAssertTrue(adapter.contains(#"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(settings.contains("services.recordAndEnrollLocalVoice("))
+        XCTAssertTrue(settings.contains("services.deleteLocalVoiceIdentity()"))
+        XCTAssertFalse(settings.contains("try? await services.deleteLocalVoiceIdentity()"))
+        XCTAssertTrue(settings.contains("settings-voice-enroll"))
+        XCTAssertTrue(onboarding.contains("services.enrollLocalVoice(from:"))
+        XCTAssertTrue(onboarding.contains("services.recordAndEnrollLocalVoice("))
+        XCTAssertTrue(onboarding.contains("LocalVoiceSample.minimumEnrollmentDuration"))
+        XCTAssertTrue(onboarding.contains("onboarding-voice-enroll"))
+        for presentation in [settings, onboarding] {
+            XCTAssertFalse(presentation.contains("MicrophoneSource("))
+            XCTAssertFalse(presentation.contains("extractVoiceprint("))
+            XCTAssertFalse(presentation.contains("services.voiceprintStore"))
+            XCTAssertFalse(presentation.contains("services.loadDiarizerIfNeeded()"))
+            XCTAssertFalse(presentation.contains("services.invalidateDiarizer()"))
+            XCTAssertFalse(presentation.contains("import AudioCaptureKit"))
+            XCTAssertFalse(presentation.contains("import DiarizationKit"))
+        }
+    }
+
     func testAppLaunchRecoveryEntersThroughApplicationKitBeforeWorkerResume() throws {
         let coordinator = try Self.contents(
             of: "Sources/portavoz-app/RecordingRecoveryCoordinator.swift")

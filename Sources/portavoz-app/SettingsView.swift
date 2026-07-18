@@ -1,7 +1,5 @@
 import AppKit
 import ApplicationKit
-import AudioCaptureKit
-import DiarizationKit
 import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
@@ -20,7 +18,7 @@ struct SettingsView: View {
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
 
-    @State private var voiceprint: Voiceprint?
+    @State private var voiceEnrollmentDate: Date?
     @State private var enrolling = false
     @State private var voiceMessage: String?
 
@@ -147,15 +145,13 @@ struct SettingsView: View {
             applyPendingCategory()
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
-                voiceprint = nil
+                voiceEnrollmentDate = nil
             } else {
-                let voiceprintStore = services.voiceprintStore
                 Task {
                     hasStoredBYOKKey =
                         (try? await services.secrets.contains(.byokAPIKey)) ?? false
-                    voiceprint = await Task.detached(priority: .utility) {
-                        try? voiceprintStore.load()
-                    }.value
+                    voiceEnrollmentDate = try? await services
+                        .localVoiceIdentityStatus()?.createdAt
                     // Mined chips arrive async and shift the Form's layout —
                     // skipped under XCUITest so coordinate clicks remain stable.
                     suggestedTerms = await services.mineVocabularySuggestions()
@@ -545,16 +541,14 @@ extension SettingsView {
 
     private var voiceSection: some View {
         Section("My voice") {
-            if let voiceprint {
+            if let voiceEnrollmentDate {
                 LabeledContent(
                     "Enrolled voice",
-                    value: voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    value: voiceEnrollmentDate.formatted(date: .abbreviated, time: .shortened))
                 Button("Delete my voice", role: .destructive) {
-                    try? services.voiceprintStore.delete()
-                    self.voiceprint = nil
-                    services.invalidateDiarizer()
-                    voiceMessage = L10n.text("Voiceprint and key deleted.")
+                    Task { await deleteVoice() }
                 }
+                .accessibilityIdentifier("settings-voice-delete")
             } else if enrolling {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -566,6 +560,7 @@ extension SettingsView {
                 } label: {
                     Label("Enroll my voice (12 s)", systemImage: "person.wave.2")
                 }
+                .accessibilityIdentifier("settings-voice-enroll")
             }
             Text(
                 // One-line UI help text.
@@ -584,27 +579,24 @@ extension SettingsView {
         enrolling = true
         defer { enrolling = false }
         do {
-            let diarizer = try await services.loadDiarizerIfNeeded()
-            let microphone = MicrophoneSource()
-            let stream = try await microphone.start()
-            var samples: [Float] = []
-            var sampleRate = 16_000.0
-            let deadline = Date().addingTimeInterval(12)
-            for try await chunk in stream {
-                samples.append(contentsOf: chunk.samples)
-                sampleRate = chunk.sampleRate
-                if Date() >= deadline { break }
-            }
-            await microphone.stop()
-
-            let print = try await diarizer.extractVoiceprint(
-                fromSamples: samples, sampleRate: sampleRate)
-            try services.voiceprintStore.save(print)
-            voiceprint = print
-            services.invalidateDiarizer()
+            let voiceprint = try await services.recordAndEnrollLocalVoice(
+                seconds: 12,
+                mode: .echoCancelled)
+            voiceEnrollmentDate = voiceprint.createdAt
             voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
         } catch {
             voiceMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
+        }
+    }
+
+    private func deleteVoice() async {
+        do {
+            try await services.deleteLocalVoiceIdentity()
+            voiceEnrollmentDate = nil
+            voiceMessage = L10n.text("Voiceprint and key deleted.")
+        } catch {
+            voiceMessage = L10n.text(
+                "Could not delete your voice. Nothing was reported as deleted; try again.")
         }
     }
 

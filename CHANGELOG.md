@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 18, 2026
+
+- **🗣️ Voice enrollment that tells the truth** — Portavoz now rejects unusably short or invalid samples before saving your identity, keeps personalized Companion guidance in your chosen language, and leaves a failed delete visibly enrolled instead of falsely claiming your encrypted voice and key are gone.
+
 ## July 17, 2026
 
 - **📅 Preparation that opens, every time** — Upcoming agenda rows now open their source-grounded meeting brief without a native sidebar selection race sending you into the neighboring recording.

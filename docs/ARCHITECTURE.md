@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, local voice identity, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, local voice capture/enrollment/status/deletion, explicit participant-voice memory, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -162,8 +162,10 @@ The implemented application workflows include:
 - canonical meeting-document preparation for native save surfaces, explicit
   Gist publication, and pending action-item publication from one coherent
   meeting projection;
-- local voice enrollment/status/deletion and ordered pinned-model
-  inspection/installation through capability-neutral ports;
+- local voice enrollment from an admitted file, a supplied in-memory sample, or
+  a bounded captured sample; typed progress, sample validation,
+  status/deletion, and ordered pinned-model inspection/installation all use
+  capability-neutral ports;
 - degradable participant-voice suggestions, duplicate-offer admission, and
   explicit remembered-voice persistence without automatic speaker mutation;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
@@ -261,6 +263,20 @@ owns recording-path resolution, model loading, transient embedding extraction,
 encrypted gallery access, and disposable-test isolation. `MeetingDetailModel`
 owns one-shot loading, suggestion state, duplicate-offer checks, and explicit
 remember effects; SwiftUI never calls those adapters directly.
+
+The user's own voice enrollment also enters an application workflow. The
+workflow bounds requested capture time, requires at least four seconds of
+finite sample data, orders capture, extraction, and encrypted persistence, and emits typed progress without
+importing audio or diarization implementations. The app adapter owns the exact
+microphone mode, guarantees capture shutdown on success, failure, and
+cancellation, loads the verified diarization capability, extracts the transient
+embedding, and invalidates the cached diarizer only after a successful save or
+delete. A destructive failure remains visible and does not clear presentation
+state. Settings requests a twelve-second echo-cancelled capture. Onboarding
+either reuses its already captured first-listen sample or requests a fresh
+twelve-second raw capture. Neither SwiftUI surface constructs a microphone,
+loads a model, extracts an embedding, or reads the encrypted voice store.
+Disposable UI composition never reads or writes the host voice identity.
 
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
@@ -640,6 +656,9 @@ behind aspirational diagrams:
 - Meeting Detail participant-voice suggestions and explicit memory enter
   ApplicationKit. The SwiftUI view does not read the encrypted gallery,
   resolve recording files, load a diarization model, or match embeddings.
+- Settings and Onboarding local-voice enrollment enter ApplicationKit. Their
+  SwiftUI views do not construct microphone, model, embedding, or encrypted
+  identity capabilities; those remain in app composition adapters.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -649,9 +668,9 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 903 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 328 Swift source files;
-- 37 XCUITest cases pass in English and 37 in Spanish;
+- 911 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 329 Swift source files;
+- 38 XCUITest cases pass in English and 38 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,

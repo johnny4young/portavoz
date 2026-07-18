@@ -11,8 +11,58 @@ public protocol LocalVoiceIdentityExtracting: Sendable {
     func extractVoiceIdentity(from fileURL: URL) async throws -> Voiceprint
 }
 
+public struct LocalVoiceSample: Sendable {
+    public static let minimumEnrollmentDuration: TimeInterval = 4
+
+    public let samples: [Float]
+    public let sampleRate: Double
+
+    public init(samples: [Float], sampleRate: Double) {
+        self.samples = samples
+        self.sampleRate = sampleRate
+    }
+
+    public var duration: TimeInterval {
+        guard sampleRate.isFinite, sampleRate > 0 else { return 0 }
+        return Double(samples.count) / sampleRate
+    }
+}
+
+public enum LocalVoiceCaptureMode: Equatable, Sendable {
+    case raw
+    case echoCancelled
+}
+
+public enum LocalVoiceEnrollmentProgress: Equatable, Sendable {
+    case capturing(secondsRemaining: Int)
+    case extracting
+    case persisting
+}
+
+public typealias LocalVoiceEnrollmentProgressHandler =
+    @Sendable (LocalVoiceEnrollmentProgress) async -> Void
+
+public protocol LocalVoiceSampleCapturing: Sendable {
+    func captureVoiceSample(
+        seconds: Int,
+        mode: LocalVoiceCaptureMode,
+        progress: @escaping LocalVoiceEnrollmentProgressHandler
+    ) async throws -> LocalVoiceSample
+}
+
+public protocol LocalVoiceSampleIdentityExtracting: Sendable {
+    func extractVoiceIdentity(from sample: LocalVoiceSample) async throws -> Voiceprint
+}
+
 public enum ManageLocalVoiceIdentityRequest: Sendable {
     case enroll(fileURL: URL)
+    case enrollSample(
+        LocalVoiceSample,
+        progress: LocalVoiceEnrollmentProgressHandler = { _ in })
+    case recordAndEnroll(
+        seconds: Int,
+        mode: LocalVoiceCaptureMode,
+        progress: LocalVoiceEnrollmentProgressHandler = { _ in })
     case status
     case delete
 }
@@ -23,12 +73,31 @@ public enum ManageLocalVoiceIdentityResult: Sendable {
     case deleted
 }
 
+public enum ManageLocalVoiceIdentityError: Error, Equatable, LocalizedError, Sendable {
+    case unsupportedEnrollmentSource
+    case invalidCaptureDuration
+    case invalidSample
+
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedEnrollmentSource:
+            "This voice enrollment source is unavailable."
+        case .invalidCaptureDuration:
+            "Voice enrollment duration must be between 1 and 60 seconds."
+        case .invalidSample:
+            "The voice sample is too short or invalid."
+        }
+    }
+}
+
 /// Voice enrollment policy independent from Keychain, model, and filesystem
 /// implementations. The source audio is read by the extractor and never kept.
 public struct ManageLocalVoiceIdentity: ApplicationUseCase {
-    private let files: any ApplicationInputFileAccess
+    private let files: (any ApplicationInputFileAccess)?
     private let identities: any LocalVoiceIdentityStoring
-    private let extractor: any LocalVoiceIdentityExtracting
+    private let fileExtractor: (any LocalVoiceIdentityExtracting)?
+    private let sampleCapture: (any LocalVoiceSampleCapturing)?
+    private let sampleExtractor: (any LocalVoiceSampleIdentityExtracting)?
 
     public init(
         files: any ApplicationInputFileAccess,
@@ -37,7 +106,21 @@ public struct ManageLocalVoiceIdentity: ApplicationUseCase {
     ) {
         self.files = files
         self.identities = identities
-        self.extractor = extractor
+        fileExtractor = extractor
+        sampleCapture = nil
+        sampleExtractor = nil
+    }
+
+    public init(
+        sampleCapture: any LocalVoiceSampleCapturing,
+        identities: any LocalVoiceIdentityStoring,
+        sampleExtractor: any LocalVoiceSampleIdentityExtracting
+    ) {
+        files = nil
+        self.identities = identities
+        fileExtractor = nil
+        self.sampleCapture = sampleCapture
+        self.sampleExtractor = sampleExtractor
     }
 
     public func execute(
@@ -45,18 +128,54 @@ public struct ManageLocalVoiceIdentity: ApplicationUseCase {
     ) async throws -> ManageLocalVoiceIdentityResult {
         switch request {
         case .enroll(let fileURL):
+            guard let files, let fileExtractor else {
+                throw ManageLocalVoiceIdentityError.unsupportedEnrollmentSource
+            }
             guard await files.isReadableFile(fileURL) else {
                 throw AnalyzeAudioFileError.inputFileNotFound(fileURL.path)
             }
-            let voiceprint = try await extractor.extractVoiceIdentity(from: fileURL)
+            let voiceprint = try await fileExtractor.extractVoiceIdentity(from: fileURL)
             try await identities.saveVoiceIdentity(voiceprint)
             return .enrolled(voiceprint)
+        case .enrollSample(let sample, let progress):
+            return try await enroll(sample: sample, progress: progress)
+        case .recordAndEnroll(let seconds, let mode, let progress):
+            guard (1...60).contains(seconds) else {
+                throw ManageLocalVoiceIdentityError.invalidCaptureDuration
+            }
+            guard let sampleCapture else {
+                throw ManageLocalVoiceIdentityError.unsupportedEnrollmentSource
+            }
+            await progress(.capturing(secondsRemaining: seconds))
+            let sample = try await sampleCapture.captureVoiceSample(
+                seconds: seconds,
+                mode: mode,
+                progress: progress)
+            return try await enroll(sample: sample, progress: progress)
         case .status:
             return .status(try await identities.loadVoiceIdentity())
         case .delete:
             try await identities.deleteVoiceIdentity()
             return .deleted
         }
+    }
+
+    private func enroll(
+        sample: LocalVoiceSample,
+        progress: @escaping LocalVoiceEnrollmentProgressHandler
+    ) async throws -> ManageLocalVoiceIdentityResult {
+        guard sample.sampleRate.isFinite, sample.sampleRate > 0,
+              sample.duration >= LocalVoiceSample.minimumEnrollmentDuration,
+              sample.samples.allSatisfy(\.isFinite)
+        else { throw ManageLocalVoiceIdentityError.invalidSample }
+        guard let sampleExtractor else {
+            throw ManageLocalVoiceIdentityError.unsupportedEnrollmentSource
+        }
+        await progress(.extracting)
+        let voiceprint = try await sampleExtractor.extractVoiceIdentity(from: sample)
+        await progress(.persisting)
+        try await identities.saveVoiceIdentity(voiceprint)
+        return .enrolled(voiceprint)
     }
 }
 

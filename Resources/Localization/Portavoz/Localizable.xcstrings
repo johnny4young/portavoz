@@ -1081,6 +1081,16 @@
         }
       }
     },
+    "Could not delete your voice. Nothing was reported as deleted; try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo eliminar tu voz. No se marcó como eliminada; inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "Could not encode the meeting file.": {
       "localizations": {
         "es": {

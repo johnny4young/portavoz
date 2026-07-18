@@ -262,6 +262,18 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             mirror.waitForExistence(timeout: 5),
             "the voice pane must offer the post-meeting mirror opt-in")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-voice-enroll").exists,
+            "a disposable library must expose local voice enrollment")
+        let nameGuidance = app.staticTexts["settings-companion-name-guidance"]
+        XCTAssertTrue(nameGuidance.exists)
+        let localizedNameGuidance = app.staticTexts["Mi voz y Companion"].exists
+            ? "Cuando alguien te pregunta por tu nombre"
+            : "When someone asks for you by name"
+        XCTAssertTrue(
+            nameGuidance.label.hasPrefix(localizedNameGuidance),
+            "dynamic Companion guidance must use the active app language")
+        attachScreenshot(of: app, named: "local-voice-enrollment")
     }
 
     @MainActor

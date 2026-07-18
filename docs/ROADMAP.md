@@ -6,20 +6,34 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** move local voice enrollment, calendar-backed speaker
-name suggestions, and local-provider discovery behind application boundaries.
-The macOS conformance audit found that those flows still coordinate capture,
-models, attendee evidence, or provider probing in SwiftUI. Extract them without
-changing enrollment UX, suggestion chips, explicit confirmation, `Me`
-exclusion, or local-only storage. Meeting documents and participant voice
-memory now enter characterized ApplicationKit workflows (D105). Direct
+**Next concrete step:** move calendar-backed speaker name suggestions and
+local-provider discovery behind application boundaries. The macOS conformance
+audit found that those flows still coordinate attendee evidence or provider
+probing in SwiftUI. Extract them without changing suggestion chips, explicit
+confirmation, `Me` exclusion, provider-selection behavior, or local-only
+defaults. Local voice enrollment now enters a characterized ApplicationKit
+workflow (D106). Direct
 capability construction remains valid in
 composition, live capture, diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D105).
+behavior remain covered by package and bilingual UI gates (D33–D106).
+
+- **Local voice enrollment has one application boundary on macOS
+  (Jul 18, 2026):** `ManageLocalVoiceIdentity` now owns bounded capture,
+  finite-sample validation, extraction/persistence order, typed progress,
+  status, and deletion through capability-neutral ports. The app adapter owns
+  microphone lifetime, raw versus echo-cancelled capture, verified diarizer
+  loading, transient embedding extraction, encrypted device-local storage,
+  cache invalidation, and disposable-test isolation. Settings preserves its
+  fresh twelve-second echo-cancelled capture; Onboarding preserves first-listen
+  reuse and fresh twelve-second raw capture. Neither SwiftUI surface imports or
+  constructs audio/diarization capabilities. Seven workflow cases and one
+  exact architecture ratchet establish D106. The verified baseline is 911
+  package tests with 13 gated, strict lint is clean across 329 Swift source
+  files, and all 38 UI cases pass in English and Spanish.
 
 - **Meeting review actions have application boundaries on macOS
   (Jul 18, 2026):** `PrepareMeetingDocument` now loads one coherent selected
