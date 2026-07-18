@@ -83,6 +83,7 @@ flowchart TB
 
     APP --> CORE
     APP --> STORAGE
+    APP --> PLAYBACK
     APP --> TRANSCRIPTION
     APP --> DIARIZATION
     APP --> INTELLIGENCE
@@ -112,7 +113,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -128,8 +129,9 @@ for issue-export formatting.
 ## Application boundary
 
 `ApplicationKit` defines asynchronous Sendable workflows over narrow ports.
-Concrete storage, model, capture, filesystem, document, provider, and platform
-implementations are injected by the executable composition roots.
+Concrete storage, model, capture, filesystem, playback-codec, document,
+provider, and platform implementations are injected by the executable
+composition roots.
 
 The implemented application workflows include:
 
@@ -178,6 +180,10 @@ The implemented application workflows include:
 - optional Meeting Detail title, structure, and chapter-label suggestion with
   application-owned eligibility, bounded output admission, cancellation, and
   per-output degradation over one storage-independent review projection;
+- Meeting Detail audio preparation that resolves current channels, constructs
+  one synchronized playback session, derives a bounded waveform and playback
+  filters, coordinates failure-safe channel compression, and re-resolves files
+  before clip export;
 - pre-meeting reminder resolution from one sampled clock value, one configured
   lead window, session deduplication, and an injected upcoming-event source;
 - degradable participant-voice suggestions, duplicate-offer admission, and
@@ -218,6 +224,22 @@ commitments, talk balance, and bounded finding evidence. Meeting Detail merges
 transcript/cast, newest summary, Companion, privacy receipt, and durable
 processing streams. A failed stream degrades only its section and preserves
 healthy state from the remaining sections.
+
+Meeting Detail audio uses the same route owner. `MeetingDetailModel` owns
+one-shot preparation, cancellation retry, compression state, playback
+invalidation, and clip-export effects. ApplicationKit owns the operation order
+and exposes an observable playback-session facade plus capability-neutral
+waveform values.
+Playback preparation has an audio-directory-scoped task lifetime, independent
+from the multi-section review revision, so unrelated initial section updates
+cannot cancel and consume the only load attempt.
+The app composition resolves recording paths and supplies the concrete codec
+adapter. `AudioPlaybackKit` owns AVFoundation playback, waveform analysis, AAC
+encoding, and clip rendering. SwiftUI owns transport controls, drawing, and the
+native save panel; it neither discovers channel files nor constructs audio
+capabilities. Multi-channel compression refuses to replace an existing output,
+retains every original until all outputs verify, removes generated outputs on
+failure or cancellation, and only then removes the raw channels.
 
 The menu-bar scene receives bounded recent-meeting and open-commitment updates
 through an app adapter. EventKit access remains in the adapter and follows the
@@ -516,7 +538,12 @@ source selections remain queued until waveform preparation completes.
 
 Waveform generation is stateless and uses Accelerate over range-aligned channel
 spans. Playback supports synchronized channels, silence skipping, local-voice
-filtering, clips, and AAC compression.
+filtering, clips, and AAC compression. Meeting Detail receives only the
+application-owned playback facade and capability-neutral waveform values.
+Compression verifies every generated channel before removing raw inputs,
+refuses to overwrite an existing canonical AAC file, and reports live
+post-publication disk savings. Clip export resolves the current channel set for
+each request so a completed compression cannot leave stale URLs behind.
 
 Spotlight indexing is a process-scoped, protected, coalescing reconciler. It
 compares compact client state, publishes bounded batches to a named index,
@@ -725,6 +752,11 @@ behind aspirational diagrams:
   ApplicationKit. The SwiftUI view does not inspect model availability,
   construct concrete generators, coordinate one-shot state, or publish stale
   output after a newer review projection arrives.
+- Meeting Detail playback preparation, waveform/filter policy, all-channel
+  compression, and clip export enter ApplicationKit. The app adapter owns
+  recording-root/channel resolution and the concrete AAC compressor; SwiftUI
+  imports neither AudioPlaybackKit nor StorageKit and does not retain channel
+  URLs or coordinate destructive publication.
 - Settings and Onboarding local-voice enrollment enter ApplicationKit. Their
   SwiftUI views do not construct microphone, model, embedding, or encrypted
   identity capabilities; those remain in app composition adapters.
@@ -759,8 +791,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 949 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 339 Swift source files;
+- 959 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 342 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

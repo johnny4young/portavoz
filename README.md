@@ -35,7 +35,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 - **Private when support is needed.** Export a redacted local support file without meeting text, generated output, prompts, secrets, full URLs, or paths. Stalled background work is visible in Meeting Detail and can be retried without replacing its durable safety evidence.
 - **Failures tell you what to do.** Recording Start/Stop failures keep a stable support reference and route you to retry, your preserved Library audio, or private local diagnostics instead of exposing a dependency error or ending at a generic alert.
 - **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact.
-- **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, and exports any span as an audio clip.
+- **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, exports any span as an audio clip, and compresses every channel without removing an original until all outputs verify.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
 - **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
 - **Open format.** Your meetings are Markdown + SQLite you own. No accounts, no lock-in.
@@ -77,7 +77,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Co-authoring notes** — jot raw notes while recording; the summary weaves them in and marks the co-authored lines (▸).
 
 **Listen back**
-- **Synced player** — the transcript scrolls like song lyrics, per-channel colored waveform, **"only my voice"** to replay just your turns, skip-silence, and any span exported as an audio clip or compressed to AAC in one click.
+- **Synced player** — the transcript scrolls like song lyrics, per-channel colored waveform, **"only my voice"** to replay just your turns, skip-silence, and any span exported as an audio clip or compressed to AAC in one click. Compression verifies every channel before removing raw audio and never replaces an existing AAC file.
 
 **Reflect & review**
 - **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, violet = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
@@ -149,7 +149,7 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence and privacy-safe management, local summary-provider discovery and clean-install selection, microphone discovery, resumable recording-root changes, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, Meeting Detail playback/waveform/filter preparation plus failure-safe compression and clip export, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence and privacy-safe management, local summary-provider discovery and clean-install selection, microphone discovery, resumable recording-root changes, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
@@ -238,6 +238,15 @@ earliest due meeting from one sampled time and returns a typed notice; disabled
 reminders do not query the calendar. The macOS adapter retains preferences,
 clock, and EventKit access while the process controller owns only its timer,
 floating banner, session deduplication, and one-click recording route.
+Meeting Detail audio follows the same boundary. The route model owns one-shot
+preparation in an audio-directory-scoped task, playback invalidation,
+compression state, and clip-export effects; independent review revisions cannot
+consume the player load;
+ApplicationKit coordinates current channel resolution, synchronized playback,
+bounded waveform/filter derivation, and failure-safe all-channel compression.
+The macOS adapter owns recording-root lookup and the concrete codec, while
+SwiftUI keeps transport controls, drawing, and the native save panel. A failed
+conversion removes only generated work and keeps every original channel.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume a global invalidation counter for reads. Spotlight

@@ -4,50 +4,6 @@ import Observation
 import OSLog
 import PortavozCore
 
-/// Narrow read-side contract for one Meeting Detail feature instance.
-@MainActor
-protocol MeetingDetailModelClient: AnyObject {
-    func observeMeetingReview(
-        _ meetingID: MeetingID
-    ) -> AsyncStream<MeetingReviewUpdate>
-
-    func renameMeetingDetailMeeting(_ meeting: Meeting) async throws
-    func renameMeetingDetailSpeaker(_ speaker: Speaker) async throws
-    func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person]
-    func linkMeetingDetailSpeaker(
-        _ request: LinkObservedSpeakerRequest
-    ) async throws -> ConfirmedPersonLink
-    func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws
-    func setMeetingDetailSummaryClaimFeedback(
-        _ feedback: SummaryClaimFeedback?,
-        for claimID: SummaryClaimID,
-        meetingID: MeetingID
-    ) async throws
-    func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
-    func deleteMeetingDetail(_ id: MeetingID) async throws
-    func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws
-    func prepareMeetingDetailDocument(
-        _ meetingID: MeetingID,
-        format: MeetingDocumentFormat
-    ) async throws -> PreparedMeetingDocument
-    func publishMeetingDetailGist(_ meetingID: MeetingID) async throws -> URL
-    func meetingDetailNameSuggestions(
-        _ meetingID: MeetingID
-    ) async throws -> [MeetingNameSuggestion]
-    func meetingDetailVoiceSuggestions(
-        _ meetingID: MeetingID
-    ) async throws -> [MeetingVoiceSuggestion]
-    func meetingDetailMetadataSuggestions(
-        _ request: SuggestMeetingReviewMetadataRequest
-    ) async throws -> MeetingReviewMetadataSuggestions
-    func canRememberMeetingDetailVoice(named name: String) async -> Bool
-    func rememberMeetingDetailVoice(
-        meetingID: MeetingID,
-        speakerID: SpeakerID
-    ) async throws -> ManageMeetingVoiceMemoryResult
-    func requestMeetingDetailSearchReindex()
-}
-
 /// Per-detail owner of scoped loading, partial failure, and the current
 /// storage-independent meeting review projection.
 @MainActor
@@ -75,6 +31,9 @@ final class MeetingDetailModel {
         fileprivate(set) var chapterTitles: [TimeInterval: String] = [:]
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
+        fileprivate(set) var playback: PreparedMeetingPlayback?
+        fileprivate(set) var isCompressingAudio = false
+        fileprivate(set) var audioCompressionMessage: String?
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
     }
@@ -102,6 +61,9 @@ final class MeetingDetailModel {
         case loadNameSuggestions
         case loadVoiceSuggestions
         case loadMetadataSuggestions
+        case loadPlayback
+        case compressAudio
+        case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
     }
@@ -171,6 +133,15 @@ final class MeetingDetailModel {
         static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
         static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
         static var loadMetadataSuggestions: Self { .review(.loadMetadataSuggestions) }
+        static var loadPlayback: Self { .review(.loadPlayback) }
+        static var compressAudio: Self { .review(.compressAudio) }
+
+        static func exportAudioClip(
+            _ range: ClosedRange<TimeInterval>,
+            to destination: URL
+        ) -> Self {
+            .review(.exportAudioClip(range, to: destination))
+        }
 
         static func checkVoiceMemoryOffer(name: String) -> Self {
             .review(.checkVoiceMemoryOffer(name: name))
@@ -195,6 +166,8 @@ final class MeetingDetailModel {
         case voiceMemoryOfferChecked(Bool)
         case voiceRemembered
         case voiceMemoryInsufficientAudio
+        case audioCompressed(Int64)
+        case audioClipExported(URL)
         case operationFailed(String)
     }
 
@@ -217,6 +190,7 @@ final class MeetingDetailModel {
     private var didCompleteTitleSuggestion = false
     private var didCompleteRecipeSuggestion = false
     private var metadataRequestID = UUID()
+    private var playbackDirectoryAttempt: String?
 
     init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
         self.meetingID = meetingID
@@ -238,6 +212,15 @@ final class MeetingDetailModel {
     /// Any explicit summary regeneration supersedes the optional recipe chip.
     func dismissSuggestedRecipe() {
         state.suggestedRecipe = nil
+    }
+
+    /// The route owns the AVFoundation observer lifetime. Leaving the detail
+    /// invalidates the application playback facade and allows a clean reload
+    /// if this route instance appears again.
+    func invalidatePlayback() {
+        state.playback?.session.invalidate()
+        state.playback = nil
+        playbackDirectoryAttempt = nil
     }
 
     func observe() async {
@@ -315,6 +298,13 @@ final class MeetingDetailModel {
         case .loadMetadataSuggestions:
             await loadMetadataSuggestions()
             return nil
+        case .loadPlayback:
+            await loadPlayback()
+            return nil
+        case .compressAudio:
+            return await compressAudio()
+        case .exportAudioClip(let range, let destination):
+            return await exportAudioClip(range, to: destination)
         case .checkVoiceMemoryOffer(let name):
             return .voiceMemoryOfferChecked(
                 await client.canRememberMeetingDetailVoice(named: name))
@@ -561,6 +551,84 @@ private extension MeetingDetailModel {
         }
     }
 
+    func loadPlayback() async {
+        guard let detail = state.readModel,
+            let relative = detail.meeting.audioDirectory,
+            !relative.isEmpty
+        else { return }
+        guard state.playback == nil, playbackDirectoryAttempt != relative else { return }
+        playbackDirectoryAttempt = relative
+
+        do {
+            let prepared = try await client.prepareMeetingDetailPlayback(
+                PrepareMeetingPlaybackRequest(
+                    relativeAudioDirectory: relative,
+                    segments: detail.segments))
+            guard !Task.isCancelled else {
+                prepared?.session.invalidate()
+                playbackDirectoryAttempt = nil
+                return
+            }
+            state.playback = prepared
+        } catch is CancellationError {
+            playbackDirectoryAttempt = nil
+        } catch {
+            // Missing or unreadable optional audio preserves the released
+            // text-only detail instead of hiding healthy transcript content.
+        }
+    }
+
+    func compressAudio() async -> Effect? {
+        guard !state.isCompressingAudio,
+            state.playback?.canCompressAudio == true,
+            let relative = state.readModel?.meeting.audioDirectory
+        else { return nil }
+        state.isCompressingAudio = true
+        state.audioCompressionMessage = nil
+        defer { state.isCompressingAudio = false }
+
+        do {
+            let result = try await client.compressMeetingDetailAudio(
+                CompressMeetingAudioRequest(relativeAudioDirectory: relative))
+            let previous = state.playback
+            state.playback = nil
+            playbackDirectoryAttempt = nil
+            previous?.session.invalidate()
+            await loadPlayback()
+            let freed = ByteCountFormatter.string(
+                fromByteCount: result.bytesFreed,
+                countStyle: .file)
+            state.audioCompressionMessage = L10n.format(
+                "Audio compressed — %@ freed.",
+                freed)
+            return .audioCompressed(result.bytesFreed)
+        } catch is CancellationError {
+            return nil
+        } catch {
+            state.audioCompressionMessage = error.localizedDescription
+            return .operationFailed(error.localizedDescription)
+        }
+    }
+
+    func exportAudioClip(
+        _ range: ClosedRange<TimeInterval>,
+        to destination: URL
+    ) async -> Effect {
+        guard let relative = state.readModel?.meeting.audioDirectory else {
+            return .operationFailed(L10n.text("The meeting has no audio to trim."))
+        }
+        do {
+            try await client.exportMeetingDetailAudioClip(
+                ExportMeetingAudioClipRequest(
+                    relativeAudioDirectory: relative,
+                    range: range,
+                    destination: destination))
+            return .audioClipExported(destination)
+        } catch {
+            return .operationFailed(error.localizedDescription)
+        }
+    }
+
     func rememberVoice(_ speakerID: SpeakerID) async -> Effect {
         do {
             switch try await client.rememberMeetingDetailVoice(
@@ -622,8 +690,14 @@ private extension MeetingDetailModel {
 
     func refreshReadModel() {
         guard let core else {
+            invalidatePlayback()
             state.readModel = nil
             return
+        }
+        let previousAudioDirectory = state.readModel?.meeting.audioDirectory
+        if previousAudioDirectory != core.meeting.audioDirectory,
+            previousAudioDirectory != nil {
+            invalidatePlayback()
         }
         state.readModel = MeetingReviewReadModel(
             core: core,

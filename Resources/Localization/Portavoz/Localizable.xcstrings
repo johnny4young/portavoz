@@ -4411,6 +4411,16 @@
         }
       }
     },
+    "The meeting has no audio to trim.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión no tiene audio para recortar."
+          }
+        }
+      }
+    },
     "The meeting app": {
       "localizations": {
         "es": {

@@ -15,14 +15,30 @@ also enter characterized ApplicationKit workflows. The pre-meeting reminder
 controller now receives one deterministic application notice instead of
 reading EventKit, preferences, and the clock directly. Meeting Detail title,
 structure, and chapter suggestions now use one revision-fenced application
-workflow instead of view-owned model coordination (D106–D111).
+workflow instead of view-owned model coordination (D111).
+Meeting Detail playback, waveform/filter preparation, all-channel compression,
+and clip export now enter ApplicationKit; the route model owns lifecycle state
+and SwiftUI retains rendering, transport controls, and the native save panel.
 Direct capability construction remains valid in composition, live capture,
 diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D111).
+behavior remain covered by package and bilingual UI gates (D33–D112).
+
+- **Meeting Detail audio has one application boundary on macOS
+  (Jul 18, 2026):** `PrepareMeetingPlayback`, `CompressMeetingAudio`, and
+  `ExportMeetingAudioClip` own channel resolution order, synchronized session
+  preparation, bounded waveform/filter derivation, failure-safe compression,
+  and current-file clip export. The app adapter retains recording-root lookup
+  and the concrete codec; `MeetingDetailModel` owns one-shot loading,
+  directory-scoped cancellation retry, invalidation, progress, and effects.
+  Review-section revisions cannot consume the audio load attempt. Compression
+  refuses existing outputs and keeps every original until every generated channel
+  verifies. The verified package baseline is 959 tests, strict lint is clean
+  across 342 Swift source files, and bilingual UI verification covers the
+  retained player, waveform, compression control, and clip export (D112).
 
 - **Meeting Detail metadata suggestions have one application boundary on macOS
   (Jul 18, 2026):** `SuggestMeetingReviewMetadata` owns title, structure, and

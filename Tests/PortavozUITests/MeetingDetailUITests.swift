@@ -542,6 +542,9 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "player-only-my-voice").exists,
             "the player must offer the 'only my voice' filter")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-compress-audio").exists,
+            "raw seeded meeting audio must keep its compression action")
         play.click()  // smoke: play doesn't crash
         Thread.sleep(forTimeInterval: 0.5)
         attachScreenshot(of: app, named: "band-4f-vectorized-waveform")

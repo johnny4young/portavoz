@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination).
 
 ## Structure
 
@@ -227,6 +227,22 @@ request identity, revision fencing, cancellation retry, and explicit
 dismissal. SwiftUI renders inert suggestions and sends acceptance actions only.
 A failed title rename preserves the suggestion and visible error, and requests
 Spotlight reindexing only after persistence succeeds.
+
+Meeting Detail audio enters ApplicationKit (D112). Playback preparation
+resolves the current canonical system and microphone files through an injected
+port, constructs one synchronized observable application facade, derives a
+bounded capability-neutral waveform away from the main actor, and installs silence and
+microphone-turn filters before publication. Compression uses an injected codec
+port and treats every raw channel as one failure-safe batch: an existing AAC
+output fails closed, all generated files must verify before any original is
+removed, and failures or cancellation remove only generated work. Clip export
+re-resolves current files after compression. The private app adapter retains
+`RecordingsLocation`, `MeetingAudioLayout`, and the concrete `AudioTranscoder`;
+`MeetingDetailModel` owns one-shot preparation, invalidation, compression
+state, player reconstruction, and typed export effects. Its playback task is
+keyed to the audio directory rather than review revisions, so cancellation by
+independent initial section updates cannot consume the only attempt. SwiftUI
+retains only transport controls, drawing, and the native save panel.
 
 SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
 Sendable async `ApplicationUseCase<Request, Response>` contract and admits
@@ -502,9 +518,11 @@ ApplicationKit lifecycle use case, and the Spotlight reconciliation request;
 best-effort operations, visible manual-rename/Companion errors, explicit
 remember-voice consent, and delete navigation. Scoped observations, not
 optimistic duplicate arrays, return post-write state. The adapter maps the
-stale-refine persistence error before presentation. The view still imports
-StorageKit only for local recording-path helpers used by playback/voiceprint
-extraction; that seam is deferred to measured Band 4 decomposition (D60).
+stale-refine persistence error before presentation. The remaining playback
+path helpers later moved behind the D112 application audio workflows. SwiftUI
+no longer imports StorageKit or AudioPlaybackKit for Meeting Detail playback,
+compression, or clip export. Voice-memory extraction uses its separate app
+adapter and application workflow (D105).
 
 Band 6C3 applies the same scoped-state rule to the resident menu-bar scene.
 `MenuBarContent` owns one `@MainActor @Observable MenuBarModel` and renders only
@@ -733,7 +751,30 @@ exercises this same production path in the durable-resume XCUITest (D63).
 
 ## Additional as-built note
 
-**Audio first-class (M11/D27) complete**: player synchronized with **Spotify-style lyrics transcript** (`FocusedTranscriptView`: spoken line stays CENTERED in fixed-height viewport, others fade/shrink/blur towards edges — cylinder effect with `.visualEffect`; no scroll bar; search in timeline moves transcript INSIDE its box, never page), click-to-jump, **waveform-scrubber** (colored by channel: accent=you, gray=them; dimmed after playhead; clip region shaded) and **clips** (mark in/out at playhead → `AudioClipExporter` exports mixed range to m4a/AAC via `AVAssetExportSession`, measured well below 2 s) — all in `AudioPlaybackKit`. Without audio, transcript is normal list. The **same carousel runs in live recording** (`FocusedTranscriptView` parametrized with `anchor`: during recording new line focuses at lower third `y≈0.82` — boundary — and old ones rise and fade; `followSignal` re-centers when live line GROWS, not just appears; replaced pausable follow-live). Also: **skip-silence** (toggle; skips gaps ≥1.2 s detected from waveform), **transcode AAC** ("Comprimir audio (AAC)" → `AudioTranscoder`, deletes original after verified write, rebuilds player from m4a) and **import** (library: "Importar audio…" button + drag-drop → the `AppServices` wrapper around `ApplicationKit.ImportMeeting`; it copies as system channel off the MainActor, applies the transcript recognition policy to Whisper, keeps mixed-language evidence automatic, degrades diarization and summary honestly, commits the required aggregate atomically, then preserves the existing success invalidation and navigation timing). **M11 complete.** `make test-ui` covers player, highlight and clip export button; preflight closes Portavoz before XCUITest to avoid automation mode failures from stale instances.
+**Audio-first Meeting Detail:** the synchronized player drives the
+**Spotify-style lyrics transcript** (`FocusedTranscriptView`: the spoken line
+stays centered in a fixed-height viewport while surrounding lines fade,
+shrink, and blur), click-to-jump, the channel-colored waveform scrubber, clip
+marks, skip-silence, and microphone-only playback. `MeetingDetailModel` owns
+one playback-preparation attempt per recording directory, cancellation retry,
+compression state, session invalidation, and clip-export effects.
+`ApplicationKit.PrepareMeetingPlayback` resolves current channels through an
+injected port, constructs one `MeetingPlaybackSession`, derives the bounded
+waveform off the main actor, and configures silence and microphone-turn ranges.
+The app adapter owns the configured recording root and canonical channel-file
+lookup. `AudioPlaybackKit` retains AVFoundation playback, Accelerate waveform
+analysis, AAC encoding, and mixed-range export. SwiftUI owns the transport
+controls, waveform drawing, and native save panel only. Compression operates
+on every raw channel as one failure-safe batch: existing canonical outputs are
+never replaced, generated outputs are removed on failure or cancellation, and
+no original is removed until all outputs verify. A successful conversion
+invalidates and rebuilds the session from current files. Without readable
+audio, the healthy transcript remains a normal text-only list. The same
+carousel still runs during live recording with a lower follow anchor. Audio
+import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
+mixed-language recognition. `make test-ui` covers the player, highlight,
+compression action, and clip-export button; preflight closes stale app
+instances before XCUITest.
 
 **Stateless waveform derivation (Band 4F/D84, Jul 2026):**
 `Waveform.generate` reads the available microphone/system sources, partitions
@@ -787,13 +828,13 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 35 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 39 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + full Ask and command-palette answer/citation paths +
 interrupted staging recovery + durable post-capture resume + typed recording-
 start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
-rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
+rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
 Whisper preparation, explicit iCloud sync opt-in/existing-library separation,
 custom structures, capture
@@ -820,7 +861,7 @@ resort. Feature-band evidence retains app-only screenshots at asserted
 Library, the identified command-palette panel, Insights, Meeting Detail,
 Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints
 so unrelated desktop content is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 35-case suite is green in the
+test language and region flags; the complete 39-case suite is green in the
 default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

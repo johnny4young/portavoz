@@ -1,10 +1,8 @@
 import AppKit
 import ApplicationKit
-import AudioPlaybackKit
 import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 import TranscriptionKit
 import UniformTypeIdentifiers
@@ -37,11 +35,11 @@ struct MeetingDetailView: View {
     /// be reviewed afterward. Empty hides the rail section.
     private var companionCards: [CompanionCard] { detail?.companionCards ?? [] }
     private var summary: MeetingReviewSummary? { detail?.summary }
-    @State private var player: MeetingPlayer?
-    @State private var waveform: [Waveform.Bucket] = []
-    @State private var channelURLs: [URL] = []
-    @State private var compressing = false
-    @State private var compressMessage: String?
+    private var player: MeetingPlaybackSession? { model.state.playback?.session }
+    private var waveform: [MeetingWaveformBucket] {
+        model.state.playback?.waveform ?? []
+    }
+    private var playbackTaskID: String? { detail?.meeting.audioDirectory }
     @State private var renamingSpeaker: Speaker?
     @State private var newName = ""
     @State private var exportDocument: ExportDocument?
@@ -121,8 +119,9 @@ struct MeetingDetailView: View {
             }
         }
         .task { await model.observe() }
+        .task(id: playbackTaskID) { await refreshPlayback() }
         .task(id: model.state.revision) { await refreshPresentation() }
-        .onDisappear { player?.invalidate() }
+        .onDisappear { model.invalidatePlayback() }
     }
 
     /// The loaded detail: the scrolling content plus the toolbar, sheet, and
@@ -298,7 +297,14 @@ extension MeetingDetailView {
     private var playerDock: some View {
         if let player {
             Divider()
-            MeetingPlayerBar(player: player, waveform: waveform)
+            MeetingPlayerBar(
+                player: player,
+                waveform: waveform,
+                exportClip: { range, destination in
+                    let effect = await model.send(.exportAudioClip(range, to: destination))
+                    guard case .operationFailed(let message) = effect else { return nil }
+                    return message
+                })
             compressRow
         }
     }
@@ -624,10 +630,12 @@ extension MeetingDetailView {
 
     @ViewBuilder
     private var compressRow: some View {
-        if canCompressAudio || compressing || compressMessage != nil {
+        if canCompressAudio
+            || model.state.isCompressingAudio
+            || model.state.audioCompressionMessage != nil {
             HStack(spacing: 8) {
                 Button(action: compressAudio) {
-                    if compressing {
+                    if model.state.isCompressingAudio {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
                             Text("Compressing…")
@@ -637,9 +645,10 @@ extension MeetingDetailView {
                     }
                 }
                 .controlSize(.small)
+                .accessibilityIdentifier("detail-compress-audio")
                 .disabled(!canCompressAudio)
                 .help("Converts audio to AAC to save disk space, with no audible loss for speech")
-                if let compressMessage {
+                if let compressMessage = model.state.audioCompressionMessage {
                     Text(compressMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -1880,16 +1889,25 @@ extension MeetingDetailView {
 
     private func refreshPresentation() async {
         guard detail != nil else { return }
-        await loadPlayerIfNeeded()
-        guard !Task.isCancelled else { return }
         // A palette citation navigated here: jump to the cited moment.
         if let seek = services.pendingSeek {
             services.pendingSeek = nil
-            player?.seek(to: seek)
+            pendingEvidenceSeek = seek
+            applyPendingEvidenceSeekIfPossible()
         }
         await model.send(.loadMetadataSuggestions)
         guard !Task.isCancelled else { return }
         await loadVoiceSuggestions()
+    }
+
+    /// Audio has its own directory-scoped lifetime. Review sections can emit
+    /// several initial revisions; keying this work to those revisions would
+    /// cancel the only player build while later revisions merely deduplicate.
+    private func refreshPlayback() async {
+        guard playbackTaskID != nil else { return }
+        await model.send(.loadPlayback)
+        guard !Task.isCancelled else { return }
+        applyPendingEvidenceSeekIfPossible()
     }
 
     /// "Summarize as Standup?" — the typed-recipe suggestion (M13b). One
@@ -1967,77 +1985,18 @@ extension MeetingDetailView {
         return badge
     }
 
-    /// Builds the synchronized player + waveform once (M11). Audio survives
-    /// refine, so there's no reason to rebuild when the library version bumps.
-    private func loadPlayerIfNeeded() async {
-        guard player == nil, let loadedDetail = detail,
-            let relative = loadedDetail.meeting.audioDirectory
-        else { return }
-        let base = RecordingsLocation.shared.resolve(relative)
-        let system = MeetingAudioLayout.channelFile(named: "system", in: base)
-        let mic = MeetingAudioLayout.channelFile(named: "microphone", in: base)
-        let files = [system, mic].compactMap { $0 }
-        guard !files.isEmpty else { return }
-        let loadedPlayer = await MeetingPlayer.make(channelFiles: files)
-        guard !Task.isCancelled else {
-            loadedPlayer?.invalidate()
-            return
-        }
-        // Off the main actor: a long meeting reads a lot of frames.
-        let loadedWaveform = await Task.detached {
-            Waveform.generate(micFile: mic, systemFile: system, buckets: 600)
-        }.value
-        guard !Task.isCancelled else {
-            loadedPlayer?.invalidate()
-            return
-        }
-        channelURLs = files
-        player = loadedPlayer
-        applyPendingEvidenceSeekIfPossible()
-        waveform = loadedWaveform
-        loadedPlayer?.setSilentRanges(
-            Waveform.silentRanges(loadedWaveform, duration: loadedPlayer?.duration ?? 0))
-        // "Solo mi voz": skip everything that isn't the user's mic turns.
-        if let loadedPlayer {
-            let voiceRanges = loadedDetail.segments
-                .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
-                .map { $0.startTime...$0.endTime }
-            loadedPlayer.setNonVoiceRanges(
-                PlaybackRanges.complement(of: voiceRanges, within: loadedPlayer.duration))
-        }
-    }
-
     /// True when there's lossless audio (CAF/WAV) still worth compressing.
     private var canCompressAudio: Bool {
-        !compressing && channelURLs.contains { $0.pathExtension.lowercased() != "m4a" }
+        !model.state.isCompressingAudio
+            && model.state.playback?.canCompressAudio == true
     }
 
-    /// Transcodes the channels to AAC and rebuilds the player from them.
-    /// Originals are removed only after a verified write (M11/D27, T6).
+    /// Sends one user intent; ApplicationKit owns channel resolution,
+    /// failure-safe batch compression, and playback reconstruction.
     private func compressAudio() {
-        let originals = channelURLs.filter { $0.pathExtension.lowercased() != "m4a" }
-        guard !originals.isEmpty else { return }
-        compressing = true
-        compressMessage = nil
         Task {
-            defer { compressing = false }
-            let before = AudioTranscoder.totalBytes(of: channelURLs)
-            do {
-                for url in originals {
-                    _ = try await AudioTranscoder.toAAC(source: url, deleteSource: true)
-                }
-            } catch {
-                compressMessage = error.localizedDescription
-                return
-            }
-            player?.invalidate()
-            player = nil
-            waveform = []
-            channelURLs = []
-            await loadPlayerIfNeeded()
-            let saved = max(0, before - AudioTranscoder.totalBytes(of: channelURLs))
-            let freed = ByteCountFormatter.string(fromByteCount: saved, countStyle: .file)
-            compressMessage = L10n.format("Audio compressed — %@ freed.", freed)
+            _ = await model.send(.compressAudio)
+            applyPendingEvidenceSeekIfPossible()
         }
     }
 

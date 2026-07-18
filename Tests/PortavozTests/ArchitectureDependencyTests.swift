@@ -30,8 +30,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             application.dependencies,
             [
-                "DiarizationKit", "IntelligenceKit", "PortavozCore", "StorageKit",
-                "TranscriptionKit",
+                "AudioPlaybackKit", "DiarizationKit", "IntelligenceKit",
+                "PortavozCore", "StorageKit", "TranscriptionKit",
             ])
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-app"]).dependencies.contains(
             "ApplicationKit"))
@@ -364,8 +364,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testApplicationKitImportsStayInsideTheApprovedLayer() throws {
         let allowed = Set([
-            "Foundation", "PortavozCore", "TranscriptionKit", "DiarizationKit",
-            "IntelligenceKit", "StorageKit",
+            "AudioPlaybackKit", "Foundation", "Observation", "PortavozCore",
+            "TranscriptionKit", "DiarizationKit", "IntelligenceKit", "StorageKit",
         ])
         let violations = try Self.imports(under: "Sources/ApplicationKit")
             .filter { !allowed.contains($0.module) }
@@ -858,6 +858,53 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("suggestTitleIfUseful"))
         XCTAssertFalse(view.contains("suggestRecipeIfUseful"))
         XCTAssertFalse(view.contains("titleChaptersIfNeeded"))
+    }
+
+    func testMeetingDetailAudioCoordinationEntersThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingAudioWorkflows.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingAudio.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let playerBar = try Self.contents(
+            of: "Sources/portavoz-app/MeetingPlayerBar.swift")
+        let transcript = try Self.contents(
+            of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
+
+        for useCase in [
+            "PrepareMeetingPlayback", "CompressMeetingAudio", "ExportMeetingAudioClip",
+        ] {
+            XCTAssertTrue(workflow.contains("struct \(useCase)"), useCase)
+            XCTAssertTrue(adapter.contains("\(useCase)("), useCase)
+        }
+        XCTAssertTrue(workflow.contains("MeetingAudioChannelResolving"))
+        XCTAssertTrue(workflow.contains("Task.detached(priority: .userInitiated)"))
+        XCTAssertTrue(workflow.contains("PlaybackRanges.complement"))
+        XCTAssertTrue(adapter.contains("RecordingsLocation.shared"))
+        XCTAssertTrue(adapter.contains("MeetingAudioLayout.channelFile"))
+        XCTAssertTrue(model.contains("case loadPlayback"))
+        XCTAssertTrue(model.contains("case compressAudio"))
+        XCTAssertTrue(model.contains("case exportAudioClip"))
+        XCTAssertTrue(view.contains(".task(id: playbackTaskID)"))
+        XCTAssertTrue(view.contains("model.send(.loadPlayback)"))
+        XCTAssertTrue(view.contains("model.send(.compressAudio)"))
+        XCTAssertTrue(playerBar.contains("await exportClip(range, url)"))
+
+        let presentationSources = [view, playerBar, transcript]
+        for source in presentationSources {
+            XCTAssertFalse(source.contains("import AudioPlaybackKit"))
+        }
+        for bypass in [
+            "RecordingsLocation", "MeetingAudioLayout", "MeetingPlayer.make",
+            "Waveform.generate", "AudioTranscoder", "AudioClipExporter",
+            "PlaybackRanges.complement",
+        ] {
+            XCTAssertFalse(view.contains(bypass), bypass)
+            XCTAssertFalse(playerBar.contains(bypass), bypass)
+        }
     }
 
     func testLibraryFeatureOwnsStateAndActionsOutsideSwiftUI() throws {

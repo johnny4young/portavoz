@@ -243,6 +243,77 @@ final class MeetingDetailModelTests: XCTestCase {
         }
     }
 
+    func testAudioPreparationAndClipExportStayBehindTheFeatureOwner() async {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/meeting"
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(
+                meeting: meeting,
+                speakers: [fixture.speaker],
+                segments: [fixture.segment])),
+            .summary(fixture.summary),
+            .companionCards([fixture.card]),
+            .privacyReceipt(fixture.receipt),
+            .processingJobs([]),
+        ])
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("model-clip-\(UUID().uuidString).m4a")
+
+        await model.observe()
+        await model.send(.loadPlayback)
+        await model.send(.loadPlayback)
+        let exported = await model.send(.exportAudioClip(1...2, to: destination))
+
+        guard case .audioClipExported(let url) = exported else {
+            return XCTFail("successful export must return a typed destination effect")
+        }
+        XCTAssertEqual(url, destination)
+        XCTAssertEqual(client.calls, [
+            .observe(meeting.id),
+            .preparePlayback("Audio/meeting"),
+            .exportAudioClip("Audio/meeting", 1...2, destination),
+        ])
+
+        client.failures.insert(.exportAudioClip)
+        let failed = await model.send(.exportAudioClip(1...2, to: destination))
+        guard case .operationFailed(let message) = failed else {
+            return XCTFail("clip failure must remain visible to presentation")
+        }
+        XCTAssertTrue(message.contains("exportAudioClip"))
+    }
+
+    func testCanceledAudioPreparationCanRetryForTheSameDirectory() async {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/meeting"
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(
+                meeting: meeting,
+                speakers: [fixture.speaker],
+                segments: [fixture.segment])),
+            .summary(fixture.summary),
+            .companionCards([fixture.card]),
+            .privacyReceipt(fixture.receipt),
+            .processingJobs([]),
+        ])
+        client.playbackCancellationsRemaining = 1
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+
+        await model.observe()
+        await model.send(.loadPlayback)
+        await model.send(.loadPlayback)
+
+        XCTAssertEqual(
+            client.calls.filter { call in
+                if case .preparePlayback = call { return true }
+                return false
+            }.count,
+            2,
+            "cancellation must not consume the directory-scoped playback attempt")
+    }
+
     func testMutationFailuresPreserveSilentAndVisiblePolicies() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -541,6 +612,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
     var metadataSuggestionsResult = MeetingReviewMetadataSuggestions()
     var metadataCancellationsRemaining = 0
+    var playbackCancellationsRemaining = 0
+    var preparedPlaybackResult: PreparedMeetingPlayback?
+    var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
     var nameSuggestionsResult: [MeetingNameSuggestion] = [
         MeetingNameSuggestion(
             label: "S1",
@@ -683,6 +757,36 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         return metadataSuggestionsResult
     }
 
+    func prepareMeetingDetailPlayback(
+        _ request: PrepareMeetingPlaybackRequest
+    ) throws -> PreparedMeetingPlayback? {
+        calls.append(.preparePlayback(request.relativeAudioDirectory))
+        if playbackCancellationsRemaining > 0 {
+            playbackCancellationsRemaining -= 1
+            throw CancellationError()
+        }
+        try fail(.preparePlayback)
+        return preparedPlaybackResult
+    }
+
+    func compressMeetingDetailAudio(
+        _ request: CompressMeetingAudioRequest
+    ) throws -> MeetingAudioCompressionResult {
+        calls.append(.compressAudio(request.relativeAudioDirectory))
+        try fail(.compressAudio)
+        return compressionResult
+    }
+
+    func exportMeetingDetailAudioClip(
+        _ request: ExportMeetingAudioClipRequest
+    ) throws {
+        calls.append(.exportAudioClip(
+            request.relativeAudioDirectory,
+            request.range,
+            request.destination))
+        try fail(.exportAudioClip)
+    }
+
     func canRememberMeetingDetailVoice(named name: String) -> Bool {
         calls.append(.checkVoiceMemoryOffer(name))
         return canRememberVoiceResult
@@ -721,6 +825,9 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case loadNameSuggestions
     case loadVoiceSuggestions
     case loadMetadataSuggestions
+    case preparePlayback
+    case compressAudio
+    case exportAudioClip
     case rememberVoice
 
     var errorDescription: String? { "meeting-detail-model-\(rawValue)" }
@@ -745,6 +852,9 @@ private enum MeetingDetailModelCall: Equatable {
         suggestTitle: Bool,
         suggestRecipe: Bool,
         titledChapterStarts: Set<TimeInterval>)
+    case preparePlayback(String)
+    case compressAudio(String)
+    case exportAudioClip(String, ClosedRange<TimeInterval>, URL)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)
 }

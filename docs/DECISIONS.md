@@ -3329,3 +3329,42 @@ another generator fails, while bounded outputs and catalog mapping prevent
 untrusted model values from becoming UI or recipe identity. The released
 never-auto-apply contract, chapter excerpt fallback, scale-fixture bypass, and
 on-device-only behavior remain unchanged.
+
+## D112 — Coordinate Meeting Detail audio through an application workflow (Jul 2026)
+
+**Context:** Meeting Detail resolved recording paths, selected channel files,
+constructed the synchronized player, derived the waveform and playback ranges,
+compressed channels, exported clips, and rebuilt playback directly from
+SwiftUI. View lifecycle therefore controlled expensive preparation and
+filesystem-sensitive operation order. Compression also processed channels
+sequentially with per-file deletion, so a later failure could leave one raw
+channel removed while another remained uncompressed.
+
+**Decision:** `ApplicationKit` exposes typed requests and results for playback
+preparation, all-channel compression, and clip export. A route-scoped,
+explicitly observable playback facade exposes transport intents and values
+without exposing `AudioPlaybackKit` types to SwiftUI. The app adapter owns the configured
+recording root, canonical channel lookup, and concrete codec adapter.
+`MeetingDetailModel` owns one-shot preparation per audio directory,
+cancellation retry, playback invalidation, compression state, and export
+effects. Playback preparation runs in a directory-scoped task rather than the
+multi-section review-revision task, preventing unrelated initial observations
+from canceling and consuming its only attempt. SwiftUI retains rendering,
+transport controls, and the native save panel. `AudioTranscoder` refuses to
+replace an existing canonical output,
+keeps every original until all generated outputs have verified, removes all
+generated outputs after failure or cancellation, and only then removes the raw
+channels. Byte accounting queries current filesystem attributes rather than
+reusing potentially cached URL resource values. The application compression
+workflow depends on an injected codec capability so its transaction and disk-
+savings semantics are deterministic without requiring a host encoder in unit
+tests.
+
+**Rationale:** playback and file mutation now have one feature owner and one
+application ordering boundary while AVFoundation and filesystem details remain
+in capability and composition layers. View reconstruction cannot duplicate
+preparation, clip export re-resolves files after compression, optional audio
+failure preserves a healthy text transcript, and a codec failure cannot strand
+or overwrite user-owned recording data. The player, waveform, skip-silence,
+microphone-only playback, clip marks, compression control, import behavior,
+and native save experience remain unchanged.

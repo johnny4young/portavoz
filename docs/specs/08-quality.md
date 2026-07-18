@@ -1,14 +1,30 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 949 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, shared local-provider recommendations, application-owned Settings device resources, revision-fenced Meeting Detail metadata and explicit name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 959 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
+on GitHub Actions
+(`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
+Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English
+and Spanish local UI runs each passed all 39 cases and retained app-only
+local-voice Settings/Onboarding, shared local-provider recommendations,
+application-owned Settings device resources and Meeting Detail audio,
+revision-fenced Meeting Detail metadata and explicit name suggestions, claim
+review, overview/decision/action-item/Companion source navigation, confirmed-
+person memory, 5k-segment scale detail, full Ask and command-palette
+answer/citation navigation, source-grounded meeting preparation, exact local-
+data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper
+Settings, Sequoia intelligence setup, explicit private-sync opt-in/older-
+library separation, whole-library Markdown backup, privacy receipt, redacted
+support, durable post-capture recovery, processing recovery, and typed
+recording-failure screenshots; earlier automation-mode harness failures remain
+documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 339 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 342 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, and Meeting Detail metadata policy, a platform-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Companion evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, local diagnostics/signpost redaction, and measured scale source/evidence gates |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Companion evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, local diagnostics/signpost redaction, and measured scale source/evidence gates |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, explicit live/deleted initial seed, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
 | MeetingSyncAggregateTests | Exact-current-generation envelope, deterministic codec, idempotent full-history replay, millisecond-tied summary-version ordering, device-local path/person/embedding preservation, trigger-echo suppression, deferred live/live local-pending conflict, recoverable privacy-dominant remote deletion, invalid-relation rollback, and immutable summary-root/child collision rejection |
 | CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, protected backup-excluded CKAsset fallback, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
@@ -46,6 +62,7 @@ Status: 949 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHu
 | StopRecordingUseCaseTests | Finalized/missing asset reconciliation, provisional attribution, per-turn mixed-language preservation, exact diarization/transcription initial-job policy and order, empty/partial-lane transcript recovery, truly silent/no-audio outcomes, admission and fallback failures, unconditional engine release, and atomic real-Store snapshot/job adaptation |
 | MeetingStoreTests summary history/evidence | Per-recipe immutable versions, newest-across-recipe selection, retained history, fingerprint cache/pivots, atomic same-meeting overview/decision/action/Companion validation, canonical decision coordinates, stable task/card identity, role-separated links, evidence clear-on-overwrite, revision stamping/staleness, physical-deletion unavailability, correction/unsupported replacement, active-claim fencing, text-erasing clear, and rollback on foreign evidence |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, Downmix, **Resample.linear**, startup cleanup |
+| AudioTranscoderTests / MeetingAudioWorkflowTests | Host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, bounded waveform/session preparation, and injected application codec semantics |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
 | CaptionCoalescerTests | 13 coalescer cases (merge, identity, channels, pauses, limits, loose punctuation, early split of `system` after sentence) |
@@ -58,7 +75,7 @@ Status: 949 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHu
 | InsightsReadModelTests | complete scoped projection, current/previous totals, decision evidence from summaries/actions, recurring-topic extraction, and confirmed-participant exclusion |
 | InsightsModelTests | complete/empty/degraded/failed phases, one read snapshot, section-local replacement, scope restart, and no-global-version behavior through a database-free client fake |
 | InsightsObservationTests | independent live-rooted meeting/fact/voice/finding observations, delete/restore conservation, and active-scope finding bounds through real `MeetingStore` adaptation |
-| MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence, canonical-person, document, transcript/calendar-name, and participant-voice actions/effects, route-owned suggestion state, exact silent versus visible failure/degradation policy, and Spotlight reconciliation requests through a database-free client fake |
+| MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence, canonical-person, document, transcript/calendar-name, participant-voice, and playback/clip actions and effects, route-owned suggestion/audio state, exact silent versus visible failure/degradation policy, and Spotlight reconciliation requests through a database-free client fake |
 | SuggestMeetingSpeakerNamesTests / NameSuggestionFilterTests | coherent meeting admission, eligible remote-label short circuiting, attendee forwarding, complete-token verification without substring false positives, typed locally derived transcript/calendar evidence, label deduplication, typed missing meetings, and visible generation failure without EventKit or a model |
 | MeetingDetailObservationTests | live-rooted transcript/cast, newest-summary/action-item, Companion card/evidence, and privacy-receipt observations; evidence-link-only and independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
 | BriefRelevanceTests / ReminderPolicyTests / MeetingReminderWorkflowTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, order-independent reminder lead window/session deduplication/off state, disabled-source short circuit, one-sampled-time countdown, failure propagation, mirror qualification/notable delta, and factual English/Spanish synthesis |
@@ -1050,6 +1067,21 @@ persistence fails. The source rule rejects direct Foundation Models capability
 checks, concrete metadata generators, and view-owned suggestion state. The full
 gate is 949 package tests (13 gated) and zero strict-lint violations across 339
 Swift source files (D111).
+
+Meeting Detail audio coordination adds three application-workflow cases, two
+route-model cases, four transcoder cases, and one exact dependency ratchet. The
+five total transcoder cases include the pre-existing host integration. Together
+the tests prove
+text-only degradation, one-shot playback admission, same-directory retry after
+cancellation, waveform/filter preparation, explicit clip export,
+codec-capability injection, real filesystem
+accounting, refusal to replace a canonical output, and all-channel rollback
+without deleting any original. The direct AAC integration uses the exact mono
+Int16 CAF emitted by production capture when the host encoder is available and
+records a capability skip only for the system
+`fmt?` failure; failure-safe batch semantics do not rely on that integration.
+The full gate is 959 package tests, and strict lint is
+clean across 342 Swift source files (D112).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

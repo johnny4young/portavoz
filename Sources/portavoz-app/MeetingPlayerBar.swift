@@ -1,5 +1,5 @@
 import AppKit
-import AudioPlaybackKit
+import ApplicationKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -8,8 +8,11 @@ import UniformTypeIdentifiers
 /// the whole detail. Falls back to a plain slider until the waveform is
 /// generated (or if the audio was unreadable).
 struct MeetingPlayerBar: View {
-    let player: MeetingPlayer
-    let waveform: [Waveform.Bucket]
+    let player: MeetingPlaybackSession
+    let waveform: [MeetingWaveformBucket]
+    let exportClip: @MainActor @Sendable (
+        ClosedRange<TimeInterval>, URL
+    ) async -> String?
 
     @State private var exporting = false
     @State private var exportError: String?
@@ -143,13 +146,11 @@ struct MeetingPlayerBar: View {
         exporting = true
         Task {
             defer { exporting = false }
-            do {
-                try await AudioClipExporter.export(
-                    channelFiles: player.channelFiles, range: range, to: url)
-                NSWorkspace.shared.activateFileViewerSelecting([url])
-            } catch {
-                exportError = error.localizedDescription
+            if let message = await exportClip(range, url) {
+                exportError = message
+                return
             }
+            NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     }
 
@@ -163,7 +164,7 @@ struct MeetingPlayerBar: View {
 /// talking (accent = you, gray = them) and dimmed past the playhead. Click
 /// or drag anywhere to seek.
 struct WaveformView: View {
-    let buckets: [Waveform.Bucket]
+    let buckets: [MeetingWaveformBucket]
     /// Playback position as a 0…1 fraction of the duration.
     let progress: Double
     /// The selected clip as 0…1 fractions, shaded on the waveform.
@@ -196,7 +197,7 @@ struct WaveformView: View {
                         height: height)
                     let played = (Double(index) + 0.5) / Double(buckets.count) <= progress
                     // Voices B: your channel is amber — the color IS the voice.
-                    let base: Color = bucket.micDominant ? PVDesign.brandAmber : .gray
+                    let base: Color = bucket.microphoneDominant ? PVDesign.brandAmber : .gray
                     context.fill(
                         Path(roundedRect: rect, cornerRadius: 1),
                         with: .color(base.opacity(played ? 0.9 : 0.3)))

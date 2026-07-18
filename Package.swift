@@ -61,8 +61,8 @@ let package = Package(
         .target(
             name: "ApplicationKit",
             dependencies: [
-                "PortavozCore", "TranscriptionKit", "DiarizationKit",
-                "IntelligenceKit", "StorageKit",
+                "PortavozCore", "AudioPlaybackKit", "TranscriptionKit",
+                "DiarizationKit", "IntelligenceKit", "StorageKit",
             ]),
 
         // Curated model registry + sha256-verified downloads, shared by every

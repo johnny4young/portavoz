@@ -1,4 +1,4 @@
-import AudioPlaybackKit
+import ApplicationKit
 import PortavozCore
 import SwiftUI
 
@@ -8,7 +8,7 @@ import SwiftUI
 struct TranscriptSegmentsView: View {
     let segments: [TranscriptSegment]
     let speakers: [Speaker]
-    let player: MeetingPlayer?
+    let player: MeetingPlaybackSession?
     let focusedSegmentID: UUID?
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
