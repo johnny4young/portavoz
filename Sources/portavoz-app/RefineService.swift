@@ -127,7 +127,7 @@ private extension RefineService {
         switch progress {
         case .preparingModels:
             L10n.text("Preparing…")
-        case .downloadingWhisper(let size, let percent):
+        case .downloadingWhisper(let size, let percent, _):
             L10n.format(
                 "Downloading Whisper (%@, one time only)… %d%%",
                 size,
@@ -136,6 +136,12 @@ private extension RefineService {
             L10n.text("Re-transcribing participants (Whisper)…")
         case .transcribingMicrophone:
             L10n.text("Re-transcribing your channel (Whisper)…")
+        case .transcribed(let channel, _, _, _):
+            if channel == .microphone {
+                L10n.text("Re-transcribing your channel (Whisper)…")
+            } else {
+                L10n.text("Re-transcribing participants (Whisper)…")
+            }
         case .identifyingSpeakers:
             L10n.text("Identifying speakers…")
         }

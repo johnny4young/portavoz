@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Companion evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Companion evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads), D103 (terminal product workflows enter ApplicationKit).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -13,9 +13,12 @@ surface. Meeting list/detail/search/open-item reads enter
 `ApplicationKit.QueryMeetingLibrary`; Ask enters `AskMeetings`; MCP assembles
 its tools from those two workflows. Detail and the latest live General summary
 come from one read-consistent StorageKit snapshot. Commands retain parsing and
-terminal/protocol formatting, while model-heavy and mutation commands still
-coordinate their concrete pipelines through the shared composition. Benchmark
-harnesses deliberately retain isolated construction.
+terminal/protocol formatting. Standalone transcription, diarization,
+summarization, persisted refinement, document and action publication, local
+voice identity, and pinned-model lifecycle enter ApplicationKit workflows.
+`CLIProductAdapters` confines concrete files, models, Store, provider,
+integration, voice, and streaming-fingerprint behavior. Capture diagnostics
+and benchmark harnesses deliberately retain isolated direct construction.
 
 | Command | Usage (from the code) |
 |---|---|
@@ -40,11 +43,16 @@ harnesses deliberately retain isolated construction.
 | `bench-waveform` | `[--mic <audio>] [--system <audio>] [--buckets 600] [--runs 20] [--output report.json]` — Release waveform probe that copies one or both channels to a unique throwaway directory, reports format/size/duration but no source paths or content, separates first/repeat wall/CPU/footprint distributions, fingerprints the exact buckets, and replaces its scratch input to characterize invalidation (D84) |
 | `bench-spotlight` | `[--mode legacy|snapshot] [--meetings N] [--runs N] [--delivery-items N] [--output report.json]` — Release projection probe over a throwaway production-schema database. The wrapper runs isolated 1k/10k/100k legacy and snapshot processes, checks exact fingerprints, and may publish only synthetic items to a unique protected named index before deleting them (D85) |
 
-`meetings refine` still owns its CLI/model presentation pipeline, but accepted
-results now persist through the same `MeetingStore.applyRefinedCast` Unit of
-Work as the app boundary. Language, cast, transcript, and
-`transcriptRevision` therefore commit atomically, and a concurrent transcript
-change rejects the stale CLI result instead of overwriting newer truth (D47).
+`meetings refine` parses identity and optional external-audio/language/
+vocabulary/threshold input, then enters `RefinePersistedMeeting`. The workflow
+loads the current detail, resolves retained or explicit audio through an
+injected file adapter, runs the same `RefineMeeting` draft policy as the app,
+and applies through the same `MeetingStore.applyRefinedCast` Unit of Work.
+Language, cast, transcript, and `transcriptRevision` therefore commit
+atomically, and a concurrent transcript change rejects the stale result instead
+of overwriting newer truth. Terminal progress retains download path, channel
+timing, and diarization-threshold output without exposing model construction to
+the command (D47/D103).
 
 The `ask` command opens the requested Store at composition and then enters the
 same `ApplicationKit.AskMeetings` workflow as the macOS Ask surfaces. The CLI
@@ -52,11 +60,24 @@ formats only the returned storage-independent answer and citations. An
 unavailable or failed on-device answer keeps and prints the most relevant
 evidence instead of discarding successful retrieval (D100).
 
-Keychain credentials are read through `ManageSecrets`. Gist and issue commands
-fall back to their explicit environment variable when the device secret is
-missing or temporarily unavailable; issue publishing resolves the credential
-once before iterating its action items. IntegrationsKit publishers receive only
-the resolved token and never import or construct Keychain.
+Keychain credentials are read through `ManageSecrets`. Gist and issue workflows
+first admit the local meeting plus rendered document or pending-item set. Only
+then does the publisher adapter prepare once by resolving the device secret or
+its explicit environment-variable fallback. Missing meetings and empty pending
+sets do not read Keychain or print an egress warning; successful preparation
+precedes the warning and transport. IntegrationsKit publishers receive only the
+resolved token and never import or construct Keychain.
+
+`transcribe`, `diarize`, and `summarize` use ApplicationKit file-analysis
+workflows. ApplicationKit owns file admission, ordering, timing, attribution,
+meeting identity, optional persistence, and stable progress values; adapters
+load only the pinned engines required by the command. Saved external
+summarization commits meeting/cast/transcript before provider egress and the
+immutable summary afterward. `voice` delegates enroll/status/delete to one
+local-identity workflow, and `models` delegates catalog-order
+inspect/verify/download to one lifecycle workflow. Synchronous download
+callbacks are serialized and drained before a terminal success or failure is
+reported (D75/D103).
 
 ## MCP server — `portavoz-cli mcp`
 
@@ -68,6 +89,7 @@ the resolved token and never import or construct Keychain.
 ## Exporters — IntegrationsKit
 
 - `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
+- **Single-meeting terminal export/publication (D103):** ApplicationKit loads one coherent current detail/General-summary projection, then returns Markdown, writes Markdown/PDF through an injected file port, or invokes an explicit Gist publisher. Pending issue publication uses the same projection shape, resolves owner names from its cast, filters unfinished actions, and preserves their stored order. Command files do not read Store or construct IntegrationsKit publishers.
 - **Whole-library Markdown backup (D99):** ApplicationKit receives the canonical renderer through `LibraryMarkdownBackupDocuments` and filesystem publication through `LibraryMarkdownBackupFiles`; IntegrationsKit and `FileManager` never enter Settings SwiftUI. The app renderer runs at utility priority. The filesystem adapter enumerates visible existing Markdown names, atomically writes a UUID temporary file in the chosen directory, and moves it to the final portable name without replacement. A collision advances the application allocator; source, document, and publication failures remain typed per meeting while healthy files continue.
 - `GistPublisher`: exact `https://api.github.com/gists`, secret by default, explicit `--public`; token from Keychain. Construction requires a `DataEgressGateway`, and publication requires the source `MeetingID`.
 - `GitHubIssuesExporter` (canonical REST `https://api.github.com/repos/{owner}/{repo}/issues`) and `LinearExporter` (exact GraphQL `https://api.linear.app/graphql`; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Both require a gateway and source meeting. Tested offline; real publishing pending the user's tokens.

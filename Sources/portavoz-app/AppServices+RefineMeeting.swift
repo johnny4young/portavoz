@@ -22,6 +22,7 @@ extension AppServices {
                         UserDefaults.standard.string(forKey: "customVocabulary") ?? ""))),
             processor: AppRefineMeetingProcessor(services: self),
             store: store,
+            reader: store,
             companion: AppRefineMeetingCompanion(services: self))
     }
 }
@@ -49,6 +50,21 @@ private struct AppRefineMeetingAudioFiles: RefineMeetingAudioFiles {
                     fileURL: microphoneURL,
                     relativeDirectory: relativeDirectory,
                     assets: assets))
+        }.value
+    }
+
+    func resolveExternalRefineAudio(
+        _ fileURL: URL,
+        meetingID: MeetingID
+    ) async throws -> RefineMeetingAudio {
+        _ = meetingID
+        return try await Task.detached(priority: .utility) {
+            RefineMeetingAudio(
+                system: RefineMeetingAudioChannel(
+                    fileURL: fileURL,
+                    isSilent: AudioSilence.fileIsSilent(at: fileURL),
+                    contentFingerprint: try Self.sha256(of: fileURL)),
+                microphone: nil)
         }.value
     }
 

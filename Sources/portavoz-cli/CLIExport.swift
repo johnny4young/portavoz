@@ -1,7 +1,6 @@
+import ApplicationKit
 import Foundation
-import IntegrationsKit
 import PortavozCore
-import StorageKit
 
 /// `portavoz-cli export --meeting <uuid> [--format md|pdf] [--out <path>]
 ///                      [--gist [--public]] [--db <path>]`
@@ -58,75 +57,49 @@ enum ExportCommand {
             let application = try CLIComposition.open(
                 dbPath: dbPath,
                 platform: platform)
-            let store = application.store
             let meetingID = MeetingID(rawValue: uuid)
-            guard let detail = try await store.detail(meetingID) else {
-                print("error: no such meeting")
-                return
-            }
-            let summary = try await store.summary(meetingID)
-            let markdown = MeetingExporter.markdown(
-                meeting: detail.meeting,
-                speakers: detail.speakers,
-                segments: detail.segments,
-                summary: summary?.draft,
-                summaryVersion: summary?.version
-            )
 
-            if gist {
-                guard let token = await application.platform.credential(
-                    for: .gitHubToken,
-                    environmentVariable: "PORTAVOZ_GITHUB_TOKEN")
-                else {
-                    // One-line error message.
-                    // swiftlint:disable:next line_length
-                    print("error: no GitHub token — run `portavoz-cli secrets set-github-token <token>` (or set PORTAVOZ_GITHUB_TOKEN)")
-                    return
-                }
-                print("⚠️ Publishing the transcript OUTSIDE the device as a \(isPublic ? "PUBLIC" : "secret") gist…")
-                let publisher = GistPublisher(
-                    token: token,
-                    gateway: URLSessionDataEgressGateway(receiptRecorder: store))
-                let url = try await publisher.publish(
-                    meetingID: meetingID,
-                    markdown: markdown,
-                    filename: "\(slug(detail.meeting.title)).md",
-                    description: detail.meeting.title,
-                    isPublic: isPublic
-                )
-                print(url.absoluteString)
-                return
-            }
-
-            switch format {
+            let documentFormat: MeetingDocumentFormat
+            switch gist ? "md" : format {
             case "md":
-                if let out {
-                    try Data(markdown.utf8).write(to: URL(fileURLWithPath: out))
-                    print("OK → \(out)")
-                } else {
-                    print(markdown)
-                }
+                documentFormat = .markdown
             case "pdf":
-                guard let out else {
-                    print("error: --format pdf requires --out <path>")
-                    return
-                }
-                let data = try MeetingExporter.pdf(fromMarkdown: markdown)
-                try data.write(to: URL(fileURLWithPath: out))
-                print("OK → \(out) (\(data.count / 1024) KB)")
+                documentFormat = .pdf
             default:
                 print("error: unknown format \(format) (md|pdf)")
+                return
+            }
+
+            let workflow = application.exportMeetingDocument(
+                publishGist: gist,
+                isPublic: isPublic)
+            let publishedVisibility = isPublic ? "PUBLIC" : "secret"
+            let result = try await workflow.execute(.init(
+                meetingID: meetingID,
+                format: documentFormat,
+                outputURL: out.map { URL(fileURLWithPath: $0) }
+            ) { progress in
+                if case .publishing = progress {
+                    print(
+                        "⚠️ Publishing the transcript OUTSIDE the device as a "
+                            + "\(publishedVisibility) gist…")
+                }
+            })
+            switch result {
+            case .markdown(let markdown):
+                print(markdown)
+            case .written(_, let bytes):
+                if documentFormat == .pdf {
+                    print("OK → \(out ?? "") (\(bytes / 1024) KB)")
+                } else {
+                    print("OK → \(out ?? "")")
+                }
+            case .published(let url):
+                print(url.absoluteString)
             }
         } catch {
             print("error: \(error.localizedDescription)")
         }
-    }
-
-    static func slug(_ title: String) -> String {
-        let allowed = title.lowercased().map { char -> Character in
-            char.isLetter || char.isNumber ? char : "-"
-        }
-        return String(allowed).split(separator: "-").joined(separator: "-")
     }
 }
 

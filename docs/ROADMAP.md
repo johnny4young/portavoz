@@ -7,19 +7,38 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue the requested macOS-only architecture
-convergence with the second Band 6C7 executable unit. PlatformKit now owns
-device-only Keychain access and microphone authorization; Core exposes only
-portable secret identities/contracts, the app and CLI construct one dependency
-set, and CLI/Ask/MCP library reads enter through bounded ApplicationKit
-workflows (D102). Move the remaining product write/model commands behind narrow
-application workflows, then extract their filesystem and clock dependencies
-without changing any command output, benchmark harness, local MCP behavior, or
-the non-sandboxed release boundary. The later iOS in-person recorder
-shell remains described in `docs/IOS.md`. Before a public sync release, retain
+convergence after completing the CLI product boundary. File analysis, persisted
+refinement, meeting export/publication, issue publication, local voice
+management, and pinned-model lifecycle now enter narrow ApplicationKit
+workflows; command files retain parsing and terminal output, while executable
+adapters own concrete files, models, storage, providers, integrations, and
+platform access (D103). Audit the process-scoped post-capture executor against
+the same boundary and move its cross-capability durable-workflow policy inward
+without moving concrete engines, filesystem access, Shortcut invocation, or
+live capture out of app composition. The later iOS in-person recorder shell
+remains described in `docs/IOS.md` and is not the current focus. Before a public sync release, retain
 the independent field gate for a real production CloudKit
 container/profile/account and two-Mac convergence. Every completed architecture
 unit and all released v0.6.0 behavior remain covered by the package and
-bilingual UI gates (D33–D102).
+bilingual UI gates (D33–D103).
+
+- **Architecture Band 6 slice 6C7 complete — terminal product workflows have
+  one application boundary (Jul 18, 2026)**: transcription, diarization with
+  optional attribution, summarization, persisted Refine, Markdown/PDF/Gist
+  export, GitHub/Linear action publication, encrypted local-voice management,
+  and ordered pinned-model inspection/download now enter Sendable
+  ApplicationKit workflows. `CLIComposition` injects one process dependency
+  set and `CLIProductAdapters` confines concrete files, models, Store,
+  providers, integrations, voice, and streaming SHA-256 behavior. Saved BYOK
+  analysis still persists meeting truth before egress; Refine still applies
+  through the revision-fenced atomic transaction; download callbacks are
+  ordered and drained before terminal success. Publication admits local
+  documents/pending work before lazy credential preparation, so missing/no-op
+  paths never read Keychain or announce egress. Command output and benchmark
+  construction remain characterized. Nineteen new package cases and the
+  product-command dependency ratchet establish D103; the verified baseline is
+  882 package tests with 13 gated and strict lint is clean across 322 Swift
+  files.
 
 - **Architecture Band 6 slice 6C7 first unit complete — platform access and
   executable reads have one boundary (Jul 18, 2026)**: `PortavozCore` no longer

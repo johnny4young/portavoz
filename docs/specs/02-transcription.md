@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows).
 
 ## Roles and engines (D7)
 
@@ -26,6 +26,15 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+
+Standalone terminal transcription enters
+`ApplicationKit.TranscribeAudioFile`. The use case admits a readable file,
+constructs language/vocabulary hints, owns stable progress and result metrics,
+and delegates the selected Parakeet or Whisper engine to an executable adapter.
+Commands never construct `ModelStore`, `ParakeetEngine`, or `WhisperEngine`.
+Synchronous verified-download callbacks are relayed in order and drained before
+the result is printed, so a late percentage cannot appear after terminal
+success (D103).
 
 ### Audio-first model readiness and recovery (D70)
 
@@ -150,6 +159,14 @@ Whisper and recording-engine idle release. The draft carries the source
 `transcriptRevision`; acceptance is a separate ApplicationKit use case and
 StorageKit transaction that rejects stale drafts rather than overwriting a
 newer transcript.
+
+The terminal's `RefinePersistedMeeting` wrapper uses the same draft and apply
+use cases. It loads the current `MeetingDetail` through an injected reader,
+optionally resolves explicit audio through the file port, and applies only the
+revision-fenced draft it just produced. External files are fingerprinted with
+streaming SHA-256 rather than loading the whole recording into memory. The CLI
+maps typed progress to its existing download, per-channel timing, and
+diarization messages (D103).
 
 Refine defines one exact composite operation identity across the non-silent
 channels that actually reach Whisper. The length-framed SHA-256 fingerprint

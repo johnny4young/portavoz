@@ -135,6 +135,47 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(composition.contains("let ask: AskMeetings"))
     }
 
+    func testProductCLIWorkflowsEnterThroughApplicationKitComposition() throws {
+        let files = [
+            "CLITranscribe.swift", "CLIDiarize.swift", "CLISummarize.swift",
+            "CLIRefine.swift", "CLIExport.swift", "CLIIssues.swift",
+            "CLIVoice.swift", "CLIModels.swift",
+        ]
+        let forbiddenImports = [
+            "ModelStoreKit", "TranscriptionKit", "DiarizationKit",
+            "IntelligenceKit", "IntegrationsKit", "StorageKit",
+        ]
+        let forbiddenConcreteSymbols = [
+            "ModelStore(", "WhisperEngine", "PyannoteDiarizer(",
+            "MeetingStore(", "MeetingExporter.", "URLSessionDataEgressGateway(",
+            "VoiceprintStore(",
+        ]
+
+        for file in files {
+            let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")
+            XCTAssertTrue(source.contains("import ApplicationKit"), file)
+            for module in forbiddenImports {
+                XCTAssertFalse(source.contains("import \(module)"), "\(file): \(module)")
+            }
+            for symbol in forbiddenConcreteSymbols {
+                XCTAssertFalse(source.contains(symbol), "\(file): \(symbol)")
+            }
+            XCTAssertFalse(source.contains("FileManager.default"), file)
+        }
+
+        let composition = try Self.contents(of: "Sources/portavoz-cli/CLIComposition.swift")
+        let adapters = try Self.contents(of: "Sources/portavoz-cli/CLIProductAdapters.swift")
+        for workflow in [
+            "TranscribeAudioFile", "DiarizeAudioFile", "SummarizeAudioFile",
+            "RefineMeetingUseCases", "ExportMeetingDocument",
+            "PublishMeetingActionItems", "ManageLocalVoiceIdentity", "ManageLocalModels",
+        ] {
+            XCTAssertTrue(
+                composition.contains(workflow) || adapters.contains(workflow),
+                workflow)
+        }
+    }
+
     func testCompanionBYOKEgressCannotBypassTheGateway() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/DataEgress.swift")
         let adapter = try Self.contents(
@@ -196,6 +237,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let processing = try Self.contents(
             of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
         let cli = try Self.contents(of: "Sources/portavoz-cli/CLISummarize.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-cli/CLIComposition.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AnalyzeAudioFile.swift")
 
         XCTAssertTrue(byok.contains("public struct OpenAICompatibleSummaryClient"))
         XCTAssertTrue(byok.contains("private let gateway: any DataEgressGateway"))
@@ -217,13 +262,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(regeneration.contains("consentSource: .summaryEngineSettings"))
         XCTAssertTrue(processing.contains("gateway: dataEgressGateway"))
         XCTAssertTrue(processing.contains("consentSource: .summaryEngineSettings"))
-        XCTAssertTrue(cli.contains(
-            "URLSessionDataEgressGateway(receiptRecorder: receiptStore)"))
-        let cliMeetingSave = try XCTUnwrap(cli.range(
-            of: "try await receiptStore.save(record)"))
-        let cliRemoteSummary = try XCTUnwrap(cli.range(
-            of: "let draft = try await provider.summarize(request)"))
-        XCTAssertLessThan(cliMeetingSave.lowerBound, cliRemoteSummary.lowerBound)
+        XCTAssertTrue(cli.contains("platform.summarizeAudio("))
+        XCTAssertFalse(cli.contains("application?.store"))
+        XCTAssertFalse(cli.contains("OpenAICompatibleSummaryProvider("))
+        XCTAssertTrue(composition.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: store)"))
+        let admittedMeeting = try XCTUnwrap(workflow.range(
+            of: "try await store.saveAnalyzedMeeting("))
+        let remoteSummary = try XCTUnwrap(workflow.range(
+            of: "let draft = try await processor.summarize(summaryRequest)"))
+        XCTAssertLessThan(admittedMeeting.lowerBound, remoteSummary.lowerBound)
         XCTAssertFalse(cli.contains("URLSession.shared"))
         XCTAssertFalse(cli.contains("data(for:"))
     }
@@ -237,6 +285,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let cliExport = try Self.contents(of: "Sources/portavoz-cli/CLIExport.swift")
         let cliIssues = try Self.contents(of: "Sources/portavoz-cli/CLIIssues.swift")
+        let cliComposition = try Self.contents(
+            of: "Sources/portavoz-cli/CLIComposition.swift")
+        let cliAdapters = try Self.contents(
+            of: "Sources/portavoz-cli/CLIProductAdapters.swift")
 
         for operation in ["publishGitHubGist", "createGitHubIssue", "createLinearIssue"] {
             XCTAssertTrue(core.contains(operation))
@@ -250,12 +302,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         XCTAssertTrue(detail.contains("gateway: services.dataEgressGateway"))
         XCTAssertTrue(detail.contains("meetingID: detail.meeting.id"))
-        XCTAssertTrue(cliExport.contains(
-            "URLSessionDataEgressGateway(receiptRecorder: store)"))
+        XCTAssertTrue(cliExport.contains("application.exportMeetingDocument("))
         XCTAssertTrue(cliExport.contains("meetingID: meetingID"))
-        XCTAssertTrue(cliIssues.contains(
-            "URLSessionDataEgressGateway(receiptRecorder: store)"))
+        XCTAssertTrue(cliIssues.contains("application.publishMeetingActionItems("))
         XCTAssertTrue(cliIssues.contains("meetingID: meetingID"))
+        XCTAssertTrue(cliComposition.contains(
+            "URLSessionDataEgressGateway(receiptRecorder: store)"))
+        XCTAssertTrue(cliAdapters.contains("meetingID: meetingID"))
+        for source in [cliExport, cliIssues] {
+            XCTAssertFalse(source.contains("GistPublisher("))
+            XCTAssertFalse(source.contains("GitHubIssuesExporter("))
+            XCTAssertFalse(source.contains("LinearExporter("))
+        }
     }
 
     func testMeetingContentEgressPersistsReceiptBeforeTransport() throws {

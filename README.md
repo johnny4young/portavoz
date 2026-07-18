@@ -148,7 +148,7 @@ real vertical use case.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, coherent whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document/action publication, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/local-voice/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
@@ -178,7 +178,12 @@ current-summary projection, independently loaded open commitments, and only
 source-indexed optional synthesis.
 CLI list/detail/search/open-item and MCP library reads also enter through one
 bounded ApplicationKit query boundary; detail and its latest General summary
-come from one read-consistent SQLite snapshot. Keychain and microphone access
+come from one read-consistent SQLite snapshot. Transcription, diarization,
+summarization, persisted Refine, Markdown/PDF/Gist export, GitHub/Linear action
+publication, local voice identity, and pinned-model commands enter matching
+ApplicationKit workflows; command files retain parsing and terminal output,
+while CLI composition adapters own concrete files, models, Store, providers,
+integrations, and streaming fingerprints. Keychain and microphone access
 live in PlatformKit rather than Core or SwiftUI, and secret consumers receive
 an injected Core port or already-resolved credentials.
 Meeting Detail writes enter its route-owned model through explicit actions and

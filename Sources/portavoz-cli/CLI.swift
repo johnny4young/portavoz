@@ -27,7 +27,7 @@ struct PortavozCLI {
         case "record":
             await RecordCommand.run(arguments)
         case "transcribe":
-            await TranscribeCommand.run(arguments)
+            await TranscribeCommand.run(arguments, platform: platform)
         case "diarize":
             await DiarizeCommand.run(arguments, platform: platform)
         case "summarize":
@@ -49,7 +49,7 @@ struct PortavozCLI {
         case "issues":
             await IssuesCommand.run(arguments, platform: platform)
         case "models":
-            await ModelsCommand.run(arguments)
+            await ModelsCommand.run(arguments, platform: platform)
         case "bench-live":
             await BenchLiveCommand.run(arguments)
         case "bench-m2":

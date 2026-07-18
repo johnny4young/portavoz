@@ -1,11 +1,5 @@
-import DiarizationKit
+import ApplicationKit
 import Foundation
-import IntegrationsKit
-import IntelligenceKit
-import ModelStoreKit
-import PortavozCore
-import StorageKit
-import TranscriptionKit
 
 /// `portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
 ///                         [--language en] [--recipe general] [--models-dir <dir>]
@@ -81,15 +75,10 @@ enum SummarizeCommand {
             return
         }
         let url = URL(fileURLWithPath: file)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            print("error: no such file: \(url.path)")
-            return
-        }
-        let meetingID = MeetingID()
-        let receiptStore: MeetingStore?
+        let application: CLIComposition?
         do {
-            receiptStore = save
-                ? try CLIComposition.open(dbPath: dbPath, platform: platform).store
+            application = save
+                ? try CLIComposition.open(dbPath: dbPath, platform: platform)
                 : nil
         } catch {
             print("error: \(error.localizedDescription)")
@@ -97,7 +86,7 @@ enum SummarizeCommand {
         }
 
         // Resolve the provider before doing any heavy work.
-        let provider: any SummaryProvider
+        let provider: CLISummaryProviderConfiguration
         if let byokEndpoint {
             guard let endpoint = URL(string: byokEndpoint) else {
                 print("error: invalid --byok endpoint")
@@ -108,90 +97,79 @@ enum SummarizeCommand {
                 return
             }
             print("⚠️ BYOK: the transcript WILL be sent to \(endpoint.host ?? byokEndpoint) (model \(byokModel)).")
-            provider = OpenAICompatibleSummaryProvider(
-                endpoint: endpoint,
-                model: byokModel,
-                apiKey: key,
-                gateway: URLSessionDataEgressGateway(receiptRecorder: receiptStore))
-        } else if #available(macOS 26.0, *) {
-            if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
-                print("error: \(reason)")
-                print("tip: use --byok <endpoint> --byok-model <model> as an explicit cloud fallback")
-                return
-            }
-            provider = FoundationModelSummaryProvider()
+            provider = .byok(endpoint: endpoint, model: byokModel, apiKey: key)
         } else {
-            print("error: on-device summaries need macOS 26+; use --byok as an explicit fallback")
-            return
+            provider = .onDevice
         }
 
         do {
-            let store = CLISupport.modelStore(fromModelsDir: modelsDir)
-            let engine = try await CLISupport.loadEngine(store: store)
-            let diarizer = try await PyannoteDiarizer.loadRecommended(
-                store: store, voiceprint: (try? platform.voiceprintStore.load()))
-
-            print("Transcribing \(url.lastPathComponent)…")
-            let hints = TranscriptionHints(language: language, meetingID: meetingID)
-            let transcription = try await engine.transcribeFile(at: url, hints: hints)
-
-            print("Diarizing…")
-            let turns = try await diarizer.diarizeFile(at: url)
-            let attribution = SpeakerAttributor.attribute(
-                segments: transcription.segments, turns: turns, meetingID: meetingID)
-
-            if let receiptStore {
-                let now = Date()
-                let record = Meeting(
-                    id: meetingID,
-                    title: url.deletingPathExtension().lastPathComponent,
-                    startedAt: now.addingTimeInterval(-transcription.audioDuration),
-                    endedAt: now,
-                    language: SpokenLanguageDetector.homogeneousLanguage(
-                        in: attribution.segments)
-                )
-                try await receiptStore.save(record)
-                try await receiptStore.save(attribution.speakers)
-                try await receiptStore.save(attribution.segments)
-            }
-
-            print("Summarizing (\(outLanguage))…")
-            let request = SummaryRequest(
-                meetingID: meetingID,
-                segments: attribution.segments,
-                speakers: attribution.speakers,
-                recipe: .general,
-                targetLanguage: outLanguage,
+            let workflow = try application.map {
+                try $0.summarizeAudio(
+                    modelsDirectory: modelsDir,
+                    provider: provider)
+            } ?? platform.summarizeAudio(
+                modelsDirectory: modelsDir,
+                provider: provider,
+                store: nil)
+            let result = try await workflow.execute(.init(
+                fileURL: url,
+                spokenLanguage: language,
+                outputLanguage: outLanguage,
                 glossary: glossary
-            )
-            let started = Date()
-            let draft = try await provider.summarize(request)
-            let elapsed = Date().timeIntervalSince(started)
+            ) { progress in
+                Self.printProgress(progress)
+            })
 
             print("")
-            print(draft.markdown)
+            print(result.draft.markdown)
             print("")
             let labelsByID = Dictionary(
-                uniqueKeysWithValues: attribution.speakers.map { ($0.id, $0.label) })
-            if !draft.actionItems.isEmpty {
-                print("action items (\(draft.actionItems.count)):")
-                for item in draft.actionItems {
+                uniqueKeysWithValues: result.attribution.speakers.map { ($0.id, $0.label) })
+            if !result.draft.actionItems.isEmpty {
+                print("action items (\(result.draft.actionItems.count)):")
+                for item in result.draft.actionItems {
                     let owner = item.ownerSpeakerID.flatMap { labelsByID[$0] } ?? "—"
                     print("  • \(item.text)  [\(owner)]")
                 }
             }
             print(String(
                 format: "summary generated in %.1fs (M4 target: < 30 s) — language %@, %d segment(s)",
-                elapsed, draft.language, attribution.segments.count
+                result.elapsed, result.draft.language, result.attribution.segments.count
             ))
 
-            if let receiptStore {
-                let version = try await receiptStore.saveSummary(draft)
-                print("saved meeting \(meetingID.rawValue.uuidString) (summary v\(version))")
-                print("browse it with: portavoz-cli meetings show \(meetingID.rawValue.uuidString)")
+            if let version = result.savedVersion {
+                print("saved meeting \(result.meetingID.rawValue.uuidString) (summary v\(version))")
+                print("browse it with: portavoz-cli meetings show \(result.meetingID.rawValue.uuidString)")
+            }
+        } catch let error as CLISummaryProviderConfigurationError {
+            print("error: \(error.localizedDescription)")
+            if case .unavailable = error {
+                print("tip: use --byok <endpoint> --byok-model <model> as an explicit cloud fallback")
             }
         } catch {
             print("error: \(error.localizedDescription)")
+        }
+    }
+
+    private static func printProgress(_ progress: AudioAnalysisProgress) {
+        switch progress {
+        case .downloadingModel(let name, let megabytes):
+            print("Downloading \(name) (\(megabytes) MB, sha256-verified)…")
+        case .downloadProgress(let percent, let path):
+            print("\r  \(percent)% \(path)", terminator: percent == 100 ? "\n" : "")
+            fflush(stdout)
+        case .loadingTranscriptionModel:
+            print("Loading models (first load compiles for the ANE; can take ~a minute)…")
+        case .installedModel:
+            break
+        case .transcribing(let fileName, _):
+            print("Transcribing \(fileName)…")
+        case .diarizing:
+            print("Diarizing…")
+        case .summarizing(let language):
+            print("Summarizing (\(language))…")
+        case .transcribingForAttribution:
+            break
         }
     }
 }

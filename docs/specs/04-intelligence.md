@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -346,6 +346,16 @@ and a conservative local-device/remote scope separately from the request body.
 The adapter requires a non-empty POST and rejects absent meeting identity,
 forged destination/provider/model, wrong material classification, and any
 Companion consent marker used for a summary (or vice versa) before transport.
+
+The terminal `summarize` command enters
+`ApplicationKit.SummarizeAudioFile`. ApplicationKit owns file admission,
+Parakeet-before-pyannote ordering, fresh meeting identity, attribution,
+summary request material, timing, and optional persistence. With `--save`, the
+meeting, cast, and transcript commit before the injected provider can cross the
+gateway; the immutable summary commits only after provider success. Without
+`--save`, the workflow remains database-free and makes no durable receipt
+claim. On-device and explicit BYOK providers are selected at CLI composition,
+not in the command body (D75/D103).
 
 Only the gateway-backed client is public; the shared chat codec is internal and
 transport-free. Offline tests decode remote and loopback requests, prove exact

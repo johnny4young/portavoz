@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -17,6 +17,14 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
 - Mic channel → "Me" (hardware truth, D5). System channel → turn with the greatest temporal overlap.
 - Multi-turn segments are split at turn boundaries with proportional word distribution. No turn → unattributed (honest, editable in the UI).
 - Turns labeled "Me" (voiceprint on the system channel) are merged with the user's identity.
+
+Standalone terminal diarization enters `ApplicationKit.DiarizeAudioFile`.
+ApplicationKit owns file admission, threshold forwarding, elapsed-time policy,
+fresh meeting identity for optional transcript attribution, and attributed
+speaker/segment results. The executable processor owns pinned model loading,
+the optional encrypted local voiceprint read, pyannote inference, and the
+Parakeet attribution pass. The command retains only argument parsing and the
+existing turn/transcript rendering (D103).
 
 For external audio, `ApplicationKit.ImportMeeting` requires the initial shared
 recording-engine preparation before transcription, preserving the released
@@ -69,7 +77,7 @@ batch identity cannot accidentally sample different enrollment state (D49).
 ## Voiceprint — `VoiceprintStore` (D8/D21)
 
 - 256-dim WeSpeaker embedding from ~12 s of voice alone (the source audio is NOT retained). AES-GCM encrypted; the key is ONLY in Keychain (`app.portavoz.voiceprint-key`). `VoiceprintStore` receives the Core `SecretStoring` port from app/CLI composition and never imports or constructs Keychain. `delete()` destroys the file + key in one action. It is never synchronized (reenrollment per device).
-- Enrollment: app (Ajustes → "Enrolar mi voz", 12 s) or CLI `voice enroll --file <wav>`. The diarizer loads it with `initializeKnownSpeakers(isPermanent: true)` → reserved cross-channel "Me" label (hybrid meetings: your voice arriving through the room/system is also yours).
+- Enrollment: app (Ajustes → "Enrolar mi voz", 12 s) or CLI `voice enroll --file <wav>`. CLI enroll/status/delete enter `ApplicationKit.ManageLocalVoiceIdentity`; the workflow admits source files and owns operation order while executable adapters retain pyannote extraction and encrypted Keychain-backed storage. Status and delete never load a model or read source audio. The diarizer loads the enrolled value with `initializeKnownSpeakers(isPermanent: true)` → reserved cross-channel "Me" label (hybrid meetings: your voice arriving through the room/system is also yours) (D103).
 
 ## Remembered participant voices (Jul 2026) — cross-meeting naming
 

@@ -1,14 +1,15 @@
+import ApplicationKit
 import Foundation
-import ModelStoreKit
-import PortavozCore
-import TranscriptionKit
 
 /// `portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]`
 /// Batch transcription through the same pipeline the app will use.
 enum TranscribeCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var file: String?
         var language: String?
         var modelsDir: String?
@@ -27,7 +28,10 @@ enum TranscribeCommand {
             case "--vocab":
                 index += 1
                 if index < arguments.count {
-                    vocabulary = VocabularyPrompt.parse(arguments[index])
+                    vocabulary = arguments[index]
+                        .split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
                 }
             case "--language":
                 index += 1
@@ -46,38 +50,23 @@ enum TranscribeCommand {
             print("Usage: portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]")
             return
         }
-        let url = URL(fileURLWithPath: file)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            print("error: no such file: \(url.path)")
+        guard let engine = AudioAnalysisEngine(rawValue: engineName) else {
+            print("error: unknown engine \(engineName) (parakeet|whisper)")
             return
         }
+        let url = URL(fileURLWithPath: file)
 
         do {
-            let store = CLISupport.modelStore(fromModelsDir: modelsDir)
-            let hints = TranscriptionHints(language: language, vocabulary: vocabulary)
-
-            print("Transcribing \(url.lastPathComponent) (\(engineName))…")
-            let result: FileTranscription
-            switch engineName {
-            case "parakeet":
-                let engine = try await CLISupport.loadEngine(store: store)
-                result = try await engine.transcribeFile(at: url, hints: hints)
-            case "whisper":
-                let descriptor = ModelCatalog.whisperLargeV3Turbo
-                let report = await store.verify(descriptor)
-                if !report.isComplete {
-                    print("Downloading \(descriptor.displayName) (\(descriptor.totalSizeBytes / 1_000_000) MB, sha256-verified)…")
-                }
-                let engine = try await WhisperEngine.loadRecommended(store: store) { progress in
-                    guard progress.totalBytes > 0 else { return }
-                    print("\r  \(Int(progress.fraction * 100))% \(progress.currentPath)", terminator: "")
-                    fflush(stdout)
-                }
-                result = try await engine.transcribeFile(at: url, hints: hints)
-            default:
-                print("error: unknown engine \(engineName) (parakeet|whisper)")
-                return
-            }
+            let workflow = platform.transcribeAudio(
+                modelsDirectory: modelsDir)
+            let result = try await workflow.execute(.init(
+                fileURL: url,
+                engine: engine,
+                language: language,
+                vocabulary: vocabulary
+            ) { progress in
+                Self.printProgress(progress)
+            })
 
             print("")
             for segment in result.segments {
@@ -92,6 +81,22 @@ enum TranscribeCommand {
             ))
         } catch {
             print("error: \(error.localizedDescription)")
+        }
+    }
+
+    private static func printProgress(_ progress: AudioAnalysisProgress) {
+        switch progress {
+        case .transcribing(let fileName, let engine):
+            print("Transcribing \(fileName) (\(engine?.rawValue ?? "parakeet"))…")
+        case .downloadingModel(let name, let megabytes):
+            print("Downloading \(name) (\(megabytes) MB, sha256-verified)…")
+        case .downloadProgress(let percent, let path):
+            print("\r  \(percent)% \(path)", terminator: percent == 100 ? "\n" : "")
+            fflush(stdout)
+        case .loadingTranscriptionModel:
+            print("Loading models (first load compiles for the ANE; can take ~a minute)…")
+        default:
+            break
         }
     }
 }

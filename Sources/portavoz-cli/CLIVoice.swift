@@ -1,6 +1,5 @@
-import DiarizationKit
+import ApplicationKit
 import Foundation
-import ModelStoreKit
 
 /// `portavoz-cli voice <enroll --file <wav>|status|delete> [--models-dir <dir>]`
 ///
@@ -39,7 +38,7 @@ enum VoiceCommand {
             index += 1
         }
 
-        let store = platform.voiceprintStore
+        let workflow = platform.voiceIdentity(modelsDirectory: modelsDir)
         do {
             switch action {
             case "enroll":
@@ -49,26 +48,23 @@ enum VoiceCommand {
                     return
                 }
                 let url = URL(fileURLWithPath: file)
-                guard FileManager.default.fileExists(atPath: url.path) else {
-                    print("error: no such file: \(url.path)")
-                    return
-                }
-                let modelStore = CLISupport.modelStore(fromModelsDir: modelsDir)
-                let diarizer = try await PyannoteDiarizer.loadRecommended(store: modelStore)
-                let voiceprint = try await diarizer.extractVoiceprint(fromFile: url)
-                try store.save(voiceprint)
+                guard case .enrolled(let voiceprint) = try await workflow.execute(
+                    .enroll(fileURL: url))
+                else { return }
                 print("Voice enrolled ✓ (embedding de \(voiceprint.embedding.count) dims, encrypted on disk, key in Keychain).")
                 print("Desde ahora tus intervenciones en el canal system se etiquetan como \"Me\".")
 
             case "status":
-                if let voiceprint = try store.load() {
+                guard case .status(let voiceprint) = try await workflow.execute(.status)
+                else { return }
+                if let voiceprint {
                     print("Voice enrolled on \(voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened)) (\(voiceprint.embedding.count) dims).")
                 } else {
                     print("No hay voz enrolada.")
                 }
 
             case "delete":
-                try store.delete()
+                _ = try await workflow.execute(.delete)
                 print("Voiceprint y llave eliminados.")
 
             default:

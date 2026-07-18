@@ -1,21 +1,14 @@
-import DiarizationKit
+import ApplicationKit
 import Foundation
-import ModelStoreKit
 import PortavozCore
-import StorageKit
-import TranscriptionKit
 
 /// `portavoz-cli meetings refine <uuid> [--file <wav>] [--language es]
 ///                                [--db <path>] [--models-dir <dir>]
 ///                                [--vocab "QVTL,Portavoz,..."]
 ///                                [--threshold 0.45]`
 ///
-/// The D7 quality re-pass: re-transcribes the meeting's audio with
-/// Whisper large-v3-turbo, re-diarizes, re-attributes, and atomically
-/// replaces the live transcript (old segments become tombstones).
-/// Uses the stored audio directory, or `--file` for imported meetings.
-/// `--threshold` overrides the diarizer's clustering threshold — the knob
-/// for tuning micro-cluster splits against a corrected reference.
+/// Runs the same durable quality re-pass used by the app. The command owns
+/// argument parsing and terminal output; ApplicationKit owns the workflow.
 enum RefineCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -43,7 +36,10 @@ enum RefineCommand {
             case "--vocab":
                 index += 1
                 if index < arguments.count {
-                    vocabulary = VocabularyPrompt.parse(arguments[index])
+                    vocabulary = arguments[index]
+                        .split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
                 }
             case "--db":
                 index += 1
@@ -53,8 +49,10 @@ enum RefineCommand {
                 if index < arguments.count { modelsDir = arguments[index] }
             case "--threshold":
                 index += 1
-                guard index < arguments.count, let value = Float(arguments[index]),
-                    value > 0, value < 1
+                guard index < arguments.count,
+                      let value = Float(arguments[index]),
+                      value > 0,
+                      value < 1
                 else {
                     print("error: --threshold expects a number in (0, 1), e.g. 0.45")
                     return
@@ -71,104 +69,83 @@ enum RefineCommand {
             print("Usage: portavoz-cli meetings refine <meeting-uuid> [--file <wav>] [--language es]")
             return
         }
-        let meetingID = MeetingID(rawValue: uuid)
+        let requestedClusteringThreshold = clusteringThreshold
 
         do {
             let application = try CLIComposition.open(
                 dbPath: dbPath,
                 platform: platform)
-            let store = application.store
-            guard let detail = try await store.detail(meetingID) else {
-                print("error: no such meeting")
-                return
-            }
+            let threshold = requestedClusteringThreshold ?? platform.defaultClusteringThreshold
+            let workflow = application.refineMeeting(
+                modelsDirectory: modelsDir,
+                language: language,
+                vocabulary: vocabulary,
+                clusteringThreshold: threshold).run
+            let progressPrinter = RefineProgressPrinter(
+                clusteringThreshold: requestedClusteringThreshold)
+            let result = try await workflow.execute(.init(
+                meetingID: MeetingID(rawValue: uuid),
+                externalAudioURL: file.map { URL(fileURLWithPath: $0) },
+                languagePolicy: language.map(TranscriptLanguagePolicy.init(persistedValue:))
+            ) { progress in
+                await progressPrinter.print(progress)
+            })
 
-            // Resolve audio: --file plays the system channel for imported
-            // meetings; recorded meetings use their stored directory.
-            var systemFile: URL?
-            var microphoneFile: URL?
-            if let file {
-                systemFile = URL(fileURLWithPath: file)
-            } else if let relative = detail.meeting.audioDirectory {
-                // Respects the recordings folder chosen in the app (with
-                // fallback to the default root for unmigrated meetings) and
-                // both containers (CAF hoy, WAV legado).
-                let base = RecordingsLocation.shared.resolve(relative)
-                systemFile = MeetingAudioLayout.channelFile(named: "system", in: base)
-                microphoneFile = MeetingAudioLayout.channelFile(named: "microphone", in: base)
-            }
-            guard systemFile != nil || microphoneFile != nil else {
-                print("error: the meeting has no stored audio — use --file <wav>")
-                return
-            }
-
-            let modelStore = CLISupport.modelStore(fromModelsDir: modelsDir)
-            let whisperModel = ModelCatalog.whisperLargeV3Turbo
-            let report = await modelStore.verify(whisperModel)
-            if !report.isComplete {
-                print("Descargando \(whisperModel.displayName) (\(whisperModel.totalSizeBytes / 1_000_000) MB, sha256-verificado)…")
-            }
-            let whisper = try await WhisperEngine.loadRecommended(store: modelStore) { progress in
-                guard progress.totalBytes > 0 else { return }
-                print("\r  \(Int(progress.fraction * 100))% \(progress.currentPath)", terminator: "")
-                fflush(stdout)
-            }
-            print("")
-
-            let transcriptPolicy = TranscriptLanguagePolicy(
-                persistedValue: language ?? "auto")
-            let spokenLanguage = SpokenLanguageDetector.transcriptionLanguageHint(
-                for: detail.meeting,
-                segments: detail.segments,
-                policy: transcriptPolicy)
-            let hints = TranscriptionHints(
-                language: spokenLanguage, vocabulary: vocabulary, meetingID: meetingID)
-            var segments: [TranscriptSegment] = []
-            if let systemFile {
-                print("Re-transcribiendo canal system con Whisper…")
-                let result = try await whisper.transcribeFile(
-                    at: systemFile, hints: hints, channel: .system)
-                segments.append(contentsOf: result.segments)
-                print(String(format: "  %.1fs de audio en %.1fs (%.0fx)",
-                             result.audioDuration, result.processingTime, result.speedFactor))
-            }
-            if let microphoneFile {
-                print("Re-transcribiendo canal microphone con Whisper…")
-                let result = try await whisper.transcribeFile(
-                    at: microphoneFile, hints: hints, channel: .microphone)
-                segments.append(contentsOf: result.segments)
-            }
-            segments.sort { $0.startTime < $1.startTime }
-
-            var turns: [SpeakerTurn] = []
-            if let systemFile {
-                if let clusteringThreshold {
-                    print("Re-diarizando (threshold \(clusteringThreshold))…")
-                } else {
-                    print("Re-diarizando…")
-                }
-                let diarizer = try await PyannoteDiarizer.loadRecommended(
-                    store: modelStore,
-                    clusteringThreshold: clusteringThreshold
-                        ?? PyannoteDiarizer.defaultClusteringThreshold,
-                    voiceprint: (try? application.platform.voiceprintStore.load()))
-                turns = try await diarizer.diarizeFile(at: systemFile)
-            }
-            let attribution = SpeakerAttributor.attribute(
-                segments: segments, turns: turns, meetingID: meetingID)
-
-            try await store.applyRefinedCast(
-                for: meetingID,
-                expectedTranscriptRevision: detail.meeting.transcriptRevision,
-                language: SpokenLanguageDetector.homogeneousLanguage(
-                    in: attribution.segments),
-                speakers: attribution.speakers,
-                segments: attribution.segments)
-
-            print("Refined transcript ✓ — \(attribution.segments.count) segments, \(attribution.speakers.count) speaker(s).")
+            print(
+                "Refined transcript ✓ — \(result.segmentCount) segments, "
+                    + "\(result.speakerCount) speaker(s).")
             print("Tip: regenerate the summary so it uses the new transcript.")
         } catch {
             print("error: \(error.localizedDescription)")
+        }
+    }
+
+}
+
+private actor RefineProgressPrinter {
+    private let clusteringThreshold: Float?
+    private var announcedDownload = false
+    private var beganTranscription = false
+
+    init(clusteringThreshold: Float?) {
+        self.clusteringThreshold = clusteringThreshold
+    }
+
+    func print(_ progress: RefineMeetingProgress) {
+        switch progress {
+        case .preparingModels:
+            break
+        case .downloadingWhisper(let size, let percent, let path):
+            if !announcedDownload {
+                Swift.print(
+                    "Descargando Whisper large-v3-turbo (CoreML) "
+                        + "(\(size), sha256-verificado)…")
+                announcedDownload = true
+            }
+            let suffix = path.map { " \($0)" } ?? ""
+            Swift.print(
+                "\r  \(percent)%\(suffix)",
+                terminator: percent == 100 ? "\n" : "")
+            fflush(stdout)
+        case .transcribingParticipants:
+            if !beganTranscription { Swift.print("") }
+            beganTranscription = true
+            Swift.print("Re-transcribiendo canal system con Whisper…")
+        case .transcribingMicrophone:
+            Swift.print("Re-transcribiendo canal microphone con Whisper…")
+        case .transcribed(let channel, let audioDuration, let processingTime, let speedFactor):
+            guard channel == .system else { return }
+            Swift.print(String(
+                format: "  %.1fs de audio en %.1fs (%.0fx)",
+                audioDuration,
+                processingTime,
+                speedFactor))
+        case .identifyingSpeakers:
+            if let clusteringThreshold {
+                Swift.print("Re-diarizando (threshold \(clusteringThreshold))…")
+            } else {
+                Swift.print("Re-diarizando…")
+            }
         }
     }
 }

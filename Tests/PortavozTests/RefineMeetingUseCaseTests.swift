@@ -28,7 +28,17 @@ final class RefineMeetingUseCaseTests: XCTestCase {
             .preparingModels,
             .downloadingWhisper(size: "1.6 GB", percent: 42),
             .transcribingParticipants,
+            .transcribed(
+                channel: .system,
+                audioDuration: fixture.systemTranscription.audioDuration,
+                processingTime: fixture.systemTranscription.processingTime,
+                speedFactor: fixture.systemTranscription.speedFactor),
             .transcribingMicrophone,
+            .transcribed(
+                channel: .microphone,
+                audioDuration: fixture.microphoneTranscription.audioDuration,
+                processingTime: fixture.microphoneTranscription.processingTime,
+                speedFactor: fixture.microphoneTranscription.speedFactor),
             .identifyingSpeakers,
         ])
         XCTAssertEqual(state.events, [
@@ -228,6 +238,84 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         let state = await noFiles.state()
         XCTAssertEqual(state.events, ["resolve-audio"])
         XCTAssertEqual(state.releaseCount, 0)
+    }
+
+    func testPersistedRunLoadsExternalAudioAndAppliesTheDraftAtomically() async throws {
+        let fixture = RefineFixture()
+        let dependencies = RefineDependencies(
+            audio: RefineMeetingAudio(system: fixture.audio.system, microphone: nil),
+            systemTranscription: fixture.systemTranscription,
+            microphoneTranscription: fixture.microphoneTranscription,
+            turns: [SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 5)],
+            persistedDetail: fixture.detail())
+        let useCases = RefineMeetingUseCases(
+            audioFiles: dependencies,
+            preferences: dependencies,
+            processor: dependencies,
+            store: dependencies,
+            reader: dependencies,
+            companion: dependencies)
+
+        let result = try await useCases.run.execute(.init(
+            meetingID: fixture.meetingID,
+            externalAudioURL: fixture.systemURL))
+
+        XCTAssertEqual(result.segmentCount, 1)
+        XCTAssertEqual(result.speakerCount, 1)
+        XCTAssertEqual(result.transcriptRevision, fixture.meeting.transcriptRevision + 1)
+        let state = await dependencies.state()
+        XCTAssertEqual(state.events, [
+            "load-meeting", "resolve-external-audio", "prepare", "preferences",
+            "transcribe-system", "diarize", "release", "apply",
+        ])
+    }
+
+    func testPersistedRunUsesStoredAudioWhenNoOverrideIsRequested() async throws {
+        let fixture = RefineFixture()
+        let dependencies = RefineDependencies(
+            audio: RefineMeetingAudio(system: fixture.audio.system, microphone: nil),
+            systemTranscription: fixture.systemTranscription,
+            microphoneTranscription: fixture.microphoneTranscription,
+            turns: [],
+            persistedDetail: fixture.detail())
+        let useCases = RefineMeetingUseCases(
+            audioFiles: dependencies,
+            preferences: dependencies,
+            processor: dependencies,
+            store: dependencies,
+            reader: dependencies,
+            companion: dependencies)
+
+        _ = try await useCases.run.execute(.init(meetingID: fixture.meetingID))
+
+        let state = await dependencies.state()
+        XCTAssertEqual(state.events, [
+            "load-meeting", "resolve-audio", "prepare", "preferences",
+            "transcribe-system", "diarize", "release", "apply",
+        ])
+    }
+
+    func testPersistedRunRejectsMissingMeetingBeforeAudioOrModels() async {
+        let fixture = RefineFixture()
+        let dependencies = RefineDependencies(
+            audio: fixture.audio,
+            systemTranscription: fixture.systemTranscription,
+            microphoneTranscription: fixture.microphoneTranscription,
+            turns: [])
+        let useCases = RefineMeetingUseCases(
+            audioFiles: dependencies,
+            preferences: dependencies,
+            processor: dependencies,
+            store: dependencies,
+            reader: dependencies,
+            companion: dependencies)
+
+        await assertThrows(RefinePersistedMeetingError.meetingNotFound) {
+            _ = try await useCases.run.execute(.init(meetingID: fixture.meetingID))
+        }
+
+        let state = await dependencies.state()
+        XCTAssertEqual(state.events, ["load-meeting"])
     }
 
     func testRequiredFailuresScheduleReleaseAndNeverProduceDraft() async {
@@ -890,7 +978,8 @@ private actor RefineDependencies:
     RefineMeetingPreferences,
     RefineMeetingProcessor,
     RefineMeetingStore,
-    RefineMeetingCompanion
+    RefineMeetingCompanion,
+    PersistedMeetingRefineReading
 {
     private let preferences: RefineMeetingPreferencesSnapshot
     private let audio: RefineMeetingAudio
@@ -900,6 +989,7 @@ private actor RefineDependencies:
     private let companionAvailable: Bool
     private let companionRefresh: RefineMeetingCompanionRefresh
     private let failures: Set<RefineFailure>
+    private let persistedDetail: MeetingDetail?
     private var events: [String] = []
     private var progressEvents: [RefineMeetingProgress] = []
     private var applyProgressEvents: [ApplyRefinedMeetingProgress] = []
@@ -924,7 +1014,8 @@ private actor RefineDependencies:
         companionRefresh: RefineMeetingCompanionRefresh = .init(
             cards: [],
             completed: true),
-        failures: Set<RefineFailure> = []
+        failures: Set<RefineFailure> = [],
+        persistedDetail: MeetingDetail? = nil
     ) {
         self.preferences = preferences
         self.audio = audio
@@ -934,6 +1025,7 @@ private actor RefineDependencies:
         self.companionAvailable = companionAvailable
         self.companionRefresh = companionRefresh
         self.failures = failures
+        self.persistedDetail = persistedDetail
     }
 
     func record(_ progress: RefineMeetingProgress) {
@@ -950,6 +1042,22 @@ private actor RefineDependencies:
     ) -> RefineMeetingAudio {
         events.append("resolve-audio")
         return audio
+    }
+
+    func resolveExternalRefineAudio(
+        _ fileURL: URL,
+        meetingID: MeetingID
+    ) -> RefineMeetingAudio {
+        _ = fileURL
+        _ = meetingID
+        events.append("resolve-external-audio")
+        return audio
+    }
+
+    func persistedMeetingDetail(_ meetingID: MeetingID) -> MeetingDetail? {
+        _ = meetingID
+        events.append("load-meeting")
+        return persistedDetail
     }
 
     func refineMeetingPreferences() -> RefineMeetingPreferencesSnapshot {

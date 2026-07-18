@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, meeting-bundle import/export, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, secret management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, file transcription/diarization/summarization, meeting-bundle and document import/export, explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, secret/voice/model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -151,6 +151,15 @@ The implemented application workflows include:
   open commitments, and source-indexed optional synthesis;
 - bounded nonvisual meeting list/detail/search/open-item queries used by terminal
   and local protocol interfaces;
+- standalone audio transcription, diarization with optional attribution, and
+  summary generation over admitted files, with model and provider work behind
+  injected processors;
+- persisted meeting refinement that loads one current detail, accepts optional
+  external audio, creates a revision-fenced draft, and applies it atomically;
+- canonical meeting-document export, explicit Gist publication, and pending
+  action-item publication from one coherent meeting projection;
+- local voice enrollment/status/deletion and ordered pinned-model
+  inspection/installation through capability-neutral ports;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
   over an injected device-local storage port;
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
@@ -209,8 +218,13 @@ The CLI has one process-wide platform composition and one database composition
 surface. Meeting list, detail, search, open-item, Ask, and MCP reads enter
 `QueryMeetingLibrary` or `AskMeetings`; the application values expose no GRDB
 records. Detail plus the latest live General summary comes from one SQLite read
-snapshot. Model-heavy and mutation commands share the same composition surface
-but still invoke their concrete capability pipelines from the executable.
+snapshot. File transcription, diarization, summarization, persisted refinement,
+document export/publication, action-item publication, local voice management,
+and pinned-model lifecycle also enter ApplicationKit workflows. Command files
+retain argument parsing and terminal/protocol formatting. Concrete filesystem,
+model, storage, voice, provider, integration, hashing, and platform behavior is
+confined to `CLIComposition` and `CLIProductAdapters`. Capture diagnostics and
+benchmark harnesses retain isolated direct capability construction.
 
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
@@ -334,6 +348,13 @@ explicit recovery choice. Summary language either follows homogeneous speech
 or uses an explicit English/Spanish setting, with app locale as the fallback
 for mixed or unknown speech.
 
+Standalone terminal analysis follows the same boundary: ApplicationKit admits
+the input file and owns operation order, elapsed-time policy, speaker identity,
+optional attribution, summary persistence, and progress values. CLI adapters
+construct the pinned local engines. Download callbacks are serialized and
+drained before workflow completion so terminal progress cannot arrive after a
+success result.
+
 ## Generated intelligence and evidence
 
 Generated success is one atomic fact: an immutable output and its successful
@@ -385,6 +406,18 @@ carry a versioned relational aggregate with canonical identity remapping and
 optional audio. Machine-local paths, canonical-person links, voiceprints,
 secrets, embeddings, and transport state are not portable.
 
+Single-meeting terminal export and explicit publication enter
+`ApplicationKit.ExportMeetingDocument`. The workflow loads one coherent detail
+projection, renders through an injected document port, and either returns
+Markdown, writes Markdown/PDF through an injected filesystem port, or invokes
+an explicit publisher. Pending action-item publication similarly reads one
+current detail and summary, resolves owners from that snapshot, and publishes
+only unfinished items in stable order. Both remote paths complete local
+admission and no-op checks before the publisher prepares its credential; only a
+prepared destination emits presentation progress and proceeds to transport.
+Missing meetings and empty pending-item sets therefore do not touch Keychain or
+announce egress.
+
 Whole-library Markdown backup is coordinated by
 `ApplicationKit.ExportLibraryMarkdownBackup`. StorageKit provides one
 read-consistent snapshot containing every healthy live meeting, cast, ordered
@@ -422,6 +455,9 @@ failure payloads, or reusable fingerprints.
 constructed only by the app and CLI composition roots. `ApplicationKit` exposes
 asynchronous user-managed credential operations, so Settings credential and
 publishing-command paths do not block their actor on Security.framework calls.
+CLI publishing adapters resolve a credential lazily only after ApplicationKit
+has admitted the local document or pending work, preserving local errors and
+no-op behavior before any device-secret read.
 Encrypted voice stores receive the Core port directly; other capability clients
 receive resolved credential values, and no capability module constructs
 Keychain. SQLite and UserDefaults do not store secrets. Voiceprints are
@@ -461,6 +497,8 @@ Audio never syncs.
 - Long-lived mutable workflow state is actor-isolated or `@MainActor`-isolated.
 - Live transcription never waits behind batch transcription.
 - Potentially blocking database-independent work runs at utility priority.
+- Synchronous download callbacks are relayed in order to async presentation and
+  drained before their owning workflow returns.
 - Durable jobs are idempotent, fingerprinted, owner-leased, heartbeat-driven,
   and retryable without polling.
 - Cancellation is explicit and cannot convert partial success into false
@@ -532,10 +570,11 @@ behind aspirational diagrams:
 - `portavoz-app` combines SwiftUI presentation and concrete macOS composition
   in one executable target, so the target links every capability module.
 - `portavoz-cli` links every capability module for product commands and
-  benchmark harnesses. Product commands share one composition surface;
-  library/Ask/MCP reads enter through ApplicationKit, while model-heavy and
-  mutation commands still coordinate concrete pipelines at the executable
-  edge.
+  benchmark harnesses. Adopted product commands enter ApplicationKit through
+  one composition surface and keep concrete integrations in executable
+  adapters; command implementations contain parsing and presentation only.
+  Capture diagnostics and benchmark harnesses keep direct capability access so
+  their measurement construction remains explicit and disposable.
 - IntegrationsKit's CloudKit capability probe imports Security only to inspect
   signed entitlements; it does not own or store secrets.
 - The durable post-capture executor remains app-composed and talks to concrete
@@ -550,8 +589,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 863 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 318 Swift source files;
+- 882 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 322 Swift source files;
 - 37 XCUITest cases pass in English and 37 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

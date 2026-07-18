@@ -40,6 +40,21 @@ public protocol RefineMeetingAudioFiles: Sendable {
         _ relativeDirectory: String,
         meetingID: MeetingID
     ) async throws -> RefineMeetingAudio
+    func resolveExternalRefineAudio(
+        _ fileURL: URL,
+        meetingID: MeetingID
+    ) async throws -> RefineMeetingAudio
+}
+
+public extension RefineMeetingAudioFiles {
+    func resolveExternalRefineAudio(
+        _ fileURL: URL,
+        meetingID: MeetingID
+    ) async throws -> RefineMeetingAudio {
+        _ = fileURL
+        _ = meetingID
+        throw RefineMeetingError.audioUnavailable
+    }
 }
 
 public struct RefineMeetingPreferencesSnapshot: Sendable {
@@ -59,9 +74,14 @@ public protocol RefineMeetingPreferences: Sendable {
 /// Stable phases that presentation maps to localized copy.
 public enum RefineMeetingProgress: Equatable, Sendable {
     case preparingModels
-    case downloadingWhisper(size: String, percent: Int)
+    case downloadingWhisper(size: String, percent: Int, path: String? = nil)
     case transcribingParticipants
     case transcribingMicrophone
+    case transcribed(
+        channel: AudioChannel,
+        audioDuration: TimeInterval,
+        processingTime: TimeInterval,
+        speedFactor: Double)
     case identifyingSpeakers
 }
 
@@ -94,23 +114,33 @@ public protocol RefineMeetingProcessor: Sendable {
     func scheduleIdleRelease() async
 }
 
-public enum RefineMeetingError: Error, Equatable, Sendable {
+public enum RefineMeetingError: Error, Equatable, LocalizedError, Sendable {
     case audioNotRetained
     case audioUnavailable
+
+    public var errorDescription: String? {
+        switch self {
+        case .audioNotRetained, .audioUnavailable:
+            "the meeting has no stored audio — use --file <wav>"
+        }
+    }
 }
 
 public struct RefineMeetingRequest: Sendable {
     public let detail: MeetingDetail
     public let languagePolicy: TranscriptLanguagePolicy?
+    public let audioOverride: RefineMeetingAudio?
     public let progress: RefineMeetingProgressHandler
 
     public init(
         detail: MeetingDetail,
         languagePolicy: TranscriptLanguagePolicy? = nil,
+        audioOverride: RefineMeetingAudio? = nil,
         progress: @escaping RefineMeetingProgressHandler = { _ in }
     ) {
         self.detail = detail
         self.languagePolicy = languagePolicy
+        self.audioOverride = audioOverride
         self.progress = progress
     }
 }
@@ -145,12 +175,17 @@ public struct RefineMeeting: ApplicationUseCase {
     }
 
     public func execute(_ request: RefineMeetingRequest) async throws -> RefineDraft {
-        guard let relativeDirectory = request.detail.meeting.audioDirectory else {
-            throw RefineMeetingError.audioNotRetained
+        let audio: RefineMeetingAudio
+        if let audioOverride = request.audioOverride {
+            audio = audioOverride
+        } else {
+            guard let relativeDirectory = request.detail.meeting.audioDirectory else {
+                throw RefineMeetingError.audioNotRetained
+            }
+            audio = try await audioFiles.resolveRefineAudio(
+                relativeDirectory,
+                meetingID: request.detail.meeting.id)
         }
-        let audio = try await audioFiles.resolveRefineAudio(
-            relativeDirectory,
-            meetingID: request.detail.meeting.id)
         guard audio.hasStoredChannel else { throw RefineMeetingError.audioUnavailable }
 
         await request.progress(.preparingModels)
@@ -297,6 +332,11 @@ public struct RefineMeeting: ApplicationUseCase {
                 fileURL: system.fileURL,
                 hints: hints,
                 channel: .system)
+            await progress(.transcribed(
+                channel: .system,
+                audioDuration: result.audioDuration,
+                processingTime: result.processingTime,
+                speedFactor: result.speedFactor))
             segments.append(contentsOf: result.segments)
             try Task.checkCancellation()
         }
@@ -306,6 +346,11 @@ public struct RefineMeeting: ApplicationUseCase {
                 fileURL: microphone.fileURL,
                 hints: hints,
                 channel: .microphone)
+            await progress(.transcribed(
+                channel: .microphone,
+                audioDuration: result.audioDuration,
+                processingTime: result.processingTime,
+                speedFactor: result.speedFactor))
             let voiced = result.segments.filter {
                 !TranscriptNoiseFilter.isLikelyNoise(
                     text: $0.text,
@@ -538,12 +583,14 @@ public struct ApplyRefinedMeeting: ApplicationUseCase {
 public struct RefineMeetingUseCases: Sendable {
     public let draft: RefineMeeting
     public let apply: ApplyRefinedMeeting
+    public let run: RefinePersistedMeeting
 
     public init(
         audioFiles: any RefineMeetingAudioFiles,
         preferences: any RefineMeetingPreferences,
         processor: any RefineMeetingProcessor,
         store: any RefineMeetingStore,
+        reader: any PersistedMeetingRefineReading,
         companion: any RefineMeetingCompanion
     ) {
         draft = RefineMeeting(
@@ -552,6 +599,108 @@ public struct RefineMeetingUseCases: Sendable {
             processor: processor,
             store: store)
         apply = ApplyRefinedMeeting(store: store, companion: companion)
+        run = RefinePersistedMeeting(
+            audioFiles: audioFiles,
+            draft: draft,
+            apply: apply,
+            reader: reader)
+    }
+}
+
+public protocol PersistedMeetingRefineReading: Sendable {
+    func persistedMeetingDetail(_ meetingID: MeetingID) async throws -> MeetingDetail?
+}
+
+extension MeetingStore: PersistedMeetingRefineReading {
+    public func persistedMeetingDetail(_ meetingID: MeetingID) async throws -> MeetingDetail? {
+        try await detail(meetingID)
+    }
+}
+
+public enum RefinePersistedMeetingError: Error, Equatable, LocalizedError, Sendable {
+    case meetingNotFound
+
+    public var errorDescription: String? { "no such meeting" }
+}
+
+public struct RefinePersistedMeetingRequest: Sendable {
+    public let meetingID: MeetingID
+    public let externalAudioURL: URL?
+    public let languagePolicy: TranscriptLanguagePolicy?
+    public let progress: RefineMeetingProgressHandler
+
+    public init(
+        meetingID: MeetingID,
+        externalAudioURL: URL? = nil,
+        languagePolicy: TranscriptLanguagePolicy? = nil,
+        progress: @escaping RefineMeetingProgressHandler = { _ in }
+    ) {
+        self.meetingID = meetingID
+        self.externalAudioURL = externalAudioURL
+        self.languagePolicy = languagePolicy
+        self.progress = progress
+    }
+}
+
+public struct RefinePersistedMeetingResult: Sendable {
+    public let segmentCount: Int
+    public let speakerCount: Int
+    public let transcriptRevision: Int
+
+    public init(segmentCount: Int, speakerCount: Int, transcriptRevision: Int) {
+        self.segmentCount = segmentCount
+        self.speakerCount = speakerCount
+        self.transcriptRevision = transcriptRevision
+    }
+}
+
+/// Loads one persisted meeting, builds the final transcript draft, and applies
+/// it atomically. Presentation clients provide identity and optional file input
+/// without coordinating storage, model, attribution, or revision policy.
+public struct RefinePersistedMeeting: ApplicationUseCase {
+    private let audioFiles: any RefineMeetingAudioFiles
+    private let draft: RefineMeeting
+    private let apply: ApplyRefinedMeeting
+    private let reader: any PersistedMeetingRefineReading
+
+    public init(
+        audioFiles: any RefineMeetingAudioFiles,
+        draft: RefineMeeting,
+        apply: ApplyRefinedMeeting,
+        reader: any PersistedMeetingRefineReading
+    ) {
+        self.audioFiles = audioFiles
+        self.draft = draft
+        self.apply = apply
+        self.reader = reader
+    }
+
+    public func execute(
+        _ request: RefinePersistedMeetingRequest
+    ) async throws -> RefinePersistedMeetingResult {
+        guard let detail = try await reader.persistedMeetingDetail(request.meetingID) else {
+            throw RefinePersistedMeetingError.meetingNotFound
+        }
+        let audioOverride: RefineMeetingAudio?
+        if let externalAudioURL = request.externalAudioURL {
+            audioOverride = try await audioFiles.resolveExternalRefineAudio(
+                externalAudioURL,
+                meetingID: request.meetingID)
+        } else {
+            audioOverride = nil
+        }
+        let refined = try await draft.execute(RefineMeetingRequest(
+            detail: detail,
+            languagePolicy: request.languagePolicy,
+            audioOverride: audioOverride,
+            progress: request.progress))
+        let applied = try await apply.execute(ApplyRefinedMeetingRequest(
+            meetingID: request.meetingID,
+            draft: refined))
+        return RefinePersistedMeetingResult(
+            segmentCount: refined.segments.count,
+            speakerCount: refined.speakers.count,
+            transcriptRevision: applied.transcriptRevision)
     }
 }
 

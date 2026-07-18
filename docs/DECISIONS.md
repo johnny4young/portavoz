@@ -3004,3 +3004,47 @@ AVFoundation have one visible outer owner, and credential failure can degrade
 or surface without blocking SwiftUI. One bounded query contract keeps CLI and
 MCP semantics consistent and makes the remaining executable migration
 incremental without removing commands or changing their output contract.
+
+## D103 — Route terminal product workflows through application contracts (Jul 2026)
+
+**Context:** terminal commands for transcription, diarization, summarization,
+refinement, document export, action-item publishing, voice enrollment, and model
+management still assembled files, Store reads and writes, pinned model loading,
+attribution, provider egress, and terminal output in the same command bodies.
+That kept released behavior available, but duplicated application ordering and
+made command tests require concrete models, filesystem state, Keychain, or
+external adapters. Synchronous model-download callbacks also had no owned async
+ordering boundary before a command printed its terminal result.
+
+**Decision:** those commands retain only argument parsing, validation that is
+specific to their syntax, warnings, and terminal formatting. ApplicationKit
+owns narrow Sendable workflows for standalone file analysis, persisted quality
+refinement, coherent meeting-document export/publication, pending action-item
+publication, local voice identity management, and ordered pinned-model
+lifecycle. Ports separate file admission/publication, processors, model
+lifecycle, encrypted voice storage, rendering, and explicit publishers from
+workflow policy. `CLIComposition` injects one process platform/database set;
+`CLIProductAdapters` owns concrete model, StorageKit, filesystem, provider,
+integration, voice, and streaming SHA-256 behavior.
+
+Persisted refinement loads the current detail, accepts stored or explicit audio,
+builds the same revision-fenced draft as the app, and applies it through the
+existing atomic transaction. Saved BYOK summarization commits its meeting,
+cast, and transcript before the gateway can record and perform egress, then
+commits the immutable summary afterward. Export and issue publishing consume one
+coherent current detail projection. Their publisher ports prepare lazily: local
+meeting/document/pending-item admission happens before a credential read; a
+successful preparation precedes the egress warning and transport. Missing
+meetings and empty pending-item sets therefore preserve their released local
+result without touching Keychain. Synchronous download callbacks enter one
+ordered relay that is drained on success and failure before the workflow
+returns. Capture diagnostics and benchmark harnesses keep direct construction
+because they measure concrete capabilities rather than product policy.
+
+**Rationale:** one application owner preserves operation order, language and
+attribution policy, revision safety, receipt-before-transport semantics, and
+output parity across app and terminal surfaces. Commands become deterministic
+presentation adapters; concrete Apple/model/storage integrations stay visible
+at composition; and focused workflow tests can characterize every branch
+without downloading a model, reading a real biometric secret, or publishing
+outside the device.

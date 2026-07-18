@@ -1,18 +1,15 @@
-import DiarizationKit
+import ApplicationKit
 import Foundation
-import ModelStoreKit
-import TranscriptionKit
 
 /// `portavoz-cli models <download|verify|path> [--models-dir <dir>]`
 /// Operates on every model in the curated catalog.
 enum ModelsCommand {
-    static var catalog: [ModelDescriptor] {
-        [ModelCatalog.parakeetTdtV3, ModelCatalog.speakerDiarization]
-    }
-
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var arguments = arguments
         guard let action = arguments.first else {
             print("Usage: portavoz-cli models <download|verify|path> [--models-dir <dir>]")
@@ -30,48 +27,69 @@ enum ModelsCommand {
             index += 1
         }
 
-        let store = CLISupport.modelStore(fromModelsDir: modelsDir)
+        let workflow = platform.localModels(modelsDirectory: modelsDir)
 
         switch action {
         case "path":
-            for descriptor in catalog {
-                let directory = await store.directory(for: descriptor)
-                let report = await store.verify(descriptor)
-                print("\(descriptor.displayName)")
-                print("  revision:  \(descriptor.revision)")
-                print("  directory: \(directory.path)")
-                print("  status:    \(report.isComplete ? "installed & verified" : "not installed")")
+            do {
+                guard case .inspected(let reports) = try await workflow.execute(.init(
+                    action: .paths))
+                else { return }
+                for report in reports {
+                    print("\(report.descriptor.displayName)")
+                    print("  revision:  \(report.descriptor.revision)")
+                    print("  directory: \(report.directory.path)")
+                    print("  status:    \(report.isComplete ? "installed & verified" : "not installed")")
+                }
+            } catch {
+                print("error: \(error.localizedDescription)")
             }
 
         case "verify":
-            for descriptor in catalog {
-                let report = await store.verify(descriptor)
-                let ok = descriptor.artifacts.count - report.missing.count - report.corrupted.count
-                print("\(descriptor.displayName): \(ok)/\(descriptor.artifacts.count) artifacts verified")
-                for path in report.missing { print("  missing:   \(path)") }
-                for path in report.corrupted { print("  CORRUPTED: \(path)") }
-                if report.isComplete { print("  all sha256 hashes match the pinned registry ✓") }
+            do {
+                guard case .inspected(let reports) = try await workflow.execute(.init(
+                    action: .verify))
+                else { return }
+                for report in reports {
+                    let descriptor = report.descriptor
+                    print("\(descriptor.displayName): \(report.verifiedArtifactCount)/\(descriptor.artifactCount) artifacts verified")
+                    for path in report.missing { print("  missing:   \(path)") }
+                    for path in report.corrupted { print("  CORRUPTED: \(path)") }
+                    if report.isComplete {
+                        print("  all sha256 hashes match the pinned registry ✓")
+                    }
+                }
+            } catch {
+                print("error: \(error.localizedDescription)")
             }
 
         case "download":
             do {
-                // Download + verify + prove loadable, per model.
-                _ = try await CLISupport.loadEngine(store: store)
-                print("\(ModelCatalog.parakeetTdtV3.displayName): installed, verified and loadable ✓")
-
-                let diarizer = ModelCatalog.speakerDiarization
-                let report = await store.verify(diarizer)
-                if !report.isComplete {
-                    print("Downloading \(diarizer.displayName) (\(diarizer.totalSizeBytes / 1_000_000) MB, sha256-verified)…")
-                }
-                _ = try await PyannoteDiarizer.loadRecommended(store: store)
-                print("\(diarizer.displayName): installed, verified and loadable ✓")
+                _ = try await workflow.execute(.init(action: .download) { progress in
+                    Self.printProgress(progress)
+                })
             } catch {
                 print("error: \(error.localizedDescription)")
             }
 
         default:
             print("Unknown models action: \(action)")
+        }
+    }
+
+    private static func printProgress(_ progress: AudioAnalysisProgress) {
+        switch progress {
+        case .downloadingModel(let name, let megabytes):
+            print("Downloading \(name) (\(megabytes) MB, sha256-verified)…")
+        case .downloadProgress(let percent, let path):
+            print("\r  \(percent)% \(path)", terminator: percent == 100 ? "\n" : "")
+            fflush(stdout)
+        case .loadingTranscriptionModel:
+            print("Loading models (first load compiles for the ANE; can take ~a minute)…")
+        case .installedModel(let name):
+            print("\(name): installed, verified and loadable ✓")
+        default:
+            break
         }
     }
 }
