@@ -511,6 +511,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(trash.contains("services."))
     }
 
+    func testResidentMenuBarUsesOneScopedReadOwner() throws {
+        let readModels = try Self.contents(
+            of: "Sources/ApplicationKit/MenuBarReadModels.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/MenuBarModel.swift")
+        let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MenuBar.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/MenuBarView.swift")
+        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MenuBarObservation.swift")
+
+        XCTAssertTrue(readModels.contains("public enum MenuBarUpdate"))
+        XCTAssertFalse(readModels.contains("import StorageKit"))
+        XCTAssertFalse(readModels.contains("import GRDB"))
+        XCTAssertTrue(model.contains("@Observable"))
+        XCTAssertTrue(model.contains("private(set) var state = State()"))
+        XCTAssertTrue(model.contains("failedSections"))
+        XCTAssertTrue(adapter.contains("store.observeMenuBarMeetings(limit: 3)"))
+        XCTAssertTrue(adapter.contains("store.observeLibraryOpenItems(limit: 200)"))
+        XCTAssertTrue(view.contains("@State private var model: MenuBarModel"))
+        XCTAssertTrue(view.contains(".task { await model.observe() }"))
+        XCTAssertTrue(app.contains("MenuBarContent(model: services.makeMenuBarModel())"))
+        XCTAssertFalse(view.contains("services.store"))
+        XCTAssertFalse(view.contains("CalendarAttendeeSource"))
+        XCTAssertFalse(view.contains("import StorageKit"))
+        XCTAssertFalse(view.contains("import IntegrationsKit"))
+        XCTAssertTrue(storage.contains("region: Table(\"meeting\")"))
+        XCTAssertTrue(storage.contains(".limit(max(0, limit))"))
+        XCTAssertFalse(storage.contains("Table(\"segment\")"))
+        XCTAssertFalse(storage.contains("Table(\"speaker\")"))
+    }
+
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {
         let policies = [
             "ChapterExtractor", "PlaybackRanges", "SummarySections", "VoiceHue",

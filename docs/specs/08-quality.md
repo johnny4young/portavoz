@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 808 package tests passing (13 gated) + 32 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 32 cases and retained app-window-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 813 package tests passing (13 gated) + 32 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 32 cases and retained app-window-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 290 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 294 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -18,6 +18,7 @@ Status: 808 package tests passing (13 gated) + 32 XCUITest UI cases. CI on GitHu
 | CloudMeetingSyncCoordinatorTests | Initial-seed drain, independent partial outcomes, authenticated fetched replay and durable deferral, physical-delete metadata handling, server-tombstone settlement, split-persistence reconstruction, and stale N/N+1 save re-admission |
 | CloudMeetingSyncLifecycleTests | Zero-platform local-only launch, explicit enable/seed separation, account loss and account-switch consent behavior, typed capability and identity failure, truthful retry/pause/remove-device semantics, exact-attempt readmission, and observable journal pending/acknowledged transitions |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
+| MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
 | MeetingPurgeUseCaseTests | Manual and expired purge ports, degradable audio failure, propagated storage failure, strict cutoff, continue-after-failure, and real scratch audio/database removal |
 | SummaryRegenerationUseCaseTests | Provider override, recipe/language/glossary/notes material, direct-provider failure, Apple exact cache and translation pivot/fallback, silent Apple failure, unavailability, best-effort context/save semantics, successful/failed/cancelled provenance, exact-cache no-run semantics, validation, transactional rollback, and real MeetingStore summary/run linkage |
@@ -862,6 +863,19 @@ and remove in both locales. The full gate is 808 package tests (13 gated), zero
 strict-lint violations across 290 Swift source files, and 32 XCUITest cases per
 locale (D97). Real production-account/two-Mac convergence remains field
 evidence, not a substituted unit-test claim.
+
+Band 6 slice 6C3 adds three database-free `MenuBarModel` cases, one real
+StorageKit observation case, and one architecture ratchet. They prove that
+recent meetings stay bounded to three, newest-first, and live-rooted through
+delete/restore; pending counts and meetings combine behind storage-independent
+updates; empty, degraded, and failed state are distinct; and a failed section
+preserves the last healthy snapshot. The source ratchet forbids Store,
+StorageKit, IntegrationsKit, and `CalendarAttendeeSource` reach-through from
+`MenuBarView`. The full gate is 813 package tests (13 gated), zero strict-lint
+violations across 294 Swift source files, and 32 unchanged XCUITest cases per
+locale (D98). The menu-bar-extra window itself remains outside the deterministic
+app-window XCUITest surface; package/model/observation coverage is the scoped
+evidence for this behavior-neutral view refactor.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

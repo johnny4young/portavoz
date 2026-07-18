@@ -6,20 +6,39 @@ Each milestone is independently shippable and has a measurable acceptance criter
 
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
-**Next concrete step:** begin architecture Band 6D with the iOS in-person
-recorder shell described in `docs/IOS.md`, reusing the now-proven text-first
-codec and lifecycle without importing macOS call capture or device-local voice
+**Next concrete step:** continue the requested macOS-only architecture
+convergence with Band 6C4: move whole-library Markdown backup behind one
+ApplicationKit workflow and injected format/filesystem adapters, while keeping
+the native Settings folder picker and visible progress. Band 6C3 now gives the
+resident menu bar one storage-independent presentation owner, bounded live
+meeting/action observations, and partial-failure isolation instead of Store or
+EventKit calls from SwiftUI (D98). Band 6D remains the later iOS in-person
+recorder shell described in `docs/IOS.md`; it must reuse the proven text-first
+codec/lifecycle without importing macOS call capture or device-local voice
 identity. Before a public sync release, retain the independent field gate for a
 real production CloudKit container/profile/account and two-Mac convergence.
-Band 6C2 now composes private macOS meeting sync through one inert fail-closed
+Band 6C2 composes private macOS meeting sync through one inert fail-closed
 CKContainer owner, one process-scoped lifecycle model, content-free wakeups,
 exact Developer ID capability verification, and an explicit bilingual Settings
 surface (D97). Local and XCUITest builds remain profile-free and make no CloudKit
 request; audio, paths, voiceprints, secrets, and embeddings remain device-local.
-Bands 6A–6C therefore complete the macOS text-first sync vertical while Band 6D
-adds the first second-device product surface. Every prior architecture band and
+Bands 6A–6C2 therefore complete the macOS text-first sync vertical; 6C3 starts
+the remaining macOS shell convergence before Band 6D adds a second-device
+product surface. Every prior architecture band and
 all released v0.6.0 behavior remain covered by the current package and bilingual
-UI gates (D33–D97).
+UI gates (D33–D98).
+
+- **Architecture Band 6 slice 6C3 complete — the menu bar reads current local
+  truth (Jul 17, 2026)**: `MenuBarContent` now renders one scene-scoped
+  observable model instead of issuing Store and EventKit calls from SwiftUI.
+  ApplicationKit owns storage-independent recent-meeting and pending-count
+  updates; StorageKit observes only the three newest live meeting roots and the
+  independently scoped latest open items; the app adapter retains calendar
+  access. Empty, degraded, and failed state are explicit, and one failed
+  section preserves the other section's last healthy value. Four direct tests
+  plus an architecture ratchet establish D98 without changing the panel's
+  commands, calendar no-prompt rule, pending badges, order, dates, or layout.
+  Band 6C4 is next; Band 6D remains deferred while macOS convergence continues.
 
 - **Architecture Band 6 slice 6C2 complete — private sync is visible, opt-in,
   and provisioned (Jul 17, 2026)**: one inert IntegrationsKit actor is the sole

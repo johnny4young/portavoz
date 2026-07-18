@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 17, 2026
 
+- **📌 A menu bar that stays current** — Recent meetings and pending commitments now refresh from live local data when the resident panel opens or your library changes, instead of keeping an old one-shot snapshot.
 - **🧭 Sync commands never get stuck** — If Pause makes an already queued sync unnecessary, Portavoz now skips that stale step and continues with your next explicit sync action in order.
 - **🔗 Source jumps never get lost** — Click a summary, decision, to-do, or Companion source as soon as a meeting opens and Portavoz now remembers the exact audio moment while a long waveform finishes preparing, instead of focusing the words but leaving the playhead behind.
 - **☁️ iCloud sync that asks first** — Opt in from a bilingual Settings pane, see whether this Mac is local-only, syncing, paused, retrying, or needs attention, and choose separately whether to include older meetings. Only encrypted meeting text and portable metadata use your private iCloud database; audio, local paths, voiceprints, secrets, and embeddings stay on this Mac.

@@ -363,6 +363,18 @@ stale-refine persistence error before presentation. The view still imports
 StorageKit only for local recording-path helpers used by playback/voiceprint
 extraction; that seam is deferred to measured Band 4 decomposition (D60).
 
+Band 6C3 applies the same scoped-state rule to the resident menu-bar scene.
+`MenuBarContent` owns one `@MainActor @Observable MenuBarModel` and renders only
+its private-write value snapshot. ApplicationKit defines recent-meeting,
+pending-count, section, and update contracts without StorageKit. A private app
+adapter merges a three-row live-meeting observation with the independently
+scoped latest-open-item observation and keeps `CalendarAttendeeSource` outside
+SwiftUI. Meeting-root writes refresh recents; latest-summary/action completion
+refreshes pending badges; delete/restore remains live-rooted. If either query
+fails, the other section and its last healthy state remain visible. The panel's
+record/dictate/ask commands, no-prompt calendar rule, ordering, relative dates,
+launch-at-login control, and layout are unchanged (D98).
+
 Band 5F keeps Companion provenance inside that scoped read model without
 conflating the question with the answer. Each evidenced card renders one
 localized **Question source** control and zero or more ordered **Answer

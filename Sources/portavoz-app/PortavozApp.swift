@@ -62,7 +62,7 @@ struct PortavozApp: App {
             }
         }
         MenuBarExtra(isInserted: $menuBarEnabled) {
-            MenuBarContent()
+            MenuBarContent(model: services.makeMenuBarModel())
                 .portavozLocalized()
                 .environment(services)
                 .tint(PVDesign.accent)

@@ -2819,3 +2819,30 @@ cannot launch. A single process owner and one already-characterized lifecycle
 keep Apple callbacks as wakeups rather than business policy. Exact signing
 verification makes the public artifact—not an Xcode checkbox—the release
 contract.
+
+## D98 — Give resident macOS surfaces scoped read ownership (Jul 2026)
+
+**Context:** the main Library, Insights, and Meeting Detail routes already
+consume storage-independent feature models, but the resident menu-bar panel
+still issued one-shot `MeetingStore` and EventKit calls from SwiftUI and stored
+their results in local `@State`. The panel could therefore retain stale recent
+meetings or pending counts, swallowed both query failures, and made a platform
+view responsible for persistence coordination.
+
+**Decision:** the menu-bar scene owns one `@MainActor @Observable MenuBarModel`.
+ApplicationKit defines its bounded recent-meeting, pending-count, section, and
+update contracts without importing StorageKit. StorageKit owns a three-row,
+newest-first, live-meeting observation over the `meeting` table only; the
+existing latest-summary open-item observation remains independent. A private
+app adapter maps and merges both streams and performs the no-prompt EventKit
+lookup. The model distinguishes loading, loaded, empty, degraded, and failed
+state and preserves a section's last healthy value when the other source fails.
+SwiftUI retains only presentation, recording/navigation commands, relative-date
+formatting, and the native launch-at-login control.
+
+**Rationale:** a resident surface must converge to current local truth whenever
+it mounts without depending on a window-owned invalidation counter. Narrow
+query regions avoid transcript/speaker churn, partial-failure isolation keeps
+useful controls available, and keeping EventKit at composition preserves the
+same no-prompt privacy rule while continuing the target's presentation-only
+SwiftUI direction.

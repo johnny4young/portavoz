@@ -1,4 +1,4 @@
-import IntegrationsKit
+import ApplicationKit
 import PortavozCore
 import ServiceManagement
 import SwiftUI
@@ -10,10 +10,11 @@ import SwiftUI
 struct MenuBarContent: View {
     @Environment(AppServices.self) private var services
     @Environment(\.openWindow) private var openWindow
-    @State private var recents: [Meeting] = []
-    /// Open action-item counts per recent meeting — the "✦ N pending" badge.
-    @State private var pendingByMeeting: [MeetingID: Int] = [:]
-    @State private var nextEvent: UpcomingEvent?
+    @State private var model: MenuBarModel
+
+    init(model: MenuBarModel) {
+        _model = State(initialValue: model)
+    }
 
     private var recording: Bool { services.recording.phase == .recording }
 
@@ -21,10 +22,10 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 0) {
             statusHeader
             quickActions
-            if let nextEvent {
+            if let nextEvent = model.state.nextEvent {
                 nextMeetingCard(nextEvent)
             }
-            if !recents.isEmpty {
+            if !model.state.meetings.isEmpty {
                 recentsList
             }
             Divider().padding(.vertical, 4)
@@ -32,14 +33,7 @@ struct MenuBarContent: View {
         }
         .padding(12)
         .frame(width: 320)
-        .task {
-            recents = Array(((try? await services.store.meetings()) ?? []).prefix(3))
-            let open = (try? await services.store.openActionItems(limit: 200)) ?? []
-            pendingByMeeting = Dictionary(grouping: open, by: \.meetingID).mapValues(\.count)
-            if !CalendarAttendeeSource.accessUndetermined {
-                nextEvent = CalendarAttendeeSource().upcomingEvents().first
-            }
-        }
+        .task { await model.observe() }
     }
 
     // MARK: Status
@@ -163,7 +157,7 @@ struct MenuBarContent: View {
                 .textCase(.uppercase)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
-            ForEach(recents) { meeting in
+            ForEach(model.state.meetings) { meeting in
                 Button {
                     openMainWindow()
                     services.pendingRoute = .meeting(meeting.id)
@@ -171,7 +165,7 @@ struct MenuBarContent: View {
                     HStack(spacing: 6) {
                         Text(meeting.title).lineLimit(1)
                         Spacer(minLength: 4)
-                        if let pending = pendingByMeeting[meeting.id], pending > 0 {
+                        if let pending = model.state.pendingByMeeting[meeting.id], pending > 0 {
                             Label("\(pending)", systemImage: "sparkles")
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(PVDesign.accent)
