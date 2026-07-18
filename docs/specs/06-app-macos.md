@@ -77,7 +77,8 @@ composition creates the platform-neutral D96 lifecycle and an inert
 `CloudKitMeetingSyncPlatform`; no container or account request occurs until
 stored account-scoped consent or explicit Enable permits it. The model
 serializes manual lifecycle work, preserves explicit actions FIFO while an
-operation is suspended, and coalesces content-free StorageKit journal,
+operation is suspended (including draining past actions made inapplicable by an
+earlier Pause), and coalesces content-free StorageKit journal,
 `CKAccountChanged`, retry-clock, and silent-push wakeups into the same bounded
 cycle. It registers for remote notifications only while sync is enabled.
 Temporary-store/XCUITest composition injects a deterministic in-memory client,

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 807 package tests passing (13 gated) + 32 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 32 cases and retained app-window-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 808 package tests passing (13 gated) + 32 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 32 cases and retained app-window-only Meeting Detail claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, privacy-receipt, redacted-support, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 290 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
@@ -14,7 +14,7 @@ Status: 807 package tests passing (13 gated) + 32 XCUITest UI cases. CI on GitHu
 | CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, protected backup-excluded CKAsset fallback, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
 | CloudMeetingSyncStateTests | Content-free snapshot validation, account-scoped consent and explicit seed state, account loss/switch semantics, exact-generation attempts, bounded retries, protected payload integrity, replay cursors, restart cleanup, and atomic persistence rollback |
 | CloudKitMeetingSyncPlatformTests | Exact signed container/service/environment/push/profile admission, supported development signing values, and fail-closed missing or invalid restricted capabilities without creating a container |
-| MeetingSyncModelTests | Zero-observer local-only launch, explicit enable wakeup arming, journal burst coalescing, account-loss disarm, pause, silent-push/manual-cycle parity, and FIFO preservation of a user action submitted during suspended lifecycle work |
+| MeetingSyncModelTests | Zero-observer local-only launch, explicit enable wakeup arming, journal burst coalescing, account-loss disarm, pause, silent-push/manual-cycle parity, FIFO preservation during suspended lifecycle work, and continued draining after an earlier action makes a queued sync inapplicable |
 | CloudMeetingSyncCoordinatorTests | Initial-seed drain, independent partial outcomes, authenticated fetched replay and durable deferral, physical-delete metadata handling, server-tombstone settlement, split-persistence reconstruction, and stale N/N+1 save re-admission |
 | CloudMeetingSyncLifecycleTests | Zero-platform local-only launch, explicit enable/seed separation, account loss and account-switch consent behavior, typed capability and identity failure, truthful retry/pause/remove-device semantics, exact-attempt readmission, and observable journal pending/acknowledged transitions |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
@@ -845,19 +845,20 @@ pending to acknowledged. The full gate is 793 package tests (13 gated), zero
 strict-lint violations across 286 Swift source files, and 31 unchanged
 XCUITest cases per locale (D96).
 
-Band 6 slice 6C2 adds five pure signed-capability tests, eight process-model
+Band 6 slice 6C2 adds five pure signed-capability tests, nine process-model
 tests, one architecture/release ratchet, and one XCUITest Settings flow. They
 prove the platform is inert until lifecycle consent, requires the exact named
 container/CloudKit/environment/push/profile evidence, checks the account before
 identity, uses the private database, and drives bounded manual send/fetch/send.
 The process model performs no observer/APNs work in local-only state, arms and
 disarms content-free wakeups with consent, coalesces journal bursts, responds to
-account and silent-push wakes, and preserves explicit user actions FIFO during
-reentrant work. Release sources separate unrestricted local/test entitlements
+account and silent-push wakes, preserves explicit user actions FIFO during
+reentrant work, and proves an inapplicable queued sync cannot strand later
+work. Release sources separate unrestricted local/test entitlements
 from exact production capabilities and reject a missing, expired, or mismatched
 Developer ID profile before notarization and after extraction. The Settings UI
 keeps Enable and existing-library seed separate and exposes manual sync, pause,
-and remove in both locales. The full gate is 807 package tests (13 gated), zero
+and remove in both locales. The full gate is 808 package tests (13 gated), zero
 strict-lint violations across 290 Swift source files, and 32 XCUITest cases per
 locale (D97). Real production-account/two-Mac convergence remains field
 evidence, not a substituted unit-test claim.

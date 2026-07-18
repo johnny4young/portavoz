@@ -78,6 +78,13 @@ final class MeetingSyncModel {
         case .enable:
             await perform { await self.client.enable() }
         case .synchronize:
+            // A queued Sync can become inapplicable after an earlier queued
+            // Pause. Treat that as a completed no-op and keep draining; one
+            // stale action must never strand later explicit FIFO work.
+            guard status.isEnabled else {
+                await drainRequestedWork()
+                return
+            }
             await requestSynchronization()
         case .retry:
             await perform { await self.client.retryNow() }

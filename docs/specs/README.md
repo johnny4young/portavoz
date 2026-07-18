@@ -4,7 +4,7 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 ## Conventions (unambiguous)
 
-- Everything described in the regular sections **is implemented and tested** (`swift test`, 807 tests, 13 gated by `PORTAVOZ_MODEL_TESTS=1` or other integration variables).
+- Everything described in the regular sections **is implemented and tested** (`swift test`, 808 tests, 13 gated by `PORTAVOZ_MODEL_TESTS=1` or other integration variables).
 - Anything NOT implemented appears only in subsections titled **"Planned (not implemented)"**, with a reference to the decision (Dxx) or milestone (Mxx) that defines it.
 - Every performance figure cited was **measured** on the reference machine (MacBook Pro M4 Max, 36 GB, macOS 26) — the date and conditions accompany the figure.
 - "Known limitations" are actual observed failures or risks, not hypotheses.

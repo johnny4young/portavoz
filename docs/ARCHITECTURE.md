@@ -630,7 +630,9 @@ boundary. An inert IntegrationsKit actor is the sole owner of the named private
 checks account status before identity, and gives D95 a manually driven private-
 database engine. One process-scoped app model serializes lifecycle actions and
 coalesces content-free journal, account, retry, and silent-push wakeups. Explicit
-user actions retain FIFO semantics during actor reentrancy. A bilingual
+user actions retain FIFO semantics during actor reentrancy; an action made
+inapplicable by an earlier queued action completes as a no-op without stranding
+later work. A bilingual
 Settings pane exposes truthful status and keeps Enable, existing-library seed,
 retry, pause, and remove-this-device distinct. Audio and every device-local or
 sensitive derivation remain excluded. Local/XCUITest bundles use unrestricted
@@ -816,9 +818,10 @@ Band 6C2 adds signed-capability tests, process-orchestration tests, one
 architecture/release ratchet, and a bilingual Settings flow above the retained
 6C1 lifecycle/journal suite. They prove local-only launch privacy, explicit
 opt-in/seed separation, account loss and switches, truthful phases, retry
-preservation, FIFO user actions during in-flight work, pause/remove-device
+preservation, FIFO user actions during in-flight work (including draining past
+an action made inapplicable by an earlier Pause), pause/remove-device
 semantics, exact Developer ID CloudKit/APNs admission, and observable pending
-generations. The current gate is 807 package tests (13 gated), zero strict-lint
+generations. The current gate is 808 package tests (13 gated), zero strict-lint
 violations across 290 Swift source files, and 32 XCUITest cases passing in both
 English and Spanish. Throwaway
 `-use-temp-store` launches use a deterministic visible frame so persistent
@@ -1300,7 +1303,7 @@ matching spec land together.
 
 | Band | Current state | Architectural outcome |
 |---|---|---|
-| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the current 807-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
+| 0 — Integrity and truth | Complete — slices 0A/0B: strict decoding, live-meeting aggregate scope, independent language policies; retained by the current 808-test package baseline | Strict identity decoding, live-meeting aggregate scope, explicit transcript/summary language policies |
 | 1 — Indestructible recording | Complete — slices 1A/1B/1C/1D-a/1D-b1/1D-b2a/1D-b2b plus Jul 16 field hardening: additive schema-v6 contract, real-v5 scratch migration, atomic pre-capture reservations, D37 no-file rollback, staged CAF validation/checksum/health, no-overwrite atomic publication, millisecond-canonical reservation matching, model-independent audio start, exact Parakeet-only durable first-pass transcript recovery for missing/failed live lanes, atomic captured-state/initial-job and recovered-transcript/dependent handoffs, typed idempotent owner-leased jobs, evidence-first launch reconciliation, stale-safe atomic artifact completion, degradable cancellation, heartbeat/retry execution, scheduled wakes, immediate Stop handoff, and Shortcut parity (D39–D43/D70/D73) | Valid audio starts and remains durable before derivation or model readiness; normal Stop and relaunch share the same resumable processing path. Playback still reads `Meeting.audioDirectory` until later asset-reader parity work is proven |
 | 2 — Application layer | Complete — 2A adds the shell/rules; 2B adopts delete/restore; 2C completes trash; 2D moves Meeting Detail regeneration; 2E closes T16; 2F moves audio import; 2G moves draft/apply refinement; 2H moves durable Stop; 2I moves Start; 2J moves expired-lease-first launch recovery; 2K moves `.portavoz` import; 2L moves read-consistent `.portavoz` export; 2M gives each window one explicit Library state/action/effect owner; 2N scopes Library reads; 2O moves four meeting-review policies inward; 2P moves three Insights read policies inward; 2Q completes local policy ownership and moves the neutral event value to Core; 2R gives each window one Insights read owner; 2S gives each selected meeting one review read owner; 2T routes its persistence mutations through model actions and adapters; 2U removes two unimplemented package promises after a compatibility audit. Jul 16 capability hardening adds exact summary-provider setup states, one app-owned Foundation Models adapter, and role-specific speech-model readiness without broadening ApplicationKit's platform edge (D44–D61/D72/D73) | Nine implemented Kit libraries; no speculative boundary remains. Detail audio-path resolution stays a measured seam; D85 closes the separate Spotlight owner |
 | 3 — Provenance and privacy | Complete — 3A–3J implement generation provenance, gateway-only meeting-content egress, durable privacy receipts, redacted local support/recovery evidence, content-free signposts, and typed recording recovery; 3K records the measured App Sandbox defer gate (D62–D78) | Every generated/egress/recovery vertical in scope is auditable without copying meeting content. Production remains accurately non-sandboxed until a reversible feature-parity migration passes the explicit D78 gates |

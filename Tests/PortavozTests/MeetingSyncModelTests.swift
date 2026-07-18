@@ -134,6 +134,28 @@ final class MeetingSyncModelTests: XCTestCase {
         XCTAssertEqual(model.status.phase, .localOnly)
     }
 
+    func testInapplicableQueuedSyncDoesNotStrandLaterExplicitAction() async throws {
+        let client = TestMeetingSyncModelClient()
+        client.suspendSynchronization = true
+        let model = MeetingSyncModel(client: client)
+        await model.start()
+        await model.send(.enable)
+
+        let synchronization = Task { await model.send(.synchronize) }
+        try await waitUntil { client.synchronizationContinuation != nil }
+        await Task { await model.send(.pause) }.value
+        await Task { await model.send(.synchronize) }.value
+        await Task { await model.send(.enable) }.value
+
+        client.resumeSynchronization()
+        await synchronization.value
+        try await waitUntil { client.enableCount == 2 }
+
+        XCTAssertEqual(client.pauseCount, 1)
+        XCTAssertEqual(client.synchronizeCount, 1)
+        XCTAssertEqual(model.status.phase, .synchronized)
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         _ predicate: @escaping @MainActor () -> Bool
