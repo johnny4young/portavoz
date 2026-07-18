@@ -232,6 +232,11 @@ updates, and remembered-voice summaries that contain no embedding. The macOS
 adapter owns Core Audio, the recording-root marker and filesystem migration,
 and the encrypted gallery. SwiftUI retains native folder selection and
 localized progress, and destructive gallery failures remain visible.
+Pre-meeting reminders also enter ApplicationKit. The workflow selects the
+earliest due meeting from one sampled time and returns a typed notice; disabled
+reminders do not query the calendar. The macOS adapter retains preferences,
+clock, and EventKit access while the process controller owns only its timer,
+floating banner, session deduplication, and one-click recording route.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume a global invalidation counter for reads. Spotlight

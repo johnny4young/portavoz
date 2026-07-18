@@ -1170,6 +1170,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testMeetingReminderEntersThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingReminderWorkflow.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingReminder.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/MeetingReminder.swift")
+
+        XCTAssertTrue(workflow.contains("protocol UpcomingMeetingListing"))
+        XCTAssertTrue(workflow.contains("struct ResolveMeetingReminder"))
+        XCTAssertFalse(workflow.contains("import EventKit"))
+        XCTAssertFalse(workflow.contains("CalendarAttendeeSource"))
+        XCTAssertTrue(adapter.contains("CalendarAttendeeSource().upcomingEvents()"))
+        XCTAssertTrue(adapter.contains("Task.detached(priority: .utility)"))
+        XCTAssertTrue(controller.contains("services?.nextMeetingReminder"))
+        for bypass in [
+            "import IntegrationsKit",
+            "CalendarAttendeeSource",
+            "ReminderPolicy.dueEvent",
+            "UserDefaults.standard",
+            "Date()",
+            "timeIntervalSinceNow",
+        ] {
+            XCTAssertFalse(controller.contains(bypass), bypass)
+        }
+    }
+
     func testMeetingDetailUsesScopedReadModelWithoutGlobalReload() throws {
         let readModels = try Self.contents(
             of: "Sources/ApplicationKit/MeetingDetailReadModels.swift")

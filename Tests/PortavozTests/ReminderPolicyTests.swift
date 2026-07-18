@@ -15,9 +15,8 @@ final class ReminderPolicyTests: XCTestCase {
 
     func testFiresInsideTheLeadWindowOnly() {
         let events = [event("Far", inMinutes: 30), event("Soon", inMinutes: 4)]
-        // upcomingEvents() is start-sorted; policy takes the first due one.
         let due = ReminderPolicy.dueEvent(
-            events: events.sorted { $0.startDate < $1.startDate },
+            events: events,
             now: now, leadMinutes: 5, alreadyReminded: [])
         XCTAssertEqual(due?.title, "Soon")
         XCTAssertNil(

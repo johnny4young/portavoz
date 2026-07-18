@@ -12,10 +12,15 @@ public enum ReminderPolicy {
         alreadyReminded: Set<String>
     ) -> UpcomingEvent? {
         guard leadMinutes > 0 else { return nil }
-        return events.first { event in
-            event.startDate > now
-                && event.startDate.timeIntervalSince(now) <= Double(leadMinutes) * 60
-                && !alreadyReminded.contains(event.id)
-        }
+        return events
+            .filter { event in
+                event.startDate > now
+                    && event.startDate.timeIntervalSince(now) <= Double(leadMinutes) * 60
+                    && !alreadyReminded.contains(event.id)
+            }
+            .min { lhs, rhs in
+                if lhs.startDate == rhs.startDate { return lhs.id < rhs.id }
+                return lhs.startDate < rhs.startDate
+            }
     }
 }

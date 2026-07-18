@@ -11,14 +11,27 @@ implemented package graph and close only evidence-backed boundary violations.
 Local-provider discovery, calendar-backed speaker naming, and local voice
 enrollment now enter characterized ApplicationKit workflows. Settings
 microphone discovery, recording-root changes, and remembered-voice management
-also enter characterized ApplicationKit workflows (D106–D109).
+also enter characterized ApplicationKit workflows. The pre-meeting reminder
+controller now receives one deterministic application notice instead of
+reading EventKit, preferences, and the clock directly (D106–D110).
 Direct capability construction remains valid in composition, live capture,
 diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D109).
+behavior remain covered by package and bilingual UI gates (D33–D110).
+
+- **Pre-meeting reminders have one application boundary on macOS
+  (Jul 18, 2026):** `ResolveMeetingReminder` samples one request time, skips
+  calendar work when disabled, selects the deterministic earliest due event
+  independent of source order, and returns typed display minutes from that same
+  time. A private app adapter retains UserDefaults, the clock, EventKit mapping,
+  and utility-priority projection. The process controller retains only its
+  timer, session deduplication, floating panel, and recording route. Five
+  workflow cases, an unsorted-policy regression, and one architecture ratchet
+  establish D110. The verified package baseline is 940 tests with 13 gated and
+  strict lint is clean across 337 Swift source files.
 
 - **Settings device resources have application boundaries on macOS
   (Jul 18, 2026):** `LoadAudioInputOptions` returns only stable UIDs and display

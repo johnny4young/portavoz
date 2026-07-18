@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -175,6 +175,8 @@ The implemented application workflows include:
   calendar candidates, an injected untrusted proposer, and application-owned
   whole-token verification against currently unnamed remote speakers with
   typed transcript or calendar-candidate evidence;
+- pre-meeting reminder resolution from one sampled clock value, one configured
+  lead window, session deduplication, and an injected upcoming-event source;
 - degradable participant-voice suggestions, duplicate-offer admission, and
   explicit remembered-voice persistence without automatic speaker mutation;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
@@ -218,6 +220,14 @@ The menu-bar scene receives bounded recent-meeting and open-commitment updates
 through an app adapter. EventKit access remains in the adapter and follows the
 no-prompt resident-surface rule. The SwiftUI panel owns commands and rendering,
 not Store or calendar coordination.
+
+The pre-meeting reminder controller owns only its periodic task, session-local
+deduplication, floating panel, and recording route. It requests a typed notice
+from an application workflow. The app adapter samples preferences and time once
+and performs the EventKit projection away from the main actor. Disabled
+reminders do not query the calendar; due-event selection is independent of
+source order and uses the same sampled time for admission and displayed
+minutes.
 
 The full Ask route and the command palette share one `AskMeetings` application
 workflow. Its public request and response values carry meeting identity,
@@ -716,6 +726,10 @@ behind aspirational diagrams:
   voice management enter ApplicationKit. Their SwiftUI views do not construct
   Core Audio, storage-location, or encrypted-gallery capabilities and do not
   discard destructive failures.
+- The pre-meeting reminder controller does not read EventKit, preferences, or
+  clocks and does not apply reminder policy. Those concerns enter one
+  ApplicationKit workflow through a private app adapter; AppKit retains only
+  panel and route presentation.
 
 Architecture dependency tests ratchet these exceptions so they cannot spread
 silently.
@@ -725,8 +739,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 934 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 335 Swift source files;
+- 940 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 337 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

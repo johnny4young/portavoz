@@ -1,8 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 934 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, shared local-provider recommendations, application-owned Settings device resources, explicit Meeting Detail name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
+Status: 940 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHub Actions (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English and Spanish local UI runs each passed all 39 cases and retained app-only local-voice Settings/Onboarding, shared local-provider recommendations, application-owned Settings device resources, explicit Meeting Detail name suggestions, claim review, overview/decision/action-item/Companion source navigation, confirmed-person memory, 5k-segment scale detail, full Ask and command-palette answer/citation navigation, source-grounded meeting preparation, exact local-data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper Settings, Sequoia intelligence-setup, explicit private-sync opt-in/older-library separation, whole-library Markdown backup, privacy-receipt, redacted-support, durable-post-capture-recovery, processing-recovery, and typed recording-failure screenshots; earlier automation-mode harness failures remain documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 335 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 337 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -60,7 +60,7 @@ Status: 934 package tests passing (13 gated) + 39 XCUITest UI cases. CI on GitHu
 | MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence, canonical-person, document, transcript/calendar-name, and participant-voice actions/effects, route-owned suggestion state, exact silent versus visible failure/degradation policy, and Spotlight reconciliation requests through a database-free client fake |
 | SuggestMeetingSpeakerNamesTests / NameSuggestionFilterTests | coherent meeting admission, eligible remote-label short circuiting, attendee forwarding, complete-token verification without substring false positives, typed locally derived transcript/calendar evidence, label deduplication, typed missing meetings, and visible generation failure without EventKit or a model |
 | MeetingDetailObservationTests | live-rooted transcript/cast, newest-summary/action-item, Companion card/evidence, and privacy-receipt observations; evidence-link-only and independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
-| BriefRelevanceTests / ReminderPolicyTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, reminder lead window/session deduplication/off state, mirror qualification/notable delta, and factual English/Spanish synthesis |
+| BriefRelevanceTests / ReminderPolicyTests / MeetingReminderWorkflowTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, order-independent reminder lead window/session deduplication/off state, disabled-source short circuit, one-sampled-time countdown, failure propagation, mirror qualification/notable delta, and factual English/Spanish synthesis |
 | MeetingBundleTests | round-trip/remap of text, audio, notes, and Companion cards with role-separated evidence; malformed source-card target rejection; canonical-person link stripping; additive compatibility of format v1 |
 | MeetingHealthTests | 8 cases: talk-time/share, ES/EN questions, thresholded interruptions, older-long-overlap conservation behind an ended neighbor, 200 dense timelines matched to the exhaustive reference, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
@@ -1029,6 +1029,16 @@ same-root destinations preserve every recording without reporting progress.
 The full gate is 934 package tests (13 gated) and zero strict-lint violations
 across 335 Swift source files; all 39 XCUITest cases per locale retain Settings
 navigation and a `settings-recording-storage` screenshot (D109).
+
+The pre-meeting reminder boundary adds five focused workflow cases, an
+unsorted-input policy regression, and one architecture ratchet. They prove that
+disabled reminders never read the calendar port, the earliest due event wins
+regardless of source ordering, admission and rounded-up display minutes share
+one sampled time, session deduplication remains exact, and source failures
+propagate to the optional app adapter. The source rule rejects EventKit,
+preferences, clock sampling, and direct policy execution from the controller.
+The full gate is 940 package tests (13 gated) and zero strict-lint violations
+across 337 Swift source files (D110).
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

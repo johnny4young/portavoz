@@ -3268,3 +3268,30 @@ failure truth without absorbing Core Audio, filesystem, Keychain, or biometric
 implementations. A failed migration cannot publish a new root, a failed voice
 deletion cannot look successful, embeddings cannot leak into presentation, and
 the same workflows remain characterizable without real devices or user data.
+
+## D110 — Resolve pre-meeting reminders behind an application workflow (Jul 2026)
+
+**Context:** the process-scoped reminder controller owned its timer and panel,
+but also read UserDefaults and the clock, queried the EventKit-backed source,
+and applied reminder policy. That made one presentation object responsible for
+capability access, timing consistency, selection semantics, and UI lifecycle.
+The policy also relied on the calendar adapter returning sorted events.
+
+**Decision:** `ApplicationKit.ResolveMeetingReminder` receives one sampled time,
+the configured lead window, the session's reminded identifiers, and an injected
+upcoming-meeting source. A disabled lead window short-circuits before reading
+the source. Due-event selection is independent of input order, chooses the
+earliest start deterministically, and derives the displayed rounded-up minutes
+from the same sampled time used for admission. The macOS adapter retains
+UserDefaults, `Date`, and the EventKit-backed `CalendarAttendeeSource`, with the
+calendar projection performed away from the main actor. The controller retains
+only periodic scheduling, session deduplication, panel presentation, and route
+selection. Calendar failures continue to degrade silently because reminders
+are an optional nudge and the released surface has no error state.
+
+**Rationale:** time and calendar behavior are now deterministic and directly
+testable without EventKit, preferences, or AppKit. Disabling reminders performs
+no unnecessary calendar work, unsorted sources cannot select the wrong event,
+and the visible countdown cannot drift between policy admission and display.
+The existing no-permission banner, once-per-session behavior, floating panel,
+and one-click recording route remain unchanged.
