@@ -90,6 +90,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Dictate anywhere** — a global hotkey (⌥⌘D) transcribes straight into any app, tap-to-toggle or hold-to-talk.
 - **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
+- **Review suggestions that wait for you** — optional titles, summary structures, and chapter labels are admitted against one meeting revision, stay inert until you accept them, and never make a failed rename look saved.
 - **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
 
 **Own your data**

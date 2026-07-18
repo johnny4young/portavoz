@@ -216,6 +216,19 @@ Meeting Detail invokes the existing `RegenerateSummary` workflow with the
 current recipe/output-language policy, producing a new immutable snapshot
 without rewriting history (D47).
 
+Meeting Detail's optional title, summary-structure, and chapter-label pass now
+enters `ApplicationKit.SuggestMeetingReviewMetadata` over one
+storage-independent review projection (D111). The workflow admits only a
+template-like current title, a General summary, and chapter starts that have no
+generated label; trims and bounds labels; maps a proposed recipe back to the
+built-in catalog; and degrades ordinary generator failures independently.
+Cancellation remains cancellation so a newer review revision can retry rather
+than publish stale output. The macOS adapter owns Foundation Models capability,
+the scale-fixture bypass, `TitleSuggester`, `MeetingTypeDetector`, and
+`ChapterTitler`. The route model owns one-shot completion and request fencing.
+Every result remains inert until the user accepts it, and literal chapter
+excerpts remain the fallback when generation is unavailable or fails.
+
 `SummaryOperationFingerprint` is deliberately separate from that cache key.
 It length-prefixes and hashes D25 material identity plus provider, requested
 output language, and source transcript revision, so a durable worker cannot

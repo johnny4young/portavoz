@@ -37,6 +37,9 @@ protocol MeetingDetailModelClient: AnyObject {
     func meetingDetailVoiceSuggestions(
         _ meetingID: MeetingID
     ) async throws -> [MeetingVoiceSuggestion]
+    func meetingDetailMetadataSuggestions(
+        _ request: SuggestMeetingReviewMetadataRequest
+    ) async throws -> MeetingReviewMetadataSuggestions
     func canRememberMeetingDetailVoice(named name: String) async -> Bool
     func rememberMeetingDetailVoice(
         meetingID: MeetingID,
@@ -69,6 +72,9 @@ final class MeetingDetailModel {
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
         fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
+        fileprivate(set) var chapterTitles: [TimeInterval: String] = [:]
+        fileprivate(set) var suggestedTitle: String?
+        fileprivate(set) var suggestedRecipe: Recipe?
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
     }
@@ -95,6 +101,7 @@ final class MeetingDetailModel {
         case publishGist
         case loadNameSuggestions
         case loadVoiceSuggestions
+        case loadMetadataSuggestions
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
     }
@@ -163,6 +170,7 @@ final class MeetingDetailModel {
         static var publishGist: Self { .review(.publishGist) }
         static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
         static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
+        static var loadMetadataSuggestions: Self { .review(.loadMetadataSuggestions) }
 
         static func checkVoiceMemoryOffer(name: String) -> Self {
             .review(.checkVoiceMemoryOffer(name: name))
@@ -206,6 +214,9 @@ final class MeetingDetailModel {
     private var privacyReceipt: PrivacyReceipt?
     private var processingJobs: [ProcessingJob] = []
     private var didLoadVoiceSuggestions = false
+    private var didCompleteTitleSuggestion = false
+    private var didCompleteRecipeSuggestion = false
+    private var metadataRequestID = UUID()
 
     init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
         self.meetingID = meetingID
@@ -222,6 +233,11 @@ final class MeetingDetailModel {
         Self.performanceSignposter.endInterval(
             "Meeting Detail First Content",
             firstContentInterval)
+    }
+
+    /// Any explicit summary regeneration supersedes the optional recipe chip.
+    func dismissSuggestedRecipe() {
+        state.suggestedRecipe = nil
     }
 
     func observe() async {
@@ -296,6 +312,9 @@ final class MeetingDetailModel {
         case .loadVoiceSuggestions:
             await loadVoiceSuggestions()
             return nil
+        case .loadMetadataSuggestions:
+            await loadMetadataSuggestions()
+            return nil
         case .checkVoiceMemoryOffer(let name):
             return .voiceMemoryOfferChecked(
                 await client.canRememberMeetingDetailVoice(named: name))
@@ -309,7 +328,16 @@ private extension MeetingDetailModel {
     func renameMeeting(_ original: Meeting, title: String) async {
         var meeting = original
         meeting.title = title
-        _ = try? await client.renameMeetingDetailMeeting(meeting)
+        do {
+            try await client.renameMeetingDetailMeeting(meeting)
+        } catch {
+            state.lastActionError = L10n.format(
+                "Could not rename: %@",
+                error.localizedDescription)
+            return
+        }
+        state.lastActionError = nil
+        state.suggestedTitle = nil
         client.requestMeetingDetailSearchReindex()
     }
 
@@ -485,6 +513,54 @@ private extension MeetingDetailModel {
             meetingID)) ?? []
     }
 
+    func loadMetadataSuggestions() async {
+        guard let detail = state.readModel else { return }
+        let suggestMeetingTitle = !didCompleteTitleSuggestion
+            && detail.meeting.title.first?.isNumber == true
+            && detail.summary != nil
+        let suggestRecipe = !didCompleteRecipeSuggestion
+            && !detail.segments.isEmpty
+            && detail.summary?.draft.recipeID == Recipe.general.id
+        let chapterStarts = Set(
+            ChapterExtractor.chapters(from: detail.segments).map(\.startTime))
+        let titledStarts = Set(state.chapterTitles.keys)
+        guard suggestMeetingTitle
+                || suggestRecipe
+                || !chapterStarts.isSubset(of: titledStarts)
+        else { return }
+
+        let request = SuggestMeetingReviewMetadataRequest(
+            review: detail,
+            titledChapterStarts: titledStarts,
+            suggestMeetingTitle: suggestMeetingTitle,
+            suggestRecipe: suggestRecipe)
+        let currentID = UUID()
+        metadataRequestID = currentID
+
+        do {
+            let suggestions = try await client.meetingDetailMetadataSuggestions(request)
+            guard !Task.isCancelled, metadataRequestID == currentID else { return }
+            if suggestMeetingTitle {
+                didCompleteTitleSuggestion = true
+                state.suggestedTitle = suggestions.meetingTitle
+            }
+            if suggestRecipe {
+                didCompleteRecipeSuggestion = true
+                state.suggestedRecipe = suggestions.recipe
+            }
+            state.chapterTitles.merge(suggestions.chapterTitles) { _, new in new }
+        } catch is CancellationError {
+            // A newer read revision retries every still-eligible suggestion.
+        } catch {
+            guard metadataRequestID == currentID else { return }
+            // Optional intelligence degrades silently, as before. Mark only
+            // the attempted one-shot suggestions complete to avoid a loop;
+            // missing chapter labels may retry after a future read revision.
+            if suggestMeetingTitle { didCompleteTitleSuggestion = true }
+            if suggestRecipe { didCompleteRecipeSuggestion = true }
+        }
+    }
+
     func rememberVoice(_ speakerID: SpeakerID) async -> Effect {
         do {
             switch try await client.rememberMeetingDetailVoice(
@@ -507,6 +583,8 @@ private extension MeetingDetailModel {
 
 private extension MeetingDetailModel {
     func publish(_ update: MeetingReviewUpdate) {
+        // Reject optional intelligence generated from an older projection.
+        metadataRequestID = UUID()
         switch update {
         case .core(let value):
             core = value

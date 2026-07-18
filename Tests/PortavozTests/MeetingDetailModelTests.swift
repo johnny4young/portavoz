@@ -275,7 +275,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(
             model.state.lastActionError,
             L10n.text("Could not apply this voice suggestion."))
-        XCTAssertEqual(client.searchReindexRequests, 3)
+        XCTAssertEqual(client.searchReindexRequests, 2)
         let feedbackEffect = await model.send(
             .setSummaryClaimFeedback(fixture.claimID, .unsupported))
         XCTAssertNil(feedbackEffect)
@@ -291,19 +291,166 @@ final class MeetingDetailModelTests: XCTestCase {
             L10n.format(
                 "Could not rename: %@",
                 MeetingDetailModelFailure.renameSpeaker.localizedDescription))
-        XCTAssertEqual(client.searchReindexRequests, 3)
+        XCTAssertEqual(client.searchReindexRequests, 2)
 
         await model.send(.removeCompanionCard(fixture.card.id))
         XCTAssertEqual(
             model.state.lastActionError,
             L10n.text("Could not remove the card."))
-        XCTAssertEqual(client.searchReindexRequests, 3)
+        XCTAssertEqual(client.searchReindexRequests, 2)
 
         await model.send(.retryProcessing)
         XCTAssertEqual(
             model.state.lastActionError,
             L10n.text(
                 "Could not restart processing. Export a support file from Settings and try again."))
+    }
+
+    func testMetadataSuggestionsAreOwnedByTheModelAndRunOncePerCompletedInput() async {
+        let fixture = MeetingDetailModelFixture()
+        let later = TranscriptSegment(
+            meetingID: fixture.meeting.id,
+            speakerID: fixture.speaker.id,
+            channel: .system,
+            text: "Ahora revisamos los siguientes pasos del proyecto.",
+            startTime: 310,
+            endTime: 313,
+            isFinal: true)
+        let segments = [fixture.segment, later]
+        let chapterStarts = ChapterExtractor.chapters(from: segments).map(\.startTime)
+        XCTAssertEqual(chapterStarts, [0, 310])
+        let client = MeetingDetailModelClientFake(
+            updates: metadataUpdates(
+                fixture,
+                title: "2026-07-18 09.00 Meeting",
+                segments: segments))
+        client.metadataSuggestionsResult = MeetingReviewMetadataSuggestions(
+            chapterTitles: Dictionary(
+                uniqueKeysWithValues: chapterStarts.map { ($0, "Chapter \($0)") }),
+            meetingTitle: "Plan del trimestre",
+            recipe: .standup)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.observe()
+        await model.send(.loadMetadataSuggestions)
+        await model.send(.loadMetadataSuggestions)
+
+        XCTAssertEqual(model.state.suggestedTitle, "Plan del trimestre")
+        XCTAssertEqual(model.state.suggestedRecipe?.id, Recipe.standup.id)
+        XCTAssertEqual(Set(model.state.chapterTitles.keys), Set(chapterStarts))
+        XCTAssertEqual(client.calls, [
+            .observe(fixture.meeting.id),
+            .loadMetadataSuggestions(
+                suggestTitle: true,
+                suggestRecipe: true,
+                titledChapterStarts: []),
+        ])
+
+        model.dismissSuggestedRecipe()
+        XCTAssertNil(model.state.suggestedRecipe)
+        var meeting = fixture.meeting
+        meeting.title = "2026-07-18 09.00 Meeting"
+        await model.send(.renameMeeting(meeting, title: "Plan del trimestre"))
+        XCTAssertNil(model.state.suggestedTitle)
+        XCTAssertNil(model.state.lastActionError)
+        XCTAssertEqual(client.searchReindexRequests, 1)
+    }
+
+    func testMetadataCancellationRetriesInsteadOfConsumingOneShotSuggestions() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(
+            updates: metadataUpdates(
+                fixture,
+                title: "2026-07-18 Meeting",
+                segments: [fixture.segment]))
+        client.metadataCancellationsRemaining = 1
+        client.metadataSuggestionsResult = MeetingReviewMetadataSuggestions(
+            meetingTitle: "Plan del trimestre",
+            recipe: .planning)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.observe()
+        await model.send(.loadMetadataSuggestions)
+        XCTAssertNil(model.state.suggestedTitle)
+        XCTAssertNil(model.state.suggestedRecipe)
+
+        await model.send(.loadMetadataSuggestions)
+
+        XCTAssertEqual(model.state.suggestedTitle, "Plan del trimestre")
+        XCTAssertEqual(model.state.suggestedRecipe?.id, Recipe.planning.id)
+        XCTAssertEqual(
+            client.calls.filter { call in
+                if case .loadMetadataSuggestions = call { return true }
+                return false
+            }.count,
+            2)
+    }
+
+    func testMetadataFailureCompletesOneShotsAndFailedRenamePreservesTheChip() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(
+            updates: metadataUpdates(
+                fixture,
+                title: "2026-07-18 Meeting",
+                segments: [fixture.segment]))
+        client.failures.insert(.loadMetadataSuggestions)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.observe()
+        await model.send(.loadMetadataSuggestions)
+        await model.send(.loadMetadataSuggestions)
+
+        XCTAssertEqual(
+            client.calls.filter { call in
+                if case .loadMetadataSuggestions = call { return true }
+                return false
+            }.count,
+            1)
+
+        let retryClient = MeetingDetailModelClientFake(
+            updates: metadataUpdates(
+                fixture,
+                title: "2026-07-18 Meeting",
+                segments: [fixture.segment]))
+        retryClient.metadataSuggestionsResult = MeetingReviewMetadataSuggestions(
+            meetingTitle: "Plan del trimestre")
+        let retryModel = MeetingDetailModel(
+            meetingID: fixture.meeting.id,
+            client: retryClient)
+        await retryModel.observe()
+        await retryModel.send(.loadMetadataSuggestions)
+        retryClient.failures.insert(.renameMeeting)
+
+        var meeting = fixture.meeting
+        meeting.title = "2026-07-18 Meeting"
+        await retryModel.send(.renameMeeting(meeting, title: "Plan del trimestre"))
+
+        XCTAssertEqual(retryModel.state.suggestedTitle, "Plan del trimestre")
+        XCTAssertEqual(
+            retryModel.state.lastActionError,
+            L10n.format(
+                "Could not rename: %@",
+                MeetingDetailModelFailure.renameMeeting.localizedDescription))
+        XCTAssertEqual(retryClient.searchReindexRequests, 0)
+    }
+
+    private func metadataUpdates(
+        _ fixture: MeetingDetailModelFixture,
+        title: String,
+        segments: [TranscriptSegment]
+    ) -> [MeetingReviewUpdate] {
+        var meeting = fixture.meeting
+        meeting.title = title
+        return [
+            .core(MeetingReviewCore(
+                meeting: meeting,
+                speakers: [fixture.speaker],
+                segments: segments)),
+            .summary(fixture.summary),
+            .companionCards([fixture.card]),
+            .privacyReceipt(fixture.receipt),
+            .processingJobs([]),
+        ]
     }
 
     private func effectSpeakerName(_ effect: MeetingDetailModel.Effect?) -> String? {
@@ -392,6 +539,8 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var searchReindexRequests = 0
     var canRememberVoiceResult = true
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
+    var metadataSuggestionsResult = MeetingReviewMetadataSuggestions()
+    var metadataCancellationsRemaining = 0
     var nameSuggestionsResult: [MeetingNameSuggestion] = [
         MeetingNameSuggestion(
             label: "S1",
@@ -519,6 +668,21 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         return [MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0)]
     }
 
+    func meetingDetailMetadataSuggestions(
+        _ request: SuggestMeetingReviewMetadataRequest
+    ) throws -> MeetingReviewMetadataSuggestions {
+        calls.append(.loadMetadataSuggestions(
+            suggestTitle: request.suggestMeetingTitle,
+            suggestRecipe: request.suggestRecipe,
+            titledChapterStarts: request.titledChapterStarts))
+        if metadataCancellationsRemaining > 0 {
+            metadataCancellationsRemaining -= 1
+            throw CancellationError()
+        }
+        try fail(.loadMetadataSuggestions)
+        return metadataSuggestionsResult
+    }
+
     func canRememberMeetingDetailVoice(named name: String) -> Bool {
         calls.append(.checkVoiceMemoryOffer(name))
         return canRememberVoiceResult
@@ -556,6 +720,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case publishGist
     case loadNameSuggestions
     case loadVoiceSuggestions
+    case loadMetadataSuggestions
     case rememberVoice
 
     var errorDescription: String? { "meeting-detail-model-\(rawValue)" }
@@ -576,6 +741,10 @@ private enum MeetingDetailModelCall: Equatable {
     case publishGist(MeetingID)
     case loadNameSuggestions(MeetingID)
     case loadVoiceSuggestions(MeetingID)
+    case loadMetadataSuggestions(
+        suggestTitle: Bool,
+        suggestRecipe: Bool,
+        titledChapterStarts: Set<TimeInterval>)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)
 }

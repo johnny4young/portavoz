@@ -819,6 +819,47 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testMeetingReviewMetadataSuggestionsEnterThroughApplicationKit() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/SuggestMeetingReviewMetadata.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingReviewMetadata.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailView.swift")
+
+        XCTAssertTrue(workflow.contains("struct SuggestMeetingReviewMetadata"))
+        XCTAssertTrue(workflow.contains("MeetingReviewMetadataGenerating"))
+        XCTAssertTrue(workflow.contains("func suggestedRecipe("))
+        XCTAssertTrue(workflow.contains("func suggestedMeetingTitle("))
+        XCTAssertTrue(workflow.contains("func suggestedChapterTitles("))
+        XCTAssertTrue(workflow.contains("try Task.checkCancellation()"))
+        XCTAssertFalse(workflow.contains("import FoundationModels"))
+        XCTAssertFalse(workflow.contains("FoundationModelSummaryProvider"))
+        XCTAssertTrue(adapter.contains("foundationModelsCapability.isAvailable"))
+        XCTAssertTrue(adapter.contains(#"arguments.contains("-seed-scale")"#))
+        for concreteGenerator in [
+            "ChapterTitler", "TitleSuggester", "MeetingTypeDetector",
+        ] {
+            XCTAssertTrue(adapter.contains(concreteGenerator), concreteGenerator)
+            XCTAssertFalse(view.contains(concreteGenerator), concreteGenerator)
+        }
+        XCTAssertTrue(model.contains("case loadMetadataSuggestions"))
+        XCTAssertTrue(model.contains("metadataRequestID"))
+        XCTAssertTrue(model.contains("didCompleteTitleSuggestion"))
+        XCTAssertTrue(model.contains("didCompleteRecipeSuggestion"))
+        XCTAssertTrue(view.contains("model.send(.loadMetadataSuggestions)"))
+        XCTAssertTrue(view.contains("model.state.chapterTitles"))
+        XCTAssertTrue(view.contains("model.state.suggestedTitle"))
+        XCTAssertTrue(view.contains("model.state.suggestedRecipe"))
+        XCTAssertFalse(view.contains("ProcessInfo.processInfo"))
+        XCTAssertFalse(view.contains("FoundationModelSummaryProvider"))
+        XCTAssertFalse(view.contains("suggestTitleIfUseful"))
+        XCTAssertFalse(view.contains("suggestRecipeIfUseful"))
+        XCTAssertFalse(view.contains("titleChaptersIfNeeded"))
+    }
+
     func testLibraryFeatureOwnsStateAndActionsOutsideSwiftUI() throws {
         let model = try Self.contents(
             of: "Sources/portavoz-app/LibraryModel.swift")

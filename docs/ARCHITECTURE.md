@@ -112,7 +112,7 @@ for issue-export formatting.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
@@ -175,6 +175,9 @@ The implemented application workflows include:
   calendar candidates, an injected untrusted proposer, and application-owned
   whole-token verification against currently unnamed remote speakers with
   typed transcript or calendar-candidate evidence;
+- optional Meeting Detail title, structure, and chapter-label suggestion with
+  application-owned eligibility, bounded output admission, cancellation, and
+  per-output degradation over one storage-independent review projection;
 - pre-meeting reminder resolution from one sampled clock value, one configured
   lead window, session deduplication, and an injected upcoming-event source;
 - degradable participant-voice suggestions, duplicate-offer admission, and
@@ -298,6 +301,19 @@ visible. SwiftUI renders inert chips, labels transcript versus calendar
 evidence, and sends explicit actions. Calendar-backed confirmations retain
 calendar provenance when the user later creates a canonical-person alias. No
 suggestion names or links a person automatically.
+
+Meeting Detail's optional title, summary-structure, and chapter labels enter a
+single application workflow. It admits only template-like meeting titles,
+General summaries, and still-untitled chapters; bounds generated labels; maps
+recipes back to the known catalog; and preserves literal chapter excerpts when
+generation is unavailable or fails. Cancellation remains cancellation so a
+newer read revision can retry rather than publish stale suggestions. The app
+adapter owns Foundation Models capability and the concrete title, meeting-type,
+and chapter generators. The route-owned model owns one-shot state, revision
+fencing, retry admission, and inert suggestions. SwiftUI renders suggestions
+and sends explicit acceptance actions; no title or structure is applied
+automatically. A failed title save keeps its chip visible and reports the
+existing localized rename error.
 
 The user's own voice enrollment also enters an application workflow. The
 workflow bounds requested capture time, requires at least four seconds of
@@ -705,6 +721,10 @@ behind aspirational diagrams:
 - Meeting Detail transcript/calendar name suggestions enter ApplicationKit.
   The SwiftUI view does not request calendar access, construct a name proposer,
   trust generator-authored evidence, or verify generated identity claims.
+- Meeting Detail title, structure, and chapter-label suggestions enter
+  ApplicationKit. The SwiftUI view does not inspect model availability,
+  construct concrete generators, coordinate one-shot state, or publish stale
+  output after a newer review projection arrives.
 - Settings and Onboarding local-voice enrollment enter ApplicationKit. Their
   SwiftUI views do not construct microphone, model, embedding, or encrypted
   identity capabilities; those remain in app composition adapters.
@@ -739,8 +759,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 940 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 337 Swift source files;
+- 949 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 339 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

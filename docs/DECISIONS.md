@@ -3295,3 +3295,37 @@ no unnecessary calendar work, unsorted sources cannot select the wrong event,
 and the visible countdown cannot drift between policy admission and display.
 The existing no-permission banner, once-per-session behavior, floating panel,
 and one-click recording route remain unchanged.
+
+## D111 — Coordinate Meeting Detail metadata suggestions in ApplicationKit (Jul 2026)
+
+**Context:** Meeting Detail generated chapter labels, a content-based meeting
+title, and a suggested summary structure directly from SwiftUI. The view owned
+Foundation Models capability checks, concrete generators, one-shot flags,
+chapter caches, and sequencing beside rendering. View-task cancellation or a
+new read projection could therefore consume an optional suggestion or publish
+output derived from older content. The title chip also disappeared before a
+rename persisted, and rename failure was silently followed by search reindexing.
+
+**Decision:** `ApplicationKit.SuggestMeetingReviewMetadata` receives one
+storage-independent meeting-review projection, the chapter starts already
+titled, and explicit title/structure admission flags. It independently admits
+template-like titles, General summaries, and untitled chapters; bounds and
+normalizes generated labels; maps recipe results back to the known catalog;
+degrades ordinary capability failures per output; and preserves cancellation.
+A private macOS adapter retains Foundation Models availability plus
+`ChapterTitler`, `TitleSuggester`, and `MeetingTypeDetector`. The route-owned
+`MeetingDetailModel` owns one-shot completion, chapter-label state, request-ID
+fencing, cancellation retry, and explicit dismissal. Every incoming review
+update invalidates older optional work. SwiftUI renders inert chips/labels and
+sends explicit actions only. A suggested title is cleared and Spotlight is
+reindexed only after the rename persists; failure keeps the chip and shows the
+existing localized rename error. Summary regeneration dismisses the structure
+chip before starting and remains an explicit user action.
+
+**Rationale:** optional intelligence can no longer outlive the review snapshot
+that admitted it, and presentation no longer constructs model capabilities or
+owns asynchronous policy. Independent degradation preserves useful labels when
+another generator fails, while bounded outputs and catalog mapping prevent
+untrusted model values from becoming UI or recipe identity. The released
+never-auto-apply contract, chapter excerpt fallback, scale-fixture bypass, and
+on-device-only behavior remain unchanged.

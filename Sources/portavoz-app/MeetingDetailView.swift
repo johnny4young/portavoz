@@ -36,9 +36,6 @@ struct MeetingDetailView: View {
     /// The live Companion's answer cards, persisted (D26) so the meeting can
     /// be reviewed afterward. Empty hides the rail section.
     private var companionCards: [CompanionCard] { detail?.companionCards ?? [] }
-    /// AI topic headings per chapter, keyed by the chapter's start time. Filled
-    /// lazily; a chapter with no entry falls back to its real-excerpt title.
-    @State private var chapterTitles: [TimeInterval: String] = [:]
     private var summary: MeetingReviewSummary? { detail?.summary }
     @State private var player: MeetingPlayer?
     @State private var waveform: [Waveform.Bucket] = []
@@ -75,15 +72,8 @@ struct MeetingDetailView: View {
     @State private var retryingProcessing = false
     @State private var editingTitle = false
     @State private var newTitle = ""
-    /// Typed-recipe suggestion (M13b): detected once per visit, offered as
-    /// a chip — never applied on its own.
-    @State private var suggestedRecipe: Recipe?
-    @State private var detectedRecipeOnce = false
     /// Presents the "New structure…" sheet from the Structure menu.
     @State private var showingNewStructure = false
-    /// Content-based title suggestion — same contract: chip, click, never solo.
-    @State private var suggestedTitle: String?
-    @State private var suggestedTitleOnce = false
     /// Which summary tab is showing (0 = overview · 1…N = `##` sections ·
     /// 1000 = action items).
     @State private var summaryTabSelection = 0
@@ -841,9 +831,8 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .help("Rename the meeting")
-                if let suggestion = suggestedTitle {
+                if let suggestion = model.state.suggestedTitle {
                     Button {
-                        suggestedTitle = nil
                         Task {
                             await model.send(
                                 .renameMeeting(detail.meeting, title: suggestion))
@@ -1558,6 +1547,7 @@ extension MeetingDetailView {
         speakers: [Speaker]? = nil
     ) {
         guard let detail, !regenerating else { return }
+        model.dismissSuggestedRecipe()
         let sourceSegments = segments ?? detail.segments
         let sourceSpeakers = speakers ?? detail.speakers
         regenerating = true
@@ -1897,67 +1887,9 @@ extension MeetingDetailView {
             services.pendingSeek = nil
             player?.seek(to: seek)
         }
-        await suggestRecipeIfUseful()
-        await suggestTitleIfUseful()
+        await model.send(.loadMetadataSuggestions)
+        guard !Task.isCancelled else { return }
         await loadVoiceSuggestions()
-        await titleChaptersIfNeeded()
-    }
-
-    /// Generates a short topic heading for each chapter (Apple Intelligence),
-    /// keyed by start time so re-renders reuse it. Self-healing: only the
-    /// chapters missing a title are generated, so a refine that shifts the
-    /// breaks re-titles just the new ones. Silent no-op without the model —
-    /// the rail then shows the real-excerpt titles.
-    private func titleChaptersIfNeeded() async {
-        guard !ProcessInfo.processInfo.arguments.contains("-seed-scale") else { return }
-        guard #available(macOS 26.0, *) else { return }
-        guard FoundationModelSummaryProvider.unavailabilityReason() == nil else { return }
-        guard let detail else { return }
-        let chapters = ChapterExtractor.chapters(from: detail.segments)
-        for (index, chapter) in chapters.enumerated() where chapterTitles[chapter.startTime] == nil {
-            let end = index + 1 < chapters.count ? chapters[index + 1].startTime : .infinity
-            let text = detail.segments
-                .filter { $0.startTime >= chapter.startTime && $0.startTime < end && !$0.text.isEmpty }
-                .prefix(24)
-                .map(\.text)
-                .joined(separator: " ")
-            if let title = await ChapterTitler.title(forChapterText: text) {
-                chapterTitles[chapter.startTime] = title
-            }
-        }
-    }
-
-    /// Content-based title chip: only while the title still looks like the
-    /// template output (starts with a digit — "2026-07-09 09.33 Meeting");
-    /// a title the user already wrote is never second-guessed.
-    private func suggestTitleIfUseful() async {
-        guard !suggestedTitleOnce,
-            let detail, let summary,
-            detail.meeting.title.first?.isNumber == true
-        else { return }
-        suggestedTitleOnce = true
-        guard #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        else { return }
-        suggestedTitle = await TitleSuggester.suggest(
-            summaryMarkdown: summary.draft.markdown,
-            currentTitle: detail.meeting.title)
-    }
-
-    /// "Summarize as Standup?" chip source (M13b): classify the meeting
-    /// type once per visit, only while the summary still has the general
-    /// structure, on the scheduler's background lane.
-    private func suggestRecipeIfUseful() async {
-        guard !detectedRecipeOnce,
-            let detail, !detail.segments.isEmpty,
-            let summary, summary.draft.recipeID == Recipe.general.id
-        else { return }
-        detectedRecipeOnce = true
-        guard #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        else { return }
-        suggestedRecipe = await MeetingTypeDetector.detect(
-            segments: detail.segments, speakerCount: detail.speakers.count)
     }
 
     /// "Summarize as Standup?" — the typed-recipe suggestion (M13b). One
@@ -1967,9 +1899,8 @@ extension MeetingDetailView {
     private func recipeSuggestionChip(
         _ summary: MeetingReviewSummary
     ) -> some View {
-        if let suggested = suggestedRecipe, !regenerating {
+        if let suggested = model.state.suggestedRecipe, !regenerating {
             Button {
-                suggestedRecipe = nil
                 regenerate(
                     language: summaryLanguage(summary.draft.language),
                     recipe: suggested)
@@ -2138,7 +2069,7 @@ extension MeetingDetailView {
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(PVDesign.accent)
                                 .frame(width: 44, alignment: .leading)
-                            Text(chapterTitles[chapter.startTime] ?? chapter.title)
+                            Text(model.state.chapterTitles[chapter.startTime] ?? chapter.title)
                                 .font(.callout)
                                 .lineLimit(1)
                                 .frame(maxWidth: .infinity, alignment: .leading)

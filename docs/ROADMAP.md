@@ -13,14 +13,28 @@ enrollment now enter characterized ApplicationKit workflows. Settings
 microphone discovery, recording-root changes, and remembered-voice management
 also enter characterized ApplicationKit workflows. The pre-meeting reminder
 controller now receives one deterministic application notice instead of
-reading EventKit, preferences, and the clock directly (D106–D110).
+reading EventKit, preferences, and the clock directly. Meeting Detail title,
+structure, and chapter suggestions now use one revision-fenced application
+workflow instead of view-owned model coordination (D106–D111).
 Direct capability construction remains valid in composition, live capture,
 diagnostics, and benchmark harnesses. The
 later iOS in-person recorder shell remains described in `docs/IOS.md` and is
 not the current focus. Before a public sync release, retain the independent
 field gate for a real production CloudKit container/profile/account and
 two-Mac convergence. Every completed architecture unit and all released v0.6.0
-behavior remain covered by package and bilingual UI gates (D33–D110).
+behavior remain covered by package and bilingual UI gates (D33–D111).
+
+- **Meeting Detail metadata suggestions have one application boundary on macOS
+  (Jul 18, 2026):** `SuggestMeetingReviewMetadata` owns title, structure, and
+  untitled-chapter admission, bounded label validation, known-recipe mapping,
+  cancellation, and independent best-effort degradation over one review
+  projection. The app adapter retains Foundation Models and concrete
+  generators. `MeetingDetailModel` owns one-shot state, request fencing,
+  cancellation retry, and explicit dismissal; SwiftUI renders inert suggestions
+  only. A failed title save now keeps the chip visible and skips false search
+  reindexing. Five workflow cases, three route-model cases, and one architecture
+  ratchet establish D111. The verified package baseline is 949 tests with 13
+  gated and strict lint is clean across 339 Swift source files.
 
 - **Pre-meeting reminders have one application boundary on macOS
   (Jul 18, 2026):** `ResolveMeetingReminder` samples one request time, skips
