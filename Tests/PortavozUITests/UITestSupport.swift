@@ -147,6 +147,39 @@ extension XCUIApplication {
     }
 }
 
+extension XCUIElement {
+    /// Localized and asynchronously populated SwiftUI content can expose a
+    /// hittable accessibility element one frame before its final layout.
+    /// Wait for the hit target itself to stop moving so `click()` cannot use a
+    /// stale activation point and silently miss the intended control.
+    @MainActor
+    func waitForStableFrame(
+        timeout: TimeInterval = 5,
+        stableFor stableInterval: TimeInterval = 0.25
+    ) -> Bool {
+        guard waitForExistence(timeout: timeout) else { return false }
+        let deadline = Date().addingTimeInterval(timeout)
+        var previousFrame: CGRect?
+        var stableSince: Date?
+
+        while Date() < deadline {
+            let currentFrame = frame
+            if isHittable, currentFrame == previousFrame {
+                if let stableSince,
+                   Date().timeIntervalSince(stableSince) >= stableInterval {
+                    return true
+                }
+                if stableSince == nil { stableSince = Date() }
+            } else {
+                previousFrame = currentFrame
+                stableSince = nil
+            }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return false
+    }
+}
+
 extension XCTestCase {
     @MainActor
     func attachScreenshot(of app: XCUIApplication, named name: String) {

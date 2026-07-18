@@ -229,6 +229,9 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertEqual(
             source.value as? String,
             "El rollout del modelo queda para el viernes.")
+        XCTAssertTrue(
+            source.waitForStableFrame(),
+            "the localized source control must finish layout before activation")
         source.click()
 
         let citedRow = app.control(
@@ -356,6 +359,9 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             unsupported.waitForExistence(timeout: 10),
             "an evidenced overview must expose explicit review controls")
+        XCTAssertTrue(
+            unsupported.waitForStableFrame(),
+            "the localized feedback control must finish layout before activation")
         unsupported.click()
         let selected = expectation(
             for: NSPredicate(format: "isSelected == true"),
