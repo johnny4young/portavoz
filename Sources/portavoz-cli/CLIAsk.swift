@@ -1,14 +1,15 @@
 import ApplicationKit
 import Foundation
-import PortavozCore
-import StorageKit
 
 /// `portavoz-cli ask "what did we agree about the budget?" [--db <path>]`
 ///
 /// Local RAG (M8): the same AskMeetings workflow used by the macOS surfaces
 /// retrieves hybrid evidence and optionally answers on device.
 enum AskCommand {
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var positional: [String] = []
         var dbPath: String?
         var limit = 6
@@ -35,8 +36,10 @@ enum AskCommand {
         }
 
         do {
-            let store = try MeetingsCommand.openStore(dbPath: dbPath)
-            let result = try await AskMeetings.local(store: store).answer(
+            let application = try CLIComposition.open(
+                dbPath: dbPath,
+                platform: platform)
+            let result = try await application.ask.answer(
                 question,
                 limit: limit)
             guard !result.citations.isEmpty else {

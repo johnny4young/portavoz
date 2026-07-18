@@ -198,6 +198,19 @@ public final class MeetingStore: Sendable {
         }
     }
 
+    /// Bounded newest-first live roots for command and protocol interfaces.
+    public func meetings(limit: Int) async throws -> [Meeting] {
+        guard limit > 0 else { return [] }
+        return try await database.read { db in
+            try MeetingRecord
+                .filter(Column("deletedAt") == nil)
+                .order(Column("startedAt").desc)
+                .limit(limit)
+                .fetchAll(db)
+                .map { try $0.meeting }
+        }
+    }
+
     /// Content-free aggregate used by launch eligibility and local receipts.
     /// Avoids materializing an entire library when only its cardinality matters.
     public func liveMeetingCount() async throws -> Int {

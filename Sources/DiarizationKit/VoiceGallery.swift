@@ -28,17 +28,19 @@ public struct RememberedVoice: Codable, Sendable, Identifiable {
 ///   file and the key in one action;
 /// - matches are SUGGESTIONS in the UI — a name is never applied by itself.
 public struct VoiceGallery: Sendable {
-    public static let defaultKeyService = "app.portavoz.voice-gallery-key"
-    private let keyService: String
+    private let secrets: any SecretStoring
+    private let keyIdentifier: SecretIdentifier
     private let fileURL: URL
 
     /// `~/Library/Application Support/Portavoz/voice-gallery.enc`
     public init(
+        secrets: any SecretStoring,
         directory: URL = VoiceprintStore.defaultDirectory,
-        keyService: String = VoiceGallery.defaultKeyService
+        keyIdentifier: SecretIdentifier = .voiceGalleryKey
     ) {
+        self.secrets = secrets
         self.fileURL = directory.appendingPathComponent("voice-gallery.enc")
-        self.keyService = keyService
+        self.keyIdentifier = keyIdentifier
     }
 
     public var exists: Bool {
@@ -47,7 +49,7 @@ public struct VoiceGallery: Sendable {
 
     public func voices() throws -> [RememberedVoice] {
         guard exists else { return [] }
-        guard let keyText = try SecretStore.get(service: keyService),
+        guard let keyText = try secrets.value(for: keyIdentifier),
             let keyData = Data(base64Encoded: keyText)
         else {
             // File without key: unreadable by construction; treat as empty.
@@ -84,7 +86,7 @@ public struct VoiceGallery: Sendable {
         if exists {
             try FileManager.default.removeItem(at: fileURL)
         }
-        try SecretStore.delete(service: keyService)
+        try secrets.delete(keyIdentifier)
     }
 
     private func write(_ voices: [RememberedVoice]) throws {
@@ -97,7 +99,7 @@ public struct VoiceGallery: Sendable {
     }
 
     private func loadOrCreateKey() throws -> SymmetricKey {
-        if let stored = try SecretStore.get(service: keyService) {
+        if let stored = try secrets.value(for: keyIdentifier) {
             guard let data = Data(base64Encoded: stored), data.count == 32 else {
                 throw VoiceprintStore.VoiceprintError.corruptKey
             }
@@ -105,7 +107,7 @@ public struct VoiceGallery: Sendable {
         }
         let key = SymmetricKey(size: .bits256)
         let data = key.withUnsafeBytes { Data($0) }
-        try SecretStore.set(data.base64EncodedString(), service: keyService)
+        try secrets.set(data.base64EncodedString(), for: keyIdentifier)
         return key
     }
 }

@@ -41,7 +41,7 @@ enum PostCaptureTranscriptionProcessor {
             meetingID: job.meetingID)
         let language = SpokenLanguageDetector.homogeneousLanguage(
             in: attribution.segments)
-        let voiceprint = await currentVoiceprint()
+        let voiceprint = await currentVoiceprint(services: services)
         guard let diarization = DiarizationOperationFingerprint.request(
             meetingID: job.meetingID,
             transcriptRevision: detail.meeting.transcriptRevision + 1,
@@ -143,13 +143,14 @@ enum PostCaptureTranscriptionProcessor {
         currentCaptures(in: assets)[.system]
     }
 
-    private static func currentVoiceprint() async -> Voiceprint? {
+    private static func currentVoiceprint(services: AppServices) async -> Voiceprint? {
         let arguments = ProcessInfo.processInfo.arguments
         guard !arguments.contains("-seed-processing"),
               !arguments.contains("-seed-summary-retry")
         else { return nil }
+        let store = services.voiceprintStore
         return await Task.detached(priority: .utility) {
-            try? VoiceprintStore().load()
+            try? store.load()
         }.value
     }
 }

@@ -1,10 +1,21 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Companion evidence), D100 (shared Ask workflow across app, CLI, and MCP).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Companion evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
 SPM binary (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`). Shares the DB and models with the app (including the configurable recordings folder, via `RecordingsLocation`).
+
+`CLIPlatformDependencies` is constructed once per process and owns the concrete
+PlatformKit Keychain adapter, async `ManageSecrets` boundary, and encrypted
+voice stores. `CLIComposition.open` is the single product database composition
+surface. Meeting list/detail/search/open-item reads enter
+`ApplicationKit.QueryMeetingLibrary`; Ask enters `AskMeetings`; MCP assembles
+its tools from those two workflows. Detail and the latest live General summary
+come from one read-consistent StorageKit snapshot. Commands retain parsing and
+terminal/protocol formatting, while model-heavy and mutation commands still
+coordinate their concrete pipelines through the shared composition. Benchmark
+harnesses deliberately retain isolated construction.
 
 | Command | Usage (from the code) |
 |---|---|
@@ -41,11 +52,17 @@ formats only the returned storage-independent answer and citations. An
 unavailable or failed on-device answer keeps and prints the most relevant
 evidence instead of discarding successful retrieval (D100).
 
+Keychain credentials are read through `ManageSecrets`. Gist and issue commands
+fall back to their explicit environment variable when the device secret is
+missing or temporarily unavailable; issue publishing resolves the credential
+once before iterating its action items. IntegrationsKit publishers receive only
+the resolved token and never import or construct Keychain.
+
 ## MCP server — `portavoz-cli mcp`
 
 - Transport: **JSON-RPC 2.0 over stdio, newline-delimited**; protocolVersion `2024-11-05`. Storage-agnostic protocol layer in IntegrationsKit (`MCPServer`, `MCPTool` with Data→String handlers, raw JSON schemas); the toolbox is assembled in the CLI (`MeetingToolbox`).
 - Registration with an agent: `claude mcp add portavoz -- portavoz-cli mcp`.
-- **6 tools**: `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations).
+- **6 tools**: `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations).
 - Verified E2E: an MCP agent answered "what did we agree about the transcription budget?" with the correct sources.
 
 ## Exporters — IntegrationsKit

@@ -9,7 +9,9 @@ Please **do not** open a public issue for security problems. Email `security@por
 ## Design commitments
 
 - Audio, transcripts, and summaries stay on-device by default.
-- API keys live in the Keychain, never in the database or preferences.
+- API keys live in the this-device-only Keychain through the injected
+  PlatformKit adapter, never in the database or preferences; Core and
+  capability modules do not construct Keychain.
 - Voice embeddings (biometric-grade data) never leave the device and are deletable in one action.
 - Meeting-content HTTP operations require explicit configuration or invocation, cross one policy-checked gateway, persist an immutable content-free attempt before transport, and never follow redirects. If the receipt cannot be stored, the transfer does not start.
 - Meeting Detail shows whether tracked work stayed local or a remote transfer was attempted. For databases upgraded to receipt schema v7, it discloses the date tracking began instead of making claims about earlier activity.

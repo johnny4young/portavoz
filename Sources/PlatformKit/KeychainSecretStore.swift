@@ -1,12 +1,11 @@
 import Foundation
+import PortavozCore
 import Security
 
-/// Keychain-backed secrets. API keys and tokens NEVER live in SQLite or
-/// UserDefaults (D4/D8 — the anti-pattern we inherited from studying
-/// Meetily, which keeps them in a plain settings table).
-public enum SecretStore {
-    public static let gitHubTokenService = "app.portavoz.github-token"
-    static let account = "portavoz"
+/// Device-only Keychain adapter. API keys and encryption keys never live in
+/// SQLite, UserDefaults, iCloud Keychain backups, sync payloads, or logs.
+public struct KeychainSecretStore: SecretStoring, Sendable {
+    private static let account = "portavoz"
 
     public enum SecretError: Error, LocalizedError {
         case keychain(OSStatus)
@@ -20,25 +19,26 @@ public enum SecretStore {
         }
     }
 
-    public static func set(_ secret: String, service: String) throws {
-        try? delete(service: service)
+    public init() {}
+
+    public func set(_ secret: String, for identifier: SecretIdentifier) throws {
+        try? delete(identifier)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrService as String: identifier.rawValue,
+            kSecAttrAccount as String: Self.account,
             kSecValueData as String: Data(secret.utf8),
-            // This-device-only, never in iCloud Keychain backups.
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else { throw SecretError.keychain(status) }
     }
 
-    public static func get(service: String) throws -> String? {
+    public func value(for identifier: SecretIdentifier) throws -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrService as String: identifier.rawValue,
+            kSecAttrAccount as String: Self.account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -47,8 +47,7 @@ public enum SecretStore {
         switch status {
         case errSecSuccess:
             guard let data = result as? Data else { return nil }
-            // Keychain secret: valid UTF-8 is guaranteed; the total conversion
-            // is intentional (the failable variant would change the return contract).
+            // Keychain writes UTF-8 above, so decoding is total by contract.
             // swiftlint:disable:next optional_data_string_conversion
             return String(decoding: data, as: UTF8.self)
         case errSecItemNotFound:
@@ -58,11 +57,11 @@ public enum SecretStore {
         }
     }
 
-    public static func delete(service: String) throws {
+    public func delete(_ identifier: SecretIdentifier) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrService as String: identifier.rawValue,
+            kSecAttrAccount as String: Self.account
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {

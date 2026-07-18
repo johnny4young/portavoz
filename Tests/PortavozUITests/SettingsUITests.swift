@@ -19,8 +19,10 @@ final class SettingsUITests: XCTestCase {
         let localFirstSeal = Locale.current.identifier.hasPrefix("es")
             ? "Local primero"
             : "Local-first"
+        let privacySeal = app.buttons["settings-privacy-seal"]
+        XCTAssertTrue(privacySeal.waitForExistence(timeout: 5))
         XCTAssertTrue(
-            app.staticTexts[localFirstSeal].exists,
+            privacySeal.label.contains(localFirstSeal),
             "the standing privacy seal must describe the opt-in architecture without an absolute all-local claim")
 
         let meetings = app.control(withIdentifier: "settings-ledger-meetings")

@@ -149,13 +149,17 @@ struct SettingsView: View {
                 hasStoredBYOKKey = false
                 voiceprint = nil
             } else {
-                hasStoredBYOKKey =
-                    ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
-                voiceprint = (try? VoiceprintStore().load())
-                // Mined chips arrive async and shift the Form's layout —
-                // skipped under XCUITest (like the Keychain reads above) so
-                // coordinate clicks in tests don't land on moved controls.
-                Task { suggestedTerms = await services.mineVocabularySuggestions() }
+                let voiceprintStore = services.voiceprintStore
+                Task {
+                    hasStoredBYOKKey =
+                        (try? await services.secrets.contains(.byokAPIKey)) ?? false
+                    voiceprint = await Task.detached(priority: .utility) {
+                        try? voiceprintStore.load()
+                    }.value
+                    // Mined chips arrive async and shift the Form's layout —
+                    // skipped under XCUITest so coordinate clicks remain stable.
+                    suggestedTerms = await services.mineVocabularySuggestions()
+                }
             }
             if summaryEngine == "ollama" { detectOllama() }
             whisperVariants = services.whisperVariants()
@@ -546,7 +550,7 @@ extension SettingsView {
                     "Enrolled voice",
                     value: voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened))
                 Button("Delete my voice", role: .destructive) {
-                    try? VoiceprintStore().delete()
+                    try? services.voiceprintStore.delete()
                     self.voiceprint = nil
                     services.invalidateDiarizer()
                     voiceMessage = L10n.text("Voiceprint and key deleted.")
@@ -595,7 +599,7 @@ extension SettingsView {
 
             let print = try await diarizer.extractVoiceprint(
                 fromSamples: samples, sampleRate: sampleRate)
-            try VoiceprintStore().save(print)
+            try services.voiceprintStore.save(print)
             voiceprint = print
             services.invalidateDiarizer()
             voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
@@ -765,64 +769,16 @@ extension SettingsView {
             set: { services.recording.companionEnabled = $0 })
     }
 
-    // MARK: - BYOK (D8/D26)
-
-    /// The endpoint/model are visible preferences; the key is Keychain-only.
-    /// The companion toggle is the ONLY thing that lets a question leave the
-    /// device, and it stays disabled until everything is configured.
-    private var byokReady: Bool {
-        hasStoredBYOKKey
-            && BYOKSettings.endpointURL(from: byokEndpoint) != nil
-            && !byokModel.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
     private var byokSection: some View {
-        Section("External model (BYOK)") {
-            TextField(
-                "Endpoint OpenAI-compatible", text: $byokEndpoint,
-                prompt: Text("https://api.openai.com/v1")
-            )
-            .autocorrectionDisabled()
-            TextField("Model", text: $byokModel, prompt: Text("gpt-4o-mini"))
-                .autocorrectionDisabled()
-            SecureField("API key", text: $byokKey)
-            HStack {
-                Button("Save key in Keychain") {
-                    do {
-                        try SecretStore.set(byokKey, service: SecretStore.byokAPIKeyService)
-                        byokKey = ""
-                        hasStoredBYOKKey = true
-                        byokMessage = L10n.text("Key saved.")
-                    } catch {
-                        byokMessage = error.localizedDescription
-                    }
-                }
-                .disabled(byokKey.isEmpty)
-                if hasStoredBYOKKey {
-                    Button("Delete key", role: .destructive) {
-                        try? SecretStore.delete(service: SecretStore.byokAPIKeyService)
-                        hasStoredBYOKKey = false
-                        companionBYOKEnabled = false
-                        byokMessage = L10n.text("Key deleted. Companion goes back to answering only on-device.")
-                    }
-                }
-            }
-            Toggle(
-                "Answer Companion knowledge questions with this provider",
-                isOn: $companionBYOKEnabled
-            )
-            .disabled(!byokReady || !services.companionAvailable)
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if let byokMessage {
-                Text(byokMessage).font(.caption).foregroundStyle(.secondary)
-            }
-        }
+        BYOKSettingsSection(
+            endpoint: $byokEndpoint,
+            model: $byokModel,
+            key: $byokKey,
+            isEnabled: $companionBYOKEnabled,
+            hasStoredKey: $hasStoredBYOKKey,
+            message: $byokMessage,
+            secrets: services.secrets,
+            companionAvailable: services.companionAvailable)
     }
 
     // MARK: - GitHub

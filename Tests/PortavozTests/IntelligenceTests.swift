@@ -719,26 +719,25 @@ final class BYOKSettingsTests: XCTestCase {
 
     /// The companion only ever gets a client behind the explicit opt-in
     /// (D8/D26) — configuration alone is not consent.
-    func testCompanionClientRequiresTheExplicitOptIn() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "byok-tests"))
-        defer { defaults.removePersistentDomain(forName: "byok-tests") }
-        defaults.set("https://a.com/v1", forKey: BYOKSettings.endpointKey)
-        defaults.set("m", forKey: BYOKSettings.modelKey)
-
-        defaults.set(false, forKey: BYOKSettings.companionEnabledKey)
+    func testCompanionClientRequiresTheExplicitOptIn() {
         XCTAssertNil(BYOKSettings.companionClient(
-            defaults: defaults,
+            isEnabled: false,
+            endpoint: "https://a.com/v1",
+            model: "m",
             apiKey: "k",
             gateway: TestDataEgressGateway()))
 
-        defaults.set(true, forKey: BYOKSettings.companionEnabledKey)
         XCTAssertNotNil(BYOKSettings.companionClient(
-            defaults: defaults,
+            isEnabled: true,
+            endpoint: "https://a.com/v1",
+            model: "m",
             apiKey: "k",
             gateway: TestDataEgressGateway()))
         // Opt-in without a key degrades to nil (on-device), never an error.
         XCTAssertNil(BYOKSettings.companionClient(
-            defaults: defaults,
+            isEnabled: true,
+            endpoint: "https://a.com/v1",
+            model: "m",
             apiKey: nil,
             gateway: TestDataEgressGateway()))
     }

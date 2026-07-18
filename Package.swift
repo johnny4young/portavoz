@@ -11,6 +11,7 @@ let package = Package(
     products: [
         .library(name: "PortavozCore", targets: ["PortavozCore"]),
         .library(name: "ApplicationKit", targets: ["ApplicationKit"]),
+        .library(name: "PlatformKit", targets: ["PlatformKit"]),
         .library(name: "ModelStoreKit", targets: ["ModelStoreKit"]),
         .library(name: "AudioCaptureKit", targets: ["AudioCaptureKit"]),
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
@@ -49,6 +50,10 @@ let package = Package(
     targets: [
         // Shared domain primitives every Kit builds on.
         .target(name: "PortavozCore"),
+
+        // Concrete Apple platform/security adapters. Core owns only the ports;
+        // executable composition roots inject these implementations.
+        .target(name: "PlatformKit", dependencies: ["PortavozCore"]),
 
         // Application workflows enter through this boundary. Dependencies
         // are added one capability at a time with each extracted use case;
@@ -119,6 +124,7 @@ let package = Package(
             name: "portavoz-app",
             dependencies: [
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "Sparkle", package: "Sparkle"),
@@ -129,6 +135,7 @@ let package = Package(
             name: "portavoz-cli",
             dependencies: [
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
@@ -141,6 +148,7 @@ let package = Package(
                 "portavoz-app",
                 "ApplicationKit",
                 "PortavozCore",
+                "PlatformKit",
                 "ModelStoreKit",
                 "AudioCaptureKit",
                 "TranscriptionKit",

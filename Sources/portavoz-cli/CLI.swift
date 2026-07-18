@@ -13,6 +13,7 @@ struct PortavozCLI {
     // inherentemente largo (una rama por comando).
     // swiftlint:disable:next cyclomatic_complexity
     static func main() async {
+        let platform = CLIPlatformDependencies()
         var arguments = Array(CommandLine.arguments.dropFirst())
         guard let command = arguments.first else {
             printUsage()
@@ -28,25 +29,25 @@ struct PortavozCLI {
         case "transcribe":
             await TranscribeCommand.run(arguments)
         case "diarize":
-            await DiarizeCommand.run(arguments)
+            await DiarizeCommand.run(arguments, platform: platform)
         case "summarize":
-            await SummarizeCommand.run(arguments)
+            await SummarizeCommand.run(arguments, platform: platform)
         case "meetings":
-            await MeetingsCommand.run(arguments)
+            await MeetingsCommand.run(arguments, platform: platform)
         case "export":
-            await ExportCommand.run(arguments)
+            await ExportCommand.run(arguments, platform: platform)
         case "secrets":
-            SecretsCommand.run(arguments)
+            await SecretsCommand.run(arguments, platform: platform)
         case "voice":
-            await VoiceCommand.run(arguments)
+            await VoiceCommand.run(arguments, platform: platform)
         case "der":
             await DerCommand.run(arguments)
         case "mcp":
-            await McpCommand.run(arguments)
+            await McpCommand.run(arguments, platform: platform)
         case "ask":
-            await AskCommand.run(arguments)
+            await AskCommand.run(arguments, platform: platform)
         case "issues":
-            await IssuesCommand.run(arguments)
+            await IssuesCommand.run(arguments, platform: platform)
         case "models":
             await ModelsCommand.run(arguments)
         case "bench-live":

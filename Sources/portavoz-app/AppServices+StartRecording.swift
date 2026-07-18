@@ -138,19 +138,23 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         guard let prepared else {
             throw StartRecordingRuntimeError.preparationUnavailable
         }
+        guard let services else {
+            throw StartRecordingRuntimeError.preparationUnavailable
+        }
         self.prepared = nil
+        let voiceprintStore = services.voiceprintStore
         let active = AppStartRecordingSession(
             outputDirectory: audioRoot.appendingPathComponent(request.audioDirectory),
             microphone: prepared.microphone,
             sources: prepared.sources,
             transcriber: prepared.transcriber,
             voiceprintTask: Task.detached(priority: .utility) {
-                try? VoiceprintStore().load()
+                try? voiceprintStore.load()
             })
         do {
             try await active.start(request)
             if prepared.transcriber == nil {
-                services?.prepareRecordingEnginesInBackground()
+                services.prepareRecordingEnginesInBackground()
             }
             return active
         } catch {

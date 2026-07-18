@@ -436,17 +436,16 @@ final class RecordingController {
         let passages = recentPassages()
         let candidate = closed.text
         let askedAt = closed.startTime
-        guard let gateway = services?.dataEgressGateway else { return }
-        // BYOK only if the user configured it AND enabled the opt-in for the
-        // Companion (D8/D26); si no, el cliente es nil y todo queda on-device.
-        let companion = ProvenanceCompanion(
-            byok: BYOKSettings.companionClient(
-                gateway: gateway),
-            egressConsentSource: .companionBYOKSettings)
+        guard let services else { return }
         let language = closed.language.flatMap { LanguageCode($0)?.identifier }
         let sourceMeetingID = meetingID
         Task { @MainActor [weak self] in
             guard let self else { return }
+            // BYOK exists only after explicit Settings opt-in; otherwise the
+            // injected client is nil and Companion remains on-device.
+            let companion = ProvenanceCompanion(
+                byok: await services.companionBYOKClient(),
+                egressConsentSource: .companionBYOKSettings)
             let result = await companion.generate(CompanionGenerationRequest(
                 meetingID: sourceMeetingID,
                 sourceTranscriptRevision: 0,

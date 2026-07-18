@@ -1,11 +1,6 @@
 import Foundation
 import PortavozCore
 
-extension SecretStore {
-    /// The BYOK API key — Keychain only, like every other secret (D8).
-    public static let byokAPIKeyService = "app.portavoz.byok-api-key"
-}
-
 /// Pure OpenAI-compatible `/chat/completions` request/response codec shared by
 /// gateway-backed capability clients. It deliberately owns no transport.
 enum OpenAICompatibleChatCodec {
@@ -231,25 +226,15 @@ public enum BYOKSettings {
     /// endpoint+model+key AND flipped the companion opt-in (D26). Missing
     /// pieces degrade to on-device, never to an error.
     public static func companionClient(
-        defaults: UserDefaults = .standard,
-        gateway: any DataEgressGateway
-    ) -> CompanionBYOKClient? {
-        companionClient(
-            defaults: defaults,
-            apiKey: (try? SecretStore.get(service: SecretStore.byokAPIKeyService)),
-            gateway: gateway)
-    }
-
-    static func companionClient(
-        defaults: UserDefaults,
+        isEnabled: Bool,
+        endpoint: String,
+        model: String,
         apiKey: String?,
         gateway: any DataEgressGateway
     ) -> CompanionBYOKClient? {
-        guard defaults.bool(forKey: companionEnabledKey) else { return nil }
-        let model = (defaults.string(forKey: modelKey) ?? "")
-            .trimmingCharacters(in: .whitespaces)
-        guard let apiKey, !apiKey.isEmpty, !model.isEmpty,
-              let endpoint = endpointURL(from: defaults.string(forKey: endpointKey) ?? "")
+        let model = model.trimmingCharacters(in: .whitespaces)
+        guard isEnabled, let apiKey, !apiKey.isEmpty, !model.isEmpty,
+              let endpoint = endpointURL(from: endpoint)
         else { return nil }
         return CompanionBYOKClient(
             endpoint: endpoint,

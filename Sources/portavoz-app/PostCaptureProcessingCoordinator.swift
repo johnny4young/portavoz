@@ -302,7 +302,7 @@ private extension PostCaptureProcessingCoordinator {
 
         let assets = try await services.store.audioAssets(for: job.meetingID)
         let systemAsset = currentSystemCapture(in: assets)
-        let voiceprint = await currentVoiceprint()
+        let voiceprint = await currentVoiceprint(services: services)
         guard let fingerprint = DiarizationOperationFingerprint.compute(
             meetingID: job.meetingID,
             transcriptRevision: detail.meeting.transcriptRevision,
@@ -546,10 +546,11 @@ private extension PostCaptureProcessingCoordinator {
             .max { $0.updatedAt < $1.updatedAt }
     }
 
-    private static func currentVoiceprint() async -> Voiceprint? {
+    private static func currentVoiceprint(services: AppServices) async -> Voiceprint? {
         guard !isSafeProcessingFixture else { return nil }
+        let store = services.voiceprintStore
         return await Task.detached(priority: .utility) {
-            try? VoiceprintStore().load()
+            try? store.load()
         }.value
     }
 

@@ -187,7 +187,7 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
             from: segments,
             meetingID: meetingID,
             transcriptRevision: transcriptRevision,
-            gateway: services.dataEgressGateway)
+            byok: await services.companionBYOKClient())
         return RefineMeetingCompanionRefresh(
             cards: [],
             artifacts: result.artifacts,

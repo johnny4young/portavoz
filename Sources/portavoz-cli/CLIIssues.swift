@@ -13,7 +13,10 @@ import StorageKit
 enum IssuesCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var meetingRaw: String?
         var githubRepo: String?
         var linearTeam: String?
@@ -49,7 +52,10 @@ enum IssuesCommand {
         }
 
         do {
-            let store = try MeetingsCommand.openStore(dbPath: dbPath)
+            let application = try CLIComposition.open(
+                dbPath: dbPath,
+                platform: platform)
+            let store = application.store
             let meetingID = MeetingID(rawValue: uuid)
             guard let detail = try await store.detail(meetingID),
                 let (summary, _) = try await store.summary(meetingID)
@@ -67,18 +73,32 @@ enum IssuesCommand {
                     ($0.id, $0.displayName ?? $0.label)
                 })
 
+            let token: String
+            if githubRepo != nil {
+                guard let resolved = await application.platform.credential(
+                    for: .gitHubToken,
+                    environmentVariable: "PORTAVOZ_GITHUB_TOKEN")
+                else {
+                    print("error: sin token de GitHub — `portavoz-cli secrets set-github-token <t>`")
+                    return
+                }
+                token = resolved
+            } else {
+                guard let resolved = await application.platform.credential(
+                    for: .linearToken,
+                    environmentVariable: "PORTAVOZ_LINEAR_TOKEN")
+                else {
+                    print("error: sin token de Linear — `portavoz-cli secrets set-linear-token <t>`")
+                    return
+                }
+                token = resolved
+            }
+
             print("⚠️ Publishing \(pending.count) action item(s) OUTSIDE the device.")
             for item in pending {
                 let owner = item.ownerSpeakerID.flatMap { namesByID[$0] }
                 let url: URL
                 if let githubRepo {
-                    guard
-                        let token = (try? SecretStore.get(service: SecretStore.gitHubTokenService))
-                            ?? ProcessInfo.processInfo.environment["PORTAVOZ_GITHUB_TOKEN"]
-                    else {
-                        print("error: sin token de GitHub — `portavoz-cli secrets set-github-token <t>`")
-                        return
-                    }
                     url = try await GitHubIssuesExporter(
                         repository: githubRepo,
                         token: token,
@@ -89,13 +109,6 @@ enum IssuesCommand {
                         meetingTitle: detail.meeting.title,
                         ownerName: owner)
                 } else {
-                    guard
-                        let token = (try? SecretStore.get(service: SecretStore.linearTokenService))
-                            ?? ProcessInfo.processInfo.environment["PORTAVOZ_LINEAR_TOKEN"]
-                    else {
-                        print("error: sin token de Linear — `portavoz-cli secrets set-linear-token <t>`")
-                        return
-                    }
                     url = try await LinearExporter(
                         teamID: linearTeam!,
                         token: token,

@@ -10,7 +10,10 @@ import ModelStoreKit
 enum VoiceCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var arguments = arguments
         guard let action = arguments.first else {
             printUsage()
@@ -36,7 +39,7 @@ enum VoiceCommand {
             index += 1
         }
 
-        let store = VoiceprintStore()
+        let store = platform.voiceprintStore
         do {
             switch action {
             case "enroll":

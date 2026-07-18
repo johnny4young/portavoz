@@ -12,7 +12,10 @@ import TranscriptionKit
 enum DiarizeCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var file: String?
         var attribute = false
         var language: String?
@@ -61,7 +64,7 @@ enum DiarizeCommand {
                 print("Downloading \(descriptor.displayName) (\(descriptor.totalSizeBytes / 1_000_000) MB, sha256-verified)…")
             }
             // Enrolled voiceprint (if any) marks the user's turns as "Me".
-            let voiceprint = (try? VoiceprintStore().load())
+            let voiceprint = try? platform.voiceprintStore.load()
             let diarizer = try await PyannoteDiarizer.loadRecommended(
                 store: store, clusteringThreshold: threshold, voiceprint: voiceprint)
 

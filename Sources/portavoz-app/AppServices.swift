@@ -5,6 +5,7 @@ import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import Observation
+import PlatformKit
 import PortavozCore
 import StorageKit
 import SwiftUI
@@ -39,6 +40,15 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// The only concrete Security adapter in the app process. Capability Kits
+    /// receive the Core port rather than importing or constructing Keychain.
+    @ObservationIgnored let secretStorage: KeychainSecretStore
+    @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
+    /// Shared async credential workflow for Settings and publishing surfaces.
+    @ObservationIgnored let secrets: ManageSecrets
+    /// Encrypted biometric stores share the same device-only Keychain adapter.
+    @ObservationIgnored let voiceprintStore: VoiceprintStore
+    @ObservationIgnored let voiceGallery: VoiceGallery
     /// One process-wide decision prevents competing welcome sheets when macOS
     /// restores more than one main window.
     let firstRun: FirstRunModel
@@ -129,6 +139,12 @@ final class AppServices {
 
     init() {
         let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
+        let secretStorage = KeychainSecretStore()
+        self.secretStorage = secretStorage
+        microphonePermissions = MicrophonePermissionClient()
+        secrets = ManageSecrets(storage: secretStorage)
+        voiceprintStore = VoiceprintStore(secrets: secretStorage)
+        voiceGallery = VoiceGallery(secrets: secretStorage)
         do {
             if usesTemporaryStore {
                 // UI testing (`make test-ui`): a throwaway DB so a test run
@@ -155,7 +171,9 @@ final class AppServices {
                 meetings: AppLocalMeetingCounter(store: store),
                 audio: AppLocalAudioUsageMeter(),
                 voices: AppLocalVoiceCounter(
-                    usesTemporaryStore: usesTemporaryStore))))
+                    usesTemporaryStore: usesTemporaryStore,
+                    voiceGallery: voiceGallery,
+                    voiceprintStore: voiceprintStore))))
         askClient = AppAskModelClient(useCase: askUseCase)
         meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
@@ -228,7 +246,7 @@ final class AppServices {
         }
 
         modelsState = .downloading(L10n.text("Preparing models…"))
-        let voiceprint = try? VoiceprintStore().load()
+        let voiceprint = try? voiceprintStore.load()
         let task = Task { @MainActor in
             try await PyannoteDiarizer.loadRecommended(
                 store: ModelStore(), voiceprint: voiceprint

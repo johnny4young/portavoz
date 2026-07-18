@@ -141,14 +141,15 @@ on `PortavozCore`; the few verified cross-Kit dependencies are documented in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). As-built behavior lives in
 [docs/specs/](docs/specs/README.md). The approved, feature-parity-preserving
 architecture migration is tracked in
-[docs/refactor-20260714.md](docs/refactor-20260714.md). The package exposes nine
+[docs/refactor-20260714.md](docs/refactor-20260714.md). The package exposes ten
 implemented Kit libraries; speculative package targets are added only with a
 real vertical use case.
 
 | Module | Responsibility |
 |---|---|
-| `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, and per-meeting privacy receipts), Keychain secret store |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, coherent whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, `.portavoz` aggregate import/export, coherent whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, reviewable/revision-fenced refinement, durable recording Start/Stop/launch-recovery handoffs with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; SHA-256-verified downloads pinned to exact commits |
 | `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
@@ -175,6 +176,11 @@ workflow; stale palette work is cancelled and exact citations retain their
 meeting timestamp. Meeting preparation uses the same evidence, one batched
 current-summary projection, independently loaded open commitments, and only
 source-indexed optional synthesis.
+CLI list/detail/search/open-item and MCP library reads also enter through one
+bounded ApplicationKit query boundary; detail and its latest General summary
+come from one read-consistent SQLite snapshot. Keychain and microphone access
+live in PlatformKit rather than Core or SwiftUI, and secret consumers receive
+an injected Core port or already-resolved credentials.
 Meeting Detail writes enter its route-owned model through explicit actions and
 a narrow app adapter instead of reaching persistence from SwiftUI. These three
 features no longer consume a global invalidation counter for reads. Spotlight

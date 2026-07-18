@@ -72,9 +72,67 @@ final class ArchitectureDependencyTests: XCTestCase {
             }
             .mapValues { $0.sorted() }
 
-        // SecretStore is existing debt scheduled for a platform adapter. The
-        // allowlist prevents that exception from spreading during extraction.
-        XCTAssertEqual(actual, ["Security": ["SecretStore.swift"]])
+        XCTAssertTrue(
+            actual.isEmpty,
+            "Core must contain ports and domain values, never platform frameworks: \(actual)")
+    }
+
+    func testPlatformSecurityImplementationHasOneOuterOwner() throws {
+        let securityImports = try Self.imports(under: "Sources")
+            .filter { $0.module == "Security" }
+            .map(\.file)
+            .sorted()
+        XCTAssertEqual(
+            securityImports,
+            [
+                "IntegrationsKit/CloudKitMeetingSyncPlatform.swift",
+                "PlatformKit/KeychainSecretStore.swift",
+            ])
+
+        let targets = try TargetManifestParser.declarations(
+            in: Self.contents(of: "Package.swift"))
+        XCTAssertEqual(
+            try XCTUnwrap(targets["PlatformKit"]).dependencies,
+            ["PortavozCore"])
+        for target in ["portavoz-app", "portavoz-cli", "PortavozTests"] {
+            XCTAssertTrue(try XCTUnwrap(targets[target]).dependencies.contains("PlatformKit"))
+        }
+
+        let directConsumers = try Self.sourceMatches(
+            under: "Sources",
+            pattern: #"\bKeychainSecretStore\s*\("#)
+        XCTAssertEqual(
+            directConsumers.sorted(),
+            ["portavoz-app/AppServices.swift", "portavoz-cli/CLIComposition.swift"])
+    }
+
+    func testOnboardingPermissionsUsePlatformAdapters() throws {
+        let onboarding = try Self.contents(
+            of: "Sources/portavoz-app/OnboardingView.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Permissions.swift")
+        let platform = try Self.contents(
+            of: "Sources/PlatformKit/MicrophonePermissionClient.swift")
+
+        XCTAssertFalse(onboarding.contains("AVCaptureDevice"))
+        XCTAssertFalse(onboarding.contains("CalendarAttendeeSource"))
+        XCTAssertTrue(onboarding.contains("services.requestMicrophonePermission()"))
+        XCTAssertTrue(onboarding.contains("services.requestOnboardingCalendarAccess()"))
+        XCTAssertTrue(services.contains("microphonePermissions.request()"))
+        XCTAssertTrue(platform.contains("AVCaptureDevice.authorizationStatus"))
+        XCTAssertTrue(platform.contains("AVCaptureDevice.requestAccess"))
+    }
+
+    func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
+        for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
+            let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")
+            XCTAssertFalse(source.contains("import StorageKit"), file)
+            XCTAssertFalse(source.contains("MeetingStore("), file)
+            XCTAssertTrue(source.contains("CLIComposition"), file)
+        }
+        let composition = try Self.contents(of: "Sources/portavoz-cli/CLIComposition.swift")
+        XCTAssertTrue(composition.contains("let library: QueryMeetingLibrary"))
+        XCTAssertTrue(composition.contains("let ask: AskMeetings"))
     }
 
     func testCompanionBYOKEgressCannotBypassTheGateway() throws {
@@ -89,6 +147,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/RecordingController.swift")
         let refresh = try Self.contents(of: "Sources/portavoz-app/CompanionRefresh.swift")
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let appApplication = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Application.swift")
 
         XCTAssertTrue(core.contains("public protocol DataEgressGateway"))
         XCTAssertFalse(core.contains("URLSession.shared"))
@@ -113,10 +173,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "egressConsentSource: DataEgressConsentSource = .explicitCompanionClient"))
         XCTAssertTrue(services.contains(
             "URLSessionDataEgressGateway(receiptRecorder: store)"))
-        XCTAssertTrue(recording.contains("services?.dataEgressGateway"))
-        XCTAssertTrue(recording.contains("gateway: gateway"))
-        XCTAssertTrue(refresh.contains("gateway: any DataEgressGateway"))
-        XCTAssertTrue(refresh.contains("gateway: gateway"))
+        XCTAssertTrue(recording.contains("await services.companionBYOKClient()"))
+        XCTAssertTrue(refresh.contains("byok: CompanionBYOKClient?"))
+        XCTAssertTrue(appApplication.contains("BYOKSettings.companionClient("))
+        XCTAssertTrue(appApplication.contains("apiKey: try? await secrets.value"))
+        XCTAssertFalse(byok.contains("SecretStore"))
         for source in [recording, refresh] {
             XCTAssertTrue(source.contains(
                 "egressConsentSource: .companionBYOKSettings"))
@@ -313,7 +374,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(
             adapter.contains("try await services.loadEnginesIfNeeded()"),
             "Recording start must never wait for model preparation")
-        XCTAssertTrue(adapter.contains("services?.prepareRecordingEnginesInBackground()"))
+        XCTAssertTrue(adapter.contains("services.prepareRecordingEnginesInBackground()"))
         XCTAssertTrue(controller.contains("if commit.liveTranscriptionAvailable"))
         XCTAssertFalse(controller.contains("services.store.beginRecording"))
         XCTAssertFalse(controller.contains("MicrophoneSource("))
@@ -615,8 +676,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(source.contains("import IntelligenceKit"))
             XCTAssertFalse(source.contains("import StorageKit"))
         }
-        XCTAssertTrue(cli.contains("AskMeetings.local(store: store).answer"))
-        XCTAssertTrue(mcp.contains("AskMeetings.local(store: store).answer"))
+        XCTAssertTrue(cli.contains("application.ask.answer"))
+        XCTAssertTrue(mcp.contains("ask.answer"))
+        XCTAssertTrue(cli.contains("CLIComposition.open"))
+        XCTAssertTrue(mcp.contains("library: application.library"))
         XCTAssertTrue(brief.contains("ask.evidence(query, limit: 12)"))
         XCTAssertFalse(briefView.contains("AskMeetings.local"))
         XCTAssertTrue(askView.contains("onOpenCitation(citation)"))

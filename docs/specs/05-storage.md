@@ -505,9 +505,14 @@ latest-summary-only `openActionItems(limit:)` query.
 
 `channelFile(named:in:)` locates audio by channel inside `Audio/<uuid>/`: prefers `.m4a` after user-requested compression, then `.caf` (current capture, crash-safe), then `.wav` (pre-Jul-2026 meetings). Staging `.partial.caf` files are intentionally invisible. All readers (refine CLI and app) pass through this layout.
 
-## Secrets — `PortavozCore.SecretStore`
+## Secrets — Core port and PlatformKit adapter
 
-Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Services: GitHub token, Linear token, voiceprint key. Never in SQLite/UserDefaults.
+`PortavozCore` defines stable `SecretIdentifier` values and the Sendable
+`SecretStoring` port. `PlatformKit.KeychainSecretStore` implements it with
+`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`; app and CLI composition create
+the adapter and inject it into application credential workflows and encrypted
+voice stores. GitHub, Linear, BYOK, voiceprint, and voice-gallery secrets never
+enter SQLite, UserDefaults, sync payloads, bundles, or diagnostics.
 
 ## Known limits
 

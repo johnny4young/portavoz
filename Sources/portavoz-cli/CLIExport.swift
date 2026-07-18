@@ -12,7 +12,10 @@ import StorageKit
 enum ExportCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var meetingRaw: String?
         var format = "md"
         var out: String?
@@ -52,7 +55,10 @@ enum ExportCommand {
         }
 
         do {
-            let store = try MeetingsCommand.openStore(dbPath: dbPath)
+            let application = try CLIComposition.open(
+                dbPath: dbPath,
+                platform: platform)
+            let store = application.store
             let meetingID = MeetingID(rawValue: uuid)
             guard let detail = try await store.detail(meetingID) else {
                 print("error: no such meeting")
@@ -68,9 +74,9 @@ enum ExportCommand {
             )
 
             if gist {
-                guard
-                    let token = (try? SecretStore.get(service: SecretStore.gitHubTokenService))
-                        ?? ProcessInfo.processInfo.environment["PORTAVOZ_GITHUB_TOKEN"]
+                guard let token = await application.platform.credential(
+                    for: .gitHubToken,
+                    environmentVariable: "PORTAVOZ_GITHUB_TOKEN")
                 else {
                     // One-line error message.
                     // swiftlint:disable:next line_length
@@ -126,7 +132,10 @@ enum ExportCommand {
 
 /// `portavoz-cli secrets <set-github-token <token>|clear-github-token>`
 enum SecretsCommand {
-    static func run(_ arguments: [String]) {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         switch arguments.first {
         case "set-github-token":
             guard arguments.count > 1 else {
@@ -134,14 +143,14 @@ enum SecretsCommand {
                 return
             }
             do {
-                try SecretStore.set(arguments[1], service: SecretStore.gitHubTokenService)
+                try await platform.secrets.set(arguments[1], for: .gitHubToken)
                 print("Token guardado en el Keychain (solo este dispositivo).")
             } catch {
                 print("error: \(error.localizedDescription)")
             }
         case "clear-github-token":
             do {
-                try SecretStore.delete(service: SecretStore.gitHubTokenService)
+                try await platform.secrets.delete(.gitHubToken)
                 print("Token eliminado del Keychain.")
             } catch {
                 print("error: \(error.localizedDescription)")
@@ -152,14 +161,14 @@ enum SecretsCommand {
                 return
             }
             do {
-                try SecretStore.set(arguments[1], service: SecretStore.linearTokenService)
+                try await platform.secrets.set(arguments[1], for: .linearToken)
                 print("Token de Linear guardado en el Keychain (solo este dispositivo).")
             } catch {
                 print("error: \(error.localizedDescription)")
             }
         case "clear-linear-token":
             do {
-                try SecretStore.delete(service: SecretStore.linearTokenService)
+                try await platform.secrets.delete(.linearToken)
                 print("Token de Linear eliminado del Keychain.")
             } catch {
                 print("error: \(error.localizedDescription)")

@@ -26,6 +26,18 @@ extension AppServices {
                 foundationModelsCapability: foundationModelsCapability,
                 gateway: dataEgressGateway))
     }
+
+    /// Resolves the opt-in Companion client from app preferences plus the
+    /// async secret workflow. IntelligenceKit receives only explicit values.
+    func companionBYOKClient() async -> CompanionBYOKClient? {
+        let defaults = UserDefaults.standard
+        return BYOKSettings.companionClient(
+            isEnabled: defaults.bool(forKey: BYOKSettings.companionEnabledKey),
+            endpoint: defaults.string(forKey: BYOKSettings.endpointKey) ?? "",
+            model: defaults.string(forKey: BYOKSettings.modelKey) ?? "",
+            apiKey: try? await secrets.value(for: .byokAPIKey),
+            gateway: dataEgressGateway)
+    }
 }
 
 /// Production filesystem adapter for permanent meeting-audio removal.

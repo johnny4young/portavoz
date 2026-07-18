@@ -1,13 +1,16 @@
+import ApplicationKit
 import Foundation
 import PortavozCore
-import StorageKit
 
 /// `portavoz-cli meetings <list|show <id>|search <query>> [--db <path>]`
 /// Browses the local library (SQLite + FTS5).
 enum MeetingsCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var arguments = arguments
         guard let action = arguments.first else {
             printUsage()
@@ -33,15 +36,20 @@ enum MeetingsCommand {
                 print("Usage: portavoz-cli meetings refine <meeting-uuid> [--file <wav>] [--threshold 0.45]")
                 return
             }
-            await RefineCommand.run(meetingRaw: raw, Array(arguments.dropFirst()))
+            await RefineCommand.run(
+                meetingRaw: raw,
+                Array(arguments.dropFirst()),
+                platform: platform)
             return
         }
 
         do {
-            let store = try openStore(dbPath: dbPath)
+            let application = try CLIComposition.open(
+                dbPath: dbPath,
+                platform: platform)
             switch action {
             case "list":
-                let meetings = try await store.meetings()
+                let meetings = try await application.library.meetings()
                 if meetings.isEmpty {
                     print("No meetings yet. Save one with: portavoz-cli summarize --file x.wav --save")
                     return
@@ -58,7 +66,9 @@ enum MeetingsCommand {
                     print("Usage: portavoz-cli meetings show <meeting-uuid> [--db <path>]")
                     return
                 }
-                guard let detail = try await store.detail(MeetingID(rawValue: uuid)) else {
+                guard let detail = try await application.library.detail(
+                    MeetingID(rawValue: uuid))
+                else {
                     print("No such meeting.")
                     return
                 }
@@ -71,7 +81,8 @@ enum MeetingsCommand {
                     let label = segment.speakerID.flatMap { labelsByID[$0] } ?? "?"
                     print("[\(CLISupport.timestamp(segment.startTime))] \(label): \(segment.text)")
                 }
-                if let (summary, version) = try await store.summary(detail.meeting.id) {
+                if let summary = detail.summary,
+                   let version = detail.summaryVersion {
                     print("\n— summary v\(version) (\(summary.language)) —\n")
                     print(summary.markdown)
                 }
@@ -81,7 +92,8 @@ enum MeetingsCommand {
                     print("Usage: portavoz-cli meetings search <query> [--db <path>]")
                     return
                 }
-                let hits = try await store.search(positional.joined(separator: " "))
+                let hits = try await application.library.search(
+                    positional.joined(separator: " "))
                 if hits.isEmpty {
                     print("No matches.")
                     return
@@ -97,13 +109,6 @@ enum MeetingsCommand {
         } catch {
             print("error: \(error.localizedDescription)")
         }
-    }
-
-    static func openStore(dbPath: String?) throws -> MeetingStore {
-        if let dbPath {
-            return try MeetingStore(databaseURL: URL(fileURLWithPath: dbPath))
-        }
-        return try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
     }
 
     static func printUsage() {

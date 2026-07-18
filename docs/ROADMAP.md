@@ -7,21 +7,35 @@ Each milestone is independently shippable and has a measurable acceptance criter
 Single source of truth for progress — it previously lived in a session HANDOFF; state is now read here, decisions in [DECISIONS.md](DECISIONS.md), as-built behavior in [specs/](specs/README.md), and gaps + field verification in [GAPS.md](GAPS.md).
 
 **Next concrete step:** continue the requested macOS-only architecture
-convergence with Band 6C7 at the executable boundary. Move CLI product commands behind
-narrow ApplicationKit workflows and a shared composition surface before
-extracting concrete Keychain, permission, filesystem, and clock
-implementations from Core and executable presentation code. Preserve every CLI
-command, output contract, benchmark harness, local MCP behavior, and the
-non-sandboxed release boundary. First-run eligibility, the Settings local-data
-receipt, and pre-meeting preparation now have storage-independent application
-contracts and scoped owners (D101); setup never waits for speech models,
-unavailable metrics never appear as zero, EventKit keeps its no-prompt rule,
-and brief synthesis remains source-grounded. The later iOS in-person recorder
+convergence with the second Band 6C7 executable unit. PlatformKit now owns
+device-only Keychain access and microphone authorization; Core exposes only
+portable secret identities/contracts, the app and CLI construct one dependency
+set, and CLI/Ask/MCP library reads enter through bounded ApplicationKit
+workflows (D102). Move the remaining product write/model commands behind narrow
+application workflows, then extract their filesystem and clock dependencies
+without changing any command output, benchmark harness, local MCP behavior, or
+the non-sandboxed release boundary. The later iOS in-person recorder
 shell remains described in `docs/IOS.md`. Before a public sync release, retain
 the independent field gate for a real production CloudKit
 container/profile/account and two-Mac convergence. Every completed architecture
 unit and all released v0.6.0 behavior remain covered by the package and
-bilingual UI gates (D33–D101).
+bilingual UI gates (D33–D102).
+
+- **Architecture Band 6 slice 6C7 first unit complete — platform access and
+  executable reads have one boundary (Jul 18, 2026)**: `PortavozCore` no longer
+  imports Security; stable secret identifiers and the `SecretStoring` port stay
+  inward while `PlatformKit` owns the this-device-only Keychain adapter and
+  microphone authorization. App and CLI composition inject one shared adapter
+  set into async credential workflows, encrypted voice stores, publishing, and
+  Companion configuration. Onboarding no longer calls AVFoundation or EventKit
+  from SwiftUI. `QueryMeetingLibrary` now normalizes and bounds CLI/MCP
+  list/detail/search/open-item reads, with current meeting content and its latest
+  General summary loaded from one SQLite snapshot. Every command and its output
+  contract remain present; model-heavy and mutation commands retain concrete
+  executable coordination for the next unit. Seven new package cases,
+  architecture ratchets, and disposable CLI/MCP protocol smoke establish D102;
+  the full package is 863 tests with 13 gated and strict lint is clean across
+  318 Swift files.
 
 - **Architecture Band 6 slice 6C6 complete — supporting reads have one honest
   owner (Jul 17, 2026)**: first-run eligibility now uses one ApplicationKit

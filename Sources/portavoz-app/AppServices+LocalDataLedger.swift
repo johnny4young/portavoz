@@ -36,12 +36,14 @@ struct AppLocalAudioUsageMeter: LocalAudioUsageMeasuring {
 
 struct AppLocalVoiceCounter: LocalVoiceCounting {
     let usesTemporaryStore: Bool
+    let voiceGallery: VoiceGallery
+    let voiceprintStore: VoiceprintStore
 
     func localVoiceCount() async throws -> Int {
         guard !usesTemporaryStore else { return 0 }
         return try await Task.detached(priority: .utility) {
-            let remembered = try VoiceGallery().voices().count
-            let enrolled = try VoiceprintStore().load() == nil ? 0 : 1
+            let remembered = try voiceGallery.voices().count
+            let enrolled = try voiceprintStore.load() == nil ? 0 : 1
             return remembered + enrolled
         }.value
     }

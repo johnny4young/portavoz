@@ -43,12 +43,11 @@ enum CompanionRefresh {
         from segments: [TranscriptSegment],
         meetingID: MeetingID,
         transcriptRevision: Int,
-        gateway: any DataEgressGateway
+        byok: CompanionBYOKClient?
     ) async -> Result {
         let ownerName = RecordingController.companionOwnerName()
         let companion = ProvenanceCompanion(
-            byok: BYOKSettings.companionClient(
-                gateway: gateway),
+            byok: byok,
             egressConsentSource: .companionBYOKSettings)
         let ordered = segments
             .filter { $0.endTime > $0.startTime && !$0.text.isEmpty }

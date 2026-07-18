@@ -7,6 +7,7 @@ import SwiftUI
 /// while the gallery is empty, and voices only ever enter the gallery via
 /// the "Remember this voice" chip in a meeting.
 struct RememberedVoicesSection: View {
+    @Environment(AppServices.self) private var services
     @State private var voices: [RememberedVoice] = []
 
     var body: some View {
@@ -20,13 +21,13 @@ struct RememberedVoicesSection: View {
                         )
                         .contextMenu {
                             Button(L10n.format("Forget %@", voice.name), role: .destructive) {
-                                try? VoiceGallery().remove(id: voice.id)
+                                try? services.voiceGallery.remove(id: voice.id)
                                 reload()
                             }
                         }
                     }
                     Button("Forget all voices", role: .destructive) {
-                        try? VoiceGallery().deleteAll()
+                        try? services.voiceGallery.deleteAll()
                         voices = []
                     }
                     Text(
@@ -44,6 +45,6 @@ struct RememberedVoicesSection: View {
 
     private func reload() {
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return }
-        voices = (try? VoiceGallery().voices()) ?? []
+        voices = (try? services.voiceGallery.voices()) ?? []
     }
 }

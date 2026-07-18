@@ -56,6 +56,7 @@ flowchart TB
     INTELLIGENCE["IntelligenceKit\ngeneration and embeddings"]
     PLAYBACK["AudioPlaybackKit\nplayback, waveform, clips, compression"]
     INTEGRATIONS["IntegrationsKit\nexports, external systems, sync transport"]
+    PLATFORM["PlatformKit\nApple platform and security adapters"]
 
     UI --> APP
     CLI --> APP
@@ -68,6 +69,7 @@ flowchart TB
     UI -. composition .-> INTELLIGENCE
     UI -. composition .-> PLAYBACK
     UI -. composition .-> INTEGRATIONS
+    UI -. composition .-> PLATFORM
 
     CLI -. composition .-> MODEL
     CLI -. composition .-> STORAGE
@@ -77,6 +79,7 @@ flowchart TB
     CLI -. composition .-> INTELLIGENCE
     CLI -. composition .-> PLAYBACK
     CLI -. composition .-> INTEGRATIONS
+    CLI -. composition .-> PLATFORM
 
     APP --> CORE
     APP --> STORAGE
@@ -96,6 +99,7 @@ flowchart TB
     INTEGRATIONS --> CORE
     INTEGRATIONS --> STORAGE
     INTEGRATIONS --> INTELLIGENCE
+    PLATFORM --> CORE
 ```
 
 Capability modules never depend back on `ApplicationKit`. `IntegrationsKit` is
@@ -107,8 +111,9 @@ for issue-export formatting.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, and sync values. It also contains the current Keychain-backed `SecretStore` implementation. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, meeting-bundle import/export, whole-library Markdown backup, Ask search/evidence/answer coordination, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, external-audio import, meeting-bundle import/export, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, secret management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, SHA-256 verification, download state, and model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
@@ -117,8 +122,8 @@ for issue-export formatting.
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
-| `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-readiness composition, background supervisors, and platform adapters. |
-| `portavoz-cli` | Commands, terminal presentation, benchmark harnesses, and concrete dependency construction. |
+| `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-readiness composition, and background supervisors. |
+| `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
 ## Application boundary
 
@@ -144,6 +149,10 @@ The implemented application workflows include:
 - independent exact local-data receipt metrics with per-source degradation;
 - pre-meeting preparation from shared Ask evidence, batched current summaries,
   open commitments, and source-indexed optional synthesis;
+- bounded nonvisual meeting list/detail/search/open-item queries used by terminal
+  and local protocol interfaces;
+- asynchronous user-managed secret reads, writes, presence checks, and deletion
+  over an injected device-local storage port;
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
 - meeting-review, brief, reminder, mirror, and Insights policies.
 
@@ -195,6 +204,13 @@ publish work into a later invocation. SwiftUI and AppKit retain rendering,
 clipboard access, panel lifecycle, route selection, and exact evidence seeking.
 The CLI command and local MCP tool enter the same workflow before formatting
 their terminal or protocol responses.
+
+The CLI has one process-wide platform composition and one database composition
+surface. Meeting list, detail, search, open-item, Ask, and MCP reads enter
+`QueryMeetingLibrary` or `AskMeetings`; the application values expose no GRDB
+records. Detail plus the latest live General summary comes from one SQLite read
+snapshot. Model-heavy and mutation commands share the same composition surface
+but still invoke their concrete capability pipelines from the executable.
 
 Whole-library backup survives Settings-window closure because progress and
 terminal state belong to a process-scoped owner. Settings retains only the
@@ -401,9 +417,19 @@ the meeting privacy receipt. Support diagnostics never include meeting text,
 generated output, prompts, secrets, full URLs, paths, stable database IDs, raw
 failure payloads, or reusable fingerprints.
 
-API keys and tokens use Keychain with this-device-only accessibility. SQLite
-and UserDefaults do not store secrets. Voiceprints are encrypted, local,
-erasable biometric data and never enter bundles or sync.
+`PortavozCore` defines stable secret identifiers and the `SecretStoring` port.
+`PlatformKit.KeychainSecretStore` is the concrete device-only adapter and is
+constructed only by the app and CLI composition roots. `ApplicationKit` exposes
+asynchronous user-managed credential operations, so Settings credential and
+publishing-command paths do not block their actor on Security.framework calls.
+Encrypted voice stores receive the Core port directly; other capability clients
+receive resolved credential values, and no capability module constructs
+Keychain. SQLite and UserDefaults do not store secrets. Voiceprints are
+encrypted, local, erasable biometric data and never enter bundles or sync.
+
+Microphone authorization is queried and requested by a `PlatformKit` adapter.
+Onboarding renders only the resulting stable state and delegates calendar
+authorization to the app's EventKit integration adapter.
 
 ## Private text sync
 
@@ -494,16 +520,24 @@ library or Keychain.
 20. Every architecture-changing commit updates this document and every other
     source of truth whose current facts changed.
 
-## Concrete dependency edges
+## Runtime composition facts
 
 The following facts are part of the implemented architecture and are not hidden
 behind aspirational diagrams:
 
-- `PortavozCore.SecretStore` imports Security and contains the concrete
-  Keychain implementation.
+- `PortavozCore` contains no Security, AVFoundation, EventKit, SwiftUI, AppKit,
+  GRDB, CloudKit, or CoreML import.
+- `PlatformKit` depends only on `PortavozCore`; its Keychain adapter is created
+  only by the app and CLI composition roots.
 - `portavoz-app` combines SwiftUI presentation and concrete macOS composition
   in one executable target, so the target links every capability module.
-- `portavoz-cli` constructs concrete capabilities and also links every module.
+- `portavoz-cli` links every capability module for product commands and
+  benchmark harnesses. Product commands share one composition surface;
+  library/Ask/MCP reads enter through ApplicationKit, while model-heavy and
+  mutation commands still coordinate concrete pipelines at the executable
+  edge.
+- IntegrationsKit's CloudKit capability probe imports Security only to inspect
+  signed entitlements; it does not own or store secrets.
 - The durable post-capture executor remains app-composed and talks to concrete
   capability and StorageKit APIs because it executes persisted jobs and commits
   their typed artifacts.
@@ -516,8 +550,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 856 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 311 Swift source files;
+- 863 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 318 Swift source files;
 - 37 XCUITest cases pass in English and 37 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
@@ -541,7 +575,7 @@ make install
 - `docs/ARCHITECTURE.md` describes only current structure and invariants.
 - `docs/specs/` describes current runtime behavior by domain.
 - `docs/DECISIONS.md` records binding trade-offs and their reasons.
-- `docs/ROADMAP.md` records current progress and the next executable work.
+- `docs/ROADMAP.md` records project delivery state.
 - `docs/GAPS.md` records unresolved limitations and field-validation needs.
 - `docs/refactor-20260714.md` retains the migration execution plan.
 - `README.md` is public product and contributor truth.

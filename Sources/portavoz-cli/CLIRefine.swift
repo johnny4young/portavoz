@@ -19,7 +19,11 @@ import TranscriptionKit
 enum RefineCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(meetingRaw: String, _ arguments: [String]) async {
+    static func run(
+        meetingRaw: String,
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var file: String?
         var language: String?
         var dbPath: String?
@@ -70,7 +74,10 @@ enum RefineCommand {
         let meetingID = MeetingID(rawValue: uuid)
 
         do {
-            let store = try MeetingsCommand.openStore(dbPath: dbPath)
+            let application = try CLIComposition.open(
+                dbPath: dbPath,
+                platform: platform)
+            let store = application.store
             guard let detail = try await store.detail(meetingID) else {
                 print("error: no such meeting")
                 return
@@ -144,7 +151,7 @@ enum RefineCommand {
                     store: modelStore,
                     clusteringThreshold: clusteringThreshold
                         ?? PyannoteDiarizer.defaultClusteringThreshold,
-                    voiceprint: (try? VoiceprintStore().load()))
+                    voiceprint: (try? application.platform.voiceprintStore.load()))
                 turns = try await diarizer.diarizeFile(at: systemFile)
             }
             let attribution = SpeakerAttributor.attribute(

@@ -1,7 +1,5 @@
-import AVFoundation
 import AudioCaptureKit
 import DiarizationKit
-import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
@@ -15,7 +13,7 @@ struct OnboardingView: View {
     let onFinish: () -> Void
 
     @State private var step = 0
-    @State private var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    @State private var micGranted = false
     @State private var calendarConnected = false
     @State private var advice: EngineAdvice?
     @State private var downloadingModels = false
@@ -169,7 +167,7 @@ struct OnboardingView: View {
         }
         // The first listen already prompted for the mic — reflect that here.
         .onAppear {
-            micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+            micGranted = services.microphonePermissionGranted
         }
     }
 
@@ -309,14 +307,14 @@ struct OnboardingView: View {
     // MARK: - Actions
 
     private func requestMicrophone() {
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            Task { @MainActor in micGranted = granted }
+        Task { @MainActor in
+            micGranted = await services.requestMicrophonePermission()
         }
     }
 
     private func requestCalendar() {
         Task { @MainActor in
-            calendarConnected = await CalendarAttendeeSource.requestAccess()
+            calendarConnected = await services.requestOnboardingCalendarAccess()
         }
     }
 
@@ -348,7 +346,7 @@ struct OnboardingView: View {
                 }
                 let voiceprint = try await diarizer.extractVoiceprint(
                     fromSamples: samples, sampleRate: sampleRate)
-                try VoiceprintStore().save(voiceprint)
+                try services.voiceprintStore.save(voiceprint)
                 services.invalidateDiarizer()
                 enrolled = true
             } catch {

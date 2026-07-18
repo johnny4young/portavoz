@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PlatformKit
 import PortavozCore
 import XCTest
 
@@ -349,29 +350,31 @@ final class IssueExporterTests: XCTestCase {
     }
 }
 
-final class SecretStoreTests: XCTestCase {
+final class KeychainSecretStoreTests: XCTestCase {
     /// Uses a throwaway service name so it never touches real tokens.
-    private let service = "app.portavoz.tests.\(UUID().uuidString)"
+    private let identifier = SecretIdentifier(
+        rawValue: "app.portavoz.tests.\(UUID().uuidString)")
+    private let secrets = KeychainSecretStore()
 
     override func tearDown() {
-        try? SecretStore.delete(service: service)
+        try? secrets.delete(identifier)
         super.tearDown()
     }
 
     func testRoundTripAndDelete() throws {
         do {
-            try SecretStore.set("secreto-123", service: service)
+            try secrets.set("secreto-123", for: identifier)
         } catch {
             throw XCTSkip("keychain unavailable in this environment: \(error)")
         }
-        XCTAssertEqual(try SecretStore.get(service: service), "secreto-123")
+        XCTAssertEqual(try secrets.value(for: identifier), "secreto-123")
 
         // Overwrite replaces.
-        try SecretStore.set("secreto-456", service: service)
-        XCTAssertEqual(try SecretStore.get(service: service), "secreto-456")
+        try secrets.set("secreto-456", for: identifier)
+        XCTAssertEqual(try secrets.value(for: identifier), "secreto-456")
 
-        try SecretStore.delete(service: service)
-        XCTAssertNil(try SecretStore.get(service: service))
+        try secrets.delete(identifier)
+        XCTAssertNil(try secrets.value(for: identifier))
     }
 }
 

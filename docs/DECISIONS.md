@@ -2969,3 +2969,38 @@ Application ownership makes launch and window behavior deterministic, keeps
 privacy claims exact under partial failure, removes the brief's N+1 storage
 path, and lets presentation remain declarative without making setup dependent
 on a large model download.
+
+## D102 — Inject Apple security at executable composition boundaries (Jul 2026)
+
+**Context:** the domain module imported Security and exposed a static Keychain
+implementation. Diarization, intelligence, SwiftUI, and CLI commands reached
+that global directly, while CLI library reads independently constructed Store
+queries. This made Core platform-specific, hid blocking securityd work behind
+presentation calls, encouraged repeated credential reads, and left terminal
+and MCP behavior coupled to GRDB records.
+
+**Decision:** `PortavozCore` owns only stable `SecretIdentifier` values and the
+Sendable `SecretStoring` port. `PlatformKit` depends only on Core and contains
+the this-device-only `KeychainSecretStore` plus the AVFoundation microphone
+permission adapter. The app and CLI each construct one platform adapter set and
+inject it into `ApplicationKit.ManageSecrets`, encrypted voice stores, and
+resolved intelligence/integration clients. Asynchronous user-managed credential
+operations run outside presentation actors; encrypted voice stores receive the
+same Core port directly. Capability modules never construct Keychain and SQLite,
+UserDefaults, sync, bundles, and diagnostics remain secret-free.
+
+The CLI owns one process composition surface. `QueryMeetingLibrary` normalizes
+and bounds list/detail/search/open-item inputs, and StorageKit returns detail
+plus the latest live General summary from one SQLite read snapshot. Meeting,
+Ask, and MCP read surfaces format only ApplicationKit values. Model-heavy and
+mutation commands share the composition surface while their concrete pipelines
+remain at the executable edge until equivalent application workflows exist;
+benchmark harnesses remain independently constructible. A publishing command
+resolves its Keychain/environment credential once per invocation, not once per
+action item.
+
+**Rationale:** Core remains portable and deterministic, Security and
+AVFoundation have one visible outer owner, and credential failure can degrade
+or surface without blocking SwiftUI. One bounded query contract keeps CLI and
+MCP semantics consistent and makes the remaining executable migration
+incremental without removing commands or changing their output contract.

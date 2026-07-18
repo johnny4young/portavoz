@@ -3,7 +3,7 @@ import PortavozCore
 
 /// Action items → dev trackers (M8). Publishing sends meeting content
 /// OFF the device, so every entry point is an explicit, labeled action
-/// (D8); tokens live in the Keychain (`SecretStore`).
+/// (D8); callers inject tokens from the platform secret adapter.
 public enum IssueExporterError: Error, LocalizedError {
     case requestFailed(status: Int, body: String)
     case malformedResponse
@@ -16,10 +16,6 @@ public enum IssueExporterError: Error, LocalizedError {
             return "respuesta sin URL de issue"
         }
     }
-}
-
-extension SecretStore {
-    public static let linearTokenService = "app.portavoz.linear-token"
 }
 
 // MARK: - GitHub Issues

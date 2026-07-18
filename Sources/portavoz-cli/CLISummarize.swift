@@ -18,7 +18,10 @@ import TranscriptionKit
 enum SummarizeCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var file: String?
         var outLanguage = "en"
         var glossary: [String] = []
@@ -85,7 +88,9 @@ enum SummarizeCommand {
         let meetingID = MeetingID()
         let receiptStore: MeetingStore?
         do {
-            receiptStore = save ? try MeetingsCommand.openStore(dbPath: dbPath) : nil
+            receiptStore = save
+                ? try CLIComposition.open(dbPath: dbPath, platform: platform).store
+                : nil
         } catch {
             print("error: \(error.localizedDescription)")
             return
@@ -124,7 +129,7 @@ enum SummarizeCommand {
             let store = CLISupport.modelStore(fromModelsDir: modelsDir)
             let engine = try await CLISupport.loadEngine(store: store)
             let diarizer = try await PyannoteDiarizer.loadRecommended(
-                store: store, voiceprint: (try? VoiceprintStore().load()))
+                store: store, voiceprint: (try? platform.voiceprintStore.load()))
 
             print("Transcribing \(url.lastPathComponent)…")
             let hints = TranscriptionHints(language: language, meetingID: meetingID)

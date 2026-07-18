@@ -1209,7 +1209,7 @@ extension MeetingDetailView {
             return
         }
         do {
-            try VoiceGallery().remember(
+            try services.voiceGallery.remember(
                 RememberedVoice(name: name, embedding: voiceprint.embedding))
         } catch {
             gistError = L10n.format("Could not remember the voice: %@", error.localizedDescription)
@@ -1239,8 +1239,9 @@ extension MeetingDetailView {
     /// user's encrypted gallery.
     private func loadRememberedVoices() async -> [RememberedVoice] {
         guard !ProcessInfo.processInfo.arguments.contains("-use-temp-store") else { return [] }
+        let gallery = services.voiceGallery
         return await Task.detached(priority: .utility) {
-            (try? VoiceGallery().voices()) ?? []
+            (try? gallery.voices()) ?? []
         }.value
     }
 
@@ -1841,7 +1842,7 @@ extension MeetingDetailView {
 extension MeetingDetailView {
     private func publishGist(_ detail: MeetingReviewReadModel) async {
         guard
-            let token = try? SecretStore.get(service: SecretStore.gitHubTokenService),
+            let token = try? await services.secrets.value(for: .gitHubToken),
             !token.isEmpty
         else {
             gistError = L10n.text("Configure your GitHub token in Settings (⌘,) first.")
