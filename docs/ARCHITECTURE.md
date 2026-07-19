@@ -708,8 +708,9 @@ Audio never syncs.
   drained before their owning workflow returns.
 - Durable jobs are idempotent, fingerprinted, owner-leased, heartbeat-driven,
   and retryable without polling.
-- Exact operation fingerprints are assembled in deterministic, explicitly
-  typed steps. This preserves component order while keeping the supported
+- Compiler-dense deterministic collections, including operation fingerprints
+  and high-cardinality characterization fixtures, are assembled in explicitly
+  typed steps. This preserves order and coverage while keeping the supported
   Sequoia Swift 6.2 compiler path bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.

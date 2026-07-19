@@ -36,25 +36,29 @@ final class LexicalRAGCandidateTests: XCTestCase {
             startTime: 0,
             endTime: 1,
             isFinal: true)
-        let budgetOnly = (0..<20).map { index in
-            TranscriptSegment(
+        let budgetPrefix = Array(repeating: "presupuesto", count: 8).joined(separator: " ")
+        var budgetOnly: [TranscriptSegment] = []
+        budgetOnly.reserveCapacity(20)
+        for index in 0..<20 {
+            budgetOnly.append(TranscriptSegment(
                 meetingID: meeting.id,
                 channel: .system,
-                text: Array(repeating: "presupuesto", count: 8).joined(separator: " ")
-                    + " detalle \(index)",
+                text: "\(budgetPrefix) detalle \(index)",
                 startTime: Double(index + 1),
                 endTime: Double(index + 2),
-                isFinal: true)
+                isFinal: true))
         }
-        let projectOnly = (0..<20).map { index in
-            TranscriptSegment(
+        let projectPrefix = Array(repeating: "proyecto", count: 8).joined(separator: " ")
+        var projectOnly: [TranscriptSegment] = []
+        projectOnly.reserveCapacity(20)
+        for index in 0..<20 {
+            projectOnly.append(TranscriptSegment(
                 meetingID: meeting.id,
                 channel: .system,
-                text: Array(repeating: "proyecto", count: 8).joined(separator: " ")
-                    + " contexto \(index)",
+                text: "\(projectPrefix) contexto \(index)",
                 startTime: Double(index + 21),
                 endTime: Double(index + 22),
-                isFinal: true)
+                isFinal: true))
         }
         try await store.save([relevant] + budgetOnly + projectOnly)
 

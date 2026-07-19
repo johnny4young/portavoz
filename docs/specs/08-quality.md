@@ -1127,7 +1127,9 @@ material, revision, and language sensitivity. The same lane compiles the
 focused transcript with an explicit vertical/no-indicator `ScrollView`
 signature and explicitly typed visual-effect arithmetic, while the bilingual
 Meeting Detail smoke exercises the unchanged fixed viewport, active transcript,
-and player behavior.
+and player behavior. The RAG term-fusion fixture builds its high-cardinality
+segment sets with explicit typed loops so Sequoia exercises the same ranking
+evidence without exceeding its type-checking budget.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 

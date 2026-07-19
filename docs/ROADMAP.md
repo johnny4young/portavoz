@@ -38,9 +38,9 @@ bilingual UI gates (D33–D115).
   sibling, synchronize, and receive verified complete protection before one
   atomic rename, avoiding macOS 26 write/open incompatibilities without
   exposing partial bytes at the reader path. The Sequoia compiler path also
-  keeps recovery comparisons and exact Refine fingerprint
-  assembly bounded without changing operation identity. The fixed vertical
-  transcript viewport uses an explicit SwiftUI signature and typed visual-
+  keeps recovery comparisons, exact Refine fingerprint assembly, and the RAG
+  fusion fixture bounded without changing operation identity or ranking.
+  The fixed vertical transcript viewport uses an explicit SwiftUI signature and typed visual-
   effect arithmetic across supported SDK/compiler combinations. The verified
   baseline is 971 package tests with 13 gated, strict lint is clean across 344
   Swift source files, and the privacy receipt remains covered by the bilingual
