@@ -96,23 +96,24 @@ flowchart TB
     DIARIZATION --> CORE
     DIARIZATION --> MODEL
     INTELLIGENCE --> CORE
-    PLAYBACK --> CORE
     INTEGRATIONS --> CORE
     INTEGRATIONS --> STORAGE
     INTEGRATIONS --> INTELLIGENCE
     PLATFORM --> CORE
 ```
 
-Capability modules never depend back on `ApplicationKit`. `IntegrationsKit` is
-the only capability module that currently depends on sibling capability
-modules: it uses StorageKit for persisted sync state and IntelligenceKit values
-for issue-export formatting.
+Capability modules never depend back on `ApplicationKit`. Sibling capability
+dependencies are limited to three declared edges: `TranscriptionKit` and
+`DiarizationKit` use `ModelStoreKit` for the verified model lifecycle, and
+`IntegrationsKit` uses StorageKit for persisted sync state plus
+IntelligenceKit values for issue-export formatting. `AudioPlaybackKit` is
+self-contained over system frameworks and carries no module dependency.
 
 ## Module responsibilities
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports that do not import Apple frameworks. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
@@ -630,7 +631,12 @@ transport:
 
 The immutable attempt is persisted before URLSession runs. Persistence failure
 fails closed, redirects are rejected, and transport failure remains visible in
-the meeting privacy receipt. Support diagnostics never include meeting text,
+the meeting privacy receipt. The gateway requires its recorder by type — a
+gateway that cannot record an attempt cannot be constructed. One scoped
+exception exists for standalone terminal analysis, which has no library
+meeting to own a durable receipt: after its explicit interactive warning, the
+CLI records the same content-free attempt on the terminal before transport
+instead of in the database. Support diagnostics never include meeting text,
 generated output, prompts, secrets, full URLs, paths, stable database IDs, raw
 failure payloads, or reusable fingerprints.
 

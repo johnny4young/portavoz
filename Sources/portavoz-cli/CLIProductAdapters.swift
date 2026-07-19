@@ -9,6 +9,20 @@ import PortavozCore
 import StorageKit
 import TranscriptionKit
 
+/// Egress ledger for standalone terminal work that has no library meeting to
+/// own a durable receipt: the content-free attempt is announced on the
+/// terminal BEFORE transport, mirroring the persisted receipt's fields. It
+/// never prints meeting content, URLs beyond the host, or credentials.
+struct TerminalDataEgressReceiptRecorder: DataEgressEventRecorder {
+    func recordDataEgressEvent(_ event: DataEgressEvent) async throws {
+        let model = event.modelID.map { " model \($0)" } ?? ""
+        print(
+            "egress: \(event.operation.rawValue) → \(event.destinationHost) "
+                + "(\(event.dataClassification.rawValue), consent \(event.consentSource.rawValue),"
+                + "\(model) provider \(event.providerID))")
+    }
+}
+
 struct CLIFileAdapter: ApplicationInputFileAccess, ApplicationOutputFileWriting {
     func isReadableFile(_ url: URL) async -> Bool {
         await Task.detached(priority: .utility) {

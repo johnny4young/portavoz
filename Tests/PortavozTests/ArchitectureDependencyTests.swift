@@ -79,7 +79,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "DiarizationKit": ["ModelStoreKit", "PortavozCore"],
             "IntelligenceKit": ["PortavozCore"],
             "StorageKit": ["PortavozCore"],
-            "AudioPlaybackKit": ["PortavozCore"],
+            "AudioPlaybackKit": [],
             "IntegrationsKit": ["IntelligenceKit", "PortavozCore", "StorageKit"],
             "ApplicationKit": [
                 "AudioPlaybackKit", "DiarizationKit", "IntelligenceKit",

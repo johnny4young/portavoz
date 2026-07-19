@@ -5,13 +5,17 @@ import PortavozCore
 /// validated before URLSession can observe the payload.
 public struct URLSessionDataEgressGateway: DataEgressGateway {
     private let session: URLSession
-    private let receiptRecorder: (any DataEgressEventRecorder)?
+    private let receiptRecorder: any DataEgressEventRecorder
     private let now: @Sendable () -> Date
     private let makeEventID: @Sendable () -> DataEgressEventID
 
+    /// The recorder is required by type, not by composition discipline: a
+    /// gateway that cannot persist the attempt must not exist, so the
+    /// "immutable attempt persisted before transport" invariant cannot be
+    /// silently skipped by a forgotten argument.
     public init(
         session: URLSession = .shared,
-        receiptRecorder: (any DataEgressEventRecorder)? = nil,
+        receiptRecorder: any DataEgressEventRecorder,
         now: @escaping @Sendable () -> Date = { Date() },
         makeEventID: @escaping @Sendable () -> DataEgressEventID = { DataEgressEventID() }
     ) {
@@ -26,12 +30,10 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
         metadata: DataEgressRequest
     ) async throws -> DataEgressResponse {
         try Self.validate(networkRequest, metadata: metadata)
-        if let receiptRecorder {
-            try await receiptRecorder.recordDataEgressEvent(DataEgressEvent(
-                id: makeEventID(),
-                request: metadata,
-                attemptedAt: now()))
-        }
+        try await receiptRecorder.recordDataEgressEvent(DataEgressEvent(
+            id: makeEventID(),
+            request: metadata,
+            attemptedAt: now()))
         let (data, response) = try await session.data(
             for: networkRequest,
             delegate: DataEgressRedirectBlocker())

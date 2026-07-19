@@ -260,14 +260,6 @@ private extension SupportDiagnosticsReport {
         return value
     }
 
-    static func safeLanguage(_ value: String) -> String? {
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-")
-        guard !value.isEmpty, value.count <= 24,
-              value.unicodeScalars.allSatisfy(allowed.contains)
-        else { return nil }
-        return value
-    }
-
     static func safeHost(_ value: String) -> String {
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:[]")
         guard !value.isEmpty, value.count <= 253,

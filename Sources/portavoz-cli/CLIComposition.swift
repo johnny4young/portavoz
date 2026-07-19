@@ -92,11 +92,16 @@ struct CLIPlatformDependencies {
         let provider: any SummaryProvider
         switch configuration {
         case .byok(let endpoint, let model, let apiKey):
+            // Standalone-file summaries have no library meeting to own a
+            // durable receipt; the terminal recorder is the honest ledger for
+            // that context and keeps the gateway's recorder requirement typed.
+            let recorder: any DataEgressEventRecorder =
+                store ?? TerminalDataEgressReceiptRecorder()
             provider = OpenAICompatibleSummaryProvider(
                 endpoint: endpoint,
                 model: model,
                 apiKey: apiKey,
-                gateway: URLSessionDataEgressGateway(receiptRecorder: store))
+                gateway: URLSessionDataEgressGateway(receiptRecorder: recorder))
         case .onDevice:
             guard #available(macOS 26.0, *) else {
                 throw CLISummaryProviderConfigurationError.requiresMacOS26

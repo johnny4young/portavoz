@@ -108,7 +108,9 @@ let package = Package(
         ),
         // Synchronized meeting playback (M11/D27): mixes the per-channel
         // audio into one timeline, generates waveforms, exports clips.
-        .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
+        // Self-contained over AVFoundation/Accelerate: it exposes no Core
+        // types, so it carries no module dependencies.
+        .target(name: "AudioPlaybackKit", dependencies: []),
 
         // IntegrationsKit is the outbound-adapter layer over stored meetings
         // (export, MCP protocol, providers, private sync transport). Application

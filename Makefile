@@ -58,6 +58,7 @@ test-ui-es: project
 ## warn about known interruptors without killing unrelated user apps.
 test-ui-preflight:
 	-osascript -e 'tell application "Portavoz Dev" to quit' >/dev/null 2>&1
+	-killall testmanagerd >/dev/null 2>&1
 	@if pgrep -x Gancho >/dev/null || pgrep -x gancho >/dev/null; then \
 		echo "⚠️  Gancho is running; if XCUITest fails because of interrupting windows, close it and retry."; \
 	fi

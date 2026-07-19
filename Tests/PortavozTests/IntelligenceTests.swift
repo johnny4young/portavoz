@@ -803,7 +803,8 @@ final class OllamaServiceTests: XCTestCase {
 
         let draft = try await OllamaService.summaryProvider(
             model: model,
-            gateway: URLSessionDataEgressGateway()).summarize(request)
+            gateway: URLSessionDataEgressGateway(
+                receiptRecorder: DiscardingEgressRecorder())).summarize(request)
         XCTAssertFalse(draft.markdown.isEmpty, "a local Ollama summary must come back")
         XCTAssertEqual(draft.language, "es")
     }
@@ -1236,4 +1237,11 @@ final class CompanionAnswerTests: XCTestCase {
         XCTAssertNil(CompanionAnswer.usable(""))
         XCTAssertNil(CompanionAnswer.usable("   [3]   "))
     }
+}
+
+/// The gateway now REQUIRES a recorder by type; this environment-gated local
+/// Ollama check has no library meeting to receipt, so it discards the
+/// content-free event the way the standalone CLI path prints it.
+private struct DiscardingEgressRecorder: DataEgressEventRecorder {
+    func recordDataEgressEvent(_ event: DataEgressEvent) async throws {}
 }
