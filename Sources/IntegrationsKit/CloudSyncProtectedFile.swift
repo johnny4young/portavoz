@@ -13,20 +13,27 @@ enum CloudSyncProtectedFile {
                 ".\(destination.lastPathComponent).\(UUID().uuidString.lowercased()).staging")
         defer { try? manager.removeItem(at: staging) }
 
-        let descriptor = staging.path.withCString {
+        var descriptor = staging.path.withCString {
             Darwin.open($0, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR)
         }
         guard descriptor >= 0 else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
-        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
-        do {
-            try handle.write(contentsOf: data)
-            try handle.synchronize()
-            try handle.close()
-        } catch {
-            try? handle.close()
-            throw error
+        defer {
+            if descriptor >= 0 {
+                _ = Darwin.close(descriptor)
+            }
+        }
+
+        try write(data, to: descriptor)
+        guard Darwin.fsync(descriptor) == 0 else {
+            throw posixError()
+        }
+        let closeResult = Darwin.close(descriptor)
+        let closeError = errno
+        descriptor = -1
+        guard closeResult == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: closeError) ?? .EIO)
         }
 
         try manager.setAttributes(
@@ -50,6 +57,26 @@ enum CloudSyncProtectedFile {
         try atomicRename(staging, to: destination)
     }
 
+    private static func write(_ data: Data, to descriptor: Int32) throws {
+        try data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            guard let baseAddress = bytes.baseAddress else { return }
+            var offset = 0
+            while offset < bytes.count {
+                let count = Darwin.write(
+                    descriptor,
+                    baseAddress.advanced(by: offset),
+                    bytes.count - offset)
+                if count > 0 {
+                    offset += count
+                } else if count == -1, errno == EINTR {
+                    continue
+                } else {
+                    throw posixError()
+                }
+            }
+        }
+    }
+
     private static func atomicRename(_ source: URL, to destination: URL) throws {
         let result = source.path.withCString { sourcePath in
             destination.path.withCString { destinationPath in
@@ -57,7 +84,11 @@ enum CloudSyncProtectedFile {
             }
         }
         guard result == 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            throw posixError()
         }
+    }
+
+    private static func posixError() -> POSIXError {
+        POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
     }
 }

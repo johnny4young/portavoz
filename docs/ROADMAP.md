@@ -35,8 +35,9 @@ bilingual UI gates (D33–D115).
   is scoped to tracked processing, and copy does not promise end-to-end
   protection because that depends on the user's optional Advanced Data
   Protection setting. Cloud transport files now enter a private `0600`
-  sibling, synchronize, and receive verified complete protection before one
-  atomic rename, avoiding macOS 26 write/open incompatibilities without
+  sibling through one POSIX descriptor, synchronize with `fsync`, and receive
+  verified complete protection before one atomic rename. Avoiding Foundation's
+  descriptor bridge prevents the runner-visible `EINVAL` write failure without
   exposing partial bytes at the reader path. The Sequoia compiler path also
   keeps recovery comparisons, exact Refine fingerprint assembly, and the RAG
   fusion fixture bounded without changing operation identity or ranking.
