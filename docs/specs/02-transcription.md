@@ -179,13 +179,15 @@ Refine defines one exact composite operation identity across the non-silent
 channels that actually reach Whisper. The length-framed SHA-256 fingerprint
 binds meeting/source revision, the selected WhisperKit provider/model/revision,
 automatic or fixed language hint, ordered vocabulary material, and each
-channel's audio digest. Finalized v6 capture checksum evidence is reused only
-after the current file size matches; legacy recordings are streamed through
-local SHA-256. Raw paths and vocabulary never enter the persisted envelope. A
-successful run stays in the review draft until Apply; discarding it or losing
-the revision fence stores no success. Failure or cancellation after the
-attempt begins stores only a content-free standalone terminal run best effort
-(D65).
+channel's audio digest. Those components are appended in small, explicitly
+typed steps so the supported Sequoia Swift 6.2 compiler retains the exact same
+order and operation identity. Finalized v6 capture checksum evidence is reused
+only after the current file size matches; legacy recordings are streamed
+through local SHA-256. Raw paths and vocabulary never enter the persisted
+envelope. A successful run stays in the review draft until Apply; discarding it
+or losing the revision fence stores no success. Failure or cancellation after
+the attempt begins stores only a content-free standalone terminal run best
+effort (D65).
 
 ## SpeechAnalyzer spike (M12/D25) — status and findings (Jul 2026)
 

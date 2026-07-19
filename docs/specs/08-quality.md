@@ -1119,6 +1119,12 @@ contradict an acknowledged cloud copy with an all-content-local status. The
 current full gate is 971 package tests (13 gated), with strict lint clean across
 344 Swift source files (D115).
 
+The same supported Sequoia lane compiles recovery comparisons and exact Refine
+fingerprint composition as bounded, explicitly typed steps. Existing operation-
+fingerprint characterization pins the canonical digest and proves that this
+compiler compatibility shape does not change channel-order stability or
+material, revision, and language sensitivity.
+
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
