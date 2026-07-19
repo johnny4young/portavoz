@@ -34,11 +34,12 @@ bilingual UI gates (D33–D115).
   evidence; pending journal work alone makes no cloud claim. All-local wording
   is scoped to tracked processing, and copy does not promise end-to-end
   protection because that depends on the user's optional Advanced Data
-  Protection setting. Cloud transport files now enter a private `0600`
-  sibling through one POSIX descriptor, synchronize with `fsync`, and receive
-  verified complete protection before one atomic rename. Avoiding Foundation's
-  descriptor bridge prevents the runner-visible `EINVAL` write failure without
-  exposing partial bytes at the reader path. The Sequoia compiler path also
+  Protection setting. One POSIX descriptor creates each private `0600` cloud
+  sibling; complete protection and backup exclusion are applied while it is
+  empty, then that same descriptor writes and synchronizes bytes with `fsync`.
+  Avoiding both a late protection change and a Foundation reopen prevents the
+  runner-visible `EINVAL` path before verified atomic publication. The Sequoia
+  compiler path also
   keeps recovery comparisons, exact Refine fingerprint assembly, and the RAG
   fusion fixture bounded without changing operation identity or ranking.
   The fixed vertical transcript viewport uses an explicit SwiftUI signature and typed visual-

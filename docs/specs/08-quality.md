@@ -1113,12 +1113,13 @@ gated), with strict lint still clean across 343 Swift source files.
 Private-iCloud receipt hardening adds one protected-publication persistence
 case, one support-status characterization, stronger asset-protection assertions,
 and an architecture ratchet for the single publication primitive. Together they
-prove private transport bytes enter a private `0600` sibling through one POSIX
-descriptor, synchronize with `fsync` without a Foundation descriptor bridge,
-receive verified complete protection, publish through one same-volume rename,
-leave no staging artifacts, and do not contradict an acknowledged cloud copy
-with an all-content-local status. Architecture coverage rejects reintroducing
-`FileHandle` into that primitive. The current full gate is 971 package tests
+prove one POSIX descriptor creates each private `0600` sibling, complete
+protection and backup exclusion precede content, and that same descriptor
+writes and synchronizes the bytes with `fsync`. The primitive verifies the
+complete file, publishes through one same-volume rename, leaves no staging
+artifacts, and does not contradict an acknowledged cloud copy with an all-
+content-local status. Architecture coverage rejects reintroducing `FileHandle`
+into that primitive. The current full gate is 971 package tests
 (13 gated), with strict lint clean across 344 Swift source files (D115).
 
 The same supported Sequoia lane compiles recovery comparisons and exact Refine

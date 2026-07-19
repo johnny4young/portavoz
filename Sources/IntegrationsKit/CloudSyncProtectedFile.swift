@@ -1,9 +1,9 @@
 import Darwin
 import Foundation
 
-/// Publishes private CloudKit transport bytes only after the complete file is
-/// protected. A private sibling keeps partial writes reader-invisible; one
-/// same-volume rename is the installation commit point.
+/// Protects a private sibling before writing CloudKit transport bytes, then
+/// publishes only the synchronized complete file. One same-volume rename is
+/// the installation commit point.
 enum CloudSyncProtectedFile {
     static func write(_ data: Data, to destination: URL) throws {
         let manager = FileManager.default
@@ -25,17 +25,6 @@ enum CloudSyncProtectedFile {
             }
         }
 
-        try write(data, to: descriptor)
-        guard Darwin.fsync(descriptor) == 0 else {
-            throw posixError()
-        }
-        let closeResult = Darwin.close(descriptor)
-        let closeError = errno
-        descriptor = -1
-        guard closeResult == 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: closeError) ?? .EIO)
-        }
-
         try manager.setAttributes(
             [
                 .posixPermissions: 0o600,
@@ -46,6 +35,17 @@ enum CloudSyncProtectedFile {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try protectedStaging.setResourceValues(values)
+
+        try write(data, to: descriptor)
+        guard Darwin.fsync(descriptor) == 0 else {
+            throw posixError()
+        }
+        let closeResult = Darwin.close(descriptor)
+        let closeError = errno
+        descriptor = -1
+        guard closeResult == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: closeError) ?? .EIO)
+        }
 
         let attributes = try manager.attributesOfItem(atPath: staging.path)
         guard (attributes[.size] as? NSNumber)?.intValue == data.count,
