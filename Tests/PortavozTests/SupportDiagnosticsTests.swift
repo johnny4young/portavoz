@@ -77,6 +77,9 @@ final class SupportDiagnosticsTests: XCTestCase {
             providerID: "api.example.com",
             modelID: "support-model",
             attemptedAt: Date(timeIntervalSince1970: 1_700_000_102)))
+        let pendingSync = try await store.pendingMeetingSyncChanges()
+        let syncChange = try XCTUnwrap(pendingSync.first { $0.meetingID == meetingID })
+        try await store.acknowledgeMeetingSync(syncChange)
 
         let data = try await ExportSupportDiagnostics(store: store).execute(
             ExportSupportDiagnosticsRequest(
@@ -129,5 +132,35 @@ final class SupportDiagnosticsTests: XCTestCase {
         XCTAssertEqual(
             report.meetings[0].privacyReceipt.status,
             "remote-transfer-attempted")
+        XCTAssertEqual(
+            report.meetings[0].privacyReceipt.syncDisclosure,
+            "acknowledged-by-private-cloud")
+    }
+
+    func testAcknowledgedPrivateCloudCopyScopesTheAllLocalStatus() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private planning", startedAt: Date())
+        try await store.save(meeting)
+        let pending = try await store.pendingMeetingSyncChanges()
+        let change = try XCTUnwrap(pending.first { $0.meetingID == meeting.id })
+        try await store.acknowledgeMeetingSync(change)
+
+        let data = try await ExportSupportDiagnostics(store: store).execute(
+            ExportSupportDiagnosticsRequest(
+                environment: SupportDiagnosticsEnvironment(
+                    appVersion: "0.7.0",
+                    buildVersion: "700",
+                    operatingSystem: "macOS 26",
+                    models: [])))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let report = try decoder.decode(SupportDiagnosticsReport.self, from: data)
+
+        XCTAssertEqual(
+            report.meetings[0].privacyReceipt.status,
+            "all-tracked-processing-stayed-on-device")
+        XCTAssertEqual(
+            report.meetings[0].privacyReceipt.syncDisclosure,
+            "acknowledged-by-private-cloud")
     }
 }

@@ -114,6 +114,7 @@ final class PrivacyReceiptTests: XCTestCase {
         let receipt = try XCTUnwrap(storedReceipt)
         XCTAssertEqual(receipt.coverage, .complete)
         XCTAssertEqual(receipt.status, .remoteTransferAttempted)
+        XCTAssertEqual(receipt.syncDisclosure, .noCloudCopyRecorded)
         XCTAssertEqual(receipt.localDeviceEvents, [local])
         XCTAssertEqual(receipt.remoteEvents, [remote])
         XCTAssertEqual(receipt.generation.count, 1)
@@ -128,6 +129,30 @@ final class PrivacyReceiptTests: XCTestCase {
         ] {
             XCTAssertFalse(persistedColumns.contains(forbidden), forbidden)
         }
+    }
+
+    func testReceiptDisclosesAnAcknowledgedPrivateCloudCopyForever() async throws {
+        let store = try MeetingStore.inMemory()
+        var meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+
+        // The journal queues every save unconditionally, so an unacknowledged
+        // entry proves nothing about the cloud and must not change the receipt.
+        var receipt = try await store.privacyReceipt(for: meeting.id)
+        XCTAssertEqual(receipt?.syncDisclosure, .noCloudCopyRecorded)
+
+        let pending = try await store.pendingMeetingSyncChanges()
+        let change = try XCTUnwrap(pending.first { $0.meetingID == meeting.id })
+        try await store.acknowledgeMeetingSync(change)
+        receipt = try await store.privacyReceipt(for: meeting.id)
+        XCTAssertEqual(receipt?.syncDisclosure, .acknowledgedByPrivateCloud)
+
+        // A later local edit re-queues the meeting, but the acknowledged copy
+        // already exists — the disclosure must never revert.
+        meeting.title = "Planning renamed after upload"
+        try await store.save(meeting)
+        receipt = try await store.privacyReceipt(for: meeting.id)
+        XCTAssertEqual(receipt?.syncDisclosure, .acknowledgedByPrivateCloud)
     }
 
     func testReceiptWriterRejectsUnattributedUnknownOrForgedEvidence() async throws {

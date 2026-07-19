@@ -139,6 +139,7 @@ public struct SupportDiagnosticsReport: Codable, Equatable, Sendable {
     public struct PrivacyEvidence: Codable, Equatable, Sendable {
         public let status: String
         public let coverage: String
+        public let syncDisclosure: String
         public let trackingStartedAt: Date
         public let events: [EgressEvidence]
     }
@@ -217,13 +218,17 @@ private extension SupportDiagnosticsReport {
         }
         let status: String
         switch receipt.status {
-        case .allContentStayedOnDevice: status = "all-content-stayed-on-device"
+        case .allContentStayedOnDevice:
+            status = receipt.syncDisclosure == .acknowledgedByPrivateCloud
+                ? "all-tracked-processing-stayed-on-device"
+                : "all-content-stayed-on-device"
         case .noRemoteTransferRecorded: status = "no-remote-transfer-recorded"
         case .remoteTransferAttempted: status = "remote-transfer-attempted"
         }
         return PrivacyEvidence(
             status: status,
             coverage: coverage,
+            syncDisclosure: receipt.syncDisclosure.rawValue,
             trackingStartedAt: receipt.trackingStartedAt,
             events: receipt.events.map { event in
                 EgressEvidence(

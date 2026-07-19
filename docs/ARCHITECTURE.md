@@ -631,7 +631,9 @@ transport:
 
 The immutable attempt is persisted before URLSession runs. Persistence failure
 fails closed, redirects are rejected, and transport failure remains visible in
-the meeting privacy receipt. The gateway requires its recorder by type — a
+the meeting privacy receipt. The receipt also reports the meeting's
+private-sync standing, so an unqualified all-local claim can never coexist
+with an acknowledged iCloud copy (see Private text sync). The gateway requires its recorder by type — a
 gateway that cannot record an attempt cannot be constructed. One scoped
 exception exists for standalone terminal analysis, which has no library
 meeting to own a durable receipt: after its explicit interactive warning, the
@@ -667,9 +669,27 @@ generation fence. Portable mutations advance the local generation; device-local
 audio, paths, embeddings, jobs, receipts, model links, canonical people,
 secrets, and voiceprints do not.
 
+The per-meeting privacy receipt reads this journal: an acknowledged generation
+is durable proof of a private-cloud copy and is disclosed permanently, even
+after sync is disabled. An unacknowledged entry cannot distinguish disabled
+sync from an in-flight first upload, so it changes nothing in the receipt. The
+receipt says that CloudKit fields or assets are encrypted; it does not claim
+end-to-end encryption because Apple guarantees that stronger property for
+third-party CloudKit data only when the user enables Advanced Data Protection,
+and Portavoz cannot inspect that account setting.
+
 IntegrationsKit encodes deterministic text-first envelopes and maps them to one
 private-zone record per meeting. Small payloads use encrypted record values;
-large payloads use complete-protection, backup-excluded CKAsset staging files.
+large payloads use private CKAsset staging files. Content-free `0600` probes in
+the destination directory test complete-protection and backup-exclusion
+metadata independently. When supported, that metadata is applied while the
+staging sibling is empty and verified before publication. Only `EINVAL` or
+`ENOTSUP` marks one metadata capability unavailable; every other application or
+verification failure fails closed. Regardless of optional metadata support,
+one POSIX descriptor creates and writes a private `0600` sibling, handles
+partial writes and `EINTR`, synchronizes with `fsync`, and closes without a
+Foundation reopen. Size and owner-only permissions are always verified before
+one same-volume atomic rename, so partial content never occupies the final path.
 Deletion is an encrypted tombstone, not a physical record deletion.
 
 Transport state is separate from the meeting database and includes hashed
@@ -694,6 +714,10 @@ Audio never syncs.
   drained before their owning workflow returns.
 - Durable jobs are idempotent, fingerprinted, owner-leased, heartbeat-driven,
   and retryable without polling.
+- Compiler-dense deterministic collections, including operation fingerprints
+  and high-cardinality characterization fixtures, are assembled in explicitly
+  typed steps. This preserves order and coverage while keeping the supported
+  Sequoia Swift 6.2 compiler path bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.
 - Optional derivation cannot roll back required captured/imported data.
@@ -707,7 +731,9 @@ Audio never syncs.
 The package minimum is macOS 14.4 because system-audio process taps require it.
 Newer OS capabilities degrade through explicit availability checks. The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
-XCUITest generation.
+XCUITest generation. SwiftUI APIs with SDK-overloaded defaults and presentation
+math that crosses `CGFloat`/`Double` boundaries use explicit signatures and
+types so both the Sequoia and latest compiler lanes resolve the same behavior.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
@@ -839,8 +865,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 968 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 343 Swift source files;
+- 972 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 344 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

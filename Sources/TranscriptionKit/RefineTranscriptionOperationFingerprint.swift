@@ -63,18 +63,22 @@ public enum RefineTranscriptionOperationFingerprint {
         let orderedChannels = input.channels.sorted {
             $0.channel.rawValue < $1.channel.rawValue
         }
-        let components = [
-            input.meetingID.rawValue.uuidString,
-            String(input.sourceTranscriptRevision),
-            input.providerID,
-            input.modelID,
-            input.modelRevision == nil ? "model-revision:none" : "model-revision:some",
-            input.modelRevision ?? "",
-            input.languageHint == nil ? "language:automatic" : "language:fixed",
-            input.languageHint ?? "",
-            String(input.vocabulary.count)
-        ] + input.vocabulary + [String(orderedChannels.count)] + orderedChannels.flatMap {
-            [$0.channel.rawValue, $0.contentFingerprint]
+        var components: [String] = []
+        components.reserveCapacity(10 + input.vocabulary.count + (orderedChannels.count * 2))
+        components.append(input.meetingID.rawValue.uuidString)
+        components.append(String(input.sourceTranscriptRevision))
+        components.append(input.providerID)
+        components.append(input.modelID)
+        components.append(input.modelRevision == nil ? "model-revision:none" : "model-revision:some")
+        components.append(input.modelRevision ?? "")
+        components.append(input.languageHint == nil ? "language:automatic" : "language:fixed")
+        components.append(input.languageHint ?? "")
+        components.append(String(input.vocabulary.count))
+        components.append(contentsOf: input.vocabulary)
+        components.append(String(orderedChannels.count))
+        for channel in orderedChannels {
+            components.append(channel.channel.rawValue)
+            components.append(channel.contentFingerprint)
         }
         return OperationFingerprint.make(version: version, components: components)
     }

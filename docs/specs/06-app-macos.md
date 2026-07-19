@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure).
 
 ## Structure
 
@@ -379,12 +379,20 @@ adapter for Companion, summaries, and Gist publication. The Store records the
 validated content-free attempt before URLSession; a recorder error fails the
 operation before transport. Meeting Detail receives a fourth independently
 merged receipt stream and shows a compact right-rail card. Complete new history
-without remote attempts reads “No remote service used”; an upgraded legacy
+without remote attempts or acknowledged sync reads “No remote service used”; an upgraded legacy
 meeting shows the tracking start date; any remote attempt shows purpose, host,
 and time plus the conservative warning that content may have left the Mac.
-Accessibility boundaries are `detail-privacy-receipt` and
+D115 adds the orthogonal journal disclosure: once iCloud acknowledges any text
+generation, the headline becomes “No third-party service used” when applicable
+and `detail-privacy-receipt-sync` states that encrypted fields in the user's
+private iCloud database hold a copy. The copy remains disclosed after later
+edits or pause. It never says end-to-end because that depends on the user's
+Advanced Data Protection setting. Accessibility boundaries are
+`detail-privacy-receipt`, `detail-privacy-receipt-sync`, and
 `privacy-remote-event-<index>`. English and Spanish catalog entries preserve
-the same evidence meaning.
+the same evidence meaning. The sync element exposes its localized status as
+the accessibility label and the complete encryption disclosure as its value,
+so assistive technology receives the same evidence as the visual card.
 
 D76 composes one `ExportSupportDiagnostics` use case above StorageKit's atomic
 support projection. `AppServices` contributes app/build/OS identity and
@@ -795,8 +803,11 @@ exercises this same production path in the durable-resume XCUITest (D63).
 **Audio-first Meeting Detail:** the synchronized player drives the
 **Spotify-style lyrics transcript** (`FocusedTranscriptView`: the spoken line
 stays centered in a fixed-height viewport while surrounding lines fade,
-shrink, and blur), click-to-jump, the channel-colored waveform scrubber, clip
-marks, skip-silence, and microphone-only playback. `MeetingDetailModel` owns
+shrink, and blur; its explicit vertical/no-indicator initializer preserves the
+same behavior across the supported Sequoia and latest SwiftUI SDK signatures,
+and its fade/scale/blur values cross `CGFloat`/`Double` boundaries explicitly),
+click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
+and microphone-only playback. `MeetingDetailModel` owns
 one playback-preparation attempt per recording directory, cancellation retry,
 compression state, session invalidation, and clip-export effects.
 `ApplicationKit.PrepareMeetingPlayback` resolves current channels through an

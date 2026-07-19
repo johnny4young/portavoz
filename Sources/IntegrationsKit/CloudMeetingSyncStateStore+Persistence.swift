@@ -36,17 +36,6 @@ extension CloudMeetingSyncStateStore {
         try url.setResourceValues(values)
     }
 
-    static func writeProtected(_ data: Data, to sourceURL: URL) throws {
-        var url = sourceURL
-        try data.write(to: url, options: [.atomic, .completeFileProtection])
-        try FileManager.default.setAttributes(
-            [.posixPermissions: 0o600, .protectionKey: FileProtectionType.complete],
-            ofItemAtPath: url.path)
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try url.setResourceValues(values)
-    }
-
     static func loadSnapshot(from url: URL) throws -> CloudMeetingSyncSnapshot {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return CloudMeetingSyncSnapshot()

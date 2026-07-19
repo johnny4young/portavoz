@@ -13,7 +13,7 @@ vertical use case. The next independent release gate is real production
 CloudKit container/profile/account validation and two-Mac convergence. The iOS
 in-person recorder shell remains deferred in `docs/IOS.md`, and audio remains
 outside sync. All released v0.6.0 behavior remains covered by package and
-bilingual UI gates (D33–D114).
+bilingual UI gates (D33–D116).
 
 - **The macOS dependency and presentation boundaries are executable truth
   (Jul 18, 2026):** the complete SwiftPM production graph now has one exact
@@ -27,6 +27,28 @@ bilingual UI gates (D33–D114).
   composition, nonvisual live capability owners, diagnostics, and disposable
   benchmarks. The verified baseline is 968 package tests with 13 gated and
   strict lint is clean across 343 Swift source files (D114).
+
+- **Privacy receipts include private iCloud without overclaiming encryption
+  (Jul 18, 2026):** a positive acknowledged sync generation permanently adds an
+  encrypted private-iCloud disclosure to Meeting Detail and redacted support
+  evidence; pending journal work alone makes no cloud claim. All-local wording
+  is scoped to tracked processing, and copy does not promise end-to-end
+  protection because that depends on the user's optional Advanced Data
+  Protection setting. One POSIX descriptor creates each private `0600` cloud
+  sibling; content-free probes in its destination directory apply complete
+  protection and backup exclusion while the sibling is empty when the
+  filesystem supports them. Only `EINVAL`/`ENOTSUP` can omit an unavailable
+  metadata key; every other failure remains closed. The same descriptor writes
+  and synchronizes bytes with `fsync`, and exact size plus `0600` permissions
+  remain mandatory before atomic publication on every supported filesystem.
+  The Sequoia compiler path also
+  keeps recovery comparisons, exact Refine fingerprint assembly, and the RAG
+  fusion fixture bounded without changing operation identity or ranking.
+  The fixed vertical transcript viewport uses an explicit SwiftUI signature and typed visual-
+  effect arithmetic across supported SDK/compiler combinations. The verified
+  baseline is 972 package tests with 13 gated, strict lint is clean across 344
+  Swift source files, and the privacy receipt remains covered by the bilingual
+  Meeting Detail smoke (D115/D116).
 
 - **Local-model readiness has one verified lifecycle (Jul 18, 2026):**
   `ModelStoreKit.VerifiedModelLifecycle` coalesces complete catalog checks,
@@ -308,11 +330,13 @@ bilingual UI gates (D33–D114).
   meeting tombstone (Jul 17, 2026)**: IntegrationsKit encodes each portable
   envelope into one deterministic private-zone `MeetingReplica`. Payloads at
   or below the 512 KiB policy and their digest use encrypted values; larger
-  payloads use a complete-protection, backup-excluded CKAsset staging file,
-  whose content CloudKit encrypts by default. Matching existing records are
+  payloads use a private `0600` CKAsset staging file whose complete-protection
+  and backup-exclusion metadata is required when the destination supports it,
+  and whose content CloudKit encrypts by default. Matching existing records are
   reused for future change-tag conflict detection, malformed identity/storage/
   checksum input fails closed, and deletion remains an encrypted record save.
-  Five codec tests and an architecture ownership ratchet protect D94. No
+  Five original codec tests, D116's exact unsupported-metadata classifier, and
+  an architecture ownership ratchet protect the boundary. No
   container, account request, CKSyncEngine, entitlement, network path, status
   UI, audio sync, or iOS target exists yet.
 

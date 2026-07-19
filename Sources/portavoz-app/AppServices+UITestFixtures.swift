@@ -175,6 +175,18 @@ extension AppServices {
             providerID: "api.example.com",
             modelID: "fixture-summary",
             attemptedAt: Date(timeIntervalSince1970: 1_700_000_300)))
+        // Acknowledge one journal generation so the receipt's private-iCloud
+        // disclosure line is deterministically visible to UI tests.
+        do {
+            let changes = try await store.pendingMeetingSyncChanges()
+            guard let change = changes.first(where: { $0.meetingID == meetingID }) else {
+                assertionFailure("Could not find the seeded meeting's sync generation")
+                return
+            }
+            try await store.acknowledgeMeetingSync(change)
+        } catch {
+            assertionFailure("Could not seed private-iCloud receipt: \(error)")
+        }
     }
 
     /// Adopts isolated real audio when supplied; otherwise creates a short

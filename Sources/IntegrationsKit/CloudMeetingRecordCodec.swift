@@ -214,18 +214,10 @@ public struct CloudMeetingRecordCodec: Sendable {
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o700],
             ofItemAtPath: directory.path)
-        var assetURL = directory
+        let assetURL = directory
             .appendingPathComponent(UUID().uuidString.lowercased())
             .appendingPathExtension("portavoz-sync")
-        try payload.write(
-            to: assetURL,
-            options: [.atomic, .completeFileProtection])
-        try FileManager.default.setAttributes(
-            [.posixPermissions: 0o600, .protectionKey: FileProtectionType.complete],
-            ofItemAtPath: assetURL.path)
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try assetURL.setResourceValues(values)
+        try CloudSyncProtectedFile.write(payload, to: assetURL)
         return assetURL
     }
 

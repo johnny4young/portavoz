@@ -226,6 +226,28 @@ public struct PrivacyReceiptGeneration: Equatable, Sendable {
     }
 }
 
+/// Content-free disclosure of one meeting's private-sync standing, read from
+/// the meeting database's sync journal. HTTP egress attempts and private
+/// CloudKit sync are different transports with different consent surfaces;
+/// the receipt reports BOTH so "did anything leave this Mac?" has one honest
+/// answer. Audio, embeddings, and voiceprints never sync.
+///
+/// The journal records every local change unconditionally, so an
+/// unacknowledged entry cannot distinguish "sync disabled" from "first upload
+/// in flight" — only an acknowledgement is durable proof of a cloud copy,
+/// which is why the disclosure has exactly these two cases.
+public enum PrivacyReceiptSyncDisclosure: String, Codable, Equatable, Sendable {
+    /// No generation was ever acknowledged: as far as the durable record
+    /// knows, this meeting's text has no private-cloud copy.
+    case noCloudCopyRecorded = "no-cloud-copy-recorded"
+    /// The user's private cloud database acknowledged at least one generation
+    /// of this meeting's text aggregate: its text left the Mac in CloudKit
+    /// encrypted fields or assets. End-to-end protection additionally depends
+    /// on the user's Advanced Data Protection setting, which Portavoz cannot
+    /// inspect and therefore does not claim here.
+    case acknowledgedByPrivateCloud = "acknowledged-by-private-cloud"
+}
+
 /// Local, content-free audit projection for one meeting.
 public struct PrivacyReceipt: Equatable, Sendable {
     public let meetingID: MeetingID
@@ -233,13 +255,15 @@ public struct PrivacyReceipt: Equatable, Sendable {
     public let trackingStartedAt: Date
     public let generation: [PrivacyReceiptGeneration]
     public let egressEvents: [DataEgressEvent]
+    public let syncDisclosure: PrivacyReceiptSyncDisclosure
 
     public init(
         meetingID: MeetingID,
         meetingStoredAt: Date,
         trackingStartedAt: Date,
         generationRuns: [GenerationRun],
-        egressEvents: [DataEgressEvent]
+        egressEvents: [DataEgressEvent],
+        syncDisclosure: PrivacyReceiptSyncDisclosure
     ) {
         self.meetingID = meetingID
         self.coverage = meetingStoredAt >= trackingStartedAt
@@ -248,6 +272,7 @@ public struct PrivacyReceipt: Equatable, Sendable {
         self.trackingStartedAt = trackingStartedAt
         self.generation = generationRuns.map(PrivacyReceiptGeneration.init)
         self.egressEvents = egressEvents
+        self.syncDisclosure = syncDisclosure
     }
 
     public var remoteEvents: [DataEgressEvent] {

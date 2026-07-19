@@ -148,6 +148,9 @@ final class ProcessingOperationFingerprintTests: XCTestCase {
 
         XCTAssertEqual(
             base,
+            "afc261c998564cab4c1c92bcb1875843b84fac6c7e3ee147d780c476c86cbdd6")
+        XCTAssertEqual(
+            base,
             RefineTranscriptionOperationFingerprint.compute(.init(
                 meetingID: meetingID,
                 sourceTranscriptRevision: 4,
