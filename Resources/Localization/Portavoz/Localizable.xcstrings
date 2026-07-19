@@ -6951,12 +6951,12 @@
         }
       }
     },
-    "This meeting's text was stored in your end-to-end encrypted iCloud database.": {
+    "This meeting's text was stored in encrypted fields in your private iCloud database.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El texto de esta reunión se guardó en tu base de datos de iCloud cifrada de extremo a extremo."
+            "value": "El texto de esta reunión se guardó en campos cifrados de tu base de datos privada de iCloud."
           }
         }
       }

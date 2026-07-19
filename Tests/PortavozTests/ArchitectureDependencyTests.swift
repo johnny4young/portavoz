@@ -1726,12 +1726,16 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCloudMeetingRecordCodecEncryptsContentWithoutOwningRuntime() throws {
         let codec = try Self.contents(
             of: "Sources/IntegrationsKit/CloudMeetingRecordCodec.swift")
+        let protectedFile = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudSyncProtectedFile.swift")
         let storage = try Self.imports(under: "Sources/StorageKit")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(codec.contains("record.encryptedValues[Field.inlinePayload]"))
         XCTAssertTrue(codec.contains("CKAsset(fileURL: assetURL)"))
-        XCTAssertTrue(codec.contains(".completeFileProtection"))
+        XCTAssertTrue(codec.contains("CloudSyncProtectedFile.write"))
+        XCTAssertTrue(protectedFile.contains("FileProtectionType.complete"))
+        XCTAssertTrue(protectedFile.contains("Darwin.rename"))
         XCTAssertTrue(codec.contains("payloadSHA256"))
         XCTAssertTrue(codec.contains("existingRecord.recordID == recordID"))
         XCTAssertFalse(codec.contains("recordIDsToDelete"))
@@ -1746,13 +1750,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/IntegrationsKit/CloudMeetingSyncStateStore.swift")
         let persistence = try Self.contents(
             of: "Sources/IntegrationsKit/CloudMeetingSyncStateStore+Persistence.swift")
+        let protectedFile = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudSyncProtectedFile.swift")
         let coordinator = try Self.contents(
             of: "Sources/IntegrationsKit/CloudMeetingSyncCoordinator.swift")
         let delegate = try Self.contents(
             of: "Sources/IntegrationsKit/CloudMeetingSyncEngineDelegate.swift")
         let runtime = try Self.contents(
             of: "Sources/IntegrationsKit/CloudMeetingSyncRuntime.swift")
-        let cloudTransport = state + store + persistence + coordinator + delegate + runtime
+        let cloudTransport = state + store + persistence + protectedFile
+            + coordinator + delegate + runtime
         let storageImports = try Self.imports(under: "Sources/StorageKit")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
@@ -1760,8 +1767,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(state.contains("deferredReplays"))
         XCTAssertTrue(store.contains("persistEngineState"))
         XCTAssertTrue(store.contains("stageDeferredReplay"))
-        XCTAssertTrue(persistence.contains(".completeFileProtection"))
-        XCTAssertTrue(persistence.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(store.contains("CloudSyncProtectedFile.write"))
+        XCTAssertTrue(protectedFile.contains("FileProtectionType.complete"))
+        XCTAssertTrue(protectedFile.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(protectedFile.contains("Darwin.rename"))
         XCTAssertTrue(coordinator.contains("applyRemoteMeetingSyncEnvelope"))
         XCTAssertTrue(coordinator.contains("markAllMeetingsForInitialSync"))
         XCTAssertTrue(coordinator.contains("stageDeferredReplay"))

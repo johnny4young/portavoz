@@ -177,9 +177,15 @@ extension AppServices {
             attemptedAt: Date(timeIntervalSince1970: 1_700_000_300)))
         // Acknowledge one journal generation so the receipt's private-iCloud
         // disclosure line is deterministically visible to UI tests.
-        if let change = try? await store.pendingMeetingSyncChanges()
-            .first(where: { $0.meetingID == meetingID }) {
-            try? await store.acknowledgeMeetingSync(change)
+        do {
+            let changes = try await store.pendingMeetingSyncChanges()
+            guard let change = changes.first(where: { $0.meetingID == meetingID }) else {
+                assertionFailure("Could not find the seeded meeting's sync generation")
+                return
+            }
+            try await store.acknowledgeMeetingSync(change)
+        } catch {
+            assertionFailure("Could not seed private-iCloud receipt: \(error)")
         }
     }
 

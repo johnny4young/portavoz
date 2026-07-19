@@ -218,7 +218,10 @@ private extension SupportDiagnosticsReport {
         }
         let status: String
         switch receipt.status {
-        case .allContentStayedOnDevice: status = "all-content-stayed-on-device"
+        case .allContentStayedOnDevice:
+            status = receipt.syncDisclosure == .acknowledgedByPrivateCloud
+                ? "all-tracked-processing-stayed-on-device"
+                : "all-content-stayed-on-device"
         case .noRemoteTransferRecorded: status = "no-remote-transfer-recorded"
         case .remoteTransferAttempted: status = "remote-transfer-attempted"
         }

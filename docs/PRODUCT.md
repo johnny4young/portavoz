@@ -147,7 +147,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 
 Keychain for secrets; `NSFileProtectionComplete` (iOS) / optional SQLCipher
 (macOS); on-device-only, deletable voiceprints; implemented opt-in private
-CloudKit meeting-text transport on macOS using `encryptedValues` (+ADP), pending
+CloudKit meeting-text transport on macOS using encrypted fields/assets, pending
 production two-Mac field proof; sha256-pinned models; Hardened Runtime,
 notarization, signed releases, and SECURITY.md; local MCP over process stdio
 with no network listener; content-free egress receipts persisted before a
@@ -158,6 +158,9 @@ proved containment and several compatible capabilities, but also proved that
 the current shared app/CLI/MCP storage layout cannot survive an entitlement
 toggle. App Sandbox remains a supported future direction only after reversible
 data migration, security-scoped custom folders, Sparkle setup, and signed
-capture/automation feature-parity smoke. Until then, Developer ID, Hardened
+capture/automation feature-parity smoke. End-to-end protection for third-party
+CloudKit data depends on the user's optional Advanced Data Protection setting;
+Portavoz cannot inspect that setting and therefore promises encryption, not
+unconditional end-to-end encryption. Until then, Developer ID, Hardened
 Runtime, notarization, narrow TCC entitlements, and enforceable egress policy
 are the shipping boundary — never a sandbox marketing claim.

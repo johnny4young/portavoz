@@ -241,8 +241,10 @@ public enum PrivacyReceiptSyncDisclosure: String, Codable, Equatable, Sendable {
     /// knows, this meeting's text has no private-cloud copy.
     case noCloudCopyRecorded = "no-cloud-copy-recorded"
     /// The user's private cloud database acknowledged at least one generation
-    /// of this meeting's text aggregate: its text left the Mac, end-to-end
-    /// encrypted, into the user's own iCloud.
+    /// of this meeting's text aggregate: its text left the Mac in CloudKit
+    /// encrypted fields or assets. End-to-end protection additionally depends
+    /// on the user's Advanced Data Protection setting, which Portavoz cannot
+    /// inspect and therefore does not claim here.
     case acknowledgedByPrivateCloud = "acknowledged-by-private-cloud"
 }
 

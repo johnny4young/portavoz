@@ -672,12 +672,19 @@ secrets, and voiceprints do not.
 The per-meeting privacy receipt reads this journal: an acknowledged generation
 is durable proof of a private-cloud copy and is disclosed permanently, even
 after sync is disabled. An unacknowledged entry cannot distinguish disabled
-sync from an in-flight first upload, so it changes nothing in the receipt.
+sync from an in-flight first upload, so it changes nothing in the receipt. The
+receipt says that CloudKit fields or assets are encrypted; it does not claim
+end-to-end encryption because Apple guarantees that stronger property for
+third-party CloudKit data only when the user enables Advanced Data Protection,
+and Portavoz cannot inspect that account setting.
 
 IntegrationsKit encodes deterministic text-first envelopes and maps them to one
 private-zone record per meeting. Small payloads use encrypted record values;
 large payloads use complete-protection, backup-excluded CKAsset staging files.
-Deletion is an encrypted tombstone, not a physical record deletion.
+Transport bytes are written to an empty protected sibling, synchronized, and
+published with one same-volume atomic rename; partial or unprotected content
+never occupies the reader-visible path. Deletion is an encrypted tombstone,
+not a physical record deletion.
 
 Transport state is separate from the meeting database and includes hashed
 account identity, explicit consent/seed policy, opaque engine state, system
@@ -846,8 +853,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 968 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 343 Swift source files;
+- 971 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 344 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;

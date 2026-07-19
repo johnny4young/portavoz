@@ -682,25 +682,30 @@ extension MeetingStore {
         asset: AudioAsset
     ) throws -> Bool {
         let persisted = try stored.asset
-        return persisted.id == asset.id
+        let identityMatches = persisted.id == asset.id
             && persisted.meetingID == asset.meetingID
             && persisted.channel == asset.channel
             && persisted.role == asset.role
-            && persisted.relativePath == asset.relativePath
+        let locationMatches = persisted.relativePath == asset.relativePath
             && persisted.container == asset.container
             && persisted.codec == asset.codec
-            && persisted.sampleRate == asset.sampleRate
+        let formatMatches = persisted.sampleRate == asset.sampleRate
             && persisted.channelCount == asset.channelCount
             && persisted.durationSeconds == asset.durationSeconds
             && persisted.byteCount == asset.byteCount
-            && persisted.sha256 == asset.sha256
+        let integrityMatches = persisted.sha256 == asset.sha256
             && persisted.healthStatus == asset.healthStatus
             && persisted.peakDBFS == asset.peakDBFS
             && persisted.rmsDBFS == asset.rmsDBFS
-            && persisted.sourceAssetID == asset.sourceAssetID
+        let lifecycleMatches = persisted.sourceAssetID == asset.sourceAssetID
             && persisted.createdAt == asset.createdAt
             && persisted.supersededAt == asset.supersededAt
             && persisted.deletedAt == asset.deletedAt
+        return identityMatches
+            && locationMatches
+            && formatMatches
+            && integrityMatches
+            && lifecycleMatches
     }
 
     private static func isCanonicalRecoveryCode(_ value: String) -> Bool {

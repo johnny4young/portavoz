@@ -326,6 +326,30 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         XCTAssertNotNil(snapshot.consentedAccountFingerprint)
     }
 
+    func testProtectedPublicationReplacesStateWithoutExposingStagingFiles() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try await readyStore(at: root)
+        let envelope = makeEnvelope(generation: 1)
+
+        _ = try await store.stage(envelope, at: envelope.changedAt)
+        try await store.revokeConsent()
+
+        let stateURL = root.appendingPathComponent("transport-state.json")
+        let snapshot = await store.currentSnapshot()
+        let payloadFileName = try XCTUnwrap(snapshot.attempts.first?.payloadFileName)
+        let payloadURL = root
+            .appendingPathComponent("payloads")
+            .appendingPathComponent(payloadFileName)
+        try assertProtected(stateURL)
+        try assertProtected(payloadURL)
+
+        let rootNames = try FileManager.default.contentsOfDirectory(atPath: root.path)
+        let payloadNames = try FileManager.default.contentsOfDirectory(
+            atPath: root.appendingPathComponent("payloads").path)
+        XCTAssertFalse((rootNames + payloadNames).contains { $0.hasSuffix(".staging") })
+    }
+
     func testRetryPolicyIsDeterministicAndBounded() {
         let policy = CloudSyncRetryPolicy(baseDelay: 5, maximumDelay: 60)
         XCTAssertEqual(policy.delay(afterAttempt: 1, serverRetryAfter: nil), 5)
@@ -349,6 +373,29 @@ final class CloudMeetingSyncStateTests: XCTestCase {
 
     private func fingerprint(_ recordName: String) -> String {
         CloudMeetingSyncStateStore.accountFingerprint(forCloudRecordName: recordName)
+    }
+
+    private func assertProtected(
+        _ url: URL,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        let permissions = try XCTUnwrap(
+            attributes[.posixPermissions] as? NSNumber,
+            file: file,
+            line: line)
+        XCTAssertEqual(permissions.intValue & 0o777, 0o600, file: file, line: line)
+        XCTAssertEqual(
+            attributes[.protectionKey] as? FileProtectionType,
+            .complete,
+            file: file,
+            line: line)
+        XCTAssertEqual(
+            try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup,
+            true,
+            file: file,
+            line: line)
     }
 
     private func makeEnvelope(

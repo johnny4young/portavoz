@@ -553,12 +553,15 @@ extension MeetingDetailView {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.blue)
                 Text(L10n.text(
-                    "This meeting's text was stored in your end-to-end encrypted iCloud database."))
+                    "This meeting's text was stored in encrypted fields in your private iCloud database."))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
+            .accessibilityLabel(L10n.text("Synced to private iCloud"))
+            .accessibilityValue(L10n.text(
+                "This meeting's text was stored in encrypted fields in your private iCloud database."))
             .accessibilityIdentifier("detail-privacy-receipt-sync")
         }
     }

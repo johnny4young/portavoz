@@ -153,7 +153,7 @@ public actor CloudMeetingSyncStateStore {
 
         let fileName = Self.payloadFileName(for: envelope)
         let fileURL = payloadDirectory.appendingPathComponent(fileName)
-        try Self.writeProtected(payload, to: fileURL)
+        try CloudSyncProtectedFile.write(payload, to: fileURL)
         let attempt = CloudSyncAttempt(
             meetingID: envelope.meetingID,
             sourceDeviceID: envelope.sourceDeviceID,
@@ -398,7 +398,7 @@ extension CloudMeetingSyncStateStore {
         let priorFiles = snapshot.deferredReplays
             .filter { $0.meetingID == envelope.meetingID }
             .map(\.payloadFileName)
-        try Self.writeProtected(payload, to: fileURL)
+        try CloudSyncProtectedFile.write(payload, to: fileURL)
         do {
             try commitSnapshot {
                 snapshot.deferredReplays.removeAll {
@@ -597,7 +597,7 @@ private extension CloudMeetingSyncStateStore {
     func persistSnapshot() throws {
         sortSnapshotCollections()
         try Self.validate(snapshot, payloadDirectory: payloadDirectory)
-        try Self.writeProtected(Self.encoder().encode(snapshot), to: stateFileURL)
+        try CloudSyncProtectedFile.write(Self.encoder().encode(snapshot), to: stateFileURL)
     }
 
     func sortSnapshotCollections() {

@@ -2647,7 +2647,10 @@ private custom `PortavozMeetings` zone. Its deterministic record name contains
 only the meeting UUID. Payloads up to the codec's conservative 512 KiB policy
 use `CKRecord.encryptedValues`; larger payloads use one `CKAsset`, which
 CloudKit encrypts by default. Asset staging uses a unique local file, complete
-file protection, and backup exclusion. The payload SHA-256 is also an encrypted
+file protection, and backup exclusion. Bytes enter an empty protected sibling,
+are synchronized, and publish through one same-volume atomic rename; the final
+path therefore never contains partial or unprotected meeting content. The
+payload SHA-256 is also an encrypted
 field. Only format version, payload-storage selector, record type/identity, and
 the asset field itself remain outside `encryptedValues`; no transcript,
 summary, title, speaker, source-device, generation, or digest value is exposed
@@ -3442,3 +3445,37 @@ ownership into artificial modules. The audit found no additional production
 boundary violation after the verified-model extraction, so closing the macOS
 convergence work with broad guards is safer and simpler than adding speculative
 packages or moving legitimate edge adapters inward.
+
+## D115 — Make the privacy receipt account for private iCloud without overstating encryption (Jul 2026)
+
+**Context:** the per-meeting receipt covered tracked model processing and HTTP
+egress attempts, while the independently opted-in CloudKit transport could
+already hold meeting text. Its content-free journal is populated on every local
+portable mutation whether sync is enabled or not, so the existence of a row or
+a pending generation is not proof that anything left the Mac. CloudKit
+encrypted fields and assets are encrypted on-device and in iCloud, but Apple
+guarantees end-to-end protection for third-party app data only when the user
+enables Advanced Data Protection. Portavoz cannot inspect that account setting.
+
+**Decision:** `PrivacyReceipt` carries an orthogonal, content-free private-sync
+disclosure with exactly two durable states. `acknowledgedGeneration > 0` means
+the user's private CloudKit database confirmed at least one text aggregate and
+is disclosed permanently, including after sync is paused, disabled, or a later
+local edit becomes pending. Missing or unacknowledged journal state records no
+cloud copy because it cannot distinguish disabled sync from an upload in
+flight. Meeting Detail replaces an otherwise unqualified all-local headline,
+shows an identified encrypted private-iCloud line, and keeps processing claims
+explicitly scoped. The redacted support report includes the same disclosure in
+its existing read-consistent snapshot and changes an otherwise all-local status
+to `all-tracked-processing-stayed-on-device`. Product copy says encrypted private
+iCloud fields/assets and never claims unconditional end-to-end encryption.
+Audio, paths, embeddings, canonical people, secrets, and voiceprints remain
+outside sync.
+
+**Rationale:** one meeting surface now answers whether tracked processing used
+a remote provider and whether iCloud durably acknowledged a private text copy,
+without treating an unconditional mutation journal as network evidence. The
+two facts remain separate because HTTP egress attempts and private account sync
+have different consent, transport, and failure semantics. Conservative
+encryption wording preserves the local-first trust contract for both standard
+iCloud protection and optional Advanced Data Protection.

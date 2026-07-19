@@ -42,6 +42,10 @@ final class CloudMeetingRecordCodecTests: XCTestCase {
             FileManager.default.attributesOfItem(atPath: assetURL.path)[.posixPermissions]
                 as? NSNumber)
         XCTAssertEqual(permissions.intValue & 0o777, 0o600)
+        XCTAssertEqual(
+            try FileManager.default.attributesOfItem(atPath: assetURL.path)[.protectionKey]
+                as? FileProtectionType,
+            .complete)
         XCTAssertTrue(encoded.record.allKeys().contains("payloadAsset"))
         XCTAssertFalse(encoded.record.encryptedValues.allKeys().contains("payload"))
         let decoded = try codec.decode(encoded.record)
