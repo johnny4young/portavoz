@@ -598,7 +598,8 @@ private struct MeetingDetailModelFixture {
             meetingStoredAt: meeting.startedAt,
             trackingStartedAt: trackingStartedAt,
             generationRuns: [],
-            egressEvents: [])
+            egressEvents: [],
+            syncDisclosure: .noCloudCopyRecorded)
     }
 }
 

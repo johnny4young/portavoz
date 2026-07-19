@@ -6930,6 +6930,36 @@
           }
         }
       }
+    },
+    "No third-party service used": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se usó ningún servicio de terceros"
+          }
+        }
+      }
+    },
+    "Synced to private iCloud": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizado con iCloud privado"
+          }
+        }
+      }
+    },
+    "This meeting's text was stored in your end-to-end encrypted iCloud database.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto de esta reunión se guardó en tu base de datos de iCloud cifrada de extremo a extremo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

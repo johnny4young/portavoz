@@ -81,6 +81,7 @@ public struct SupportDiagnosticsStoredGeneration: Sendable {
 public struct SupportDiagnosticsStoredPrivacyReceipt: Sendable {
     public let coverage: PrivacyReceiptCoverage
     public let status: PrivacyReceiptStatus
+    public let syncDisclosure: PrivacyReceiptSyncDisclosure
     public let trackingStartedAt: Date
     public let events: [SupportDiagnosticsStoredEgressEvent]
 }
@@ -124,6 +125,7 @@ extension MeetingStore {
             let eventsByMeeting = try Dictionary(grouping: DataEgressEventRecord
                 .order(Column("attemptedAt"), Column("rowid"))
                 .fetchAll(db), by: \.meetingID)
+            let syncByMeeting = try Self.fetchSyncDisclosuresByMeeting(in: db)
 
             let evidence = try meetings.map { record in
                 guard let lifecycle = MeetingLifecycleState(rawValue: record.lifecycleState) else {
@@ -144,7 +146,8 @@ extension MeetingStore {
                     meetingStoredAt: record.createdAt,
                     trackingStartedAt: trackingStartedAt,
                     generationRuns: runs,
-                    egressEvents: events)
+                    egressEvents: events,
+                    syncDisclosure: syncByMeeting[record.id] ?? .noCloudCopyRecorded)
                 return SupportDiagnosticsStoredMeeting(
                     referenceDigest: supportDigest(meetingID.rawValue.uuidString),
                     lifecycleState: lifecycle,
@@ -160,6 +163,19 @@ extension MeetingStore {
                 trackingStartedAt: trackingStartedAt,
                 meetings: evidence)
         }
+    }
+
+    private static func fetchSyncDisclosuresByMeeting(
+        in db: Database
+    ) throws -> [String: PrivacyReceiptSyncDisclosure] {
+        try Dictionary(
+            uniqueKeysWithValues: Row.fetchAll(
+                db,
+                sql: "SELECT meetingID, acknowledgedGeneration FROM meetingSyncState")
+            .map { row -> (String, PrivacyReceiptSyncDisclosure) in
+                (row["meetingID"],
+                 syncDisclosure(acknowledgedGeneration: row["acknowledgedGeneration"]))
+            })
     }
 }
 
@@ -198,6 +214,7 @@ private func supportPrivacyReceipt(
     SupportDiagnosticsStoredPrivacyReceipt(
         coverage: receipt.coverage,
         status: receipt.status,
+        syncDisclosure: receipt.syncDisclosure,
         trackingStartedAt: receipt.trackingStartedAt,
         events: receipt.egressEvents.map { event in
             SupportDiagnosticsStoredEgressEvent(

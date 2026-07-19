@@ -62,7 +62,30 @@ extension MeetingStore: DataEgressEventRecorder {
             meetingStoredAt: meeting.createdAt,
             trackingStartedAt: trackingStartedAt,
             generationRuns: runs,
-            egressEvents: try fetchDataEgressEvents(for: meetingID, in: db))
+            egressEvents: try fetchDataEgressEvents(for: meetingID, in: db),
+            syncDisclosure: try fetchSyncDisclosure(for: meetingID, in: db))
+    }
+
+    /// The journal is the meeting database's own content-free record of sync
+    /// standing: an acknowledged generation means the private cloud database
+    /// confirmed storing this meeting's text at least once. Disabling sync
+    /// keeps journal rows intact on purpose — an acknowledged upload happened,
+    /// and the receipt keeps saying so.
+    static func fetchSyncDisclosure(
+        for meetingID: MeetingID,
+        in db: Database
+    ) throws -> PrivacyReceiptSyncDisclosure {
+        let acknowledged = try Int.fetchOne(
+            db,
+            sql: "SELECT acknowledgedGeneration FROM meetingSyncState WHERE meetingID = ?",
+            arguments: [meetingID.rawValue.uuidString])
+        return syncDisclosure(acknowledgedGeneration: acknowledged ?? 0)
+    }
+
+    static func syncDisclosure(acknowledgedGeneration: Int) -> PrivacyReceiptSyncDisclosure {
+        acknowledgedGeneration > 0
+            ? .acknowledgedByPrivateCloud
+            : .noCloudCopyRecorded
     }
 
     private static func fetchDataEgressEvents(

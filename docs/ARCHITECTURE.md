@@ -631,7 +631,9 @@ transport:
 
 The immutable attempt is persisted before URLSession runs. Persistence failure
 fails closed, redirects are rejected, and transport failure remains visible in
-the meeting privacy receipt. The gateway requires its recorder by type — a
+the meeting privacy receipt. The receipt also reports the meeting's
+private-sync standing, so an unqualified all-local claim can never coexist
+with an acknowledged iCloud copy (see Private text sync). The gateway requires its recorder by type — a
 gateway that cannot record an attempt cannot be constructed. One scoped
 exception exists for standalone terminal analysis, which has no library
 meeting to own a durable receipt: after its explicit interactive warning, the
@@ -666,6 +668,11 @@ StorageKit owns portable aggregate semantics and a content-free per-meeting
 generation fence. Portable mutations advance the local generation; device-local
 audio, paths, embeddings, jobs, receipts, model links, canonical people,
 secrets, and voiceprints do not.
+
+The per-meeting privacy receipt reads this journal: an acknowledged generation
+is durable proof of a private-cloud copy and is disclosed permanently, even
+after sync is disabled. An unacknowledged entry cannot distinguish disabled
+sync from an in-flight first upload, so it changes nothing in the receipt.
 
 IntegrationsKit encodes deterministic text-first envelopes and maps them to one
 private-zone record per meeting. Small payloads use encrypted record values;

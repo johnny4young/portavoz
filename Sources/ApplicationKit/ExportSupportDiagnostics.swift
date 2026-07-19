@@ -139,6 +139,7 @@ public struct SupportDiagnosticsReport: Codable, Equatable, Sendable {
     public struct PrivacyEvidence: Codable, Equatable, Sendable {
         public let status: String
         public let coverage: String
+        public let syncDisclosure: String
         public let trackingStartedAt: Date
         public let events: [EgressEvidence]
     }
@@ -224,6 +225,7 @@ private extension SupportDiagnosticsReport {
         return PrivacyEvidence(
             status: status,
             coverage: coverage,
+            syncDisclosure: receipt.syncDisclosure.rawValue,
             trackingStartedAt: receipt.trackingStartedAt,
             events: receipt.events.map { event in
                 EgressEvidence(

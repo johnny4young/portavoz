@@ -473,6 +473,11 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "privacy-remote-event-0").exists,
             "the fixture's content-free remote summary attempt must be auditable")
+        // The fixture acknowledges one sync generation, so the receipt must
+        // also disclose the private iCloud copy — never an all-local claim.
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-privacy-receipt-sync").exists,
+            "the receipt must disclose the acknowledged private iCloud copy")
         // The refine control (now a menu with a per-meeting language override)
         // is present for a meeting that keeps its audio.
         XCTAssertTrue(

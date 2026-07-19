@@ -499,12 +499,14 @@ extension MeetingDetailView {
                     .font(.headline)
                     .foregroundStyle(tint)
                     .accessibilityIdentifier("detail-privacy-receipt")
-                Text(privacyReceiptHeadline(receipt.status))
+                Text(privacyReceiptHeadline(receipt))
                     .font(.callout.weight(.semibold))
                 Text(privacyReceiptExplanation(receipt))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                privacyReceiptSyncLine(receipt.syncDisclosure)
 
                 ForEach(Array(receipt.remoteEvents.enumerated()), id: \.element.id) { index, event in
                     VStack(alignment: .leading, spacing: 2) {
@@ -540,6 +542,27 @@ extension MeetingDetailView {
         }
     }
 
+    /// The on-device claim above stays scoped to tracked processing; this line
+    /// is what keeps the receipt honest once a private iCloud copy exists. It
+    /// stays silent while no cloud copy is recorded.
+    @ViewBuilder
+    private func privacyReceiptSyncLine(_ disclosure: PrivacyReceiptSyncDisclosure) -> some View {
+        if disclosure == .acknowledgedByPrivateCloud {
+            VStack(alignment: .leading, spacing: 2) {
+                Label(L10n.text("Synced to private iCloud"), systemImage: "icloud.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.blue)
+                Text(L10n.text(
+                    "This meeting's text was stored in your end-to-end encrypted iCloud database."))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("detail-privacy-receipt-sync")
+        }
+    }
+
     private func privacyReceiptTint(_ status: PrivacyReceiptStatus) -> Color {
         switch status {
         case .allContentStayedOnDevice: .green
@@ -556,10 +579,16 @@ extension MeetingDetailView {
         }
     }
 
-    private func privacyReceiptHeadline(_ status: PrivacyReceiptStatus) -> String {
-        switch status {
+    private func privacyReceiptHeadline(_ receipt: PrivacyReceipt) -> String {
+        switch receipt.status {
         case .allContentStayedOnDevice:
-            L10n.text("No remote service used")
+            // Once a private cloud copy exists, an unqualified all-local
+            // headline would contradict the iCloud line right below it.
+            if receipt.syncDisclosure == .acknowledgedByPrivateCloud {
+                L10n.text("No third-party service used")
+            } else {
+                L10n.text("No remote service used")
+            }
         case .noRemoteTransferRecorded:
             L10n.text("No remote transfer recorded")
         case .remoteTransferAttempted:

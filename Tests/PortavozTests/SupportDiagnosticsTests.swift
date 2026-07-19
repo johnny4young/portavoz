@@ -129,5 +129,8 @@ final class SupportDiagnosticsTests: XCTestCase {
         XCTAssertEqual(
             report.meetings[0].privacyReceipt.status,
             "remote-transfer-attempted")
+        XCTAssertEqual(
+            report.meetings[0].privacyReceipt.syncDisclosure,
+            "no-cloud-copy-recorded")
     }
 }
