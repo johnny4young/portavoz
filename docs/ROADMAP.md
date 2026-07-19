@@ -34,10 +34,11 @@ bilingual UI gates (D33–D115).
   evidence; pending journal work alone makes no cloud claim. All-local wording
   is scoped to tracked processing, and copy does not promise end-to-end
   protection because that depends on the user's optional Advanced Data
-  Protection setting. Cloud transport files now enter an already protected
-  sibling and atomically rename into place, avoiding the macOS 26.4 combined
-  atomic/file-protection failure without exposing partial bytes. The Sequoia
-  compiler path also keeps recovery comparisons and exact Refine fingerprint
+  Protection setting. Cloud transport files now enter a private `0600`
+  sibling, synchronize, and receive verified complete protection before one
+  atomic rename, avoiding macOS 26 write/open incompatibilities without
+  exposing partial bytes at the reader path. The Sequoia compiler path also
+  keeps recovery comparisons and exact Refine fingerprint
   assembly bounded without changing operation identity. The fixed vertical
   transcript viewport uses an explicit SwiftUI signature and typed visual-
   effect arithmetic across supported SDK/compiler combinations. The verified

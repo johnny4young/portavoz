@@ -2,8 +2,8 @@ import Darwin
 import Foundation
 
 /// Publishes private CloudKit transport bytes only after the complete file is
-/// protected. A sibling staging file keeps partial writes reader-invisible;
-/// one same-volume rename is the installation commit point.
+/// protected. A private sibling keeps partial writes reader-invisible; one
+/// same-volume rename is the installation commit point.
 enum CloudSyncProtectedFile {
     static func write(_ data: Data, to destination: URL) throws {
         let manager = FileManager.default
@@ -13,7 +13,22 @@ enum CloudSyncProtectedFile {
                 ".\(destination.lastPathComponent).\(UUID().uuidString.lowercased()).staging")
         defer { try? manager.removeItem(at: staging) }
 
-        try Data().write(to: staging, options: .withoutOverwriting)
+        let descriptor = staging.path.withCString {
+            Darwin.open($0, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR)
+        }
+        guard descriptor >= 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        do {
+            try handle.write(contentsOf: data)
+            try handle.synchronize()
+            try handle.close()
+        } catch {
+            try? handle.close()
+            throw error
+        }
+
         try manager.setAttributes(
             [
                 .posixPermissions: 0o600,
@@ -24,16 +39,6 @@ enum CloudSyncProtectedFile {
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         try protectedStaging.setResourceValues(values)
-
-        let handle = try FileHandle(forWritingTo: staging)
-        do {
-            try handle.write(contentsOf: data)
-            try handle.synchronize()
-            try handle.close()
-        } catch {
-            try? handle.close()
-            throw error
-        }
 
         let attributes = try manager.attributesOfItem(atPath: staging.path)
         guard (attributes[.size] as? NSNumber)?.intValue == data.count,

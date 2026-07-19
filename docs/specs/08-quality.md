@@ -1113,11 +1113,11 @@ gated), with strict lint still clean across 343 Swift source files.
 Private-iCloud receipt hardening adds one protected-publication persistence
 case, one support-status characterization, stronger asset-protection assertions,
 and an architecture ratchet for the single publication primitive. Together they
-prove private transport bytes enter a protected `0600` sibling before writing,
-publish through one same-volume rename, leave no staging artifacts, and do not
-contradict an acknowledged cloud copy with an all-content-local status. The
-current full gate is 971 package tests (13 gated), with strict lint clean across
-344 Swift source files (D115).
+prove private transport bytes enter a private `0600` sibling, synchronize,
+receive verified complete protection, publish through one same-volume rename,
+leave no staging artifacts, and do not contradict an acknowledged cloud copy
+with an all-content-local status. The current full gate is 971 package tests
+(13 gated), with strict lint clean across 344 Swift source files (D115).
 
 The same supported Sequoia lane compiles recovery comparisons and exact Refine
 fingerprint composition as bounded, explicitly typed steps. Existing operation-

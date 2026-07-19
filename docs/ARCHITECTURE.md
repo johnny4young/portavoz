@@ -681,10 +681,10 @@ and Portavoz cannot inspect that account setting.
 IntegrationsKit encodes deterministic text-first envelopes and maps them to one
 private-zone record per meeting. Small payloads use encrypted record values;
 large payloads use complete-protection, backup-excluded CKAsset staging files.
-Transport bytes are written to an empty protected sibling, synchronized, and
-published with one same-volume atomic rename; partial or unprotected content
-never occupies the reader-visible path. Deletion is an encrypted tombstone,
-not a physical record deletion.
+Transport bytes are written and synchronized in a private `0600` sibling, then
+complete protection is applied and verified before one same-volume atomic
+rename; partial or unprotected content never occupies the reader-visible path.
+Deletion is an encrypted tombstone, not a physical record deletion.
 
 Transport state is separate from the meeting database and includes hashed
 account identity, explicit consent/seed policy, opaque engine state, system
