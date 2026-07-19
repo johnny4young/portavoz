@@ -42,12 +42,15 @@ struct FocusedTranscriptView<Row: View>: View {
                                 let midY = geometry.frame(in: .named(space)).midY
                                 let deadzone: CGFloat = 58
                                 let far = max(1, reach - deadzone)
-                                let t = min(1, max(0, (abs(midY - focusY) - deadzone) / far))
+                                let t: CGFloat = min(1, max(0, (abs(midY - focusY) - deadzone) / far))
+                                let opacity: Double = 1.0 - (0.72 * Double(t))
+                                let scale: CGFloat = 1.0 - (0.10 * t)
+                                let blurRadius: CGFloat = 2.0 * t
                                 return
                                     content
-                                    .opacity(1 - 0.72 * t)
-                                    .scaleEffect(1 - 0.10 * t, anchor: .center)
-                                    .blur(radius: 2.0 * t)
+                                    .opacity(opacity)
+                                    .scaleEffect(scale, anchor: .center)
+                                    .blur(radius: blurRadius)
                             }
                     }
                 }

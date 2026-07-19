@@ -724,9 +724,9 @@ Audio never syncs.
 The package minimum is macOS 14.4 because system-audio process taps require it.
 Newer OS capabilities degrade through explicit availability checks. The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
-XCUITest generation. SwiftUI APIs with SDK-overloaded defaults use explicit
-signatures so both the Sequoia and latest compiler lanes resolve the same
-behavior.
+XCUITest generation. SwiftUI APIs with SDK-overloaded defaults and presentation
+math that crosses `CGFloat`/`Double` boundaries use explicit signatures and
+types so both the Sequoia and latest compiler lanes resolve the same behavior.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
