@@ -1,0 +1,28 @@
+version: 2
+
+updates:
+  - package-ecosystem: swift
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      swift-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - dependencies
+      - swift
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - dependencies
+      - github-actions

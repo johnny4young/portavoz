@@ -731,9 +731,22 @@ Audio never syncs.
 The package minimum is macOS 14.4 because system-audio process taps require it.
 Newer OS capabilities degrade through explicit availability checks. The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
-XCUITest generation. SwiftUI APIs with SDK-overloaded defaults and presentation
-math that crosses `CGFloat`/`Double` boundaries use explicit signatures and
-types so both the Sequoia and latest compiler lanes resolve the same behavior.
+XCUITest generation. Generated projects, result bundles, local screenshots,
+agent state, scratch plans, and local work-item files remain outside version control;
+`scripts/check-repository-hygiene.sh` rejects both tracked local state and
+private work-item identifier leakage in implementation files. SwiftUI APIs with SDK-
+overloaded defaults and presentation math that crosses `CGFloat`/`Double`
+boundaries use explicit signatures and types so both the Sequoia and latest
+compiler lanes resolve the same behavior.
+
+Pull-request UI evidence is selected deterministically from changed paths.
+Known presentation and application files map to feature-level XCUITest
+selectors; localization and shared-harness changes expand to bilingual
+evidence; unknown production Swift paths fall back to the complete English
+suite. One `build-for-testing` result is reused across selected locales. The
+complete 39-case English and Spanish suites remain the release/architecture
+closure gate rather than the default cost for documentation or isolated
+surface changes.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
@@ -773,9 +786,13 @@ library or Keychain.
     after implementation.
 18. Every commit preserves released behavior and leaves build/tests green.
 19. Every interactive control has a stable accessibility identifier and UI
-    coverage appropriate to its surface.
+    coverage appropriate to its surface. Diff scoping may reduce redundant UI
+    execution but must fall back conservatively when ownership is unknown.
 20. Every architecture-changing commit updates this document and every other
     source of truth whose current facts changed.
+21. Internal tracker keys and ephemeral planning/tool state do not enter source
+    identifiers, comments, or tracked files; durable accepted project truth
+    remains in the reviewed `docs/` sources of truth.
 
 ## Runtime composition facts
 
@@ -868,6 +885,8 @@ The current local acceptance baseline is:
 - 972 package tests pass, with 13 real-model/environment cases gated;
 - strict SwiftLint reports zero violations across 344 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
+- pull requests run only their selected feature-level UI evidence, while shared
+  localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,
@@ -880,8 +899,9 @@ Run the standard gates with:
 swift build
 swift test
 swiftlint lint --strict --no-cache
-make test-ui-en
-make test-ui-es
+scripts/check-repository-hygiene.sh
+make test-ui-changed UI_BASE=origin/main
+make test-ui-bilingual # explicit release/architecture closure
 make install
 ```
 

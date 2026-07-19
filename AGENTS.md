@@ -9,7 +9,7 @@ Durable knowledge lives in `docs/` — there is no session handoff file anymore 
 1. **Current state and next step**: [docs/ROADMAP.md](docs/ROADMAP.md) opens with the current project state, remaining work, and the next concrete step.
 2. **As-built technical knowledge**: [docs/specs/](docs/specs/README.md) — 8 domain specs (capture, transcription, diarization, intelligence, storage, app, interfaces, quality) written from the real code, with implemented behavior separated from planned behavior. Read the spec for the area you will touch BEFORE editing it.
 3. **Architecture refactor work**: [docs/refactor-20260714.md](docs/refactor-20260714.md) is the executable target architecture, band plan, feature-parity contract, commit protocol, and acceptance matrix. Read it before any refactor slice; it is a plan, while specs remain as-built truth.
-4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D116), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (current architecture, clearly labeled target, engineering rules, and migration status), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), [docs/GAPS.md](docs/GAPS.md) (known gaps + pending field validation), [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format), [docs/IOS.md](docs/IOS.md) (iOS phase).
+4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D117), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (current architecture, clearly labeled target, engineering rules, and migration status), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), [docs/GAPS.md](docs/GAPS.md) (known gaps + pending field validation), [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format), [docs/IOS.md](docs/IOS.md) (iOS phase).
 
 ## At the end of a significant session
 
@@ -22,7 +22,8 @@ All explanatory documentation under `docs/` is written in **English**. Literal l
 ```sh
 swift build
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
-make test-ui  # XCUITest smoke suite (Library/Insights/MeetingDetail/Settings); test-ui-en / test-ui-es for locales
+make test-ui-changed UI_BASE=origin/main  # feature-level XCUITest selected from the diff
+make test-ui-bilingual                    # explicit full EN + ES release gate
 ```
 
 ## Verifying UI changes — XCUITest first, computer-use last
@@ -39,6 +40,11 @@ library) and asserts against `accessibilityIdentifier`s.
   a nav category / pane title for live-localization.
 - Structural UI changes (a control moving panes, a section going behind a tab) will break
   existing UI tests — that is the point; fix the test in the same commit.
+- Prefer `make test-ui-changed UI_BASE=origin/main`: known presentation files
+  map to feature-level selectors, localization/shared-harness changes expand to
+  bilingual evidence, and unknown production Swift paths fail safe to the full
+  English suite. `make test-ui-en`, `test-ui-es`, and `test-ui-bilingual` remain
+  explicit full-suite gates.
 - Reach for **computer-use only as a last resort**, when XCUITest genuinely can't reach
   what you need to see (menu-bar-extra panels, a visual-only regression). Note why.
 - The seed-demo meeting deliberately carries a later turn (200 s) so the detail has a
@@ -52,3 +58,7 @@ library) and asserts against `accessibilityIdentifier`s.
 - **After any UI change, reinstall the dev app with `make install`** — it installs to `/Applications/Portavoz Dev.app`. **NEVER touch `/Applications/Portavoz.app`**: that is the user's notarized release copy (it updates only via Sparkle/Homebrew). Need real recordings or the real DB for a test? COPY them to a scratch location — never operate on the release app's live data.
 - **Every user-visible feature or fix adds one entry to [CHANGELOG.md](CHANGELOG.md)** — English, short and catchy for end users (**emoji + feature name** — what it gives you), newest first under today's date. Internal plumbing (refactors, CI, docs) gets NO entry.
 - Use Conventional Commits.
+- Keep private tracker IDs, sprint/agent names, local plans, tickets, reports,
+  generated projects, result bundles, and ad-hoc screenshots out of tracked
+  files. `scripts/check-repository-hygiene.sh` enforces this. Durable accepted
+  project truth under `docs/` is intentionally tracked and is not scratch.

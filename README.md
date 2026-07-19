@@ -284,7 +284,11 @@ feature-parity migration also proves capture, updates, and automation.
 
 ## Contributing
 
-Issues are the most valuable contribution right now — use cases, platform quirks, model recommendations. See [CONTRIBUTING.md](CONTRIBUTING.md). Privacy is non-negotiable and we are MIT-licensed (no GPL code ports).
+Issues are the most valuable contribution right now — use cases, platform
+quirks, model recommendations. Start with [CONTRIBUTING.md](CONTRIBUTING.md),
+follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report vulnerabilities
+through the private process in [SECURITY.md](SECURITY.md). Privacy is
+non-negotiable and we are MIT-licensed (no GPL code ports).
 
 ## License
 

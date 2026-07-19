@@ -4,7 +4,10 @@ Portavoz is a privacy-first application; security reports are treated as top pri
 
 ## Reporting a vulnerability
 
-Please **do not** open a public issue for security problems. Email `security@portavoz.app` with details and reproduction steps. You will get an acknowledgment within 72 hours.
+Please **do not** open a public issue for security problems. Use GitHub's
+[private vulnerability reporting](https://github.com/johnny4young/portavoz/security/advisories/new)
+or email `security@portavoz.app` with details and reproduction steps. You will
+get an acknowledgment within 72 hours.
 
 ## Design commitments
 

@@ -3527,3 +3527,36 @@ baseline. Fail-closed handling for every error outside `EINVAL`/`ENOTSUP`
 prevents compatibility from becoming a general privacy exception. This decision
 supersedes only D94/D95's unconditional metadata assumption; their encryption,
 content boundary, integrity, consent, and transport semantics remain unchanged.
+
+## D117 — Scope pull-request UI evidence without weakening release gates (Jul 2026)
+
+**Context:** the real-app XCUITest suite reached 39 cases in each locale. Running
+all 78 executions after documentation, CLI, or one isolated surface change adds
+substantial build/launch time without stronger evidence, while path-only
+workflow filters can silently skip required tests or leave required checks
+pending. The public repository also still tracked local design-sync state and
+had no executable guard against generated projects, result bundles, scratch
+plans, ticket files, or private tracker keys leaking into implementation names
+and comments.
+
+**Decision:** one versioned selector catalogs every XCUITest and maps known
+production paths to feature-level evidence. Localization and shared-harness
+changes expand to bilingual canaries, an unknown production Swift path falls
+back to the complete English suite, and non-product changes allocate no macOS
+UI runner. The runner builds once and reuses the same test products for every
+selected locale. The complete English and Spanish suites remain mandatory for
+release and architecture closure. CI validates the catalog on every change and
+publishes scoped xcresult evidence when UI execution is selected.
+
+Local agent/design-sync state, scratch planning, tickets, reports, generated
+projects, result bundles, and ad-hoc screenshots are ignored and rejected if
+tracked. Implementation, tests, tooling, and workflows reject private tracker-
+key patterns. Accepted architecture decisions, as-built specs, roadmap truth,
+and the executable refactor plan under `docs/` remain intentionally tracked;
+they are public durable project knowledge rather than local execution scratch.
+
+**Rationale:** risk-based selection removes redundant launches while preserving
+a conservative fallback and an explicit full bilingual gate. Keeping the scope
+catalog executable prevents undocumented tests from becoming invisible.
+Separating durable project truth from local work state leaves the public tree
+clean without severing code from the decisions that explain it.

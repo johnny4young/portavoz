@@ -13,7 +13,18 @@ vertical use case. The next independent release gate is real production
 CloudKit container/profile/account validation and two-Mac convergence. The iOS
 in-person recorder shell remains deferred in `docs/IOS.md`, and audio remains
 outside sync. All released v0.6.0 behavior remains covered by package and
-bilingual UI gates (D33–D116).
+bilingual UI gates (D33–D117).
+
+- **Open-source contribution gates are risk-scoped and supply-chain hardened
+  (Jul 19, 2026):** every XCUITest belongs to an executable feature scope;
+  known PR diffs run only relevant selectors, localization/shared-harness work
+  expands bilingually, unknown production Swift falls back to the full English
+  suite, and release closure retains all 39 cases in both locales. One build is
+  reused across locales. CI also rejects tracked local agent/design-sync,
+  planning/ticket/report, generated-project, result-bundle, and screenshot
+  state plus private tracker keys in implementation files. GitHub Actions use
+  immutable SHAs, dependency updates are grouped, and public governance adds
+  ownership, conduct, private reporting, and least-privilege workflows (D117).
 
 - **The macOS dependency and presentation boundaries are executable truth
   (Jul 18, 2026):** the complete SwiftPM production graph now has one exact
@@ -1198,7 +1209,7 @@ The phase where the user feels that **native is worth it**. Reordered after anal
 
 | Milestone | Scope | Acceptance criterion |
 |---|---|---|
-| **M9 — Release + OSS growth** | **Released (Jul 10, 2026)**: public repository, v0.1.0 GitHub release, signed/notarized/stapled DMG, Sparkle appcast, Homebrew cask, reproducible README benchmarks, strict SwiftLint CI, issue/PR templates, SECURITY.md, and EN/ES localization. Later releases through v0.6.0 continue the same distribution path | ✅ `brew install --cask portavoz`; benchmarks reproducible from the README |
+| **M9 — Release + OSS growth** | **Released (Jul 10, 2026), hardened through D117:** public repository, signed/notarized/stapled DMG, Sparkle appcast, Homebrew cask, reproducible benchmarks, strict CI, immutable Actions, grouped Dependabot updates, scoped UI evidence, repository-hygiene enforcement, issue/PR templates, CODEOWNERS, Code of Conduct, private vulnerability reporting, SECURITY.md, and EN/ES localization. Releases through v0.6.0 retain the same distribution path | ✅ `brew install --cask portavoz`; benchmarks reproducible from the README |
 | **M10 — Co-authored notes (D28)** | **Implemented (Jul 2026)**: ContextItem in Core, v3 table, notes→prompt weaving with the 3B model's budget, "▸" co-authorship convention, `addContextNote()` + persistence + regenerate; **notes panel during recording** (TextField + timestamped list with remove, right column) and **co-authorship rendering** in detail ("▸" bullets with a Granola-style accent mark). Remaining: field verification (5 real notes → a summary that expands them) | A meeting with 5 raw notes produces a summary that expands them without contradicting them, with co-authorship marks |
 | **M11 — Audio first-class (D27)** | **Complete (Jul 2026)**: AudioPlaybackKit with synchronized player (Spotify-style carousel transcript in detail and recording), waveform colored by channel, clips (in/out → m4a < 2 s), **skip silence**, **AAC transcode** ("Comprimir audio"), and **import** (button + drag-and-drop → transcribe/diarize/summarize). Crash safety (CAF) already resolved (T1). Covered by XCUITest (D30) | Play any meeting with synchronized highlighting ✅; a `kill -9` at 30 min loses no more than 1 s of audio ✅ (CAF); 30 s clip exported in < 2 s ✅ |
 | **M12 — Multiple engines (D25)** | **Implemented (Jul 2026): (1) summary cache by fingerprint + translation pivot; (2) BYOK with key in Keychain; (3) SpeechAnalyzer benchmarked in the live role vs. Parakeet (spec 02); (4) first-class Ollama as a summary engine (Settings detects + lists models and summarizes 100% locally without a key — closes GAPS #7, verified E2E with gpt-oss:20b); (5) hardware recommender; (6) compact 626 MB Whisper variant for low disk space; (7) per-meeting engine+language override.** **(8) Embedded MLX (D32): Apache-2.0 sha256-pinned Qwen3.5-4B 4-bit (~3 GB), in-process `MLXSummaryProvider` through the GPU, "Built-in (MLX)" option in Settings with verified download/remove, and the recommender suggests it without Apple Intelligence or Ollama (RAM ≥ 8 GB).** Remaining: coalescer append-vs-replace decision (SpeechAnalyzer, requires field verification) | A Mac without Apple Intelligence produces a 100% local summary (through guided Ollama or MLX); hardware recommendation is correct; `bench` compares engines |
