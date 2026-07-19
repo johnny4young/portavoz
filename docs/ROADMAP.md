@@ -38,10 +38,11 @@ bilingual UI gates (D33–D115).
   sibling and atomically rename into place, avoiding the macOS 26.4 combined
   atomic/file-protection failure without exposing partial bytes. The Sequoia
   compiler path also keeps recovery comparisons and exact Refine fingerprint
-  assembly bounded without changing operation identity. The verified baseline
-  is 971 package tests with 13 gated, strict lint is clean across 344 Swift
-  source files, and the privacy receipt remains covered by the bilingual
-  Meeting Detail smoke (D115).
+  assembly bounded without changing operation identity, and disambiguates the
+  fixed vertical transcript viewport across supported SwiftUI SDK signatures.
+  The verified baseline is 971 package tests with 13 gated, strict lint is
+  clean across 344 Swift source files, and the privacy receipt remains covered
+  by the bilingual Meeting Detail smoke (D115).
 
 - **Local-model readiness has one verified lifecycle (Jul 18, 2026):**
   `ModelStoreKit.VerifiedModelLifecycle` coalesces complete catalog checks,

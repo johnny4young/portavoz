@@ -27,7 +27,7 @@ struct FocusedTranscriptView<Row: View>: View {
         let focusY = anchor.y * height
         let reach = max(focusY, height - focusY, 1)
         return ScrollViewReader { proxy in
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 6) {
                     ForEach(segments) { segment in
                         row(segment, segment.id == activeID)
@@ -58,7 +58,6 @@ struct FocusedTranscriptView<Row: View>: View {
             }
             .coordinateSpace(.named(space))
             .frame(height: height)
-            .scrollIndicators(.hidden)
             .onChange(of: activeID) { _, id in recenter(proxy, id) }
             .onChange(of: followSignal) { _, _ in recenter(proxy, activeID) }
             .onAppear { recenter(proxy, activeID, animated: false) }

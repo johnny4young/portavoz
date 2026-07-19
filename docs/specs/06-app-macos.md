@@ -803,8 +803,10 @@ exercises this same production path in the durable-resume XCUITest (D63).
 **Audio-first Meeting Detail:** the synchronized player drives the
 **Spotify-style lyrics transcript** (`FocusedTranscriptView`: the spoken line
 stays centered in a fixed-height viewport while surrounding lines fade,
-shrink, and blur), click-to-jump, the channel-colored waveform scrubber, clip
-marks, skip-silence, and microphone-only playback. `MeetingDetailModel` owns
+shrink, and blur; its explicit vertical/no-indicator initializer preserves the
+same behavior across the supported Sequoia and latest SwiftUI SDK signatures),
+click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
+and microphone-only playback. `MeetingDetailModel` owns
 one playback-preparation attempt per recording directory, cancellation retry,
 compression state, session invalidation, and clip-export effects.
 `ApplicationKit.PrepareMeetingPlayback` resolves current channels through an

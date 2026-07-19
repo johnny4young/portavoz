@@ -1123,7 +1123,10 @@ The same supported Sequoia lane compiles recovery comparisons and exact Refine
 fingerprint composition as bounded, explicitly typed steps. Existing operation-
 fingerprint characterization pins the canonical digest and proves that this
 compiler compatibility shape does not change channel-order stability or
-material, revision, and language sensitivity.
+material, revision, and language sensitivity. The same lane compiles the
+focused transcript with an explicit vertical/no-indicator `ScrollView`
+signature, while the bilingual Meeting Detail smoke exercises the unchanged
+fixed viewport, active transcript, and player behavior.
 
 Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
 
