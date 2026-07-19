@@ -1734,11 +1734,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(codec.contains("record.encryptedValues[Field.inlinePayload]"))
         XCTAssertTrue(codec.contains("CKAsset(fileURL: assetURL)"))
         XCTAssertTrue(codec.contains("CloudSyncProtectedFile.write"))
+        XCTAssertTrue(protectedFile.contains("struct PublicationCapabilities"))
+        XCTAssertTrue(protectedFile.contains("publicationCapabilities(in: directory)"))
         XCTAssertTrue(protectedFile.contains("FileProtectionType.complete"))
+        XCTAssertTrue(protectedFile.contains(".posixPermissions: 0o600"))
         XCTAssertTrue(protectedFile.contains("Darwin.write"))
         XCTAssertTrue(protectedFile.contains("Darwin.fsync"))
         XCTAssertFalse(protectedFile.contains("FileHandle"))
         XCTAssertTrue(protectedFile.contains("Darwin.rename"))
+        XCTAssertTrue(protectedFile.contains("catch where isUnsupportedMetadataError(error)"))
+        XCTAssertTrue(protectedFile.contains("NSUnderlyingErrorKey"))
+        XCTAssertTrue(protectedFile.contains("Int(EINVAL)"))
+        XCTAssertTrue(protectedFile.contains("Int(ENOTSUP)"))
+        XCTAssertTrue(protectedFile.contains("!capabilities.completeProtection"))
+        XCTAssertTrue(protectedFile.contains("!capabilities.backupExclusion"))
         let protection = try XCTUnwrap(protectedFile.range(of: ".protectionKey"))
         let contentWrite = try XCTUnwrap(protectedFile.range(of: "try write(data"))
         XCTAssertLessThan(protection.lowerBound, contentWrite.lowerBound)
@@ -1747,6 +1756,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(codec.contains("recordIDsToDelete"))
         XCTAssertFalse(storage.contains(where: { $0.module == "CloudKit" }))
         XCTAssertTrue(decisions.contains("## D94"))
+        XCTAssertTrue(decisions.contains("## D116"))
     }
 
     func testCloudMeetingTransportStateStaysDurableAccountScopedAndDomainFree() throws {
@@ -1792,6 +1802,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(cloudTransport.contains("CKContainer("))
         XCTAssertFalse(storageImports.contains(where: { $0.module == "CloudKit" }))
         XCTAssertTrue(decisions.contains("## D95"))
+        XCTAssertTrue(decisions.contains("## D116"))
     }
 
     func testCloudSyncLifecycleKeepsConsentStatusAndUserActionsOutsideViews() throws {

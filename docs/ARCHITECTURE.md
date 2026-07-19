@@ -680,12 +680,16 @@ and Portavoz cannot inspect that account setting.
 
 IntegrationsKit encodes deterministic text-first envelopes and maps them to one
 private-zone record per meeting. Small payloads use encrypted record values;
-large payloads use complete-protection, backup-excluded CKAsset staging files.
-One POSIX descriptor creates a private `0600` sibling. Complete protection and
-backup exclusion are applied while that sibling is empty; the same descriptor
-then writes the transport bytes and synchronizes them with `fsync` without a
-Foundation reopen. Size and protection are verified before one same-volume
-atomic rename, so partial or unprotected content never occupies any path.
+large payloads use private CKAsset staging files. Content-free `0600` probes in
+the destination directory test complete-protection and backup-exclusion
+metadata independently. When supported, that metadata is applied while the
+staging sibling is empty and verified before publication. Only `EINVAL` or
+`ENOTSUP` marks one metadata capability unavailable; every other application or
+verification failure fails closed. Regardless of optional metadata support,
+one POSIX descriptor creates and writes a private `0600` sibling, handles
+partial writes and `EINTR`, synchronizes with `fsync`, and closes without a
+Foundation reopen. Size and owner-only permissions are always verified before
+one same-volume atomic rename, so partial content never occupies the final path.
 Deletion is an encrypted tombstone, not a physical record deletion.
 
 Transport state is separate from the meeting database and includes hashed
@@ -861,7 +865,7 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 971 package tests pass, with 13 real-model/environment cases gated;
+- 972 package tests pass, with 13 real-model/environment cases gated;
 - strict SwiftLint reports zero violations across 344 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - deterministic UI runs use the real application with disposable storage and

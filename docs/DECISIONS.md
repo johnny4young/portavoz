@@ -2646,15 +2646,21 @@ later sender can use CloudKit's change-tag conflict detection.
 private custom `PortavozMeetings` zone. Its deterministic record name contains
 only the meeting UUID. Payloads up to the codec's conservative 512 KiB policy
 use `CKRecord.encryptedValues`; larger payloads use one `CKAsset`, which
-CloudKit encrypts by default. Asset staging uses a unique local file, complete
-file protection, and backup exclusion. Bytes enter an empty protected sibling,
+CloudKit encrypts by default. Asset staging uses a unique owner-only local file
+and, under D116, applies complete protection and backup exclusion when the
+destination filesystem supports them. Bytes enter an empty private sibling,
 are synchronized, and publish through one same-volume atomic rename; the final
-path therefore never contains partial or unprotected meeting content. The
+path therefore never contains partial meeting content. The
 payload SHA-256 is also an encrypted
 field. Only format version, payload-storage selector, record type/identity, and
 the asset field itself remain outside `encryptedValues`; no transcript,
 summary, title, speaker, source-device, generation, or digest value is exposed
 as a regular queryable field.
+
+D116 refines only the local staging guarantee on filesystems that reject one of
+those metadata keys: complete protection and backup exclusion remain mandatory
+when supported, while owner-only durable atomic publication remains mandatory
+everywhere.
 
 The codec accepts an existing record only when its type, zone, and deterministic
 identity match, so later sends can retain CloudKit system fields/change tags.
@@ -2686,7 +2692,7 @@ would mix replaceable Apple transport metadata with the portable mutation
 authority and risk storing transcript content in ordinary JSON.
 
 **Decision:** IntegrationsKit owns a separate `CloudMeetingSyncStateStore`.
-Its complete-protection, backup-excluded JSON snapshot contains only hashed
+Its owner-only, capability-protected JSON snapshot contains only hashed
 account scope/consent, explicit initial-seed state, Apple's opaque
 `CKSyncEngine.State.Serialization`, CKRecord system fields, exact outgoing
 generation/digest/file metadata, retry clocks/categories, deferred-replay
@@ -2695,6 +2701,10 @@ and deferred envelope bytes live in separately protected `0600` files and are
 validated against identity, byte count, digest, and deterministic filename on
 open. Snapshot mutations roll back if persistence fails; orphaned payload files
 are removed on restart.
+
+D116 applies the same destination-capability rule to this transport state;
+unsupported metadata never weakens its `0600`, synchronization, integrity, or
+atomic-publication requirements.
 
 Consent is explicit and bound to a SHA-256 fingerprint of the current-user
 record name. Sign-out and temporary account loss pause delivery without erasing
@@ -3479,3 +3489,41 @@ two facts remain separate because HTTP egress attempts and private account sync
 have different consent, transport, and failure semantics. Conservative
 encryption wording preserves the local-first trust contract for both standard
 iCloud protection and optional Advanced Data Protection.
+
+## D116 — Probe filesystem metadata without weakening atomic publication (Jul 2026)
+
+**Context:** the private CloudKit asset and transport-state writer originally
+required Foundation's complete-protection and backup-exclusion metadata on
+every destination. Supported macOS 15 and current GitHub runners can expose
+temporary filesystems that reject either metadata operation with `EINVAL`, even
+though private POSIX files, durable writes, and same-volume atomic rename work
+normally. Treating this exact lack of filesystem capability as a total sync
+failure made every CloudKit persistence path unusable on those hosts. Ignoring
+arbitrary metadata errors would instead hide real permission, corruption, or
+publication failures.
+
+**Decision:** before writing content, `CloudSyncProtectedFile` creates separate
+empty `0600` probes in the actual destination directory for complete protection
+and backup exclusion. Each probe applies and reads back its metadata. Only a
+direct or Foundation-wrapped POSIX `EINVAL` or `ENOTSUP` means that specific
+metadata capability is unavailable; a successful write without matching
+read-back and every other error fail closed. Probe files contain no meeting
+bytes and are removed with POSIX `unlink`.
+
+Every publication still creates one unique same-directory sibling with owner-
+only `0600` permissions. Supported protection and backup metadata are applied
+and verified while that sibling is empty. One POSIX descriptor then handles
+partial writes and `EINTR`, calls `fsync`, closes, and verifies exact byte count
+plus permissions before one same-volume atomic rename. An unsupported metadata
+key omits only that key; it cannot disable private permissions, durability,
+integrity verification, cleanup, or atomic publication. There is no CI, OS-
+version, or environment-variable bypass.
+
+**Rationale:** the destination filesystem, not the process label, is the source
+of truth for metadata support. Narrow capability detection keeps Portavoz usable
+across its supported macOS range while applying the strongest available
+filesystem metadata and preserving a non-negotiable owner-only durable atomic
+baseline. Fail-closed handling for every error outside `EINVAL`/`ENOTSUP`
+prevents compatibility from becoming a general privacy exception. This decision
+supersedes only D94/D95's unconditional metadata assumption; their encryption,
+content boundary, integrity, consent, and transport semantics remain unchanged.

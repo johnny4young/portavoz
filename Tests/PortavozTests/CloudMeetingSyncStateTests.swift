@@ -1,6 +1,6 @@
 import CloudKit
 import Foundation
-import IntegrationsKit
+@testable import IntegrationsKit
 import PortavozCore
 import StorageKit
 import XCTest
@@ -347,7 +347,9 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         let rootNames = try FileManager.default.contentsOfDirectory(atPath: root.path)
         let payloadNames = try FileManager.default.contentsOfDirectory(
             atPath: root.appendingPathComponent("payloads").path)
-        XCTAssertFalse((rootNames + payloadNames).contains { $0.hasSuffix(".staging") })
+        XCTAssertFalse((rootNames + payloadNames).contains {
+            $0.hasSuffix(".staging") || $0.hasPrefix(".portavoz-metadata-probe.")
+        })
     }
 
     func testRetryPolicyIsDeterministicAndBounded() {
@@ -381,19 +383,27 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         line: UInt = #line
     ) throws {
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        let capabilities = try CloudSyncProtectedFile.publicationCapabilities(
+            in: url.deletingLastPathComponent())
         let permissions = try XCTUnwrap(
             attributes[.posixPermissions] as? NSNumber,
             file: file,
             line: line)
+        let isExcludedFromBackup: Bool? = if capabilities.backupExclusion {
+            try url.resourceValues(
+                forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup
+        } else {
+            nil
+        }
         XCTAssertEqual(permissions.intValue & 0o777, 0o600, file: file, line: line)
-        XCTAssertEqual(
-            attributes[.protectionKey] as? FileProtectionType,
-            .complete,
+        XCTAssertTrue(
+            !capabilities.completeProtection
+                || attributes[.protectionKey] as? FileProtectionType == .complete,
             file: file,
             line: line)
-        XCTAssertEqual(
-            try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup,
-            true,
+        XCTAssertTrue(
+            !capabilities.backupExclusion
+                || isExcludedFromBackup == true,
             file: file,
             line: line)
     }

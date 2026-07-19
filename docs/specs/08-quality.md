@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 971 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
+Status: 972 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, and **SwiftLint `--strict`**). The latest full English
@@ -27,8 +27,8 @@ documented below.
 | ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Companion evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, local diagnostics/signpost redaction, and measured scale source/evidence gates |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, explicit live/deleted initial seed, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
 | MeetingSyncAggregateTests | Exact-current-generation envelope, deterministic codec, idempotent full-history replay, millisecond-tied summary-version ordering, device-local path/person/embedding preservation, trigger-echo suppression, deferred live/live local-pending conflict, recoverable privacy-dominant remote deletion, invalid-relation rollback, and immutable summary-root/child collision rejection |
-| CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, protected backup-excluded CKAsset fallback, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
-| CloudMeetingSyncStateTests | Content-free snapshot validation, account-scoped consent and explicit seed state, account loss/switch semantics, exact-generation attempts, bounded retries, protected payload integrity, replay cursors, restart cleanup, and atomic persistence rollback |
+| CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, capability-probed private CKAsset fallback, exact `EINVAL`/`ENOTSUP` metadata downgrade classification, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
+| CloudMeetingSyncStateTests | Content-free snapshot validation, account-scoped consent and explicit seed state, account loss/switch semantics, exact-generation attempts, bounded retries, capability-aware private payload integrity, replay cursors, restart cleanup, and atomic persistence rollback |
 | CloudKitMeetingSyncPlatformTests | Exact signed container/service/environment/push/profile admission, supported development signing values, and fail-closed missing or invalid restricted capabilities without creating a container |
 | MeetingSyncModelTests | Zero-observer local-only launch, explicit enable wakeup arming, journal burst coalescing, account-loss disarm, pause, silent-push/manual-cycle parity, FIFO preservation during suspended lifecycle work, and continued draining after an earlier action makes a queued sync inapplicable |
 | CloudMeetingSyncCoordinatorTests | Initial-seed drain, independent partial outcomes, authenticated fetched replay and durable deferral, physical-delete metadata handling, server-tombstone settlement, split-persistence reconstruction, and stale N/N+1 save re-admission |
@@ -1113,14 +1113,18 @@ gated), with strict lint still clean across 343 Swift source files.
 Private-iCloud receipt hardening adds one protected-publication persistence
 case, one support-status characterization, stronger asset-protection assertions,
 and an architecture ratchet for the single publication primitive. Together they
-prove one POSIX descriptor creates each private `0600` sibling, complete
-protection and backup exclusion precede content, and that same descriptor
-writes and synchronizes the bytes with `fsync`. The primitive verifies the
-complete file, publishes through one same-volume rename, leaves no staging
+prove content-free destination probes independently apply and read back complete
+protection and backup exclusion. An added classifier case proves only direct or
+Foundation-wrapped `EINVAL`/`ENOTSUP` can omit an unavailable metadata key;
+permission and verification failures remain closed. One POSIX descriptor still
+creates each private `0600` sibling, applies supported metadata before content,
+handles partial writes and `EINTR`, and synchronizes the bytes with `fsync`.
+The primitive always verifies exact size and owner-only permissions, verifies
+supported metadata, publishes through one same-volume rename, leaves no staging
 artifacts, and does not contradict an acknowledged cloud copy with an all-
 content-local status. Architecture coverage rejects reintroducing `FileHandle`
-into that primitive. The current full gate is 971 package tests
-(13 gated), with strict lint clean across 344 Swift source files (D115).
+or a broad compatibility bypass. The current full gate is 972 package tests
+(13 gated), with strict lint clean across 344 Swift source files (D115/D116).
 
 The same supported Sequoia lane compiles recovery comparisons and exact Refine
 fingerprint composition as bounded, explicitly typed steps. Existing operation-

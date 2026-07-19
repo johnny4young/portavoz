@@ -1,6 +1,6 @@
 import CloudKit
 import Foundation
-import IntegrationsKit
+@testable import IntegrationsKit
 import PortavozCore
 import StorageKit
 import XCTest
@@ -35,21 +35,46 @@ final class CloudMeetingRecordCodecTests: XCTestCase {
         let encoded = try codec.encode(envelope, assetDirectory: directory)
 
         let assetURL = try XCTUnwrap(encoded.assetURL)
+        let capabilities = try CloudSyncProtectedFile.publicationCapabilities(in: directory)
         XCTAssertTrue(FileManager.default.fileExists(atPath: assetURL.path))
-        XCTAssertTrue(try assetURL.resourceValues(
-            forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        let isExcludedFromBackup: Bool? = if capabilities.backupExclusion {
+            try assetURL.resourceValues(
+                forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup
+        } else {
+            nil
+        }
+        XCTAssertTrue(
+            !capabilities.backupExclusion || isExcludedFromBackup == true)
         let permissions = try XCTUnwrap(
             FileManager.default.attributesOfItem(atPath: assetURL.path)[.posixPermissions]
                 as? NSNumber)
         XCTAssertEqual(permissions.intValue & 0o777, 0o600)
-        XCTAssertEqual(
-            try FileManager.default.attributesOfItem(atPath: assetURL.path)[.protectionKey]
-                as? FileProtectionType,
-            .complete)
+        let protection = try FileManager.default.attributesOfItem(
+            atPath: assetURL.path)[.protectionKey] as? FileProtectionType
+        XCTAssertTrue(!capabilities.completeProtection || protection == .complete)
         XCTAssertTrue(encoded.record.allKeys().contains("payloadAsset"))
         XCTAssertFalse(encoded.record.encryptedValues.allKeys().contains("payload"))
         let decoded = try codec.decode(encoded.record)
         assertEquivalent(decoded, envelope)
+    }
+
+    func testProtectedPublicationDowngradesOnlyUnsupportedMetadataErrors() {
+        let unsupported = NSError(domain: NSPOSIXErrorDomain, code: Int(EINVAL))
+        let wrappedUnsupported = NSError(
+            domain: NSCocoaErrorDomain,
+            code: CocoaError.fileWriteUnknown.rawValue,
+            userInfo: [
+                NSUnderlyingErrorKey: NSError(
+                    domain: NSPOSIXErrorDomain,
+                    code: Int(ENOTSUP))
+            ])
+        let denied = NSError(domain: NSPOSIXErrorDomain, code: Int(EACCES))
+
+        XCTAssertTrue(CloudSyncProtectedFile.isUnsupportedMetadataError(unsupported))
+        XCTAssertTrue(CloudSyncProtectedFile.isUnsupportedMetadataError(wrappedUnsupported))
+        XCTAssertFalse(CloudSyncProtectedFile.isUnsupportedMetadataError(denied))
+        XCTAssertFalse(
+            CloudSyncProtectedFile.isUnsupportedMetadataError(CocoaError(.fileWriteUnknown)))
     }
 
     func testChecksumRejectsTamperedInlinePayload() throws {
