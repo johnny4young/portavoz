@@ -92,7 +92,12 @@ final class SettingsUITests: XCTestCase {
                 && !downloadFrame.isEmpty
                 && downloadFrame.intersects(visibleFormFrame)
         }
-        for _ in 0..<12 where !downloadIsVisible() {
+        // GitHub's macOS runner exposes a 760x650 Settings viewport, so the
+        // Whisper action starts farther below the fold than on a developer Mac.
+        for _ in 0..<24 {
+            if downloadIsVisible() {
+                break
+            }
             settingsForm.scroll(byDeltaX: 0, deltaY: -6)
         }
         XCTAssertTrue(
