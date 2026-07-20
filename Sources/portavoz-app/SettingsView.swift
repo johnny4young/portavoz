@@ -590,7 +590,7 @@ extension SettingsView {
             voiceEnrollmentDate = voiceprint.createdAt
             voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
         } catch {
-            voiceMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
+            voiceMessage = L10n.format("Could not enroll: %@", UseCaseErrorMessages.describe(error))
         }
     }
 

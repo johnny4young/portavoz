@@ -161,12 +161,25 @@ public enum InsightsUpdate: Sendable {
     case failed(InsightsSection)
 }
 
+/// Language-dependent tokens for the content-free Insights heuristics, in one
+/// place on purpose: the product ships bilingual EN+ES summaries (D34), and
+/// supporting another UI language extends these lists here instead of hunting
+/// string literals across the reducer.
+private enum InsightsLexicon {
+    /// Self-referential speaker labels excluded from recurring-topic
+    /// candidates ("me" EN, "yo" ES).
+    static let selfNames: Set<String> = ["me", "yo"]
+    /// Lowercased heading fragment shared by the English and Spanish words
+    /// for decision(s), so one probe covers both catalog languages.
+    static let decisionHeadingFragment = "decis"
+}
+
 private extension InsightsReadModel {
     static func participantNames(
         facts: InsightsLibraryFacts?,
         balance: InsightsVoiceBalance?
     ) -> Set<String> {
-        var names: Set<String> = ["me", "yo"]
+        var names = InsightsLexicon.selfNames
         for person in balance?.participants ?? [] {
             names.insert(person.name.lowercased())
         }
@@ -180,7 +193,8 @@ private extension InsightsReadModel {
         guard let markdown else { return false }
         return SummarySections.parse(markdown).sections.contains { section in
             section.bulletCount > 0
-                && section.heading.lowercased().contains("decis")
+                && section.heading.lowercased()
+                    .contains(InsightsLexicon.decisionHeadingFragment)
         }
     }
 }

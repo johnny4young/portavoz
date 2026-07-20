@@ -37,7 +37,7 @@ decisions, these as-built specs, and the explicit unresolved gaps (D119).
 ## Repository rules (for agents)
 
 - Strict Swift 6; the implemented dependency graph and its enforced exceptions are documented exactly in `ARCHITECTURE.md`.
-- MIT; never port GPL code (Meetily in `../meetily` and MacParakeet are ONLY pattern references).
+- MIT; never port GPL code. Sibling reference projects are pattern references ONLY — never copy their code.
 - Keep `swift test` green before closing any task (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test`).
 - Conventional Commits. Models are always pinned by sha256 (D15).
 - All explanatory project documentation under `docs/` is English (D34). Literal localized UI copy and bilingual language-quality fixtures may remain quoted as evidence.

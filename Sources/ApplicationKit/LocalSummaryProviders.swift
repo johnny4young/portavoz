@@ -170,6 +170,12 @@ public enum LocalSummaryProviderPolicy {
             preferCompactWhisper: lowDisk)
     }
 
+    /// Deny-list by name marker instead of asking Ollama per model: discovery
+    /// runs on every Settings visit and `/api/show` would cost one round-trip
+    /// per installed model, while `/api/tags` carries no capability field.
+    /// Unknown names stay eligible on purpose — a future chat model works
+    /// without a code change, and a miscategorized pick fails visibly at
+    /// generation instead of being silently hidden here.
     public static func isEligibleOllamaSummaryModel(_ name: String) -> Bool {
         let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()

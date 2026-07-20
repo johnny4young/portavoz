@@ -644,7 +644,7 @@ private extension MeetingDetailModel {
         } catch {
             return .operationFailed(L10n.format(
                 "Could not remember the voice: %@",
-                error.localizedDescription))
+                UseCaseErrorMessages.describe(error)))
         }
     }
 }

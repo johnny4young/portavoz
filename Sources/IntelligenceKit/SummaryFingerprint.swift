@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import PortavozCore
 
-/// Identity of a summary's MATERIAL and method (D25 — Meetily's cache
+/// Identity of a summary's MATERIAL and method (D25 cache-by-material
 /// pattern): transcript + user notes + glossary + recipe + provider +
 /// prompt version, deliberately EXCLUDING the output language. Same
 /// fingerprint + same language stored → regenerating is free (greedy

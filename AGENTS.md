@@ -63,5 +63,6 @@ library) and asserts against `accessibilityIdentifier`s.
 - Keep private tracker IDs, sprint/agent names, local plans, tickets, reports,
   generated projects, result bundles, and ad-hoc screenshots out of tracked
   files. `scripts/check-repository-hygiene.sh` enforces this. Durable accepted
-  project truth under `docs/` is tracked; `docs/ROADMAP.md` and
-  `docs/refactor-20260714.md` are explicit local-only planning files.
+  project truth under `docs/` is tracked; `docs/ROADMAP.md`,
+  `docs/refactor-20260714.md`, and `docs/STRATEGY-20260716.md` are explicit
+  local-only planning files.

@@ -6,7 +6,7 @@ cd "$ROOT"
 
 failures=0
 
-forbidden_tracked='^(\.agents|\.claude|\.codex|\.design-sync|\.planning|\.tickets|plans|tickets|docs/plans|docs/tickets|artifacts|screenshots|test-results)/|^docs/(ROADMAP\.md|refactor-20260714\.md)$|(^|/)(DerivedData|xcuserdata)/|\.xcodeproj/|\.xcresult/|\.profraw$|\.profdata$|\.xcactivitylog$'
+forbidden_tracked='^(\.agents|\.claude|\.codex|\.design-sync|\.planning|\.tickets|plans|tickets|docs/plans|docs/tickets|artifacts|screenshots|test-results)/|^docs/(ROADMAP\.md|refactor-20260714\.md|STRATEGY-20260716\.md)$|(^|/)(DerivedData|xcuserdata)/|\.xcodeproj/|\.xcresult/|\.profraw$|\.profdata$|\.xcactivitylog$'
 tracked_forbidden="$(git ls-files | grep -E "$forbidden_tracked" || true)"
 if [[ -n "$tracked_forbidden" ]]; then
   echo "Ephemeral/generated files must not be tracked:" >&2
@@ -57,6 +57,7 @@ ignore_probes=(
   docs/tickets/LOCAL-123.md
   docs/ROADMAP.md
   docs/refactor-20260714.md
+  docs/STRATEGY-20260716.md
   PLAN.md
   TODO.md
   HANDOFF.md

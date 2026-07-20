@@ -279,6 +279,10 @@ public struct ManageLocalModels: ApplicationUseCase {
             }
             return .inspected(reports)
         case .download:
+            // A failed install throws out of the loop on purpose: each model
+            // is verified atomically (sha256 + proven loadable) by the store,
+            // already-installed models remain usable, and the caller renders
+            // the failure instead of a silently partial "installed" result.
             var installed: [LocalModelDescriptor] = []
             installed.reserveCapacity(models.catalog.count)
             for descriptor in models.catalog {

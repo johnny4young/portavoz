@@ -355,7 +355,7 @@ struct OnboardingView: View {
                 }
                 enrolled = true
             } catch {
-                enrollMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
+                enrollMessage = L10n.format("Could not enroll: %@", UseCaseErrorMessages.describe(error))
             }
         }
     }

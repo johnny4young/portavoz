@@ -1741,7 +1741,7 @@ extension MeetingDetailView {
                 actionError = L10n.text(
                     "The transcript changed while you reviewed this draft. Run refine again.")
             } catch {
-                actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
+                actionError = L10n.format("Could not apply refine: %@", UseCaseErrorMessages.describe(error))
             }
         }
     }

@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 19, 2026
+
+- **🌐 Errors that speak your language** — Voice enrollment, remember-voice, refine, and export failures now explain themselves in the app's selected language instead of falling back to English developer text.
+
 ## July 18, 2026
 
 - **🧾 A privacy receipt that also counts iCloud** — The meeting privacy receipt now discloses when your encrypted private-iCloud copy exists: once iCloud confirms storing a meeting's text, the receipt says so permanently instead of claiming everything stayed on this Mac.

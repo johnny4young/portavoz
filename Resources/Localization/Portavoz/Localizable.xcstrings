@@ -6960,6 +6960,96 @@
           }
         }
       }
+    },
+    "This voice enrollment source is unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta fuente de registro de voz no está disponible."
+          }
+        }
+      }
+    },
+    "Voice enrollment duration must be between 1 and 60 seconds.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La duración del registro de voz debe estar entre 1 y 60 segundos."
+          }
+        }
+      }
+    },
+    "The voice sample is too short or invalid.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La muestra de voz es demasiado corta o inválida."
+          }
+        }
+      }
+    },
+    "The meeting no longer exists.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión ya no existe."
+          }
+        }
+      }
+    },
+    "Choose a named participant before remembering their voice.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un participante con nombre antes de recordar su voz."
+          }
+        }
+      }
+    },
+    "The finalized capture audio is no longer available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio finalizado de la captura ya no está disponible."
+          }
+        }
+      }
+    },
+    "This meeting has no stored audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta reunión no tiene audio guardado."
+          }
+        }
+      }
+    },
+    "The meeting does not exist or has no summary.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión no existe o no tiene resumen."
+          }
+        }
+      }
+    },
+    "The meeting could not be found.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró la reunión."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
