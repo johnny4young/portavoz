@@ -116,6 +116,33 @@ final class RecordingsLocationTests: XCTestCase {
         let custom = workspace.appendingPathComponent("target")
         XCTAssertEqual(try location.migrateAudio(from: defaultRoot, to: custom), 0)
     }
+
+    func testMigrateToSameRootPreservesEveryRecording() throws {
+        let recording = try makeRecording("A", under: defaultRoot)
+        var reports: [(Int, Int)] = []
+
+        let moved = try location.migrateAudio(
+            from: defaultRoot,
+            to: defaultRoot.appendingPathComponent("nested/..").standardizedFileURL
+        ) {
+            reports.append(($0, $1))
+        }
+
+        XCTAssertEqual(moved, 0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recording.path))
+        XCTAssertTrue(reports.isEmpty)
+    }
+
+    func testMigrateToSymlinkedSameRootPreservesEveryRecording() throws {
+        let recording = try makeRecording("A", under: defaultRoot)
+        let alias = workspace.appendingPathComponent("recordings-alias")
+        try FileManager.default.createSymbolicLink(
+            at: alias,
+            withDestinationURL: defaultRoot)
+
+        XCTAssertEqual(try location.migrateAudio(from: defaultRoot, to: alias), 0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: recording.path))
+    }
 }
 
 

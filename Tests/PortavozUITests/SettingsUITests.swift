@@ -5,6 +5,48 @@ import XCTest
 /// app-only language override updates SwiftUI text live.
 final class SettingsUITests: XCTestCase {
     @MainActor
+    func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.typeKey(",", modifierFlags: .command)
+        let data = app.control(withIdentifier: "settings-category-data")
+        XCTAssertTrue(data.waitForExistence(timeout: 10))
+        data.click()
+
+        let localFirstSeal = Locale.current.identifier.hasPrefix("es")
+            ? "Local primero"
+            : "Local-first"
+        let privacySeal = app.buttons["settings-privacy-seal"]
+        XCTAssertTrue(privacySeal.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            privacySeal.label.contains(localFirstSeal),
+            "the standing privacy seal must describe the opt-in architecture without an absolute all-local claim")
+
+        let meetings = app.control(withIdentifier: "settings-ledger-meetings")
+        XCTAssertTrue(meetings.waitForExistence(timeout: 10))
+        let loadedMeetings = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == '1'"),
+            object: meetings)
+        XCTAssertEqual(XCTWaiter.wait(for: [loadedMeetings], timeout: 10), .completed)
+        let audio = app.control(withIdentifier: "settings-ledger-audio")
+        XCTAssertTrue(audio.exists)
+        XCTAssertFalse((audio.value as? String)?.isEmpty ?? true)
+        XCTAssertNotEqual(audio.value as? String, "…")
+        let voices = app.control(withIdentifier: "settings-ledger-voices")
+        XCTAssertEqual(voices.value as? String, "0")
+        let network = app.control(withIdentifier: "settings-ledger-network-policy")
+        XCTAssertTrue(network.exists)
+        let expectedPolicy = Locale.current.identifier.hasPrefix("es")
+            ? "Con activación"
+            : "Opt-in"
+        XCTAssertEqual(network.value as? String, expectedPolicy)
+        attachScreenshot(of: app, named: "local-data-ledger")
+    }
+
+    @MainActor
     func testCategoryNavigationRevealsEachPane() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
@@ -16,6 +58,7 @@ final class SettingsUITests: XCTestCase {
             intelligence.waitForExistence(timeout: 10),
             "the Settings category sidebar must render (2a)")
         XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
+        XCTAssertTrue(app.control(withIdentifier: "settings-category-sync").exists)
 
         // …and picking Intelligence reveals the summary-engine picker, which
         // now lives in that pane rather than one long scroll (M12).
@@ -23,12 +66,173 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-engine-picker").waitForExistence(timeout: 5),
             "the Intelligence pane must show the summary-engine picker")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-summary-language").waitForExistence(timeout: 5),
+            "the Intelligence pane must separate summary output from spoken language")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-whisper-turbo").waitForExistence(timeout: 5),
+            "the Intelligence pane must expose the Turbo Whisper variant")
+        let whisperDownload = app.control(withIdentifier: "settings-whisper-download-turbo")
+        XCTAssertTrue(
+            whisperDownload.exists,
+            "a clean install must offer proactive Whisper preparation before Refine")
+        let settingsWindow = app.windows.containing(
+            .any,
+            identifier: "settings-whisper-turbo"
+        ).firstMatch
+        XCTAssertTrue(settingsWindow.exists)
+        // The first scroll view is the category sidebar; the second is the
+        // grouped Form that owns the model controls.
+        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
+        XCTAssertTrue(settingsForm.exists)
+        func downloadIsVisible() -> Bool {
+            let visibleFormFrame = settingsForm.frame.intersection(settingsWindow.frame)
+            let downloadFrame = whisperDownload.frame
+            return !visibleFormFrame.isEmpty
+                && !downloadFrame.isEmpty
+                && downloadFrame.intersects(visibleFormFrame)
+        }
+        // GitHub's macOS runner exposes a 760x650 Settings viewport, so the
+        // Whisper action starts farther below the fold than on a developer Mac.
+        for _ in 0..<24 {
+            if downloadIsVisible() {
+                break
+            }
+            settingsForm.scroll(byDeltaX: 0, deltaY: -6)
+        }
+        XCTAssertTrue(
+            downloadIsVisible(),
+            "the proactive Whisper action must be visible before capturing UI evidence")
+        let attachment = XCTAttachment(screenshot: settingsWindow.screenshot())
+        attachment.name = "sequoia-whisper-background-settings"
+        attachment.lifetime = .keepAlways
+        add(attachment)
 
         // Your data shows the export action.
         app.control(withIdentifier: "settings-category-data").click()
         XCTAssertTrue(
             app.buttons["settings-export-all-button"].waitForExistence(timeout: 5),
             "the Your-data pane must show the export-all action")
+        XCTAssertTrue(
+            app.buttons["settings-recordings-change"].waitForExistence(timeout: 5),
+            "recording storage must load through the application boundary")
+        attachScreenshot(of: app, named: "settings-recording-storage")
+    }
+
+    @MainActor
+    func testSyncPaneKeepsOptInAndExistingLibrarySeparate() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let sync = app.control(withIdentifier: "settings-category-sync")
+        XCTAssertTrue(
+            sync.waitForExistence(timeout: 10),
+            "Settings must expose a dedicated iCloud sync pane")
+        sync.click()
+
+        XCTAssertTrue(
+            app.staticTexts["settings-sync-status"].waitForExistence(timeout: 5),
+            "the sync pane must show truthful local-only status before opt-in")
+        let enable = app.buttons["settings-sync-enable"]
+        XCTAssertTrue(
+            enable.waitForExistence(timeout: 5),
+            "a local-only library must require an explicit Enable action")
+        XCTAssertFalse(app.buttons["settings-sync-seed"].exists)
+
+        enable.click()
+
+        XCTAssertTrue(
+            app.buttons["settings-sync-now"].waitForExistence(timeout: 5),
+            "enablement must reveal a manual sync action")
+        XCTAssertTrue(
+            app.buttons["settings-sync-seed"].waitForExistence(timeout: 5),
+            "existing meetings must remain a separate explicit action")
+        XCTAssertTrue(app.buttons["settings-sync-pause"].exists)
+        XCTAssertTrue(app.buttons["settings-sync-remove"].exists)
+        let privacySeal = app.buttons["settings-privacy-seal"]
+        XCTAssertTrue(privacySeal.waitForExistence(timeout: 5))
+        let reflectsCloudSync = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "iCloud"),
+            object: privacySeal)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [reflectsCloudSync], timeout: 5),
+            .completed,
+            "the standing privacy seal must stop claiming that everything is local")
+        attachScreenshot(of: app, named: "band-6c-cloud-sync")
+    }
+
+    @MainActor
+    func testDataPaneExportsARedactedLocalSupportFile() throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-support-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let dataCategory = app.control(withIdentifier: "settings-category-data")
+        XCTAssertTrue(dataCategory.waitForExistence(timeout: 10))
+        dataCategory.click()
+
+        let export = app.buttons["settings-export-diagnostics"]
+        XCTAssertTrue(
+            export.waitForExistence(timeout: 5),
+            "the Your-data pane must offer an explicit redacted support export")
+        export.click()
+        XCTAssertTrue(
+            app.staticTexts["settings-diagnostics-status"].waitForExistence(timeout: 10),
+            "the export must confirm that no meeting content was included")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+        let text = try String(contentsOf: destination, encoding: .utf8)
+        XCTAssertTrue(text.contains("\"formatVersion\" : 1"))
+        XCTAssertFalse(text.contains("Revisemos el presupuesto de transcripción."))
+        attachScreenshot(of: app, named: "band-3i-redacted-support-export")
+    }
+
+    @MainActor
+    func testDataPaneExportsAReadableWholeLibraryMarkdownBackup() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-backup-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let app = XCUIApplication.portavoz(seedDemo: true, openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let dataCategory = app.control(withIdentifier: "settings-category-data")
+        XCTAssertTrue(dataCategory.waitForExistence(timeout: 10))
+        dataCategory.click()
+
+        let export = app.buttons["settings-export-all-button"]
+        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        export.click()
+        let status = app.staticTexts["settings-backup-status"]
+        XCTAssertTrue(
+            status.waitForExistence(timeout: 15),
+            "the backup must finish with a visible result")
+        let expectedStatus = Locale.current.identifier.hasPrefix("es")
+            ? "1 reunión exportada."
+            : "1 meeting exported."
+        XCTAssertTrue(
+            app.staticTexts[expectedStatus].exists,
+            "the completion copy must use the locale-correct singular form")
+
+        let markdownFiles = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension.lowercased() == "md" }
+        XCTAssertFalse(markdownFiles.isEmpty)
+        let exportedText = try markdownFiles.map {
+            try String(contentsOf: $0, encoding: .utf8)
+        }.joined(separator: "\n")
+        XCTAssertTrue(exportedText.contains("# Test meeting"))
+        XCTAssertTrue(exportedText.contains("Revisemos el presupuesto de transcripción."))
+        attachScreenshot(of: app, named: "band-6c4-markdown-backup")
     }
 
     @MainActor
@@ -90,6 +294,10 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             mirror.waitForExistence(timeout: 5),
             "the voice pane must offer the post-meeting mirror opt-in")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-voice-enroll").exists,
+            "a disposable library must expose local voice enrollment")
+        attachScreenshot(of: app, named: "local-voice-enrollment")
     }
 
     @MainActor

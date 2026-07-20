@@ -13,6 +13,7 @@ struct PortavozCLI {
     // inherentemente largo (una rama por comando).
     // swiftlint:disable:next cyclomatic_complexity
     static func main() async {
+        let platform = CLIPlatformDependencies()
         var arguments = Array(CommandLine.arguments.dropFirst())
         guard let command = arguments.first else {
             printUsage()
@@ -26,35 +27,43 @@ struct PortavozCLI {
         case "record":
             await RecordCommand.run(arguments)
         case "transcribe":
-            await TranscribeCommand.run(arguments)
+            await TranscribeCommand.run(arguments, platform: platform)
         case "diarize":
-            await DiarizeCommand.run(arguments)
+            await DiarizeCommand.run(arguments, platform: platform)
         case "summarize":
-            await SummarizeCommand.run(arguments)
+            await SummarizeCommand.run(arguments, platform: platform)
         case "meetings":
-            await MeetingsCommand.run(arguments)
+            await MeetingsCommand.run(arguments, platform: platform)
         case "export":
-            await ExportCommand.run(arguments)
+            await ExportCommand.run(arguments, platform: platform)
         case "secrets":
-            SecretsCommand.run(arguments)
+            await SecretsCommand.run(arguments, platform: platform)
         case "voice":
-            await VoiceCommand.run(arguments)
+            await VoiceCommand.run(arguments, platform: platform)
         case "der":
             await DerCommand.run(arguments)
         case "mcp":
-            await McpCommand.run(arguments)
+            await McpCommand.run(arguments, platform: platform)
         case "ask":
-            await AskCommand.run(arguments)
+            await AskCommand.run(arguments, platform: platform)
         case "issues":
-            await IssuesCommand.run(arguments)
+            await IssuesCommand.run(arguments, platform: platform)
         case "models":
-            await ModelsCommand.run(arguments)
+            await ModelsCommand.run(arguments, platform: platform)
         case "bench-live":
             await BenchLiveCommand.run(arguments)
         case "bench-m2":
             await BenchCommand.run(arguments)
         case "bench-fts":
             await BenchFTSCommand.run(arguments)
+        case "bench-scale":
+            await BenchScaleCommand.run(arguments)
+        case "bench-semantic":
+            await BenchSemanticCommand.run(arguments)
+        case "bench-waveform":
+            await BenchWaveformCommand.run(arguments)
+        case "bench-spotlight":
+            await BenchSpotlightCommand.run(arguments)
         default:
             printUsage()
         }
@@ -71,6 +80,13 @@ struct PortavozCLI {
                                   [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>]
               portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]
               portavoz-cli bench-fts [--meetings N] [--segments-per-meeting N]
+              portavoz-cli bench-scale [--library-sizes 1000,10000,50000,100000]
+                                        [--meeting-minutes 30,120,480] [--runs 20] [--output <json>]
+              portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--output <json>]
+              portavoz-cli bench-waveform [--mic <audio>] [--system <audio>]
+                                          [--buckets 600] [--runs 20] [--output <json>]
+              portavoz-cli bench-spotlight [--mode legacy|snapshot] [--meetings 100000]
+                                          [--runs 3] [--delivery-items 1000] [--output <json>]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

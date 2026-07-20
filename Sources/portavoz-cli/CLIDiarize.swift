@@ -1,8 +1,5 @@
-import DiarizationKit
+import ApplicationKit
 import Foundation
-import ModelStoreKit
-import PortavozCore
-import TranscriptionKit
 
 /// `portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]`
 ///
@@ -12,12 +9,15 @@ import TranscriptionKit
 enum DiarizeCommand {
     // CLI de desarrollo: el parser de flags es un switch inherentemente largo.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var file: String?
         var attribute = false
         var language: String?
         var modelsDir: String?
-        var threshold = PyannoteDiarizer.defaultClusteringThreshold
+        var threshold = platform.defaultClusteringThreshold
 
         var index = 0
         while index < arguments.count {
@@ -48,31 +48,21 @@ enum DiarizeCommand {
             return
         }
         let url = URL(fileURLWithPath: file)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            print("error: no such file: \(url.path)")
-            return
-        }
 
         do {
-            let store = CLISupport.modelStore(fromModelsDir: modelsDir)
-            let descriptor = ModelCatalog.speakerDiarization
-            let report = await store.verify(descriptor)
-            if !report.isComplete {
-                print("Downloading \(descriptor.displayName) (\(descriptor.totalSizeBytes / 1_000_000) MB, sha256-verified)…")
-            }
-            // Enrolled voiceprint (if any) marks the user's turns as "Me".
-            let voiceprint = (try? VoiceprintStore().load())
-            let diarizer = try await PyannoteDiarizer.loadRecommended(
-                store: store, clusteringThreshold: threshold, voiceprint: voiceprint)
+            let workflow = platform.diarizeAudio(modelsDirectory: modelsDir)
+            let result = try await workflow.execute(.init(
+                fileURL: url,
+                clusteringThreshold: threshold,
+                attributeTranscript: attribute,
+                language: language
+            ) { progress in
+                Self.printProgress(progress)
+            })
 
-            print("Diarizing \(url.lastPathComponent)…")
-            let started = Date()
-            let turns = try await diarizer.diarizeFile(at: url)
-            let elapsed = Date().timeIntervalSince(started)
-
-            let voices = Set(turns.map(\.voiceLabel)).sorted()
+            let voices = Set(result.turns.map(\.voiceLabel)).sorted()
             print("")
-            for turn in turns {
+            for turn in result.turns {
                 let start = CLISupport.timestamp(turn.startTime)
                 let end = CLISupport.timestamp(turn.endTime)
                 // qualityScore is an unnormalized score, not a probability.
@@ -81,29 +71,39 @@ enum DiarizeCommand {
             }
             print("")
             print(String(format: "%d speaker(s): %@ · %d turns · processed in %.1fs",
-                         voices.count, voices.joined(separator: ", "), turns.count, elapsed))
+                         voices.count, voices.joined(separator: ", "),
+                         result.turns.count, result.elapsed))
 
             guard attribute else { return }
-
-            print("\nTranscribing for attribution…")
-            let engine = try await CLISupport.loadEngine(store: store)
-            let meetingID = MeetingID()
-            let hints = TranscriptionHints(language: language, meetingID: meetingID)
-            let transcription = try await engine.transcribeFile(at: url, hints: hints)
-
-            let attribution = SpeakerAttributor.attribute(
-                segments: transcription.segments, turns: turns, meetingID: meetingID)
             let labelsByID = Dictionary(
-                uniqueKeysWithValues: attribution.speakers.map { ($0.id, $0.label) })
+                uniqueKeysWithValues: result.speakers.map { ($0.id, $0.label) })
 
             print("")
-            for segment in attribution.segments {
+            for segment in result.segments {
                 let label = segment.speakerID.flatMap { labelsByID[$0] } ?? "?"
                 let start = CLISupport.timestamp(segment.startTime)
                 print("[\(start)] \(label): \(segment.text)")
             }
         } catch {
             print("error: \(error.localizedDescription)")
+        }
+    }
+
+    private static func printProgress(_ progress: AudioAnalysisProgress) {
+        switch progress {
+        case .downloadingModel(let name, let megabytes):
+            print("Downloading \(name) (\(megabytes) MB, sha256-verified)…")
+        case .downloadProgress(let percent, let path):
+            print("\r  \(percent)% \(path)", terminator: percent == 100 ? "\n" : "")
+            fflush(stdout)
+        case .loadingTranscriptionModel:
+            print("Loading models (first load compiles for the ANE; can take ~a minute)…")
+        case .diarizing(let fileName):
+            print("Diarizing \(fileName ?? "")…")
+        case .transcribingForAttribution:
+            print("\nTranscribing for attribution…")
+        default:
+            break
         }
     }
 }

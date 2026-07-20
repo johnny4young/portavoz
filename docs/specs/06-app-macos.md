@@ -1,86 +1,926 @@
-# Spec 06 — App macOS (portavoz-app + scripts de empaquetado)
+# Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Estado: implementado, firmado con Developer ID, **notarizado por Apple (0.1.0, Accepted + stapled)** y usado en reuniones reales. Decisiones: D20 (SPM + script, sin proyecto Xcode), D23 (empaquetado), D10 (distribución).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure).
 
-## Estructura
+## Structure
 
-`portavoz-app` es un `executableTarget` SPM (SwiftUI + Observation, @MainActor). `scripts/make-app.sh [--release]` arma `dist/Portavoz.app`: Info.plist (usage descriptions en inglés: mic, audio del sistema, calendario, carpetas Desktop/Documents/Downloads/volúmenes removibles), embebe `Sparkle.framework` + rpath, exporta `Resources/Localization/Portavoz/*.xcstrings` a `Contents/Resources/{en,es}.lproj/{Localizable,InfoPlist}.strings`, declara `CFBundleDevelopmentRegion=en` + `CFBundleLocalizations=[en, es]`, firma XPCs internos, hardened runtime (`--options runtime`) + `--timestamp` con identidad real + entitlement `com.apple.security.device.audio-input` (sin él, el hardened runtime bloquea el mic). **Sin sandbox.**
+`portavoz-app` is an SPM `executableTarget` (SwiftUI + Observation, @MainActor). `scripts/make-app.sh [--release]` builds `dist/Portavoz.app`: Info.plist (usage descriptions in English: mic, system audio, calendar, Desktop/Documents/Downloads/removable volumes folders), embeds `Sparkle.framework` + rpath, exports `Resources/Localization/Portavoz/*.xcstrings` to `Contents/Resources/{en,es}.lproj/{Localizable,InfoPlist}.strings`, declares `CFBundleDevelopmentRegion=en` + `CFBundleLocalizations=[en, es]`, signs internal XPCs, hardened runtime (`--options runtime`) + `--timestamp` with real identity + entitlement `com.apple.security.device.audio-input` (without it, the hardened runtime blocks the mic). **No sandbox.**
 
-- Firma: por SHA-1 del cert (`PORTAVOZ_SIGN_IDENTITY`) — hay DOS Developer ID con el mismo nombre en la máquina y el nombre es ambiguo.
-- `make-dmg.sh`: DMG UDZO + symlink /Applications; con `PORTAVOZ_NOTARY_PROFILE` notariza (notarytool + staple).
-- `make-release.sh <v>`: estampa versión, DMG, `generate_appcast --account portavoz` (llave EdDSA dedicada — la default del Keychain es de OTRO proyecto), cask con sha256 → `dist/release/`.
-- Sparkle 2.9: menú "Buscar actualizaciones…" (`SPUStandardUpdaterController`); `SUFeedURL` apunta al release de GitHub; llave pública en `assets/sparkle-public-key`.
+- Signature: by SHA-1 of cert (`PORTAVOZ_SIGN_IDENTITY`) — there are TWO Developer IDs with the same name on the machine and the name is ambiguous.
+- `make install`: renames only the freshly built bundle to `Portavoz Dev`, re-signs it with Hardened Runtime and a secure timestamp, deep/strict-verifies `dist/Portavoz.app`, copies it to `/Applications/Portavoz Dev.app`, deep/strict-verifies the installed copy, and only then launches it. It never writes `/Applications/Portavoz.app`.
+- `make-dmg.sh`: with `PORTAVOZ_NOTARY_PROFILE`, first verifies the embedded CloudKit profile and exact signed production capabilities, then archives the app, notarizes/staples/validates it, creates the UDZO DMG + `/Applications` symlink, and separately signs/notarizes/staples the image. `verify-distribution.sh` mounts the final DMG, copies the app out like Homebrew Cask, and independently requires codesign, stapler, Gatekeeper, and CloudKit-profile acceptance.
+- `make-release.sh <v>`: requires a Developer ID identity, notary profile, and Developer ID CloudKit/APNs provisioning profile; stamps version, DMG, `generate_appcast --account portavoz` (dedicated EdDSA key — the default from Keychain is for ANOTHER project), cask with sha256 → `dist/release/`.
+- Sparkle 2.9: menu "Buscar actualizaciones…" (`SPUStandardUpdaterController`); `SUFeedURL` points to GitHub release; public key in `assets/sparkle-public-key`.
 
-## Composición — `AppServices` (@MainActor @Observable)
+### Verified model composition (D113)
 
-DB (`MeetingStore`) + engines lazy compartidos: `transcriber` (Parakeet), `diarizer` (con voiceprint si existe; `invalidateDiarizer()` tras enrolar/borrar), `whisper` (lazy, primera vez descarga verificada 1.6 GB con progreso). `modelsState` para la UI de descargas; `libraryVersion` invalida listas/detalle (las vistas recargan con `.task(id:)`).
+`AppServices` constructs one process-wide `ModelStore` and
+`VerifiedModelLifecycle`. Engine loaders, Settings inventory, MLX summary
+resolution, Import, durable post-capture work, participant-voice extraction,
+and support diagnostics share that composition. Readiness means every artifact
+in the exact catalog revision passed SHA-256 verification; neither a model
+directory, one expected filename, nor aggregate byte counts are accepted as
+proof. Successful evidence is cached by descriptor ID and revision to avoid
+re-hashing multi-gigabyte weights for each consumer, while missing/corrupt
+results remain re-checkable and explicit install/remove/invalidate operations
+fence older checks. Install and remove operations for one descriptor execute in
+invocation order, and any waiter whose check was superseded resolves the current
+result instead of surfacing stale readiness. Cancellation before publication
+stops preparation; cancellation after verified publication remains success.
 
-**Idle release (jul 2026)**: los engines NO quedan residentes para siempre. Patrón de generación (un uso nuevo cancela la liberación programada): `scheduleWhisperRelease()` (120 s tras refine/import; Whisper pesa 1.6 GB) y `scheduleRecordingEnginesRelease()` (600 s tras stop/refine/import; no dispara si hay refine corriendo). `MLXModelCache` (IntelligenceKit) hace lo mismo con el container Qwen3.5 (2.4 GB residentes medidos) a los 120 s. Los consumidores NUNCA confían en la referencia compartida tras un await largo: `RecordingController.stop` e `importMeeting` recargan con `loadEnginesIfNeeded()` justo antes de diarizar (una liberación programada por otro flujo pudo soltarla en medio). Nota medida (bench por fases): los pesos CoreML son file-backed y macOS los reclama solo al dejar de usarse — post-stop el footprint cae a ~160 MB sin ayuda; el release explícito garantiza el piso (~140 MB) y suelta el estado no purgeable.
+Settings performs integrity checks asynchronously and shows a localized
+checking row instead of briefly offering a false download state. A disposable
+XCUITest launch receives a unique empty model root, so clean-install assertions
+cannot inspect or mutate host models. The initial check never gates app launch
+or audio capture.
 
-## Design system en la app (jul 2026) — tokens + voces B + accent
+### Executable dependency and presentation boundaries (D114)
 
-Fuente: `docs/design/ds/` (autorado en Claude Design, proyecto pineado). (1) `PVDesign` (app): tokens Swift espejo de `tokens/*.css` — spacing 12/16/24, radios 8/10/12/14, tints 0.14/0.08, brand ámbar/violeta/slate. Cuando un valor cambia en el DS, cambia AHÍ y en ningún otro lado. (2) **Voces dirección B «el color ES la voz»**: `VoiceHue.index` (IntegrationsKit, puro, FNV-1a — hashValue de Swift es randomizado por launch y NO sirve; 3 tests) asigna hue estable: nombrados por hash del nombre normalizado (misma persona = mismo color en toda reunión), S-labels por orden de aparición; `VoicePalette` (app) mapea a los colores light/dark del DS. Aplicado en: SpeakerPill (Me = ámbar SÓLIDO + texto amber-contrast; otros hue 0.26), barras de MeetingHealth (0.85), pills del transcript, canal mic del waveform del player (ámbar) y labels vivos de grabación. El indigo queda reservado a interacción (chips ✦, links, selección). (3) **Accent de app**: `assets/Assets.xcassets/AccentColor` (indigo #5856D6/#5E5CE6) compilado con `xcrun actool` en make-app.sh + `NSAccentColorName` — resuelve la deuda del system-accent para usuarios en multicolor (macOS da prioridad al usuario que eligió color explícito). **Tanda DS jul 11 (2ª noche — pull 9f11623 + implementación)**: (1) **Icono «La P que habla»**: assets/AppIcon.icns regenerado desde el SVG del DS — la P es Fraunces (NO instalada localmente): se renderiza en browser con Google Fonts vía `scripts/icon-p.html` (canvas 1024, grid macOS: cuadrado 824 + radio 185) y `scripts/make-icns.sh` arma el .icns; menu bar = `assets/icon/pv-menubar-32.png` pre-renderizado como NSImage template (MenuBarIcon.swift) — la P adapta a la apariencia; grabando sigue el record.circle.fill rojo (el «asta que pulsa» del DS queda como flourish web). scripts/make-icon.swift (icono viejo) eliminado. (2) **Chips por evidencia** (tokens --chip-* nuevos): ChipLabel.swift (ai/voice/offer) + tokens dinámicos light/dark en PVDesign (NSColor(name:dynamicProvider:)) — AI = tinta violeta + chispa ✦ ÁMBAR, voz = cyan + waveform, oferta = neutra; aplicado a título sugerido, S→nombre, matches de voz, «Summarize as X?» y la oferta de recordar voz. Los CONTROLES ✦ (Suggest names) siguen indigo — la distinción sugerencia≠botón es deliberada. (3) **Settings 2a**: NavigationSplitView con 7 categorías (SettingsCategories.swift) + búsqueda (.searchable filtra por título y bolsas de keywords EN/ES — las ES viven en el catálogo porque EnglishSourceTests barre strings en código) + banner «100% local» → ledger; LedgerSection = números REALES (du del recordings root en Task.detached, count de reuniones, voces enroladas+recordadas) + línea de honestidad de qué sí sale. gitHubSection extraído a GitHubSection.swift (file_length 700). (4) **Lyrics en vivo 4a**: captionRow con pills de voz coloreadas (hash del label — S1/S2 estables, nombres = su hue canónico), línea activa .title3, la TUYA en card ámbar (me 0.12 + ring 0.35); FocusedTranscriptView ya traía el cilindro fade/shrink/blur. **Tanda DS jul 11 (3ª — pull 35264fb: Settings/Menubar/Dictation.jsx + implementación menu bar + mix)**: (1) **Menu bar 2b**: MenuBarContent reescrito como panel `.menuBarExtraStyle(.window)` (antes menú plano) — header de estado (waveform mini con pico ámbar / rojo grabando + «100% local · 0 B a la red hoy» verde), grid de acciones rápidas (Grabar rojo / Dictar indigo / Preguntar), tarjeta de próxima reunión (solo si hay acceso a calendario — nunca prompt aquí) con «grabar al empezar» → route .recording(event), recientes con fechas relativas, footer (Abrir / Launch at login / Salir). El panel se cierra solo al perder foco (abrir ventana lo cierra). (2) **Mix de voces en el sidebar** (la firma del kit): `MeetingStore.voiceMixes(for:)` (StorageKit) — UNA query agregada que suma duraciones de segmento por (meeting, speaker), normaliza a la voz atribuida de cada reunión y devuelve slices ordenados por talk-time (isMe/displayName/fraction/order); 3 tests (fracciones suman 1 + orden, input vacío, reunión sin habla atribuida ausente). `VoiceMixBar` bajo cada fila de reunión colorea cada slice con `VoicePalette.color(for slice:)` — ámbar = tú, hue estable por nombre, orden para S-labels. Las reuniones sin segmentos atribuidos simplemente no muestran barra (honesto).
+The macOS app and CLI are executable composition roots. They connect
+ApplicationKit workflows to concrete StorageKit, ModelStoreKit, capture,
+transcription, diarization, intelligence, playback, integration, and platform
+adapters. ApplicationKit owns use cases, durable workflow coordination, policy,
+and narrow capability ports; it does not import executable presentation code or
+construct app-specific adapters.
 
-**Dictado 4b (pull DS 4 — jul 11)**: la tira de dictado gana los tres rasgos de la exploración 4b. (1) **Chip de destino visible**: `DictationController.targetApp` = `NSWorkspace.frontmostApplication.localizedName` capturado en `start()` ANTES de mostrar el panel non-activating (el frontmost sigue siendo la app destino); la tira muestra `✎ <app>` — nunca dictas «a ciegas». (2) **Parcial en gris**: `confirmedText` en `.primary` + `partialText` en `.tertiary` concatenados (antes se unían en un solo string) — lo volátil se ve gris y se afirma al confirmarse. (3) **Estado insertado**: nueva `Phase.inserted(Int)` — tras `TextInserter.insert`, la tira muestra «N palabras insertadas en <app> — nada se guardó» por 1.6 s antes de cerrarse (antes cerraba de golpe). El ledger de privacidad NO adopta el tile «0 B a la red» del mock del DS: sería una métrica no medible (no hay log de red); el LedgerSection real dice qué PUEDE salir (gists, modelo externo, update check) — más honesto («Measured, not promised»).
+SwiftUI `View` types remain presentation-only: they render observable state and
+send intents through injected models or application clients. Repository-wide
+source tests reject concrete capability construction, direct `MeetingStore`
+calls, and imports of lower-level persistence, audio, calendar, networking, and
+security frameworks from those views. Concrete construction is limited to the
+two executable roots, nonvisual live capture and dictation process owners,
+diagnostics, and benchmarks. A package-graph test also asserts the complete
+internal production dependency graph so a new dependency cannot silently
+reverse a boundary.
 
-**Features reales del DS (jul 12 — «construyelas»): capítulos + solo-mi-voz + tabs del resumen + menu-bar pendientes.** (1) **Tabs del resumen** (MeetingDetailView): SummarySections (IntegrationsKit, puro, 3 tests) parte el markdown por headers `## ` (agnóstico al idioma) → intro + secciones con conteo de bullets; barra de tabs Summary/«Heading·N»/«To-dos·done/total» (tab activo indigo filtra). (2) **✦ Capítulos** (chaptersSection): ChapterExtractor (IntegrationsKit, puro, 6 tests) deriva capítulos LOCALMENTE del transcript — boundary por pausa ≥10s (con espaciado mínimo de 120s para no sobre-segmentar seeds espaciados) o largo ≥300s; label = primera oración REAL del capítulo, con búsqueda de fallback acotada a ese mismo capítulo; ≤1 capítulo → rail oculto. Render tras MeetingHealth, click hace seek+play (disabled sin audio). (3) **Solo mi voz** (MeetingPlayer + MeetingPlayerBar): `onlyMyVoice` + `nonVoiceRanges` — el time-observer salta los rangos no-voz igual que skipSilence; PlaybackRanges.complement (IntegrationsKit, puro, 5 tests) computa el complemento de los rangos del canal .microphone dentro de [0,duration] (merge con padding 0.25s); toggle tinteado ámbar en el player bar. (4) **Menu bar pendientes**: recientes muestran «✦ N» = openActionItems agrupado por meetingID. **Layout 2 columnas del detail (jul 12)**: HECHO. loadedBody: header + speakers + refineStatus full-width, luego HStack(alignment:.top) — izquierda VStack (summaryOrGenerate + transcriptSection con player, maxWidth infinity) + `detailRail` derecho (width 260: MeetingHealthView + chaptersSection + Companion persistido). El rail tiene scroll propio y se OCULTA entero si no tiene contenido (no deja un hueco de 260pt). maxWidth del contenido subido a 1060. Coincide con MeetingDetail.jsx del DS.
+### CloudKit signing and launch boundary (D97)
 
-**Refinamiento pixel-perfect (jul 12 — feedback del usuario: la app se quedó corta vs el DS)**: (1) **Settings** (SettingsSidebar.swift): el nav nativo de una línea pasa a custom — icono + título + subtítulo de una línea por categoría (SettingsCategory.subtitle), selección con gradiente indigo→violeta, search field propio y sello «Todo local» verde abajo, sobre AuroraSidebarBackground. LedgerSection: 3 filas → 4 tiles (audio/reuniones/0 B a la red en verde/voces); el tile «a la red» = hecho estructural (nada se auto-sube). (2) **Insights** (InsightsView): el bar chart de Swift Charts se reemplaza por el HEATMAP de ritmo — LibraryStats.heatmap[semana][día] (grid puro, 2 tests) renderizado como 12 columnas × 7 filas de día con intensidad indigo relativa al pico; el tile de reuniones gana mini-waveform ámbar + delta REAL semana-vs-semana. SIN «hallazgos ✦» (no hay motor, no se inventa). (3) **Library sidebar** (LibraryView): «New recording» = pill con gradiente indigo→violeta + mini-waveform (pico ámbar); Import/Ask/Insights = grid de 3 chips verticales icon+label; search con keycap ⌘K; footer «100% local — nada sale de tu Mac» con punto verde. Los `accessibilityIdentifier` se preservan para los XCUITest. **Refinamiento 2 (jul 12 — screenshots del DS): sidebar timeline + selección indigo + botones bajo el título.** (1) **MeetingDetail**: los 3 botones de acción (refine/export/delete) SALEN del `.toolbar` (arriba-derecha) a una FILA de botones redondos bajo el título (actionRow/roundButton) — export tinteado accent, delete rojo; coincide con el DS (los botones viven con la reunión, no en el chrome de la ventana). (2) **Library sidebar timeline**: las reuniones se agrupan por recencia (meetingGroups: Today/This week/Last week/Earlier, buckets vacíos caídos) en vez de un «Meetings» plano. (3) **Selección indigo**: el `.tint` NO override el highlight nativo del sidebar (que sigue el accent de SISTEMA del usuario — verde en su Mac); solución: `.listRowBackground` con el gradiente aurora indigo→violeta cuando `route == .meeting(id)` + texto blanco, que gana sobre el highlight nativo. Helpers movidos a `extension LibraryView` (type_body_length). Menu bar y detail tabs/capítulos/player-chips: HECHOS (ver más abajo).
+Ordinary `make app`, `make install`, and XCUITest builds use
+`packaging/portavoz-local.entitlements`: microphone and Calendar remain
+available, while restricted CloudKit/APNs capabilities are absent and Sync
+truthfully reports that the build is not provisioned. Supplying
+`PORTAVOZ_PROVISIONING_PROFILE` selects the tracked production entitlements,
+embeds the profile at `Contents/embedded.provisionprofile`, and runs
+`verify-cloudkit-capabilities.sh` after signing. That gate decodes both the app
+and profile, requires exact `iCloud.app.portavoz.mac`, CloudKit, Production, and
+production-push values, and rejects an expired profile. Public release creation
+requires that profile plus real signing and notarization credentials; the same
+gate runs before notarization and against the app copied from the final DMG.
 
-**Recording 4a (jul 12)**: RecordingView reestructurada al mockup del DS. `recordingBar` (barra superior compacta: dot rojo + timer 24pt + `compactMeter` (mic dB) a la izquierda; Traducir + Companion (button toggle) + HUD + **Stop rojo** a la derecha — antes el Stop estaba abajo y el header era de 40pt). Una SOLA columna (antes dos): `captionsList` (lyrics, `maxHeight:.infinity`) + ScrollView acotado (260) con companion cards + notas + live summary. `micLowBanner` separado (solo cuando el nivel está bajo). Puente de idiomas (6a-3): la traducción bajo cada caption va en `.secondary` italic (NO ámbar — ámbar es solo tu voz por voces-B; el 6a spec decía ámbar pero voces-B es la regla canónica más nueva). Verificación: build/lint/tests; computer-use no aplica (la vista solo existe durante grabación en vivo, con engines de audio).
+### App Sandbox capability state (D78)
 
-**Polish de grabación/review (jul 14)**: mute de mic local en la barra (ceros alineados, no controla la llamada); HUD flotante que crece con la utterance actual y vuelve a compacto en cambio de speaker/pausa; tarjetas Companion ilimitadas newest-first, persistidas y revisables; refine las vuelve a derivar; títulos cortos de capítulos con Foundation Models y fallback literal acotado al capítulo. `MeetingDetailView` invalida player/waveform y descarta cargas canceladas al cambiar de reunión para que nada del detalle anterior se filtre al siguiente.
+The shipping bundle has Hardened Runtime but no App Sandbox entitlement. This
+is a measured feature-parity decision, not an omission presented as privacy.
+`scripts/run-sandbox-capability-spike.sh` compiles the same minimal probe into a
+Developer-ID-signed sandboxed app and a non-sandboxed control, verifies both
+signatures, runs a loopback fixture, and writes the comparison to
+`docs/evidence/app-sandbox-capability-spike-20260716.json`.
 
-**Aurora shell (jul 2026)**: `Aurora.swift` — las dosis `--aurora-*` de los tokens, SOLO en apariencia dark (el mundo del icono es oscuro; light queda nativo). `AuroraDetailBackground` (pane de detalle, cableado en ContentView): gradiente 140° #1C1A2E→#262626 + radial violeta elíptico con centro FUERA de pantalla (x=20%, y=-104pt, 1400×520) — solo la cola del glow toca el contenido; GeometryReader con `ignoresSafeArea` para sangrar bajo el toolbar y `.clipped()` para no derramar sobre el sidebar. `AuroraSidebarBackground`: brandSlate 0.6 sobre la vibrancy nativa (glass profundo, el desktop respira). Los detail views son ScrollView con fills quaternary translúcidos — el gradiente respira a través de las cards sin tocarlas. `--aurora-selection` NO se adopta: macOS dibuja la selección del sidebar nativamente y repintarla pelea contra la plataforma.
+On the measured macOS 26.5.2 host, the sandboxed variant writes in its
+container, denies direct and child-process reads/writes of a dedicated legacy
+Application Support fixture, and allows an AVAudioEngine mic graph, Keychain
+round trip, Carbon hotkey, loopback network client, and Core Audio process
+catalog. The spawned process runs but inherits the sandbox. Both variants create
+the private tap/aggregate/IOProc and start/stop the full graph, proving
+structural setup compatibility. It does not replace a real product capture
+under LaunchServices/TCC. Shortcuts, Accessibility, and Calendar checks are
+observational.
 
-**Accent unificado (misma tanda)**: `PVDesign.accent = Color.indigo` (system indigo ES exactamente los hex del DS, adaptativo). TODO uso de `Color.accentColor` en el app target se barrió a `PVDesign.accent` — `Color.accentColor` sigue el accent de sistema del USUARIO (no el `.tint` raíz), y producía mezclas verde/indigo en una misma vista cuando el usuario tiene accent explícito. Los `.tint(.indigo)` de raíz también leen `PVDesign.accent`. Lo que macOS pinta nativo (selección de listas, focus rings) sigue al usuario — correcto de plataforma.
+Current product blockers are concrete: app defaults would move into its
+container while the CLI/MCP still open legacy paths; `RecordingsLocation`
+persists a plain absolute folder path rather than a security-scoped bookmark;
+existing model/audio/voice data need reversible migration; and `make-app.sh`
+does not configure Sparkle's sandbox installer launcher and communication
+requirements. A future adoption must additionally prove real process-tap
+capture, cross-app dictation paste, configured post-meeting Shortcut, EventKit
+permission, panels/bookmarks, model preparation, and Sparkle update install in
+a separately signed product build. The production bundle remains non-sandboxed;
+D97's restricted CloudKit/APNs capabilities do not change the D78 decision.
 
-## Paleta ⌘K «Pregúntale a tu semana» (jul 2026 — design system 6a-1)
+## Composition — `AppServices` (@MainActor @Observable)
 
-`CommandPaletteController` en AppServices (funciona con la ventana cerrada) + `NSPanel` estilo Spotlight (620 pt, radio 16, `.regularMaterial`, non-activating pero key — cierra al perder key y el estado SE DESCARTA, spec). ⌘K vía CommandGroup del menú (funciona sin ventana). Dos lanes: FTS instantáneo mientras se escribe (`store.search`, 6 hits con snippet·título·mm:ss, guard de keystroke stale) y Enter → RAG completo (`AskPipeline.retrieve` + `RAGAnswerer`, responde en el idioma de la pregunta). Citas como cápsulas `↗ título · mm:ss` → `pendingRoute` + `pendingSeek` (one-shot que el detalle consume tras cargar el player para saltar al momento citado) + reapertura de ventana SOLO si no hay una visible (openWindow siempre crea — gotcha). ⌘C copia respuesta+citas en Markdown (`AskMarkdown`, IntegrationsKit). Verificado E2E con el seed: FTS instantáneo, respuesta ES correcta con 6 citas, navegación al detalle.
+DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), and `whisper` (runtime loaded only for Refine/Import). `modelsState` drives visible live-model preparation. Parakeet and pyannote each have an independently retained, process-scoped task: concurrent callers join the exact verified capability instead of loading a bundle. Recording samples only an already-resident transcriber and starts audio immediately; background preparation may request both afterward. Durable first-pass recovery and Dictation request Parakeet only; Refine/Import request pyannote only at their attribution boundary and never acquire live Parakeet as a side effect. Whisper Turbo/Compact preparation has its own app-scoped serialized task and observable state. Settings can proactively start/retry/delete a variant; the task survives that window, Refine/Import join it, and successful completion retains only an opaque verified token until runtime allocation. The heavyweight runtime keeps its two-minute idle-release policy. Library, Insights, and Meeting Detail receive storage-independent updates from query-scoped Store observations; no app feature consumes a global `libraryVersion` counter.
 
-## Insights (jul 2026) — dashboard de la biblioteca
+Local voice enrollment is composed in `AppServices+LocalVoiceIdentity` and
+enters `ApplicationKit.ManageLocalVoiceIdentity`. The use case bounds requested
+duration, requires at least four seconds of finite samples, and owns
+capture/extraction/persistence order. The app
+adapter owns `MicrophoneSource`, raw versus echo-cancelled capture, guaranteed
+stop on success/failure/cancellation, shared verified diarizer loading,
+transient voiceprint extraction, utility-priority encrypted storage, and
+diarizer invalidation after successful mutation. Settings changes its enrolled
+state only after deletion succeeds. It preserves its fresh
+twelve-second echo-cancelled path. Onboarding preserves both first-listen sample
+reuse and fresh twelve-second raw capture. These views render progress/results
+without importing AudioCaptureKit or DiarizationKit. Temporary-store launches
+return no enrolled identity and never inspect or mutate host biometric state.
 
-`Route.insights` (botón en el sidebar): tiles (reuniones, horas, duración media, racha semanal, día más activo), chart de cadencia semanal (Swift Charts, 12 semanas CON ceros — un chart sin semanas vacías miente), personas frecuentes y gauge de pendientes. Cálculo en dos capas: `LibraryStats.compute(meetings:weeks:calendar:now:)` (IntegrationsKit, puro, calendar/now inyectados, 7 tests — reuniones sin `endedAt` cuentan pero no arrastran el promedio) + `MeetingStore.libraryFacts()` (SQL: participantes nombrados no-Me por reuniones distintas, y counts open/done de action items con la misma regla latest-snapshot de `openActionItems` para no duplicar versiones supersedidas). 100% local; recarga con `libraryVersion`.
+Local summary-provider discovery is composed in
+`AppServices+LocalSummaryProviders` and enters
+`ApplicationKit.DiscoverLocalSummaryProviders`. One typed profile describes
+Apple Foundation Models availability, the running Ollama models, physical
+memory, and available disk. The pure policy admits Ollama only when at least
+one nonempty model name is not classified as OCR, embedding, reranking, or
+Whisper work; models in those categories are not presented as summary-ready.
+`ConfigureInitialSummaryProvider` writes only when the preference is absent.
+Its main-actor UserDefaults adapter re-checks at the guarded write and reports
+whether the write won, preserving an explicit user choice made during startup.
+The app adapter retains Foundation Models checks, content-free localhost
+requests, hardware/disk facts, model DTO mapping, and UserDefaults persistence.
+Settings and Onboarding consume the same typed recommendation and localize its
+headline, reasons, and setup action; neither surface probes providers or owns
+clean-install policy (D108).
+Disposable UI-test composition never probes host Ollama, memory, or disk; it
+uses a bounded profile while preserving the explicitly simulated Apple
+capability, so provider guidance and screenshots are reproducible.
 
-## Menu bar residente (jul 2026)
+Settings device resources are composed in `AppServices+SettingsResources` and
+enter three capability-neutral ApplicationKit workflows (D109). Microphone
+enumeration exposes stable UIDs and display names while the app adapter retains
+`AudioDeviceCatalog`. Recording-root inspection and updates expose current and
+default locations plus ordered progress while the adapter retains
+`RecordingsLocation`, resumable filesystem migration, and marker publication
+only after success. Remembered-voice management exposes summaries without
+embeddings while the adapter retains encrypted `VoiceGallery` access on a
+utility executor. Destructive failures remain visible, and disposable test
+composition never reads or mutates the host gallery. SwiftUI keeps only native
+folder selection, preferences, localized progress, and result presentation.
 
-`MenuBarExtra(isInserted:)` atado a `@AppStorage("menuBarEnabled")` (toggle en Ajustes → Menu bar, on por default): icono template `waveform.and.mic` que cambia a `record.circle.fill` mientras graba — el "¿estoy grabando?" de un vistazo. Menú: Start/Stop (Start abre la ventana vía `openWindow(id: "main")` + `pendingRoute = .recording(nil)`; Stop llama al controller compartido), Dictate (solo con el dictado habilitado), Open Portavoz, Launch at login (`SMAppService.mainApp` — requiere /Applications, que es la historia de instalación), Quit. **Precondición arquitectónica**: `RecordingController` se movió de `@State` de RecordingView a `AppServices.recording` (compartido) — la vista, el HUD y el menu bar observan LA MISMA sesión y navegar jamás puede huérfanar una grabación (mismo fix que RefineService).
+Pre-meeting reminders are composed in `AppServices+MeetingReminder` and enter
+`ApplicationKit.ResolveMeetingReminder` (D110). The workflow receives one
+sampled time, the configured lead, and the session's reminded identifiers. It
+short-circuits before calendar access when disabled, selects the deterministic
+earliest due event independent of source order, and returns display minutes
+from the same sampled time. The private app adapter retains UserDefaults,
+`Date`, and `CalendarAttendeeSource`; the EventKit projection runs on a utility
+task. `MeetingReminderController` retains only minute scheduling, session
+deduplication, floating-panel lifecycle, and the recording route. Optional
+calendar failures remain a silent no-notice result, matching the released UX.
 
-## Dictado global (jul 2026)
+`AppServices` also owns one process-scoped `SpotlightIndexer` actor (D85).
+Launch and every searchable mutation call `requestSpotlightReindex()`; requests
+coalesce for 250 ms and are not tied to a `ContentView` lifecycle. The actor
+loads one consistent StorageKit projection, hashes its exact documents into a
+compact client state, skips unchanged publication, and retries failures after
+one and five seconds. Its private backend serializes access to the named
+`app.portavoz.meetings.v2` index, uses complete file protection and 500-item
+batches, and removes the released default-index domain only after the protected
+index is ready. Temporary UI-test stores disable OS indexing. Internal status
+and content-free OSLog attempts are diagnostic only; no meeting content is
+logged. A new request after terminal retry exhaustion starts a fresh recovery.
 
-**Hold-to-talk (jul 2026)**: `GlobalHotkey` escucha kEventHotKeyPressed Y kEventHotKeyReleased (`GetEventKind` en el mismo handler). Gesto sin setting: un TAP (release < 0.5 s) conserva el toggle; MANTENER la combinación mientras hablas y soltar entrega al release — walkie-talkie. Verificado E2E: hold de 2.5 s abre el panel al press y lo cierra solo al soltar.
+`AppServices` also owns one process-scoped `MeetingSyncModel` (D97). Production
+composition creates the platform-neutral D96 lifecycle and an inert
+`CloudKitMeetingSyncPlatform`; no container or account request occurs until
+stored account-scoped consent or explicit Enable permits it. The model
+serializes manual lifecycle work, preserves explicit actions FIFO while an
+operation is suspended (including draining past actions made inapplicable by an
+earlier Pause), and coalesces content-free StorageKit journal,
+`CKAccountChanged`, retry-clock, and silent-push wakeups into the same bounded
+cycle. It registers for remote notifications only while sync is enabled.
+Temporary-store/XCUITest composition injects a deterministic in-memory client,
+never probes the host signature/account/APNs/transport root, and exercises the
+same bilingual Settings states and actions.
 
-**Hotkey configurable (jul 2026)**: `HotkeySetting` (keyCode + máscara Carbon + label, AppStorage; default ⌥⌘D) + `HotkeyRecorder` en Ajustes (NSEvent local monitor captura la próxima combinación; Esc cancela; combos SIN ⌘/⌥ se rechazan con beep — una letra sola como hotkey GLOBAL secuestraría el tipeo). `syncHotkey` ahora siempre unregister-first para que la combinación nueva aplique en vivo. Verificado E2E: grabar ⌃⌥⌘M y dispararlo abre el panel.
- — ⌥⌘D en cualquier app
+`AppServices` also owns one process-scoped `LibraryMarkdownBackupModel` (D99).
+It submits one destination to `ExportLibraryMarkdownBackup`, maps typed progress
+and fatal/partial completion into localized state, rejects a competing run, and
+outlives the Settings scene that started it. Private app adapters render the
+canonical `MeetingExporter` document at utility priority and publish it through
+an atomic UUID temporary file plus a same-directory non-replacing move. The
+filesystem adapter returns a collision instead of replacing disk content, so
+the application allocator advances its portable suffix. Temporary-store UI
+tests may inject only the destination path; production always uses the native
+folder panel.
 
-Superficie validada por MacParakeet: hotkey global → hablas → hotkey de nuevo → el texto se escribe donde está el cursor. `GlobalHotkey` (Carbon `RegisterEventHotKey` — la única API que consume el keystroke SIN permiso de Accesibilidad; registrado desde el App init, no desde la vista, para sobrevivir sin ventana), `DictationController` en AppServices (mic → Parakeet streaming con vocabulario custom → `CaptionCoalescer` reusado con su higiene de eco/ruido; nada se persiste: sin meeting, sin DB, sin archivo), `DictationPanel` (mismo patrón non-activating del HUD, bottom-center, texto en vivo, X cancela), `TextInserter` (paste-and-restore: clipboard → ⌘V sintético vía CGEvent → restaura; el ⌘V SÍ requiere Accesibilidad — se chequea ANTES de grabar con prompt del sistema para no dictar al vacío). Toggle en Ajustes (off por default); `DictationAssembler` (TranscriptionKit, puro, testeado) une confirmado+parcial. Verificado E2E: hotkey dispara con la app en background y el panel transcribe audio real en vivo; la inserción final queda de verificación de campo.
+`AppServices` composes one `AskMeetings` workflow and exposes it through one
+main-actor app client. Each `ContentView` owns a per-window `AskModel`; the
+resident command palette owns one process-scoped `CommandPaletteModel`. The
+models own answer/search tasks and generations, and the palette resets both on
+close/reopen. AppKit owns panel lifetime, keyboard activation, clipboard, and
+window navigation only. Full Ask and palette citations publish the same exact,
+meeting-scoped seek request before opening Meeting Detail. The destination
+consumes it after playback is ready; if that meeting is already open, its
+detail observes the identity-bearing request directly instead of depending on
+a no-op route assignment to reconstruct the view (D100).
 
-## Vistas y flujos
+`AppServices` owns one process-scoped `FirstRunModel` and one process-scoped
+`LocalDataLedgerModel` (D101). `ResolveFirstRunExperience` decides whether one
+restored main window presents setup from force/automation/completion flags and
+an efficient live-meeting count; model downloads and permission readiness are
+not eligibility inputs. Existing-library suppression is remembered, a failed
+read keeps guidance available, and cancellation leaves resolution retryable.
+The local-data receipt loads meeting count, allocated audio bytes, and local
+encrypted-voice count concurrently through independent ports. A failed source
+renders unavailable only for that tile, while a measured zero remains zero.
+Its network tile states explicit-action/opt-in policy rather than claiming an
+unmeasured byte count.
 
-**LibraryView**: Nueva grabación (⌘N), búsqueda FTS con snippets, **sección "To-dos"** (action items abiertos de TODAS las reuniones vía `openActionItems` — checkbox completa in-place y bumpa `libraryVersion`; click navega a su reunión; los UITests usan `firstMatch` porque el título de la reunión aparece también como caption de estas filas), lista con context menu Renombrar/Eliminar.
+The per-window `LibraryModel` submits an upcoming event to
+`PrepareMeetingBrief` (D101). The workflow reuses Ask evidence, ranks related
+meetings, overlaps one batched latest-live-General-summary projection with the
+open-commitment query, and accepts optional synthesis only when its source
+index maps to a related meeting. The app adapter retains Foundation Models and
+already-authorized EventKit access; opening or refreshing the Library never
+prompts for Calendar access on its own.
 
-**RecordingView + RecordingController** (el pipeline vivo completo):
-1. `start`: warm-up del mic (AEC converge durante "Preparando…"), engines, `RecordingSession` con mic (+tap del sistema en 14.4+), feeds por canal → Parakeet vivo → **CaptionCoalescer** (una fila por intervención).
-2. En vivo: captions en LazyVStack (ventana 150 filas) con **follow-live pausable** (scroll manual pausa; reanuda a los 10 s o con el botón "Seguir en vivo"); **pills de voz en vivo** (S1/S2 — diarización streaming con instancia dedicada + `LiveSpeakerLabeler`, spec 03: filas cerradas se parten/etiquetan por voz al llegar cada ventana de 10 s; "Ellos" mientras no haya cobertura; "Me"→"Yo" vía voiceprint); picker de traducción →es/→en (Translation framework, macOS 15+; solo traduce filas cerradas); **resumen rodante monotónico** cada ~40 s (nota FM solo de filas cerradas nuevas → pila → colapso > 6000 chars → render; nunca encoge — `LiveSummaryPolicy`).
-3. `stop`: diariza el canal system → `SpeakerAttributor` → detecta idioma hablado homogéneo del transcript local → guarda meeting (título por **plantilla configurable** `TitleTemplate`: `{date} {time} {seq} {weekday}`, ISO-first, `Meeting.language` solo si todos los segmentos apuntan al mismo idioma; nil si es mixto/unknown) + cast → resumen final FM (con vocabulario como glosario) → detalle.
+Meeting Detail document actions enter ApplicationKit (D105). The in-memory
+preparation workflow loads one coherent detail and latest General summary,
+renders canonical Markdown once through an injected adapter, and returns
+Markdown/PDF bytes with the released title-based suggested filename to the
+native save surface.
+Secret-Gist publication reuses the explicit document publication workflow.
+The app adapter performs utility-priority rendering, resolves the GitHub token
+only after local document admission, and constructs the gateway-backed secret
+publisher. The view retains only the user gesture, off-device confirmation,
+native panel state, and localized success or failure presentation;
+`MeetingDetailModel` owns the request and typed result effects.
 
-**MeetingDetailView**: header con título editable (lápiz), pills de speaker editables (captura de valores al tap — el alert-dismiss nileaba el estado y el rename se perdía), chips "Sugerir nombres ✦" con evidencia, resumen versionado con regenerar (es/en), transcript lazy, action items chequeables.
-- **Refinar (D7 in-app)**: re-transcribe ambos canales con Whisper (+vocabulario), fijando `hints.language` solo cuando el transcript previo es homogéneo; si hay mezcla ES/EN, deja autodetección para conservar el idioma de cada hablante/segmento (nunca usa idioma de UI/resumen como fallback), re-diariza (merge de micro-clusters), y presenta **DRAFT con sheet de comparación** (segmentos/hablantes/habla cubierta/muestra + warning rojo si cubre < 50% del habla actual) — **nada se aplica sin "Aplicar"** (un refine defectuoso reemplazó una reunión real; el draft-flow y los tombstones son la doble defensa). Al aplicar: guarda `Meeting.language` solo si se resolvió un hint homogéneo + `replaceCast` + regenerar resumen. **Corre en `RefineService` (jul 2026), keyed por MeetingID y FUERA de la jerarquía de vistas**: cambiar de reunión no pierde el borrador (la vista se recrea con `.id(id)`; antes el Task seguía quemando ANE y el sheet se perdía) — el draft espera a que su reunión se visite de nuevo; un refine a la vez; el filtro `MicBleedFilter` descarta el eco de sala del canal mic. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pura): reunión ≥ 20 min con resumen < 900 chars, o ≥ 40 min con 0 action items → ofrece regenerar con MLX en un click (solo si MLX está descargado y no fue el generador; contrato FM: sugerencia, jamás solo).
-- Exportar: Markdown / PDF (CoreText puro, compila para iOS) / **Gist secreto** con confirmación off-device explícita.
+Participant voice-memory actions also enter ApplicationKit (D105). The workflow
+loads one coherent detail, limits suggestions to unnamed non-user speakers,
+degrades optional gallery or extraction failure, applies one-to-one matching,
+and accepts persistence only for an explicitly requested currently named
+non-user speaker. The app adapter owns recording paths, transient embeddings,
+pyannote/ModelStore loading, encrypted gallery access, utility scheduling, and
+disposable-test isolation. Meeting Detail retains suggestion chips, explicit
+acceptance and remember gestures, and localized results without handling
+biometric storage or model policy. The route-owned model keeps one-shot
+suggestion state and every voice-memory action/effect.
 
-**SettingsView (⌘,)**: Idioma (usar idioma del sistema o forzar English/Español, guardado en `@AppStorage("app-language")`, aplica `\.locale` en vivo a `ContentView` y `SettingsView`) · Audio (toggle AEC, mic preferido con fallback visible, modo de captura auto/app/sistema y disclosure del alcance) · Grabaciones (carpeta configurable con migración y progreso) · Títulos (plantilla con help popover de tokens, chips insertables, botón Restablecer y preview en vivo) · Vocabulario (editor de lista: Enter añade, − quita) · Mi voz (enrolar 12 s / borrar — destruye archivo+llave) · Modelo externo BYOK (endpoint/modelo en defaults, key en Keychain, toggle de opt-in del Companion deshabilitado hasta configurar todo; eliminar la key lo apaga — spec 04) · GitHub (token en Keychain).
+Transcript/calendar speaker naming enters ApplicationKit (D107). The workflow
+loads one coherent meeting detail, excludes `Me` and already named speakers,
+requests optional attendee candidates through a port, invokes an untrusted
+proposer, and independently verifies each normalized name as complete tokens in
+a real transcript line or calendar candidate. The workflow derives typed
+evidence from that source, not model-authored prose. The app adapter owns
+EventKit authorization and the Foundation Models proposer. The route-owned
+model owns loading, suggestions, removal only after successful explicit
+persistence, and visible failure effects. Meeting Detail retains only inert
+chips, typed evidence presentation, and the explicit acceptance gesture;
+calendar-backed confirmations retain calendar alias provenance.
 
-## Verificado en el mundo real (jul 2026)
+Meeting Detail title, summary-structure, and chapter-label suggestions enter
+ApplicationKit (D111). One workflow admits only template-like meeting titles,
+General summaries, and untitled chapters; maps proposed structures to the known
+recipe catalog; and trims, bounds, or rejects generated labels before they
+reach presentation. Ordinary generator failures degrade independently, while
+cancellation propagates so a newer meeting revision can retry. The private app
+adapter owns Foundation Models availability and the concrete title,
+meeting-type, and chapter generators. `MeetingDetailModel` owns one-shot state,
+request identity, revision fencing, cancellation retry, and explicit
+dismissal. SwiftUI renders inert suggestions and sends acceptance actions only.
+A failed title rename preserves the suggestion and visible error, and requests
+Spotlight reindexing only after persistence succeeds.
 
-4 reuniones reales grabadas; permisos TCC estables entre updates (identidad de firma real); grabación de 30 min sobrevivió cambio de dispositivo a mitad (post-fix); AEC eliminó el eco de parlantes; incidente de refine recuperado sin pérdida.
+Meeting Detail audio enters ApplicationKit (D112). Playback preparation
+resolves the current canonical system and microphone files through an injected
+port, constructs one synchronized observable application facade, derives a
+bounded capability-neutral waveform away from the main actor, and installs silence and
+microphone-turn filters before publication. Compression uses an injected codec
+port and treats every raw channel as one failure-safe batch: an existing AAC
+output fails closed, all generated files must verify before any original is
+removed, and failures or cancellation remove only generated work. Clip export
+re-resolves current files after compression. The private app adapter retains
+`RecordingsLocation`, `MeetingAudioLayout`, and the concrete `AudioTranscoder`;
+`MeetingDetailModel` owns one-shot preparation, invalidation, compression
+state, player reconstruction, and typed export effects. Its playback task is
+keyed to the audio directory rather than review revisions, so cancellation by
+independent initial section updates cannot consume the only attempt. SwiftUI
+retains only transport controls, drawing, and the native save panel.
 
-## Límites conocidos
+SwiftPM and the XcodeGen UI-test project link `ApplicationKit`. It exposes the
+Sendable async `ApplicationUseCase<Request, Response>` contract and admits
+capability dependencies only with characterized vertical workflows.
+`DeleteMeeting` and `RestoreMeeting` use a narrow `MeetingLifecycleStore` port;
+manual and launch-time purge coordinate a pure storage projection with the
+private app `MeetingAudioFiles` adapter over RecordingsLocation and the local
+filesystem. `RegenerateSummary` receives storage, glossary-preference, and
+provider-resolution adapters; Meeting Detail submits one request and maps its
+typed completion/cache/unavailability/failure result. Regeneration reuse is
+recipe-scoped, reload selects the newest immutable snapshot across structures,
+and all older per-recipe versions remain stored (D44/D45). Each direct model or
+Apple translation-pivot attempt now carries provider/model metadata and creates
+content-free terminal provenance. Exact cache hits create no run; successful
+run + immutable summary + action items commit atomically, while failed/cancelled
+attempts remain best-effort diagnostics. The app still presents the same silent
+versus visible provider and persistence outcomes (D62).
 
-1. **Audio first-class (M11/D27) completo**: player sincronizado con **transcript estilo letras de Spotify** (`FocusedTranscriptView`: la línea hablada se queda CENTRADA en un viewport de altura fija, las demás se desvanecen/encogen/desenfocan hacia los bordes — efecto papel-cilindro con `.visualEffect`; sin barra de scroll; buscar en el timeline mueve el transcript DENTRO de su caja, nunca la página), click-para-saltar, **waveform-scrubber** (coloreado por canal: acento=tú, gris=ellos; atenuado tras el playhead; región del clip sombreada) y **clips** (marcar in/out en el playhead → `AudioClipExporter` exporta el rango mezclado a m4a/AAC vía `AVAssetExportSession`, medido muy por debajo de 2 s) — todo en `AudioPlaybackKit`. Sin audio, el transcript es lista normal. El **mismo carrusel corre en grabación en vivo** (`FocusedTranscriptView` parametrizado con `anchor`: en grabación la línea nueva se enfoca en el tercio inferior `y≈0.82` — la frontera — y las viejas suben y se desvanecen; `followSignal` re-centra cuando la línea viva CRECE, no solo al aparecer una nueva; reemplazó el follow-live pausable). También: **skip-silencio** (toggle; salta gaps ≥1.2 s detectados del waveform), **transcode AAC** ("Comprimir audio (AAC)" → `AudioTranscoder`, borra el original tras escritura verificada, reconstruye el player desde el m4a) e **import** (biblioteca: botón "Importar audio…" + drag-drop → `AppServices.importMeeting`: copia como canal system, Whisper + diarización + resumen, navega a la reunión nueva). **M11 completo.** `make test-ui` cubre player, highlight y clip export button; el preflight cierra Portavoz antes de XCUITest para evitar fallos de automation mode por instancias stale.
-2. La UI pública ya está bilingüe EN/ES; `docs/` y `AGENTS.md` conservan español por ahora.
+Slice 2F moves external audio import through `ApplicationKit.ImportMeeting`.
+`AppServices` now only samples platform preferences, constructs private
+filesystem/model/provider adapters, localizes typed progress, requests
+Spotlight reconciliation after success, and returns the ID used by the existing
+Library navigation. The use case owns required transcription, degradable
+diarization and summary, independent transcript/summary languages, idle
+release, staged-audio rollback, and atomic meeting/cast/transcript installation.
+File copy and compensating deletion run at utility priority instead of on the
+MainActor. Its import-specific provider resolver exposes the configured
+provider/model/revision without leaking engine construction into ApplicationKit.
+After the required aggregate commits, each real summary call records one
+content-free attempt. Success links run + immutable summary/actions atomically;
+provider failure, cancellation, or publish failure remains best effort and can
+never discard the meeting or copied audio. An unavailable provider creates no
+synthetic run. Existing progress, navigation, and idle-release timing stay
+unchanged (D46/D64).
+
+Slice 2G moves quality re-passes through `ApplicationKit.RefineMeeting` and
+`ApplyRefinedMeeting`. `AppServices` composes private audio, preference,
+processor, Store, and Companion adapters; `RefineService` retains only
+per-meeting presentation/task state, explicit cancellation, and run-identity
+fencing. D65 freezes the selected Whisper descriptor for that use-case
+instance and supplies each non-silent channel with exact local content
+evidence. One composite successful transcript run stays inside the review
+draft until Apply commits it with accepted language, cast, transcript, segment
+links, and next revision. A stale/discarded draft writes no success; a begun
+failed/cancelled attempt is standalone best-effort diagnostics. Summaries remain
+immutable and Companion refresh is post-commit optional work. D66 passes the
+accepted revision into that refresh, accumulates successful card/run artifacts
+and terminal attempts, stores current failed/cancelled attempts best effort,
+and atomically replaces cards plus links only for a complete pass. An incomplete
+pass keeps the prior cards, and a card persistence failure still cannot fail the
+accepted transcript (D47/D65/D66).
+
+D73 narrows the private processor adapter without changing that application
+contract. `prepare` loads only the selected verified Whisper runtime. After
+all required channel transcription succeeds, `diarize` joins or starts only
+the pyannote task. ApplicationKit already treats that stage as degradable, so
+an unavailable diarizer yields a reviewable unattributed draft rather than a
+failed quality pass. The same per-capability coordinator keeps external-audio
+Import independent from Parakeet and keeps durable transcript recovery
+independent from pyannote.
+
+D67 makes app composition explicit for the first migrated egress vertical.
+`RecordingController` and `CompanionRefresh` each inject IntegrationsKit's
+`URLSessionDataEgressGateway` when assembling the optional Companion client.
+The client exists only when endpoint/model/Keychain key and the persisted
+Companion opt-in are present. Production generation supplies its source
+`MeetingID`; the adapter validates content-free operation, an HTTP(S)-only exact
+destination, conservative local-device/remote scope, question-only
+classification, consent, and provider/model disclosure before URLSession. No
+SwiftUI control or visible fallback changed.
+
+D68 applies the same composition rule to every app-owned OpenAI-compatible
+summary path. Meeting Detail regeneration, external-audio import, and the
+durable post-capture worker construct Ollama providers only with an injected
+`URLSessionDataEgressGateway` and persisted summary-engine Settings consent.
+Each provider receives the real source `MeetingID`; the adapter validates full
+summary-material classification, exact provider/model/destination, conservative
+local/remote scope, and a non-empty POST before transport. Ollama summary calls
+therefore cross the policy point as `local-device`, while health/model discovery
+remains direct because it carries no meeting content.
+
+D69 moves Meeting Detail's secret-Gist publication through the same composition
+point. The view still requires the existing explicit off-device confirmation,
+then constructs `GistPublisher` with `URLSessionDataEgressGateway` and passes the
+selected meeting's real identity. The publisher declares the complete exported
+meeting document, GitHub Gist destination, and explicit Gist consent before the
+adapter can send. Request shape, secret-by-default behavior, response parsing,
+and user-visible failure presentation remain unchanged. GitHub/Linear issue
+publishing is CLI-only today and follows the parallel contract in spec 07.
+
+D75 makes `AppServices.dataEgressGateway` the single store-receipted production
+adapter for Companion, summaries, and Gist publication. The Store records the
+validated content-free attempt before URLSession; a recorder error fails the
+operation before transport. Meeting Detail receives a fourth independently
+merged receipt stream and shows a compact right-rail card. Complete new history
+without remote attempts or acknowledged sync reads “No remote service used”; an upgraded legacy
+meeting shows the tracking start date; any remote attempt shows purpose, host,
+and time plus the conservative warning that content may have left the Mac.
+D115 adds the orthogonal journal disclosure: once iCloud acknowledges any text
+generation, the headline becomes “No third-party service used” when applicable
+and `detail-privacy-receipt-sync` states that encrypted fields in the user's
+private iCloud database hold a copy. The copy remains disclosed after later
+edits or pause. It never says end-to-end because that depends on the user's
+Advanced Data Protection setting. Accessibility boundaries are
+`detail-privacy-receipt`, `detail-privacy-receipt-sync`, and
+`privacy-remote-event-<index>`. English and Spanish catalog entries preserve
+the same evidence meaning. The sync element exposes its localized status as
+the accessibility label and the complete encryption disclosure as its value,
+so assistive technology receives the same evidence as the visual card.
+
+D76 composes one `ExportSupportDiagnostics` use case above StorageKit's atomic
+support projection. `AppServices` contributes app/build/OS identity and
+readiness for Parakeet, pyannote, Whisper, Foundation Models, MLX, and Ollama;
+it contributes no endpoint, model secret, Keychain value, or meeting content.
+Settings → Your data exposes the explicit `settings-export-diagnostics`
+action, writes the returned JSON through `NSSavePanel`, and confirms that the
+file remains on the Mac unless the user chooses to share it. The app never
+uploads the report. A deterministic temp-store destination lets XCUITest prove
+the file was created and contains no seeded transcript.
+
+The same slice adds processing as Meeting Detail's fifth independent update.
+The right rail distinguishes pending/running local recovery, exhausted durable
+jobs, and a `needsAttention` shell without a job. Exhausted work exposes one
+`detail-retry-processing` action through the route-owned model; retry preserves
+the job's identity/idempotency/input evidence and then kicks the normal worker.
+A recoverable audio shell instead offers Refine, while a shell without audio
+routes to support diagnostics. `OSSignposter` wraps durable execution with
+job-kind, attempt, and outcome metadata only; it never records meeting/job IDs,
+paths, provider secrets, or transcript material.
+
+D77 keeps recording lifecycle error identity stable until presentation. Core's
+`FailureCategory` and `CodedFailure` define the small shared taxonomy;
+`ApplicationKit.StartRecordingFailure` and `StopRecordingFailure` classify the
+exact workflow stage without transporting a dependency-localized description.
+`RecordingController` maps each typed case to localized copy plus one recovery:
+retry, return to the Library when durable audio exists, or open Your data for
+local support diagnostics when state is uncertain. `RecordingView` shows the
+stable code as selectable “Error reference” text and exposes identifiers for
+the failure, reference, retry, Library, diagnostics, and Back controls. The
+`-simulate-recording-start-failure` fixture is accepted only with
+`-use-temp-store`, so production launches cannot synthesize a failure.
+
+Slice 2H moves durable Stop policy through `ApplicationKit.StopRecording`.
+`RecordingController` still flushes `RecordingSession`, closes live feeds, and
+maps typed outcomes into the same navigation/failure phases. The use case owns
+publication/reservation reconciliation, provisional attribution and language,
+transcript/no-audio recovery, atomic captured snapshot plus exact first-job
+admission, worker kick, and recording-engine release through private filesystem
+and lifecycle adapters plus `MeetingStore`. The durable worker still owns
+diarization, optional summary, and terminal-aware Shortcut timing. At that
+slice, recording start and launch recovery remained later extractions. D66 adds
+retained successful Companion artifacts and terminal attempts completed before
+Stop to the same captured snapshot; dismissed/deduplicated/no-card work creates
+no orphaned success (D48/D66).
+
+Slice 2I moves start policy through `ApplicationKit.StartRecording`.
+`AppServices` composes private preference, filesystem, Store, and capture
+runtime adapters. The use case owns once-sampled preferences, title/sequence,
+atomic pre-source shell/asset reservation, source-start invocation,
+staging/published evidence reconciliation, guarded discard or
+`needsAttention`, and failure-time release. The private runtime owns preferred
+mic fallback, AEC warm-up, meeting-app/global process-tap selection, concrete
+`RecordingSession`, direct per-channel live Parakeet streams, and one
+recording-scoped voiceprint future. `RecordingController` receives only live
+callbacks and an opaque active session; it retains visual state, caption
+filtering, live diarization, rolling summary, exact localized result mapping,
+session Stop, and synchronous mic mute. Launch recovery remains the next Band
+2 extraction (D49).
+
+Slice 2K moves `.portavoz` import through
+`ApplicationKit.ImportMeetingBundle`. `AppServices` invokes one use case,
+requests Spotlight reconciliation only after success, and returns the fresh ID;
+Library and app-delegate callers preserve their existing navigation order.
+The private document adapter reads, decodes, and remaps through IntegrationsKit
+on a detached utility task. Before files are created, ApplicationKit accepts
+only unique canonical system/microphone attachments and m4a/caf/wav
+extensions, clears any incoming machine-local directory, and coordinates a
+staged audio directory with one full Store commit. The private file adapter
+constructs only `Audio/<fresh-id>/<channel>.<extension>`, cleans partial writes,
+and compensates a persistence failure without masking it. No interactive UI
+control or localized copy changed (D51).
+
+Slice 2L moves `.portavoz` export through
+`ApplicationKit.ExportMeetingBundle`. Meeting Detail now submits only the
+meeting ID and audio opt-in, then maps returned bytes to its existing
+`ExportDocument`. The use case owns a read-consistent aggregate, clears the
+machine-local path, and assembles a format-neutral document. Private app
+adapters resolve the configured/fallback recordings root, load only available
+system/microphone m4a/caf/wav channels, and map to IntegrationsKit format v1.
+Complete audio reads and JSON/base64 encoding run in detached utility tasks.
+The native file exporter, title-based filename, UTI, dismissal state, and
+localized failure alert are unchanged (D52).
+
+Slice 2M gives each `ContentView` window one `@MainActor` `@Observable`
+`LibraryModel`. Its private-write value `State` snapshot plus enum
+`Action`/`Effect` contracts own complete/empty/degraded/failed loading, version-
+fenced reloads, debounced and query-fenced FTS, meetings/voice mixes/open items,
+rename and mutation outcomes, trash, import progress/errors, calendar agenda,
+on-demand briefs, and navigation effects. `LibraryView` and `TrashSection`
+render the snapshot, retain native AppKit panels and SwiftUI presentation, and
+send actions instead of invoking Store, lifecycle, import, or EventKit-backed
+services. `ContentView` creates a fresh model per `WindowGroup` instance, so
+transient search/rename/import state is not global. The sidebar's native List
+binds only to meeting routes: transient `nil` writes and non-meeting routes are
+ignored, while tagged meeting/search rows retain native selection and deletion
+updates the broader route explicitly. This keeps Meeting Detail, Ask, Insights,
+and Recording stable through feedback writes and independent Library refreshes
+without sacrificing native sidebar selection during row rebuilds.
+
+Slice 2N replaces the temporary Library read seam. ApplicationKit defines the
+storage-independent meeting-row/voice-mix, open-item, trash, search, section,
+and update types consumed by `LibraryModel`; the model and Library views no
+longer import StorageKit. `AppServices+Library` maps and merges independent
+Store observations for meeting rows/voice mix, open items, and trash, while
+active FTS remains its own debounced query stream. A failed section preserves
+the most recent healthy data and degrades the load phase without stopping the
+other observations. Search continues to fence stale queries and now also
+updates while the same query remains active. Library no longer reads
+`libraryVersion`; at that slice mutation adapters still incremented it for
+Meeting Detail, Insights, and Spotlight until those consumers migrated. D85
+later removed the counter after Spotlight gained its process owner. No
+visible control, navigation behavior, or localized copy changed (D54).
+
+Slice 2O moves the deterministic meeting-review policy cluster into
+ApplicationKit. `ChapterExtractor`, `PlaybackRanges`, `SummarySections`, and
+`VoiceHue` retain their exact public APIs and algorithms; Meeting Detail,
+Insights, recording captions, and `PVDesign` now consume them through the
+inward application boundary. The move adds no capability dependency, schema,
+control, or localized copy. Eighteen direct policy tests plus a source-ownership
+and consumer-import architecture rule guard the boundary (D55).
+
+Slice 2P moves the deterministic Insights read-policy cluster into
+ApplicationKit. `InsightsScope`, `LibraryStats`, and `InsightsFindings` retain
+their exact public APIs and calculations; `InsightsView` now imports only the
+inward boundary for those decisions. Store-backed facts, voice balance, and the
+then-existing broad refresh were unchanged. Twenty-one direct policy tests,
+a source-ownership/import architecture rule, and the retained heatmap screenshot
+guard behavior and the visible dashboard (D56).
+
+Slice 2Q completes the local product-policy move. ApplicationKit owns
+`BriefRelevance`, `ReminderPolicy`, and `MirrorStats`; PortavozCore owns the
+calendar-neutral `UpcomingEvent`; and IntegrationsKit retains EventKit access
+and mapping plus RAG/external adapters. Brief ranking and visible reasons,
+lead-window/session-deduplicated reminders, and the mirror's qualification plus
+bilingual factual synthesis are unchanged. Fourteen direct policy tests and an
+eighteenth architecture rule guard the split. The disposable UI fixture can
+mark the seed as freshly recorded, opt into the mirror, assert `mirror-card`,
+and retain app-window evidence without capture hardware or user data (D57).
+
+Slice 2R gives Insights one per-window read owner. `ContentView` stores an
+`@MainActor @Observable InsightsModel`; `InsightsView` receives that model and
+restarts its observation only when the selected `InsightsScope` changes. The
+model samples one reference date, merges meetings, participant/commitment
+facts, voice balance, and scope-bounded finding updates, rejects stale
+observation IDs, preserves healthy sections after a source failure, and
+computes one storage-independent `InsightsReadModel`. `AppServices+Insights`
+maps the four Store streams at composition. The view no longer imports
+StorageKit, calls `services.store`, or reads `libraryVersion`; Meeting Detail
+and Spotlight retained the broad compatibility counter at that slice (D58),
+before D59 and D85 removed the final consumers.
+
+Slice 2S gives each selected meeting one read owner. `MeetingDetailView` owns
+an `@MainActor @Observable MeetingDetailModel` for the route identity and
+renders one storage-independent `MeetingReviewReadModel`. The model merges
+independent transcript/cast, newest cross-recipe summary/action-item, Companion,
+privacy-receipt, and durable-processing streams; distinguishes missing from failed state; rejects stale
+observation instances; and preserves healthy sections after a partial failure.
+`AppServices+MeetingDetail` maps the five StorageKit streams at composition.
+The view no longer performs sequential detail/Companion/summary reads or keys
+its task to `libraryVersion`; player loading, two-column review, chapters,
+newest summary, exports, and visible errors remain unchanged. Accepted Refine
+regenerates from the accepted draft's speakers/segments, avoiding a race with
+observation delivery (D59).
+
+Slice 2T routes Meeting Detail persistence through the same route-owned model.
+Explicit actions/effects cover title and speaker rename, name/voice suggestion
+acceptance, action-item completion, Companion removal, meeting deletion, and
+searchable-content changes. `AppServices+MeetingDetail` adapts Store, the
+ApplicationKit lifecycle use case, and the Spotlight reconciliation request;
+`MeetingDetailView` reaches none of them directly. The model preserves silent
+best-effort operations, visible manual-rename/Companion errors, explicit
+remember-voice consent, and delete navigation. Scoped observations, not
+optimistic duplicate arrays, return post-write state. The adapter maps the
+stale-refine persistence error before presentation. The remaining playback
+path helpers later moved behind the D112 application audio workflows. SwiftUI
+no longer imports StorageKit or AudioPlaybackKit for Meeting Detail playback,
+compression, or clip export. Voice-memory extraction uses its separate app
+adapter and application workflow (D105).
+
+Band 6C3 applies the same scoped-state rule to the resident menu-bar scene.
+`MenuBarContent` owns one `@MainActor @Observable MenuBarModel` and renders only
+its private-write value snapshot. ApplicationKit defines recent-meeting,
+pending-count, section, and update contracts without StorageKit. A private app
+adapter merges a three-row live-meeting observation with the independently
+scoped latest-open-item observation and keeps `CalendarAttendeeSource` outside
+SwiftUI. Meeting-root writes refresh recents; latest-summary/action completion
+refreshes pending badges; delete/restore remains live-rooted. If either query
+fails, the other section and its last healthy state remain visible. The panel's
+record/dictate/ask commands, no-prompt calendar rule, ordering, relative dates,
+launch-at-login control, and layout are unchanged (D98).
+
+Band 5F keeps Companion provenance inside that scoped read model without
+conflating the question with the answer. Each evidenced card renders one
+localized **Question source** control and zero or more ordered **Answer
+sources**. The former identifies the exact transcript turn that produced the
+question or directed ping; the latter appears only for context answers and
+follows exact local-RAG citations. Selecting either role focuses the cited
+transcript row and seeks the shared player without autoplay. Stale or
+physically unavailable evidence remains explicit instead of navigating to a
+nearby guess. Stable card/role/index accessibility identifiers make both paths
+deterministic under XCUITest (D91).
+
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either owns the resident live engine or triggers shared preparation in the background; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome and the recovery worker refreshes that idle policy after publishing. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery calls `loadTranscriberIfNeeded()`, durable attribution and Import call `loadDiarizerIfNeeded()`, and Refine prepares Whisper then requests only its degradable diarizer. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+
+## Design system in app (Jul 2026) — tokens + voices B + accent
+
+Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign` (app): Swift mirror of `tokens/*.css` — spacing 12/16/24, radios 8/10/12/14, tints 0.14/0.08, brand amber/violet/slate. When a value changes in the DS, it changes THERE and nowhere else. (2) **Voice B direction «el color ES la voz»**: `VoiceHue.index` (ApplicationKit, pure, FNV-1a — Swift hashValue is randomized by launch and DOESN'T work; 3 tests) assigns stable hue: named by hash of normalized name (same person = same color in all meetings), S-labels by appearance order; `VoicePalette` (app) maps to DS light/dark colors. Applied in: SpeakerPill (Me = solid amber + amber-contrast text; others hue 0.26), MeetingHealth bars (0.85), transcript pills, mic channel of waveform player (amber) and live recording labels. Indigo reserved for interaction (chips ✦, links, selection). (3) **App accent**: `assets/Assets.xcassets/AccentColor` (indigo #5856D6/#5E5CE6) compiled with `xcrun actool` in make-app.sh + `NSAccentColorName` — resolves system-accent debt for multicolor users (macOS gives priority to user who chose explicit color). **DS batch Jul 11 (2nd night — pull 9f11623 + implementation)**: (1) **Icon «La P que habla»**: assets/AppIcon.icns regenerated from DS SVG — the P is Fraunces (NOT installed locally): rendered in browser with Google Fonts via `scripts/icon-p.html` (canvas 1024, macOS grid: square 824 + radius 185) and `scripts/make-icns.sh` builds .icns; menu bar = `assets/icon/pv-menubar-32.png` pre-rendered as NSImage template (MenuBarIcon.swift) — the P adapts to appearance; recording follows record.circle.fill red (the «asta que pulsa» of DS remains flourish web). scripts/make-icon.swift (old icon) removed. (2) **Chips by evidence** (tokens --chip-* new): ChipLabel.swift (ai/voice/offer) + dynamic light/dark tokens in PVDesign (NSColor(name:dynamicProvider:)) — AI = violet tint + spark ✦ AMBER, voice = cyan + waveform, offer = neutral; applied to suggested title, S→name, voice matches, «Summarize as X?» and voice reminder offer. CONTROLS ✦ (Suggest names) follow indigo — deliberate distinction suggestion≠button. (3) **Settings 2a**: NavigationSplitView with 7 categories (SettingsCategories.swift) + search (.searchable filters by title and keyword bags EN/ES — ES live in catalog because EnglishSourceTests scans strings in code) + banner «100% local» → ledger; LedgerSection = real numbers (du of recordings root in Task.detached, count of meetings, enrolled+recorded voices) + honesty line of what actually goes out. gitHubSection extracted to GitHubSection.swift (file_length 700). (4) **Live lyrics 4a**: captionRow with colored voice pills (hash of label — S1/S2 stable, names = canonical hue), active line .title3, YOUR card in amber (me 0.12 + ring 0.35); FocusedTranscriptView already had fade/shrink/blur cylinder. **DS batch Jul 11 (3rd — pull 35264fb: Settings/Menubar/Dictation.jsx + menu bar implementation + mix)**: (1) **Menu bar 2b**: MenuBarContent rewritten as panel `.menuBarExtraStyle(.window)` (previously flat menu) — status header (mini waveform with amber/red peak when recording + a green local-first/opt-in-transfer policy), quick actions grid (Record red / Dictate indigo / Ask), next meeting card (only if calendar access — never prompt here) with «grabar al empezar» → route .recording(event), recent with relative dates, footer (Open / Launch at login / Quit). Panel closes only on focus loss (opening window closes it). (2) **Voice mix in sidebar** (kit signature): `MeetingStore.voiceMixes(for:)` (StorageKit) — ONE added query that sums segment durations by (meeting, speaker), normalizes to assigned voice of each meeting and returns ordered slices by talk-time (isMe/displayName/fraction/order); 3 tests (fractions sum to 1 + order, empty input, meeting without attributed speech absent). `VoiceMixBar` under each meeting row colors each slice with `VoicePalette.color(for slice:)` — amber = you, stable hue by name, order for S-labels. Meetings without attributed segments simply don't show bar (honest).
+
+**Dictation 4b (pull DS 4 — Jul 11)**: the dictation strip gains the three traits of exploration 4b. (1) **Visible target chip**: `DictationController.targetApp` = `NSWorkspace.frontmostApplication.localizedName` captured in `start()` BEFORE showing non-activating panel (frontmost still is destination app); strip shows `✎ <app>` — never dictate «a ciegas». (2) **Partial in gray**: `confirmedText` in `.primary` + `partialText` in `.tertiary` concatenated (previously joined into one string) — volatility shown in gray and affirmed on confirmation. (3) **Inserted state**: new `Phase.inserted(Int)` — after `TextInserter.insert`, strip shows «N palabras insertadas en <app> — nada se guardó» for 1.6 s before closing (previously closed abruptly). Privacy ledger does NOT adopt the mock DS tile «0 B a la red»: would be an unmeasurable metric (no network log); real LedgerSection says what CAN go out (gists, external model, update check) — more honest («Measured, not promised»).
+
+**Real DS features (Jul 12 — «construyelas»): chapters + only-my-voice + summary tabs + menu-bar pending.** (1) **Summary tabs** (MeetingDetailView): SummarySections (ApplicationKit, pure, 3 tests) splits markdown by headers `## ` (language-agnostic) → intro + sections with bullet count; tab bar Summary/«Heading·N»/«To-dos·done/total» (active tab indigo filters). (2) **✦ Chapters** (chaptersSection): ChapterExtractor (ApplicationKit, pure, 6 tests) derives chapters LOCAL from transcript — boundary by pause ≥10s (with minimum spacing of 120s to avoid over-segmenting spaced seeds) or length ≥300s; label = first real sentence of chapter, with fallback search limited to that same chapter; ≤1 chapter → hidden rail. Rendered after MeetingHealth, click seeks+plays (disabled without audio). (3) **Only my voice** (MeetingPlayer + MeetingPlayerBar): `onlyMyVoice` + `nonVoiceRanges` — time-observer skips non-voice ranges like skipSilence; PlaybackRanges.complement (ApplicationKit, pure, 6 tests) computes complement of .microphone channel ranges within [0,duration] (merge with padding 0.25s); amber-tinted toggle in player bar. (4) **Pending menu bar**: recent shows «✦ N» = openActionItems grouped by meetingID. **2-column layout of detail (Jul 12)**: DONE. loadedBody: header + speakers + refineStatus full-width, then HStack(alignment:.top) — left VStack (summaryOrGenerate + transcriptSection with player, maxWidth infinity) + `detailRail` right (width 260: MeetingHealthView + chaptersSection + Companion persisted). Rail has own scroll and is HIDDEN entirely if no content (doesn't leave 260pt gap). maxWidth of content bumped to 1060. Matches MeetingDetail.jsx from DS.
+
+**Pixel-perfect refinement (Jul 12 — user feedback: app fell short vs DS)**: (1) **Settings** (SettingsSidebar.swift): native one-line nav becomes custom — icon + title + single-line subtitle per category (SettingsCategory.subtitle), selection with indigo→violet gradient, own search field and green «Todo local» badge below, over AuroraSidebarBackground. LedgerSection: 3 rows → 4 tiles (allocated audio/live meetings/opt-in network policy/encrypted voices); exact local metrics come from D101 and the network tile makes no synthetic byte claim. (2) **Insights** (InsightsView): Swift Charts bar chart replaced by rhythm HEATMAP — LibraryStats.heatmap[week][day] (pure grid, 2 tests) rendered as 12 columns × 7 rows of day with relative indigo intensity to peak; meetings tile gains mini-waveform amber + real week-over-week delta. NO «hallazgos ✦» (no engine, no invention). (3) **Library sidebar** (LibraryView): «New recording» = gradient indigo→violet pill + mini-waveform (amber peak); Import/Ask/Insights = 3 vertical icon+label chips grid; search with keycap ⌘K; footer «100% local — nada sale de tu Mac» with green dot. `accessibilityIdentifier` preserved for XCUITest. **Refinement 2 (Jul 12 — DS screenshots): sidebar timeline + indigo selection + buttons under title.** (1) **MeetingDetail**: the 3 action buttons (refine/export/delete) MOVE from `.toolbar` (top-right) to a ROUND BUTTON ROW under title (actionRow/roundButton) — export tinted accent, delete red; matches DS (buttons live with meeting, not window chrome). (2) **Library sidebar timeline**: meetings grouped by recency (meetingGroups: Today/This week/Last week/Earlier, empty buckets dropped) instead of flat «Meetings». (3) **Indigo selection**: `.tint` does NOT override native sidebar highlight (which follows user's system accent — green on their Mac); solution: `.listRowBackground` with indigo→violet gradient when `route == .meeting(id)` + white text, which beats native highlight. Helpers moved to `extension LibraryView` (type_body_length). Menu bar and detail tabs/chapters/player-chips: DONE (see below).
+
+**Recording 4a (Jul 12)**: RecordingView restructured to DS mockup. `recordingBar` (compact top bar: red dot + timer 24pt + `compactMeter` (mic dB) on left; Translate + Companion (button toggle) + HUD + **Stop red** on right — previously Stop was at bottom and header was 40pt). SINGLE column (previously two): `captionsList` (lyrics, `maxHeight:.infinity`) + ScrollView bounded (260) with companion cards + notes + live summary. `micLowBanner` separated (only when level is low). Language bridge (6a-3): translation under each caption goes in `.secondary` italic (NOT amber — amber only for your voice by voices-B; 6a spec said amber but voices-B is the newer canonical rule). Verification: build/lint/tests; computer-use not applicable (view only exists during live recording with audio engines).
+
+**Recording/review polish (Jul 14)**: local mic mute in bar (zeros aligned, doesn't control call); floating HUD that grows with current utterance and returns to compact on speaker change/pause; unlimited Companion cards newest-first, persisted and reviewable; refine re-derives them; chapter titles with Foundation Models and literal fallback bounded to chapter. `MeetingDetailView` invalidates player/waveform and discards canceled loads when switching meetings so nothing from previous detail leaks into next.
+
+**Aurora shell (Jul 2026)**: `Aurora.swift` — the `--aurora-*` doses of tokens, ONLY in dark appearance (icon world is dark; light stays native). `AuroraDetailBackground` (detail pane, wired in ContentView): 140° gradient #1C1A2E→#262626 + elliptical radial violet with center OUTSIDE screen (x=20%, y=-104pt, 1400×520) — only glow tail touches content; GeometryReader with `ignoresSafeArea` to bleed under toolbar and `.clipped()` to not spill over sidebar. `AuroraSidebarBackground`: brandSlate 0.6 over native vibrancy (deep glass, desktop breathes). Detail views are ScrollView with quaternary translucent fills — gradient breathes through cards without touching them. `--aurora-selection` NOT adopted: macOS draws sidebar selection natively and repainting fights platform.
+
+**Unified accent (same batch)**: `PVDesign.accent = Color.indigo` (system indigo IS exactly the DS hex, adaptive). ALL usage of `Color.accentColor` in app target swept to `PVDesign.accent` — `Color.accentColor` follows user's system accent (not root `.tint`), and produced green/indigo mixes in same view when user has explicit accent. Root `.tint(.indigo)` also reads `PVDesign.accent`. What macOS paints natively (list selection, focus rings) follows user — correct platform behavior.
+
+## Palette ⌘K «Pregúntale a tu semana» (Jul 2026 — design system 6a-1)
+
+`CommandPaletteController` is process-scoped in `AppServices` and works with
+the main window closed. Its borderless 620 pt `NSPanel` remains a real key
+window for text input, closes on key loss, and has a stable window identifier
+for app-only visual evidence. ⌘K is registered through `CommandGroup`, so it
+also works without a main window. `CommandPaletteModel` owns query, instant
+results, answer state, search/answer tasks, and a generation fence; every close
+or new query cancels old work, so a result from a prior panel cannot publish
+into a later invocation. `AskModel` separately owns the full Ask route's draft,
+conversation, progress, and answer task for one main window.
+
+Both surfaces use `ApplicationKit.AskMeetings`. Typing requests up to six FTS
+results with snippet, title, and timestamp; Enter requests hybrid local evidence
+and an optional on-device answer. Missing generation degrades to complete
+evidence rather than losing citations. Citation controls pass storage-
+independent identity and time to composition, then set the one-shot,
+meeting-scoped detail seek; the palette reopens a main window only when none is
+visible. ⌘C copies the
+answer and citations through `ApplicationKit.AskMarkdown`. The views and panel
+import no StorageKit, IntegrationsKit, or IntelligenceKit. Disposable bilingual
+UI coverage verifies the full Ask answer, instant palette results, generated
+answer, app-panel-only screenshot, and exact three-second citation seek (D100).
+
+## Insights (Jul 2026) — library dashboard
+
+`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), a 12-week × 7-day rhythm heatmap with zero weeks retained, frequent people, pending gauge, and local findings. ApplicationKit owns `InsightsScope`, `LibraryStats`, `InsightsFindings`, and the complete storage-independent `InsightsReadModel`; calculations inject calendar/now. A per-window `InsightsModel` combines four app-mapped Store observations: live meeting chronology, participant/commitment facts, voice balance, and finding evidence for at most the 60 newest live meetings in the selected scope. Meetings without `endedAt` count but do not drag the average; no-decision findings require summarized evidence, and recurring topics exclude participant names. Everything remains 100% local. Writes refresh only the query families whose explicit base-table regions changed; scope changes restart the bounded finding observation without a process-wide reload.
+
+## Resident menu bar (Jul 2026)
+
+`MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start opens window via `openWindow(id: "main")` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Dictate (only with dictation enabled), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
+
+## Global dictation (Jul 2026)
+
+**Hold-to-talk (Jul 2026)**: `GlobalHotkey` listens to kEventHotKeyPressed AND kEventHotKeyReleased (`GetEventKind` in same handler). Gesture without setting: a TAP (release < 0.5 s) preserves toggle; HOLD combination while speaking and release delivers at release — walkie-talkie. Verified E2E: hold of 2.5 s opens panel on press and closes only on release.
+
+**Configurable hotkey (Jul 2026)**: `HotkeySetting` (keyCode + Carbon mask + label, AppStorage; default ⌥⌘D) + `HotkeyRecorder` in Settings (NSEvent local monitor captures next combo; Esc cancels; combos WITHOUT ⌘/⌥ rejected with beep — single letter as global hotkey would hijack typing). `syncHotkey` now always unregister-first so new combo applies live. Verified E2E: record ⌃⌥⌘M and trigger opens panel.
+ — ⌥⌘D in any app
+
+Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` (Carbon `RegisterEventHotKey` — the only API consuming keystroke WITHOUT Accessibility permission; registered from App init, not view, to survive without window), `DictationController` in AppServices (mic → Parakeet streaming with custom vocabulary → `CaptionCoalescer` reused with echo/noise hygiene; nothing persisted: no meeting, no DB, no file), `DictationPanel` (same non-activating pattern as HUD, bottom-center, live text, X cancels), `TextInserter` (paste-and-restore: clipboard → synthetic ⌘V via CGEvent → restore; the ⌘V DOES require Accessibility — checked BEFORE recording with system prompt to avoid dictating into void). Toggle in Settings (off by default); `DictationAssembler` (TranscriptionKit, pure, tested) joins confirmed+partial. Verified E2E: hotkey triggers with app in background and panel transcribes real live audio; final insertion verified in field.
+
+## Views and flows
+
+**LibraryView + LibraryModel**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` now provides a stable automation boundary for the real FTS/model wiring; UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
+
+**RecordingView + RecordingController** (full live pipeline):
+1. `start`: `RecordingController` resets live visual state and sends callbacks
+   to `ApplicationKit.StartRecording`. The use case samples settings, asks the
+   private runtime to warm the mic while engines load, atomically calls
+   `MeetingStore.beginRecording` for the `recording` shell and pending
+   `<channel>.partial.caf` assets, then invokes source start. The runtime owns
+   the concrete mic (+system tap on 14.4+), `RecordingSession`, and direct
+   Parakeet stream per channel; captions return through the callback to
+   **CaptionCoalescer**. A no-file startup failure rolls back only the empty
+   shell; staging or published evidence preserves it as `needsAttention`
+   (D37/D49).
+2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint.
+3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
+   rename staging files without overwrite → one `installCapturedSnapshot`
+   transaction for `captured` + finalized/missing assets + provisional live
+   cast/transcript/context/Companion + the exact initial diarization job →
+   enter `done` and open detail → process-scoped worker diarizes and atomically
+   replaces the provisional cast → optional summary in the independently
+   configured language → persist `ready`. The title (configurable
+   `TitleTemplate`: `{date} {time} {seq} {weekday}`, ISO-first) is assigned at
+   start, so sequence follows start order. `Meeting.language` is set only when
+   all segments are homogeneous; mixed/unknown remains nil. Audio with no
+   captions, a failed job admission, or later required-work failure remains
+   discoverable as `needsAttention` rather than being deleted. A publication
+   collision keeps its staging file and also becomes `needsAttention` for
+   launch recovery.
+
+Normal Stop now uses the durable process path (D39–D43). The active Start
+session owns one utility-priority voiceprint future after reservation and feeds
+that same value to both live diarization and the exact initial operation. After files publish,
+`installCapturedSnapshot(..., enqueue:)` atomically installs captured
+assets/live transcript/notes/cards and that first job. Stop enters `done`
+immediately after the commit and kicks `PostCaptureProcessingSupervisor`, so
+the detail opens while attribution and optional summary continue. A failed job
+insert rolls back the snapshot; the controller then attempts one explicit
+`needsAttention` snapshot fallback and never deletes audio.
+
+Process launch creates `RecordingRecoveryCoordinator` outside the view
+hierarchy. It seeds only the temp-store UI fixture and enters
+`ApplicationKit.RecoverInterruptedMeetings`, which recovers expired leases,
+filters non-ready meetings, rechecks live-capture activity per candidate, and
+owns recovered-asset/lifecycle/failure policy. The private app filesystem
+adapter scans configured and fallback roots and revalidates staging-only or
+final-only CAF evidence off the main actor. Missing files are explicit;
+staging plus final or duplicate-root evidence is preserved as
+`capture.recovery.ambiguous` without overwrite or deletion. The coordinator
+maps typed issues to OSLog and one broad invalidation. Only after the awaited pass does `PostCaptureProcessingSupervisor` invoke
+`ApplicationKit.ProcessPostCaptureJobs`. The workflow serially owns
+transcription, diarization, and summary claims; lease heartbeats; exact input
+fingerprints; cleanup, attribution, and dependency admission; provenance;
+retry/cancellation outcomes; terminal action and engine-release timing; and
+the next scheduled wake. `AppPostCaptureProcessingCapabilities` retains
+recording-path resolution, filesystem checks, concrete Parakeet/pyannote and
+summary-provider construction, language/vocabulary preferences, Shortcut
+invocation, and idle engine release. The supervisor only coalesces kicks,
+schedules the returned wake without polling, and maps content-free events to
+telemetry. Optional initial summary-provider discovery runs only after recovery
+and durable workflow resume, so a local Ollama probe cannot delay finalized
+audio or transcript recovery. The user's post-meeting Shortcut runs after terminal
+derived work, including
+transcript-only completion when summary is unavailable; temp-store launches
+suppress real host Shortcuts (D50).
+
+Each actual durable summary model attempt begins only after the workflow has
+validated its meeting, request, provider, and recomputed operation fingerprint.
+Immediately before the provider call it snapshots content-free provider/model,
+job ID/attempt, recipe, output-language, and transcript-revision metadata. Its
+successful `GenerationRun` is required by `SummaryArtifact` and commits with the
+summary/actions, job success, and lifecycle reconciliation under the existing
+lease/revision fence. Post-attempt provider/publish failures are recorded as
+failed runs; task cancellation, lease loss, and superseded input are cancelled
+runs. Both are best effort so diagnostics cannot mask durable retry policy.
+Provider unavailability and pre-attempt supersession create no run. The
+temp-store processing fixture identifies its deterministic provider/model and
+exercises this same production path in the durable-resume XCUITest (D63).
+
+**MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items. Summary setup failures are typed: unavailable Apple, missing Ollama selection, missing MLX download, and local-engine failure open an actionable alert whose recovery button opens the native Settings scene at the exact Intelligence category instead of ending in a generic error (D72).
+- **Summary sources (D87):** the overview tab renders compact localized
+  timestamp buttons only when its typed claim matches the current transcript
+  revision and every ordered segment link remains live. Selecting a source
+  focuses that exact transcript row and seeks retained audio without starting
+  playback; when waveform preparation is still running, the view retains the
+  exact pending seek and applies it as soon as the player is ready. Text-only
+  transcripts own a `ScrollViewReader` so the same action focuses without
+  moving the header or summary. Revision mismatch shows a stale explanation;
+  any missing/tombstoned/null link shows unavailable and exposes no partial
+  jump. Stable source, transcript-row, and current-playhead accessibility
+  identifiers protect the navigation in both app languages.
+- **Claim review (D88):** beneath a current evidenced overview, direct
+  Add/Edit correction and Mark unsupported controls keep the user's assessment
+  visibly separate from generated Markdown. The correction sheet explains that
+  text stays on this Mac unless the user explicitly exports a `.portavoz`
+  bundle, enforces the 2,000-scalar bound, and saves through a
+  `MeetingDetailModel` action/effect instead of touching StorageKit from the
+  view. Clear removes the visible assessment and physically erases correction
+  text while retaining its nonsensitive tombstone. Native selected state and
+  distinct editor/status/value accessibility elements preserve keyboard,
+  VoiceOver, and EN/ES XCUITest reachability.
+- **Decision sources (D89):** when a rendered summary section owns typed
+  decision evidence, each Markdown bullet remains visually intact and its
+  compact source timestamps render directly beneath that bullet. The source
+  uses the same revision/current/unavailable resolver and focus-without-autoplay
+  behavior as the overview. Stable section/bullet/evidence accessibility IDs
+  make the exact relationship testable without matching localized headings;
+  sections without typed evidence keep the original whole-body renderer.
+- **Action-item sources (D90):** each to-do keeps a separate immutable
+  evidence aggregate keyed to its checkbox identity. Compact source timestamps
+  render beneath the matching task and reuse the same revision,
+  current/unavailable, transcript focus, and no-autoplay behavior as overview
+  and decisions. Toggling completion does not move or rewrite the source.
+  Stable task/evidence accessibility IDs keep this relationship testable in
+  both app languages without matching generated task text.
+- **Confirmed people (D86):** accepting a manual, transcript/calendar, or
+  encrypted-voice name may surface a separate `person-remember-offer`; neither
+  the name action nor its evidence auto-links a human. `MeetingDetailModel`
+  first sends `findCanonicalPeople`. With no exact normalized candidates, the
+  user's Remember click atomically creates a distinct person and links the
+  observed non-user speaker. Any candidate opens a second confirmation dialog
+  with one explicit existing-person choice per match plus “Create a separate
+  person.” Successful links reconcile Spotlight and render a checkmark plus
+  the localized “Linked to a remembered person” accessibility value. The
+  app does not expose this action for `Me`, never couples it to VoiceGallery,
+  and requires a new confirmation for fresh Refine speakers. Existing
+  VoiceGallery checks run off MainActor; disposable UI launches treat that
+  sensitive store as empty rather than reading the host file or Keychain.
+- **Refine (D7/D35/D47/D73 in-app)**: `ApplicationKit.RefineMeeting` prepares only required Whisper and re-transcribes retained non-silent channels (+vocabulary), then applies microphone noise/bleed filtering and requests only best-effort pyannote diarization; live Parakeet is never a prerequisite. `TranscriptLanguagePolicy.automatic` uses a hint only when previous transcript evidence is homogeneous; if mixed ES/EN, it leaves auto-detection active to preserve speaker/segment language. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither app UI nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Companion refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
+- Export (D105): Markdown / PDF (pure CoreText, compiles for iOS) / **Secret
+  Gist** with explicit off-device confirmation and gateway-enforced
+  meeting/document metadata. All three load one coherent meeting snapshot
+  through ApplicationKit; SwiftUI does not render the canonical document, read
+  the publishing credential, or construct the publisher/network gateway.
+
+**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background progress, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113) · Audio (toggle AEC, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Companion activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Companion classifier are available; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of `PlatformKit.KeychainSecretStore`, encrypted voice stores, and `MicrophonePermissionClient`; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
+
+## Verified in real world (Jul 2026)
+
+4 real meetings recorded; TCC permissions stable between updates (real signature identity); 30 min recording survived device change halfway (post-fix); AEC eliminated speaker echo; refine incident recovered without loss.
+
+## Additional as-built note
+
+**Audio-first Meeting Detail:** the synchronized player drives the
+**Spotify-style lyrics transcript** (`FocusedTranscriptView`: the spoken line
+stays centered in a fixed-height viewport while surrounding lines fade,
+shrink, and blur; its explicit vertical/no-indicator initializer and built-in
+vertical scroll-view coordinate space preserve the same behavior across the
+supported Sequoia and latest SwiftUI SDK signatures without sharing a generic
+named key with the visual-effect closure, and its fade/scale/blur values cross
+`CGFloat`/`Double` boundaries explicitly),
+click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
+and microphone-only playback. `MeetingDetailModel` owns
+one playback-preparation attempt per recording directory, cancellation retry,
+compression state, session invalidation, and clip-export effects.
+`ApplicationKit.PrepareMeetingPlayback` resolves current channels through an
+injected port, constructs one `MeetingPlaybackSession`, derives the bounded
+waveform off the main actor, and configures silence and microphone-turn ranges.
+The app adapter owns the configured recording root and canonical channel-file
+lookup. `AudioPlaybackKit` retains AVFoundation playback, Accelerate waveform
+analysis, AAC encoding, and mixed-range export. SwiftUI owns the transport
+controls, waveform drawing, and native save panel only. Compression operates
+on every raw channel as one failure-safe batch: existing canonical outputs are
+never replaced, generated outputs are removed on failure or cancellation, and
+no original is removed until all outputs verify. A successful conversion
+invalidates and rebuilds the session from current files. Without readable
+audio, the healthy transcript remains a normal text-only list. The same
+carousel still runs during live recording with a lower follow anchor. Audio
+import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
+mixed-language recognition. `make test-ui` covers the player, highlight,
+compression action, and clip-export button; preflight closes stale app
+instances before XCUITest.
+
+**Stateless waveform derivation (Band 4F/D84, Jul 2026):**
+`Waveform.generate` reads the available microphone/system sources, partitions
+their shared timeline into the requested bucket count, and computes each
+range-aligned channel peak with Accelerate `vDSP_maxmgv`; the final bucket
+consumes the exact remainder. It returns one normalized bucket sequence with
+the dominant source but writes no cache or sidecar. On a copied real 55.9-minute
+dual-channel CAF source, first wall/CPU is 109.25/94.81 ms and 20-run repeat p95
+is 70.11/71.33 ms, down from 761.75/767.43 and 747.53/754.79 ms while preserving
+the exact result fingerprint. Replacing the source changes the result without
+an invalidation protocol. D84 therefore rejects a persisted cache at the
+measured scale.
 
 
-## Verificación UI — XCUITest primero (jul 12)
+## Meeting Detail scale baseline (Band 4A, Jul 2026)
 
-`make test-ui` (XcodeGen → Portavoz.xcodeproj → xcodebuild test) corre 15 XCUITest en `Tests/PortavozUITests`: Library (record button + chips + agrupación por tiempo), Insights (heatmap + interlocutores), Onboarding (primera escucha + avance), MeetingDetail (tabs del resumen revela ▸, rail derecho salud+capítulos, player skip+solo-mi-voz, clip export), Settings (todas las categorías, estructuras custom, controles de captura, mirror y switch de idioma en vivo vía ⌘,). El seed-demo lleva un 3er segmento a 200s (canal mic) para que existan 2 capítulos y audio solo-mío. Convención: TODO control interactivo nuevo lleva `accessibilityIdentifier` (`area-cosa`: settings-category-intelligence, summary-tab-N, chapter-<seg>, player-only-my-voice, settings-export-all-button) + assertion en el `*UITests.swift` correspondiente. computer-use queda de última alternativa. **Bug real que atrapó XCUITest (no computer-use)**: `PlaybackRanges.complement` construía un `ClosedRange` invertido (`200...6`) y CRASHEABA cuando un segmento de voz empieza después de la duración del audio (timestamp de transcript > grabación más corta) — fix: clamp con compactMap antes de formar el rango (+ test).
+`AppServices+ScaleBenchmark` admits `-seed-scale` only together with
+`-use-temp-store`. It creates one deterministic 2-hour meeting with 5,000
+segments, four speakers, a versioned summary, no audio, and no model or user
+preference access, then routes to the real Meeting Detail. The fixture skips
+automatic chapter retitling so model work cannot contaminate a projection
+baseline. An optional `-scale-auto-summary-update` writes summary revision 2
+after three seconds through the normal scoped Store observation.
+
+`MeetingDetailModel` starts the content-free `Meeting Detail First Content`
+`OSSignposter` interval at model creation; the loaded view ends it once on its
+first appearance. The signpost contains no meeting identity, title, transcript,
+speaker, path, or generated text. `scripts/run-detail-ui-baseline.sh` refuses
+the notarized `/Applications/Portavoz.app`, launches only Portavoz Dev with the
+disposable fixture, and records Logging plus SwiftUI/Time Profiler/Hangs. The
+tracked Xcode 26.6 result reaches content in 522.30 ms and reports one 515.86 ms
+initial hang. Time Profiler captures 15,908 samples with Meeting Detail and
+transcript symbols. The SwiftUI template emits `Trace file had no SwiftUI data`
+and zero update rows on this toolchain, so exact view-body invalidation remains
+unmeasured rather than being represented as zero (D79).
+
+Band 4B reruns the same installed Dev fixture after changing only the pure
+`MeetingHealth` scan. `docs/evidence/detail-ui-baseline-20260716-after-health.json`
+records first content at 91.87 ms instead of 522.30 ms and zero potential hangs
+instead of one 515.86 ms hang. Time Profiler remains populated; the Xcode 26.6
+SwiftUI lane retains the same explicit no-data limitation. The detail now
+passes its 300 ms budget without view decomposition, a cache, or broader state,
+so D80 leaves those structures unchanged.
+
+The 25th XCUITest waits for the 5,000-segment title, transcript, chapter rail,
+and delayed summary revision 2, then retains the
+`band-4a-scale-detail-5000-segments` app-window screenshot. This proves that
+the scoped summary stream remains functional at scale; it does not substitute
+for the unavailable SwiftUI update-cause lane.
+
+## UI verification — XCUITest first (Jul 12)
+
+`make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
+defines 39 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+chips + time grouping + full Ask and command-palette answer/citation paths +
+interrupted staging recovery + durable post-capture resume + typed recording-
+start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
+advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
+memory, newest-recipe reload, right
+rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
+independent transcript/summary language controls, proactive clean-install
+Whisper preparation, explicit iCloud sync opt-in/existing-library separation,
+custom structures, capture
+controls, redacted support export, readable whole-library Markdown backup,
+mirror, and live language switch via ⌘,). Every launch receives a
+unique disposable `PORTAVOZ_AUDIO_ROOT` in addition to `-use-temp-store`, so
+neither SQLite, audio, nor the encrypted participant-voice gallery can touch
+the user's library or Keychain. `-seed-recovery`,
+`-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`,
+`-seed-scale` with optional `-scale-auto-summary-update`,
+`-simulate-recording-start-failure`, and
+`-seed-without-summary` are
+accepted only with the temp
+store. `-simulate-sequoia-capabilities` makes the Foundation Models adapter
+deterministically unavailable without depending on the XCUITest host. The processing
+fixture uses a deterministic fake local provider and no real audio, models,
+biometric files, Keychain, or host Shortcut; it uses the normal exact request
+factory and observes the original transcript and dependent summary after launch
+resume. Seed-demo includes deterministic question and answer sources plus a
+third segment at 200 s (mic channel) so there are two chapters and solo audio. Convention: all new
+interactive controls carry `accessibilityIdentifier` (`area-cosa`) plus an
+assertion in the corresponding `*UITests.swift`; computer-use is the last
+resort. Feature-band evidence retains app-only screenshots at asserted
+Library, the identified command-palette panel, Insights, Meeting Detail,
+Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints
+so unrelated desktop content is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
+test language and region flags; the complete 39-case suite is green in the
+default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
+`PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
+crashed when a voice segment started after audio duration; the fix clamps
+before forming the range and has unit coverage.

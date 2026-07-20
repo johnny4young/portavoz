@@ -1,5 +1,5 @@
 import AppKit
-import IntegrationsKit
+import ApplicationKit
 import PortavozCore
 import SwiftUI
 
@@ -15,8 +15,8 @@ final class MeetingReminderController {
     private var panel: NSPanel?
     private weak var services: AppServices?
 
-    /// Checks every minute; the pure `ReminderPolicy` decides. One banner
-    /// per event per app session — dismissing it never re-nags.
+    /// Checks every minute; the application workflow selects a typed notice.
+    /// One banner per event per app session — dismissing it never re-nags.
     func start(services: AppServices) {
         guard loop == nil,
             !ProcessInfo.processInfo.arguments.contains("-use-temp-store")
@@ -24,31 +24,27 @@ final class MeetingReminderController {
         self.services = services
         loop = Task { [weak self] in
             while !Task.isCancelled {
-                self?.check()
+                await self?.check()
                 try? await Task.sleep(for: .seconds(60))
             }
         }
     }
 
-    private func check() {
-        let lead = UserDefaults.standard.object(forKey: "meetingReminderMinutes") as? Int ?? 5
-        let events = CalendarAttendeeSource().upcomingEvents()
-        guard
-            let due = ReminderPolicy.dueEvent(
-                events: events, now: Date(), leadMinutes: lead, alreadyReminded: reminded)
-        else { return }
-        reminded.insert(due.id)
-        show(due)
+    private func check() async {
+        guard let notice = await services?.nextMeetingReminder(
+            alreadyReminded: reminded
+        ) else { return }
+        reminded.insert(notice.event.id)
+        show(notice)
     }
 
-    private func show(_ event: UpcomingEvent) {
+    private func show(_ notice: MeetingReminderNotice) {
         close()
-        let minutes = max(1, Int((event.startDate.timeIntervalSinceNow / 60).rounded(.up)))
         let content = ReminderBannerView(
-            event: event,
-            minutesLeft: minutes,
+            event: notice.event,
+            minutesLeft: notice.minutesUntilStart,
             onRecord: { [weak self] in
-                self?.services?.pendingRoute = .recording(event)
+                self?.services?.pendingRoute = .recording(notice.event)
                 NSApp.activate(ignoringOtherApps: true)
                 self?.close()
             },

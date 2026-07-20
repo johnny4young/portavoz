@@ -11,6 +11,28 @@ import WhisperKit
 /// Both the CoreML model and the tokenizer load from directories the
 /// `ModelStore` verified; WhisperKit is configured to never download.
 public actor WhisperEngine {
+    /// Opaque evidence that both the selected model and shared tokenizer were
+    /// downloaded through ModelStore and passed their pinned integrity checks.
+    /// Only TranscriptionKit can construct this token, so loading can never
+    /// bypass verified preparation.
+    public struct PreparedModel: Sendable {
+        public let descriptorID: String
+        fileprivate let modelDirectory: URL
+        fileprivate let tokenizerDirectory: URL
+    }
+
+    /// One progress domain across the model and tokenizer downloads. This
+    /// prevents progress from jumping back to zero between the two stores.
+    public struct PreparationProgress: Sendable {
+        public let completedBytes: Int
+        public let totalBytes: Int
+        public let currentPath: String
+
+        public var fraction: Double {
+            totalBytes > 0 ? Double(completedBytes) / Double(totalBytes) : 0
+        }
+    }
+
     private let pipe: WhisperKit
 
     private init(pipe: WhisperKit) {
@@ -23,16 +45,59 @@ public actor WhisperEngine {
     public static func loadRecommended(
         store: ModelStore,
         descriptor: ModelDescriptor = ModelCatalog.whisperLargeV3Turbo,
-        progress: (@Sendable (ModelStore.DownloadProgress) -> Void)? = nil
+        progress: (@Sendable (PreparationProgress) -> Void)? = nil
     ) async throws -> WhisperEngine {
-        let modelDirectory = try await store.ensureAvailable(
-            descriptor, progress: progress)
-        let tokenizerDirectory = try await store.ensureAvailable(
-            ModelCatalog.whisperTokenizer, progress: progress)
+        let prepared = try await prepare(
+            store: store,
+            descriptor: descriptor,
+            progress: progress)
+        return try await loadPrepared(prepared)
+    }
 
+    /// Downloads and verifies without allocating Whisper's model runtime. The
+    /// returned token can be retained by an app-scoped coordinator and joined
+    /// later by Refine or Import.
+    public static func prepare(
+        store: ModelStore,
+        descriptor: ModelDescriptor = ModelCatalog.whisperLargeV3Turbo,
+        progress: (@Sendable (PreparationProgress) -> Void)? = nil
+    ) async throws -> PreparedModel {
+        let tokenizer = ModelCatalog.whisperTokenizer
+        let modelBytes = descriptor.totalSizeBytes
+        let tokenizerBytes = tokenizer.totalSizeBytes
+        let totalBytes = modelBytes + tokenizerBytes
+        let modelDirectory = try await store.ensureAvailable(descriptor) { update in
+            progress?(PreparationProgress(
+                completedBytes: Int(Double(modelBytes) * update.fraction),
+                totalBytes: totalBytes,
+                currentPath: update.currentPath))
+        }
+        progress?(PreparationProgress(
+            completedBytes: modelBytes,
+            totalBytes: totalBytes,
+            currentPath: ""))
+        let tokenizerDirectory = try await store.ensureAvailable(tokenizer) { update in
+            progress?(PreparationProgress(
+                completedBytes: modelBytes
+                    + Int(Double(tokenizerBytes) * update.fraction),
+                totalBytes: totalBytes,
+                currentPath: update.currentPath))
+        }
+        progress?(PreparationProgress(
+            completedBytes: totalBytes,
+            totalBytes: totalBytes,
+            currentPath: ""))
+        return PreparedModel(
+            descriptorID: descriptor.id,
+            modelDirectory: modelDirectory,
+            tokenizerDirectory: tokenizerDirectory)
+    }
+
+    /// Loads only from opaque verified preparation evidence.
+    public static func loadPrepared(_ prepared: PreparedModel) async throws -> WhisperEngine {
         let config = WhisperKitConfig(
-            modelFolder: modelDirectory.path,
-            tokenizerFolder: tokenizerDirectory,
+            modelFolder: prepared.modelDirectory.path,
+            tokenizerFolder: prepared.tokenizerDirectory,
             verbose: false,
             load: true,
             download: false

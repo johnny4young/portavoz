@@ -1,103 +1,103 @@
-# Portavoz Design System — brief para Claude Design
+# Portavoz Design System — brief for Claude Design
 
-> Pega este brief como primer mensaje en un proyecto **Design system** de
-> claude.ai/design. Describe el producto real, los tokens de facto que hoy
-> viven en el código, el inventario de superficies, y las convenciones de
-> estructura que el sync posterior (`/design-sync`) espera.
+> Paste this brief as the first message in a **Design system** project on
+> claude.ai/design. It describes the real product, the de facto tokens currently
+> in the code, the surface inventory, and the structural conventions that the
+> subsequent sync (`/design-sync`) expects.
 
-## El producto
+## The product
 
-Portavoz es un asistente de reuniones **privacy-first, 100% local** para
-macOS (Swift 6 + SwiftUI, próximamente iOS). Graba reuniones, transcribe en
-vivo, separa voces on-device y resume localmente. Personalidad de marca:
-**serio pero cálido, técnico sin frialdad, honesto** ("measured, not
-promised", "your history is never hostage"). Bilingüe ES/EN de nacimiento.
+Portavoz is a **privacy-first, 100% local** meeting assistant for
+macOS (Swift 6 + SwiftUI, with iOS coming next). It records meetings, transcribes
+live, separates voices on-device, and summarizes locally. Brand personality:
+**serious but warm, technical without being cold, honest** ("measured, not
+promised", "your history is never hostage"). Bilingual ES/EN from the outset.
 
-## Tokens de facto (lo que HOY vive en el código — punto de partida, no dogma)
+## De facto tokens (what is in the code TODAY — a starting point, not dogma)
 
-**Color (app macOS)**
-- Tint global: `indigo` de sistema (controles, links, iconos activos).
-- Chips de sugerencia: `accentColor.opacity(0.14)` en cápsula; oferta
-  secundaria a `0.08`.
-- Cards/tiles: `quaternary.opacity(0.5)`, radios 10 (tiles) y 12 (cards).
-- Paneles flotantes: `.regularMaterial`, radio 14.
-- Semánticos: verde = mic OK / éxito; naranja = advertencia (mic bajo,
-  permisos); rojo = destructivo/grabando (punto en menu bar).
-- ⚠️ Deuda conocida: la selección de listas usa el accent del SISTEMA del
-  usuario (verde en mi Mac) y choca con el indigo — el design system debe
-  decidir una postura.
+**Color (macOS app)**
+- Global tint: system `indigo` (controls, links, active icons).
+- Suggestion chips: `accentColor.opacity(0.14)` in a capsule; secondary
+  offer at `0.08`.
+- Cards/tiles: `quaternary.opacity(0.5)`, radii 10 (tiles) and 12 (cards).
+- Floating panels: `.regularMaterial`, radius 14.
+- Semantics: green = mic OK / success; orange = warning (low mic,
+  permissions); red = destructive/recording (menu bar dot).
+- ⚠️ Known debt: list selection uses the user's SYSTEM accent
+  (green on my Mac) and clashes with indigo — the design system must
+  establish a position.
 
-**Color (sitio web portavoz.app — el "mundo del icono")**
-- Fondo slate `#0e1120` → gradientes radiales violeta `#5226bf`.
-- Acento único ámbar `#fdbf47` (la barra pico del waveform).
-- Texto papel cálido `#f3f1ec`, secundario `#b9b6c4`.
+**Color (portavoz.app website — the "icon's world")**
+- Slate background `#0e1120` → violet radial gradients `#5226bf`.
+- Single amber accent `#fdbf47` (the waveform peak bar).
+- Warm-paper text `#f3f1ec`, secondary `#b9b6c4`.
 
-**Tipografía**
-- App: system font (SF Pro); números SIEMPRE `monospacedDigit`; jerarquía
-  usada: largeTitle.bold (títulos de página), title2.bold (valores de
-  tiles), headline (títulos de card), caption/caption2 (ayudas).
-- Web: Fraunces (display serif, eje SOFT 50) + Instrument Sans (cuerpo) +
-  IBM Plex Mono (comandos y números).
-- Pregunta abierta para el DS: ¿cuánta identidad web (Fraunces/ámbar)
-  entra a la app nativa sin pelear con lo nativo-macOS?
+**Typography**
+- App: system font (SF Pro); numbers ALWAYS `monospacedDigit`; hierarchy
+  used: largeTitle.bold (page titles), title2.bold (tile
+  values), headline (card titles), caption/caption2 (helper text).
+- Web: Fraunces (display serif, SOFT axis 50) + Instrument Sans (body) +
+  IBM Plex Mono (commands and numbers).
+- Open question for the DS: how much of the web identity (Fraunces/amber)
+  should enter the native app without conflicting with native macOS conventions?
 
-**Iconografía**: SF Symbols exclusivamente (waveform.and.mic,
-record.circle.fill, person.wave.2, chart.bar.xaxis, sparkles ✦ para
-sugerencias IA, arrow.uturn.backward para restore).
+**Iconography**: SF Symbols exclusively (waveform.and.mic,
+record.circle.fill, person.wave.2, chart.bar.xaxis, sparkles ✦ for
+AI suggestions, arrow.uturn.backward for restore).
 
-**Motion**: pulse en símbolos activos (dictado); waveform CSS "breathe"
-3.6s en la web con `prefers-reduced-motion` respetado.
+**Motion**: pulse on active symbols (dictation); CSS waveform "breathe"
+for 3.6s on the web, respecting `prefers-reduced-motion`.
 
-## Inventario de superficies reales (todas existen hoy)
+## Real surface inventory (all exist today)
 
-1. **Biblioteca** (sidebar): botones de acción, búsqueda, secciones
-   colapsables (To-dos, Recently deleted), filas de reunión, agenda.
-2. **Detalle de reunión**: pills de speakers (Me = accent), CHIPS de
-   sugerencia (nombres ✦, voz 🎙, recipe, título, thin-summary — el patrón
-   más repetido del producto: sugerencia pura, click aplica, jamás solo),
-   resumen estructurado con coautoría "▸", action items con checkbox,
-   meeting health (barras de talk-time), transcript denso con pills.
-3. **Grabación en vivo**: timer, captions carrusel estilo lyrics, medidor
-   de mic (cápsula 4pt, mapeo dB −60→0), notas, tarjetas del Companion.
-4. **HUD flotante** (400×88) y **panel de dictado** (520×~70): material,
-   siempre-encima, mic meter, texto en vivo.
-5. **Insights**: tiles de stats (valor grande + label caption), chart de
-   barras semanal (Swift Charts), cards de personas y gauge circular de
-   pendientes.
-6. **Onboarding** (4 pasos), **Settings** (16 secciones en Form grouped),
-   **menu bar** (icono estado + menú), **Ask** (chat con citas).
-7. **Web** (portavoz.app): hero waveform, features grid, números medidos,
+1. **Library** (sidebar): action buttons, search, collapsible
+   sections (To-dos, Recently deleted), meeting rows, agenda.
+2. **Meeting detail**: speaker pills (Me = accent), suggestion CHIPS
+   (names ✦, voice 🎙, recipe, title, thin-summary — the product's
+   most repeated pattern: pure suggestion, click applies it, never acts alone),
+   structured summary with "▸" co-authorship, action items with checkboxes,
+   meeting health (talk-time bars), dense transcript with pills.
+3. **Live recording**: timer, lyrics-style caption carousel, mic meter
+   (4pt capsule, dB mapping −60→0), notes, Companion cards.
+4. **Floating HUD** (400×88) and **dictation panel** (520×~70): material,
+   always on top, mic meter, live text.
+5. **Insights**: stat tiles (large value + caption label), weekly bar
+   chart (Swift Charts), people cards, and circular gauge for
+   commitments.
+6. **Onboarding** (4 steps), **Settings** (16 sections in a grouped Form),
+   **menu bar** (status icon + menu), **Ask** (chat with citations).
+7. **Web** (portavoz.app): hero waveform, features grid, measured numbers,
    footer.
 
-## Lo que le pido al design system
+## What I am asking of the design system
 
-1. **Foundations**: paleta única que reconcilie indigo-app + ámbar/slate-web
-   con modos light/dark; escala tipográfica; espaciado (hoy: 12/16/24);
-   radios (hoy: 10/12/14); semánticos (éxito/advertencia/destructivo/
-   grabando/IA-sugerencia).
-2. **Componentes** (con variantes por card):
-   - Chip de sugerencia (IA ✦ / voz / recipe; hover; aplicado).
-   - Card (tile de stat, card de contenido, tarjeta Companion).
-   - Pill de speaker (Me / nombrado / S-label / editable).
-   - Meter (mic level OK/bajo; gauge circular).
-   - Fila de lista (reunión, to-do con checkbox, papelera con restore).
-   - Botón (primario/segundario/destructivo/ghost; tamaños).
-   - Panel flotante (HUD, dictado strip, banner pre-reunión).
-   - Empty states (biblioteca vacía, sin pendientes, papelera).
-3. **Voz y tono**: microcopy bilingüe con la personalidad ("Deleted, not
+1. **Foundations**: a unified palette that reconciles app-indigo + web-amber/slate
+   with light/dark modes; type scale; spacing (today: 12/16/24);
+   radii (today: 10/12/14); semantics (success/warning/destructive/
+   recording/AI-suggestion).
+2. **Components** (with variants per card):
+   - Suggestion chip (AI ✦ / voice / recipe; hover; applied).
+   - Card (stat tile, content card, Companion card).
+   - Speaker pill (Me / named / S-label / editable).
+   - Meter (mic level OK/low; circular gauge).
+   - List row (meeting, to-do with checkbox, trash with restore).
+   - Button (primary/secondary/destructive/ghost; sizes).
+   - Floating panel (HUD, dictation strip, pre-meeting banner).
+   - Empty states (empty library, no commitments, trash).
+3. **Voice and tone**: bilingual microcopy with the personality ("Deleted, not
    gone", "Measured, not promised").
 
-## Convenciones para el sync posterior (importante)
+## Conventions for the subsequent sync (important)
 
-- El proyecto DEBE crearse como tipo **Design system** (el tipo es
-  inmutable — un proyecto normal no se puede convertir).
-- Un componente = un HTML de preview **autocontenido** (CSS inline, sin
-  CDNs) con el marcador de card en la PRIMERA línea:
-  `<!-- @dsCard group="Components" -->` — el pane agrupa por ese `group`.
-- Grupos sugeridos: `Foundations` (Colors, Type, Spacing), `Components`,
-  `Patterns` (chips/sugerencias), `Surfaces` (paneles/HUD), `Brand` (web).
-- Estructura de paths estable: `foundations/colors/index.html`,
-  `components/chip/index.html`, etc. — el sync es incremental por
-  componente; paths estables = diffs limpios.
-- Variantes de un componente en UNA card (subtitle las lista), no una card
-  por variante.
+- The project MUST be created as the **Design system** type (the type is
+  immutable — a regular project cannot be converted).
+- One component = one **self-contained** preview HTML file (inline CSS, no
+  CDNs) with the card marker on the FIRST line:
+  `<!-- @dsCard group="Components" -->` — the pane groups by that `group`.
+- Suggested groups: `Foundations` (Colors, Type, Spacing), `Components`,
+  `Patterns` (chips/suggestions), `Surfaces` (panels/HUD), `Brand` (web).
+- Stable path structure: `foundations/colors/index.html`,
+  `components/chip/index.html`, etc. — sync is incremental by
+  component; stable paths = clean diffs.
+- Variants of a component in ONE card (the subtitle lists them), not one card
+  per variant.

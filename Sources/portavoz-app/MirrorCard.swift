@@ -1,4 +1,4 @@
-import IntegrationsKit
+import ApplicationKit
 import SwiftUI
 
 /// The post-meeting mirror (design system 6a-2): an opt-in card that shows
@@ -79,6 +79,7 @@ struct MirrorCard: View {
         }
         .padding(20)
         .frame(width: 460)
+        .accessibilityIdentifier("mirror-card")
     }
 
     private func tile(_ value: String, _ label: String, highlight: Bool = false) -> some View {

@@ -1,60 +1,192 @@
-# Spec 01 — Captura de audio (AudioCaptureKit)
+# Spec 01 — Audio capture (AudioCaptureKit)
 
-Estado: implementado y verificado en reuniones reales (jul 2026). Decisiones: D5 (dual-canal), D6 (process taps), D24 (AEC), D27 (audio first-class).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution).
 
-## Modelo de canales (D5)
+## Channel model (D5)
 
-Dos streams SEPARADOS, jamás mezclados antes de diarizar:
+Two SEPARATE streams, never mixed before diarization:
 
-| Canal | Fuente | Significado | Archivo |
+| Channel | Source | Meaning | File |
 |---|---|---|---|
-| `microphone` | `MicrophoneSource` (AVAudioEngine) | La voz del usuario — "Me" por verdad de hardware | `Audio/<meeting-uuid>/microphone.caf` |
-| `system` | `ProcessTapSource` (Core Audio process taps, macOS 14.4+) | Los demás participantes (audio de otras apps) | `Audio/<meeting-uuid>/system.caf` |
+| `microphone` | `MicrophoneSource` (AVAudioEngine) | The user's voice — "Me" by hardware ground truth | `Audio/<meeting-uuid>/microphone.caf` |
+| `system` | `ProcessTapSource` (Core Audio process taps, macOS 14.4+) | The other participants (audio from other apps) | `Audio/<meeting-uuid>/system.caf` |
 
-`AudioChunk` (PortavozCore): `channel`, `samples: [Float]` mono, `sampleRate`, `timestamp` (segundos desde el primer callback, vía `HostClock` sobre host time).
+`AudioChunk` (PortavozCore): `channel`, mono `samples: [Float]`, `sampleRate`, `timestamp` (seconds since the first callback, through `HostClock` over host time).
 
 ## MicrophoneSource — `Sources/AudioCaptureKit/MicrophoneSource.swift`
 
-- **AEC por defecto (D24)**: `setVoiceProcessingEnabled(true)` en el input node + `voiceProcessingOtherAudioDuckingConfiguration = .min` (sin esto, la AEC atenúa el audio de la reunión que el usuario escucha). Opt-out: `init(voiceProcessing: false)`, UI "Cancelación de eco" (`aecEnabled` en UserDefaults), CLI `record --no-aec`. Si el dispositivo rechaza voice processing, degrada a captura cruda sin fallar.
-- **`warmUp()`**: arranca el engine SIN tap para que el filtro adaptativo de la AEC converja mientras cargan los modelos. Medido: la AEC tarda ~2 s en converger (ratio RMS mic/system 0.38 en 0–2 s → 0.03–0.11 después); sin warm-up los primeros segundos de captions filtran eco.
-- **Resiliencia a cambio de dispositivo**: observa `AVAudioEngineConfigurationChange` (conectar audífonos DETIENE el engine en silencio — bug real: un mic murió al minuto 24 de 30). Al cambiar: reinstala el tap, reintenta cada 0.5 s si no hay input utilizable, resamplea el dispositivo nuevo al rate original del stream (`Resample.linear`, testeado) y **rellena el hueco con silencio** para que la timeline siga alineada con el canal system (gap = muestras esperadas por reloj − entregadas; umbral 0.5 s).
-- Selección de dispositivo por UID/nombre (`--mic` en CLI) vía `kAudioOutputUnitProperty_CurrentDevice`; en restart, si el dispositivo pinneado desapareció cae al default. La app conserva el UID preferido, lo marca como no disponible en Ajustes y usa el input default solo para esa grabación.
-- **Mute local**: `setMuted` sustituye cada buffer del canal mic por exactamente el mismo número de muestras en cero. La llamada no se toca y la timeline dual permanece alineada.
+- **AEC by default (D24)**: `setVoiceProcessingEnabled(true)` on the input node + `voiceProcessingOtherAudioDuckingConfiguration = .min` (without this, AEC attenuates the meeting audio the user hears). Opt-out: `init(voiceProcessing: false)`, UI "Cancelación de eco" (`aecEnabled` in UserDefaults), CLI `record --no-aec`. If the device rejects voice processing, it degrades to raw capture without failing.
+- **`warmUp()`**: starts the engine WITHOUT a tap so that AEC's adaptive filter converges while models load. Measured: AEC takes ~2 s to converge (mic/system RMS ratio 0.38 at 0–2 s → 0.03–0.11 afterward); without warm-up the first seconds of captions leak echo.
+- **Device-change resilience**: observes `AVAudioEngineConfigurationChange` (connecting headphones SILENTLY STOPS the engine — real bug: a mic died at minute 24 of 30). On change: reinstalls the tap, retries every 0.5 s if there is no usable input, resamples the new device to the stream's original rate (`Resample.linear`, tested), and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold).
+- Device selection by UID/name (`--mic` in CLI) through `kAudioOutputUnitProperty_CurrentDevice`; on restart, if the pinned device has disappeared, it falls back to the default. The app preserves the preferred UID, marks it unavailable in Ajustes, and uses the default input only for that recording.
+- **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. The call is untouched and the dual timeline remains aligned.
 
 ## ProcessTapSource — `Sources/AudioCaptureKit/ProcessTapSource.swift`
 
-- `CATapDescription(stereoMixdownOfProcesses:)` recibe `[AudioObjectID]` directo (no `[NSNumber]`); PID→objeto vía `kAudioHardwarePropertyTranslatePIDToProcessObject`. Sin PIDs = tap global del sistema.
-- Requiere aggregate device privado con `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; el formato se lee con `kAudioTapPropertyFormat` ANTES del IOProc.
-- **Un tap sin permiso TCC entrega SILENCIO, no error** (peak 0.0 en `system.caf` = falta "Grabación de pantalla y audio del sistema" → activar y relanzar). `RecordingSession.Summary.peaks` lo detecta.
-- **Resiliencia a cambio de OUTPUT** (bug real de campo jul 2026: al pasar de altavoz Mac → audífonos el canal system quedó MUDO): el tap/aggregate se ata al output por defecto al crearse y no lo sigue solo. `ProcessTapSource` escucha `kAudioHardwarePropertyDefaultOutputDevice` (listener block en cola de rebuild serial) y **reconstruye el grafo** (tap+aggregate+IOProc) en el nuevo output manteniendo el MISMO stream/continuation; resamplea al rate original y rellena el hueco de la conmutación con silencio (espeja la resiliencia de input del mic). No es unit-testeable sin Core Audio real → verificación de campo pendiente.
-- **Alcance del modo app**: `captureMode` (`auto`/`app`/`system`) decide entre tap global y directo. El tap directo incluye el PID de cada app de reunión reconocida y solo procesos de audio cuyo bundle ID sea ese app o un hijo delimitado por punto (helpers de browsers/Zoom/Teams); música y notificaciones de apps ajenas quedan fuera. Sin app reconocida, una lista vacía degrada explícitamente al tap global, como explica Ajustes.
-- El primer buffer llega **~2.4 s después** de que arranca el mic (latencia de arranque de ScreenCaptureKit) — offset constante, no drift; el harness de drift lo cubre con rango ±5 s.
+- `CATapDescription(stereoMixdownOfProcesses:)` receives `[AudioObjectID]` directly (not `[NSNumber]`); PID→object through `kAudioHardwarePropertyTranslatePIDToProcessObject`. No PIDs = global system tap.
+- Requires a private aggregate device with `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; the format is read with `kAudioTapPropertyFormat` BEFORE the IOProc.
+- **A tap without TCC permission delivers SILENCE, not an error** (0.0 peak in `system.caf` = missing "Grabación de pantalla y audio del sistema" → enable and relaunch). `RecordingSession.Summary.peaks` detects it.
+- **OUTPUT-change resilience** (real field bug Jul 2026: switching from Mac speaker → headphones left the system channel MUTED): the tap/aggregate binds to the default output when created and does not follow it automatically. `ProcessTapSource` listens to `kAudioHardwarePropertyDefaultOutputDevice` (listener block on a serial rebuild queue) and **rebuilds the graph** (tap+aggregate+IOProc) on the new output while preserving the SAME stream/continuation; it resamples to the original rate and fills the switching gap with silence (mirrors mic input resilience). It cannot be unit-tested without real Core Audio → field verification pending.
+- **App-mode scope**: `captureMode` (`auto`/`app`/`system`) decides between global and direct taps. The direct tap includes the PID of each recognized meeting app and only audio processes whose bundle ID is that app or a dot-delimited child (browser/Zoom/Teams helpers); music and notifications from unrelated apps are excluded. Without a recognized app, an empty list explicitly degrades to the global tap, as explained in Ajustes.
+- The first buffer arrives **~2.4 s after** the mic starts (ScreenCaptureKit startup latency) — constant offset, not drift; the drift harness covers it with a ±5 s range.
 
 ## RecordingSession — `Sources/AudioCaptureKit/RecordingSession.swift`
 
-Actor que coordina fuentes y writers por canal (creados lazy con el primer chunk, al rate real de la fuente). `onChunk` es la costura donde cuelga la transcripción viva sin que el writer espere. Un canal caído termina su archivo y NO mata la sesión (errores por canal en el Summary). `Summary`: files, secondsWritten, peaks, errors, `driftSeconds`.
+Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: published files, `PublishedCaptureFile` evidence, seconds written, peak/RMS amplitudes, errors, and `driftSeconds`.
 
-El arranque es transaccional en ambos niveles: `RecordingSession` detiene fuentes parcialmente iniciadas; `RecordingController` termina feeds de Parakeet/diarización, cancela sus tareas, detiene el warm-up del mic y programa la liberación idle de engines ante cualquier fallo. `stop` programa esa liberación con `defer`, incluso cuando no hubo audio/captions suficientes para guardar.
+Startup is transactional at both levels. `ApplicationKit.StartRecording`
+samples title/language/vocabulary/capture preferences once, asks a private app
+runtime to warm the microphone, select structural channels, and report whether
+a verified live Parakeet instance is already resident. Model readiness is
+evidence, never a capture gate. Before any source starts, the use case atomically
+inserts a `recording` meeting shell and one pending `AudioAsset` reservation per
+selected channel. The runtime then starts `RecordingSession` immediately. If
+Parakeet is resident it also owns one direct stream per channel; otherwise it
+starts one deduplicated verified model-preparation task after audio is active
+and marks the session for complete transcript recovery at Stop. A failed live
+lane sets the same recovery marker without stopping audio or its peer. Source-
+start failure stops partially started sources, closes any live feeds, and stops
+mic warm-up. The use case inspects both reserved
+staging paths and their published counterparts: any file retains the shell as
+`needsAttention`; only an untouched empty shell can pass D37's guarded discard.
+Every failed attempt schedules idle engine release (D49).
+Start exposes only `StartRecordingFailure` codes/categories across the
+ApplicationKit boundary. Preparation, reservation, capture, preserved-recovery,
+and failed-recovery cases retain their distinct durable outcomes; dependency
+messages and paths remain inside adapters, while the macOS app localizes retry,
+Library, or diagnostics recovery (D77).
 
-`CaptureFileWriter`: PCM 16-bit mono vía AVAudioFile desde Float32, contenedor **CAF** — su data chunk queda dimensionado "hasta EOF" mientras se escribe, así que un crash deja el archivo legible. **Verificado empíricamente (jul 2026)**: `kill -9` a los 6 s de grabación → WAV leía 0.00 s / 0 bytes; CAF conserva 5.23 s. Lectores de reuniones viejas (.wav) siguen funcionando vía `MeetingAudioLayout.channelFile` (prefiere .caf, cae a .wav). `verify_drift.py` convierte CAF con afconvert.
+The successful runtime returns an opaque `StartRecordingSession` that owns the
+concrete microphone, process tap, `RecordingSession`, live feeds, and one
+voiceprint future. `RecordingController` owns the live UI callbacks, streaming
+diarization, and rolling summary without importing concrete capture state.
+Local mic mute crosses the opaque session synchronously so it affects the next
+buffer before a following Stop can overtake it.
 
-## Sincronía verificada (M1)
+Each reservation and writer uses `<channel>.partial.caf`. On stop, all writers
+are released, each non-empty mono CAF is reopened for validation, SHA-256 is
+streamed in 1 MiB chunks, and actual sample rate/channel count/duration/size,
+finite peak/RMS dBFS from successfully written, signed-PCM-clamped samples, and
+`healthy`/`silent`/`clipped` health are captured.
+`CaptureFilePublisher` refuses cross-directory publication and existing final
+paths, then one same-directory rename publishes `<channel>.caf`. Missing
+channels stay metadata-free; a staging file that could not publish remains for
+recovery.
 
-- **Drift medido: 4 ms en 22 min reales** (+4 ppm, lineal en 5 puntos; proyección 30 min ≈ 7 ms; criterio < 50 ms). Harness: `scripts/verify_drift.py` (correlación de envolventes RMS, rango ±5 s con warning de borde — con ±2 s el offset real de 2.4 s quedaba fuera y reportaba drift falso).
-- Requisito del método: los dos canales deben compartir audio real (reunión por parlantes, o llamada real donde el mic capta al usuario).
+At process launch, `ApplicationKit.RecoverInterruptedMeetings` requests pending
+asset evidence through a private macOS adapter. That adapter scans both the
+configured recordings root and the default fallback. Staging-only CAFs are
+reopened, remeasured from persisted PCM, hashed, classified, and published;
+final-only CAFs receive the same full validation. File inspection runs off the
+main actor because meeting-length hashing and signal measurement must not block
+launch. Missing files remain explicit missing evidence. Staging plus final, or
+duplicate candidates across roots, is `capture.recovery.ambiguous`: every copy
+is preserved and Portavoz neither overwrites nor guesses (D40/D50).
 
-## Carpeta de grabaciones
+`ApplicationKit.StopRecording` installs `captured`, finalized/missing assets,
+provisional live cast/transcript, notes, Companion cards with optional
+role-separated transcript evidence, and the exact first
+job in one StorageKit Unit of Work before derived work. A complete first-pass
+`transcription` job is admitted when captions are empty or any live lane was
+unavailable/failed; otherwise the initial job remains `diarization`. The
+transcription worker joins verified Parakeet preparation, transcribes each
+healthy finalized channel in its real channel role, applies mic-noise and bleed
+hygiene, atomically replaces the complete transcript/cast, advances its
+revision, and enqueues exact diarization. Truly silent audio cannot admit that
+job and remains visible as `needsAttention` with explicit empty-transcript
+guidance. The worker records `processing` and finally `ready`; batch attribution
+atomically replaces the provisional cast. A later required-write failure
+preserves the meeting as `needsAttention`. Stop schedules
+engine release on every accepted outcome, even when there was not enough audio
+to keep. The handoff compares reservation timestamps through GRDB's canonical
+millisecond representation rather than raw in-memory `Date` equality, so an
+ordinary `Date()` reservation cannot be rejected only because SQLite discarded
+submillisecond precision.
+Stop applies the same D77 boundary with distinct local-state, invalid-input,
+snapshot-persistence, recovery-persistence, and destructive-cleanup failures.
+Its result still carries a committed fallback when one exists, so typed errors
+cannot misrepresent preserved audio or a successful recovery write.
 
-`RecordingsLocation` (StorageKit, spec 05): raíz configurable con marker file compartido app/CLI, resolución con fallback y migración resumable.
+`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 
-## Límites conocidos y riesgos
+## Verified synchronization (M1)
 
-1. **⚠️ Taps + VPIO en el mismo proceso**: MacParakeet los descartó por "no coexistir confiablemente". Nuestra evidencia (1 reunión real con ambos) es insuficiente — vigilar glitches/dropouts del canal system con AEC activa. Plan B (D27): cancelación de eco offline post-grabación.
-   - **Hallazgo de campo (jul 2026): la voz del usuario se oía LEJOS a los demás — causa = MICRÓFONO INTEGRADO del Mac (far-field), NO el AEC/Bluetooth.** Medido en la grabación real (canal mic, RMS/s): con el mic del Mac (min 0–3:55) la voz del usuario quedaba **≤ -45 dBFS** (mayormente -50 a -60), muy baja/roomy; al conectar **AirPods a las 3:56** saltó a **-15…-25 dBFS** con piso -68 (fuerte y limpio). O sea el Bluetooth **arregló** el problema, no lo causó (corrige una hipótesis previa invertida). Portavoz no controla lo que la app de la llamada (Zoom/Meet) transmite a los demás; su propia captura del mic integrado también sale baja. **Mitigación implementada: medidor de nivel de mic en vivo** en `RecordingView` (`RecordingController.micLevel`, pico suavizado por chunk en escala dB) + aviso "se te oye bajo — acércate o usa audífonos con micrófono" cuando `micLevelLow` (EMA de los chunks VOICED bajo umbral tras ~15 s de voz, no confunde silencio con voz lejana). (Nota: en esa misma grabación el cambio de output a AirPods disparó el bug del canal system mudo — arreglado, ver arriba — y el cambio de mic integrado→AirPods a las 3:56 fue sin cortes: resiliencia de input OK.)
-2. ~~Crash-safety~~ — **RESUELTO**: contenedor CAF verificado contra kill -9 (arriba).
-3. **Sin canal "room"** todavía (iPhone como mic de sala vía Continuity — planeado, PRODUCT).
-4. PCM = ~126 MB por canal por 22 min (CAF, mismo bitrate que WAV); **transcode AAC resuelto en M11** mediante `AudioTranscoder` y la acción "Comprimir audio".
+- **Measured drift: 4 ms over 22 real minutes** (+4 ppm, linear across 5 points; 30 min projection ≈ 7 ms; criterion < 50 ms). Harness: `scripts/verify_drift.py` (RMS envelope correlation, ±5 s range with edge warning — with ±2 s, the actual 2.4 s offset fell outside the range and reported false drift).
+- Method requirement: both channels must share real audio (meeting over speakers, or a real call where the mic captures the user).
 
-## Planeado (no implementado)
+## Recordings folder
 
-Canal room; normalización −23 LUFS del pipeline de captura (hoy solo peak-normalize antes de Whisper, spec 02). Playback/waveform/clips, skip-silencio, transcode AAC e import ya están implementados en M11 (spec 06 + AudioPlaybackKit).
+`RecordingsLocation` (StorageKit, spec 05): configurable root with a marker file shared by app/CLI, fallback resolution, and resumable migration.
+
+Settings enumerates microphones through `ApplicationKit.LoadAudioInputOptions`.
+The workflow exposes only stable UIDs and display names; the private macOS app
+adapter maps `AudioDeviceCatalog` results off the main actor. SwiftUI keeps the
+system-default choice and the selected UID, but it does not import Core Audio
+capture types or enumerate devices directly.
+
+## Known limitations and risks
+
+1. **⚠️ Taps + VPIO in the same process**: MacParakeet rejected them because they "do not coexist reliably." Our evidence (1 real meeting with both) is insufficient — monitor glitches/dropouts on the system channel with AEC active. Plan B (D27): offline post-recording echo cancellation.
+   - **Field finding (Jul 2026): the user's voice sounded DISTANT to others — cause = the Mac's BUILT-IN MICROPHONE (far-field), NOT AEC/Bluetooth.** Measured in the real recording (mic channel, RMS/s): with the Mac mic (min 0–3:55), the user's voice remained **≤ -45 dBFS** (mostly -50 to -60), very quiet/roomy; connecting **AirPods at 3:56** raised it to **-15…-25 dBFS** with a -68 floor (loud and clean). In other words, Bluetooth **fixed** the problem; it did not cause it (corrects a previously inverted hypothesis). Portavoz does not control what the call app (Zoom/Meet) sends to others; its own capture from the built-in mic is also quiet. **Implemented mitigation: live mic level meter** in `RecordingView` (`RecordingController.micLevel`, smoothed per-chunk peak on a dB scale) + "se te oye bajo — acércate o usa audífonos con micrófono" warning when `micLevelLow` (EMA of VOICED chunks below the threshold after ~15 s of speech; it does not confuse silence with a distant voice). (Note: in that same recording, switching output to AirPods triggered the muted-system-channel bug — fixed, see above — and the built-in mic→AirPods change at 3:56 had no interruption: input resilience OK.)
+2. ~~Crash safety~~ — **RESOLVED**: CAF container verified against kill -9 (above).
+3. **No "room" channel** yet (iPhone as a room mic through Continuity — planned, PRODUCT).
+4. PCM = ~126 MB per channel per 22 min (CAF, same bitrate as WAV); **AAC transcode resolved in M11/D112** through the ApplicationKit "Comprimir audio" workflow. It verifies every channel before removing any raw original and fails closed when a canonical output already exists.
+
+## Durable post-capture handoff (D43)
+
+`RecordingController.stop` flushes the concrete `RecordingSession`, finishes
+live consumers/diarization feeds, and maps finalized publication evidence into
+an immutable `ApplicationKit.StopRecording` request. A recording-scoped
+voiceprint read begins while capture is active. The use case reconciles
+finalized or missing assets, derives provisional cast and homogeneous aggregate
+language without translating per-turn text, and installs assets, transcript,
+notes, retained Companion cards and their question/answer evidence, their successful generation-run links,
+completed failed/cancelled Companion attempts, and the exact first diarization
+job in one StorageKit transaction. Unlinked legacy/bundle-style cards remain
+valid. It then kicks the process supervisor; the controller navigates
+immediately from the typed success. Relaunch resumes the same owner-leased work
+after capture recovery through `ApplicationKit.ProcessPostCaptureJobs`. That
+workflow owns lease heartbeats, exact fingerprints, dependent-job admission,
+retry/cancellation policy, terminal action timing, and engine-release timing;
+the app retains concrete files, models, preferences, Shortcut, and process
+supervision. Job-admission failure cannot
+expose a half-installed captured snapshot, and the use case attempts an
+explicit `needsAttention` snapshot fallback without deleting audio. Empty
+publication evidence preserves staging/final recovery files or discards only
+an untouched empty shell (D48/D66).
+
+## External-audio ownership (D46)
+
+External import is separate from live capture but follows the same
+audio-first ownership rule. `ApplicationKit.ImportMeeting` asks an app-owned
+filesystem adapter to copy the source as the system channel on a
+utility-priority task. That copied directory is staged ownership: it does not
+become a library asset until StorageKit atomically commits the meeting, cast,
+and transcript. Any required preparation, transcription, or aggregate-write
+failure before that commit attempts to remove the staged directory without
+masking the original error. Once the aggregate commits, optional diarization
+or summary failure never removes its audio.
+
+`.portavoz` attachment import is a separate D51 application workflow. Its
+private format adapter validates the decoded handoff down to at most one
+`system` and one `microphone` attachment with an m4a/caf/wav extension. The
+filesystem adapter constructs only canonical filenames under the freshly
+remapped meeting directory, cleans a partially written directory, and treats
+the completed directory as staged until the full relational bundle aggregate
+commits. A later Store failure triggers best-effort compensation without
+masking the persistence error.
+
+`.portavoz` attachment export is the symmetric D52 application workflow. A
+private filesystem adapter resolves the configured recordings root with the
+existing default-root fallback, checks channels in canonical system then
+microphone order, and uses `MeetingAudioLayout`'s m4a/caf/wav preference.
+Missing or unreadable individual channels remain degradable. Complete file
+reads run on a detached utility task before the external format adapter encodes
+the bundle; no meeting-length audio is loaded from SwiftUI.
+
+## Planned (not implemented)
+
+Other planned work: room channel; −23 LUFS normalization in the capture
+pipeline (today only peak-normalize before Whisper, spec 02).
+Playback/waveform/clips, skip silence, AAC transcode, and import are already
+implemented in M11 (spec 06 + AudioPlaybackKit).

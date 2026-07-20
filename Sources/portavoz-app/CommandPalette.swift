@@ -1,166 +1,112 @@
 import AppKit
-import IntegrationsKit
-import IntelligenceKit
+import ApplicationKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 
-/// The ⌘K ask-your-week palette (design system spec 6a-1): a floating
-/// command palette over ANY view — instant FTS while typing, a full local
-/// RAG answer on Enter, citation chips that jump to the meeting and seek
-/// the player. Same engine as AskView (`AskPipeline` + `RAGAnswerer`);
-/// this is a new surface, not a new motor. State is discarded on close.
+/// The ⌘K ask-your-week palette: AppKit owns only panel, navigation, and
+/// clipboard concerns. Query/answer state belongs to CommandPaletteModel and
+/// all business coordination enters through the shared Ask application flow.
 @MainActor
-@Observable
 final class CommandPaletteController {
-    private(set) var query = ""
-    private(set) var hits: [SearchHit] = []
-    private(set) var answer: PaletteAnswer?
-    private(set) var answering = false
+    let model: CommandPaletteModel
     private let panel = CommandPalettePanelController()
-    /// Registered by ContentView (the only place with `openWindow`); lets
-    /// a citation reopen the library window when it was closed.
-    var openMainWindow: (() -> Void)?
 
-    struct PaletteAnswer {
-        let question: String
-        let text: String
-        let passages: [RAGPassage]
+    /// Registered by ContentView (the only place with `openWindow`); lets a
+    /// citation reopen the library window when it was closed.
+    var openMainWindow: (() -> Void)?
+    /// Composition-owned navigation request. The controller never reaches a
+    /// Store or mutates SwiftUI route state directly.
+    var onOpenCitation: ((AskCitation) -> Void)?
+
+    init(model: CommandPaletteModel) {
+        self.model = model
     }
 
-    func toggle(services: AppServices) {
+    func toggle() {
         if panel.isVisible {
             hide()
         } else {
-            show(services: services)
+            show()
         }
     }
 
-    func show(services: AppServices) {
-        reset()
-        panel.show(controller: self, services: services)
+    func show() {
+        model.reset()
+        panel.show(controller: self, model: model)
     }
 
     func hide() {
         panel.close()
-        reset()
-    }
-
-    private func reset() {
-        query = ""
-        hits = []
-        answer = nil
-        answering = false
-    }
-
-    /// Instant lane: FTS5 titles + snippets while the user types (<25 ms).
-    func updateQuery(_ text: String, services: AppServices) {
-        query = text
-        answer = nil
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else {
-            hits = []
-            return
-        }
-        Task { [weak self] in
-            let found = (try? await services.store.search(trimmed)) ?? []
-            guard let self, self.query == text else { return }  // stale keystroke
-            self.hits = Array(found.prefix(6))
-        }
-    }
-
-    /// Enter: the full RAG answer, in the question's language, with receipts.
-    func ask(services: AppServices) {
-        let question = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, !answering else { return }
-        answering = true
-        Task { [weak self] in
-            defer { self?.answering = false }
-            do {
-                let passages = try await AskPipeline.retrieve(
-                    question: question, store: services.store)
-                guard let self else { return }
-                guard !passages.isEmpty else {
-                    self.answer = PaletteAnswer(
-                        question: question,
-                        text: L10n.text("Nothing related in your meetings yet."),
-                        passages: [])
-                    return
-                }
-                var text: String?
-                if #available(macOS 26.0, *),
-                    FoundationModelSummaryProvider.unavailabilityReason() == nil {
-                    text = try? await RAGAnswerer().answer(
-                        question: question, passages: passages)
-                }
-                self.answer = PaletteAnswer(
-                    question: question,
-                    text: text ?? L10n.text("Closest passages from your meetings:"),
-                    passages: passages)
-            } catch {
-                self?.answer = PaletteAnswer(
-                    question: question,
-                    text: L10n.format("Search failed: %@", error.localizedDescription),
-                    passages: [])
-            }
-        }
+        model.reset()
     }
 
     /// A citation: open the meeting and seek the player to that moment.
-    func navigate(to meetingID: MeetingID, at seconds: TimeInterval, services: AppServices) {
+    func navigate(to citation: AskCitation) {
         hide()
-        services.pendingSeek = seconds
-        services.pendingRoute = .meeting(meetingID)
+        onOpenCitation?(citation)
         openMainWindow?()
     }
 
+    func navigate(to hit: AskSearchResult) {
+        navigate(to: AskCitation(
+            segmentID: hit.segmentID,
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            timestamp: hit.timestamp,
+            text: hit.snippet))
+    }
+
     func copyAnswer() {
-        guard let answer else { return }
-        let markdown = AskMarkdown.format(
-            question: answer.question, answer: answer.text, passages: answer.passages)
+        guard let markdown = model.markdownAnswer() else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(markdown, forType: .string)
     }
 }
 
-/// Spotlight-style floating panel: 620 pt, radius 16, material, key (it
-/// hosts a text field) but non-activating; closes when it loses key —
-/// state is discarded with it (spec).
+/// Spotlight-style floating panel: 620 pt, radius 16, material, and key so its
+/// text field remains a real keyboard destination. Closing it also
+/// discards/cancels state.
 @MainActor
 private final class CommandPalettePanelController {
-    private var panel: NSPanel?
+    private var panel: PalettePanel?
 
     var isVisible: Bool { panel != nil }
 
-    func show(controller: CommandPaletteController, services: AppServices) {
+    func show(
+        controller: CommandPaletteController,
+        model: CommandPaletteModel
+    ) {
         guard panel == nil else { return }
         let panel = PalettePanel(
             contentRect: NSRect(x: 0, y: 0, width: 620, height: 76),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false)
         panel.level = .floating
+        panel.identifier = NSUserInterfaceItemIdentifier("command-palette-window")
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
         panel.onResignKey = { [weak controller] in controller?.hide() }
         panel.contentView = NSHostingView(
-            rootView: CommandPaletteView(controller: controller)
+            rootView: CommandPaletteView(
+                controller: controller,
+                model: model)
                 .portavozLocalized()
-                .environment(services)
                 .tint(PVDesign.accent))
-        // Spotlight position: horizontally centered, upper third.
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(
-                x: frame.midX - 310, y: frame.minY + frame.height * 0.62))
+                x: frame.midX - 310,
+                y: frame.minY + frame.height * 0.62))
         }
         panel.makeKeyAndOrderFront(nil)
         self.panel = panel
     }
 
     func close() {
+        panel?.onResignKey = nil
         panel?.orderOut(nil)
         panel = nil
     }
@@ -177,25 +123,26 @@ private final class PalettePanel: NSPanel {
 }
 
 private struct CommandPaletteView: View {
-    @Environment(AppServices.self) private var services
     let controller: CommandPaletteController
+    let model: CommandPaletteModel
     @State private var text = ""
     @FocusState private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             inputRow
-            if controller.answering {
+            if model.state.isAnswering {
                 Divider()
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Searching your meetings…").foregroundStyle(.secondary)
                 }
                 .padding(12)
-            } else if let answer = controller.answer {
+                .accessibilityIdentifier("palette-progress")
+            } else if let answer = model.state.answer {
                 Divider()
                 answerView(answer)
-            } else if !controller.hits.isEmpty {
+            } else if !model.state.hits.isEmpty {
                 Divider()
                 hitsList
             }
@@ -215,10 +162,11 @@ private struct CommandPaletteView: View {
                 .font(.title3)
                 .focused($focused)
                 .onChange(of: text) { _, value in
-                    controller.updateQuery(value, services: services)
+                    model.updateQuery(value)
                 }
-                .onSubmit { controller.ask(services: services) }
-            if controller.answer != nil {
+                .onSubmit { model.submit() }
+                .accessibilityIdentifier("palette-query-field")
+            if model.state.answer != nil {
                 Button {
                     controller.copyAnswer()
                 } label: {
@@ -228,6 +176,7 @@ private struct CommandPaletteView: View {
                 .foregroundStyle(.secondary)
                 .keyboardShortcut("c", modifiers: .command)
                 .help(L10n.text("Copy answer with citations (Markdown)"))
+                .accessibilityIdentifier("palette-copy-answer")
             }
         }
         .padding(14)
@@ -235,14 +184,13 @@ private struct CommandPaletteView: View {
 
     private var hitsList: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ForEach(controller.hits, id: \.segmentID) { hit in
+            ForEach(Array(model.state.hits.enumerated()), id: \.element.segmentID) { index, hit in
                 Button {
-                    controller.navigate(
-                        to: hit.meetingID, at: hit.startTime, services: services)
+                    controller.navigate(to: hit)
                 } label: {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(hit.snippet).lineLimit(1)
-                        Text("\(hit.meetingTitle) · \(AskMarkdown.clock(hit.startTime))")
+                        Text("\(hit.meetingTitle) · \(AskMarkdown.clock(hit.timestamp))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
@@ -253,6 +201,7 @@ private struct CommandPaletteView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 5)
+                .accessibilityIdentifier("palette-hit-\(index)")
             }
             Text("Press Enter for a full answer with receipts.")
                 .font(.caption2)
@@ -263,15 +212,15 @@ private struct CommandPaletteView: View {
         .padding(.vertical, 4)
     }
 
-    private func answerView(_ answer: CommandPaletteController.PaletteAnswer) -> some View {
+    private func answerView(_ answer: CommandPaletteModel.PaletteAnswer) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(answer.text)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if !answer.passages.isEmpty {
-                FlowCitations(passages: answer.passages) { passage in
-                    controller.navigate(
-                        to: passage.meetingID, at: passage.timestamp, services: services)
+                .accessibilityIdentifier("palette-answer")
+            if !answer.citations.isEmpty {
+                FlowCitations(citations: answer.citations) { citation in
+                    controller.navigate(to: citation)
                 }
             }
         }
@@ -281,19 +230,19 @@ private struct CommandPaletteView: View {
 
 /// Citation chips: `↗ {title} · {mm:ss}` — the capsule language of the DS.
 private struct FlowCitations: View {
-    let passages: [RAGPassage]
-    let onTap: (RAGPassage) -> Void
+    let citations: [AskCitation]
+    let onTap: (AskCitation) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(passages.enumerated()), id: \.offset) { _, passage in
+            ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
                 Button {
-                    onTap(passage)
+                    onTap(citation)
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right")
                             .font(.caption2)
-                        Text("\(passage.meetingTitle) · \(AskMarkdown.clock(passage.timestamp))")
+                        Text("\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
                             .lineLimit(1)
                             .monospacedDigit()
                     }
@@ -303,7 +252,8 @@ private struct FlowCitations: View {
                     .background(PVDesign.accent.opacity(0.14), in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .help(passage.text)
+                .help(citation.text)
+                .accessibilityIdentifier("palette-citation-\(index)")
             }
         }
     }

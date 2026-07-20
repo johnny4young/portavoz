@@ -1,10 +1,8 @@
 import AppKit
-import AudioCaptureKit
-import DiarizationKit
+import ApplicationKit
 import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 import TranscriptionKit
 
@@ -19,7 +17,7 @@ struct SettingsView: View {
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
 
-    @State private var voiceprint: Voiceprint?
+    @State private var voiceEnrollmentDate: Date?
     @State private var enrolling = false
     @State private var voiceMessage: String?
 
@@ -43,7 +41,7 @@ struct SettingsView: View {
     @AppStorage("titleTemplate") private var titleTemplate = TitleTemplate.defaultTemplate
     @State private var showTitleHelp = false
 
-    @State private var recordingsRoot = RecordingsLocation.shared.currentRoot()
+    @State private var recordingStorage: RecordingStorageLocation?
     @State private var migrationStatus: String?
     @State private var migrating = false
 
@@ -59,17 +57,18 @@ struct SettingsView: View {
 
     // Internal (not private) so the intelligence-pane extension in
     // SettingsView+Intelligence.swift can reach them.
-    @AppStorage("transcriptionLanguage") var transcriptionLanguage = "auto"
+    @AppStorage(MeetingLanguagePreferences.transcriptKey) var transcriptionLanguage = "auto"
+    @AppStorage(MeetingLanguagePreferences.summaryKey) var summaryLanguage = "spoken"
     @State var customStructures: [Recipe] = CustomRecipeStore.custom()
     @State var editingStructure: Recipe?
     @State var showingStructureSheet = false
-    @AppStorage("summaryEngine") private var summaryEngine = "appleOnDevice"
+    @AppStorage("summaryEngine") private var summaryEngine = SummaryEngine.mlx.rawValue
     @AppStorage("ollamaModel") private var ollamaModel = ""
     @AppStorage("whisperCompact") private var whisperCompact = false
-    @State private var ollamaModels: [OllamaService.Model] = []
+    @State private var ollamaModels: [LocalSummaryModel] = []
     @State private var ollamaStatus: String?
     @State private var detectingOllama = false
-    @State private var advice: EngineAdvice?
+    @State private var providerRecommendation: LocalSummaryProviderRecommendation?
     @State private var whisperVariants: [AppServices.WhisperVariant] = []
 
     /// 2a: category navigation instead of one endless scroll. The search
@@ -104,6 +103,7 @@ struct SettingsView: View {
                     DictationSection()
                 case .intelligence:
                     transcriptionLanguageSection
+                    summaryLanguageSection
                     summaryEngineSection
                     customStructuresSection
                     vocabularySection
@@ -118,8 +118,11 @@ struct SettingsView: View {
                 case .integrations:
                     byokSection
                     GitHubSection()
+                case .sync:
+                    MeetingSyncSettingsSection()
                 case .data:
-                    LedgerSection()
+                    LedgerSection(model: services.localDataLedger)
+                    SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection
                 }
@@ -137,22 +140,44 @@ struct SettingsView: View {
             }
         }
         .onAppear {
+            applyPendingCategory()
             if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
-                voiceprint = nil
+                voiceEnrollmentDate = nil
             } else {
-                hasStoredBYOKKey =
-                    ((try? SecretStore.get(service: SecretStore.byokAPIKeyService))) != nil
-                voiceprint = (try? VoiceprintStore().load())
-                // Mined chips arrive async and shift the Form's layout —
-                // skipped under XCUITest (like the Keychain reads above) so
-                // coordinate clicks in tests don't land on moved controls.
-                Task { suggestedTerms = await services.mineVocabularySuggestions() }
+                Task {
+                    hasStoredBYOKKey =
+                        (try? await services.secrets.contains(.byokAPIKey)) ?? false
+                    voiceEnrollmentDate = try? await services
+                        .localVoiceIdentityStatus()?.createdAt
+                    // Mined chips arrive async and shift the Form's layout —
+                    // skipped under XCUITest so coordinate clicks remain stable.
+                    suggestedTerms = await services.mineVocabularySuggestions()
+                }
             }
-            if summaryEngine == "ollama" { detectOllama() }
-            whisperVariants = services.whisperVariants()
-            Task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
+            Task {
+                whisperVariants = await services.whisperVariants()
+                recordingStorage = await services.recordingStorageLocation()
+                await refreshLocalSummaryProviders(
+                    showOllamaStatus: summaryEngine == SummaryEngine.ollama.rawValue)
+            }
         }
+        .onChange(of: services.whisperDownloadState) { _, state in
+            if case .ready = state {
+                Task {
+                    whisperVariants = await services.whisperVariants()
+                }
+            }
+        }
+        .onChange(of: services.pendingSettingsCategory) { _, _ in
+            applyPendingCategory()
+        }
+    }
+
+    private func applyPendingCategory() {
+        guard let requested = services.pendingSettingsCategory else { return }
+        category = requested
+        services.pendingSettingsCategory = nil
     }
 }
 
@@ -172,9 +197,11 @@ extension SettingsView {
             .pickerStyle(.segmented)
             .disabled(AppLanguage.fromStorage(appLanguageRaw) == .system)
             .accessibilityIdentifier("settings-language-picker")
-            // One-line UI copy.
-            // swiftlint:disable:next line_length
-            Text("This changes the Portavoz interface only. Meeting transcription and summary languages stay controlled by each meeting.")
+            Text(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "This changes the Portavoz interface only. Transcript and summary language policies stay in Intelligence settings and each meeting's overrides."
+            )
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -222,20 +249,26 @@ extension SettingsView {
     private var recordingsSection: some View {
         Section("Recordings") {
             LabeledContent("Save recordings in") {
-                Text(recordingsRoot.path)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .foregroundStyle(.secondary)
-                    .help(recordingsRoot.path)
+                if let recordingStorage {
+                    Text(recordingStorage.currentRoot.path)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .foregroundStyle(.secondary)
+                        .help(recordingStorage.currentRoot.path)
+                } else {
+                    ProgressView().controlSize(.small)
+                }
             }
             HStack {
                 Button("Change…") { chooseRecordingsFolder() }
-                    .disabled(migrating)
-                if RecordingsLocation.shared.isCustom {
+                    .disabled(migrating || recordingStorage == nil)
+                    .accessibilityIdentifier("settings-recordings-change")
+                if recordingStorage?.isCustom == true {
                     Button("Use default folder") {
-                        moveRecordings(to: RecordingsLocation.shared.defaultRoot, custom: false)
+                        moveRecordings(to: nil)
                     }
                     .disabled(migrating)
+                    .accessibilityIdentifier("settings-recordings-use-default")
                 }
                 if migrating {
                     ProgressView().controlSize(.small)
@@ -260,43 +293,39 @@ extension SettingsView {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = recordingsRoot
+        panel.directoryURL = recordingStorage?.currentRoot
         panel.prompt = L10n.text("Choose")
         panel.message = L10n.text("Choose the folder where Portavoz will store your recordings")
         guard panel.runModal() == .OK, let chosen = panel.url else { return }
-        moveRecordings(to: chosen, custom: true)
+        moveRecordings(to: chosen)
     }
 
-    private func moveRecordings(to destination: URL, custom: Bool) {
+    private func moveRecordings(to destination: URL?) {
         guard !migrating else { return }
         migrating = true
         migrationStatus = L10n.text("Preparing…")
-        let origin = RecordingsLocation.shared.currentRoot()
-        Task.detached(priority: .userInitiated) {
-            let location = RecordingsLocation.shared
+        Task {
             do {
-                let moved = try location.migrateAudio(from: origin, to: destination) { index, total in
-                    Task { @MainActor in
-                        migrationStatus = L10n.format("Moving recording %d of %d…", index, total)
-                    }
+                let update = try await services.updateRecordingStorage(to: destination) { progress in
+                    migrationStatus = L10n.format(
+                        "Moving recording %d of %d…",
+                        progress.completed,
+                        progress.total)
                 }
-                try location.setRoot(custom ? destination : nil)
-                await MainActor.run {
-                    recordingsRoot = location.currentRoot()
-                    migrationStatus =
-                        moved > 0
-                        ? L10n.format("Done: moved %d recording(s).", moved)
-                        : L10n.text("Done: folder updated.")
-                    migrating = false
-                }
+                recordingStorage = update.location
+                migrationStatus =
+                    update.recordingCount > 0
+                    ? L10n.format(
+                        "Done: moved %d recording(s).",
+                        update.recordingCount)
+                    : L10n.text("Done: folder updated.")
+                migrating = false
             } catch {
-                await MainActor.run {
-                    migrationStatus =
-                        // One-line UI error.
-                        // swiftlint:disable:next line_length
-                        L10n.format("Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.", error.localizedDescription)
-                    migrating = false
-                }
+                migrationStatus =
+                    // One-line UI error.
+                    // swiftlint:disable:next line_length
+                    L10n.format("Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.", error.localizedDescription)
+                migrating = false
             }
         }
     }
@@ -517,16 +546,14 @@ extension SettingsView {
 
     private var voiceSection: some View {
         Section("My voice") {
-            if let voiceprint {
+            if let voiceEnrollmentDate {
                 LabeledContent(
                     "Enrolled voice",
-                    value: voiceprint.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    value: voiceEnrollmentDate.formatted(date: .abbreviated, time: .shortened))
                 Button("Delete my voice", role: .destructive) {
-                    try? VoiceprintStore().delete()
-                    self.voiceprint = nil
-                    services.invalidateDiarizer()
-                    voiceMessage = L10n.text("Voiceprint and key deleted.")
+                    Task { await deleteVoice() }
                 }
+                .accessibilityIdentifier("settings-voice-delete")
             } else if enrolling {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -538,6 +565,7 @@ extension SettingsView {
                 } label: {
                     Label("Enroll my voice (12 s)", systemImage: "person.wave.2")
                 }
+                .accessibilityIdentifier("settings-voice-enroll")
             }
             Text(
                 // One-line UI help text.
@@ -556,31 +584,24 @@ extension SettingsView {
         enrolling = true
         defer { enrolling = false }
         do {
-            try await services.loadEnginesIfNeeded()
-            guard let diarizer = services.diarizer else {
-                voiceMessage = L10n.text("The diarizer is not available.")
-                return
-            }
-            let microphone = MicrophoneSource()
-            let stream = try await microphone.start()
-            var samples: [Float] = []
-            var sampleRate = 16_000.0
-            let deadline = Date().addingTimeInterval(12)
-            for try await chunk in stream {
-                samples.append(contentsOf: chunk.samples)
-                sampleRate = chunk.sampleRate
-                if Date() >= deadline { break }
-            }
-            await microphone.stop()
-
-            let print = try await diarizer.extractVoiceprint(
-                fromSamples: samples, sampleRate: sampleRate)
-            try VoiceprintStore().save(print)
-            voiceprint = print
-            services.invalidateDiarizer()
+            let voiceprint = try await services.recordAndEnrollLocalVoice(
+                seconds: 12,
+                mode: .echoCancelled)
+            voiceEnrollmentDate = voiceprint.createdAt
             voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
         } catch {
-            voiceMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
+            voiceMessage = L10n.format("Could not enroll: %@", UseCaseErrorMessages.describe(error))
+        }
+    }
+
+    private func deleteVoice() async {
+        do {
+            try await services.deleteLocalVoiceIdentity()
+            voiceEnrollmentDate = nil
+            voiceMessage = L10n.text("Voiceprint and key deleted.")
+        } catch {
+            voiceMessage = L10n.text(
+                "Could not delete your voice. Nothing was reported as deleted; try again.")
         }
     }
 
@@ -588,16 +609,22 @@ extension SettingsView {
 
     private var summaryEngineSection: some View {
         Section("Summary engine") {
-            if let advice {
+            if let providerRecommendation {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(advice.headline, systemImage: "wand.and.stars.inverse")
+                    Label(
+                        providerRecommendation.localizedHeadline,
+                        systemImage: "wand.and.stars.inverse")
                         .font(.callout.weight(.medium))
-                    ForEach(advice.reasons, id: \.self) { reason in
+                    ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
                         Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
                     }
-                    if advice.engine != .none {
-                        Button("Apply recommendation") { applyRecommendation(advice) }
+                    if providerRecommendation.selection != nil {
+                        Button("Apply recommendation") {
+                            applyRecommendation(providerRecommendation)
+                        }
                             .controlSize(.small)
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("settings-apply-summary-recommendation")
                             .padding(.top, 2)
                     }
                 }
@@ -610,12 +637,17 @@ extension SettingsView {
             .pickerStyle(.radioGroup)
             .accessibilityIdentifier("settings-summary-engine-picker")
             .onChange(of: summaryEngine) { _, engine in
-                if engine == "ollama" { detectOllama() }
+                if engine == SummaryEngine.ollama.rawValue {
+                    Task { await refreshLocalSummaryProviders() }
+                }
             }
+            SummaryEngineCapabilityNotice(
+                engine: summaryEngine,
+                capability: services.foundationModelsCapability)
             if summaryEngine == "ollama" {
                 HStack {
                     Button {
-                        detectOllama()
+                        Task { await refreshLocalSummaryProviders() }
                     } label: {
                         if detectingOllama {
                             ProgressView().controlSize(.small)
@@ -655,87 +687,60 @@ extension SettingsView {
             Divider()
             Text("Refine model (Whisper large-v3)")
                 .font(.callout.weight(.medium))
-            ForEach(whisperVariants) { variant in
-                let active = variant.compact == whisperCompact
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: active ? "largecircle.fill.circle" : "circle")
-                        .foregroundStyle(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(
-                            variant.compact
-                                ? "Compact — less disk" : "Turbo — best quality"
-                        )
-                        .font(.callout)
-                        Text(
-                            (variant.downloaded ? "Downloaded · " : "Downloads on refine · ")
-                                + ByteCountFormatter.string(
-                                    fromByteCount: variant.bytes, countStyle: .file)
-                        )
+            if whisperVariants.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying model integrity…")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if variant.downloaded && !active {
-                        Button("Delete") {
-                            services.deleteWhisperVariant(variant.id)
-                            whisperVariants = services.whisperVariants()
-                        }
-                        .controlSize(.small)
-                        .help("Free disk used by the variant you do not use")
-                    }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { whisperCompact = variant.compact }
+                .accessibilityIdentifier("settings-whisper-verifying")
+            }
+            ForEach(whisperVariants) { variant in
+                WhisperModelRow(
+                    variant: variant,
+                    active: variant.compact == whisperCompact,
+                    downloadState: services.whisperDownloadState,
+                    select: { whisperCompact = variant.compact },
+                    download: { services.prepareWhisperVariant(variant.id) },
+                    delete: {
+                        Task {
+                            await services.deleteWhisperVariant(variant.id)
+                            whisperVariants = await services.whisperVariants()
+                        }
+                    })
             }
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "The quality re-pass (Refine) uses Whisper. Turbo is the default; the compact variant saves about 1 GB of disk. Choose by selecting a row."
+                "Download Whisper here before your first Refine. Preparation continues when Settings closes, and Refine joins the same verified download instead of starting another one. Turbo is the default; Compact saves about 1 GB of disk."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
         }
     }
 
-    private func detectOllama(autoSelect: Bool = false) {
+    private func refreshLocalSummaryProviders(
+        showOllamaStatus: Bool = true
+    ) async {
         detectingOllama = true
-        ollamaStatus = nil
-        Task {
-            defer { detectingOllama = false }
-            guard await OllamaService.isRunning() else {
-                ollamaModels = []
-                ollamaStatus =
-                    L10n.text("Ollama is not responding on localhost:11434. Install it and run “ollama serve”.")
-                return
-            }
-            ollamaModels = await OllamaService.models()
-            // When applying the recommendation, pick a sensible default
-            // (skip OCR-only models, which can't chat).
-            if autoSelect, ollamaModel.isEmpty,
-                let first = ollamaModels.first(where: { !$0.name.contains("ocr") }) {
-                ollamaModel = first.name
-            }
-            ollamaStatus =
-                ollamaModels.isEmpty
-                ? L10n.text("Ollama is running but has no models. Download one with “ollama pull llama3.2”.")
-                : L10n.format("%d model(s) available.", ollamaModels.count)
+        if showOllamaStatus { ollamaStatus = nil }
+        defer { detectingOllama = false }
+        let discovery = await services.discoverLocalSummaryProviders()
+        providerRecommendation = discovery.recommendation
+        ollamaModels = discovery.profile.ollama.models
+        if showOllamaStatus {
+            ollamaStatus = discovery.localizedOllamaStatus
         }
     }
 
-    private func applyRecommendation(_ advice: EngineAdvice) {
-        switch advice.engine {
-        case .mlx:
-            summaryEngine = "mlx"
-        case .apple:
-            summaryEngine = "appleOnDevice"
-        case .ollama:
-            summaryEngine = "ollama"
-            detectOllama(autoSelect: true)
-        case .none:
-            break
+    private func applyRecommendation(_ recommendation: LocalSummaryProviderRecommendation) {
+        guard let selection = recommendation.selection else { return }
+        summaryEngine = selection.engine.rawValue
+        if let model = selection.ollamaModel {
+            ollamaModel = model
         }
-        // Low disk → the compact Whisper for the refine, too.
-        if advice.whisperLowDisk { whisperCompact = true }
+        if recommendation.preferCompactWhisper { whisperCompact = true }
     }
 }
 
@@ -745,84 +750,29 @@ extension SettingsView {
     // MARK: - Companion (D26)
 
     private var companionSection: some View {
-        Section("Companion") {
-            TextField("Your name in meetings", text: $companionUserName, prompt: Text(NSFullUserName()))
-                .autocorrectionDisabled()
-            Text(
-                "When someone asks for you by name (\"\(companionUserName.isEmpty ? NSFullUserName() : companionUserName), what do you think?\"), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            Toggle(isOn: $mirrorAfterMeeting) {
-                Text("Mirror after each meeting")
-            }
-            .accessibilityIdentifier("settings-mirror-after-meeting")
-            // swiftlint:disable:next line_length
-            Text("When a meeting has two or more speakers and runs at least five minutes, show a private card with your own numbers next to your usual average — measured on your Mac, never judged.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
+        CompanionSettingsSection(
+            capability: services.foundationModelsCapability,
+            companionEnabled: companionEnabledBinding,
+            companionUserName: $companionUserName,
+            mirrorAfterMeeting: $mirrorAfterMeeting)
     }
 
-    // MARK: - BYOK (D8/D26)
-
-    /// The endpoint/model are visible preferences; the key is Keychain-only.
-    /// The companion toggle is the ONLY thing that lets a question leave the
-    /// device, and it stays disabled until everything is configured.
-    private var byokReady: Bool {
-        hasStoredBYOKKey
-            && BYOKSettings.endpointURL(from: byokEndpoint) != nil
-            && !byokModel.trimmingCharacters(in: .whitespaces).isEmpty
+    private var companionEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { services.recording.companionEnabled },
+            set: { services.recording.companionEnabled = $0 })
     }
 
     private var byokSection: some View {
-        Section("External model (BYOK)") {
-            TextField(
-                "Endpoint OpenAI-compatible", text: $byokEndpoint,
-                prompt: Text("https://api.openai.com/v1")
-            )
-            .autocorrectionDisabled()
-            TextField("Model", text: $byokModel, prompt: Text("gpt-4o-mini"))
-                .autocorrectionDisabled()
-            SecureField("API key", text: $byokKey)
-            HStack {
-                Button("Save key in Keychain") {
-                    do {
-                        try SecretStore.set(byokKey, service: SecretStore.byokAPIKeyService)
-                        byokKey = ""
-                        hasStoredBYOKKey = true
-                        byokMessage = L10n.text("Key saved.")
-                    } catch {
-                        byokMessage = error.localizedDescription
-                    }
-                }
-                .disabled(byokKey.isEmpty)
-                if hasStoredBYOKKey {
-                    Button("Delete key", role: .destructive) {
-                        try? SecretStore.delete(service: SecretStore.byokAPIKeyService)
-                        hasStoredBYOKKey = false
-                        companionBYOKEnabled = false
-                        byokMessage = L10n.text("Key deleted. Companion goes back to answering only on-device.")
-                    }
-                }
-            }
-            Toggle(
-                "Answer Companion knowledge questions with this provider",
-                isOn: $companionBYOKEnabled
-            )
-            .disabled(!byokReady)
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if let byokMessage {
-                Text(byokMessage).font(.caption).foregroundStyle(.secondary)
-            }
-        }
+        BYOKSettingsSection(
+            endpoint: $byokEndpoint,
+            model: $byokModel,
+            key: $byokKey,
+            isEnabled: $companionBYOKEnabled,
+            hasStoredKey: $hasStoredBYOKKey,
+            message: $byokMessage,
+            secrets: services.secrets,
+            companionAvailable: services.companionAvailable)
     }
 
     // MARK: - GitHub

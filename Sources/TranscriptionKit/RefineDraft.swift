@@ -3,7 +3,10 @@ import PortavozCore
 
 /// A refine result awaiting the user's decision — never applied on its
 /// own. The transcript it would replace stays untouched until "Apply".
-public struct RefineDraft {
+public struct RefineDraft: Sendable {
+    /// Revision used to produce this draft. Apply rejects it if a newer
+    /// transcript landed while the user was reviewing the comparison.
+    public let sourceTranscriptRevision: Int
     public let language: String?
     public let speakers: [Speaker]
     public let segments: [TranscriptSegment]
@@ -12,12 +15,18 @@ public struct RefineDraft {
     public let oldSpeechSeconds: TimeInterval
     /// Wall-clock length of the meeting, when known.
     public let meetingSeconds: TimeInterval?
+    /// Successful provenance remains ephemeral until the user accepts this
+    /// draft. Apply persists it atomically with the replacement transcript.
+    public let generationRun: GenerationRun?
 
     public init(
+        sourceTranscriptRevision: Int,
         language: String?, speakers: [Speaker], segments: [TranscriptSegment],
         oldSegmentCount: Int, oldSpeakerCount: Int,
-        oldSpeechSeconds: TimeInterval, meetingSeconds: TimeInterval?
+        oldSpeechSeconds: TimeInterval, meetingSeconds: TimeInterval?,
+        generationRun: GenerationRun? = nil
     ) {
+        self.sourceTranscriptRevision = sourceTranscriptRevision
         self.language = language
         self.speakers = speakers
         self.segments = segments
@@ -25,6 +34,7 @@ public struct RefineDraft {
         self.oldSpeakerCount = oldSpeakerCount
         self.oldSpeechSeconds = oldSpeechSeconds
         self.meetingSeconds = meetingSeconds
+        self.generationRun = generationRun
     }
 
     public var newSpeechSeconds: TimeInterval {

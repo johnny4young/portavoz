@@ -10,14 +10,20 @@ import XCTest
 
 final class VoiceprintStoreTests: XCTestCase {
     private var directory: URL!
-    private var keyService: String!
+    private var keyIdentifier: SecretIdentifier!
+    private var secrets: TestSecretStorage!
     private var store: VoiceprintStore!
 
     override func setUpWithError() throws {
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-voice-\(UUID().uuidString)")
-        keyService = "app.portavoz.tests.voice.\(UUID().uuidString)"
-        store = VoiceprintStore(directory: directory, keyService: keyService)
+        keyIdentifier = SecretIdentifier(
+            rawValue: "app.portavoz.tests.voice.\(UUID().uuidString)")
+        secrets = TestSecretStorage()
+        store = VoiceprintStore(
+            secrets: secrets,
+            directory: directory,
+            keyIdentifier: keyIdentifier)
     }
 
     override func tearDownWithError() throws {
@@ -51,7 +57,7 @@ final class VoiceprintStoreTests: XCTestCase {
 
         try store.delete()
         XCTAssertFalse(store.exists)
-        XCTAssertNil(try SecretStore.get(service: keyService))
+        XCTAssertNil(try secrets.value(for: keyIdentifier))
         XCTAssertNil(try store.load())
     }
 
@@ -62,7 +68,7 @@ final class VoiceprintStoreTests: XCTestCase {
             throw XCTSkip("keychain unavailable: \(error)")
         }
         // Key vanishes (e.g. keychain reset) → data is unreadable by design.
-        try SecretStore.delete(service: keyService)
+        try secrets.delete(keyIdentifier)
         XCTAssertNil(try store.load())
     }
 }
@@ -71,14 +77,20 @@ final class VoiceprintStoreTests: XCTestCase {
 
 final class VoiceGalleryTests: XCTestCase {
     private var directory: URL!
-    private var keyService: String!
+    private var keyIdentifier: SecretIdentifier!
+    private var secrets: TestSecretStorage!
     private var gallery: VoiceGallery!
 
     override func setUpWithError() throws {
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-gallery-\(UUID().uuidString)")
-        keyService = "app.portavoz.tests.gallery.\(UUID().uuidString)"
-        gallery = VoiceGallery(directory: directory, keyService: keyService)
+        keyIdentifier = SecretIdentifier(
+            rawValue: "app.portavoz.tests.gallery.\(UUID().uuidString)")
+        secrets = TestSecretStorage()
+        gallery = VoiceGallery(
+            secrets: secrets,
+            directory: directory,
+            keyIdentifier: keyIdentifier)
     }
 
     override func tearDownWithError() throws {
@@ -126,7 +138,7 @@ final class VoiceGalleryTests: XCTestCase {
 
         try gallery.remove(id: voice.id)
         XCTAssertFalse(gallery.exists)
-        XCTAssertNil(try SecretStore.get(service: keyService))
+        XCTAssertNil(try secrets.value(for: keyIdentifier))
         XCTAssertTrue(try gallery.voices().isEmpty)
     }
 
@@ -140,7 +152,7 @@ final class VoiceGalleryTests: XCTestCase {
 
         try gallery.deleteAll()
         XCTAssertFalse(gallery.exists)
-        XCTAssertNil(try SecretStore.get(service: keyService))
+        XCTAssertNil(try secrets.value(for: keyIdentifier))
     }
 }
 
@@ -260,10 +272,28 @@ final class NameSuggestionFilterTests: XCTestCase {
 
     func testRejectsFabricatedNames() {
         let kept = NameSuggestionFilter.validSuggestions(
-            [NameSuggestion(label: "S2", name: "John", evidence: "fabricated")],
-            transcript: transcript, unnamedLabels: ["S1", "S2"],
+            [
+                NameSuggestion(label: "S2", name: "John", evidence: "fabricated"),
+                NameSuggestion(label: "S3", name: "Ana", evidence: "substring"),
+            ],
+            transcript: transcript + " The analysis is complete.",
+            unnamedLabels: ["S1", "S2", "S3"],
             attendeeCandidates: ["Pedro Gómez"])
         XCTAssertTrue(kept.isEmpty)
+    }
+
+    func testNormalizesWhitespaceAndKeepsOnlyOneSuggestionPerLabel() {
+        let kept = NameSuggestionFilter.validSuggestions(
+            [
+                NameSuggestion(label: " S1 ", name: " Carolina ", evidence: " first "),
+                NameSuggestion(label: "S1", name: "Carolina", evidence: "duplicate"),
+            ],
+            transcript: transcript,
+            unnamedLabels: ["S1"])
+
+        XCTAssertEqual(kept, [
+            NameSuggestion(label: "S1", name: "Carolina", evidence: "first"),
+        ])
     }
 
     func testRejectsLabelsAlreadyNamedOrUnknown() {

@@ -2,7 +2,7 @@ import Foundation
 import PortavozCore
 import XCTest
 
-@testable import IntegrationsKit
+@testable import ApplicationKit
 
 final class LibraryStatsTests: XCTestCase {
     private var calendar: Calendar {

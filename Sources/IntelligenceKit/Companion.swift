@@ -62,6 +62,27 @@ public enum QuestionHeuristic {
 /// tested without the model. A companion card only earns its place when the
 /// model actually answered: filler is worse than nothing on a glanceable panel.
 public enum CompanionAnswer {
+    /// Zero-based passage positions explicitly cited as `[N]`, in first-use
+    /// order. Unknown, out-of-range, and repeated markers are ignored.
+    public static func citedPassageIndexes(
+        _ raw: String,
+        passageCount: Int
+    ) -> [Int] {
+        guard passageCount > 0,
+              let expression = try? NSRegularExpression(pattern: #"\[(\d+)\]"#)
+        else { return [] }
+        let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+        var seen: Set<Int> = []
+        return expression.matches(in: raw, range: range).compactMap { match in
+            guard let numberRange = Range(match.range(at: 1), in: raw),
+                  let number = Int(raw[numberRange]),
+                  (1...passageCount).contains(number),
+                  seen.insert(number - 1).inserted
+            else { return nil }
+            return number - 1
+        }
+    }
+
     /// The answer if it's a real one, else nil. Strips the citation markers the
     /// RAG answerer is told to add ("[2]", "… in passage 3") — meaningless on a
     /// card — and treats a hedge / non-answer ("not in the context", "I
@@ -98,6 +119,54 @@ public enum CompanionAnswer {
 #if canImport(FoundationModels)
 import FoundationModels
 
+public struct CompanionProcessTrace: Equatable, Sendable {
+    public internal(set) var classifierInvoked = false
+    public internal(set) var answerProviderID: String?
+    public internal(set) var answerModelID: String?
+    public internal(set) var externalDestinationScope: DataEgressDestinationScope?
+    public internal(set) var externalTransferOccurred = false
+    public internal(set) var externalTransferSucceeded = false
+
+    public init(
+        classifierInvoked: Bool = false,
+        answerProviderID: String? = nil,
+        answerModelID: String? = nil,
+        externalDestinationScope: DataEgressDestinationScope? = nil,
+        externalTransferOccurred: Bool = false,
+        externalTransferSucceeded: Bool = false
+    ) {
+        self.classifierInvoked = classifierInvoked
+        self.answerProviderID = answerProviderID
+        self.answerModelID = answerModelID
+        self.externalDestinationScope = externalDestinationScope
+        self.externalTransferOccurred = externalTransferOccurred
+        self.externalTransferSucceeded = externalTransferSucceeded
+    }
+}
+
+struct CompanionProcessResult: Sendable {
+    let card: CompanionCard?
+    let trace: CompanionProcessTrace
+    let answerEvidenceIndexes: [Int]
+
+    init(
+        card: CompanionCard?,
+        trace: CompanionProcessTrace,
+        answerEvidenceIndexes: [Int] = []
+    ) {
+        self.card = card
+        self.trace = trace
+        self.answerEvidenceIndexes = answerEvidenceIndexes
+    }
+}
+
+struct CompanionProcessFailure: Error {
+    let trace: CompanionProcessTrace
+    let underlying: any Error
+
+    var cancelled: Bool { underlying is CancellationError }
+}
+
 /// The live companion pipeline (D26): classify a candidate caption row,
 /// route by question type, answer on-device — or, for `knowledge`
 /// questions ONLY and with the user's explicit BYOK opt-in, via their
@@ -109,9 +178,9 @@ public struct LiveCompanion: Sendable {
     /// Non-nil only when the user configured BYOK AND enabled it for the
     /// companion (D8/D26). Only the detected question text ever leaves the
     /// device — never audio, never the rest of the meeting.
-    private let byok: OpenAICompatibleChatClient?
+    private let byok: CompanionBYOKClient?
 
-    public init(byok: OpenAICompatibleChatClient? = nil) {
+    public init(byok: CompanionBYOKClient? = nil) {
         self.byok = byok
     }
 
@@ -129,57 +198,157 @@ public struct LiveCompanion: Sendable {
         ownerName: String? = nil,
         askedAt: TimeInterval
     ) async throws -> CompanionCard? {
+        do {
+            return try await processWithTrace(
+                candidate: candidate,
+                recentTranscript: recentTranscript,
+                ownerName: ownerName,
+                askedAt: askedAt,
+                egressContext: byok.map { _ in
+                    CompanionDataEgressContext(
+                        meetingID: nil,
+                        consentSource: .explicitCompanionClient)
+                }).card
+        } catch let failure as CompanionProcessFailure {
+            throw failure.underlying
+        }
+    }
+
+    func processWithTrace(
+        candidate: String,
+        recentTranscript: [RAGPassage],
+        ownerName: String? = nil,
+        askedAt: TimeInterval,
+        egressContext: CompanionDataEgressContext? = nil
+    ) async throws -> CompanionProcessResult {
         let mentioned = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
-        guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else { return nil }
+        guard QuestionHeuristic.looksLikeQuestion(candidate) || mentioned else {
+            return CompanionProcessResult(card: nil, trace: CompanionProcessTrace())
+        }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
+        var trace = CompanionProcessTrace()
+        trace.classifierInvoked = true
+        do {
+            return try await processCandidate(
+                candidate,
+                recentTranscript: recentTranscript,
+                ownerName: ownerName,
+                askedAt: askedAt,
+                egressContext: egressContext,
+                trace: &trace)
+        } catch {
+            let underlying: any Error = error is CancellationError || Task.isCancelled
+                ? CancellationError()
+                : error
+            throw CompanionProcessFailure(
+                trace: trace,
+                underlying: underlying)
+        }
+    }
+
+    private func processCandidate(
+        _ candidate: String,
+        recentTranscript: [RAGPassage],
+        ownerName: String?,
+        askedAt: TimeInterval,
+        egressContext: CompanionDataEgressContext?,
+        trace: inout CompanionProcessTrace
+    ) async throws -> CompanionProcessResult {
         guard let detected = try await classify(candidate, ownerName: ownerName),
             detected.isQuestion, !detected.question.isEmpty
-        else { return nil }
+        else { return CompanionProcessResult(card: nil, trace: trace) }
         // Directed = the DETERMINISTIC name gate, never the model's
         // opinion: asked to flag it, the 3B cleaned "Johnny," out of the
         // question and reported false (caught by the gated test).
-        let directed = mentioned
+        let directed = ownerName.map { QuestionHeuristic.mentions($0, in: candidate) } ?? false
 
         switch detected.kind.lowercased() {
         case "knowledge":
             let rawAnswer: String
             let source: String
-            if let byok,
-                let answer = try? await byok.complete(
-                    system: Self.knowledgeInstructions,
-                    user: detected.question,
-                    maxTokens: 400) {
-                rawAnswer = answer
-                source = byok.providerLabel
+            if let byok {
+                trace.externalTransferOccurred = true
+                trace.answerProviderID = byok.providerLabel
+                trace.answerModelID = byok.model
+                trace.externalDestinationScope = byok.destination.scope
+                do {
+                    let answer = try await byok.completeCompanionQuestion(
+                        system: Self.knowledgeInstructions,
+                        user: detected.question,
+                        maxTokens: 400,
+                        context: egressContext ?? CompanionDataEgressContext(
+                            meetingID: nil,
+                            consentSource: .explicitCompanionClient))
+                    trace.externalTransferSucceeded = true
+                    rawAnswer = answer
+                    source = byok.providerLabel
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    try Task.checkCancellation()
+                    trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+                    trace.answerModelID = CompanionGenerationAttempt.foundationModelID
+                    rawAnswer = try await answerKnowledge(detected.question)
+                    source = "on-device"
+                }
             } else {
-                // No BYOK — or the cloud call failed (network, quota, endpoint
-                // down): the card falls back on-device and says so in `source`.
+                trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+                trace.answerModelID = CompanionGenerationAttempt.foundationModelID
                 rawAnswer = try await answerKnowledge(detected.question)
                 source = "on-device"
             }
-            return Self.card(
+            let card = Self.card(
                 question: detected.question, rawAnswer: rawAnswer, kind: .knowledge,
                 source: source, directed: directed, askedAt: askedAt)
+            return CompanionProcessResult(card: card, trace: trace)
         case "context":
-            guard !recentTranscript.isEmpty else {
-                return directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
-            }
-            let answer = try await RAGAnswerer().answer(
-                question: detected.question, passages: recentTranscript)
-            return Self.card(
-                question: detected.question, rawAnswer: answer, kind: .context,
-                source: "on-device", directed: directed, askedAt: askedAt)
+            return try await answerContext(
+                detected.question,
+                passages: recentTranscript,
+                directed: directed,
+                askedAt: askedAt,
+                trace: &trace)
         default:
             // Logistics/small talk: a card here is noise, the classic
             // failure mode of this feature class — UNLESS it was aimed at
             // the owner by name ("Johnny, ¿nos acompañas mañana?"). Then
             // the ping IS the value: question only, no invented answer.
-            guard directed else { return nil }
-            return Self.pingCard(detected.question, askedAt: askedAt)
+            let card = directed ? Self.pingCard(detected.question, askedAt: askedAt) : nil
+            return CompanionProcessResult(card: card, trace: trace)
         }
+    }
+
+    private func answerContext(
+        _ question: String,
+        passages: [RAGPassage],
+        directed: Bool,
+        askedAt: TimeInterval,
+        trace: inout CompanionProcessTrace
+    ) async throws -> CompanionProcessResult {
+        guard !passages.isEmpty else {
+            let card = directed ? Self.pingCard(question, askedAt: askedAt) : nil
+            return CompanionProcessResult(card: card, trace: trace)
+        }
+        trace.answerProviderID = CompanionGenerationAttempt.foundationProviderID
+        trace.answerModelID = CompanionGenerationAttempt.foundationModelID
+        let answer = try await RAGAnswerer().answer(question: question, passages: passages)
+        let evidence = CompanionAnswer.citedPassageIndexes(
+            answer,
+            passageCount: passages.count)
+        let card = Self.card(
+            question: question,
+            rawAnswer: answer,
+            kind: .context,
+            source: "on-device",
+            directed: directed,
+            askedAt: askedAt)
+        return CompanionProcessResult(
+            card: card,
+            trace: trace,
+            answerEvidenceIndexes: evidence)
     }
 
     /// Builds a card from a raw model answer: keeps it only if the model

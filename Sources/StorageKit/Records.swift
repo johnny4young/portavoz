@@ -6,6 +6,25 @@ import PortavozCore
 // policy as JSON (an enum with associated values). Domain types stay
 // database-agnostic — mapping lives here and nowhere else.
 
+enum PersistedIdentity {
+    static func required(
+        _ value: String, table: String, column: String
+    ) throws -> UUID {
+        guard let uuid = UUID(uuidString: value) else {
+            throw StorageError.invalidPersistedUUID(
+                table: table, column: column, value: value)
+        }
+        return uuid
+    }
+
+    static func optional(
+        _ value: String?, table: String, column: String
+    ) throws -> UUID? {
+        guard let value else { return nil }
+        return try required(value, table: table, column: column)
+    }
+}
+
 struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "meeting"
 
@@ -17,6 +36,9 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     var audioDirectory: String?
     var retention: String
     var visibility: String
+    var lifecycleState: String
+    var transcriptRevision: Int
+    var lastProcessingError: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -30,6 +52,9 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
         self.audioDirectory = meeting.audioDirectory
         self.retention = try Self.encode(meeting.retention)
         self.visibility = meeting.visibility
+        self.lifecycleState = meeting.lifecycleState.rawValue
+        self.transcriptRevision = meeting.transcriptRevision
+        self.lastProcessingError = meeting.lastProcessingError
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
@@ -37,15 +62,25 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
 
     var meeting: Meeting {
         get throws {
-            Meeting(
-                id: MeetingID(rawValue: UUID(uuidString: id) ?? UUID()),
+            guard let lifecycleState = MeetingLifecycleState(rawValue: lifecycleState) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "lifecycleState",
+                    value: self.lifecycleState)
+            }
+            return Meeting(
+                id: MeetingID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
                 title: title,
                 startedAt: startedAt,
                 endedAt: endedAt,
                 language: language,
                 audioDirectory: audioDirectory,
                 retention: try Self.decode(retention),
-                visibility: visibility
+                visibility: visibility,
+                lifecycleState: lifecycleState,
+                transcriptRevision: transcriptRevision,
+                lastProcessingError: lastProcessingError
             )
         }
     }
@@ -62,6 +97,95 @@ struct MeetingRecord: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+struct AudioAssetRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "audioAsset"
+
+    var id: String
+    var meetingID: String
+    var channel: String
+    var role: String
+    var relativePath: String
+    var container: String?
+    var codec: String?
+    var sampleRate: Double?
+    var channelCount: Int?
+    var durationSeconds: Double?
+    var byteCount: Int64?
+    var sha256: String?
+    var healthStatus: String
+    var peakDBFS: Double?
+    var rmsDBFS: Double?
+    var sourceAssetID: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var supersededAt: Date?
+    var deletedAt: Date?
+
+    init(_ asset: AudioAsset) {
+        id = asset.id.rawValue.uuidString
+        meetingID = asset.meetingID.rawValue.uuidString
+        channel = asset.channel.rawValue
+        role = asset.role.rawValue
+        relativePath = asset.relativePath
+        container = asset.container
+        codec = asset.codec
+        sampleRate = asset.sampleRate
+        channelCount = asset.channelCount
+        durationSeconds = asset.durationSeconds
+        byteCount = asset.byteCount
+        sha256 = asset.sha256
+        healthStatus = asset.healthStatus.rawValue
+        peakDBFS = asset.peakDBFS
+        rmsDBFS = asset.rmsDBFS
+        sourceAssetID = asset.sourceAssetID?.rawValue.uuidString
+        createdAt = asset.createdAt
+        updatedAt = asset.updatedAt
+        supersededAt = asset.supersededAt
+        deletedAt = asset.deletedAt
+    }
+
+    var asset: AudioAsset {
+        get throws {
+            guard let channel = AudioChannel(rawValue: channel) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "channel", value: self.channel)
+            }
+            guard let health = AudioAssetHealthStatus(rawValue: healthStatus) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "healthStatus",
+                    value: healthStatus)
+            }
+            try StoredAudioPath.validate(relativePath)
+            return AudioAsset(
+                id: AudioAssetID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                channel: channel,
+                role: AudioAssetRole(rawValue: role),
+                relativePath: relativePath,
+                container: container,
+                codec: codec,
+                sampleRate: sampleRate,
+                channelCount: channelCount,
+                durationSeconds: durationSeconds,
+                byteCount: byteCount,
+                sha256: sha256,
+                healthStatus: health,
+                peakDBFS: peakDBFS,
+                rmsDBFS: rmsDBFS,
+                sourceAssetID: try PersistedIdentity.optional(
+                    sourceAssetID, table: Self.databaseTableName, column: "sourceAssetID"
+                ).map { AudioAssetID(rawValue: $0) },
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                supersededAt: supersededAt,
+                deletedAt: deletedAt)
+        }
+    }
+}
+
 struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "speaker"
 
@@ -70,6 +194,7 @@ struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
     var label: String
     var displayName: String?
     var isMe: Bool
+    var personID: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
@@ -80,19 +205,97 @@ struct SpeakerRecord: Codable, FetchableRecord, PersistableRecord {
         self.label = speaker.label
         self.displayName = speaker.displayName
         self.isMe = speaker.isMe
+        self.personID = speaker.personID?.rawValue.uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = nil
     }
 
     var speaker: Speaker {
-        Speaker(
-            id: SpeakerID(rawValue: UUID(uuidString: id) ?? UUID()),
-            meetingID: MeetingID(rawValue: UUID(uuidString: meetingID) ?? UUID()),
-            label: label,
-            displayName: displayName,
-            isMe: isMe
-        )
+        get throws {
+            Speaker(
+                id: SpeakerID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                label: label,
+                displayName: displayName,
+                isMe: isMe,
+                personID: try PersistedIdentity.optional(
+                    personID, table: Self.databaseTableName, column: "personID"
+                ).map { PersonID(rawValue: $0) }
+            )
+        }
+    }
+}
+
+struct PersonRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "person"
+
+    var id: String
+    var preferredName: String
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    init(_ person: Person, createdAt: Date, updatedAt: Date, deletedAt: Date? = nil) {
+        id = person.id.rawValue.uuidString
+        preferredName = person.preferredName
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
+
+    var person: Person {
+        get throws {
+            Person(
+                id: PersonID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                preferredName: preferredName)
+        }
+    }
+}
+
+struct PersonAliasRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "personAlias"
+
+    var id: String
+    var personID: String
+    var normalizedAlias: String
+    var source: String
+    var confidence: Double
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    init(_ alias: PersonAlias, createdAt: Date, updatedAt: Date, deletedAt: Date? = nil) {
+        id = alias.id.uuidString
+        personID = alias.personID.rawValue.uuidString
+        normalizedAlias = alias.normalizedAlias
+        source = alias.source.rawValue
+        confidence = alias.confidence
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
+
+    var alias: PersonAlias {
+        get throws {
+            guard let source = PersonAliasSource(rawValue: source) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "source",
+                    value: self.source)
+            }
+            return PersonAlias(
+                id: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id"),
+                personID: PersonID(rawValue: try PersistedIdentity.required(
+                    personID, table: Self.databaseTableName, column: "personID")),
+                normalizedAlias: normalizedAlias,
+                source: source,
+                confidence: confidence)
+        }
     }
 }
 
@@ -109,13 +312,19 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
     var endTime: Double
     var confidence: Double?
     var isFinal: Bool
+    var generationRunID: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
     /// Float32 LE, L2-normalized sentence embedding (v2, local RAG).
     var embedding: Data?
 
-    init(_ segment: TranscriptSegment, createdAt: Date, updatedAt: Date) {
+    init(
+        _ segment: TranscriptSegment,
+        generationRunID: GenerationRunID? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
         self.id = segment.id.uuidString
         self.meetingID = segment.meetingID.rawValue.uuidString
         self.speakerID = segment.speakerID?.rawValue.uuidString
@@ -126,6 +335,7 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
         self.endTime = segment.endTime
         self.confidence = segment.confidence
         self.isFinal = segment.isFinal
+        self.generationRunID = generationRunID?.rawValue.uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = nil
@@ -133,18 +343,28 @@ struct SegmentRecord: Codable, FetchableRecord, PersistableRecord {
     }
 
     var segment: TranscriptSegment {
-        TranscriptSegment(
-            id: UUID(uuidString: id) ?? UUID(),
-            meetingID: MeetingID(rawValue: UUID(uuidString: meetingID) ?? UUID()),
-            speakerID: speakerID.flatMap { UUID(uuidString: $0) }.map { SpeakerID(rawValue: $0) },
-            channel: AudioChannel(rawValue: channel) ?? .system,
-            text: text,
-            language: language,
-            startTime: startTime,
-            endTime: endTime,
-            confidence: confidence,
-            isFinal: isFinal
-        )
+        get throws {
+            guard let parsedChannel = AudioChannel(rawValue: channel) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "channel", value: channel)
+            }
+            return TranscriptSegment(
+                id: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id"),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                speakerID: try PersistedIdentity.optional(
+                    speakerID, table: Self.databaseTableName, column: "speakerID"
+                ).map { SpeakerID(rawValue: $0) },
+                channel: parsedChannel,
+                text: text,
+                language: language,
+                startTime: startTime,
+                endTime: endTime,
+                confidence: confidence,
+                isFinal: isFinal
+            )
+        }
     }
 }
 
@@ -158,8 +378,219 @@ struct SummaryRecord: Codable, FetchableRecord, PersistableRecord {
     var markdown: String
     var version: Int
     var fingerprint: String?
+    var generationRunID: String?
     var createdAt: Date
     var deletedAt: Date?
+}
+
+struct SummaryClaimRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryClaim"
+
+    var id: String
+    var summaryID: String
+    var kind: String
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct SummaryClaimSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryClaimSegment"
+
+    var id: String
+    var claimID: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
+struct SummaryClaimFeedbackRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryClaimFeedback"
+
+    var claimID: String
+    var kind: String
+    var correctionText: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+}
+
+struct SummaryDecisionEvidenceRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryDecisionEvidence"
+
+    var id: String
+    var summaryID: String
+    var sectionOrdinal: Int
+    var bulletOrdinal: Int
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct SummaryDecisionEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryDecisionEvidenceSegment"
+
+    var id: String
+    var decisionID: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
+struct SummaryActionItemEvidenceRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryActionItemEvidence"
+
+    var id: String
+    var actionItemID: String
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct SummaryActionItemEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "summaryActionItemEvidenceSegment"
+
+    var id: String
+    var evidenceID: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
+struct GenerationRunRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "generationRun"
+
+    var id: String
+    var meetingID: String
+    var kind: String
+    var providerID: String
+    var modelID: String
+    var modelRevision: String?
+    var inputFingerprint: String
+    var configJSON: String
+    var outputLanguage: String?
+    var startedAt: Date
+    var finishedAt: Date?
+    var outcome: String?
+    var metricsJSON: String?
+
+    init(_ run: GenerationRun) {
+        id = run.id.rawValue.uuidString
+        meetingID = run.meetingID.rawValue.uuidString
+        kind = run.kind.rawValue
+        providerID = run.providerID
+        modelID = run.modelID
+        modelRevision = run.modelRevision
+        inputFingerprint = run.inputFingerprint
+        configJSON = run.configJSON
+        outputLanguage = run.outputLanguage
+        startedAt = run.startedAt
+        finishedAt = run.finishedAt
+        outcome = run.outcome?.rawValue
+        metricsJSON = run.metricsJSON
+    }
+
+    var run: GenerationRun {
+        get throws {
+            guard let kind = GenerationRunKind(rawValue: kind) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "kind", value: self.kind)
+            }
+            let parsedOutcome: GenerationRunOutcome?
+            if let outcome {
+                guard let value = GenerationRunOutcome(rawValue: outcome) else {
+                    throw StorageError.invalidPersistedValue(
+                        table: Self.databaseTableName, column: "outcome", value: outcome)
+                }
+                parsedOutcome = value
+            } else {
+                parsedOutcome = nil
+            }
+            return GenerationRun(
+                id: GenerationRunID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                kind: kind,
+                providerID: providerID,
+                modelID: modelID,
+                modelRevision: modelRevision,
+                inputFingerprint: inputFingerprint,
+                configJSON: configJSON,
+                outputLanguage: outputLanguage,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                outcome: parsedOutcome,
+                metricsJSON: metricsJSON)
+        }
+    }
+}
+
+struct DataEgressEventRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "dataEgressEvent"
+
+    var id: String
+    var meetingID: String
+    var operation: String
+    var destinationScope: String
+    var destinationHost: String
+    var dataClassification: String
+    var consentSource: String
+    var providerID: String
+    var modelID: String?
+    var attemptedAt: Date
+
+    init(_ event: DataEgressEvent, meetingID: MeetingID) {
+        id = event.id.rawValue.uuidString
+        self.meetingID = meetingID.rawValue.uuidString
+        operation = event.operation.rawValue
+        destinationScope = event.destinationScope.rawValue
+        destinationHost = event.destinationHost
+        dataClassification = event.dataClassification.rawValue
+        consentSource = event.consentSource.rawValue
+        providerID = event.providerID
+        modelID = event.modelID
+        attemptedAt = event.attemptedAt
+    }
+
+    var event: DataEgressEvent {
+        get throws {
+            guard let operation = DataEgressOperation(rawValue: operation) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "operation", value: self.operation)
+            }
+            guard let destinationScope = DataEgressDestinationScope(rawValue: destinationScope) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "destinationScope",
+                    value: self.destinationScope)
+            }
+            guard let dataClassification = DataEgressClassification(
+                rawValue: dataClassification)
+            else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "dataClassification",
+                    value: self.dataClassification)
+            }
+            guard let consentSource = DataEgressConsentSource(rawValue: consentSource) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "consentSource",
+                    value: self.consentSource)
+            }
+            return DataEgressEvent(
+                id: DataEgressEventID(rawValue: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id")),
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    meetingID, table: Self.databaseTableName, column: "meetingID")),
+                operation: operation,
+                destinationScope: destinationScope,
+                destinationHost: destinationHost,
+                dataClassification: dataClassification,
+                consentSource: consentSource,
+                providerID: providerID,
+                modelID: modelID,
+                attemptedAt: attemptedAt)
+        }
+    }
 }
 
 struct ActionItemRecord: Codable, FetchableRecord, PersistableRecord {
@@ -176,14 +607,21 @@ struct ActionItemRecord: Codable, FetchableRecord, PersistableRecord {
     var deletedAt: Date?
 
     var actionItem: ActionItem {
-        ActionItem(
-            id: UUID(uuidString: id) ?? UUID(),
-            text: text,
-            ownerSpeakerID: ownerSpeakerID.flatMap { UUID(uuidString: $0) }.map {
-                SpeakerID(rawValue: $0)
-            },
-            isDone: isDone
-        )
+        get throws {
+            _ = try PersistedIdentity.required(
+                summaryID, table: Self.databaseTableName, column: "summaryID")
+            _ = try PersistedIdentity.required(
+                meetingID, table: Self.databaseTableName, column: "meetingID")
+            return ActionItem(
+                id: try PersistedIdentity.required(
+                    id, table: Self.databaseTableName, column: "id"),
+                text: text,
+                ownerSpeakerID: try PersistedIdentity.optional(
+                    ownerSpeakerID, table: Self.databaseTableName, column: "ownerSpeakerID"
+                ).map { SpeakerID(rawValue: $0) },
+                isDone: isDone
+            )
+        }
     }
 }
 
@@ -210,15 +648,21 @@ struct ContextItemRecord: Codable, FetchableRecord, PersistableRecord {
         self.deletedAt = nil
     }
 
-    var item: ContextItem? {
-        guard
-            let uuid = UUID(uuidString: id),
-            let meetingUUID = UUID(uuidString: meetingID),
-            let kind = ContextItem.Kind(rawValue: kind)
-        else { return nil }
-        return ContextItem(
-            id: uuid, meetingID: MeetingID(rawValue: meetingUUID),
-            kind: kind, content: content, timestamp: timestamp)
+    var item: ContextItem {
+        get throws {
+            let uuid = try PersistedIdentity.required(
+                id, table: Self.databaseTableName, column: "id")
+            let meetingUUID = try PersistedIdentity.required(
+                meetingID, table: Self.databaseTableName, column: "meetingID")
+            let rawKind = kind
+            guard let kind = ContextItem.Kind(rawValue: rawKind) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "kind", value: rawKind)
+            }
+            return ContextItem(
+                id: uuid, meetingID: MeetingID(rawValue: meetingUUID),
+                kind: kind, content: content, timestamp: timestamp)
+        }
     }
 }
 
@@ -233,13 +677,20 @@ struct CompanionCardRecord: Codable, FetchableRecord, PersistableRecord {
     var source: String
     var directed: Bool
     var askedAt: Double
+    var generationRunID: String?
     var createdAt: Date
     var updatedAt: Date
     var deletedAt: Date?
 
     // `CompanionCard` carries no meetingID (it's a transient UI card); the
     // owning meeting is stamped here at persistence time.
-    init(_ card: CompanionCard, meetingID: MeetingID, createdAt: Date, updatedAt: Date) {
+    init(
+        _ card: CompanionCard,
+        meetingID: MeetingID,
+        generationRunID: GenerationRunID? = nil,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
         self.id = card.id.uuidString
         self.meetingID = meetingID.rawValue.uuidString
         self.question = card.question
@@ -248,18 +699,56 @@ struct CompanionCardRecord: Codable, FetchableRecord, PersistableRecord {
         self.source = card.source
         self.directed = card.directed
         self.askedAt = card.askedAt
+        self.generationRunID = generationRunID?.rawValue.uuidString
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = nil
     }
 
-    var card: CompanionCard? {
-        guard
-            let uuid = UUID(uuidString: id),
-            let kind = CompanionCard.Kind(rawValue: kind)
-        else { return nil }
-        return CompanionCard(
-            id: uuid, question: question, answer: answer, kind: kind,
-            source: source, directed: directed, askedAt: askedAt)
+    var card: CompanionCard {
+        get throws {
+            let uuid = try PersistedIdentity.required(
+                id, table: Self.databaseTableName, column: "id")
+            _ = try PersistedIdentity.required(
+                meetingID, table: Self.databaseTableName, column: "meetingID")
+            let rawKind = kind
+            guard let kind = CompanionCard.Kind(rawValue: rawKind) else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName, column: "kind", value: rawKind)
+            }
+            return CompanionCard(
+                id: uuid, question: question, answer: answer, kind: kind,
+                source: source, directed: directed, askedAt: askedAt)
+        }
     }
+}
+
+struct CompanionCardEvidenceRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "companionCardEvidence"
+
+    var id: String
+    var cardID: String
+    var sourceTranscriptRevision: Int
+    var createdAt: Date
+}
+
+struct CompanionCardEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "companionCardEvidenceSegment"
+
+    var id: String
+    var evidenceID: String
+    var role: String
+    var segmentID: String?
+    var ordinal: Int
+    var createdAt: Date
+}
+
+struct MeetingSyncStateRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "meetingSyncState"
+
+    var meetingID: String
+    var localGeneration: Int
+    var acknowledgedGeneration: Int
+    var changedAt: Date
+    var isDeleted: Bool
 }

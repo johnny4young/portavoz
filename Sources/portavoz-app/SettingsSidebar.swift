@@ -7,6 +7,7 @@ import SwiftUI
 struct SettingsSidebar: View {
     @Binding var category: SettingsCategory?
     @Binding var query: String
+    @Environment(AppServices.self) private var services
     @Environment(\.colorScheme) private var colorScheme
 
     private var filtered: [SettingsCategory] {
@@ -88,13 +89,18 @@ struct SettingsSidebar: View {
     /// The standing privacy seal: local by design, one click from the ledger.
     private var localSeal: some View {
         Button {
-            category = .data
+            category = services.meetingSync.status.isEnabled ? .sync : .data
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Label("All local", systemImage: "lock.shield")
+                Label(
+                    services.meetingSync.status.isEnabled ? "Private iCloud sync" : "Local-first",
+                    systemImage: services.meetingSync.status.isEnabled ? "checkmark.icloud" : "lock.shield")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.green)
-                Text("Nothing auto-uploads. Check the receipts in \u{201C}Your data\u{201D}.")
+                    .foregroundStyle(
+                        services.meetingSync.status.isEnabled ? Color.accentColor : Color.green)
+                Text(services.meetingSync.status.isEnabled
+                    ? "Meeting text syncs privately. Audio and device-only data stay here."
+                    : "Nothing auto-uploads. Check the receipts in \u{201C}Your data\u{201D}.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -107,6 +113,7 @@ struct SettingsSidebar: View {
                     .strokeBorder(Color.green.opacity(0.22)))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("settings-privacy-seal")
         .padding(10)
     }
 }

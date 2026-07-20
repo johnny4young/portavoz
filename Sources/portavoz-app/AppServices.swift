@@ -1,13 +1,23 @@
-import AVFoundation
+import ApplicationKit
 import DiarizationKit
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
 import Observation
+import PlatformKit
 import PortavozCore
 import StorageKit
 import SwiftUI
 import TranscriptionKit
+
+/// A citation seek is scoped to one meeting and carries identity so repeated
+/// requests for the same timestamp still publish an observable change.
+struct MeetingSeekRequest: Equatable {
+    let id = UUID()
+    let meetingID: MeetingID
+    let timestamp: TimeInterval
+}
 
 /// Composition root: the database, the ML engines (loaded once, shared by
 /// every recording), and cross-view invalidation. Lives on the main actor;
@@ -38,21 +48,76 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// One process-wide verified model store and lifecycle. Disposable
+    /// automation receives its own empty root and never inspects host models.
+    @ObservationIgnored let modelStore: ModelStore
+    @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
+    /// The only concrete Security adapter in the app process. Capability Kits
+    /// receive the Core port rather than importing or constructing Keychain.
+    @ObservationIgnored let secretStorage: KeychainSecretStore
+    @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
+    /// Shared async credential workflow for Settings and publishing surfaces.
+    @ObservationIgnored let secrets: ManageSecrets
+    /// Encrypted biometric stores share the same device-only Keychain adapter.
+    @ObservationIgnored let voiceprintStore: VoiceprintStore
+    @ObservationIgnored let voiceGallery: VoiceGallery
+    /// One process-wide decision prevents competing welcome sheets when macOS
+    /// restores more than one main window.
+    let firstRun: FirstRunModel
+    /// One process-wide truthful receipt is shared by every Settings window.
+    let localDataLedger: LocalDataLedgerModel
+    /// One Ask application workflow feeds every macOS Ask presentation model.
+    @ObservationIgnored let askClient: AppAskModelClient
+    /// Upcoming-meeting preparation shares Ask retrieval and returns only
+    /// storage-independent ApplicationKit values.
+    @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
+    /// Whole-library export state outlives Settings windows so closing a pane
+    /// cannot cancel publication or start a competing backup.
+    let libraryMarkdownBackup: LibraryMarkdownBackupModel
+    /// Process-scoped opt-in CloudKit policy and wakeup owner. The XCUITest
+    /// composition is an explicit in-memory fake and production construction
+    /// remains CKContainer-free until prior consent or Enable.
+    let meetingSync: MeetingSyncModel
+    var dataEgressGateway: URLSessionDataEgressGateway {
+        URLSessionDataEgressGateway(receiptRecorder: store)
+    }
     var modelsState: ModelsState = .unknown
     private(set) var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
-    private(set) var whisper: WhisperEngine?
-    private var whisperVariantID: String?
+    @ObservationIgnored var transcriberLoadTask: Task<ParakeetEngine, Error>?
+    @ObservationIgnored var diarizerLoadTask: Task<PyannoteDiarizer, Error>?
+    var enginesIdleGeneration = 0
+    var whisper: WhisperEngine?
+    var whisperVariantID: String?
+    var whisperDownloadState: WhisperDownloadState = .idle
+    @ObservationIgnored var whisperPreparedModel: WhisperEngine.PreparedModel?
+    @ObservationIgnored var whisperPreparation: WhisperPreparation?
+    @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
+    @ObservationIgnored var whisperProgressObservers: [UUID: WhisperProgressObserver] = [:]
+    var whisperIdleGeneration = 0
+    private(set) var mlxDownloaded = false
 
-    /// Bumped after any write so list/detail views know to reload.
-    var libraryVersion = 0
+    /// Process-scoped, coalescing reconciliation for the protected local
+    /// Spotlight index. It is deliberately not owned by a SwiftUI window.
+    @ObservationIgnored let spotlightIndexer: SpotlightIndexer
     /// Navigation requested from OUTSIDE the window hierarchy (the
     /// pre-meeting banner): ContentView observes it, applies it to its
     /// route, and clears it.
     var pendingRoute: Route?
+    /// A feature can open the native Settings scene at the exact recovery
+    /// pane. Settings consumes this one-shot route whether its window is new
+    /// or already open.
+    var pendingSettingsCategory: SettingsCategory?
     /// Quality re-passes keyed by meeting — they outlive the detail view,
     /// so navigating away never loses a draft (field bug, Jul 10).
     let refines = RefineService()
+    /// One serial utility lane for file transcription. Live streams bypass it
+    /// by design, so a new recording always wins ANE scheduling (D7).
+    let transcriptionScheduler = TranscriptionScheduler()
+    /// Process-scoped ownership of the durable post-capture worker and its
+    /// single scheduled retry wake. The supervisor deduplicates launch and
+    /// producer kicks without polling SQLite.
+    let postCaptureProcessing = PostCaptureProcessingSupervisor()
     /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
     /// session survive any window coming and going.
     let dictation = DictationController()
@@ -60,16 +125,23 @@ final class AppServices {
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
     let recording = RecordingController()
-    /// ⌘K palette (design system 6a-1): floats over any view; state lives
-    /// here so it works with the library window closed.
-    let palette = CommandPaletteController()
-    /// One-shot seek consumed by the detail view when a palette citation
-    /// navigates to a meeting — jump to the cited moment.
-    var pendingSeek: TimeInterval?
+    /// ⌘K palette (design system 6a-1): floats over any view; state and owned
+    /// tasks live here so it works safely with the library window closed.
+    let palette: CommandPaletteController
+    /// One-shot, meeting-scoped seek consumed only by its destination detail.
+    /// Existing details observe it too, so navigating to the already-open
+    /// meeting cannot strand the request waiting for a route reconstruction.
+    var pendingMeetingSeek: MeetingSeekRequest?
     /// The meeting that just finished recording — the detail view shows the
     /// post-meeting mirror (6a-2) once for it, if the setting is on and it
     /// qualifies. One-shot: consumed on show.
     var justRecorded: MeetingID?
+
+    func requestMeetingSeek(for citation: AskCitation) {
+        pendingMeetingSeek = MeetingSeekRequest(
+            meetingID: citation.meetingID,
+            timestamp: citation.timestamp)
+    }
 
     /// The user's average talk-share over their recent meetings (excluding
     /// one) — the mirror compares "% you spoke" against this. Nil when there
@@ -86,8 +158,23 @@ final class AppServices {
     }
 
     init() {
+        let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
+        let modelStore = usesTemporaryStore
+            ? ModelStore(rootDirectory: FileManager.default.temporaryDirectory
+                .appendingPathComponent(
+                    "portavoz-uitest-models-\(UUID().uuidString)",
+                    isDirectory: true))
+            : ModelStore()
+        self.modelStore = modelStore
+        modelLifecycle = VerifiedModelLifecycle(store: modelStore)
+        let secretStorage = KeychainSecretStore()
+        self.secretStorage = secretStorage
+        microphonePermissions = MicrophonePermissionClient()
+        secrets = ManageSecrets(storage: secretStorage)
+        voiceprintStore = VoiceprintStore(secrets: secretStorage)
+        voiceGallery = VoiceGallery(secrets: secretStorage)
         do {
-            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+            if usesTemporaryStore {
                 // UI testing (`make test-ui`): a throwaway DB so a test run
                 // never touches the real library.
                 let url = FileManager.default.temporaryDirectory
@@ -101,101 +188,155 @@ final class AppServices {
             // worse than failing loudly at launch.
             fatalError("cannot open the Portavoz database: \(error)")
         }
+        let askUseCase = Self.makeAskUseCase(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore)
+        firstRun = FirstRunModel(client: AppFirstRunModelClient(
+            useCase: ResolveFirstRunExperience(
+                library: AppFirstRunLibraryReader(store: store))))
+        localDataLedger = LocalDataLedgerModel(
+            client: AppLocalDataLedgerModelClient(useCase: LoadLocalDataLedger(
+                meetings: AppLocalMeetingCounter(store: store),
+                audio: AppLocalAudioUsageMeter(),
+                voices: AppLocalVoiceCounter(
+                    usesTemporaryStore: usesTemporaryStore,
+                    voiceGallery: voiceGallery,
+                    voiceprintStore: voiceprintStore))))
+        askClient = AppAskModelClient(useCase: askUseCase)
+        meetingBriefUseCase = PrepareMeetingBrief(
+            ask: askUseCase,
+            library: AppMeetingBriefLibraryReader(store: store),
+            synthesizer: AppOnDeviceMeetingBriefSynthesizer())
+        palette = CommandPaletteController(
+            model: CommandPaletteModel(client: askClient))
+        meetingSync = Self.makeMeetingSyncModel(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore)
+        libraryMarkdownBackup = LibraryMarkdownBackupModel(
+            client: AppLibraryMarkdownBackupClient(store: store))
+        spotlightIndexer = SpotlightIndexer(
+            store: store,
+            enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)
+        requestSpotlightReindex()
+        Task { @MainActor [weak self] in
+            await self?.refreshMLXReadiness()
+        }
     }
 
-    /// Downloads (verified) + loads both engines on first use. The
-    /// diarizer carries the enrolled voiceprint when one exists.
-    func loadEnginesIfNeeded() async throws {
-        // A fresh use cancels any idle release scheduled by the previous one.
+    /// Searchable mutations request eventual reconciliation. The actor owns
+    /// burst coalescing, retries, and crash-resumable client state.
+    func requestSpotlightReindex() {
+        let indexer = spotlightIndexer
+        Task { await indexer.requestReindex() }
+    }
+
+    /// Loads only the live/batch first-pass transcriber. Offline quality
+    /// passes must not acquire this capability as a side effect.
+    func loadTranscriberIfNeeded() async throws -> ParakeetEngine {
         enginesIdleGeneration += 1
-        if transcriber != nil, diarizer != nil {
-            modelsState = .ready
-            return
+        if let transcriber { return transcriber }
+        if let transcriberLoadTask {
+            let engine = try await transcriberLoadTask.value
+            transcriber = engine
+            return engine
         }
-        let modelStore = ModelStore()
+
+        modelsState = .downloading(L10n.text("Preparing models…"))
+        let task = Task { @MainActor in
+            try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
+                let percent = Int(progress.fraction * 100)
+                Task { @MainActor [weak self] in
+                    self?.modelsState = .downloading(
+                        L10n.format("Downloading transcription model… %d%%", percent))
+                }
+            }
+        }
+        transcriberLoadTask = task
         do {
-            modelsState = .downloading(L10n.text("Preparing models…"))
-            if transcriber == nil {
-                transcriber = try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
-                    let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading(
-                            L10n.format("Downloading transcription model… %d%%", percent))
-                    }
-                }
-            }
-            if diarizer == nil {
-                let voiceprint = (try? VoiceprintStore().load())
-                diarizer = try await PyannoteDiarizer.loadRecommended(
-                    store: modelStore, voiceprint: voiceprint
-                ) { progress in
-                    let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading(
-                            L10n.format("Downloading diarization model… %d%%", percent))
-                    }
-                }
-            }
-            modelsState = .ready
+            let engine = try await task.value
+            transcriber = engine
+            transcriberLoadTask = nil
+            settleModelsState()
+            return engine
         } catch {
+            transcriberLoadTask = nil
             modelsState = .failed(error.localizedDescription)
             throw error
         }
     }
 
-    /// The D7 quality re-pass engine — loaded on the first refine, then
-    /// shared. The variant follows the "Whisper compacto" preference (turbo
-    /// 1.6 GB vs. 626 MB for low disk, M12); switching it reloads.
-    func loadWhisperIfNeeded(
-        progress: @escaping @MainActor (String) -> Void
-    ) async throws -> WhisperEngine {
-        let compact = UserDefaults.standard.bool(forKey: "whisperCompact")
-        let descriptor =
-            compact ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
-        // A fresh use cancels any idle release scheduled by the previous one.
-        whisperIdleGeneration += 1
-        if let whisper, whisperVariantID == descriptor.id { return whisper }
-        let size = compact ? "626 MB" : "1.6 GB"
-        let engine = try await WhisperEngine.loadRecommended(
-            store: ModelStore(), descriptor: descriptor
-        ) { update in
-            guard update.totalBytes > 0 else { return }
-            let percent = Int(update.fraction * 100)
-            Task { @MainActor in
-                progress(L10n.format("Downloading Whisper (%@, one time only)… %d%%", size, percent))
+    /// Loads only speaker diarization. Refine/Import and durable diarization
+    /// share this task without requiring or duplicating Parakeet.
+    func loadDiarizerIfNeeded() async throws -> PyannoteDiarizer {
+        enginesIdleGeneration += 1
+        if let diarizer { return diarizer }
+        if let diarizerLoadTask {
+            let engine = try await diarizerLoadTask.value
+            diarizer = engine
+            return engine
+        }
+
+        modelsState = .downloading(L10n.text("Preparing models…"))
+        let voiceprint = try? voiceprintStore.load()
+        let task = Task { @MainActor in
+            try await PyannoteDiarizer.loadRecommended(
+                store: modelStore, voiceprint: voiceprint
+            ) { progress in
+                let percent = Int(progress.fraction * 100)
+                Task { @MainActor [weak self] in
+                    self?.modelsState = .downloading(
+                        L10n.format("Downloading diarization model… %d%%", percent))
+                }
             }
         }
-        whisper = engine
-        whisperVariantID = descriptor.id
-        return engine
+        diarizerLoadTask = task
+        do {
+            let engine = try await task.value
+            diarizer = engine
+            diarizerLoadTask = nil
+            settleModelsState()
+            return engine
+        } catch {
+            diarizerLoadTask = nil
+            modelsState = .failed(error.localizedDescription)
+            throw error
+        }
     }
 
-    /// Called after enrolling/deleting the voiceprint so the next load
-    /// rebuilds the diarizer with the new identity state.
+    /// Explicit readiness for workflows that truly need both models.
+    func loadEnginesIfNeeded() async throws {
+        _ = try await loadTranscriberIfNeeded()
+        _ = try await loadDiarizerIfNeeded()
+        modelsState = .ready
+    }
+
+    /// Starts verified preparation without delaying audio capture. Per-model
+    /// tasks deduplicate concurrent recording, recovery, and offline callers.
+    func prepareRecordingEnginesInBackground() {
+        guard transcriber == nil || diarizer == nil else {
+            modelsState = .ready
+            return
+        }
+        Task { @MainActor [weak self] in
+            try? await self?.loadEnginesIfNeeded()
+        }
+    }
+
+    /// Rebuilds diarization with the new identity state on its next use.
     func invalidateDiarizer() {
         diarizer = nil
     }
 
-    /// Drops the live-recording engines (Parakeet + pyannote) so their
-    /// weights leave RAM while the app idles; `loadEnginesIfNeeded()`
-    /// restores them on the next recording. Callers must not hold a
-    /// recording open when they call this.
+    /// Drops idle speech-model weights. In-flight preparation owns its result
+    /// until the workflow schedules a later release.
     func releaseRecordingEngines() {
+        guard transcriberLoadTask == nil, diarizerLoadTask == nil else { return }
         transcriber = nil
         diarizer = nil
         modelsState = .unknown
     }
 
-    /// Bumped by every engine use; a scheduled release only fires if no
-    /// newer use arrived while it slept.
-    private var enginesIdleGeneration = 0
-
-    /// Called when a recording (or refine/import) finishes: keeps the
-    /// engines hot for ten minutes — back-to-back meetings never pay the
-    /// reload — then releases them so a single morning meeting doesn't
-    /// hold hundreds of MB all afternoon. A refine still running when the
-    /// timer fires keeps them (it owns the diarizer); its own completion
-    /// reschedules.
+    /// Keeps speech models hot for back-to-back work, then frees their memory.
     func scheduleRecordingEnginesRelease() {
         enginesIdleGeneration += 1
         let generation = enginesIdleGeneration
@@ -207,42 +348,22 @@ final class AppServices {
         }
     }
 
-    /// Drops the Whisper quality-pass engine (1.6 GB resident) once the
-    /// refine/import that needed it is done; the next one reloads it.
-    func releaseWhisper() {
-        whisper = nil
-        whisperVariantID = nil
-    }
-
-    /// Bumped by every Whisper use; a scheduled release only fires if no
-    /// newer use arrived while it slept.
-    private var whisperIdleGeneration = 0
-
-    /// Called when a refine/import finishes: keeps Whisper hot for two
-    /// minutes (back-to-back refines skip the reload), then releases it so
-    /// one quality pass never costs 1.6 GB for the rest of the day.
-    func scheduleWhisperRelease() {
-        whisperIdleGeneration += 1
-        let generation = whisperIdleGeneration
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(120))
-            guard let self, generation == self.whisperIdleGeneration else { return }
-            self.releaseWhisper()
+    private func settleModelsState() {
+        if transcriber != nil, diarizer != nil {
+            modelsState = .ready
+        } else if transcriberLoadTask == nil, diarizerLoadTask == nil {
+            modelsState = .unknown
         }
     }
 
     // MARK: - Summary engine (D25/M12)
 
-    enum SummaryEngine: String, CaseIterable {
-        case appleOnDevice
-        case ollama
-        /// Embedded MLX model (D25 last mile, D32) — in-process, no installs.
-        case mlx
-    }
-
     var summaryEngine: SummaryEngine {
-        SummaryEngine(rawValue: UserDefaults.standard.string(forKey: "summaryEngine") ?? "")
-            ?? .appleOnDevice
+        if let stored = UserDefaults.standard.string(forKey: "summaryEngine"),
+            let engine = SummaryEngine(rawValue: stored) {
+            return engine
+        }
+        return foundationModelsCapability.defaultSummaryEngine
     }
 
     /// The Ollama model chosen in Settings, or nil if none is configured.
@@ -252,312 +373,49 @@ final class AppServices {
         return model.isEmpty ? nil : model
     }
 
-    /// Whether the Apple on-device summary engine can run here (macOS 26 +
-    /// Apple Intelligence enabled). Used to only offer it as a per-meeting
-    /// override when it would actually work.
-    var appleSummaryAvailable: Bool {
-        if #available(macOS 26.0, *) {
-            return FoundationModelSummaryProvider.unavailabilityReason() == nil
-        }
-        return false
+    var foundationModelsCapability: FoundationModelsCapability {
+        .current()
     }
 
-    /// The configured provider, or nil to use Apple Foundation Models (the
-    /// map-reduce + priority-scheduled + fingerprint-cache path). Ollama
-    /// gives a 100% local summary on Macs without Apple Intelligence
-    /// (GAPS #7); a chosen model that's gone falls back to Apple.
-    ///
-    /// `override` forces a specific engine for one meeting (M12 per-meeting
-    /// override) instead of the global default; nil keeps the default.
-    func configuredSummaryProvider(override: SummaryEngine? = nil) -> (any SummaryProvider)? {
-        switch override ?? summaryEngine {
-        case .appleOnDevice:
-            return nil
-        case .ollama:
-            guard let model = ollamaModel else { return nil }
-            return OllamaService.summaryProvider(model: model)
-        case .mlx:
-            // Only when the verified weights are on disk — otherwise fall
-            // back to Apple rather than failing mid-summary.
-            guard mlxDownloaded else { return nil }
-            return MLXSummaryProvider(
-                modelDirectory: Self.modelDir(ModelCatalog.mlxQwen35))
-        }
+    /// Whether the Apple on-device summary engine can run here. Used to only
+    /// offer it as a per-meeting override when it would actually work.
+    var appleSummaryAvailable: Bool {
+        foundationModelsCapability.isAvailable
+    }
+
+    /// Live Companion currently requires the same Apple classifier. BYOK can
+    /// answer a classified knowledge question but cannot replace that gate.
+    var companionAvailable: Bool {
+        foundationModelsCapability.isAvailable
     }
 
     // MARK: - Embedded MLX model (D25 last mile)
 
-    var mlxDownloaded: Bool {
-        FileManager.default.fileExists(
-            atPath: Self.modelDir(ModelCatalog.mlxQwen35)
-                .appendingPathComponent("model.safetensors").path)
+    @discardableResult
+    func refreshMLXReadiness(forceVerification: Bool = false) async -> Bool {
+        let installation = await modelLifecycle.installation(
+            for: ModelCatalog.mlxQwen35,
+            forceVerification: forceVerification)
+        guard !Task.isCancelled else { return mlxDownloaded }
+        mlxDownloaded = installation != nil
+        return mlxDownloaded
     }
 
     /// Verified download (D7) with progress, same UX as the Whisper variants.
     func downloadMLX(progress: @escaping @MainActor (String) -> Void) async throws {
-        _ = try await ModelStore().ensureAvailable(ModelCatalog.mlxQwen35) { update in
+        _ = try await modelLifecycle.install(ModelCatalog.mlxQwen35) { update in
             guard update.totalBytes > 0 else { return }
             let percent = Int(update.fraction * 100)
             Task { @MainActor in
                 progress(L10n.format("Downloading embedded model (2.3 GB, one time only)… %d%%", percent))
             }
         }
+        mlxDownloaded = true
     }
 
-    func deleteMLXModel() {
-        try? FileManager.default.removeItem(at: Self.modelDir(ModelCatalog.mlxQwen35))
+    func deleteMLXModel() async throws {
+        try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
+        mlxDownloaded = false
     }
 
-    // MARK: - Whisper variants on disk (M12)
-
-    struct WhisperVariant: Identifiable {
-        let id: String
-        let compact: Bool
-        let downloaded: Bool
-        /// On-disk bytes if downloaded, else the catalog's expected size.
-        let bytes: Int64
-    }
-
-    /// The model directory is deterministic (root + folderName), so this
-    /// stays off the ModelStore actor.
-    private static func modelDir(_ descriptor: ModelDescriptor) -> URL {
-        ModelStore.defaultRootDirectory.appendingPathComponent(
-            descriptor.folderName, isDirectory: true)
-    }
-
-    func whisperVariants() -> [WhisperVariant] {
-        func make(_ descriptor: ModelDescriptor, compact: Bool) -> WhisperVariant {
-            let dir = Self.modelDir(descriptor)
-            let downloaded = FileManager.default.fileExists(atPath: dir.path)
-            return WhisperVariant(
-                id: descriptor.id, compact: compact, downloaded: downloaded,
-                bytes: downloaded ? Self.directorySize(dir) : Int64(descriptor.totalSizeBytes))
-        }
-        return [
-            make(ModelCatalog.whisperLargeV3Turbo, compact: false),
-            make(ModelCatalog.whisperLargeV3_626MB, compact: true)
-        ]
-    }
-
-    func deleteWhisperVariant(_ id: String) {
-        let descriptor =
-            id == ModelCatalog.whisperLargeV3_626MB.id
-            ? ModelCatalog.whisperLargeV3_626MB : ModelCatalog.whisperLargeV3Turbo
-        try? FileManager.default.removeItem(at: Self.modelDir(descriptor))
-        if whisperVariantID == id {
-            whisper = nil
-            whisperVariantID = nil
-        }
-    }
-
-    private static func directorySize(_ url: URL) -> Int64 {
-        guard
-            let enumerator = FileManager.default.enumerator(
-                at: url, includingPropertiesForKeys: [.fileSizeKey])
-        else { return 0 }
-        var total: Int64 = 0
-        for case let file as URL in enumerator {
-            total += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
-        }
-        return total
-    }
-
-    /// Summarizes with the configured engine, falling back to Apple FM.
-    /// Throws when neither is usable (14.x + Apple engine).
-    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
-        if let provider = configuredSummaryProvider() {
-            return try await provider.summarize(request)
-        }
-        guard #available(macOS 26.0, *) else {
-            throw IntelligenceError.modelUnavailable(
-                L10n.text("Apple Intelligence requires macOS 26 — choose Ollama in Settings."))
-        }
-        return try await FoundationModelSummaryProvider().summarize(request)
-    }
-
-    /// Imports an external audio file as a new meeting (M11/D27): copies it
-    /// in as the system channel (all speakers diarized — no "Me"), runs the
-    /// quality Whisper pass + diarization + summary, and returns the new id.
-    func importMeeting(
-        from source: URL,
-        progress: @escaping @MainActor (String) -> Void
-    ) async throws -> MeetingID {
-        let meetingID = MeetingID()
-        let relative = "Audio/\(meetingID.rawValue.uuidString)"
-        let audioDir = Self.audioRoot.appendingPathComponent(relative, isDirectory: true)
-        try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
-        let ext = source.pathExtension.isEmpty ? "m4a" : source.pathExtension.lowercased()
-        let dest = audioDir.appendingPathComponent("system.\(ext)")
-        try FileManager.default.copyItem(at: source, to: dest)
-
-        progress(L10n.text("Preparing models…"))
-        let whisper = try await loadWhisperIfNeeded { progress($0) }
-        defer {
-            scheduleWhisperRelease()
-            scheduleRecordingEnginesRelease()
-        }
-        try await loadEnginesIfNeeded()
-
-        let vocabulary = VocabularyPrompt.parse(
-            UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-        let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: meetingID)
-
-        progress(L10n.text("Transcribing audio (Whisper)…"))
-        let result = try await whisper.transcribeFile(at: dest, hints: hints, channel: .system)
-
-        progress(L10n.text("Identifying speakers…"))
-        // Reload rather than trust the shared reference: an idle release
-        // scheduled elsewhere may have dropped it during the Whisper pass.
-        try? await loadEnginesIfNeeded()
-        let turns = (try? await diarizer?.diarizeFile(at: dest)) ?? []
-        let attribution = SpeakerAttributor.attribute(
-            segments: result.segments.sorted { $0.startTime < $1.startTime },
-            turns: turns, meetingID: meetingID)
-        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
-            in: attribution.segments)
-
-        let meeting = Meeting(
-            id: meetingID,
-            title: "Imported · " + source.deletingPathExtension().lastPathComponent,
-            startedAt: Date(),
-            endedAt: Date().addingTimeInterval(result.audioDuration),
-            language: spokenLanguage,
-            audioDirectory: relative)
-        try await store.save(meeting)
-        try await store.save(attribution.speakers)
-        try await store.save(attribution.segments)
-
-        progress(L10n.text("Generating summary…"))
-        let request = SummaryRequest(
-            meetingID: meetingID, segments: attribution.segments,
-            speakers: attribution.speakers, recipe: .general,
-            targetLanguage: Locale.current.language.languageCode?.identifier ?? "en",
-            glossary: vocabulary)
-        if let draft = try? await summarize(request) {
-            try? await store.saveSummary(draft)
-        }
-        libraryVersion += 1
-        return meetingID
-    }
-
-    /// Seeds one deterministic meeting for `make test-ui` (`-seed-demo`),
-    /// including audio (so the player + waveform are testable) and a summary
-    /// with a coauthoring bullet ("▸") so the D28 render is verifiable
-    /// without a real recording. No-op outside UI testing.
-    ///
-    /// Audio: if the (isolated) audio root already holds a recording — a real
-    /// one dropped there for realistic testing — the seed adopts it;
-    /// otherwise it synthesizes a short two-tone clip (mic tone then system
-    /// tone, so the waveform shows both channel colors).
-    func seedDemoIfRequested() async {
-        guard ProcessInfo.processInfo.arguments.contains("-seed-demo") else { return }
-        guard ((try? await store.meetings()) ?? []).isEmpty else { return }
-
-        let audioDirectory = Self.prepareSeedAudio()
-
-        let meeting = Meeting(
-            title: "Test meeting",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            endedAt: Date(timeIntervalSince1970: 1_700_001_800),
-            language: "es",
-            audioDirectory: audioDirectory)
-        try? await store.save(meeting)
-
-        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
-        let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
-        try? await store.save([me, ana])
-        try? await store.save([
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
-                text: "Revisemos el presupuesto de transcripción.",
-                startTime: 0, endTime: 3, isFinal: true),
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: ana.id, channel: .system,
-                text: "El rollout del modelo queda para el viernes.",
-                startTime: 3, endTime: 6, isFinal: true),
-            // A later turn after a long pause — gives the detail a second
-            // chapter (ChapterExtractor) and more of the user's own audio
-            // for the "only my voice" filter. The UI tests rely on both.
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
-                text: "Cerremos con los próximos pasos del rollout.",
-                startTime: 200, endTime: 205, isFinal: true)
-        ])
-        try? await store.saveSummary(
-            SummaryDraft(
-                meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
-                markdown: """
-                    El equipo revisó el presupuesto y fijó el rollout.
-
-                    ## Decisiones
-                    - ▸ El rollout del modelo queda para el viernes.
-                    - Se revisará el presupuesto de transcripción.
-                    """,
-                actionItems: [ActionItem(text: "Prepare the rollout", ownerSpeakerID: ana.id)]))
-        try? await store.save([
-            ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
-        ])
-        // Persisted Companion cards (D26) — one answered question and one
-        // "asked you" ping — so the detail's Companion review section renders.
-        try? await store.save([
-            CompanionCard(
-                question: "¿Cuándo es el rollout?", answer: "El rollout queda para el viernes.",
-                kind: .context, source: "on-device", askedAt: 6),
-            CompanionCard(
-                question: "Ana, ¿te encargas del presupuesto?", answer: "",
-                kind: .context, source: "on-device", directed: true, askedAt: 200)
-        ], for: meeting.id)
-        libraryVersion += 1
-    }
-
-    /// Ensures the seeded meeting has audio, returning its DB-relative
-    /// directory ("Audio/<uuid>") or nil if none could be prepared.
-    private static func prepareSeedAudio() -> String? {
-        let manager = FileManager.default
-        let audioBase = audioRoot.appendingPathComponent("Audio", isDirectory: true)
-
-        // Adopt a real recording already sitting in the (isolated) root.
-        if let existing = try? manager.contentsOfDirectory(
-            at: audioBase, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]),
-            let dir = existing.first(where: { url in
-                ["microphone.caf", "microphone.wav", "system.caf", "system.wav"]
-                    .contains { manager.fileExists(atPath: url.appendingPathComponent($0).path) }
-            }) {
-            return "Audio/\(dir.lastPathComponent)"
-        }
-
-        // Otherwise synthesize a two-tone clip.
-        let uuid = UUID().uuidString
-        let dir = audioBase.appendingPathComponent(uuid, isDirectory: true)
-        guard (try? manager.createDirectory(at: dir, withIntermediateDirectories: true)) != nil
-        else { return nil }
-        let ok =
-            writeTone(dir.appendingPathComponent("microphone.wav"), frequency: 220, activeHalf: .first)
-            && writeTone(dir.appendingPathComponent("system.wav"), frequency: 440, activeHalf: .second)
-        return ok ? "Audio/\(uuid)" : nil
-    }
-
-    private enum ActiveHalf { case first, second }
-
-    /// Writes a 6-second mono WAV: a tone in one half, silence in the other,
-    /// so the two channels take turns leading the waveform.
-    private static func writeTone(_ url: URL, frequency: Double, activeHalf: ActiveHalf) -> Bool {
-        let rate = 16_000.0
-        guard
-            let format = AVAudioFormat(
-                commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false),
-            let file = try? AVAudioFile(forWriting: url, settings: format.settings),
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(rate * 6))
-        else { return false }
-        let frames = Int(rate * 6)
-        buffer.frameLength = AVAudioFrameCount(frames)
-        let samples = buffer.floatChannelData![0]
-        let half = frames / 2
-        for i in 0..<frames {
-            let inActiveHalf = activeHalf == .first ? i < half : i >= half
-            samples[i] =
-                inActiveHalf ? 0.5 * Float(sin(2 * Double.pi * frequency * Double(i) / rate)) : 0
-        }
-        return (try? file.write(from: buffer)) != nil
-    }
 }

@@ -59,7 +59,17 @@ public struct MeetingBundle: Codable, Sendable {
         // Paths are machine-local (D4); optional audio travels as attachments.
         shared.audioDirectory = nil
         self.meeting = shared
-        self.speakers = speakers
+        // Canonical people are private library memory, not interchange data.
+        // Keep the meeting-local name while stripping every cross-meeting link.
+        self.speakers = speakers.map { speaker in
+            Speaker(
+                id: speaker.id,
+                meetingID: speaker.meetingID,
+                label: speaker.label,
+                displayName: speaker.displayName,
+                isMe: speaker.isMe,
+                personID: nil)
+        }
         self.segments = segments
         self.summary = summary
         self.contextItems = contextItems
@@ -103,6 +113,7 @@ public struct MeetingBundle: Codable, Sendable {
         var copy = self
         let newMeetingID = MeetingID()
         var speakerMap: [SpeakerID: SpeakerID] = [:]
+        var segmentMap: [UUID: UUID] = [:]
 
         copy.meeting.id = newMeetingID
         copy.speakers = speakers.map { speaker in
@@ -113,11 +124,14 @@ public struct MeetingBundle: Codable, Sendable {
                 meetingID: newMeetingID,
                 label: speaker.label,
                 displayName: speaker.displayName,
-                isMe: speaker.isMe)
+                isMe: speaker.isMe,
+                personID: nil)
         }
         copy.segments = segments.map { segment in
-            TranscriptSegment(
-                id: UUID(),
+            let newID = UUID()
+            segmentMap[segment.id] = newID
+            return TranscriptSegment(
+                id: newID,
                 meetingID: newMeetingID,
                 speakerID: segment.speakerID.flatMap { speakerMap[$0] },
                 channel: segment.channel,
@@ -128,21 +142,10 @@ public struct MeetingBundle: Codable, Sendable {
                 confidence: segment.confidence,
                 isFinal: segment.isFinal)
         }
-        if let summary {
-            copy.summary = SummaryDraft(
-                meetingID: newMeetingID,
-                recipeID: summary.recipeID,
-                language: summary.language,
-                markdown: summary.markdown,
-                actionItems: summary.actionItems.map { item in
-                    ActionItem(
-                        id: UUID(),
-                        text: item.text,
-                        ownerSpeakerID: item.ownerSpeakerID.flatMap { speakerMap[$0] },
-                        isDone: item.isDone)
-                },
-                fingerprint: summary.fingerprint)
-        }
+        copy.summary = remappedSummary(
+            meetingID: newMeetingID,
+            speakerMap: speakerMap,
+            segmentMap: segmentMap)
         copy.contextItems = contextItems.map { item in
             ContextItem(
                 id: UUID(),
@@ -151,12 +154,102 @@ public struct MeetingBundle: Codable, Sendable {
                 content: item.content,
                 timestamp: item.timestamp)
         }
-        copy.companionCards = companionCards?.map { card in
-            CompanionCard(
-                id: UUID(), question: card.question, answer: card.answer,
-                kind: card.kind, source: card.source, directed: card.directed,
-                askedAt: card.askedAt)
+        copy.companionCards = companionCards?.map {
+            remappedCompanionCard($0, segmentMap: segmentMap)
         }
         return copy
+    }
+
+    private func remappedCompanionCard(
+        _ card: CompanionCard,
+        segmentMap: [UUID: UUID]
+    ) -> CompanionCard {
+        let cardID = UUID()
+        let evidence = card.evidence.flatMap { source -> CompanionCardEvidence? in
+            let questions = source.questionSegmentIDs.compactMap { segmentMap[$0] }
+            let answers = source.answerSegmentIDs.compactMap { segmentMap[$0] }
+            guard source.cardID == card.id,
+                  source.unavailableQuestionCount == 0,
+                  source.unavailableAnswerCount == 0,
+                  questions.count == source.questionSegmentIDs.count,
+                  answers.count == source.answerSegmentIDs.count
+            else { return nil }
+            return CompanionCardEvidence(
+                cardID: cardID,
+                sourceTranscriptRevision: nil,
+                questionSegmentIDs: questions,
+                answerSegmentIDs: answers)
+        }
+        return CompanionCard(
+            id: cardID,
+            question: card.question,
+            answer: card.answer,
+            kind: card.kind,
+            source: card.source,
+            directed: card.directed,
+            askedAt: card.askedAt,
+            evidence: evidence)
+    }
+
+    private func remappedSummary(
+        meetingID: MeetingID,
+        speakerMap: [SpeakerID: SpeakerID],
+        segmentMap: [UUID: UUID]
+    ) -> SummaryDraft? {
+        guard let summary else { return nil }
+        let sourceActionItemIDs = summary.actionItems.map(\.id)
+        guard Set(sourceActionItemIDs).count == sourceActionItemIDs.count else { return nil }
+        let remappedActionItems = summary.actionItems.map { item in
+            (source: item, importedID: UUID())
+        }
+        let actionItemMap = Dictionary(uniqueKeysWithValues: remappedActionItems.map {
+            ($0.source.id, $0.importedID)
+        })
+        return SummaryDraft(
+            meetingID: meetingID,
+            recipeID: summary.recipeID,
+            language: summary.language,
+            markdown: summary.markdown,
+            actionItems: remappedActionItems.map { item in
+                ActionItem(
+                    id: item.importedID,
+                    text: item.source.text,
+                    ownerSpeakerID: item.source.ownerSpeakerID.flatMap { speakerMap[$0] },
+                    isDone: item.source.isDone)
+            },
+            fingerprint: summary.fingerprint,
+            claims: summary.claims.compactMap { claim in
+                let evidenceIDs = claim.evidenceSegmentIDs.compactMap { segmentMap[$0] }
+                guard evidenceIDs.count == claim.evidenceSegmentIDs.count,
+                      claim.unavailableEvidenceCount == 0
+                else { return nil }
+                return SummaryClaim(
+                    kind: claim.kind,
+                    sourceTranscriptRevision: nil,
+                    evidenceSegmentIDs: evidenceIDs,
+                    feedback: claim.feedback)
+            },
+            decisionEvidence: summary.decisionEvidence.compactMap { decision in
+                let evidenceIDs = decision.evidenceSegmentIDs.compactMap { segmentMap[$0] }
+                guard evidenceIDs.count == decision.evidenceSegmentIDs.count,
+                      decision.unavailableEvidenceCount == 0
+                else { return nil }
+                return SummaryDecisionEvidence(
+                    sectionOrdinal: decision.sectionOrdinal,
+                    bulletOrdinal: decision.bulletOrdinal,
+                    sourceTranscriptRevision: nil,
+                    evidenceSegmentIDs: evidenceIDs)
+            },
+            actionItemEvidence: summary.actionItemEvidence.compactMap { evidence in
+                let evidenceIDs = evidence.evidenceSegmentIDs.compactMap { segmentMap[$0] }
+                guard let actionItemID = actionItemMap[evidence.actionItemID],
+                      evidenceIDs.count == evidence.evidenceSegmentIDs.count,
+                      evidence.unavailableEvidenceCount == 0
+                else { return nil }
+                return SummaryActionItemEvidence(
+                    actionItemID: actionItemID,
+                    sourceTranscriptRevision: nil,
+                    evidenceSegmentIDs: evidenceIDs)
+            })
     }
 }

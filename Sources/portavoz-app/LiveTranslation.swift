@@ -120,10 +120,8 @@ struct LiveTranslationModifier: ViewModifier {
             if let cached = cache[source] {
                 status = cached
             } else {
-                status =
-                    (try? await availability.status(
-                        from: Locale.Language(identifier: source), to: targetLanguage))
-                    ?? .unsupported
+                status = await availability.status(
+                    from: Locale.Language(identifier: source), to: targetLanguage)
                 cache[source] = status
             }
             switch status {

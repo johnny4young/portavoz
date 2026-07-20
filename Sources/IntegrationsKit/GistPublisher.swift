@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Publishes a meeting export as a GitHub Gist — the one-click share of
 /// the sharing ladder's L0 (D12). Publishing sends the transcript OFF the
@@ -6,15 +7,16 @@ import Foundation
 /// (D8); gists are secret (unlisted) unless the caller says otherwise.
 public struct GistPublisher: Sendable {
     private let token: String
-    private let session: URLSession
+    private let gateway: any DataEgressGateway
 
-    public init(token: String, session: URLSession = .shared) {
+    public init(token: String, gateway: any DataEgressGateway) {
         self.token = token
-        self.session = session
+        self.gateway = gateway
     }
 
     /// Returns the gist's public URL.
     public func publish(
+        meetingID: MeetingID,
         markdown: String,
         filename: String,
         description: String,
@@ -23,13 +25,21 @@ public struct GistPublisher: Sendable {
         let request = try Self.request(
             markdown: markdown, filename: filename, description: description,
             isPublic: isPublic, token: token)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 201 else {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-            let body = String(data: data.prefix(200), encoding: .utf8) ?? ""
-            throw PublishError.requestFailed(status: status, body: body)
+        let response = try await gateway.perform(
+            request,
+            metadata: DataEgressRequest(
+                operation: .publishGitHubGist,
+                destination: DataEgressDestination(url: request.url!),
+                dataClassification: .meetingExportDocument,
+                meetingID: meetingID,
+                consentSource: .explicitGistPublish,
+                providerDisclosure: DataEgressProviderDisclosure(
+                    providerID: "api.github.com")))
+        guard response.statusCode == 201 else {
+            let body = String(data: response.data.prefix(200), encoding: .utf8) ?? ""
+            throw PublishError.requestFailed(status: response.statusCode, body: body)
         }
-        return try Self.parseResponse(data)
+        return try Self.parseResponse(response.data)
     }
 
     public enum PublishError: Error, LocalizedError {

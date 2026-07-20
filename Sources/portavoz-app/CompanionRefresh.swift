@@ -1,4 +1,5 @@
 import Foundation
+import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 
@@ -12,7 +13,8 @@ import PortavozCore
 @available(macOS 26.0, *)
 enum CompanionRefresh {
     struct Result {
-        let cards: [CompanionCard]
+        let artifacts: [CompanionGenerationArtifact]
+        let terminalRuns: [GenerationRun]
         /// False when cancellation or any model call failed. Callers preserve
         /// the previous snapshot rather than replacing it with partial data.
         let completed: Bool
@@ -24,6 +26,12 @@ enum CompanionRefresh {
     private struct Turn {
         var text: String
         let startTime: TimeInterval
+        var languages: Set<String>
+        var segmentIDs: [UUID]
+
+        var language: String? {
+            languages.count == 1 ? languages.first : nil
+        }
     }
 
     /// Runs the Companion over `segments` and returns the fresh cards. Never
@@ -32,15 +40,21 @@ enum CompanionRefresh {
     /// back empty, so a hiccup never wipes good cards).
     @MainActor
     static func regenerate(
-        from segments: [TranscriptSegment], meetingID: MeetingID
+        from segments: [TranscriptSegment],
+        meetingID: MeetingID,
+        transcriptRevision: Int,
+        byok: CompanionBYOKClient?
     ) async -> Result {
         let ownerName = RecordingController.companionOwnerName()
-        let companion = LiveCompanion(byok: BYOKSettings.companionClient())
+        let companion = ProvenanceCompanion(
+            byok: byok,
+            egressConsentSource: .companionBYOKSettings)
         let ordered = segments
             .filter { $0.endTime > $0.startTime && !$0.text.isEmpty }
             .sorted { $0.startTime < $1.startTime }
 
-        var cards: [CompanionCard] = []
+        var artifacts: [CompanionGenerationArtifact] = []
+        var terminalRuns: [GenerationRun] = []
         var completed = true
         for turn in participantTurns(ordered) {
             if Task.isCancelled {
@@ -57,29 +71,59 @@ enum CompanionRefresh {
             // Context = the last lines from BOTH sides before the question, so
             // an answer already given in the room ("The endpoint is …") is
             // found, not hedged away as "not in the context".
-            let passages = ordered
-                .filter { $0.startTime < turn.startTime }
-                .suffix(14)
-                .map { segment in
-                    RAGPassage(
-                        meetingID: meetingID, meetingTitle: "This meeting",
-                        timestamp: segment.startTime,
-                        text: (segment.channel == .microphone ? "Me: " : "Them: ") + segment.text)
+            let passages = recentPassages(
+                before: turn.startTime,
+                from: ordered,
+                meetingID: meetingID)
+            let result = await companion.generate(CompanionGenerationRequest(
+                meetingID: meetingID,
+                sourceTranscriptRevision: transcriptRevision,
+                workflow: .postRefine,
+                candidate: turn.text,
+                questionSegmentIDs: turn.segmentIDs,
+                recentTranscript: passages,
+                ownerName: ownerName,
+                outputLanguage: turn.language,
+                askedAt: turn.startTime))
+            switch result {
+            case .artifact(let artifact):
+                if !artifacts.contains(where: {
+                    $0.card.question == artifact.card.question
+                }) {
+                    artifacts.append(artifact)
                 }
-            do {
-                guard let card = try await companion.process(
-                    candidate: turn.text, recentTranscript: passages,
-                    ownerName: ownerName, askedAt: turn.startTime)
-                else { continue }
-                // Dedup by question, exactly like the live flow.
-                if !cards.contains(where: { $0.question == card.question }) {
-                    cards.append(card)
-                }
-            } catch {
+            case .terminal(let run):
+                terminalRuns.append(run)
                 completed = false
+                if run.outcome == .cancelled { break }
+            case .unavailable:
+                completed = false
+            case .noAttempt, .noArtifact:
+                break
             }
         }
-        return Result(cards: cards, completed: completed)
+        return Result(
+            artifacts: artifacts,
+            terminalRuns: terminalRuns,
+            completed: completed)
+    }
+
+    private static func recentPassages(
+        before startTime: TimeInterval,
+        from ordered: [TranscriptSegment],
+        meetingID: MeetingID
+    ) -> [RAGPassage] {
+        ordered
+            .filter { $0.startTime < startTime }
+            .suffix(14)
+            .map { segment in
+                RAGPassage(
+                    segmentID: segment.id,
+                    meetingID: meetingID,
+                    meetingTitle: "This meeting",
+                    timestamp: segment.startTime,
+                    text: (segment.channel == .microphone ? "Me: " : "Them: ") + segment.text)
+            }
     }
 
     /// Coalesces the participants' (system-channel) segments into interventions:
@@ -95,8 +139,18 @@ enum CompanionRefresh {
             let sameSpeaker = lastSpeaker == .some(segment.speakerID)
             if !turns.isEmpty, sameSpeaker, segment.startTime - lastEnd < turnGap {
                 turns[turns.count - 1].text += " " + segment.text
+                turns[turns.count - 1].segmentIDs.append(segment.id)
+                if let language = segment.language.flatMap(LanguageCode.init)?.identifier {
+                    turns[turns.count - 1].languages.insert(language)
+                }
             } else {
-                turns.append(Turn(text: segment.text, startTime: segment.startTime))
+                let languages = Set(
+                    segment.language.flatMap(LanguageCode.init).map { [$0.identifier] } ?? [])
+                turns.append(Turn(
+                    text: segment.text,
+                    startTime: segment.startTime,
+                    languages: languages,
+                    segmentIDs: [segment.id]))
             }
             lastEnd = segment.endTime
             lastSpeaker = .some(segment.speakerID)

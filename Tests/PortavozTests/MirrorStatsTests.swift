@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import IntegrationsKit
+@testable import ApplicationKit
 
 final class MirrorStatsTests: XCTestCase {
     func testQualifiesNeedsTwoSpeakersAndFiveMinutes() {

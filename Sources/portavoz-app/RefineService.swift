@@ -1,16 +1,12 @@
-import AudioCaptureKit
-import DiarizationKit
+import ApplicationKit
 import Foundation
+import Observation
 import PortavozCore
 import StorageKit
-import SwiftUI
 import TranscriptionKit
 
-/// Runs quality re-passes OUTSIDE the view hierarchy (field bug, Jul 10):
-/// the detail view is recreated when the user switches meetings, so a
-/// view-owned refine kept burning the ANE while its draft sheet was lost.
-/// State lives here keyed by meeting — navigate freely; the draft waits
-/// until its meeting is visited again.
+/// Presentation state for quality re-passes. The application workflow owns
+/// engines and policy; this service only keeps work/drafts alive across views.
 @MainActor
 @Observable
 final class RefineService {
@@ -21,130 +17,142 @@ final class RefineService {
     }
 
     private(set) var phases: [MeetingID: Phase] = [:]
+    private var tasks: [MeetingID: Task<Void, Never>] = [:]
+    private var runIDs: [MeetingID: UUID] = [:]
 
     func phase(for meetingID: MeetingID) -> Phase? { phases[meetingID] }
 
-    func clear(_ meetingID: MeetingID) { phases[meetingID] = nil }
-
-    var isRunning: Bool {
-        phases.values.contains { if case .running = $0 { return true } else { return false } }
+    func clear(_ meetingID: MeetingID) {
+        if tasks[meetingID] != nil {
+            cancel(meetingID)
+        } else {
+            phases[meetingID] = nil
+        }
     }
 
-    // The orchestration is legitimately long (audio resolution + two Whisper
-    // passes + diarization); splitting further would only scatter it.
-    // swiftlint:disable:next function_body_length
+    func cancel(_ meetingID: MeetingID) {
+        guard let task = tasks[meetingID] else { return }
+        task.cancel()
+        phases[meetingID] = .running(L10n.text("Canceling refine…"))
+    }
+
+    var isRunning: Bool { !tasks.isEmpty }
+
+    /// Deterministic temp-store fixture for XCUITest; never loads a model or
+    /// touches a real meeting library.
+    func seedRunningForUITest(_ meetingID: MeetingID) {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-refine-running"),
+            tasks.isEmpty
+        else { return }
+        let runID = UUID()
+        runIDs[meetingID] = runID
+        phases[meetingID] = .running(L10n.text("Re-transcribing participants (Whisper)…"))
+        tasks[meetingID] = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(3_600))
+            } catch {
+                // Cancellation is the behavior this fixture exercises.
+            }
+            self?.finish(nil, meetingID: meetingID, runID: runID)
+        }
+    }
+
     func start(
-        meetingID: MeetingID, detail: MeetingDetail, services: AppServices,
-        language: String? = nil
+        meetingID: MeetingID,
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment],
+        useCase: RefineMeeting,
+        languagePolicy: TranscriptLanguagePolicy? = nil
     ) {
-        if case .running = phases[meetingID] { return }
-        // One refine at a time: Whisper and the diarizer are heavy enough
-        // that concurrent re-passes would starve each other on the ANE.
-        guard !isRunning else {
+        guard tasks[meetingID] == nil else { return }
+        guard tasks.isEmpty else {
             phases[meetingID] = .failed(
                 L10n.text("Another refine is already running — try again when it finishes."))
             return
         }
+
+        let runID = UUID()
+        runIDs[meetingID] = runID
         phases[meetingID] = .running(L10n.text("Preparing…"))
-
-        Task {
+        let detail = MeetingDetail(
+            meeting: meeting,
+            speakers: speakers,
+            segments: segments,
+            summaries: [])
+        tasks[meetingID] = Task { [weak self] in
+            guard let self else { return }
             do {
-                guard let relative = detail.meeting.audioDirectory else {
-                    phases[meetingID] = .failed(L10n.text("This meeting does not keep its audio."))
-                    return
-                }
-                let base = RecordingsLocation.shared.resolve(relative)
-                let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base)
-                let microphoneURL = MeetingAudioLayout.channelFile(named: "microphone", in: base)
-                guard systemURL != nil || microphoneURL != nil else {
-                    phases[meetingID] = .failed(L10n.text("Could not find the meeting audio."))
-                    return
-                }
-
-                let whisper = try await services.loadWhisperIfNeeded { [weak self] status in
-                    self?.phases[meetingID] = .running(status)
-                }
-                try await services.loadEnginesIfNeeded()
-
-                let vocabulary = VocabularyPrompt.parse(
-                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-                // A pinned transcription language (Settings ▸ Intelligence)
-                // wins here. Otherwise the refine inherits the language the
-                // current segments were detected as — and if those were
-                // hallucinated on weak audio (field bug: a Spanish meeting
-                // mislabeled Russian), Whisper re-transcribes the same wrong
-                // language. The pin is the escape hatch that fixes such a meeting.
-                let pinned = UserDefaults.standard.string(forKey: "transcriptionLanguage")
-                let pinnedLanguage = (pinned == nil || pinned == "auto") ? nil : pinned
-                let hints = TranscriptionHints(
-                    language: language  // explicit per-meeting override wins
-                        ?? pinnedLanguage
-                        ?? SpokenLanguageDetector.transcriptionLanguageHint(
-                            for: detail.meeting, segments: detail.segments),
-                    vocabulary: vocabulary,
-                    meetingID: meetingID)
-
-                // A digitally-silent channel (e.g. AirPods dropped the
-                // system-audio capture) must be skipped — Whisper invents
-                // "Thank you." / foreign-script text on pure silence.
-                let systemSilent = systemURL.map { AudioSilence.fileIsSilent(at: $0) } ?? true
-
-                var segments: [TranscriptSegment] = []
-                if let systemURL, !systemSilent {
-                    phases[meetingID] = .running(
-                        L10n.text("Re-transcribing participants (Whisper)…"))
-                    let result = try await whisper.transcribeFile(
-                        at: systemURL, hints: hints, channel: .system)
-                    segments.append(contentsOf: result.segments)
-                }
-                if let microphoneURL, !AudioSilence.fileIsSilent(at: microphoneURL) {
-                    phases[meetingID] = .running(
-                        L10n.text("Re-transcribing your channel (Whisper)…"))
-                    let result = try await whisper.transcribeFile(
-                        at: microphoneURL, hints: hints, channel: .microphone)
-                    // Drop the stray letters / low-confidence fragments a
-                    // far-field mic emits when the user isn't speaking.
-                    let voiced = result.segments.filter {
-                        !TranscriptNoiseFilter.isLikelyNoise(
-                            text: $0.text, confidence: $0.confidence)
-                    }
-                    // The mic hears the room through the speakers; whatever
-                    // the system channel already says at the same instant is
-                    // bleed, not the user (field bug: 52% fake "Me" talk).
-                    segments.append(contentsOf: MicBleedFilter.filter(
-                        microphone: voiced, system: segments))
-                }
-                segments.sort { $0.startTime < $1.startTime }
-
-                var turns: [SpeakerTurn] = []
-                if let systemURL, !systemSilent, let diarizer = services.diarizer {
-                    phases[meetingID] = .running(L10n.text("Identifying speakers…"))
-                    turns = (try? await diarizer.diarizeFile(at: systemURL)) ?? []
-                }
-                let attribution = SpeakerAttributor.attribute(
-                    segments: segments, turns: turns, meetingID: meetingID)
-
-                let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
-                let meetingSeconds = detail.meeting.endedAt.map {
-                    $0.timeIntervalSince(detail.meeting.startedAt)
-                }
-                phases[meetingID] = .draft(RefineDraft(
-                    language: hints.language,
-                    speakers: attribution.speakers,
-                    segments: attribution.segments,
-                    oldSegmentCount: detail.segments.count,
-                    oldSpeakerCount: detail.speakers.count,
-                    oldSpeechSeconds: oldSpeech,
-                    meetingSeconds: meetingSeconds))
+                let draft = try await useCase(RefineMeetingRequest(
+                    detail: detail,
+                    languagePolicy: languagePolicy
+                ) { [weak self] progress in
+                    let message = await Self.localized(progress)
+                    await self?.updateProgress(message, meetingID: meetingID, runID: runID)
+                })
+                finish(.draft(draft), meetingID: meetingID, runID: runID)
+            } catch is CancellationError {
+                finish(nil, meetingID: meetingID, runID: runID)
+            } catch let error as RefineMeetingError {
+                finish(
+                    .failed(Self.localized(error)),
+                    meetingID: meetingID,
+                    runID: runID)
             } catch {
-                phases[meetingID] = .failed(
-                    L10n.format("Refine failed: %@", error.localizedDescription))
+                finish(
+                    .failed(L10n.format("Refine failed: %@", error.localizedDescription)),
+                    meetingID: meetingID,
+                    runID: runID)
             }
-            // Refines are one-at-a-time, so this run owning Whisper (and
-            // the diarizer) is over either way; give the RAM back after the
-            // idle grace periods.
-            services.scheduleWhisperRelease()
-            services.scheduleRecordingEnginesRelease()
+        }
+    }
+}
+
+private extension RefineService {
+    func updateProgress(_ message: String, meetingID: MeetingID, runID: UUID) {
+        guard runIDs[meetingID] == runID else { return }
+        phases[meetingID] = .running(message)
+    }
+
+    func finish(_ phase: Phase?, meetingID: MeetingID, runID: UUID) {
+        guard runIDs[meetingID] == runID else { return }
+        tasks[meetingID] = nil
+        runIDs[meetingID] = nil
+        phases[meetingID] = phase
+    }
+
+    static func localized(_ progress: RefineMeetingProgress) -> String {
+        switch progress {
+        case .preparingModels:
+            L10n.text("Preparing…")
+        case .downloadingWhisper(let size, let percent, _):
+            L10n.format(
+                "Downloading Whisper (%@, one time only)… %d%%",
+                size,
+                percent)
+        case .transcribingParticipants:
+            L10n.text("Re-transcribing participants (Whisper)…")
+        case .transcribingMicrophone:
+            L10n.text("Re-transcribing your channel (Whisper)…")
+        case .transcribed(let channel, _, _, _):
+            if channel == .microphone {
+                L10n.text("Re-transcribing your channel (Whisper)…")
+            } else {
+                L10n.text("Re-transcribing participants (Whisper)…")
+            }
+        case .identifyingSpeakers:
+            L10n.text("Identifying speakers…")
+        }
+    }
+
+    static func localized(_ error: RefineMeetingError) -> String {
+        switch error {
+        case .audioNotRetained:
+            L10n.text("This meeting does not keep its audio.")
+        case .audioUnavailable:
+            L10n.text("Could not find the meeting audio.")
         }
     }
 }

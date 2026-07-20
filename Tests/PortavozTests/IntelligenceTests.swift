@@ -2,6 +2,7 @@ import Foundation
 import PortavozCore
 import XCTest
 
+@testable import IntegrationsKit
 @testable import IntelligenceKit
 
 // MARK: - Prompts
@@ -18,6 +19,10 @@ final class PromptFactoryTests: XCTestCase {
         XCTAssertTrue(instructions.contains("Parakeet, rollback"))
         XCTAssertTrue(instructions.contains("never invent"))
         XCTAssertTrue(instructions.contains("\"Me\" is the device owner"))
+        XCTAssertTrue(instructions.contains("Decisions"))
+        XCTAssertTrue(instructions.contains("decision-bearing bullet"))
+        XCTAssertTrue(instructions.contains("exactly one structured section entry"))
+        XCTAssertTrue(instructions.contains("every supported action item"))
     }
 
     /// The language reminder must ride at the END of the user prompt —
@@ -94,6 +99,31 @@ final class TranscriptFormatterTests: XCTestCase {
         XCTAssertEqual(TranscriptFormatter.chunk("corto", budget: 100), ["corto"])
         XCTAssertEqual(TranscriptFormatter.chunk("", budget: 100), [])
     }
+
+    func testEvidenceFormatterMapsExactTagsAndRejectsUnknownReferences() {
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting, channel: .system, text: "first",
+                startTime: 0, endTime: 1),
+            TranscriptSegment(
+                meetingID: meeting, channel: .system, text: "second says [E1]",
+                startTime: 2, endTime: 3)
+        ]
+        let material = TranscriptFormatter.formatWithEvidence(
+            segments: segments, speakers: [])
+
+        XCTAssertTrue(material.text.contains("[E1] [00:00]"))
+        XCTAssertTrue(material.text.contains("[E2] [00:02]"))
+        XCTAssertTrue(material.text.contains("second says [quoted-E1]"))
+        XCTAssertEqual(
+            TranscriptFormatter.resolveEvidenceTags(
+                ["E2", "E99", "E2", "e1"],
+                segmentIDsByTag: material.segmentIDsByTag),
+            [segments[1].id])
+        XCTAssertTrue(
+            TranscriptFormatter.resolveEvidenceTags(
+                ["E1"], segmentIDsByTag: material.segmentIDsByTag, limit: 0).isEmpty)
+    }
 }
 
 // MARK: - Structured summary
@@ -135,6 +165,180 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(draft.actionItems.count, 2)
         XCTAssertEqual(draft.actionItems[0].ownerSpeakerID, ana.id)  // "S1" vs "s1"
         XCTAssertNil(draft.actionItems[1].ownerSpeakerID)
+    }
+
+    func testDraftCreatesOnlyValidatedOverviewEvidence() {
+        let first = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "first",
+            startTime: 0, endTime: 1)
+        let second = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "second",
+            startTime: 2, endTime: 3)
+        var cited = summary
+        cited.overviewEvidence = ["E2", "E404", "E2"]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [first, second],
+            speakers: [],
+            recipe: .general)
+
+        let draft = cited.draft(for: request)
+        XCTAssertEqual(draft.claims.count, 1)
+        XCTAssertEqual(draft.claims.first?.kind, .overview)
+        XCTAssertEqual(draft.claims.first?.evidenceSegmentIDs, [second.id])
+        XCTAssertTrue(cited.draft(for: request, includeEvidence: false).claims.isEmpty)
+    }
+
+    func testDraftCreatesPositionTypedDecisionEvidenceFromExactTags() throws {
+        let first = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "context",
+            startTime: 0, endTime: 1)
+        let second = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "ship Friday",
+            startTime: 2, endTime: 3)
+        let cited = StructuredSummary(
+            overview: "Overview",
+            sections: [
+                .init(heading: "Overview", bullets: ["Context"]),
+                .init(
+                    heading: "Decisions",
+                    bullets: ["Ship Friday", "Keep local"],
+                    bulletEvidence: [["E2", "E404", "E2"], []]),
+                .init(heading: "Action Items", bullets: []),
+                .init(heading: "Open Questions", bullets: ["Budget?"])
+            ],
+            actionItems: [])
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [first, second],
+            speakers: [],
+            recipe: .general)
+
+        let evidence = try XCTUnwrap(cited.draft(for: request).decisionEvidence.first)
+        XCTAssertEqual(cited.draft(for: request).decisionEvidence.count, 1)
+        XCTAssertEqual(evidence.sectionOrdinal, 1)
+        XCTAssertEqual(evidence.bulletOrdinal, 0)
+        XCTAssertEqual(evidence.evidenceSegmentIDs, [second.id])
+        XCTAssertTrue(cited.draft(for: request, includeEvidence: false).decisionEvidence.isEmpty)
+    }
+
+    func testDecisionEvidenceFailsClosedWithoutAnExactRecipeShape() {
+        let segment = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "ship Friday",
+            startTime: 0, endTime: 1)
+        let malformed = StructuredSummary(
+            overview: "Overview",
+            sections: [
+                .init(
+                    heading: "Decisions",
+                    bullets: ["Ship Friday"],
+                    bulletEvidence: [["E1"]])
+            ],
+            actionItems: [])
+        let general = SummaryRequest(
+            meetingID: meeting, segments: [segment], speakers: [], recipe: .general)
+        let custom = SummaryRequest(
+            meetingID: meeting,
+            segments: [segment],
+            speakers: [],
+            recipe: Recipe(
+                id: "custom-decisions",
+                displayName: "Custom",
+                sections: ["Decisions"],
+                instructions: "Capture decisions"))
+
+        XCTAssertTrue(malformed.draft(for: general).decisionEvidence.isEmpty)
+        XCTAssertTrue(malformed.draft(for: custom).decisionEvidence.isEmpty)
+    }
+
+    func testDraftCreatesIdentityTypedActionItemEvidenceFromExactTags() throws {
+        let first = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "context",
+            startTime: 0, endTime: 1)
+        let second = TranscriptSegment(
+            meetingID: meeting, channel: .system, text: "Ana owns the rollout",
+            startTime: 2, endTime: 3)
+        let cited = StructuredSummary(
+            overview: "Overview",
+            sections: [],
+            actionItems: [
+                .init(
+                    text: "Prepare rollout",
+                    owner: "",
+                    evidence: ["E2", "E404", "E2"])
+            ])
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [first, second],
+            speakers: [],
+            recipe: .general)
+
+        let draft = cited.draft(for: request)
+        let evidence = try XCTUnwrap(draft.actionItemEvidence.first)
+        XCTAssertEqual(evidence.actionItemID, draft.actionItems[0].id)
+        XCTAssertEqual(evidence.evidenceSegmentIDs, [second.id])
+        XCTAssertTrue(cited.draft(for: request, includeEvidence: false).actionItemEvidence.isEmpty)
+    }
+
+    func testTranslationPreservesValidDecisionCoordinatesWithFreshIdentity() throws {
+        let sourceID = UUID()
+        let original = SummaryDecisionEvidence(
+            sectionOrdinal: 0,
+            bulletOrdinal: 1,
+            sourceTranscriptRevision: 3,
+            evidenceSegmentIDs: [sourceID])
+        let pivot = SummaryDraft(
+            meetingID: meeting,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "## Decisions\n- First\n- Second",
+            actionItems: [],
+            decisionEvidence: [original])
+        let translatedSections = [
+            StructuredSummary.Section(
+                heading: "Decisiones",
+                bullets: ["Primera", "Segunda"])
+        ]
+
+        let carried = try XCTUnwrap(StructuredSummary.translatedDecisionEvidence(
+            from: pivot,
+            into: translatedSections).first)
+        XCTAssertNotEqual(carried.id, original.id)
+        XCTAssertEqual(carried.sectionOrdinal, 0)
+        XCTAssertEqual(carried.bulletOrdinal, 1)
+        XCTAssertEqual(carried.sourceTranscriptRevision, 3)
+        XCTAssertEqual(carried.evidenceSegmentIDs, [sourceID])
+        XCTAssertTrue(StructuredSummary.translatedDecisionEvidence(
+            from: pivot,
+            into: [.init(heading: "Decisiones", bullets: ["Primera"])]).isEmpty)
+    }
+
+    func testTranslationRemapsActionItemEvidenceToFreshTaskIdentity() throws {
+        let sourceID = UUID()
+        let oldItem = ActionItem(text: "Prepare rollout")
+        let original = SummaryActionItemEvidence(
+            actionItemID: oldItem.id,
+            sourceTranscriptRevision: 3,
+            evidenceSegmentIDs: [sourceID])
+        let pivot = SummaryDraft(
+            meetingID: meeting,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "Overview",
+            actionItems: [oldItem],
+            actionItemEvidence: [original])
+        let translatedItem = ActionItem(text: "Preparar rollout")
+
+        let carried = try XCTUnwrap(StructuredSummary.translatedActionItemEvidence(
+            from: pivot,
+            into: [translatedItem]).first)
+        XCTAssertNotEqual(carried.id, original.id)
+        XCTAssertEqual(carried.actionItemID, translatedItem.id)
+        XCTAssertEqual(carried.sourceTranscriptRevision, 3)
+        XCTAssertEqual(carried.evidenceSegmentIDs, [sourceID])
+        XCTAssertTrue(StructuredSummary.translatedActionItemEvidence(
+            from: pivot,
+            into: []).isEmpty)
     }
 }
 
@@ -437,9 +641,9 @@ final class TranslationPromptTests: XCTestCase {
 
 // MARK: - BYOK chat client (offline)
 
-final class OpenAICompatibleChatClientTests: XCTestCase {
+final class OpenAICompatibleChatCodecTests: XCTestCase {
     func testRequestBodyIsOpenAICompatible() throws {
-        let urlRequest = try OpenAICompatibleChatClient.urlRequest(
+        let urlRequest = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
             model: "test-model", apiKey: "sk-123",
             system: "be terse", user: "¿var vs let?",
@@ -460,7 +664,7 @@ final class OpenAICompatibleChatClientTests: XCTestCase {
     }
 
     func testMaxTokensIsOmittedWhenNil() throws {
-        let urlRequest = try OpenAICompatibleChatClient.urlRequest(
+        let urlRequest = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: URL(string: "https://api.example.com/v1")!,
             model: "m", apiKey: "k",
             system: "s", user: "u", temperature: 0.3, maxTokens: nil)
@@ -473,14 +677,17 @@ final class OpenAICompatibleChatClientTests: XCTestCase {
             {"choices": [{"message": {"content": "Hola."}}]}
             """
         XCTAssertEqual(
-            try OpenAICompatibleChatClient.parseContent(Data(payload.utf8)), "Hola.")
+            try OpenAICompatibleChatCodec.parseContent(Data(payload.utf8)), "Hola.")
         XCTAssertThrowsError(
-            try OpenAICompatibleChatClient.parseContent(Data("{\"error\": \"nope\"}".utf8)))
+            try OpenAICompatibleChatCodec.parseContent(Data("{\"error\": \"nope\"}".utf8)))
     }
 
     func testProviderLabelIsTheHost() {
-        let client = OpenAICompatibleChatClient(
-            endpoint: URL(string: "http://localhost:11434/v1")!, model: "m", apiKey: "k")
+        let client = OpenAICompatibleSummaryClient(
+            endpoint: URL(string: "http://localhost:11434/v1")!,
+            model: "m",
+            apiKey: "k",
+            gateway: TestDataEgressGateway())
         XCTAssertEqual(client.providerLabel, "localhost")
     }
 }
@@ -497,66 +704,42 @@ final class BYOKSettingsTests: XCTestCase {
     }
 
     func testClientRequiresEveryPiece() {
-        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: nil))
-        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: ""))
-        XCTAssertNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "  ", apiKey: "k"))
-        XCTAssertNil(BYOKSettings.client(endpoint: "nope", model: "m", apiKey: "k"))
-        XCTAssertNotNil(BYOKSettings.client(endpoint: "https://a.com/v1", model: "m", apiKey: "k"))
+        let gateway = TestDataEgressGateway()
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "m", apiKey: nil, gateway: gateway))
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "m", apiKey: "", gateway: gateway))
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "  ", apiKey: "k", gateway: gateway))
+        XCTAssertNil(BYOKSettings.client(
+            endpoint: "nope", model: "m", apiKey: "k", gateway: gateway))
+        XCTAssertNotNil(BYOKSettings.client(
+            endpoint: "https://a.com/v1", model: "m", apiKey: "k", gateway: gateway))
     }
 
     /// The companion only ever gets a client behind the explicit opt-in
     /// (D8/D26) — configuration alone is not consent.
-    func testCompanionClientRequiresTheExplicitOptIn() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "byok-tests"))
-        defer { defaults.removePersistentDomain(forName: "byok-tests") }
-        defaults.set("https://a.com/v1", forKey: BYOKSettings.endpointKey)
-        defaults.set("m", forKey: BYOKSettings.modelKey)
+    func testCompanionClientRequiresTheExplicitOptIn() {
+        XCTAssertNil(BYOKSettings.companionClient(
+            isEnabled: false,
+            endpoint: "https://a.com/v1",
+            model: "m",
+            apiKey: "k",
+            gateway: TestDataEgressGateway()))
 
-        defaults.set(false, forKey: BYOKSettings.companionEnabledKey)
-        XCTAssertNil(BYOKSettings.companionClient(defaults: defaults, apiKey: "k"))
-
-        defaults.set(true, forKey: BYOKSettings.companionEnabledKey)
-        XCTAssertNotNil(BYOKSettings.companionClient(defaults: defaults, apiKey: "k"))
+        XCTAssertNotNil(BYOKSettings.companionClient(
+            isEnabled: true,
+            endpoint: "https://a.com/v1",
+            model: "m",
+            apiKey: "k",
+            gateway: TestDataEgressGateway()))
         // Opt-in without a key degrades to nil (on-device), never an error.
-        XCTAssertNil(BYOKSettings.companionClient(defaults: defaults, apiKey: nil))
-    }
-}
-
-// MARK: - Hardware recommender (M12)
-
-final class HardwareRecommenderTests: XCTestCase {
-    func testAppleIntelligenceWins() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 36, appleIntelligence: true, ollamaAvailable: true, freeDiskGB: 500))
-        XCTAssertEqual(advice.engine, .apple)
-    }
-
-    func testFallsBackToOllamaWithoutAppleIntelligence() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 16, appleIntelligence: false, ollamaAvailable: true, freeDiskGB: 100))
-        XCTAssertEqual(advice.engine, .ollama)
-    }
-
-    func testRecommendsEmbeddedMLXWhenNeitherAvailable() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 8, appleIntelligence: false, ollamaAvailable: false, freeDiskGB: 100))
-        XCTAssertEqual(advice.engine, .mlx)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("3 GB") })
-    }
-
-    func testNoneWhenRAMIsTooSmallForEmbeddedModel() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 4, appleIntelligence: false, ollamaAvailable: false, freeDiskGB: 100))
-        XCTAssertEqual(advice.engine, .none)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("Ollama") })
-    }
-
-    func testLowRamAndLowDiskWarnings() {
-        let advice = HardwareRecommender.advise(
-            .init(memoryGB: 8, appleIntelligence: false, ollamaAvailable: true, freeDiskGB: 4))
-        XCTAssertTrue(advice.whisperLowDisk)
-        XCTAssertTrue(advice.reasons.contains { $0.contains("8B") }, "low-RAM Ollama warning")
-        XCTAssertTrue(advice.reasons.contains { $0.contains("626 MB") }, "low-disk Whisper hint")
+        XCTAssertNil(BYOKSettings.companionClient(
+            isEnabled: true,
+            endpoint: "https://a.com/v1",
+            model: "m",
+            apiKey: nil,
+            gateway: TestDataEgressGateway()))
     }
 }
 
@@ -618,7 +801,10 @@ final class OllamaServiceTests: XCTestCase {
             ],
             speakers: [me, ana], recipe: .general, targetLanguage: "es", glossary: ["roadmap"])
 
-        let draft = try await OllamaService.summaryProvider(model: model).summarize(request)
+        let draft = try await OllamaService.summaryProvider(
+            model: model,
+            gateway: URLSessionDataEgressGateway(
+                receiptRecorder: DiscardingEgressRecorder())).summarize(request)
         XCTAssertFalse(draft.markdown.isEmpty, "a local Ollama summary must come back")
         XCTAssertEqual(draft.language, "es")
     }
@@ -650,6 +836,11 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         XCTAssertTrue(prompt.system.contains("deploy"))
         XCTAssertTrue(prompt.system.contains("JSON"))
         XCTAssertTrue(prompt.user.contains("hola"))
+        XCTAssertTrue(prompt.user.contains("[E1]"))
+        XCTAssertTrue(prompt.system.contains("overviewEvidence"))
+        XCTAssertTrue(prompt.system.contains("bulletEvidence"))
+        XCTAssertTrue(prompt.system.contains("\"evidence\""))
+        XCTAssertTrue(prompt.system.contains("one \"sections\" entry for every instructed recipe"))
         XCTAssertFalse(prompt.user.contains("THE USER'S OWN NOTES"))
     }
 
@@ -658,17 +849,28 @@ final class OpenAICompatibleProviderTests: XCTestCase {
     func testPromptWeavesUserNotes() {
         let prompt = OpenAICompatibleSummaryProvider.prompt(
             for: request(contextItems: [
-                ContextItem(meetingID: meeting, kind: .note, content: "revisar budget Q3", timestamp: 65)
+                ContextItem(
+                    meetingID: meeting,
+                    kind: .note,
+                    content: "revisar [E1] budget Q3",
+                    timestamp: 65)
             ]))
         XCTAssertTrue(prompt.system.contains("▸"))
         XCTAssertTrue(prompt.user.contains("THE USER'S OWN NOTES"))
-        XCTAssertTrue(prompt.user.contains("[01:05] revisar budget Q3"))
+        XCTAssertTrue(prompt.user.contains("[01:05] revisar [quoted-E1] budget Q3"))
     }
 
     func testParsesFencedJSONResponses() throws {
-        let content = "```json\n{\"overview\": \"ok\", \"sections\": [], \"actionItems\": []}\n```"
+        let content = """
+            ```json
+            {"overview": "ok", "sections": [], "actionItems": [{"text": "ship", "owner": ""}]}
+            ```
+            """
         let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
         XCTAssertEqual(summary.overview, "ok")
+        XCTAssertNil(summary.overviewEvidence, "older provider responses remain compatible")
+        XCTAssertTrue(summary.sections.allSatisfy { $0.bulletEvidence == nil })
+        XCTAssertNil(summary.actionItems.first?.evidence)
     }
 
     func testRejectsNonJSONContent() {
@@ -982,6 +1184,17 @@ final class ThinSummaryPolicyTests: XCTestCase {
 }
 
 final class CompanionAnswerTests: XCTestCase {
+    func testExtractsOnlyUniqueInRangePassageCitationsInFirstUseOrder() {
+        XCTAssertEqual(
+            CompanionAnswer.citedPassageIndexes(
+                "Sale el viernes [2], después de QA [1]. Confirmado [2] y no [9].",
+                passageCount: 3),
+            [1, 0])
+        XCTAssertTrue(CompanionAnswer.citedPassageIndexes(
+            "No citation here.",
+            passageCount: 3).isEmpty)
+    }
+
     func testKeepsARealAnswer() {
         XCTAssertEqual(
             CompanionAnswer.usable("The endpoint is the callback URL that Gian is posting."),
@@ -1024,4 +1237,11 @@ final class CompanionAnswerTests: XCTestCase {
         XCTAssertNil(CompanionAnswer.usable(""))
         XCTAssertNil(CompanionAnswer.usable("   [3]   "))
     }
+}
+
+/// The gateway now REQUIRES a recorder by type; this environment-gated local
+/// Ollama check has no library meeting to receipt, so it discards the
+/// content-free event the way the standalone CLI path prints it.
+private struct DiscardingEgressRecorder: DataEgressEventRecorder {
+    func recordDataEgressEvent(_ event: DataEgressEvent) async throws {}
 }

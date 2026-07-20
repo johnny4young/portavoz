@@ -1,78 +1,231 @@
-# Spec 02 — Transcripción (TranscriptionKit, ModelStoreKit)
+# Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Estado: implementado y verificado. Decisiones: D7 (routing por tarea), D15 (pinning sha256), D16 (captions vivas), D25 (motores plurales — planeado).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle).
 
-## Roles y motores (D7)
+## Roles and engines (D7)
 
-| Rol | Motor | Estado |
+| Role | Engine | Status |
 |---|---|---|
-| Vivo (`liveTranscription`) | Parakeet TDT 0.6B v3 int8 (FluidAudio) | ✅ p95 0.53 s medido |
-| Calidad (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.0.0, pin exacto) | ✅ 23–42x medido |
-| Plurales por rol con recomendador | — | Planeado (D25/M12) |
+| Live (`liveTranscription`) | Parakeet TDT 0.6B v3 int8 (FluidAudio) | ✅ 0.53 s p95 measured |
+| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.0.0, exact pin) | ✅ 23–42x measured |
+| Multiple per role with recommender | — | Planned (D25/M12) |
 
-## Registry de modelos — ModelStoreKit
+## Model registry — ModelStoreKit
 
-- `ModelCatalog` con 4 descriptores pineados: `parakeetTdtV3` (21 artefactos, 483 MB, subset int8), `speakerDiarization` (10 artefactos, ~14 MB), `whisperLargeV3Turbo` (24 artefactos, ~1.6 GB), `whisperTokenizer` (3 archivos). Cada `ModelArtifact` = path relativo + sha256 + tamaño; `resolveBase` pineado a commit exacto de HF.
-- `ModelStore` (actor): descarga por artefacto → verifica tamaño + sha256 (CryptoKit streaming 1 MiB) → move atómico. `verify()` re-hashea; `ensureAvailable()` sana faltantes/corruptos. Instalación en `~/Library/Application Support/Portavoz/Models/` (override `--models-dir`).
-- **Gotcha protegido por test**: el `folderName` de Parakeet debe ser `parakeet-tdt-0.6b-v3` (SIN sufijo `-coreml`) — FluidAudio resuelve la carpeta así y si no encuentra los archivos **re-descarga el repo entero sin verificación** a un directorio hermano.
-- Los sha256 salen del tree API de HF (`/api/models/<repo>/tree/<rev>?recursive=true`): LFS trae `lfs.oid`; archivos chicos se hashean a mano. Procedimiento en el doc comment de `ModelCatalog.parakeetTdtV3`.
+- `ModelCatalog` with 7 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, and the retained `mlxQwen3` A/B alternative. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit.
+- `ModelStore` (actor): download each artifact into a sibling on the destination volume → verify size + sha256 (CryptoKit streaming 1 MiB) → atomically rename or replace. `verify()` re-hashes; `ensureAvailable()` heals missing/corrupt artifacts without first deleting the old destination. Installed in `~/Library/Application Support/Portavoz/Models/` (`--models-dir` override).
+- `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Same-descriptor install/remove operations execute in invocation order; invalidation and forced verification supersede stale checks, and waiting callers retry current evidence rather than returning an obsolete result. Cancellation is honored before publication but not reported as false failure after a verified install commits. No app readiness path infers installation from one filename or aggregate size.
+- **Gotcha protected by a test**: Parakeet's `folderName` must be `parakeet-tdt-0.6b-v3` (WITHOUT the `-coreml` suffix) — FluidAudio resolves the folder that way, and if it does not find the files it **re-downloads the entire repository without verification** into a sibling directory.
+- The sha256 values come from the HF tree API (`/api/models/<repo>/tree/<rev>?recursive=true`): LFS provides `lfs.oid`; small files are hashed manually. Procedure in the doc comment for `ModelCatalog.parakeetTdtV3`.
 
-## Vivo: ParakeetEngine + mapper
+## Live: ParakeetEngine + mapper
 
-- Ventana deslizante custom **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s del modelo). El preset `.streaming` de FluidAudio NO sirve: su `hypothesisChunkSeconds` es código muerto (solo emite por `chunkSeconds` = 11 s → latencia 13+ s).
-- **Filtro de deltas propio** (`ParakeetSegmentMapper`): el dedup upstream falla con chunks pequeños (re-emite ~todo el left context). Los `tokenTimings` de los updates vienen en tiempo absoluto del stream → filtrar `startTime > último borde emitido` y reconstruir texto con `joinedText` (maneja `▁` de SentencePiece).
-- Batch: `AsrManager` long-form disk-backed, `parallelChunkConcurrency: 1` (cortesía al slot vivo), `melChunkContext: false` (recomendado para v3 multilingüe). Segmentos-oración por puntuación (los timings TDT no traen gaps: el corte por pausa casi nunca dispara; `sentenceTerminators` + pauseSplit 0.5 s + máx 15 s).
-- `TranscriptionScheduler` (D7): lane vivo inmediato; slot batch serial FIFO en `Task.detached(priority: .utility)`.
-- `TdtDecoderState()` es `throws` y se pasa `inout` (var local). `ASRResult.duration` = 0 en el path disk-backed → leer duración real con AVAudioFile.
-- Primer load compila para ANE (~14 s el encoder en M4 Max); después CoreML cachea (~1 s).
-- Licencias: modelo Parakeet v3 CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — todas MIT-compatibles con atribución.
+- Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
+- **Custom delta filter** (`ParakeetSegmentMapper`): upstream dedup fails with small chunks (re-emits ~all left context). Updates' `tokenTimings` use absolute stream time → filter `startTime > last emitted boundary` and reconstruct text with `joinedText` (handles SentencePiece `▁`).
+- Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
+- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` instantiates one direct Parakeet stream per selected channel only when the verified engine is already resident; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
+- `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
+- First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
+- Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
 
-## Calidad: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
+Standalone terminal transcription enters
+`ApplicationKit.TranscribeAudioFile`. The use case admits a readable file,
+constructs language/vocabulary hints, owns stable progress and result metrics,
+and delegates the selected Parakeet or Whisper engine to an executable adapter.
+Commands never construct `ModelStore`, `ParakeetEngine`, or `WhisperEngine`.
+Synchronous verified-download callbacks are relayed in order and drained before
+the result is printed, so a late percentage cannot appear after terminal
+success (D103).
 
-Endurecido contra 3 fallas REALES de WhisperKit (todas reproducidas y verificadas, jul 2026):
+### Audio-first model readiness and recovery (D70)
 
-1. **`concurrentWorkerCount: 1`** — el default es 16 y los workers corren en carrera sobre el estado compartido del decoder: chunks enteros desaparecen EN SILENCIO y no-determinísticamente (reunión real de 482 s colapsó a 3 segmentos; el path VAD-chunked de WhisperKit traga los fallos por chunk con `Logging.debug`, sin rethrow). Con 1 worker: correcto y 23x (el ANE serializa igual).
-2. **Peak-normalize antes de transcribir** (`AudioLevel.normalizePeak`, target 0.9, gain cap 20x): el EnergyVAD de WhisperKit gatea por energía ABSOLUTA (umbral 0.02) y una reunión con volumen bajo queda por debajo → "no hay voz".
-3. **Retry de cobertura sobre segmentos LIMPIOS**: si el habla transcrita < 20% de la duración del archivo (audio > 60 s), re-decodifica secuencial (`chunkingStrategy: nil` — ese path SÍ propaga errores) y SIN promptTokens. Dos trampas cubiertas: los chunks envenenados devuelven timespans válidos con texto que `cleanSegmentText` deja vacío (la cobertura cruda engaña), y el prompt de vocabulario descarrila las ventanas que no mencionan los términos (verificado: con 12 términos solo sobrevivía el chunk que los decía). Verificado: 3 → 82 segmentos con vocabulario.
-4. **Higiene anti-silencio**: segmentos sin contenido léxico (p. ej. `.` solo) no entran al resultado final; además, si el canal mic produce el mismo boilerplate corto de Whisper en cadencia de VAD (caso real: `Me: Thank you.` cada ~30 s sin que el usuario hablara), el post-proceso lo elimina. Una ocurrencia aislada de "Thank you" se conserva.
-5. **Idioma hablado preservado por segmento**: Refine solo fija `hints.language` cuando la evidencia del transcript es homogénea (`Meeting.language` sin segmentos previos, tags por segmento o `NLLanguageRecognizer` local). Si la reunión es mixta — p. ej. una persona habla español y otra inglés — deja `nil` para que Whisper autodetecte y conserve el idioma de cada hablante/segmento. El idioma de UI/resumen nunca se usa como fallback del transcript.
+Recording does not await `ModelStore` downloads or Core ML compilation. The
+app runtime snapshots the currently resident Parakeet instance, starts durable
+mic/system capture, and then joins or starts independently deduplicated
+Parakeet and pyannote preparation tasks. The recording UI states that audio is active and the complete
+transcript will appear after local preparation when live captions are deferred.
 
-- Carga con model+tokenizer de directorios verificados, `download: false` (jamás descarga sin verificar). Tokenizer local evita red.
-- Vocabulario (`hints.vocabulary`) → `promptTokens` como frase natural en el idioma hablado homogéneo ("In this meeting we discussed …" / "En esta reunión hablamos de …", no lista "Glossary:"); en reuniones mixtas/unknown se omite el prompt para no sesgar Whisper hacia un idioma. WhisperKit lo prepende con `<|startofprev|>` y filtra especiales.
-- `timings.inputAudioSeconds` under-reporta con VAD → duración desde el archivo.
+If no live transcriber existed at Start, or either direct stream throws, the
+session carries a recovery bit into `StopRecording`. Stop admits an exact
+`.transcription` job whose length-framed fingerprint binds meeting ID, source
+transcript revision, Parakeet provider/model/revision, automatic multilingual
+mode, no vocabulary, and the current finalized channel IDs, health, checksums,
+durations, and byte counts. Pending evidence, missing-only evidence, and purely
+silent audio cannot produce runnable work.
 
-## Spike SpeechAnalyzer (M12/D25) — estado y hallazgos (jul 2026)
+`ApplicationKit.ProcessPostCaptureJobs` revalidates that fingerprint and asks
+the app capability adapter to join only verified Parakeet loading and transcribe
+healthy/clipped system and microphone files through the serial batch scheduler
+while preserving their real `AudioChannel`. Automatic mode
+uses no fixed language and no vocabulary so a mixed Spanish/English meeting is
+not biased or translated. Mic fragments pass `TranscriptNoiseFilter` and
+`MicBleedFilter`; StorageKit then atomically publishes the complete attributed
+cast/transcript, advances `transcriptRevision`, completes the owned lease, and
+enqueues exact diarization. The application workflow owns job leases,
+dependency admission, retry/cancellation, and publication order; the adapter
+owns recording paths, filesystem validation, engines, and preferences. Whisper
+Refine remains the explicit reviewable quality pass and is not replaced by this
+safety net.
 
-`SpeechAnalyzerEngine` (macOS 26, `#if canImport(Speech)`): implementado contra el `.swiftinterface` REAL del SDK local — misma forma que el live de Parakeet para benchmarks idénticos. Hallazgos del spike:
+## Quality: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
 
-1. **SpeechAnalyzer SÍ acepta vocabulario custom** — `AnalysisContext.contextualStrings[.general]` existe en el SDK (26.5) y el engine lo cablea desde `hints.vocabulary`. Esto CORRIGE la investigación de la ronda 2 ("perdió contextualStrings") — llegó en una beta posterior a las reviews.
-2. **⚠️ Cuelga en procesos CLI sin bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (primer await) suspende PARA SIEMPRE en `portavoz-cli` — sample muestra el pool cooperativo vacío y el runloop aparcado (el daemon de Speech nunca responde a un proceso sin contexto de bundle/TCC). **El benchmark del rol vivo debe correr DENTRO de la app** — `NSSpeechRecognitionUsageDescription` ya añadido al Info.plist.
-3. **Harness compartido**: `LiveTranscriptionBench` (TranscriptionKit) pacea el archivo a ritmo real (chunks de 1 s) y mide lag de finalización. Frentes: `portavoz-cli bench-live --engine parakeet` y, para speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (launch-arg oculto: corre in-bundle, imprime a stdout, sale).
-4. **⚠️ Bug de finalización (arreglado)**: `finalizeAndFinishThroughEndOfInput()` lo llama el FEEDER al agotarse el input — secuenciado después del loop de `transcriber.results` deadlockea (results solo termina cuando alguien finaliza; el primer bench quedó aparcado para siempre).
-5. **Comparación medida (mismos 60 s de reunión real EN, canal system, M4 Max)**:
+Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 2026):
+
+1. **`concurrentWorkerCount: 1`** — the default is 16, and workers race over shared decoder state: entire chunks disappear SILENTLY and nondeterministically (a real 482 s meeting collapsed to 3 segments; WhisperKit's VAD-chunked path swallows per-chunk failures with `Logging.debug`, without rethrowing). With 1 worker: correct and 23x (the ANE serializes anyway).
+2. **Peak-normalize before transcription** (`AudioLevel.normalizePeak`, target 0.9, gain cap 20x): WhisperKit's EnergyVAD gates on ABSOLUTE energy (0.02 threshold), and a low-volume meeting falls below it → "no hay voz."
+3. **Coverage retry based on CLEAN segments**: if transcribed speech < 20% of file duration (audio > 60 s), decode again sequentially (`chunkingStrategy: nil` — that path DOES propagate errors) and WITHOUT promptTokens. Two covered traps: poisoned chunks return valid timespans with text that `cleanSegmentText` empties (raw coverage is misleading), and the vocabulary prompt derails windows that do not mention the terms (verified: with 12 terms, only the chunk that said them survived). Verified: 3 → 82 segments with vocabulary.
+4. **Anti-silence hygiene**: segments without lexical content (for example, `.` alone) do not enter the final result; in addition, if the mic channel produces the same short Whisper boilerplate on a VAD cadence (real case: `Me: Thank you.` every ~30 s without the user speaking), post-processing removes it. An isolated occurrence of "Thank you" is preserved.
+5. **Spoken language preserved per segment (D35)**:
+   `TranscriptLanguagePolicy.automatic` sets `hints.language` only when
+   transcript evidence is homogeneous (`Meeting.language` with no prior
+   segments, per-segment tags, or local `NLLanguageRecognizer`). If the meeting
+   is mixed — for example, one person speaks Spanish and another English — it
+   leaves the hint `nil` so Whisper auto-detects each speaker/segment. A fixed
+   transcript policy is an explicit recovery tool for weak/noisy audio; summary
+   and UI language never become recognition fallbacks. Refine recomputes
+   `Meeting.language` from the attributed result and clears stale aggregate
+   metadata when the result is mixed or unknown.
+
+- Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
+- Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.
+- `timings.inputAudioSeconds` under-reports with VAD → duration comes from the file.
+
+### Proactive verified preparation (D71)
+
+`WhisperEngine.prepare` downloads and verifies the selected Turbo/Compact
+descriptor plus the shared tokenizer through `ModelStore`, reporting one byte
+progress domain across both stores. It returns an opaque `PreparedModel` whose
+directories cannot be constructed outside TranscriptionKit.
+`loadPrepared` is the only runtime-allocation path after that split and still
+sets `download: false`.
+
+The macOS composition root serializes one preparation task across Settings,
+Refine, and external-audio Import. Settings can start it explicitly, and its
+lifetime is independent from the Settings window. Matching consumers join the
+active task; a different variant waits rather than starting a second large
+transfer. Successful verification leaves the opaque token app-scoped so the
+first later quality pass does not hash the full model again, while the loaded
+Whisper runtime still releases after two idle minutes. Deleting that variant
+invalidates its token and runtime. Persisted readiness is conservative: every
+pinned model and tokenizer artifact must pass its expected SHA-256 digest;
+actual preparation always re-enters `ModelStore` verification/repair before a
+new token can be produced. Settings inventory, support diagnostics, and MLX
+provider resolution use the shared verified lifecycle rather than separate
+filesystem probes.
+
+### Role-specific speech readiness (D73)
+
+Parakeet, pyannote, and Whisper are independent app-scoped capabilities, not a
+single readiness bundle. Separate retained tasks deduplicate each verified
+load across concurrent callers. Durable first-pass recovery and Dictation ask
+only for Parakeet. Refine prepares only required Whisper before its composite
+transcription attempt and requests only pyannote when best-effort speaker
+attribution begins. External-audio Import also requests pyannote directly and
+never loads Parakeet as an incidental dependency. Explicit onboarding/model
+setup and the recording benchmark remain the only paths that intentionally
+request both live models.
+
+This keeps optional attribution failure from blocking transcript recovery and
+prevents an unrelated live-model compile/download from failing a Whisper
+quality pass. A pyannote failure during Refine still follows the application
+contract below: the draft succeeds with honest unattributed system segments.
+
+### External audio import (D46)
+
+`ApplicationKit.ImportMeeting` owns the external-file workflow without
+constructing model objects itself. The app processor prepares the shared
+Whisper engine as a required step, reports verified model-download progress,
+loads only pyannote for its separately degradable attribution step, and
+transcribes the copied system-channel file with the once-sampled
+`TranscriptLanguagePolicy` and vocabulary. Automatic mode leaves the hint nil,
+so a mixed Spanish/English recording keeps each segment's detected language;
+the independently configured summary language never becomes a recognition
+fallback. A required transcription failure rolls back the staged copy before
+the aggregate exists. Once Whisper was prepared, the same idle release policy
+as the released import path is scheduled on every later exit.
+
+### Meeting refinement (D47)
+
+`ApplicationKit.RefineMeeting` owns the quality re-pass without constructing
+model objects or reading platform settings/files itself. The app adapter
+resolves retained system/microphone channels off the MainActor, samples the
+global transcript policy and vocabulary once, and maps typed progress while the
+use case prepares required Whisper, transcribes, requests pyannote only for
+best-effort attribution, and builds the
+reviewable `RefineDraft`. A per-meeting fixed Spanish/English recovery choice
+overrides the sampled policy; automatic mixed-language evidence leaves the
+Whisper hint `nil`, and the aggregate language is recomputed only when the
+result is homogeneous. Summary/UI language never enters recognition.
+
+Digitally silent channels never reach Whisper. Microphone results pass through
+`TranscriptNoiseFilter` and then `MicBleedFilter`, preserving the released
+anti-hallucination and echo behavior. Required preparation/transcription errors
+propagate; diarization degrades to honest unattributed segments; cancellation
+is never swallowed. Every exit after model ownership begins schedules both
+Whisper and recording-engine idle release. The draft carries the source
+`transcriptRevision`; acceptance is a separate ApplicationKit use case and
+StorageKit transaction that rejects stale drafts rather than overwriting a
+newer transcript.
+
+The terminal's `RefinePersistedMeeting` wrapper uses the same draft and apply
+use cases. It loads the current `MeetingDetail` through an injected reader,
+optionally resolves explicit audio through the file port, and applies only the
+revision-fenced draft it just produced. External files are fingerprinted with
+streaming SHA-256 rather than loading the whole recording into memory. The CLI
+maps typed progress to its existing download, per-channel timing, and
+diarization messages (D103).
+
+Refine defines one exact composite operation identity across the non-silent
+channels that actually reach Whisper. The length-framed SHA-256 fingerprint
+binds meeting/source revision, the selected WhisperKit provider/model/revision,
+automatic or fixed language hint, ordered vocabulary material, and each
+channel's audio digest. Those components are appended in small, explicitly
+typed steps so the supported Sequoia Swift 6.2 compiler retains the exact same
+order and operation identity. Finalized v6 capture checksum evidence is reused
+only after the current file size matches; legacy recordings are streamed
+through local SHA-256. Raw paths and vocabulary never enter the persisted
+envelope. A successful run stays in the review draft until Apply; discarding it
+or losing the revision fence stores no success. Failure or cancellation after
+the attempt begins stores only a content-free standalone terminal run best
+effort (D65).
+
+## SpeechAnalyzer spike (M12/D25) — status and findings (Jul 2026)
+
+`SpeechAnalyzerEngine` (macOS 26, `#if canImport(Speech)`): implemented against the local SDK's REAL `.swiftinterface` — same shape as Parakeet live for identical benchmarks. Spike findings:
+
+1. **SpeechAnalyzer DOES accept custom vocabulary** — `AnalysisContext.contextualStrings[.general]` exists in SDK 26.5 and the engine wires it from `hints.vocabulary`. This CORRECTS round 2 research ("lost contextualStrings") — it arrived in a beta after the reviews.
+2. **⚠️ Hangs in CLI processes without a bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (first await) suspends FOREVER in `portavoz-cli` — sample shows the cooperative pool empty and the run loop parked (the Speech daemon never responds to a process without bundle/TCC context). **The live-role benchmark must run INSIDE the app** — `NSSpeechRecognitionUsageDescription` has already been added to Info.plist.
+3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
+4. **⚠️ Finalization bug (fixed)**: `finalizeAndFinishThroughEndOfInput()` is called by the FEEDER when the input is exhausted — sequencing it after the `transcriber.results` loop deadlocks (results ends only when someone finalizes; the first benchmark remained parked forever).
+5. **AVAudioConverter concurrency boundary**: the converter's `@Sendable` input callback receives its fully initialized, immutable source through one private lock-protected one-shot box. The localized `@unchecked Sendable` proof avoids mutable captures and does not suppress AVFoundation concurrency checking at import scope (D118).
+6. **Measured comparison (same 60 s of a real EN meeting, system channel, M4 Max)**:
 
 | | Parakeet v3 (CLI) | SpeechAnalyzer en_US (in-app) |
 |---|---|---|
-| primer resultado | 1.13 s | **1.03 s** |
-| lag finalización p50/p95/max | **0.07 / 0.68 / 0.72 s** | 0.47 / 0.82 / 0.82 s |
-| emisión | 36 finales append-only (deltas chicos: "uh", "and") | 9 finales-oración + **150 volátiles** (replace) |
-| chars finales | 461 | 603 |
-| estilo | limpio | verbatim con disfluencias ("uh") |
-| con locale equivocado (es_CL sobre EN) | — | latencia igual (p50 0.16) pero texto basura → detectar idioma ANTES importa |
+| first result | 1.13 s | **1.03 s** |
+| finalization lag p50/p95/max | **0.07 / 0.68 / 0.72 s** | 0.47 / 0.82 / 0.82 s |
+| emission | 36 append-only finals (small deltas: "uh", "and") | 9 sentence finals + **150 volatile** (replace) |
+| final chars | 461 | 603 |
+| style | clean | verbatim with disfluencies ("uh") |
+| with wrong locale (es_CL over EN) | — | same latency (p50 0.16) but garbage text → detecting language BEFOREHAND matters |
 
-Lectura M12: ambos viven bajo 1 s de p95 — SpeechAnalyzer ES viable para el rol vivo (cero descarga, volátiles ricos para captions, vocabulario custom), Parakeet conserva la corona de finalización. Lo que falta para intercambiarlos en la app es la decisión append-vs-replace del coalescer (los volátiles de Speech REEMPLAZAN el rango; el coalescer actual asume deltas).
+M12 interpretation: both remain below 1 s p95 — SpeechAnalyzer IS viable for the live role (zero download, rich volatile results for captions, custom vocabulary), while Parakeet retains the finalization crown. What remains before swapping them in the app is the coalescer's append-vs-replace decision (Speech volatile results REPLACE the range; the current coalescer assumes deltas).
 
-## Coalescer de captions — `CaptionCoalescer` (usado por la app)
+## Caption coalescer — `CaptionCoalescer` (used by the app)
 
-La fila más nueva crece mientras el canal siga hablando: pausas mid-sentence ≤ 6 s se quedan en la fila, continuación < 2 s tras oración cerrada fluye en micrófono, pero en `system`/`room` la pausa tras oración se corta antes (0.6 s) para que dos participantes remotos consecutivos se vean como dos filas `Ellos` aun antes del refine. Corte duro a 280 chars. Deltas sin contenido léxico se descartan salvo puntuación final que complete una fila existente (`"."` aislado no crea `Yo: .`). Identidad de fila estable (id/startTime se conservan) → SwiftUI no reconstruye y la traducción solo traduce filas cerradas (solo la última fila global puede crecer). 13 tests.
+The newest row grows while the channel keeps speaking: mid-sentence pauses ≤ 6 s stay in the row, continuation < 2 s after a closed sentence flows on the microphone, but on `system`/`room` the pause after a sentence splits earlier (0.6 s) so two consecutive remote participants appear as two `Ellos` rows even before refine. Hard split at 280 chars. Deltas without lexical content are discarded except final punctuation that completes an existing row (an isolated `"."` does not create `Yo: .`). Stable row identity (id/startTime are preserved) → SwiftUI does not rebuild, and translation translates only closed rows (only the last global row can grow). 13 tests.
 
-## Vocabulario — `VocabularyPrompt`
+## Vocabulary — `VocabularyPrompt`
 
-`parse()` (coma-separado, trim, dedup) y `text()` (frase natural EN/ES según idioma hablado homogéneo). Fuentes: Ajustes de la app (UserDefaults `customVocabulary`, editor de lista), CLI `--vocab`. **VocabularyMiner** (puro, 6 tests): mina términos con forma de dominio (acrónimos, códigos letra+dígito, CamelCase — nunca palabras capitalizadas normales) que recurren ≥3 veces en los últimos 12 transcripts y los sugiere como chips en Ajustes → Vocabulario. **Flujo revisar-antes-de-agregar** (caso de campo: el minero sugiere lo que Whisper OYÓ — sugirió "Qord2M" cuando el término real era "Kord2m"): el chip precarga el campo de texto para corregir la grafía y confirmar con Add; la ✕ descarta para siempre (`vocabularyRejectedSuggestions` en defaults, el minero los excluye); adoptar una versión editada también rechaza la forma cruda mal-oída para que no vuelva. No corre bajo XCUITest para no mover el layout async. Consumidores: WhisperEngine (promptTokens solo cuando hay idioma homogéneo), resúmenes (glossary, spec 04). **Parakeet vivo no tiene hook de bias** — el refine corrige el registro.
+`parse()` (comma-separated, trim, dedup) and `text()` (natural EN/ES sentence according to the homogeneous spoken language). Sources: app Ajustes (UserDefaults `customVocabulary`, list editor), CLI `--vocab`. **VocabularyMiner** (pure, 6 tests): mines domain-shaped terms (acronyms, letter+digit codes, CamelCase — never ordinary capitalized words) that recur ≥3 times in the last 12 transcripts and suggests them as chips in Ajustes → Vocabulario. **Review-before-adding flow** (field case: the miner suggests what Whisper HEARD — it suggested "Qord2M" when the real term was "Kord2m"): the chip preloads the text field to correct the spelling and confirm with Add; ✕ rejects it forever (`vocabularyRejectedSuggestions` in defaults, excluded by the miner); adopting an edited version also rejects the raw misheard form so it does not return. It does not run under XCUITest to avoid shifting the layout asynchronously. Consumers: WhisperEngine (promptTokens only when the language is homogeneous), summaries (glossary, spec 04). **Live Parakeet has no bias hook** — refine corrects the record.
 
-## Límites conocidos
+## Known limitations
 
-1. Parakeet vivo degrada con acentos no nativos (verificado: intervención EN con acento salió garbled en vivo; el mismo audio por Whisper salió limpio) — respuesta actual: refine.
-2. Sin modo dictado system-wide (idea futura, ROADMAP "Later").
-3. ~~Cuantizadas de Whisper aún no en el catálogo~~ — **HECHO (M12)**: variante **626 MB** (`whisper-large-v3-626mb`, 17 artefactos sha256-pineados al mismo commit de argmax que turbo) para poco disco. `WhisperEngine.loadRecommended(descriptor:)` la selecciona; `AppServices.loadWhisperIfNeeded` la elige según el toggle "Whisper compacto" (Ajustes) y recarga si cambia; el recomendador la activa si detecta poco disco. Default sigue siendo turbo.
-4. FluidAudio pineado por revisión `c367a18e` (timeout del type-checker en su CLI target en v0.15.4; fix upstream #732 sin release) — volver a `.upToNextMinor` cuando salga > 0.15.4.
+1. Live Parakeet degrades with non-native accents (verified: an accented EN contribution was garbled live; the same audio through Whisper was clean) — current response: refine.
+2. System-wide dictation is implemented in the macOS app (⌥⌘D by default,
+   configurable, with a non-activating panel and Accessibility paste/restore;
+   see spec 06). It reuses live Parakeet and does not change meeting capture.
+3. ~~Quantized Whisper models not yet in the catalog~~ — **DONE (M12)**: **626 MB** variant (`whisper-large-v3-626mb`, 17 artifacts sha256-pinned to the same argmax commit as turbo) for low disk space. `WhisperEngine.loadRecommended(descriptor:)` selects it; `AppServices.loadWhisperIfNeeded` chooses it according to the "Whisper compacto" toggle (Ajustes) and reloads if it changes; the recommender enables it if low disk space is detected. Turbo remains the default.
+4. ~~FluidAudio pinned by revision `c367a18e`~~ — **RESOLVED**:
+   `Package.swift` uses `.upToNextMinor(from: "0.15.5")`, which contains the
+   upstream #732 type-checker fix.

@@ -1,8 +1,4 @@
-import AVFoundation
-import AudioCaptureKit
-import DiarizationKit
-import IntegrationsKit
-import IntelligenceKit
+import ApplicationKit
 import PortavozCore
 import SwiftUI
 
@@ -12,12 +8,12 @@ import SwiftUI
 /// silently — their user already knows the app.
 struct OnboardingView: View {
     @Environment(AppServices.self) private var services
-    @Binding var isPresented: Bool
+    let onFinish: () -> Void
 
     @State private var step = 0
-    @State private var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    @State private var micGranted = false
     @State private var calendarConnected = false
-    @State private var advice: EngineAdvice?
+    @State private var providerRecommendation: LocalSummaryProviderRecommendation?
     @State private var downloadingModels = false
     @State private var modelsReady = false
     @State private var enrolling = false
@@ -35,7 +31,10 @@ struct OnboardingView: View {
             footer
         }
         .frame(width: 520, height: 480)
-        .task { advice = HardwareRecommender.advise(await services.currentHardwareProfile()) }
+        .task {
+            providerRecommendation = await services
+                .discoverLocalSummaryProviders().recommendation
+        }
         .onDisappear { listen.cancel() }
     }
 
@@ -169,7 +168,7 @@ struct OnboardingView: View {
         }
         // The first listen already prompted for the mic — reflect that here.
         .onAppear {
-            micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+            micGranted = services.microphonePermissionGranted
         }
     }
 
@@ -191,11 +190,13 @@ struct OnboardingView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            if let advice {
+            if let providerRecommendation {
                 Divider()
-                Label(advice.headline, systemImage: "wand.and.stars.inverse")
+                Label(
+                    providerRecommendation.localizedHeadline,
+                    systemImage: "wand.and.stars.inverse")
                     .font(.callout.weight(.medium))
-                ForEach(advice.reasons, id: \.self) { reason in
+                ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
                     Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
                 }
                 Text("You can change the summary engine anytime in Settings.")
@@ -207,7 +208,10 @@ struct OnboardingView: View {
     /// Whether the first-listen captured enough audio to enroll from directly
     /// (≥ 4 s), so the user needn't speak a second time.
     private var canReuseFirstListen: Bool {
-        Double(listen.capturedSamples.count) >= listen.capturedSampleRate * 4
+        LocalVoiceSample(
+            samples: listen.capturedSamples,
+            sampleRate: listen.capturedSampleRate
+        ).duration >= LocalVoiceSample.minimumEnrollmentDuration
     }
 
     private var voice: some View {
@@ -233,14 +237,17 @@ struct OnboardingView: View {
                         Button("Use my first listen") { enrollVoice(reusingFirstListen: true) }
                             .buttonStyle(.borderedProminent)
                             .tint(PVDesign.accent)
+                            .accessibilityIdentifier("onboarding-voice-reuse")
                         Text("Reuses what you just said — no need to speak again.")
                             .font(.caption).foregroundStyle(.secondary)
                         Button("Record a fresh 12 seconds") { enrollVoice(reusingFirstListen: false) }
                             .buttonStyle(.bordered)
+                            .accessibilityIdentifier("onboarding-voice-record-fresh")
                     } else {
                         Button("Enroll my voice") { enrollVoice(reusingFirstListen: false) }
                             .buttonStyle(.borderedProminent)
                             .tint(PVDesign.accent)
+                            .accessibilityIdentifier("onboarding-voice-enroll")
                     }
                 }
             }
@@ -309,14 +316,14 @@ struct OnboardingView: View {
     // MARK: - Actions
 
     private func requestMicrophone() {
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            Task { @MainActor in micGranted = granted }
+        Task { @MainActor in
+            micGranted = await services.requestMicrophonePermission()
         }
     }
 
     private func requestCalendar() {
         Task { @MainActor in
-            calendarConnected = await CalendarAttendeeSource.requestAccess()
+            calendarConnected = await services.requestOnboardingCalendarAccess()
         }
     }
 
@@ -337,47 +344,24 @@ struct OnboardingView: View {
         Task { @MainActor in
             defer { enrolling = false }
             do {
-                try await services.loadEnginesIfNeeded()
-                guard let diarizer = services.diarizer else { return }
-                let samples: [Float]
-                let sampleRate: Double
                 if reusingFirstListen {
-                    samples = listen.capturedSamples
-                    sampleRate = listen.capturedSampleRate
+                    _ = try await services.enrollLocalVoice(from: LocalVoiceSample(
+                        samples: listen.capturedSamples,
+                        sampleRate: listen.capturedSampleRate))
                 } else {
-                    (samples, sampleRate) = try await recordEnrollmentSample()
+                    _ = try await services.recordAndEnrollLocalVoice(
+                        seconds: 12,
+                        mode: .raw)
                 }
-                let voiceprint = try await diarizer.extractVoiceprint(
-                    fromSamples: samples, sampleRate: sampleRate)
-                try VoiceprintStore().save(voiceprint)
-                services.invalidateDiarizer()
                 enrolled = true
             } catch {
-                enrollMessage = L10n.format("Could not enroll: %@", error.localizedDescription)
+                enrollMessage = L10n.format("Could not enroll: %@", UseCaseErrorMessages.describe(error))
             }
         }
     }
 
-    /// Records a fresh 12 s microphone sample for enrollment (the path when
-    /// the user opts to speak again rather than reuse the first listen).
-    private func recordEnrollmentSample() async throws -> (samples: [Float], sampleRate: Double) {
-        let microphone = MicrophoneSource(voiceProcessing: false)
-        let stream = try await microphone.start()
-        var samples: [Float] = []
-        var sampleRate = 16_000.0
-        let deadline = Date().addingTimeInterval(12)
-        for try await chunk in stream {
-            samples.append(contentsOf: chunk.samples)
-            sampleRate = chunk.sampleRate
-            if Date() >= deadline { break }
-        }
-        await microphone.stop()
-        return (samples, sampleRate)
-    }
-
     private func finish() {
-        UserDefaults.standard.set(true, forKey: "hasOnboarded")
-        isPresented = false
+        onFinish()
     }
 }
 

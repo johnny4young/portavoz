@@ -2,6 +2,7 @@ import Foundation
 import PortavozCore
 import XCTest
 
+@testable import ApplicationKit
 @testable import IntelligenceKit
 @testable import StorageKit
 
@@ -19,6 +20,83 @@ final class RAGFusionTests: XCTestCase {
         let fused = RAGFusion.fuse(lexical: ["a", "b", "c"], semantic: [], limit: 2)
         XCTAssertEqual(fused, ["a", "b"], "single-list order preserved, limit honored")
         XCTAssertTrue(RAGFusion.fuse(lexical: [String](), semantic: [], limit: 5).isEmpty)
+    }
+}
+
+final class LexicalRAGCandidateTests: XCTestCase {
+    func testTermLevelFusionRewardsCrossTermEvidenceWithoutDuplicates() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Plan conjunto", startedAt: Date())
+        try await store.save(meeting)
+
+        let relevant = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "presupuesto proyecto plan conjunto",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        let budgetPrefix = Array(repeating: "presupuesto", count: 8).joined(separator: " ")
+        var budgetOnly: [TranscriptSegment] = []
+        budgetOnly.reserveCapacity(20)
+        for index in 0..<20 {
+            budgetOnly.append(TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .system,
+                text: "\(budgetPrefix) detalle \(index)",
+                startTime: Double(index + 1),
+                endTime: Double(index + 2),
+                isFinal: true))
+        }
+        let projectPrefix = Array(repeating: "proyecto", count: 8).joined(separator: " ")
+        var projectOnly: [TranscriptSegment] = []
+        projectOnly.reserveCapacity(20)
+        for index in 0..<20 {
+            projectOnly.append(TranscriptSegment(
+                meetingID: meeting.id,
+                channel: .system,
+                text: "\(projectPrefix) contexto \(index)",
+                startTime: Double(index + 21),
+                endTime: Double(index + 22),
+                isFinal: true))
+        }
+        try await store.save([relevant] + budgetOnly + projectOnly)
+
+        let hits = try await LocalAskMeetingRetrieval.retrieveLexical(
+            queries: [
+                "¿Qué acordamos sobre presupuesto y proyecto?",
+                "PRESUPUESTO proyecto",
+            ],
+            store: store,
+            limit: 12)
+
+        XCTAssertEqual(hits.first?.segmentID, relevant.id)
+        XCTAssertEqual(hits.first?.text, relevant.text)
+        XCTAssertEqual(Set(hits.map(\.segmentID)).count, hits.count)
+        XCTAssertEqual(hits.count, 12)
+    }
+
+    func testLongQuestionFallbackKeepsLateTermsRetrievable() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Long query", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "ninthword decisive context",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+
+        let hits = try await LocalAskMeetingRetrieval.retrieveLexical(
+            queries: [
+                "alpha bravo charlie delta echoo foxtrot golfxx hotelx ninthword",
+            ],
+            store: store,
+            limit: 6)
+
+        XCTAssertEqual(hits.map(\.segmentID), [segment.id])
     }
 }
 
@@ -85,9 +163,117 @@ final class SemanticStoreTests: XCTestCase {
         XCTAssertTrue(pending.isEmpty)
     }
 
+    func testProductionWidthSemanticRankingKeepsTopKAndSkipsMalformedVectors() async throws {
+        let segments = try await seed((0..<18).map {
+            "complete semantic passage \($0) with enough source context"
+        })
+        let dimension = 512
+        let embeddings = Dictionary(uniqueKeysWithValues:
+            segments.enumerated().map { index, segment -> (UUID, [Float]) in
+                if index == segments.count - 1 {
+                    return (segment.id, [1, 0])
+                }
+                if index == segments.count - 2 {
+                    var vector = [Float](repeating: 0, count: dimension)
+                    vector[0] = .nan
+                    return (segment.id, vector)
+                }
+                let similarity = Float(segments.count - index) / Float(segments.count)
+                var vector = [Float](repeating: 0, count: dimension)
+                vector[0] = similarity
+                vector[1] = sqrt(1 - similarity * similarity)
+                return (segment.id, vector)
+            })
+        try await store.storeEmbeddings(embeddings)
+
+        var query = [Float](repeating: 0, count: dimension)
+        query[0] = 1
+        let hits = try await store.searchSemantic(query, limit: 5)
+
+        XCTAssertEqual(hits.count, 5)
+        XCTAssertEqual(hits.first?.segmentID, segments[0].id)
+        XCTAssertEqual(hits.first?.text, segments[0].text)
+        XCTAssertFalse(hits.contains { $0.segmentID == segments.last?.id })
+        XCTAssertFalse(hits.contains { $0.segmentID == segments.dropLast().last?.id })
+    }
+
+    func testProductionWidthSemanticRankingMatchesScalarReference() async throws {
+        let segments = try await seed((0..<257).map { "deterministic semantic passage \($0)" })
+        let dimension = 512
+        let query = Self.normalizedVector(seed: 0xC0FFEE, dimension: dimension)
+        let vectors = (0..<segments.count).map {
+            Self.normalizedVector(seed: UInt64($0 + 1), dimension: dimension)
+        }
+        try await store.storeEmbeddings(Dictionary(uniqueKeysWithValues:
+            zip(segments, vectors).map { ($0.id, $1) }))
+
+        var reference: [(order: Int, id: UUID, score: Float)] = []
+        for (order, segment) in segments.enumerated() {
+            var score: Float = 0
+            for index in query.indices { score += vectors[order][index] * query[index] }
+            reference.append((order, segment.id, score))
+        }
+        reference.sort { left, right in
+            left.score > right.score
+                || (left.score == right.score && left.order < right.order)
+        }
+        let expected = reference.prefix(17).map(\.id)
+
+        let hits = try await store.searchSemantic(query, limit: 17)
+
+        XCTAssertEqual(hits.map(\.segmentID), expected)
+    }
+
+    func testSemanticRankingBreaksTiesByTraversalAndRejectsNonPositiveLimits() async throws {
+        let segments = try await seed((0..<4).map { "equal semantic passage \($0)" })
+        try await store.storeEmbeddings(Dictionary(uniqueKeysWithValues:
+            segments.map { ($0.id, [Float](arrayLiteral: 1, 0)) }))
+
+        let hits = try await store.searchSemantic([1, 0], limit: 2)
+        let zeroLimit = try await store.searchSemantic([1, 0], limit: 0)
+        let negativeLimit = try await store.searchSemantic([1, 0], limit: -1)
+        let emptyQuery = try await store.searchSemantic([], limit: 2)
+
+        XCTAssertEqual(hits.map(\.segmentID), Array(segments.prefix(2).map(\.id)))
+        XCTAssertTrue(zeroLimit.isEmpty)
+        XCTAssertTrue(negativeLimit.isEmpty)
+        XCTAssertTrue(emptyQuery.isEmpty)
+    }
+
+    func testSemanticRankingMaterializesLargeLimitsInBoundedQueries() async throws {
+        let segments = try await seed((0..<501).map { "large semantic result \($0)" })
+        let embeddings = Dictionary(uniqueKeysWithValues:
+            segments.enumerated().map { index, segment -> (UUID, [Float]) in
+                let score = Float(index + 1) / Float(segments.count)
+                return (segment.id, [score, sqrt(1 - score * score)])
+            })
+        try await store.storeEmbeddings(embeddings)
+
+        let hits = try await store.searchSemantic([1, 0], limit: segments.count)
+
+        XCTAssertEqual(hits.count, segments.count)
+        XCTAssertEqual(hits.first?.segmentID, segments.last?.id)
+        XCTAssertEqual(hits.last?.segmentID, segments.first?.id)
+    }
+
     func testBlobRoundTrip() {
         let vector: [Float] = [0.25, -1, 3.5, .pi]
         XCTAssertEqual(MeetingStore.floats(from: MeetingStore.blob(from: vector)), vector)
+    }
+
+    private static func normalizedVector(seed: UInt64, dimension: Int) -> [Float] {
+        var state = seed
+        var vector = [Float](repeating: 0, count: dimension)
+        var normSquared: Float = 0
+        for index in vector.indices {
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            let value = Float(state >> 40) / Float(1 << 24) * 2 - 1
+            vector[index] = value
+            normSquared += value * value
+        }
+        let norm = sqrt(normSquared)
+        for index in vector.indices { vector[index] /= norm }
+        return vector
     }
 }
 

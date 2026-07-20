@@ -15,6 +15,35 @@ public enum TranscriptionError: Error, LocalizedError, Sendable {
 #if canImport(Speech)
 import Speech
 
+/// Bridges AVFoundation's non-Sendable audio buffer into the converter's
+/// `@Sendable` input callback. The buffer is fully initialized before entering
+/// this box and is never mutated afterward; the lock serializes the callback's
+/// one-shot state. The unchecked conformance is intentionally limited to this
+/// SDK boundary rather than weakening the whole AVFoundation import.
+private final class AudioConverterInputBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private let source: AVAudioPCMBuffer
+    private var delivered = false
+
+    init(source: AVAudioPCMBuffer) {
+        self.source = source
+    }
+
+    func nextBuffer(
+        status: UnsafeMutablePointer<AVAudioConverterInputStatus>
+    ) -> AVAudioBuffer? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !delivered else {
+            status.pointee = .noDataNow
+            return nil
+        }
+        delivered = true
+        status.pointee = .haveData
+        return source
+    }
+}
+
 /// Apple's `SpeechAnalyzer`/`SpeechTranscriber` (macOS 26) in the LIVE
 /// role — the spike that answers D25's open architecture question: does
 /// the OS engine compete with Parakeet for captions? Zero download when
@@ -181,16 +210,10 @@ public struct SpeechAnalyzerEngine: Sendable {
         guard let output = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity)
         else { return nil }
 
-        var fed = false
+        let input = AudioConverterInputBox(source: source)
         var conversionError: NSError?
         converter.convert(to: output, error: &conversionError) { _, status in
-            if fed {
-                status.pointee = .noDataNow
-                return nil
-            }
-            fed = true
-            status.pointee = .haveData
-            return source
+            input.nextBuffer(status: status)
         }
         guard conversionError == nil, output.frameLength > 0 else { return nil }
         return output

@@ -1,16 +1,16 @@
-import PortavozCore
-import StorageKit
+import ApplicationKit
 import SwiftUI
 
 /// Sidebar section: soft-deleted meetings with one-click restore. Deletes
 /// were ALWAYS tombstones (D4) — this finally gives them a door back.
 /// Collapsed by default; invisible while the trash is empty.
 struct TrashSection: View {
-    @Environment(AppServices.self) private var services
     @AppStorage("trashSectionExpanded") private var expanded = false
-    /// Loaded by LibraryView's reload — a lifecycle modifier on a
-    /// Section-producing view inside a List does not reliably fire.
-    let items: [MeetingStore.DeletedMeeting]
+    /// Supplied by LibraryModel's parent-level observation — a lifecycle
+    /// modifier on a Section-producing view inside a List does not reliably fire.
+    let items: [LibraryTrashItem]
+    let onRestore: (LibraryTrashItem) -> Void
+    let onPurge: (LibraryTrashItem) -> Void
 
     var body: some View {
         if !items.isEmpty {
@@ -25,7 +25,7 @@ struct TrashSection: View {
         }
     }
 
-    private func row(_ entry: MeetingStore.DeletedMeeting) -> some View {
+    private func row(_ entry: LibraryTrashItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.meeting.title).lineLimit(1)
@@ -37,10 +37,7 @@ struct TrashSection: View {
             }
             Spacer()
             Button {
-                Task {
-                    try? await services.store.restore(entry.meeting.id)
-                    services.libraryVersion += 1
-                }
+                onRestore(entry)
             } label: {
                 Image(systemName: "arrow.uturn.backward")
             }
@@ -50,9 +47,7 @@ struct TrashSection: View {
         .selectionDisabled()
         .contextMenu {
             Button("Delete permanently", role: .destructive) {
-                Task {
-                    await services.purgeMeeting(entry)
-                }
+                onPurge(entry)
             }
         }
     }

@@ -87,9 +87,23 @@ public struct MeetingHealth: Sendable, Equatable {
         in segments: [TranscriptSegment],
         into counts: inout [SpeakerID: Int]
     ) {
+        var prefixMaximumEnd: [TimeInterval] = []
+        prefixMaximumEnd.reserveCapacity(segments.count)
+        var maximumEnd = -TimeInterval.infinity
+        for segment in segments {
+            maximumEnd = max(maximumEnd, segment.endTime)
+            prefixMaximumEnd.append(maximumEnd)
+        }
+
         for (index, segment) in segments.enumerated() {
             guard let interrupter = segment.speakerID else { continue }
-            for previous in segments[..<index].reversed() {
+            guard index > 0 else { continue }
+            for previousIndex in stride(from: index - 1, through: 0, by: -1) {
+                // Once every earlier segment has ended, no older overlap can
+                // exist. A plain break on the nearest ended segment would be
+                // incorrect because an older, longer segment may still span it.
+                guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }
+                let previous = segments[previousIndex]
                 if previous.endTime <= segment.startTime { continue }
                 guard let interrupted = previous.speakerID, interrupted != interrupter else {
                     continue

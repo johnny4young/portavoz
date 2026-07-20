@@ -1,5 +1,6 @@
 import EventKit
 import Foundation
+import PortavozCore
 
 /// Calendar attendees around a meeting's start time — candidate names
 /// for `SpeakerNamer` (M6). Requires the user to grant calendar access
@@ -105,19 +106,5 @@ public struct CalendarAttendeeSource: Sendable {
             }
         }
         return names
-    }
-}
-
-/// The next calendar event, reduced to what a pre-meeting brief needs.
-public struct UpcomingEvent: Sendable, Equatable, Hashable, Identifiable {
-    public var id: String { title + startDate.timeIntervalSince1970.description }
-    public let title: String
-    public let startDate: Date
-    public let attendees: [String]
-
-    public init(title: String, startDate: Date, attendees: [String]) {
-        self.title = title
-        self.startDate = startDate
-        self.attendees = attendees
     }
 }

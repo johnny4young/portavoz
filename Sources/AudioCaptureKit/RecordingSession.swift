@@ -7,13 +7,18 @@ import PortavozCore
 /// who-said-what.
 public actor RecordingSession {
     public struct Summary: Sendable {
+        /// Reader-visible files that passed inspection and atomic publication.
         public let files: [AudioChannel: URL]
+        /// Finalized media evidence keyed by structural capture channel.
+        public let publishedFiles: [AudioChannel: PublishedCaptureFile]
         public let secondsWritten: [AudioChannel: TimeInterval]
         /// Highest absolute sample per channel (0...1). A channel that wrote
         /// audio but peaks at 0 delivered pure silence — on `.system` that
         /// almost always means the system-audio-recording permission is
         /// missing (macOS taps yield silence instead of failing).
         public let peaks: [AudioChannel: Float]
+        /// Root-mean-square amplitude per channel (0...1 for normal PCM).
+        public let rms: [AudioChannel: Float]
         /// Capture errors per channel; a failed channel doesn't kill the session.
         public let errors: [AudioChannel: String]
 
@@ -21,11 +26,15 @@ public actor RecordingSession {
             files: [AudioChannel: URL],
             secondsWritten: [AudioChannel: TimeInterval],
             peaks: [AudioChannel: Float] = [:],
+            rms: [AudioChannel: Float] = [:],
+            publishedFiles: [AudioChannel: PublishedCaptureFile] = [:],
             errors: [AudioChannel: String] = [:]
         ) {
             self.files = files
+            self.publishedFiles = publishedFiles
             self.secondsWritten = secondsWritten
             self.peaks = peaks
+            self.rms = rms
             self.errors = errors
         }
 
@@ -45,6 +54,7 @@ public actor RecordingSession {
     private var writers: [AudioChannel: CaptureFileWriter] = [:]
     private var consumers: [AudioChannel: Task<Void, Never>] = [:]
     private var peaks: [AudioChannel: Float] = [:]
+    private var rms: [AudioChannel: Float] = [:]
     private var errors: [AudioChannel: String] = [:]
     public private(set) var isRecording = false
 
@@ -52,7 +62,7 @@ public actor RecordingSession {
         self.outputDirectory = outputDirectory
     }
 
-    /// Starts every source and streams its chunks into its own WAV file.
+    /// Starts every source and streams its chunks into its own CAF file.
     /// Writers are created lazily on the first chunk, at the source's real
     /// sample rate.
     ///
@@ -69,32 +79,51 @@ public actor RecordingSession {
         do {
             for source in newSources {
                 let channel = source.channel
-                let url = outputDirectory.appendingPathComponent("\(channel.rawValue).caf")
+                let stagingURL = outputDirectory.appendingPathComponent(
+                    AudioCapturePath.stagingFilename(for: channel))
                 let stream = try await source.start()
                 sources[channel] = source
 
                 consumers[channel] = Task { [weak self] in
                     var writer: CaptureFileWriter?
                     var peak: Float = 0
+                    var sumSquares = 0.0
+                    var sampleCount: Int64 = 0
                     do {
                         for try await chunk in stream {
                             if writer == nil {
-                                let created = try CaptureFileWriter(url: url, sampleRate: chunk.sampleRate)
+                                let created = try CaptureFileWriter(
+                                    url: stagingURL, sampleRate: chunk.sampleRate)
                                 writer = created
                                 await self?.register(writer: created, for: channel)
                             }
-                            for sample in chunk.samples {
-                                let magnitude = abs(sample)
-                                if magnitude > peak { peak = magnitude }
-                            }
                             try writer?.append(chunk.samples)
+                            // Signal evidence must describe bytes that were
+                            // actually accepted by the writer. Clamp to the
+                            // signed-PCM range because the file conversion
+                            // clips out-of-range Float32 input to that range.
+                            for sample in chunk.samples {
+                                let magnitude = min(abs(sample), 1)
+                                if magnitude > peak { peak = magnitude }
+                                sumSquares += Double(magnitude) * Double(magnitude)
+                            }
+                            sampleCount += Int64(chunk.samples.count)
                             onChunk?(chunk)
                         }
-                        await self?.report(peak: peak, error: nil, for: channel)
+                        let measuredRMS = sampleCount > 0
+                            ? Float((sumSquares / Double(sampleCount)).squareRoot()) : 0
+                        await self?.report(
+                            peak: peak, rms: measuredRMS, error: nil, for: channel)
                     } catch {
                         // A failed channel ends its own file; the session keeps
                         // the other channels alive.
-                        await self?.report(peak: peak, error: String(describing: error), for: channel)
+                        let measuredRMS = sampleCount > 0
+                            ? Float((sumSquares / Double(sampleCount)).squareRoot()) : 0
+                        await self?.report(
+                            peak: peak,
+                            rms: measuredRMS,
+                            error: String(describing: error),
+                            for: channel)
                     }
                 }
             }
@@ -117,20 +146,51 @@ public actor RecordingSession {
             await consumer.value
         }
 
-        var files: [AudioChannel: URL] = [:]
         var seconds: [AudioChannel: TimeInterval] = [:]
         for (channel, writer) in writers {
-            files[channel] = writer.url
             seconds[channel] = writer.secondsWritten
         }
-        let summary = Summary(files: files, secondsWritten: seconds, peaks: peaks, errors: errors)
+
+        // Capture only value snapshots before releasing every AVAudioFile.
+        // Publication happens after those handles close.
+        let stagingURLs = writers.mapValues(\.url)
+        let measuredPeaks = peaks
+        let measuredRMS = rms
 
         sources.removeAll()
         writers.removeAll()
         consumers.removeAll()
-        peaks.removeAll()
-        errors.removeAll()
         isRecording = false
+
+        var files: [AudioChannel: URL] = [:]
+        var published: [AudioChannel: PublishedCaptureFile] = [:]
+        for (channel, stagingURL) in stagingURLs {
+            let finalURL = outputDirectory.appendingPathComponent(
+                AudioCapturePath.publishedFilename(for: channel))
+            do {
+                let result = try CaptureFilePublisher.publish(
+                    stagingURL: stagingURL,
+                    finalURL: finalURL,
+                    peak: measuredPeaks[channel] ?? 0,
+                    rms: measuredRMS[channel] ?? 0)
+                files[channel] = result.url
+                published[channel] = result
+            } catch {
+                errors[channel] = errors[channel].map { "\($0); \(error)" }
+                    ?? String(describing: error)
+            }
+        }
+        let summary = Summary(
+            files: files,
+            secondsWritten: seconds,
+            peaks: measuredPeaks,
+            rms: measuredRMS,
+            publishedFiles: published,
+            errors: errors)
+
+        peaks.removeAll()
+        rms.removeAll()
+        errors.removeAll()
 
         return summary
     }
@@ -139,8 +199,14 @@ public actor RecordingSession {
         writers[channel] = writer
     }
 
-    private func report(peak: Float, error: String?, for channel: AudioChannel) {
+    private func report(
+        peak: Float,
+        rms: Float,
+        error: String?,
+        for channel: AudioChannel
+    ) {
         peaks[channel] = peak
+        self.rms[channel] = rms
         if let error { errors[channel] = error }
     }
 }

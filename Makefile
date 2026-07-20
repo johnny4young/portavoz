@@ -12,7 +12,8 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ui test-ui-en test-ui-es test-ui-preflight project app install
+.PHONY: build test test-ui test-ui-en test-ui-es test-ui-bilingual test-ui-scoped \
+	test-ui-changed test-ui-preflight project app install
 
 ## Unit tests (the package suite).
 test:
@@ -26,36 +27,48 @@ build:
 project:
 	xcodegen generate
 
-## UI smoke tests: launch the real app under XCUITest against a throwaway
-## store (`-use-temp-store`) with a deterministic seed (`-seed-demo`).
-test-ui: project
-	@$(MAKE) --no-print-directory test-ui-preflight
-	$(XCODE) xcodebuild test \
-		-project Portavoz.xcodeproj -scheme Portavoz \
-		-destination 'platform=macOS,arch=arm64' -configuration Debug \
-		-skipPackagePluginValidation -skipMacroValidation
+## UI smoke tests launch the real app against disposable state. The runner
+## builds once and reuses those products for every requested locale.
+test-ui: UI_TEST_LOCALES = default
+test-ui: test-ui-scoped
 
-## UI smoke with the process launched in English.
-test-ui-en: project
-	@$(MAKE) --no-print-directory test-ui-preflight
-	PORTAVOZ_UI_TEST_LOCALE=en $(XCODE) xcodebuild test \
-		-project Portavoz.xcodeproj -scheme Portavoz \
-		-destination 'platform=macOS,arch=arm64' -configuration Debug \
-		-skipPackagePluginValidation -skipMacroValidation
+test-ui-en: UI_TEST_LOCALES = en
+test-ui-en: test-ui-scoped
 
-## UI smoke with the process launched in Spanish.
-test-ui-es: project
+test-ui-es: UI_TEST_LOCALES = es
+test-ui-es: test-ui-scoped
+
+test-ui-bilingual: UI_TEST_LOCALES = en es
+test-ui-bilingual: test-ui-scoped
+
+## Run explicit Xcode selectors, for example:
+##   make test-ui-scoped UI_TESTS='PortavozUITests/SettingsUITests/testCategoryNavigationRevealsEachPane'
+test-ui-scoped: project
 	@$(MAKE) --no-print-directory test-ui-preflight
-	PORTAVOZ_UI_TEST_LOCALE=es $(XCODE) xcodebuild test \
-		-project Portavoz.xcodeproj -scheme Portavoz \
-		-destination 'platform=macOS,arch=arm64' -configuration Debug \
-		-skipPackagePluginValidation -skipMacroValidation
+	UI_TESTS="$(UI_TESTS)" UI_TEST_LOCALES="$(UI_TEST_LOCALES)" scripts/run-ui-tests.sh
+
+## Select UI evidence from a Git range. Known views map to feature-level
+## tests; shared/localization changes expand conservatively; docs-only changes
+## skip XCUITest. Override UI_BASE/UI_HEAD when needed.
+UI_BASE ?= origin/main
+UI_HEAD ?= HEAD
+test-ui-changed:
+	@set -e; \
+	eval "$$(python3 scripts/ui_test_scope.py --base "$(UI_BASE)" --head "$(UI_HEAD)" --format shell)"; \
+	echo "$$UI_TEST_SCOPE_SUMMARY"; \
+	if [ "$$UI_TEST_REQUIRED" = true ]; then \
+		$(MAKE) --no-print-directory test-ui-scoped \
+			UI_TESTS="$$UI_TESTS" UI_TEST_LOCALES="$$UI_TEST_LOCALES"; \
+	else \
+		echo "No UI tests required for $(UI_BASE)..$(UI_HEAD)."; \
+	fi
 
 ## XCUITest on macOS is sensitive to stale app instances and interrupting
 ## windows. Quit Portavoz before the runner tries to enable automation mode;
 ## warn about known interruptors without killing unrelated user apps.
 test-ui-preflight:
 	-osascript -e 'tell application "Portavoz Dev" to quit' >/dev/null 2>&1
+	-killall testmanagerd >/dev/null 2>&1
 	@if pgrep -x Gancho >/dev/null || pgrep -x gancho >/dev/null; then \
 		echo "⚠️  Gancho is running; if XCUITest fails because of interrupting windows, close it and retry."; \
 	fi
@@ -78,9 +91,13 @@ install:
 	plutil -replace CFBundleName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist
 	# Editing Info.plist invalidates the signature; re-sign or TCC grants
 	# (mic, screen recording) will not stick to the dev app.
-	codesign --force --options runtime --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
-		--entitlements packaging/portavoz.entitlements dist/Portavoz.app
+	codesign --force --options runtime --timestamp --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
+		--entitlements "$$(cat dist/.portavoz-sign-entitlements)" dist/Portavoz.app
+	# Verify before copying. Besides failing closed on a bad nested signature,
+	# this provides a read-after-write barrier for the freshly signed bundle.
+	codesign --verify --deep --strict --verbose=2 dist/Portavoz.app
 	rm -rf "/Applications/Portavoz Dev.app"
 	cp -R dist/Portavoz.app "/Applications/Portavoz Dev.app"
+	codesign --verify --deep --strict --verbose=2 "/Applications/Portavoz Dev.app"
 	open "/Applications/Portavoz Dev.app"
 	@echo "✅ Portavoz Dev reinstalled (release copy untouched)."

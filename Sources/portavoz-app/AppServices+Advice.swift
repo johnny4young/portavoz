@@ -1,10 +1,9 @@
+import ApplicationKit
 import Foundation
-import IntelligenceKit
-import PortavozCore
 import TranscriptionKit
 
-// Vocabulary mining + hardware advice — self-contained helpers split out
-// of the composition root to keep its type body under the lint budget.
+// Vocabulary mining — kept outside the composition root so its type body
+// stays below the lint budget.
 extension AppServices {
     /// Mines domain terms from recent transcripts to suggest for the custom
     /// vocabulary (Settings). Bounded: the last 12 meetings' segments.
@@ -24,26 +23,4 @@ extension AppServices {
         }
         return VocabularyMiner.suggest(from: texts, existing: existing)
     }
-
-    /// The machine's facts for "Recomendado para tu Mac" (M12).
-    func currentHardwareProfile() async -> HardwareProfile {
-        let memoryGB = Int((ProcessInfo.processInfo.physicalMemory + 500_000_000) / 1_000_000_000)
-        let appleIntelligence: Bool
-        if #available(macOS 26.0, *) {
-            appleIntelligence = FoundationModelSummaryProvider.unavailabilityReason() == nil
-        } else {
-            appleIntelligence = false
-        }
-        let ollama = await OllamaService.isRunning()
-        let free =
-            (try? URL(fileURLWithPath: NSHomeDirectory())
-                .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                .volumeAvailableCapacityForImportantUsage)
-        return HardwareProfile(
-            memoryGB: memoryGB,
-            appleIntelligence: appleIntelligence,
-            ollamaAvailable: ollama,
-            freeDiskGB: Int((free ?? 0) / 1_000_000_000))
-    }
-
 }

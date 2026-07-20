@@ -70,6 +70,20 @@ public struct Recipe: Codable, Sendable, Identifiable {
         all.first { $0.id == id }
     }
 
+    /// Section positions whose bullets are decisions rather than general
+    /// narrative. Only built-ins have explicit semantics; custom structures
+    /// stay unclassified until their schema can declare a kind directly.
+    public var decisionSectionIndexes: [Int] {
+        switch id {
+        case Self.general.id, Self.planning.id:
+            [1]
+        case Self.oneOnOne.id:
+            [2]
+        default:
+            []
+        }
+    }
+
     /// Prefix that marks a user-authored structure, distinguishing it from
     /// the five built-ins.
     public static let customIDPrefix = "custom-"
@@ -113,6 +127,16 @@ public struct SummaryDraft: Codable, Sendable {
     public let language: String
     public let markdown: String
     public let actionItems: [ActionItem]
+    /// Typed, source-fenced provenance for generated claims. Band 5B starts
+    /// deliberately narrow with the overview; later artifact kinds must earn
+    /// their own domain shape instead of growing a generic EAV store.
+    public let claims: [SummaryClaim]
+    /// Exact transcript support for individual bullets in decision-bearing
+    /// sections. Positions refer to the rendered, nonempty `##` sections.
+    public let decisionEvidence: [SummaryDecisionEvidence]
+    /// Exact transcript support keyed to durable action-item identity.
+    /// Completion state can change without changing this generated evidence.
+    public let actionItemEvidence: [SummaryActionItemEvidence]
     /// Identity of the summarized MATERIAL + method (D25), language
     /// EXCLUDED — a snapshot with the same fingerprint in another language
     /// is a valid translation pivot. nil on pre-jul-2026 snapshots (they
@@ -121,7 +145,10 @@ public struct SummaryDraft: Codable, Sendable {
 
     public init(
         meetingID: MeetingID, recipeID: String, language: String, markdown: String,
-        actionItems: [ActionItem], fingerprint: String? = nil
+        actionItems: [ActionItem], fingerprint: String? = nil,
+        claims: [SummaryClaim] = [],
+        decisionEvidence: [SummaryDecisionEvidence] = [],
+        actionItemEvidence: [SummaryActionItemEvidence] = []
     ) {
         self.meetingID = meetingID
         self.recipeID = recipeID
@@ -129,7 +156,287 @@ public struct SummaryDraft: Codable, Sendable {
         self.markdown = markdown
         self.actionItems = actionItems
         self.fingerprint = fingerprint
+        self.claims = claims
+        self.decisionEvidence = decisionEvidence
+        self.actionItemEvidence = actionItemEvidence
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case meetingID, recipeID, language, markdown, actionItems, fingerprint, claims
+        case decisionEvidence, actionItemEvidence
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        meetingID = try container.decode(MeetingID.self, forKey: .meetingID)
+        recipeID = try container.decode(String.self, forKey: .recipeID)
+        language = try container.decode(String.self, forKey: .language)
+        markdown = try container.decode(String.self, forKey: .markdown)
+        actionItems = try container.decode([ActionItem].self, forKey: .actionItems)
+        fingerprint = try container.decodeIfPresent(String.self, forKey: .fingerprint)
+        claims = try container.decodeIfPresent([SummaryClaim].self, forKey: .claims) ?? []
+        decisionEvidence = try container.decodeIfPresent(
+            [SummaryDecisionEvidence].self,
+            forKey: .decisionEvidence) ?? []
+        actionItemEvidence = try container.decodeIfPresent(
+            [SummaryActionItemEvidence].self,
+            forKey: .actionItemEvidence) ?? []
+    }
+}
+
+/// The generated statement that the first evidence vertical can prove.
+public enum SummaryClaimKind: String, Codable, Sendable {
+    case overview
+}
+
+/// The user's current assessment of one generated claim.
+///
+/// This state is deliberately separate from generated Markdown: correcting or
+/// rejecting a claim never rewrites model output, enters another prompt, or
+/// becomes hidden training history. One claim has at most one reversible
+/// assessment, which explicit `.portavoz` export carries with the claim.
+public enum SummaryClaimFeedbackKind: String, Codable, Sendable {
+    case correction
+    case unsupported
+}
+
+public struct SummaryClaimFeedback: Codable, Equatable, Sendable {
+    public static let maximumCorrectionLength = 2_000
+
+    public let kind: SummaryClaimFeedbackKind
+    public let correctionText: String?
+
+    public static func correction(_ text: String) -> SummaryClaimFeedback? {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty,
+              normalized.unicodeScalars.count <= maximumCorrectionLength
+        else {
+            return nil
+        }
+        return SummaryClaimFeedback(kind: .correction, correctionText: normalized)
+    }
+
+    public static let unsupported = SummaryClaimFeedback(
+        kind: .unsupported,
+        correctionText: nil)
+
+    private init(kind: SummaryClaimFeedbackKind, correctionText: String?) {
+        self.kind = kind
+        self.correctionText = correctionText
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, correctionText
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(SummaryClaimFeedbackKind.self, forKey: .kind)
+        let correctionText = try container.decodeIfPresent(String.self, forKey: .correctionText)
+        switch kind {
+        case .correction:
+            guard let feedback = correctionText.flatMap(Self.correction) else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .correctionText,
+                    in: container,
+                    debugDescription: "correction feedback must contain 1...2000 characters")
+            }
+            self = feedback
+        case .unsupported:
+            guard correctionText == nil else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .correctionText,
+                    in: container,
+                    debugDescription: "unsupported feedback cannot contain correction text")
+            }
+            self = .unsupported
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(kind, forKey: .kind)
+        try container.encodeIfPresent(correctionText, forKey: .correctionText)
+    }
+}
+
+/// Ordered transcript evidence for one generated claim.
+///
+/// `sourceTranscriptRevision` is nil while a provider result is in memory;
+/// StorageKit validates the references and stamps the current revision in the
+/// same transaction as the immutable summary snapshot.
+public struct SummaryClaim: Codable, Sendable, Identifiable {
+    public let id: SummaryClaimID
+    public let kind: SummaryClaimKind
+    public let sourceTranscriptRevision: Int?
+    public let evidenceSegmentIDs: [UUID]
+    /// Links become NULL when their segment is physically removed. Keeping a
+    /// count lets the UI fail closed without manufacturing replacement IDs.
+    public let unavailableEvidenceCount: Int
+    /// User-owned mutable metadata loaded beside this immutable generated
+    /// claim. Providers and translation pivots always create claims with nil.
+    public let feedback: SummaryClaimFeedback?
+
+    public init(
+        id: SummaryClaimID = SummaryClaimID(),
+        kind: SummaryClaimKind,
+        sourceTranscriptRevision: Int? = nil,
+        evidenceSegmentIDs: [UUID],
+        unavailableEvidenceCount: Int = 0,
+        feedback: SummaryClaimFeedback? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.evidenceSegmentIDs = evidenceSegmentIDs
+        self.unavailableEvidenceCount = unavailableEvidenceCount
+        self.feedback = feedback
+    }
+}
+
+/// Typed provenance for one decision bullet in the rendered summary.
+///
+/// The generated text remains owned by immutable Markdown. These coordinates
+/// identify that exact displayed bullet without duplicating or rewriting it.
+public struct SummaryDecisionEvidence: Codable, Sendable, Identifiable {
+    public let id: SummaryDecisionID
+    public let sectionOrdinal: Int
+    public let bulletOrdinal: Int
+    public let sourceTranscriptRevision: Int?
+    public let evidenceSegmentIDs: [UUID]
+    public let unavailableEvidenceCount: Int
+
+    public init(
+        id: SummaryDecisionID = SummaryDecisionID(),
+        sectionOrdinal: Int,
+        bulletOrdinal: Int,
+        sourceTranscriptRevision: Int? = nil,
+        evidenceSegmentIDs: [UUID],
+        unavailableEvidenceCount: Int = 0
+    ) {
+        self.id = id
+        self.sectionOrdinal = sectionOrdinal
+        self.bulletOrdinal = bulletOrdinal
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.evidenceSegmentIDs = evidenceSegmentIDs
+        self.unavailableEvidenceCount = unavailableEvidenceCount
+    }
+}
+
+/// Typed provenance for one action item, keyed independently from Markdown.
+///
+/// The task owns a stable identity because its completion state is mutable;
+/// this generated evidence remains immutable with the summary snapshot.
+public struct SummaryActionItemEvidence: Codable, Sendable, Identifiable {
+    public let id: SummaryActionItemEvidenceID
+    public let actionItemID: UUID
+    public let sourceTranscriptRevision: Int?
+    public let evidenceSegmentIDs: [UUID]
+    public let unavailableEvidenceCount: Int
+
+    public init(
+        id: SummaryActionItemEvidenceID = SummaryActionItemEvidenceID(),
+        actionItemID: UUID,
+        sourceTranscriptRevision: Int? = nil,
+        evidenceSegmentIDs: [UUID],
+        unavailableEvidenceCount: Int = 0
+    ) {
+        self.id = id
+        self.actionItemID = actionItemID
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.evidenceSegmentIDs = evidenceSegmentIDs
+        self.unavailableEvidenceCount = unavailableEvidenceCount
+    }
+}
+
+public enum TranscriptEvidenceStatus: Sendable, Equatable {
+    case current
+    case stale
+    case unavailable
+}
+
+public struct TranscriptEvidenceResolution: Sendable {
+    public let status: TranscriptEvidenceStatus
+    public let segments: [TranscriptSegment]
+
+    public init(status: TranscriptEvidenceStatus, segments: [TranscriptSegment] = []) {
+        self.status = status
+        self.segments = segments
+    }
+}
+
+/// Backward-compatible summary vocabulary for the shared transcript-evidence
+/// resolver. Companion cards use the neutral names directly.
+public typealias SummaryClaimEvidenceStatus = TranscriptEvidenceStatus
+public typealias SummaryClaimEvidenceResolution = TranscriptEvidenceResolution
+
+extension SummaryClaim {
+    /// Resolves links against one coherent Meeting Detail read model. A stale
+    /// revision or any missing/tombstoned link disables every jump: partial
+    /// citations would imply stronger provenance than Portavoz can prove.
+    public func resolveEvidence(
+        currentTranscriptRevision: Int,
+        segments: [TranscriptSegment]
+    ) -> SummaryClaimEvidenceResolution {
+        resolveTranscriptEvidence(
+            sourceTranscriptRevision: sourceTranscriptRevision,
+            evidenceSegmentIDs: evidenceSegmentIDs,
+            unavailableEvidenceCount: unavailableEvidenceCount,
+            currentTranscriptRevision: currentTranscriptRevision,
+            segments: segments)
+    }
+}
+
+extension SummaryDecisionEvidence {
+    public func resolveEvidence(
+        currentTranscriptRevision: Int,
+        segments: [TranscriptSegment]
+    ) -> SummaryClaimEvidenceResolution {
+        resolveTranscriptEvidence(
+            sourceTranscriptRevision: sourceTranscriptRevision,
+            evidenceSegmentIDs: evidenceSegmentIDs,
+            unavailableEvidenceCount: unavailableEvidenceCount,
+            currentTranscriptRevision: currentTranscriptRevision,
+            segments: segments)
+    }
+}
+
+extension SummaryActionItemEvidence {
+    public func resolveEvidence(
+        currentTranscriptRevision: Int,
+        segments: [TranscriptSegment]
+    ) -> SummaryClaimEvidenceResolution {
+        resolveTranscriptEvidence(
+            sourceTranscriptRevision: sourceTranscriptRevision,
+            evidenceSegmentIDs: evidenceSegmentIDs,
+            unavailableEvidenceCount: unavailableEvidenceCount,
+            currentTranscriptRevision: currentTranscriptRevision,
+            segments: segments)
+    }
+}
+
+func resolveTranscriptEvidence(
+    sourceTranscriptRevision: Int?,
+    evidenceSegmentIDs: [UUID],
+    unavailableEvidenceCount: Int,
+    currentTranscriptRevision: Int,
+    segments: [TranscriptSegment]
+) -> TranscriptEvidenceResolution {
+    guard let sourceTranscriptRevision else {
+        return TranscriptEvidenceResolution(status: .unavailable)
+    }
+    guard sourceTranscriptRevision == currentTranscriptRevision else {
+        return TranscriptEvidenceResolution(status: .stale)
+    }
+    guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
+        return TranscriptEvidenceResolution(status: .unavailable)
+    }
+    let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
+    let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
+    guard resolved.count == evidenceSegmentIDs.count else {
+        return TranscriptEvidenceResolution(status: .unavailable)
+    }
+    return TranscriptEvidenceResolution(status: .current, segments: resolved)
 }
 
 public struct ActionItem: Codable, Sendable, Identifiable {

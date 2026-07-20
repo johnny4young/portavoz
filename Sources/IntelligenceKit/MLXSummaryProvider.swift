@@ -100,7 +100,7 @@ actor MLXModelCache {
         // a long-prompt prefill balloons to tens of GB (observed: 31 GB on a
         // 40-min meeting until macOS suspended the process). 20 MB is the
         // value the mlx-swift-examples LLMEval app ships with.
-        MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
+        MLX.Memory.cacheLimit = 20 * 1024 * 1024
         let loaded = try await LLMModelFactory.shared.loadContainer(
             from: newDirectory, using: #huggingFaceTokenizerLoader())
         container = loaded

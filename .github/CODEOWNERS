@@ -1,0 +1,12 @@
+# Default ownership requests review without making solo-maintainer PRs
+# impossible. Required owner approval can be enabled after a second maintainer
+# joins the project.
+* @johnny4young
+
+# Privacy and release boundaries deserve an explicit owner even when future
+# directory-level ownership becomes more granular.
+/Sources/PortavozCore/DataEgress.swift @johnny4young
+/Sources/IntegrationsKit/ @johnny4young
+/packaging/ @johnny4young
+/.github/workflows/ @johnny4young
+/SECURITY.md @johnny4young

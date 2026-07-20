@@ -8,6 +8,10 @@
 #
 # Notarization (needs the Developer ID + a notarytool keychain profile):
 #   PORTAVOZ_NOTARY_PROFILE=<profile> scripts/make-dmg.sh
+#
+# Package managers extract Portavoz.app from the DMG and assess that bundle
+# independently. A distribution build therefore notarizes + staples the app
+# BEFORE creating the DMG, then notarizes + staples the outer DMG as well.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -48,11 +52,33 @@ elif [[ ! -d dist/Portavoz.app ]]; then
   exit 66
 fi
 
+if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" \
+  && ( -z "${PORTAVOZ_SIGN_IDENTITY:-}" || "${PORTAVOZ_SIGN_IDENTITY:-}" == "-" ) ]]; then
+  echo "PORTAVOZ_NOTARY_PROFILE requires PORTAVOZ_SIGN_IDENTITY." >&2
+  exit 64
+fi
+
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/Portavoz.app/Contents/Info.plist)"
 
 DMG="dist/Portavoz-$VERSION.dmg"
-STAGE="$(mktemp -d)"
-trap 'rm -rf "$STAGE"' EXIT
+WORK="$(mktemp -d)"
+STAGE="$WORK/dmg"
+mkdir -p "$STAGE"
+trap 'rm -rf "$WORK"' EXIT
+
+if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" ]]; then
+  # Fail before spending a notarization round trip when the extracted app
+  # would be unable to launch or reach its production CloudKit container.
+  scripts/verify-cloudkit-capabilities.sh dist/Portavoz.app
+  APP_ARCHIVE="$WORK/Portavoz.zip"
+  echo "Notarizing app bundle (profile: $PORTAVOZ_NOTARY_PROFILE)…"
+  ditto -c -k --sequesterRsrc --keepParent dist/Portavoz.app "$APP_ARCHIVE"
+  xcrun notarytool submit "$APP_ARCHIVE" \
+    --keychain-profile "$PORTAVOZ_NOTARY_PROFILE" --wait
+  xcrun stapler staple dist/Portavoz.app
+  xcrun stapler validate dist/Portavoz.app
+  codesign --verify --deep --strict --verbose=2 dist/Portavoz.app
+fi
 
 cp -a dist/Portavoz.app "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
@@ -65,9 +91,10 @@ if [[ -n "${PORTAVOZ_SIGN_IDENTITY:-}" ]]; then
 fi
 
 if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" ]]; then
-  echo "Notarizing (profile: $PORTAVOZ_NOTARY_PROFILE)…"
+  echo "Notarizing disk image (profile: $PORTAVOZ_NOTARY_PROFILE)…"
   xcrun notarytool submit "$DMG" --keychain-profile "$PORTAVOZ_NOTARY_PROFILE" --wait
   xcrun stapler staple "$DMG"
+  scripts/verify-distribution.sh "$DMG"
 elif [[ -z "${PORTAVOZ_SIGN_IDENTITY:-}" ]]; then
   echo "⚠️  DMG uses ad-hoc signing: suitable only for testing on this machine."
   echo "   For distribution: PORTAVOZ_SIGN_IDENTITY + PORTAVOZ_NOTARY_PROFILE."

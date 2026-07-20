@@ -1,8 +1,8 @@
+import ApplicationKit
 import Foundation
 import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
-import StorageKit
 
 /// `portavoz-cli mcp [--db <path>]`
 ///
@@ -14,7 +14,10 @@ import StorageKit
 /// Everything stays on this machine — the server only speaks through the
 /// pipes of the process that launched it.
 enum McpCommand {
-    static func run(_ arguments: [String]) async {
+    static func run(
+        _ arguments: [String],
+        platform: CLIPlatformDependencies
+    ) async {
         var dbPath: String?
         var index = 0
         while index < arguments.count {
@@ -25,15 +28,19 @@ enum McpCommand {
             index += 1
         }
 
-        let store: MeetingStore
+        let application: CLIComposition
         do {
-            store = try MeetingsCommand.openStore(dbPath: dbPath)
+            application = try CLIComposition.open(
+                dbPath: dbPath,
+                platform: platform)
         } catch {
             FileHandle.standardError.write(Data("error: \(error.localizedDescription)\n".utf8))
             return
         }
 
-        let server = MCPServer(tools: MeetingToolbox.tools(store: store))
+        let server = MCPServer(tools: MeetingToolbox.tools(
+            library: application.library,
+            ask: application.ask))
         while let line = readLine(strippingNewline: true) {
             if let response = await server.handleLine(line) {
                 print(response)
@@ -43,14 +50,16 @@ enum McpCommand {
     }
 }
 
-/// The StorageKit-backed MCP tools. Assembled here (not in
-/// IntegrationsKit) so the protocol layer stays free of Kit-to-Kit
-/// dependencies; the app can assemble the same toolbox later.
+/// Application-backed MCP tools. IntegrationsKit owns JSON-RPC transport while
+/// this executable retains protocol presentation and localized-free strings.
 enum MeetingToolbox {
     // MCP tool catalog: one long literal array of definitions,
     // one per tool; splitting it would not improve clarity.
     // swiftlint:disable:next function_body_length
-    static func tools(store: MeetingStore) -> [MCPTool] {
+    static func tools(
+        library: QueryMeetingLibrary,
+        ask: AskMeetings
+    ) -> [MCPTool] {
         // JSON schemas and one-line tool descriptions (some inside
         // multiline strings): splitting them would break the content.
         // swiftlint:disable line_length
@@ -64,7 +73,7 @@ enum MeetingToolbox {
             ) { data in
                 struct Args: Decodable { var limit: Int? }
                 let limit = (try? JSONDecoder().decode(Args.self, from: data))?.limit ?? 20
-                let meetings = try await store.meetings().prefix(limit)
+                let meetings = try await library.meetings(limit: limit)
                 guard !meetings.isEmpty else { return "No meetings in the library yet." }
                 let formatter = ISO8601DateFormatter()
                 return meetings.map {
@@ -81,7 +90,7 @@ enum MeetingToolbox {
             ) { data in
                 struct Args: Decodable { var query: String }
                 let args = try JSONDecoder().decode(Args.self, from: data)
-                let hits = try await store.search(args.query)
+                let hits = try await library.search(args.query)
                 guard !hits.isEmpty else { return "No matches for: \(args.query)" }
                 return hits.map {
                     "[\(timestamp($0.startTime))] \($0.meetingTitle) (\($0.meetingID.rawValue.uuidString)): \($0.snippet)"
@@ -95,7 +104,7 @@ enum MeetingToolbox {
                     {"type":"object","properties":{"meeting_id":{"type":"string","description":"Meeting UUID"}},"required":["meeting_id"]}
                     """
             ) { data in
-                let detail = try await detail(from: data, store: store)
+                let detail = try await detail(from: data, library: library)
                 let transcript = TranscriptFormatter.format(
                     segments: detail.segments, speakers: detail.speakers)
                 return transcript.isEmpty ? "The meeting has no transcript." : transcript
@@ -108,8 +117,10 @@ enum MeetingToolbox {
                     {"type":"object","properties":{"meeting_id":{"type":"string","description":"Meeting UUID"}},"required":["meeting_id"]}
                     """
             ) { data in
-                let detail = try await detail(from: data, store: store)
-                guard let (draft, version) = try await store.summary(detail.meeting.id) else {
+                let detail = try await detail(from: data, library: library)
+                guard let draft = detail.summary,
+                      let version = detail.summaryVersion
+                else {
                     return "The meeting has no summary yet."
                 }
                 var text = "Summary v\(version) (\(draft.language)) of \(detail.meeting.title):\n\n\(draft.markdown)"
@@ -130,18 +141,16 @@ enum MeetingToolbox {
             ) { data in
                 struct Args: Decodable { var question: String }
                 let args = try JSONDecoder().decode(Args.self, from: data)
-                let passages = try await AskPipeline.retrieve(
-                    question: args.question, store: store, limit: 6)
-                guard !passages.isEmpty else {
+                let result = try await ask.answer(
+                    args.question,
+                    limit: 6)
+                guard !result.citations.isEmpty else {
                     return "Nothing related found in the meeting library."
                 }
-                let sources = passages.enumerated().map { index, passage in
-                    "[\(index + 1)] \(passage.meetingTitle) · \(timestamp(passage.timestamp)) · \(passage.text)"
+                let sources = result.citations.enumerated().map { index, citation in
+                    "[\(index + 1)] \(citation.meetingTitle) · \(timestamp(citation.timestamp)) · \(citation.text)"
                 }.joined(separator: "\n")
-                if #available(macOS 26.0, *),
-                    FoundationModelSummaryProvider.unavailabilityReason() == nil {
-                    let answer = try await RAGAnswerer().answer(
-                        question: args.question, passages: passages)
+                if let answer = result.generatedText {
                     return "\(answer)\n\nSources:\n\(sources)"
                 }
                 return "Most relevant passages (no on-device model available):\n\(sources)"
@@ -156,7 +165,7 @@ enum MeetingToolbox {
             ) { data in
                 struct Args: Decodable { var limit: Int? }
                 let limit = (try? JSONDecoder().decode(Args.self, from: data))?.limit ?? 50
-                let items = try await store.openActionItems(limit: limit)
+                let items = try await library.openItems(limit: limit)
                 guard !items.isEmpty else { return "No pending action items." }
                 return items.map { "- \($0.item.text) (\($0.meetingTitle))" }.joined(separator: "\n")
             }
@@ -176,13 +185,16 @@ enum MeetingToolbox {
         }
     }
 
-    private static func detail(from data: Data, store: MeetingStore) async throws -> MeetingDetail {
+    private static func detail(
+        from data: Data,
+        library: QueryMeetingLibrary
+    ) async throws -> MeetingLibraryDetail {
         struct Args: Decodable { var meeting_id: String }
         guard
             let args = try? JSONDecoder().decode(Args.self, from: data),
             let uuid = UUID(uuidString: args.meeting_id)
         else { throw ToolboxError.badMeetingID }
-        guard let detail = try await store.detail(MeetingID(rawValue: uuid)) else {
+        guard let detail = try await library.detail(MeetingID(rawValue: uuid)) else {
             throw ToolboxError.meetingNotFound
         }
         return detail

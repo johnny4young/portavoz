@@ -5,6 +5,63 @@ import PortavozCore
 // Immutable versioned summary snapshots + their action items. Split out of
 // `MeetingStore.swift` so the core type stays small.
 extension MeetingStore {
+    // MARK: - Generation provenance
+
+    /// Persists a terminal model run that produced no artifact, such as a
+    /// failed or cancelled attempt. Successful runs use an artifact-specific
+    /// atomic overload so provenance can never point at missing output after
+    /// a partial write.
+    public func saveGenerationRun(_ run: GenerationRun) async throws {
+        try await database.write { db in
+            try Self.validateTerminalGenerationRun(run)
+            guard run.outcome != .succeeded else {
+                throw StorageError.invalidGenerationRun(
+                    "a succeeded run must be linked to its artifact")
+            }
+            guard try MeetingRecord.exists(
+                db, key: run.meetingID.rawValue.uuidString)
+            else { throw StorageError.meetingNotFound(run.meetingID) }
+            try GenerationRunRecord(run).insert(db)
+        }
+    }
+
+    /// Reads the provenance history for diagnostics and future product
+    /// surfaces without exposing GRDB records above StorageKit.
+    public func generationRuns(for meetingID: MeetingID) async throws -> [GenerationRun] {
+        try await database.read { db in
+            try GenerationRunRecord
+                .filter(Column("meetingID") == meetingID.rawValue.uuidString)
+                .order(Column("startedAt"), Column("rowid"))
+                .fetchAll(db)
+                .map { try $0.run }
+        }
+    }
+
+    /// Returns the run linked to one summary version. nil means the snapshot
+    /// predates provenance or was written by a workflow not adopted yet.
+    public func generationRun(
+        forSummary meetingID: MeetingID,
+        recipeID: String = Recipe.general.id,
+        version: Int? = nil
+    ) async throws -> GenerationRun? {
+        try await database.read { db in
+            var request = SummaryRecord
+                .filter(Column("meetingID") == meetingID.rawValue.uuidString)
+                .filter(Column("recipeID") == recipeID)
+                .filter(Column("deletedAt") == nil)
+            if let version {
+                request = request.filter(Column("version") == version)
+            } else {
+                request = request.order(Column("version").desc)
+            }
+            guard
+                let runID = try request.fetchOne(db)?.generationRunID,
+                let record = try GenerationRunRecord.fetchOne(db, key: runID)
+            else { return nil }
+            return try record.run
+        }
+    }
+
     // MARK: - Summaries (immutable versioned snapshots)
 
     /// Persists a new snapshot; the version auto-increments per
@@ -16,41 +73,257 @@ extension MeetingStore {
             guard try MeetingRecord.exists(db, key: meetingKey) else {
                 throw StorageError.meetingNotFound(draft.meetingID)
             }
-            let now = Date()
-            let version =
-                (try Int.fetchOne(
-                    db,
-                    sql: "SELECT MAX(version) FROM summary WHERE meetingID = ? AND recipeID = ?",
-                    arguments: [meetingKey, draft.recipeID]) ?? 0) + 1
-
-            let summaryID = UUID().uuidString
-            var summary = SummaryRecord(
-                id: summaryID,
-                meetingID: meetingKey,
-                recipeID: draft.recipeID,
-                language: draft.language,
-                markdown: draft.markdown,
-                version: version,
-                fingerprint: draft.fingerprint,
-                createdAt: now,
-                deletedAt: nil)
-            try summary.insert(db)
-
-            for item in draft.actionItems {
-                var record = ActionItemRecord(
-                    id: item.id.uuidString,
-                    summaryID: summaryID,
-                    meetingID: meetingKey,
-                    text: item.text,
-                    ownerSpeakerID: item.ownerSpeakerID?.rawValue.uuidString,
-                    isDone: item.isDone,
-                    createdAt: now,
-                    updatedAt: now,
-                    deletedAt: nil)
-                try record.insert(db)
-            }
-            return version
+            return try Self.insertSummarySnapshot(draft, at: Date(), in: db)
         }
+    }
+
+    /// Atomically installs one successful generation envelope and the
+    /// immutable summary it produced. Either both rows and all action items
+    /// commit, or none do.
+    @discardableResult
+    public func saveSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun
+    ) async throws -> Int {
+        try await database.write { db in
+            let meetingKey = draft.meetingID.rawValue.uuidString
+            guard try MeetingRecord.exists(db, key: meetingKey) else {
+                throw StorageError.meetingNotFound(draft.meetingID)
+            }
+            return try Self.insertGeneratedSummary(
+                draft,
+                generationRun: generationRun,
+                at: generationRun.finishedAt ?? generationRun.startedAt,
+                in: db)
+        }
+    }
+
+    /// Transaction-scoped primitive shared by manual regeneration and the
+    /// durable summary worker. The caller owns aggregate/lease/revision guards.
+    static func insertGeneratedSummary(
+        _ draft: SummaryDraft,
+        generationRun: GenerationRun,
+        at timestamp: Date,
+        in db: Database
+    ) throws -> Int {
+        try validateTerminalGenerationRun(generationRun)
+        guard generationRun.meetingID == draft.meetingID else {
+            throw StorageError.invalidGenerationRun(
+                "summary and run belong to different meetings")
+        }
+        guard generationRun.kind == .summary,
+              generationRun.outcome == .succeeded
+        else {
+            throw StorageError.invalidGenerationRun(
+                "a linked summary requires a succeeded summary run")
+        }
+        guard generationRun.outputLanguage == draft.language else {
+            throw StorageError.invalidGenerationRun(
+                "summary and run output languages differ")
+        }
+        try GenerationRunRecord(generationRun).insert(db)
+        return try insertSummarySnapshot(
+            draft,
+            at: timestamp,
+            generationRunID: generationRun.id,
+            in: db)
+    }
+
+    /// Transaction-scoped primitive shared by direct saves and durable job
+    /// completion. Callers must first prove that the meeting is live and that
+    /// any processing lease/input guards still hold.
+    static func insertSummarySnapshot(
+        _ draft: SummaryDraft,
+        at timestamp: Date,
+        generationRunID: GenerationRunID? = nil,
+        allowClaimFeedback: Bool = false,
+        in db: Database
+    ) throws -> Int {
+        let meetingKey = draft.meetingID.rawValue.uuidString
+        let version =
+            (try Int.fetchOne(
+                db,
+                sql: "SELECT MAX(version) FROM summary WHERE meetingID = ? AND recipeID = ?",
+                arguments: [meetingKey, draft.recipeID]) ?? 0) + 1
+
+        let summaryID = UUID().uuidString
+        let summary = SummaryRecord(
+            id: summaryID,
+            meetingID: meetingKey,
+            recipeID: draft.recipeID,
+            language: draft.language,
+            markdown: draft.markdown,
+            version: version,
+            fingerprint: draft.fingerprint,
+            generationRunID: generationRunID?.rawValue.uuidString,
+            createdAt: timestamp,
+            deletedAt: nil)
+        try summary.insert(db)
+
+        for item in draft.actionItems {
+            let record = ActionItemRecord(
+                id: item.id.uuidString,
+                summaryID: summaryID,
+                meetingID: meetingKey,
+                text: item.text,
+                ownerSpeakerID: item.ownerSpeakerID?.rawValue.uuidString,
+                isDone: item.isDone,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+                deletedAt: nil)
+            try record.insert(db)
+        }
+        try insertSummaryActionItemEvidence(
+            draft.actionItemEvidence,
+            draft: draft,
+            at: timestamp,
+            in: db)
+        try insertSummaryClaims(
+            draft.claims,
+            summaryID: summaryID,
+            meetingID: draft.meetingID,
+            allowFeedback: allowClaimFeedback,
+            at: timestamp,
+            in: db)
+        try insertSummaryDecisionEvidence(
+            draft.decisionEvidence,
+            summaryID: summaryID,
+            draft: draft,
+            at: timestamp,
+            in: db)
+        return version
+    }
+
+    /// Installs one remote immutable summary with its original identity and
+    /// version. The caller has already resolved aggregate-level concurrency;
+    /// normal local generation provenance is preserved separately when valid.
+    static func insertSyncedSummary(
+        _ summary: MeetingSyncSummary,
+        generationRunID: String?,
+        in db: Database
+    ) throws {
+        let draft = summary.draft
+        let summaryKey = summary.id.uuidString
+        try SummaryRecord(
+            id: summaryKey,
+            meetingID: summary.meetingID.rawValue.uuidString,
+            recipeID: summary.recipeID,
+            language: summary.language,
+            markdown: summary.markdown,
+            version: summary.version,
+            fingerprint: summary.fingerprint,
+            generationRunID: generationRunID,
+            createdAt: summary.createdAt,
+            deletedAt: nil)
+            .insert(db)
+        for synced in summary.actionItems {
+            let item = synced.value
+            try ActionItemRecord(
+                id: item.id.uuidString,
+                summaryID: summaryKey,
+                meetingID: summary.meetingID.rawValue.uuidString,
+                text: item.text,
+                ownerSpeakerID: item.ownerSpeakerID?.rawValue.uuidString,
+                isDone: item.isDone,
+                createdAt: synced.createdAt,
+                updatedAt: synced.updatedAt,
+                deletedAt: nil)
+                .insert(db)
+        }
+        try insertSummaryActionItemEvidence(
+            summary.actionItemEvidence,
+            draft: draft,
+            at: summary.createdAt,
+            in: db)
+        try insertSummaryClaims(
+            summary.claims,
+            summaryID: summaryKey,
+            meetingID: summary.meetingID,
+            allowFeedback: true,
+            at: summary.createdAt,
+            in: db)
+        try insertSummaryDecisionEvidence(
+            summary.decisionEvidence,
+            summaryID: summaryKey,
+            draft: draft,
+            at: summary.createdAt,
+            in: db)
+    }
+
+    private static func insertSummaryClaims(
+        _ claims: [SummaryClaim],
+        summaryID: String,
+        meetingID: MeetingID,
+        allowFeedback: Bool,
+        at timestamp: Date,
+        in db: Database
+    ) throws {
+        guard !claims.isEmpty else { return }
+        guard claims.count == 1, claims[0].kind == .overview else {
+            throw StorageError.invalidSummaryClaim(
+                "a summary may contain only one typed overview claim")
+        }
+        let claim = claims[0]
+        guard allowFeedback || claim.feedback == nil else {
+            throw StorageError.invalidSummaryClaim(
+                "generated summaries cannot write user feedback")
+        }
+        let evidence = try validatedSummaryEvidence(
+            claim.evidenceSegmentIDs,
+            unavailableCount: claim.unavailableEvidenceCount,
+            sourceRevision: claim.sourceTranscriptRevision,
+            meetingID: meetingID,
+            in: db)
+
+        let claimKey = claim.id.rawValue.uuidString
+        try SummaryClaimRecord(
+            id: claimKey,
+            summaryID: summaryID,
+            kind: claim.kind.rawValue,
+            sourceTranscriptRevision: evidence.revision,
+            createdAt: timestamp)
+            .insert(db)
+        for (ordinal, evidenceID) in evidence.ids.enumerated() {
+            try SummaryClaimSegmentRecord(
+                id: UUID().uuidString,
+                claimID: claimKey,
+                segmentID: evidenceID.uuidString,
+                ordinal: ordinal,
+                createdAt: timestamp)
+                .insert(db)
+        }
+        try insertInitialSummaryClaimFeedback(
+            claim.feedback,
+            claimKey: claimKey,
+            at: timestamp,
+            in: db)
+    }
+
+    static func validateTerminalGenerationRun(_ run: GenerationRun) throws {
+        let required = [run.providerID, run.modelID, run.inputFingerprint, run.configJSON]
+        guard required.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        else { throw StorageError.invalidGenerationRun("required identity is blank") }
+        guard let finishedAt = run.finishedAt, run.outcome != nil else {
+            throw StorageError.invalidGenerationRun("terminal run is missing outcome or finish time")
+        }
+        guard finishedAt >= run.startedAt else {
+            throw StorageError.invalidGenerationRun("finish time precedes start time")
+        }
+        if run.kind == .summary {
+            guard let outputLanguage = run.outputLanguage,
+                  !outputLanguage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else { throw StorageError.invalidGenerationRun("summary output language is blank") }
+        }
+        guard Self.isJSONObject(run.configJSON),
+              run.metricsJSON.map(Self.isJSONObject) ?? true
+        else { throw StorageError.invalidGenerationRun("configuration or metrics is not JSON") }
+    }
+
+    private static func isJSONObject(_ value: String) -> Bool {
+        guard let data = value.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data)
+        else { return false }
+        return object is [String: Any]
     }
 
     /// Loads a snapshot: the latest version by default, or an exact one.
@@ -59,6 +332,11 @@ extension MeetingStore {
     ) async throws -> (draft: SummaryDraft, version: Int)? {
         let meetingKey = id.rawValue.uuidString
         return try await database.read { db in
+            guard try MeetingRecord
+                .filter(Column("id") == meetingKey)
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db) > 0
+            else { return nil }
             var request = SummaryRecord
                 .filter(Column("meetingID") == meetingKey)
                 .filter(Column("recipeID") == recipeID)
@@ -69,22 +347,79 @@ extension MeetingStore {
                 request = request.order(Column("version").desc)
             }
             guard let record = try request.fetchOne(db) else { return nil }
-
-            let items = try ActionItemRecord
-                .filter(Column("summaryID") == record.id)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("createdAt"))
-                .fetchAll(db).map(\.actionItem)
-
-            let draft = SummaryDraft(
-                meetingID: id,
-                recipeID: record.recipeID,
-                language: record.language,
-                markdown: record.markdown,
-                actionItems: items,
-                fingerprint: record.fingerprint)
-            return (draft, record.version)
+            return try Self.summarySnapshot(record, meetingID: id, in: db)
         }
+    }
+
+    /// Latest live General-summary text for a bounded set of meetings. This
+    /// query-specific projection avoids one database round trip per brief row.
+    public func meetingBriefSummaryMarkdowns(
+        for meetingIDs: [MeetingID]
+    ) async throws -> [MeetingID: String] {
+        let meetingKeys = Array(Set(meetingIDs.map { $0.rawValue.uuidString }))
+        guard !meetingKeys.isEmpty else { return [:] }
+        return try await database.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT summary.meetingID AS meetingID,
+                           summary.markdown AS markdown
+                    FROM summary
+                    JOIN meeting ON meeting.id = summary.meetingID
+                        AND meeting.deletedAt IS NULL
+                    WHERE summary.deletedAt IS NULL
+                      AND summary.recipeID = ?
+                      AND summary.meetingID IN (
+                          \(databaseQuestionMarks(count: meetingKeys.count))
+                      )
+                      AND summary.version = (
+                          SELECT MAX(latest.version)
+                          FROM summary latest
+                          WHERE latest.meetingID = summary.meetingID
+                            AND latest.recipeID = summary.recipeID
+                            AND latest.deletedAt IS NULL
+                      )
+                    """,
+                arguments: StatementArguments([Recipe.general.id] + meetingKeys))
+            var result: [MeetingID: String] = [:]
+            result.reserveCapacity(rows.count)
+            for row in rows {
+                let id = MeetingID(rawValue: try PersistedIdentity.required(
+                    row["meetingID"], table: "summary", column: "meetingID"))
+                result[id] = row["markdown"]
+            }
+            return result
+        }
+    }
+
+    /// Loads the most recently created live snapshot across every recipe.
+    /// Meeting Detail uses this as its active structure after regeneration;
+    /// recipe-specific history remains addressable through `summary`.
+    public func mostRecentSummary(
+        _ id: MeetingID
+    ) async throws -> (draft: SummaryDraft, version: Int)? {
+        return try await database.read { db in
+            let meetingKey = id.rawValue.uuidString
+            guard try MeetingRecord
+                .filter(Column("id") == meetingKey)
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db) > 0
+            else { return nil }
+            return try Self.mostRecentSummarySnapshot(meetingID: id, in: db)
+        }
+    }
+
+    static func mostRecentSummarySnapshot(
+        meetingID: MeetingID,
+        in db: Database
+    ) throws -> (draft: SummaryDraft, version: Int)? {
+        guard let record = try SummaryRecord
+            .filter(Column("meetingID") == meetingID.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("createdAt").desc, Column("rowid").desc)
+            .fetchOne(db)
+        else { return nil }
+        return try summarySnapshot(record, meetingID: meetingID, in: db)
     }
 
     /// The latest live snapshot whose material fingerprint matches (D25):
@@ -99,6 +434,11 @@ extension MeetingStore {
     ) async throws -> (draft: SummaryDraft, version: Int)? {
         let meetingKey = id.rawValue.uuidString
         return try await database.read { db in
+            guard try MeetingRecord
+                .filter(Column("id") == meetingKey)
+                .filter(Column("deletedAt") == nil)
+                .fetchCount(db) > 0
+            else { return nil }
             var request = SummaryRecord
                 .filter(Column("meetingID") == meetingKey)
                 .filter(Column("recipeID") == recipeID)
@@ -109,22 +449,80 @@ extension MeetingStore {
                 request = request.filter(Column("language") == language)
             }
             guard let record = try request.fetchOne(db) else { return nil }
-
-            let items = try ActionItemRecord
-                .filter(Column("summaryID") == record.id)
-                .filter(Column("deletedAt") == nil)
-                .order(Column("createdAt"))
-                .fetchAll(db).map(\.actionItem)
-
-            let draft = SummaryDraft(
-                meetingID: id,
-                recipeID: record.recipeID,
-                language: record.language,
-                markdown: record.markdown,
-                actionItems: items,
-                fingerprint: record.fingerprint)
-            return (draft, record.version)
+            return try Self.summarySnapshot(record, meetingID: id, in: db)
         }
+    }
+
+    static func summarySnapshot(
+        _ record: SummaryRecord,
+        meetingID: MeetingID,
+        in db: Database
+    ) throws -> (draft: SummaryDraft, version: Int) {
+        _ = try PersistedIdentity.required(
+            record.id, table: SummaryRecord.databaseTableName, column: "id")
+        let items = try ActionItemRecord
+            .filter(Column("summaryID") == record.id)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("createdAt"))
+            .fetchAll(db).map { try $0.actionItem }
+        let actionEvidence = try summaryActionItemEvidence(
+            actionItems: items,
+            in: db)
+        let claims = try summaryClaims(summaryID: record.id, in: db)
+        let decisions = try summaryDecisionEvidence(summaryID: record.id, in: db)
+        let draft = SummaryDraft(
+            meetingID: meetingID,
+            recipeID: record.recipeID,
+            language: record.language,
+            markdown: record.markdown,
+            actionItems: items,
+            fingerprint: record.fingerprint,
+            claims: claims,
+            decisionEvidence: decisions,
+            actionItemEvidence: actionEvidence)
+        return (draft, record.version)
+    }
+
+    private static func summaryClaims(
+        summaryID: String,
+        in db: Database
+    ) throws -> [SummaryClaim] {
+        try SummaryClaimRecord
+            .filter(Column("summaryID") == summaryID)
+            .order(Column("createdAt"), Column("id"))
+            .fetchAll(db)
+            .map { record in
+                guard let kind = SummaryClaimKind(rawValue: record.kind) else {
+                    throw StorageError.invalidPersistedValue(
+                        table: SummaryClaimRecord.databaseTableName,
+                        column: "kind",
+                        value: record.kind)
+                }
+                let links = try SummaryClaimSegmentRecord
+                    .filter(Column("claimID") == record.id)
+                    .order(Column("ordinal"))
+                    .fetchAll(db)
+                let evidenceIDs = try links.compactMap { link -> UUID? in
+                    guard let value = link.segmentID else { return nil }
+                    guard let id = UUID(uuidString: value) else {
+                        throw StorageError.invalidPersistedUUID(
+                            table: SummaryClaimSegmentRecord.databaseTableName,
+                            column: "segmentID",
+                            value: value)
+                    }
+                    return id
+                }
+                return SummaryClaim(
+                    id: SummaryClaimID(rawValue: try PersistedIdentity.required(
+                        record.id,
+                        table: SummaryClaimRecord.databaseTableName,
+                        column: "id")),
+                    kind: kind,
+                    sourceTranscriptRevision: record.sourceTranscriptRevision,
+                    evidenceSegmentIDs: evidenceIDs,
+                    unavailableEvidenceCount: links.count - evidenceIDs.count,
+                    feedback: try summaryClaimFeedback(claimID: record.id, in: db))
+            }
     }
 
     /// A pending commitment with the meeting it came from.
@@ -163,96 +561,130 @@ extension MeetingStore {
     public func findingInputs(
         for meetingIDs: [MeetingID]
     ) async throws -> [MeetingID: FindingInput] {
-        guard !meetingIDs.isEmpty else { return [:] }
-        let ids = meetingIDs.map { $0.rawValue.uuidString }
         return try await database.read { db in
-            let placeholders = databaseQuestionMarks(count: ids.count)
-            let transcripts = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
-                    FROM segment
-                    WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))
-                    GROUP BY meetingID
-                    """,
-                arguments: StatementArguments(ids))
-            var byMeeting: [String: (String, String?, Int)] = [:]
-            for row in transcripts {
-                byMeeting[row["meetingID"]] = (row["transcript"] ?? "", nil, 0)
-            }
-
-            // The newest summary per meeting, and its action-item count.
-            let summaries = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT s.meetingID AS meetingID, s.markdown AS markdown,
-                           (SELECT COUNT(*) FROM actionItem ai
-                            WHERE ai.summaryID = s.id AND ai.deletedAt IS NULL) AS items
-                    FROM summary s
-                    WHERE s.deletedAt IS NULL
-                      AND s.meetingID IN (\(placeholders))
-                      AND s.version = (
-                          SELECT MAX(l.version) FROM summary l
-                          WHERE l.meetingID = s.meetingID AND l.deletedAt IS NULL)
-                    """,
-                arguments: StatementArguments(ids))
-            for row in summaries {
-                let key: String = row["meetingID"]
-                let existing = byMeeting[key] ?? ("", nil, 0)
-                byMeeting[key] = (existing.0, row["markdown"], row["items"])
-            }
-
-            var result: [MeetingID: FindingInput] = [:]
-            for (key, value) in byMeeting {
-                guard let uuid = UUID(uuidString: key) else { continue }
-                result[MeetingID(rawValue: uuid)] = FindingInput(
-                    transcript: value.0, summaryMarkdown: value.1, actionItemCount: value.2)
-            }
-            return result
+            try Self.fetchFindingInputs(in: db, for: meetingIDs)
         }
     }
 
     public func libraryFacts(topLimit: Int = 8) async throws -> LibraryFacts {
         try await database.read { db in
-            let participantRows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT displayName AS name,
-                           COUNT(DISTINCT meetingID) AS meetings
-                    FROM speaker
-                    WHERE deletedAt IS NULL
-                      AND isMe = 0
-                      AND displayName IS NOT NULL
-                      AND TRIM(displayName) != ''
-                    GROUP BY LOWER(TRIM(displayName))
-                    ORDER BY meetings DESC, LOWER(TRIM(displayName)) ASC
-                    LIMIT ?
-                    """,
-                arguments: [topLimit])
-            // Same latest-snapshot rule as `openActionItems`: superseded
-            // summary versions must not double-count their items.
-            let counts = try Row.fetchOne(
-                db,
-                sql: """
-                    SELECT SUM(actionItem.isDone = 0) AS open,
-                           SUM(actionItem.isDone = 1) AS done
-                    FROM actionItem
-                    JOIN summary ON summary.id = actionItem.summaryID
-                        AND summary.deletedAt IS NULL
-                    WHERE actionItem.deletedAt IS NULL
-                      AND summary.version = (
-                          SELECT MAX(version) FROM summary latest
-                          WHERE latest.meetingID = summary.meetingID
-                            AND latest.recipeID = summary.recipeID
-                            AND latest.deletedAt IS NULL)
-                    """)
-            return LibraryFacts(
-                topParticipants: participantRows.map {
-                    LibraryParticipant(name: $0["name"], meetings: $0["meetings"])
-                },
-                openActionItems: counts?["open"] ?? 0,
-                doneActionItems: counts?["done"] ?? 0)
+            try Self.fetchLibraryFacts(in: db, topLimit: topLimit)
         }
+    }
+
+    static func fetchFindingInputs(
+        in database: Database,
+        for meetingIDs: [MeetingID]
+    ) throws -> [MeetingID: FindingInput] {
+        try fetchFindingInputs(
+            in: database,
+            meetingKeys: meetingIDs.map { $0.rawValue.uuidString })
+    }
+
+    static func fetchFindingInputs(
+        in database: Database,
+        meetingKeys: [String]
+    ) throws -> [MeetingID: FindingInput] {
+        guard !meetingKeys.isEmpty else { return [:] }
+        let placeholders = databaseQuestionMarks(count: meetingKeys.count)
+        let transcripts = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
+                FROM segment
+                JOIN meeting ON meeting.id = segment.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE segment.deletedAt IS NULL
+                  AND segment.meetingID IN (\(placeholders))
+                GROUP BY segment.meetingID
+                """,
+            arguments: StatementArguments(meetingKeys))
+        var byMeeting: [String: (String, String?, Int)] = [:]
+        for row in transcripts {
+            byMeeting[row["meetingID"]] = (row["transcript"] ?? "", nil, 0)
+        }
+
+        // The newest summary per meeting, and its action-item count.
+        let summaries = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT s.meetingID AS meetingID, s.markdown AS markdown,
+                       (SELECT COUNT(*) FROM actionItem ai
+                        WHERE ai.summaryID = s.id AND ai.deletedAt IS NULL) AS items
+                FROM summary s
+                JOIN meeting ON meeting.id = s.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE s.deletedAt IS NULL
+                  AND s.meetingID IN (\(placeholders))
+                  AND s.version = (
+                      SELECT MAX(l.version) FROM summary l
+                      WHERE l.meetingID = s.meetingID AND l.deletedAt IS NULL)
+                """,
+            arguments: StatementArguments(meetingKeys))
+        for row in summaries {
+            let key: String = row["meetingID"]
+            let existing = byMeeting[key] ?? ("", nil, 0)
+            byMeeting[key] = (existing.0, row["markdown"], row["items"])
+        }
+
+        var result: [MeetingID: FindingInput] = [:]
+        for (key, value) in byMeeting {
+            let uuid = try PersistedIdentity.required(
+                key, table: "meeting", column: "id")
+            result[MeetingID(rawValue: uuid)] = FindingInput(
+                transcript: value.0,
+                summaryMarkdown: value.1,
+                actionItemCount: value.2)
+        }
+        return result
+    }
+
+    static func fetchLibraryFacts(
+        in database: Database,
+        topLimit: Int
+    ) throws -> LibraryFacts {
+        let participantRows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT displayName AS name,
+                       COUNT(DISTINCT speaker.meetingID) AS meetings
+                FROM speaker
+                JOIN meeting ON meeting.id = speaker.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE speaker.deletedAt IS NULL
+                  AND speaker.isMe = 0
+                  AND speaker.displayName IS NOT NULL
+                  AND TRIM(speaker.displayName) != ''
+                GROUP BY LOWER(TRIM(speaker.displayName))
+                ORDER BY meetings DESC, LOWER(TRIM(speaker.displayName)) ASC
+                LIMIT ?
+                """,
+            arguments: [topLimit])
+        // Same latest-snapshot rule as `openActionItems`: superseded summary
+        // versions must not double-count their items.
+        let counts = try Row.fetchOne(
+            database,
+            sql: """
+                SELECT SUM(actionItem.isDone = 0) AS open,
+                       SUM(actionItem.isDone = 1) AS done
+                FROM actionItem
+                JOIN summary ON summary.id = actionItem.summaryID
+                    AND summary.deletedAt IS NULL
+                JOIN meeting ON meeting.id = actionItem.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE actionItem.deletedAt IS NULL
+                  AND summary.version = (
+                      SELECT MAX(version) FROM summary latest
+                      WHERE latest.meetingID = summary.meetingID
+                        AND latest.recipeID = summary.recipeID
+                        AND latest.deletedAt IS NULL)
+                """)
+        return LibraryFacts(
+            topParticipants: participantRows.map {
+                LibraryParticipant(name: $0["name"], meetings: $0["meetings"])
+            },
+            openActionItems: counts?["open"] ?? 0,
+            doneActionItems: counts?["done"] ?? 0)
     }
 
     /// Pending action items across all meetings — only from the LATEST
@@ -260,42 +692,53 @@ extension MeetingStore {
     /// never duplicate their items.
     public func openActionItems(limit: Int = 50) async throws -> [OpenActionItem] {
         try await database.read { db in
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT actionItem.id AS id,
-                           actionItem.text AS text,
-                           actionItem.ownerSpeakerID AS ownerSpeakerID,
-                           actionItem.meetingID AS meetingID,
-                           meeting.title AS title
-                    FROM actionItem
-                    JOIN summary ON summary.id = actionItem.summaryID
-                        AND summary.deletedAt IS NULL
-                    JOIN meeting ON meeting.id = actionItem.meetingID
-                        AND meeting.deletedAt IS NULL
-                    WHERE actionItem.deletedAt IS NULL
-                      AND actionItem.isDone = 0
-                      AND summary.version = (
-                          SELECT MAX(version) FROM summary latest
-                          WHERE latest.meetingID = summary.meetingID
-                            AND latest.recipeID = summary.recipeID
-                            AND latest.deletedAt IS NULL)
-                    ORDER BY actionItem.createdAt DESC
-                    LIMIT ?
-                    """,
-                arguments: [limit])
-            return rows.map { row in
-                OpenActionItem(
-                    meetingID: MeetingID(rawValue: UUID(uuidString: row["meetingID"]) ?? UUID()),
-                    meetingTitle: row["title"],
-                    item: ActionItem(
-                        id: UUID(uuidString: row["id"]) ?? UUID(),
-                        text: row["text"],
-                        ownerSpeakerID: (row["ownerSpeakerID"] as String?)
-                            .flatMap { UUID(uuidString: $0) }.map { SpeakerID(rawValue: $0) },
-                        isDone: false)
-                )
-            }
+            try Self.fetchOpenActionItems(in: db, limit: limit)
+        }
+    }
+
+    static func fetchOpenActionItems(
+        in database: Database,
+        limit: Int
+    ) throws -> [OpenActionItem] {
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT actionItem.id AS id,
+                       actionItem.text AS text,
+                       actionItem.ownerSpeakerID AS ownerSpeakerID,
+                       actionItem.meetingID AS meetingID,
+                       meeting.title AS title
+                FROM actionItem
+                JOIN summary ON summary.id = actionItem.summaryID
+                    AND summary.deletedAt IS NULL
+                JOIN meeting ON meeting.id = actionItem.meetingID
+                    AND meeting.deletedAt IS NULL
+                WHERE actionItem.deletedAt IS NULL
+                  AND actionItem.isDone = 0
+                  AND summary.version = (
+                      SELECT MAX(version) FROM summary latest
+                      WHERE latest.meetingID = summary.meetingID
+                        AND latest.recipeID = summary.recipeID
+                        AND latest.deletedAt IS NULL)
+                ORDER BY actionItem.createdAt DESC
+                LIMIT ?
+                """,
+            arguments: [limit])
+        return try rows.map { row in
+            OpenActionItem(
+                meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                    row["meetingID"], table: "actionItem", column: "meetingID")),
+                meetingTitle: row["title"],
+                item: ActionItem(
+                    id: try PersistedIdentity.required(
+                        row["id"], table: "actionItem", column: "id"),
+                    text: row["text"],
+                    ownerSpeakerID: try PersistedIdentity.optional(
+                        row["ownerSpeakerID"] as String?,
+                        table: "actionItem", column: "ownerSpeakerID"
+                    ).map { SpeakerID(rawValue: $0) },
+                    isDone: false)
+            )
         }
     }
 

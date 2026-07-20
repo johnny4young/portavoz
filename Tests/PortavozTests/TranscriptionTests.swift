@@ -186,6 +186,10 @@ final class ModelStoreTests: XCTestCase {
 
         let report = await store.verify(descriptor)
         XCTAssertTrue(report.isComplete)
+        let installation = await store.verifiedInstallation(descriptor)
+        XCTAssertEqual(installation?.directory, directory)
+        XCTAssertEqual(installation?.descriptorRevision, descriptor.revision)
+        XCTAssertEqual(installation?.artifactBytes, Int64(descriptor.totalSizeBytes))
     }
 
     func testVerifyDetectsMissingAndCorrupted() async throws {
@@ -202,11 +206,215 @@ final class ModelStoreTests: XCTestCase {
         XCTAssertEqual(report.corrupted, ["bundle.mlmodelc/weights/weight.bin"])
         XCTAssertEqual(report.missing, ["vocab.json"])
         XCTAssertFalse(report.isComplete)
+        let corruptedInstallation = await store.verifiedInstallation(descriptor)
+        XCTAssertNil(corruptedInstallation)
 
         // A second ensureAvailable heals both.
         _ = try await store.ensureAvailable(descriptor)
         let healed = await store.verify(descriptor)
         XCTAssertTrue(healed.isComplete)
+        let healedInstallation = await store.verifiedInstallation(descriptor)
+        XCTAssertNotNil(healedInstallation)
+        let weightDirectory = directory
+            .appendingPathComponent("bundle.mlmodelc/weights")
+        let leftovers = try FileManager.default.contentsOfDirectory(
+            atPath: weightDirectory.path)
+            .filter { $0.contains(".download-") }
+        XCTAssertTrue(leftovers.isEmpty, "atomic repair must remove sibling staging files")
+    }
+
+    func testVerifiedLifecycleCachesOnlySuccessAndSupportsExplicitReverification() async throws {
+        let (descriptor, _) = try makeFixtureModel()
+        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"))
+        let lifecycle = VerifiedModelLifecycle(store: store)
+
+        let missing = await lifecycle.installation(for: descriptor)
+        XCTAssertNil(missing)
+        let installed = try await lifecycle.install(descriptor)
+        XCTAssertEqual(installed.descriptorRevision, descriptor.revision)
+
+        try Data("tampered".utf8).write(
+            to: installed.directory
+                .appendingPathComponent("bundle.mlmodelc/weights/weight.bin"))
+        let cached = await lifecycle.installation(for: descriptor)
+        XCTAssertEqual(
+            cached,
+            installed,
+            "successful process evidence should avoid re-hashing on every consumer")
+        let corrupted = await lifecycle.installation(
+            for: descriptor,
+            forceVerification: true)
+        XCTAssertNil(corrupted)
+
+        let healed = try await lifecycle.install(descriptor)
+        XCTAssertEqual(healed.directory, installed.directory)
+        try await lifecycle.remove(descriptor)
+        let removed = await lifecycle.installation(for: descriptor)
+        XCTAssertNil(removed)
+    }
+
+    func testVerifiedLifecycleDiscardsEvidenceSupersededByInvalidation() async throws {
+        let (descriptor, _) = try makeFixtureModel()
+        let firstVerificationStarted = Gate()
+        let releaseFirstVerification = Gate()
+        let calls = CallCounter()
+        let evidence = ModelStore.VerifiedInstallation(
+            descriptorID: descriptor.id,
+            descriptorRevision: descriptor.revision,
+            directory: workspace.appendingPathComponent("verified"),
+            artifactBytes: Int64(descriptor.totalSizeBytes))
+        let lifecycle = VerifiedModelLifecycle(
+            verifyInstallation: { _ in
+                let call = await calls.next()
+                if call == 1 {
+                    await firstVerificationStarted.open()
+                    await releaseFirstVerification.wait()
+                    return evidence
+                }
+                return nil
+            },
+            installModel: { _, _ in evidence },
+            removeModel: { _ in })
+
+        let request = Task {
+            await lifecycle.installation(
+                for: descriptor,
+                forceVerification: true)
+        }
+        await firstVerificationStarted.wait()
+        await lifecycle.invalidate(descriptor)
+        await releaseFirstVerification.open()
+
+        let current = await request.value
+        XCTAssertNil(current, "a waiter must not receive superseded installation evidence")
+        let callCount = await calls.value
+        XCTAssertEqual(callCount, 2, "the waiter must re-check current state after invalidation")
+    }
+
+    func testVerifiedLifecycleForcedVerificationSupersedesAnOlderCheck() async throws {
+        let (descriptor, _) = try makeFixtureModel()
+        let firstVerificationStarted = Gate()
+        let secondVerificationStarted = Gate()
+        let releaseFirstVerification = Gate()
+        let releaseSecondVerification = Gate()
+        let calls = CallCounter()
+        let obsoleteEvidence = ModelStore.VerifiedInstallation(
+            descriptorID: descriptor.id,
+            descriptorRevision: descriptor.revision,
+            directory: workspace.appendingPathComponent("obsolete"),
+            artifactBytes: Int64(descriptor.totalSizeBytes))
+        let lifecycle = VerifiedModelLifecycle(
+            verifyInstallation: { _ in
+                let call = await calls.next()
+                if call == 1 {
+                    await firstVerificationStarted.open()
+                    await releaseFirstVerification.wait()
+                    return obsoleteEvidence
+                }
+                await secondVerificationStarted.open()
+                await releaseSecondVerification.wait()
+                return nil
+            },
+            installModel: { _, _ in obsoleteEvidence },
+            removeModel: { _ in })
+
+        let first = Task {
+            await lifecycle.installation(
+                for: descriptor,
+                forceVerification: true)
+        }
+        await firstVerificationStarted.wait()
+        let second = Task {
+            await lifecycle.installation(
+                for: descriptor,
+                forceVerification: true)
+        }
+        await secondVerificationStarted.wait()
+        await releaseFirstVerification.open()
+        await releaseSecondVerification.open()
+
+        let firstResult = await first.value
+        let secondResult = await second.value
+        XCTAssertNil(firstResult, "the original waiter must join the forced current check")
+        XCTAssertNil(secondResult)
+        let callCount = await calls.value
+        XCTAssertGreaterThanOrEqual(callCount, 2)
+        XCTAssertLessThanOrEqual(
+            callCount,
+            3,
+            "a superseded waiter may perform one uncached confirmation after the current nil result")
+    }
+
+    func testVerifiedLifecycleSerializesInstallAndRemoveForOneDescriptor() async throws {
+        let (descriptor, _) = try makeFixtureModel()
+        let installStarted = Gate()
+        let releaseInstall = Gate()
+        let events = Recorder()
+        let evidence = ModelStore.VerifiedInstallation(
+            descriptorID: descriptor.id,
+            descriptorRevision: descriptor.revision,
+            directory: workspace.appendingPathComponent("verified"),
+            artifactBytes: Int64(descriptor.totalSizeBytes))
+        let lifecycle = VerifiedModelLifecycle(
+            verifyInstallation: { _ in nil },
+            installModel: { _, _ in
+                await events.add("install-start")
+                await installStarted.open()
+                await releaseInstall.wait()
+                await events.add("install-end")
+                return evidence
+            },
+            removeModel: { _ in
+                await events.add("remove")
+            })
+
+        let install = Task { try await lifecycle.install(descriptor) }
+        await installStarted.wait()
+        let remove = Task { try await lifecycle.remove(descriptor) }
+        for _ in 0..<10 { await Task.yield() }
+        let beforeRelease = await events.events
+        XCTAssertEqual(beforeRelease, ["install-start"])
+
+        await releaseInstall.open()
+        _ = try await install.value
+        try await remove.value
+
+        let finalEvents = await events.events
+        XCTAssertEqual(finalEvents, ["install-start", "install-end", "remove"])
+        let current = await lifecycle.installation(for: descriptor)
+        XCTAssertNil(current, "the later removal must remain the current lifecycle truth")
+    }
+
+    func testVerifiedLifecycleReportsInstallThatCommittedAfterCancellation() async throws {
+        let (descriptor, _) = try makeFixtureModel()
+        let installStarted = Gate()
+        let releaseCommittedInstall = Gate()
+        let evidence = ModelStore.VerifiedInstallation(
+            descriptorID: descriptor.id,
+            descriptorRevision: descriptor.revision,
+            directory: workspace.appendingPathComponent("verified"),
+            artifactBytes: Int64(descriptor.totalSizeBytes))
+        let lifecycle = VerifiedModelLifecycle(
+            verifyInstallation: { _ in nil },
+            installModel: { _, _ in
+                await installStarted.open()
+                await releaseCommittedInstall.wait()
+                return evidence
+            },
+            removeModel: { _ in })
+
+        let install = Task { try await lifecycle.install(descriptor) }
+        await installStarted.wait()
+        install.cancel()
+        await releaseCommittedInstall.open()
+
+        let result = try await install.value
+        XCTAssertEqual(result, evidence)
+        let current = await lifecycle.installation(for: descriptor)
+        XCTAssertEqual(
+            current,
+            evidence,
+            "late cancellation must not report failure after filesystem publication")
     }
 
     func testChecksumMismatchRejectsDownload() async throws {
@@ -348,6 +556,15 @@ private actor Gate {
 private actor Recorder {
     private(set) var events: [String] = []
     func add(_ event: String) { events.append(event) }
+}
+
+private actor CallCounter {
+    private(set) var value = 0
+
+    func next() -> Int {
+        value += 1
+        return value
+    }
 }
 
 // MARK: - Segment mapping
@@ -610,6 +827,23 @@ final class SpokenLanguageDetectorTests: XCTestCase {
         XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments))
     }
 
+    func testExplicitTranscriptPolicyOverridesMixedAutoDetection() {
+        let meeting = Meeting(
+            title: "Mixed call",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let segments = [
+            languageSegment("uno dos tres", language: "es"),
+            languageSegment("one two three", language: "en"),
+        ]
+
+        XCTAssertEqual(
+            SpokenLanguageDetector.transcriptionLanguageHint(
+                for: meeting,
+                segments: segments,
+                policy: .fixed(.spanish)),
+            "es")
+    }
+
     func testDetectsHomogeneousSpanishTextLocally() {
         let segments = [
             languageSegment(
@@ -799,6 +1033,7 @@ final class RefineDraftLossyGuardTests: XCTestCase {
             meetingID: id, speakerID: nil, channel: .system,
             text: "x", startTime: 0, endTime: newSpeech, isFinal: true)
         return RefineDraft(
+            sourceTranscriptRevision: 0,
             language: nil, speakers: [], segments: [segment],
             oldSegmentCount: 1, oldSpeakerCount: 1,
             oldSpeechSeconds: oldSpeech, meetingSeconds: meeting)

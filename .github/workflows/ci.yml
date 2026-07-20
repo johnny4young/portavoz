@@ -5,30 +5,62 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # macos-latest images carry several Xcodes and the default rotates
       # per runner — mlx-swift needs Swift tools 6.3+, so pin to the
       # newest Xcode on the image instead of playing image lottery.
       - name: Select newest Xcode
         run: |
-          NEWEST="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
           echo "Selecting $NEWEST"
           sudo xcode-select -s "$NEWEST"
       - name: Swift version
         run: swift --version
-      - name: Build
-        run: swift build
+      - name: Build with current-SDK diagnostics as errors
+        run: swift build -Xswiftc -warnings-as-errors
       - name: Test
+        run: swift test
+
+  sequoia-compatibility:
+    # The product floor is Sonoma 14.4, but Sequoia is the oldest supported
+    # release lane. Run the complete package suite on that OS instead of only
+    # compiling against an old deployment target from the latest runner.
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Select newest Xcode available on Sequoia
+        run: |
+          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
+          echo "Selecting $NEWEST"
+          sudo xcode-select -s "$NEWEST"
+      - name: Runtime and SDK evidence
+        run: |
+          sw_vers
+          swift --version
+          xcrun --show-sdk-version
+      - name: Build on Sequoia
+        run: swift build
+      - name: Test on Sequoia
         run: swift test
 
   lint:
     runs-on: macos-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install SwiftLint
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
@@ -37,4 +69,12 @@ jobs:
       # Strict (`strict: true` in .swiftlint.yml): ANY violation breaks
       # the build. Source code currently passes with zero violations.
       - name: SwiftLint
-        run: swiftlint lint --strict --reporter github-actions-logging
+        run: swiftlint lint --strict --no-cache --reporter github-actions-logging
+
+  repository-hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Reject local planning state, generated files, and ticket-key leakage
+        run: scripts/check-repository-hygiene.sh

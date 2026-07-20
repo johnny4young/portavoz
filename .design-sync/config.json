@@ -1,6 +1,0 @@
-{
-  "projectId": "fd556236-4527-4023-af96-2992c14ec8b7",
-  "projectName": "Portavoz Design System",
-  "mode": "pull-reference",
-  "note": "Swift/SwiftUI repo — no React DS to push. The design system was authored IN Claude Design; this config pins the project and docs/design/ds/ holds the curated pull (tokens, readme, SKILL, voice-tone, 6a implementation spec). Never push/delete remote files from this repo without an explicit user ask."
-}

@@ -42,28 +42,33 @@ public struct TranscriptSegment: Codable, Sendable, Identifiable {
     }
 }
 
-/// A participant in a meeting. `isMe` is resolved from the microphone
-/// channel (hardware truth) or from the user's enrolled voiceprint.
+/// One observed participant in a meeting. `isMe` is resolved from the
+/// microphone channel (hardware truth) or from the user's enrolled voiceprint.
+/// `personID` is a separately confirmed cross-meeting identity; diarization,
+/// calendar candidates, and voice matches never populate it automatically.
 public struct Speaker: Codable, Sendable, Identifiable {
     public var id: SpeakerID
     public let meetingID: MeetingID
     /// Diarization label before a name is known (e.g. "Speaker 2").
     public var label: String
-    /// Resolved human name, mapped automatically (LLM + calendar) or by the user.
+    /// Meeting-local human name, accepted from a suggestion or entered by the user.
     public var displayName: String?
     public var isMe: Bool
+    public var personID: PersonID?
 
     public init(
         id: SpeakerID = SpeakerID(),
         meetingID: MeetingID,
         label: String,
         displayName: String? = nil,
-        isMe: Bool = false
+        isMe: Bool = false,
+        personID: PersonID? = nil
     ) {
         self.id = id
         self.meetingID = meetingID
         self.label = label
         self.displayName = displayName
         self.isMe = isMe
+        self.personID = personID
     }
 }

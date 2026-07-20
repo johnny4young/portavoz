@@ -139,7 +139,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     /// job holds the live slot (D7: lo vivo nunca espera a lo batch).
     public func transcribeFile(
         at url: URL,
-        hints: TranscriptionHints = TranscriptionHints()
+        hints: TranscriptionHints = TranscriptionHints(),
+        channel: AudioChannel = .system
     ) async throws -> FileTranscription {
         let config = ASRConfig(
             parallelChunkConcurrency: 1,
@@ -169,7 +170,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
             audioDuration: audioDuration,
             confidence: Double(result.confidence),
             meetingID: meetingID,
-            channel: .system,
+            channel: channel,
             language: hints.language
         )
         await manager.cleanup()

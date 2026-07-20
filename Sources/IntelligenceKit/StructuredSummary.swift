@@ -8,10 +8,18 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
     public struct Section: Codable, Sendable, Equatable {
         public var heading: String
         public var bullets: [String]
+        /// One exact E-tag list per bullet. Optional keeps responses created
+        /// before typed decision evidence decodable.
+        public var bulletEvidence: [[String]]?
 
-        public init(heading: String, bullets: [String]) {
+        public init(
+            heading: String,
+            bullets: [String],
+            bulletEvidence: [[String]]? = nil
+        ) {
             self.heading = heading
             self.bullets = bullets
+            self.bulletEvidence = bulletEvidence
         }
     }
 
@@ -20,21 +28,33 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
         /// Speaker label as spoken in the transcript ("Me", "S1", a name);
         /// empty when ownership wasn't stated.
         public var owner: String
+        /// Exact request-local E-tags supporting this commitment.
+        public var evidence: [String]?
 
-        public init(text: String, owner: String = "") {
+        public init(text: String, owner: String = "", evidence: [String]? = nil) {
             self.text = text
             self.owner = owner
+            self.evidence = evidence
         }
     }
 
     public var overview: String
     public var sections: [Section]
     public var actionItems: [Item]
+    /// Compact transcript tags (E1, E2, …) supporting only the overview.
+    /// Optional keeps older provider responses and local fixtures decodable.
+    public var overviewEvidence: [String]?
 
-    public init(overview: String, sections: [Section], actionItems: [Item]) {
+    public init(
+        overview: String,
+        sections: [Section],
+        actionItems: [Item],
+        overviewEvidence: [String]? = nil
+    ) {
         self.overview = overview
         self.sections = sections
         self.actionItems = actionItems
+        self.overviewEvidence = overviewEvidence
     }
 }
 
@@ -126,7 +146,8 @@ extension StructuredSummary {
     /// Builds the final draft, resolving action-item owners against the
     /// meeting's speakers by label or display name (case-insensitive).
     public func draft(
-        for request: SummaryRequest
+        for request: SummaryRequest,
+        includeEvidence: Bool = true
     ) -> SummaryDraft {
         let items = actionItems.map { item -> ActionItem in
             let owner = request.speakers.first { speaker in
@@ -135,12 +156,128 @@ extension StructuredSummary {
             }
             return ActionItem(text: item.text, ownerSpeakerID: owner?.id)
         }
+        let evidence = TranscriptFormatter.formatWithEvidence(
+            segments: request.segments,
+            speakers: request.speakers)
+        let evidenceIDs = includeEvidence
+            ? TranscriptFormatter.resolveEvidenceTags(
+                overviewEvidence ?? [], segmentIDsByTag: evidence.segmentIDsByTag)
+            : []
+        let claims = evidenceIDs.isEmpty
+            || overview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? []
+            : [SummaryClaim(kind: .overview, evidenceSegmentIDs: evidenceIDs)]
+        let decisions = typedDecisionEvidence(
+            for: request,
+            segmentIDsByTag: evidence.segmentIDsByTag,
+            includeEvidence: includeEvidence)
+        let actionEvidence = typedActionItemEvidence(
+            items: items,
+            segmentIDsByTag: evidence.segmentIDsByTag,
+            includeEvidence: includeEvidence)
         return SummaryDraft(
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
             language: request.targetLanguage,
             markdown: markdown(recipe: request.recipe),
-            actionItems: items
+            actionItems: items,
+            claims: claims,
+            decisionEvidence: decisions,
+            actionItemEvidence: actionEvidence
         )
+    }
+
+    private func typedActionItemEvidence(
+        items: [ActionItem],
+        segmentIDsByTag: [String: UUID],
+        includeEvidence: Bool
+    ) -> [SummaryActionItemEvidence] {
+        guard includeEvidence, items.count == actionItems.count else { return [] }
+        return zip(items, actionItems).compactMap { item, structured -> SummaryActionItemEvidence? in
+            let ids = TranscriptFormatter.resolveEvidenceTags(
+                structured.evidence ?? [],
+                segmentIDsByTag: segmentIDsByTag)
+            guard !ids.isEmpty else { return nil }
+            return SummaryActionItemEvidence(
+                actionItemID: item.id,
+                evidenceSegmentIDs: ids)
+        }
+    }
+
+    private func typedDecisionEvidence(
+        for request: SummaryRequest,
+        segmentIDsByTag: [String: UUID],
+        includeEvidence: Bool
+    ) -> [SummaryDecisionEvidence] {
+        guard includeEvidence,
+              sections.count == request.recipe.sections.count,
+              !request.recipe.decisionSectionIndexes.isEmpty
+        else { return [] }
+
+        var result: [SummaryDecisionEvidence] = []
+        var renderedSectionOrdinal = 0
+        for (sectionIndex, section) in sections.enumerated() where !section.bullets.isEmpty {
+            if !actionItems.isEmpty, Self.isActionItemsHeading(section.heading) { continue }
+            defer { renderedSectionOrdinal += 1 }
+            guard request.recipe.decisionSectionIndexes.contains(sectionIndex),
+                  let bulletEvidence = section.bulletEvidence,
+                  bulletEvidence.count == section.bullets.count
+            else { continue }
+            for (bulletOrdinal, tags) in bulletEvidence.enumerated() {
+                let ids = TranscriptFormatter.resolveEvidenceTags(
+                    tags,
+                    segmentIDsByTag: segmentIDsByTag)
+                guard !ids.isEmpty else { continue }
+                result.append(SummaryDecisionEvidence(
+                    sectionOrdinal: renderedSectionOrdinal,
+                    bulletOrdinal: bulletOrdinal,
+                    evidenceSegmentIDs: ids))
+            }
+        }
+        return result
+    }
+
+    /// Translation preserves typed evidence only when the rendered section
+    /// and bullet coordinate still exists after positional validation.
+    static func translatedDecisionEvidence(
+        from pivot: SummaryDraft,
+        into sections: [Section]
+    ) -> [SummaryDecisionEvidence] {
+        pivot.decisionEvidence.compactMap { decision in
+            guard sections.indices.contains(decision.sectionOrdinal),
+                  sections[decision.sectionOrdinal].bullets.indices.contains(
+                    decision.bulletOrdinal)
+            else { return nil }
+            return SummaryDecisionEvidence(
+                sectionOrdinal: decision.sectionOrdinal,
+                bulletOrdinal: decision.bulletOrdinal,
+                sourceTranscriptRevision: decision.sourceTranscriptRevision,
+                evidenceSegmentIDs: decision.evidenceSegmentIDs,
+                unavailableEvidenceCount: decision.unavailableEvidenceCount)
+        }
+    }
+
+    /// Action items receive fresh IDs on translation; evidence follows the
+    /// corresponding item position rather than a rendered Markdown section.
+    static func translatedActionItemEvidence(
+        from pivot: SummaryDraft,
+        into items: [ActionItem]
+    ) -> [SummaryActionItemEvidence] {
+        guard pivot.actionItems.count == items.count else { return [] }
+        let evidenceByItem = pivot.actionItemEvidence.reduce(
+            into: [UUID: SummaryActionItemEvidence]()
+        ) { result, evidence in
+            if result[evidence.actionItemID] == nil {
+                result[evidence.actionItemID] = evidence
+            }
+        }
+        return zip(pivot.actionItems, items).compactMap { oldItem, newItem in
+            guard let evidence = evidenceByItem[oldItem.id] else { return nil }
+            return SummaryActionItemEvidence(
+                actionItemID: newItem.id,
+                sourceTranscriptRevision: evidence.sourceTranscriptRevision,
+                evidenceSegmentIDs: evidence.evidenceSegmentIDs,
+                unavailableEvidenceCount: evidence.unavailableEvidenceCount)
+        }
     }
 }

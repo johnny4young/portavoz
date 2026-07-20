@@ -5,6 +5,7 @@ import SwiftUI
 /// Self-contained (its Keychain state lives here, not in SettingsView);
 /// the secret goes to the Keychain — never the database (D8).
 struct GitHubSection: View {
+    @Environment(AppServices.self) private var services
     @State private var token = ""
     @State private var hasStoredToken = false
     @State private var tokenMessage: String?
@@ -14,21 +15,26 @@ struct GitHubSection: View {
             SecureField("Personal token (scope: gist)", text: $token)
             HStack {
                 Button("Save in Keychain") {
-                    do {
-                        try SecretStore.set(token, service: SecretStore.gitHubTokenService)
-                        token = ""
-                        hasStoredToken = true
-                        tokenMessage = L10n.text("Token saved.")
-                    } catch {
-                        tokenMessage = error.localizedDescription
+                    let value = token
+                    Task {
+                        do {
+                            try await services.secrets.set(value, for: .gitHubToken)
+                            token = ""
+                            hasStoredToken = true
+                            tokenMessage = L10n.text("Token saved.")
+                        } catch {
+                            tokenMessage = error.localizedDescription
+                        }
                     }
                 }
                 .disabled(token.isEmpty)
                 if hasStoredToken {
                     Button("Delete token", role: .destructive) {
-                        try? SecretStore.delete(service: SecretStore.gitHubTokenService)
-                        hasStoredToken = false
-                        tokenMessage = L10n.text("Token deleted.")
+                        Task {
+                            try? await services.secrets.delete(.gitHubToken)
+                            hasStoredToken = false
+                            tokenMessage = L10n.text("Token deleted.")
+                        }
                     }
                 }
             }
@@ -48,8 +54,10 @@ struct GitHubSection: View {
                 hasStoredToken = false
                 return
             }
-            hasStoredToken =
-                ((try? SecretStore.get(service: SecretStore.gitHubTokenService))) != nil
+            Task {
+                hasStoredToken =
+                    (try? await services.secrets.contains(.gitHubToken)) ?? false
+            }
         }
     }
 }

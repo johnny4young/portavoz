@@ -3,12 +3,22 @@ import PortavozCore
 
 /// One retrieved piece of context for the answerer.
 public struct RAGPassage: Sendable, Equatable {
+    /// Exact transcript identity when this passage came from a stored segment.
+    /// Cross-meeting search callers may omit it and keep timestamp-only context.
+    public let segmentID: UUID?
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let timestamp: TimeInterval
     public let text: String
 
-    public init(meetingID: MeetingID, meetingTitle: String, timestamp: TimeInterval, text: String) {
+    public init(
+        segmentID: UUID? = nil,
+        meetingID: MeetingID,
+        meetingTitle: String,
+        timestamp: TimeInterval,
+        text: String
+    ) {
+        self.segmentID = segmentID
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.timestamp = timestamp

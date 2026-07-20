@@ -1,12 +1,11 @@
+import ApplicationKit
 import Foundation
-import IntelligenceKit
-import IntegrationsKit
 import PortavozCore
 import XCTest
 
 final class BriefRelevanceTests: XCTestCase {
-    private func passage(_ meeting: MeetingID, _ title: String, _ text: String) -> RAGPassage {
-        RAGPassage(meetingID: meeting, meetingTitle: title, timestamp: 0, text: text)
+    private func passage(_ meeting: MeetingID, _ title: String, _ text: String) -> AskCitation {
+        AskCitation(meetingID: meeting, meetingTitle: title, timestamp: 0, text: text)
     }
 
     func testTermsDeduplicateAndDropShortWords() {

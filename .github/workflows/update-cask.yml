@@ -28,9 +28,10 @@ jobs:
   update-cask:
     name: Bump the portavoz cask
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out portavoz (for the cask template)
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Resolve version and DMG checksum
         id: release
@@ -47,7 +48,7 @@ jobs:
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
 
       - name: Check out the tap
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: johnny4young/homebrew-tap
           ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}

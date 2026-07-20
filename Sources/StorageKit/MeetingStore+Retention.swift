@@ -37,7 +37,8 @@ extension MeetingStore {
                         .filter(Column("isFinal") == true)
                         .fetchCount(db) > 0
                     return RetentionCandidate(
-                        meetingID: MeetingID(rawValue: UUID(uuidString: record.id) ?? UUID()),
+                        meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                            record.id, table: MeetingRecord.databaseTableName, column: "id")),
                         relativePath: record.audioDirectory ?? "",
                         policy: try MeetingRecord.decode(record.retention),
                         endedAt: record.endedAt,

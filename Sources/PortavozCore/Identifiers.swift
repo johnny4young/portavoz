@@ -15,7 +15,61 @@ public struct SpeakerID: Hashable, Codable, Sendable, RawRepresentable {
     public init() { self.rawValue = UUID() }
 }
 
+public struct PersonID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
 public struct SummaryID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct SummaryClaimID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct SummaryDecisionID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct SummaryActionItemEvidenceID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct CompanionCardEvidenceID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct AudioAssetID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct ProcessingJobID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct GenerationRunID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct DataEgressEventID: Hashable, Codable, Sendable, RawRepresentable {
     public let rawValue: UUID
     public init(rawValue: UUID) { self.rawValue = rawValue }
     public init() { self.rawValue = UUID() }

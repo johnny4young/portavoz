@@ -1,0 +1,53 @@
+{
+  "firstContent": {
+    "category": "meeting-detail",
+    "durationMilliseconds": 91.865917,
+    "name": "Meeting Detail First Content",
+    "subsystem": "app.portavoz.mac"
+  },
+  "fixture": {
+    "audio": "none",
+    "durationMinutes": 120,
+    "segmentCount": 5000,
+    "speakerCount": 4,
+    "storage": "disposable-temp-store",
+    "summaryMutationAfterSeconds": 3
+  },
+  "generatedAt": "2026-07-17T03:22:58.771799Z",
+  "host": {
+    "architecture": "arm64",
+    "operatingSystem": "26.5.2",
+    "operatingSystemBuild": "25F84"
+  },
+  "limitations": [
+    "xctrace emitted 'Trace file had no SwiftUI data'; the baseline does not claim view-body invalidation counts on this toolchain."
+  ],
+  "reproduction": {
+    "application": "/Applications/Portavoz Dev.app",
+    "releaseApplicationProtected": true,
+    "script": "scripts/run-detail-ui-baseline.sh"
+  },
+  "responsiveness": {
+    "maximumPotentialHangMilliseconds": 0,
+    "potentialHangCount": 0,
+    "potentialHangThresholdMilliseconds": 250,
+    "potentialHangs": []
+  },
+  "schemaVersion": 1,
+  "swiftUI": {
+    "status": "unavailable-toolchain",
+    "updateRowCount": 0,
+    "xctraceWarningPresent": true
+  },
+  "timeProfiler": {
+    "meetingDetailViewSymbolsPresent": true,
+    "sampleRowCount": 9643,
+    "transcriptSegmentsViewSymbolsPresent": true
+  },
+  "toolchain": {
+    "traceDurationSeconds": 10,
+    "xcode": "Xcode 26.6",
+    "xcodeBuild": "17F113",
+    "xctrace": "xctrace version 16.0 (17F113)"
+  }
+}

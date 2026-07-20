@@ -1,0 +1,113 @@
+name: Scoped UI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scoped-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      required: ${{ steps.select.outputs.required }}
+      tests: ${{ steps.select.outputs.tests }}
+      locales: ${{ steps.select.outputs.locales }}
+      summary: ${{ steps.select.outputs.summary }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Validate the selector catalog
+        run: |
+          python3 scripts/ui_test_scope.py --validate-catalog
+          python3 -m unittest Tests.Tooling.test_ui_test_scope
+          python3 -m unittest Tests.Tooling.test_run_ui_tests
+
+      - name: Select UI evidence
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ui_test_scope.py \
+              --base "$BASE_SHA" --head "$HEAD_SHA" --format github >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Explain the selection
+        env:
+          SUMMARY: ${{ steps.select.outputs.summary }}
+          TESTS: ${{ steps.select.outputs.tests }}
+          LOCALES: ${{ steps.select.outputs.locales }}
+        run: |
+          echo "$SUMMARY"
+          echo "Locales: ${LOCALES:-none}"
+          echo "Selectors: ${TESTS:-none}"
+
+  scoped-ui-tests:
+    needs: scope
+    if: needs.scope.outputs.required == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Select newest Xcode
+        run: |
+          NEWEST="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -1)"
+          echo "Selecting $NEWEST"
+          sudo xcode-select -s "$NEWEST"
+
+      - name: Install XcodeGen when absent
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Run only impacted UI tests
+        env:
+          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
+        run: make test-ui-scoped
+
+      - name: Preserve scoped UI evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scoped-ui-${{ github.run_id }}
+          path: dist/ui-test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+  ui-test-gate:
+    needs: [scope, scoped-ui-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require selected evidence and allow an honest no-UI skip
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          UI_REQUIRED: ${{ needs.scope.outputs.required }}
+          UI_RESULT: ${{ needs.scoped-ui-tests.result }}
+        run: |
+          if [[ "$SCOPE_RESULT" != "success" ]]; then
+            echo "UI scope selection failed: $SCOPE_RESULT" >&2
+            exit 1
+          fi
+          if [[ "$UI_REQUIRED" == "true" && "$UI_RESULT" != "success" ]]; then
+            echo "Selected UI tests did not pass: $UI_RESULT" >&2
+            exit 1
+          fi
+          echo "Scoped UI gate passed (required=$UI_REQUIRED, result=$UI_RESULT)."

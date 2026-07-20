@@ -23,15 +23,38 @@ final class MeetingBundleTests: XCTestCase {
                 meetingID: meeting.id, speakerID: me.id, channel: .microphone,
                 text: "Perfecto.", startTime: 3, endTime: 4, isFinal: true)
         ]
+        let actionItem = ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)
         let summary = SummaryDraft(
             meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
             markdown: "## Decisiones\n- Beta el lunes.",
-            actionItems: [ActionItem(text: "Preparar demo", ownerSpeakerID: marta.id)])
+            actionItems: [actionItem],
+            claims: [SummaryClaim(
+                kind: .overview,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segments[0].id],
+                feedback: SummaryClaimFeedback.correction(
+                    "La beta se publica el martes.")!)],
+            decisionEvidence: [SummaryDecisionEvidence(
+                sectionOrdinal: 0,
+                bulletOrdinal: 0,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segments[0].id])],
+            actionItemEvidence: [SummaryActionItemEvidence(
+                actionItemID: actionItem.id,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segments[0].id])])
         let note = ContextItem(
             meetingID: meeting.id, kind: .note, content: "congelar scope", timestamp: 12)
+        let cardID = UUID()
         let card = CompanionCard(
+            id: cardID,
             question: "¿Cuándo sale la beta?", answer: "El lunes.", kind: .context,
-            source: "on-device", directed: true, askedAt: 22)
+            source: "on-device", directed: true, askedAt: 22,
+            evidence: CompanionCardEvidence(
+                cardID: cardID,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                questionSegmentIDs: [segments[1].id],
+                answerSegmentIDs: [segments[0].id]))
         return MeetingBundle(
             meeting: meeting, speakers: [me, marta], segments: segments,
             summary: summary, contextItems: [note], companionCards: [card])
@@ -46,13 +69,49 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertEqual(decoded.speakers.map(\.label), ["Me", "S1"])
         XCTAssertEqual(decoded.segments.count, 2)
         XCTAssertEqual(decoded.summary?.actionItems.first?.text, "Preparar demo")
+        XCTAssertEqual(decoded.summary?.claims.first?.evidenceSegmentIDs, [decoded.segments[0].id])
+        XCTAssertEqual(
+            decoded.summary?.claims.first?.feedback?.correctionText,
+            "La beta se publica el martes.")
+        XCTAssertEqual(
+            decoded.summary?.decisionEvidence.first?.evidenceSegmentIDs,
+            [decoded.segments[0].id])
+        XCTAssertEqual(
+            decoded.summary?.actionItemEvidence.first?.actionItemID,
+            decoded.summary?.actionItems.first?.id)
+        XCTAssertEqual(
+            decoded.summary?.actionItemEvidence.first?.evidenceSegmentIDs,
+            [decoded.segments[0].id])
         XCTAssertEqual(decoded.contextItems.first?.content, "congelar scope")
         XCTAssertEqual(decoded.companionCards?.first?.answer, "El lunes.")
+        XCTAssertEqual(
+            decoded.companionCards?.first?.evidence?.questionSegmentIDs,
+            [decoded.segments[1].id])
+        XCTAssertEqual(
+            decoded.companionCards?.first?.evidence?.answerSegmentIDs,
+            [decoded.segments[0].id])
     }
 
     func testAudioPathNeverTravels() throws {
         let decoded = try MeetingBundle.decode(try sample().encoded())
         XCTAssertNil(decoded.meeting.audioDirectory, "machine-local paths must not travel (D4)")
+    }
+
+    func testCanonicalPersonLinksNeverTravelOrReturnOnImport() throws {
+        let meeting = Meeting(title: "Private identity", startedAt: Date())
+        let linked = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: "Ana",
+            personID: PersonID())
+        let bundle = MeetingBundle(meeting: meeting, speakers: [linked], segments: [])
+
+        XCTAssertNil(bundle.speakers.first?.personID)
+        let encoded = try bundle.encoded()
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("personID"))
+        let remapped = try MeetingBundle.decode(encoded).remappedForImport()
+        XCTAssertNil(remapped.speakers.first?.personID)
+        XCTAssertEqual(remapped.speakers.first?.displayName, "Ana")
     }
 
     func testFutureFormatVersionIsRejected() throws {
@@ -81,11 +140,48 @@ final class MeetingBundleTests: XCTestCase {
         let newMarta = remapped.speakers.first { $0.displayName == "Marta" }!
         XCTAssertEqual(remapped.segments[0].speakerID, newMarta.id)
         XCTAssertEqual(remapped.summary?.actionItems.first?.ownerSpeakerID, newMarta.id)
+        XCTAssertEqual(
+            remapped.summary?.claims.first?.evidenceSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.summary?.claims.first?.sourceTranscriptRevision)
+        XCTAssertNotEqual(
+            remapped.summary?.claims.first?.id,
+            original.summary?.claims.first?.id)
+        XCTAssertEqual(
+            remapped.summary?.claims.first?.feedback,
+            original.summary?.claims.first?.feedback)
+        XCTAssertEqual(
+            remapped.summary?.decisionEvidence.first?.evidenceSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.summary?.decisionEvidence.first?.sourceTranscriptRevision)
+        XCTAssertNotEqual(
+            remapped.summary?.decisionEvidence.first?.id,
+            original.summary?.decisionEvidence.first?.id)
+        XCTAssertEqual(
+            remapped.summary?.actionItemEvidence.first?.actionItemID,
+            remapped.summary?.actionItems.first?.id)
+        XCTAssertEqual(
+            remapped.summary?.actionItemEvidence.first?.evidenceSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.summary?.actionItemEvidence.first?.sourceTranscriptRevision)
+        XCTAssertNotEqual(
+            remapped.summary?.actionItemEvidence.first?.id,
+            original.summary?.actionItemEvidence.first?.id)
         // "Me" flag survives.
         XCTAssertTrue(remapped.speakers.contains { $0.isMe })
         XCTAssertNotEqual(
             remapped.companionCards?.first?.id,
             original.companionCards?.first?.id)
+        XCTAssertEqual(
+            remapped.companionCards?.first?.evidence?.cardID,
+            remapped.companionCards?.first?.id)
+        XCTAssertEqual(
+            remapped.companionCards?.first?.evidence?.questionSegmentIDs,
+            [remapped.segments[1].id])
+        XCTAssertEqual(
+            remapped.companionCards?.first?.evidence?.answerSegmentIDs,
+            [remapped.segments[0].id])
+        XCTAssertNil(remapped.companionCards?.first?.evidence?.sourceTranscriptRevision)
     }
 
     func testAudioAttachmentsRideAlongAndSurviveRemap() throws {
@@ -110,14 +206,22 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNil(decoded.audioFiles)
     }
 
-    func testOlderV1FileDecodesWithoutCompanionCardsField() throws {
+    func testOlderV1FileDecodesWithoutAdditiveMeetingFields() throws {
         let encoded = try sample().encoded()
         var json = try XCTUnwrap(
             JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         json.removeValue(forKey: "companionCards")
+        var meetingJSON = try XCTUnwrap(json["meeting"] as? [String: Any])
+        meetingJSON.removeValue(forKey: "lifecycleState")
+        meetingJSON.removeValue(forKey: "transcriptRevision")
+        meetingJSON.removeValue(forKey: "lastProcessingError")
+        json["meeting"] = meetingJSON
         let decoded = try MeetingBundle.decode(
             JSONSerialization.data(withJSONObject: json, options: [.sortedKeys]))
         XCTAssertNil(decoded.companionCards)
+        XCTAssertEqual(decoded.meeting.lifecycleState, .ready)
+        XCTAssertEqual(decoded.meeting.transcriptRevision, 0)
+        XCTAssertNil(decoded.meeting.lastProcessingError)
     }
 
     func testImportingTwiceYieldsIndependentMeetings() {
@@ -127,5 +231,50 @@ final class MeetingBundleTests: XCTestCase {
         XCTAssertNotEqual(first.meeting.id, second.meeting.id)
         XCTAssertTrue(
             Set(first.segments.map(\.id)).isDisjoint(with: second.segments.map(\.id)))
+    }
+
+    func testMalformedDuplicateActionIdentityDropsSummaryInsteadOfInventingRelation() throws {
+        var bundle = sample()
+        let original = try XCTUnwrap(bundle.summary)
+        let first = try XCTUnwrap(original.actionItems.first)
+        let duplicate = ActionItem(
+            id: first.id,
+            text: "Duplicated identity",
+            ownerSpeakerID: first.ownerSpeakerID)
+        bundle.summary = SummaryDraft(
+            meetingID: original.meetingID,
+            recipeID: original.recipeID,
+            language: original.language,
+            markdown: original.markdown,
+            actionItems: [first, duplicate],
+            fingerprint: original.fingerprint,
+            claims: original.claims,
+            decisionEvidence: original.decisionEvidence,
+            actionItemEvidence: original.actionItemEvidence)
+
+        XCTAssertNil(bundle.remappedForImport().summary)
+    }
+
+    func testMalformedCompanionEvidenceTargetIsDroppedWithoutLosingCard() throws {
+        var bundle = sample()
+        let card = try XCTUnwrap(bundle.companionCards?.first)
+        let evidence = try XCTUnwrap(card.evidence)
+        bundle.companionCards = [CompanionCard(
+            id: card.id,
+            question: card.question,
+            answer: card.answer,
+            kind: card.kind,
+            source: card.source,
+            directed: card.directed,
+            askedAt: card.askedAt,
+            evidence: CompanionCardEvidence(
+                cardID: UUID(),
+                sourceTranscriptRevision: evidence.sourceTranscriptRevision,
+                questionSegmentIDs: evidence.questionSegmentIDs,
+                answerSegmentIDs: evidence.answerSegmentIDs))]
+
+        let remapped = try XCTUnwrap(bundle.remappedForImport().companionCards?.first)
+        XCTAssertEqual(remapped.question, card.question)
+        XCTAssertNil(remapped.evidence)
     }
 }

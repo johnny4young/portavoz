@@ -10,7 +10,7 @@ final class CaptureFileWriterTests: XCTestCase {
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("test.caf")
+        let url = directory.appendingPathComponent("test.partial.caf")
 
         var framesWritten: AVAudioFramePosition = 0
         var secondsWritten: TimeInterval = 0
@@ -86,6 +86,157 @@ final class RecordingSummaryTests: XCTestCase {
         let summary = await session.stop()
         XCTAssertTrue(summary.files.isEmpty)
     }
+
+    func testStopPublishesValidatedCAFAndCompleteMediaEvidence() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let samples = [Float](repeating: 0.25, count: 4_800)
+        let source = FakeCaptureSource(
+            channel: .microphone,
+            chunks: [AudioChunk(
+                channel: .microphone,
+                samples: samples,
+                sampleRate: 48_000,
+                timestamp: 0)])
+        let session = RecordingSession(outputDirectory: directory)
+
+        try await session.start(sources: [source])
+        let finalURL = directory.appendingPathComponent(
+            AudioCapturePath.publishedFilename(for: .microphone))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: finalURL.path))
+
+        let summary = await session.stop()
+        let media = try XCTUnwrap(summary.publishedFiles[.microphone])
+        let stagingURL = directory.appendingPathComponent(
+            AudioCapturePath.stagingFilename(for: .microphone))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagingURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: finalURL.path))
+        XCTAssertEqual(summary.files[.microphone], finalURL)
+        XCTAssertEqual(media.url, finalURL)
+        XCTAssertEqual(media.container, "caf")
+        XCTAssertEqual(media.codec, "pcm-s16le")
+        XCTAssertEqual(media.sampleRate, 48_000)
+        XCTAssertEqual(media.channelCount, 1)
+        XCTAssertEqual(media.durationSeconds, 0.1, accuracy: 0.0001)
+        XCTAssertGreaterThan(media.byteCount, 0)
+        XCTAssertEqual(media.sha256.count, 64)
+        XCTAssertTrue(media.sha256.allSatisfy { $0.isHexDigit && !$0.isUppercase })
+        XCTAssertEqual(media.healthStatus, .healthy)
+        XCTAssertEqual(media.peakDBFS, -12.041, accuracy: 0.01)
+        XCTAssertEqual(media.rmsDBFS, -12.041, accuracy: 0.01)
+    }
+
+    func testPublisherNeverOverwritesAnExistingFinalFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stagingURL = directory.appendingPathComponent(
+            AudioCapturePath.stagingFilename(for: .microphone))
+        let finalURL = directory.appendingPathComponent(
+            AudioCapturePath.publishedFilename(for: .microphone))
+        try autoreleasepool {
+            let writer = try CaptureFileWriter(url: stagingURL, sampleRate: 48_000)
+            try writer.append([Float](repeating: 0, count: 480))
+        }
+        let existing = Data("do-not-overwrite".utf8)
+        try existing.write(to: finalURL)
+
+        XCTAssertThrowsError(try CaptureFilePublisher.publish(
+            stagingURL: stagingURL,
+            finalURL: finalURL,
+            peak: 0,
+            rms: 0)) { error in
+            guard case AudioCaptureError.captureDestinationExists(let path) = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+            XCTAssertEqual(path, finalURL.path)
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stagingURL.path))
+        XCTAssertEqual(try Data(contentsOf: finalURL), existing)
+    }
+
+    func testPublicationClassifiesSilenceAndClampedPCMClipping() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        func record(_ samples: [Float], in name: String) async throws -> PublishedCaptureFile {
+            let directory = root.appendingPathComponent(name)
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true)
+            let source = FakeCaptureSource(
+                channel: .microphone,
+                chunks: [AudioChunk(
+                    channel: .microphone,
+                    samples: samples,
+                    sampleRate: 48_000,
+                    timestamp: 0)])
+            let session = RecordingSession(outputDirectory: directory)
+            try await session.start(sources: [source])
+            let summary = await session.stop()
+            return try XCTUnwrap(summary.publishedFiles[.microphone])
+        }
+
+        let silent = try await record([Float](repeating: 0, count: 480), in: "silent")
+        XCTAssertEqual(silent.healthStatus, .silent)
+        XCTAssertEqual(silent.peakDBFS, -160, accuracy: 0.001)
+        XCTAssertEqual(silent.rmsDBFS, -160, accuracy: 0.001)
+
+        let clipped = try await record([Float](repeating: 2, count: 480), in: "clipped")
+        XCTAssertEqual(clipped.healthStatus, .clipped)
+        XCTAssertEqual(clipped.peakDBFS, 0, accuracy: 0.001)
+        XCTAssertEqual(clipped.rmsDBFS, 0, accuracy: 0.001)
+    }
+
+    func testCrashRecoveryMeasuresPersistedPCMAndPublishesWithoutMemoryState() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stagingURL = directory.appendingPathComponent(
+            AudioCapturePath.stagingFilename(for: .microphone))
+        let finalURL = directory.appendingPathComponent(
+            AudioCapturePath.publishedFilename(for: .microphone))
+        try autoreleasepool {
+            let writer = try CaptureFileWriter(url: stagingURL, sampleRate: 48_000)
+            try writer.append([Float](repeating: 0.25, count: 4_800))
+        }
+
+        let recovered = try CaptureFileRecovery.publish(
+            stagingURL: stagingURL, finalURL: finalURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: stagingURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: finalURL.path))
+        XCTAssertEqual(recovered.healthStatus, .healthy)
+        XCTAssertEqual(recovered.durationSeconds, 0.1, accuracy: 0.0001)
+        XCTAssertEqual(recovered.peakDBFS, -12.041, accuracy: 0.02)
+        XCTAssertEqual(recovered.rmsDBFS, -12.041, accuracy: 0.02)
+
+        let revalidated = try CaptureFileRecovery.inspectPublishedFile(at: finalURL)
+        XCTAssertEqual(revalidated.sha256, recovered.sha256)
+        XCTAssertEqual(revalidated.byteCount, recovered.byteCount)
+        XCTAssertEqual(revalidated.peakDBFS, recovered.peakDBFS, accuracy: 0.0001)
+        XCTAssertEqual(revalidated.rmsDBFS, recovered.rmsDBFS, accuracy: 0.0001)
+
+        let floatURL = directory.appendingPathComponent("float.caf")
+        try autoreleasepool {
+            let format = try XCTUnwrap(AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: 16_000,
+                channels: 1,
+                interleaved: false))
+            let writer = try AVAudioFile(forWriting: floatURL, settings: format.settings)
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(
+                pcmFormat: format, frameCapacity: 1_600))
+            buffer.frameLength = 1_600
+            for index in 0..<1_600 { buffer.floatChannelData?[0][index] = 0.25 }
+            try writer.write(from: buffer)
+        }
+        XCTAssertThrowsError(try CaptureFileRecovery.inspectPublishedFile(at: floatURL))
+    }
 }
 
 private enum FakeCaptureError: Error {
@@ -95,13 +246,19 @@ private enum FakeCaptureError: Error {
 private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
     let channel: AudioChannel
     private let startError: Error?
+    private let chunks: [AudioChunk]
     private let lock = NSLock()
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var stops = 0
 
-    init(channel: AudioChannel, startError: Error? = nil) {
+    init(
+        channel: AudioChannel,
+        startError: Error? = nil,
+        chunks: [AudioChunk] = []
+    ) {
         self.channel = channel
         self.startError = startError
+        self.chunks = chunks
     }
 
     var stopCount: Int {
@@ -114,6 +271,7 @@ private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
         lock.withLock {
             self.continuation = continuation
         }
+        for chunk in chunks { continuation.yield(chunk) }
         return stream
     }
 

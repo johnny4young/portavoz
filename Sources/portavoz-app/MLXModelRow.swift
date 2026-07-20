@@ -8,6 +8,7 @@ struct MLXModelRow: View {
     let services: AppServices
     @State private var downloaded = false
     @State private var downloading = false
+    @State private var checking = true
     @State private var status: String?
 
     var body: some View {
@@ -18,11 +19,23 @@ struct MLXModelRow: View {
                 Text("Qwen3.5 4B · downloaded · 3 GB").font(.caption)
                 Spacer()
                 Button("Delete", role: .destructive) {
-                    services.deleteMLXModel()
-                    downloaded = false
+                    Task { @MainActor in
+                        do {
+                            try await services.deleteMLXModel()
+                            downloaded = false
+                            status = nil
+                        } catch {
+                            status = error.localizedDescription
+                        }
+                    }
                 }
                 .controlSize(.small)
                 .accessibilityIdentifier("settings-mlx-delete")
+            } else if checking {
+                ProgressView().controlSize(.small)
+                Text("Verifying model integrity…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } else if downloading {
                 ProgressView().controlSize(.small)
                 Text(status ?? "").font(.caption).foregroundStyle(.secondary)
@@ -32,7 +45,10 @@ struct MLXModelRow: View {
                     .accessibilityIdentifier("settings-mlx-download")
             }
         }
-        .onAppear { downloaded = services.mlxDownloaded }
+        .task {
+            downloaded = await services.refreshMLXReadiness()
+            checking = false
+        }
     }
 
     private func download() {

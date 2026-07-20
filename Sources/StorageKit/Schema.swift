@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 5
+    public static let version = 14
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -168,6 +168,324 @@ public enum StorageSchema {
                 index: "companionCard_on_meetingID", on: "companionCard", columns: ["meetingID"])
         }
 
+        // v6 (D36/Band 1): one additive durability foundation. Runtime
+        // adoption remains incremental: existing meetings keep their legacy
+        // audioDirectory read path until later Strangler slices create assets.
+        migrator.registerMigration("v6") { db in
+            try addMeetingDurabilityColumns(to: db)
+            try createAudioAssetTable(in: db)
+            try createGenerationRunTable(in: db)
+            try addGenerationRunReferences(to: db)
+            try createProcessingJobTable(in: db)
+            try createOutboxEventTable(in: db)
+            try createMeetingPreferenceTable(in: db)
+        }
+
+        // v7 (D75/Band 3H): content-free privacy receipts. The coverage
+        // boundary prevents an upgraded library from claiming that historical
+        // silence proves old meetings never left the device.
+        migrator.registerMigration("v7") { db in
+            try createDataEgressEventTable(in: db)
+            try createPrivacyReceiptCoverage(in: db)
+        }
+
+        // v8 (D86/Band 5A): canonical people are additive and confirmation-
+        // safe. Aliases are lookup evidence only; duplicate aliases across
+        // different people remain valid and never imply an automatic merge.
+        migrator.registerMigration("v8") { db in
+            try createPersonTables(in: db)
+            try addPersonReferenceToSpeaker(in: db)
+        }
+
+        // v9 (D87/Band 5B): typed overview provenance. The nullable segment
+        // reference preserves the fact that evidence once existed after a
+        // physical segment deletion, while revision fences prevent stale jumps.
+        migrator.registerMigration("v9") { db in
+            try createSummaryClaimTables(in: db)
+        }
+
+        // v10 (D88/Band 5C): one reversible user assessment per generated
+        // claim. Tombstones keep removal explicit for future sync without
+        // accumulating a hidden history of correction text.
+        migrator.registerMigration("v10") { db in
+            try createSummaryClaimFeedbackTable(in: db)
+        }
+
+        // v11 (D89/Band 5D): position-typed evidence for decision bullets.
+        // Its own aggregate preserves the v9 one-overview invariant while
+        // nullable links retain unavailable provenance after hard deletion.
+        migrator.registerMigration("v11") { db in
+            try createSummaryDecisionEvidenceTables(in: db)
+        }
+
+        // v12 (D90/Band 5E): identity-keyed evidence for action items.
+        // Completion remains mutable on actionItem while provenance stays
+        // immutable with the generated summary snapshot.
+        migrator.registerMigration("v12") { db in
+            try createSummaryActionItemEvidenceTables(in: db)
+        }
+
+        // v13 (D91/Band 5F): role-typed question and answer evidence for
+        // immutable Companion cards, independent from summary provenance.
+        migrator.registerMigration("v13") { db in
+            try createCompanionCardEvidenceTables(in: db)
+        }
+
+        // v14 (D92/Band 6A): content-free, generation-fenced meeting change
+        // journal. CloudKit and iOS adapters consume this durable local seam;
+        // they do not own storage mutation detection.
+        migrator.registerMigration("v14") { db in
+            try createMeetingSyncState(in: db)
+        }
+
         return migrator
     }
+
+    private static func addMeetingDurabilityColumns(to db: Database) throws {
+        try db.alter(table: "meeting") { t in
+            t.add(column: "lifecycleState", .text)
+                .notNull()
+                .defaults(to: "ready")
+                .check(sql: "lifecycleState IN "
+                    + "('recording', 'captured', 'processing', 'ready', 'needsAttention')")
+            t.add(column: "transcriptRevision", .integer)
+                .notNull()
+                .defaults(to: 0)
+                .check(sql: "transcriptRevision >= 0")
+            t.add(column: "lastProcessingError", .text)
+        }
+    }
+
+    private static func createAudioAssetTable(in db: Database) throws {
+        try db.create(table: "audioAsset") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("channel", .text).notNull().check(sql: "length(trim(channel)) > 0")
+            t.column("role", .text).notNull().check(sql: "length(trim(role)) > 0")
+            t.column("relativePath", .text).notNull().unique().check(
+                sql: "relativePath <> '' AND substr(relativePath, 1, 1) <> '/' "
+                    + "AND relativePath <> '..' AND relativePath NOT LIKE '../%' "
+                    + "AND relativePath NOT LIKE '%/../%' AND relativePath NOT LIKE '%/..'")
+            t.column("container", .text)
+            t.column("codec", .text)
+            t.column("sampleRate", .double).check(sql: "sampleRate IS NULL OR sampleRate > 0")
+            t.column("channelCount", .integer).check(
+                sql: "channelCount IS NULL OR channelCount > 0")
+            t.column("durationSeconds", .double).check(
+                sql: "durationSeconds IS NULL OR durationSeconds >= 0")
+            t.column("byteCount", .integer).check(sql: "byteCount IS NULL OR byteCount >= 0")
+            t.column("sha256", .text).check(sql: "sha256 IS NULL OR length(sha256) = 64")
+            t.column("healthStatus", .text).notNull().defaults(to: "pending").check(
+                sql: "healthStatus IN "
+                    + "('pending', 'healthy', 'silent', 'clipped', 'corrupt', 'missing')")
+            t.column("peakDBFS", .double)
+            t.column("rmsDBFS", .double)
+            t.column("sourceAssetID", .text).references("audioAsset", onDelete: .setNull)
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+            t.column("supersededAt", .datetime)
+            t.column("deletedAt", .datetime)
+        }
+        try db.create(
+            index: "audioAsset_on_meetingID", on: "audioAsset", columns: ["meetingID"])
+        try db.create(
+            index: "audioAsset_on_sourceAssetID", on: "audioAsset", columns: ["sourceAssetID"])
+    }
+
+    private static func createGenerationRunTable(in db: Database) throws {
+        try db.create(table: "generationRun") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("kind", .text).notNull().check(sql: "length(trim(kind)) > 0")
+            t.column("providerID", .text).notNull().check(sql: "length(trim(providerID)) > 0")
+            t.column("modelID", .text).notNull().check(sql: "length(trim(modelID)) > 0")
+            t.column("modelRevision", .text)
+            t.column("inputFingerprint", .text).notNull().check(
+                sql: "length(trim(inputFingerprint)) > 0")
+            t.column("configJSON", .text).notNull()
+            t.column("outputLanguage", .text)
+            t.column("startedAt", .datetime).notNull()
+            t.column("finishedAt", .datetime)
+            t.column("outcome", .text).check(
+                sql: "outcome IS NULL OR outcome IN ('succeeded', 'failed', 'cancelled')")
+            t.column("metricsJSON", .text)
+        }
+        try db.create(
+            index: "generationRun_on_meetingID", on: "generationRun", columns: ["meetingID"])
+    }
+
+    private static func addGenerationRunReferences(to db: Database) throws {
+        for table in ["segment", "summary", "companionCard"] {
+            try db.alter(table: table) { t in
+                t.add(column: "generationRunID", .text)
+                    .references("generationRun", onDelete: .setNull)
+            }
+            try db.create(
+                index: "\(table)_on_generationRunID", on: table,
+                columns: ["generationRunID"])
+        }
+    }
+
+    private static func createProcessingJobTable(in db: Database) throws {
+        try db.create(table: "processingJob") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("kind", .text).notNull().check(sql: "length(trim(kind)) > 0")
+            t.column("inputFingerprint", .text).notNull().check(
+                sql: "length(trim(inputFingerprint)) > 0")
+            t.column("state", .text).notNull().defaults(to: "pending").check(
+                sql: "state IN ('pending', 'running', 'succeeded', 'failed', 'cancelled')")
+            t.column("priority", .integer).notNull().defaults(to: 0)
+            t.column("progress", .double).notNull().defaults(to: 0).check(
+                sql: "progress >= 0 AND progress <= 1")
+            t.column("attempt", .integer).notNull().defaults(to: 0).check(
+                sql: "attempt >= 0")
+            t.column("maxAttempts", .integer).notNull().defaults(to: 3).check(
+                sql: "maxAttempts > 0 AND attempt <= maxAttempts")
+            t.column("notBefore", .datetime)
+            t.column("leaseOwner", .text)
+            t.column("leaseExpiresAt", .datetime)
+            t.column("errorCode", .text)
+            t.column("errorMessage", .text)
+            t.column("createdAt", .datetime).notNull()
+            t.column("startedAt", .datetime)
+            t.column("finishedAt", .datetime)
+            t.column("updatedAt", .datetime).notNull()
+            t.uniqueKey(["meetingID", "kind", "inputFingerprint"])
+        }
+        try db.create(
+            index: "processingJob_on_meetingID", on: "processingJob", columns: ["meetingID"])
+        try db.create(
+            index: "processingJob_on_dispatch", on: "processingJob",
+            columns: ["state", "notBefore", "priority"])
+    }
+
+    private static func createOutboxEventTable(in db: Database) throws {
+        try db.create(table: "outboxEvent") { t in
+            t.primaryKey("id", .text)
+            t.column("aggregateID", .text).notNull()
+            t.column("kind", .text).notNull().check(sql: "length(trim(kind)) > 0")
+            t.column("idempotencyKey", .text).notNull().unique()
+            t.column("payloadJSON", .text).notNull()
+            t.column("state", .text).notNull().defaults(to: "pending").check(
+                sql: "state IN ('pending', 'delivering', 'delivered', 'failed')")
+            t.column("attempts", .integer).notNull().defaults(to: 0).check(
+                sql: "attempts >= 0")
+            t.column("nextAttemptAt", .datetime)
+            t.column("createdAt", .datetime).notNull()
+            t.column("deliveredAt", .datetime)
+        }
+        try db.create(
+            index: "outboxEvent_on_dispatch", on: "outboxEvent",
+            columns: ["state", "nextAttemptAt"])
+    }
+
+    private static func createMeetingPreferenceTable(in db: Database) throws {
+        try db.create(table: "meetingPreference") { t in
+            t.primaryKey("meetingID", .text).references("meeting", onDelete: .cascade)
+            t.column("transcriptLanguageMode", .text).notNull().defaults(to: "automatic")
+            t.column("transcriptLanguage", .text)
+            t.column("summaryLanguageMode", .text).notNull().defaults(to: "followSpokenLanguage")
+            t.column("summaryLanguage", .text)
+            t.column("recipeID", .text)
+            t.column("summaryEngineID", .text)
+            t.column("refineEngineID", .text)
+            t.column("updatedAt", .datetime).notNull()
+            t.check(sql: "(transcriptLanguageMode = 'automatic' "
+                + "AND transcriptLanguage IS NULL) OR (transcriptLanguageMode = 'fixed' "
+                + "AND transcriptLanguage IS NOT NULL "
+                + "AND length(trim(transcriptLanguage)) > 0)")
+            t.check(sql: "(summaryLanguageMode = 'followSpokenLanguage' "
+                + "AND summaryLanguage IS NULL) OR (summaryLanguageMode = 'fixed' "
+                + "AND summaryLanguage IS NOT NULL "
+                + "AND length(trim(summaryLanguage)) > 0)")
+        }
+    }
+
+    private static func createDataEgressEventTable(in db: Database) throws {
+        try db.create(table: "dataEgressEvent") { t in
+            t.primaryKey("id", .text)
+            t.column("meetingID", .text).notNull()
+                .references("meeting", onDelete: .cascade)
+            t.column("operation", .text).notNull().check(
+                sql: "operation IN ('companion-knowledge-answer', 'summary-generation', "
+                    + "'publish-github-gist', 'create-github-issue', 'create-linear-issue')")
+            t.column("destinationScope", .text).notNull().check(
+                sql: "destinationScope IN ('local-device', 'remote')")
+            t.column("destinationHost", .text).notNull().check(
+                sql: "length(trim(destinationHost)) > 0")
+            t.column("dataClassification", .text).notNull().check(
+                sql: "dataClassification IN ('meeting-question-only', "
+                    + "'meeting-summary-material', 'meeting-export-document', "
+                    + "'meeting-action-item')")
+            t.column("consentSource", .text).notNull().check(
+                sql: "consentSource IN ('companion-byok-settings', "
+                    + "'explicit-companion-client', 'summary-engine-settings', "
+                    + "'explicit-summary-provider', 'explicit-gist-publish', "
+                    + "'explicit-github-issue-publish', 'explicit-linear-issue-publish')")
+            t.column("providerID", .text).notNull().check(
+                sql: "length(trim(providerID)) > 0")
+            t.column("modelID", .text)
+            t.column("attemptedAt", .datetime).notNull()
+        }
+        try db.create(
+            index: "dataEgressEvent_on_meetingID_attemptedAt",
+            on: "dataEgressEvent",
+            columns: ["meetingID", "attemptedAt"])
+    }
+
+    private static func createPrivacyReceiptCoverage(in db: Database) throws {
+        try db.create(table: "privacyReceiptCoverage") { t in
+            t.primaryKey("id", .text).check(sql: "id = 'meeting-content-egress'")
+            t.column("trackingStartedAt", .datetime).notNull()
+        }
+        try db.execute(
+            sql: "INSERT INTO privacyReceiptCoverage (id, trackingStartedAt) VALUES (?, ?)",
+            arguments: ["meeting-content-egress", Date()])
+    }
+
+    private static func createPersonTables(in db: Database) throws {
+        try db.create(table: "person") { t in
+            t.primaryKey("id", .text)
+            t.column("preferredName", .text).notNull().check(
+                sql: "length(trim(preferredName)) > 0")
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+            t.column("deletedAt", .datetime)
+        }
+        try db.create(table: "personAlias") { t in
+            t.primaryKey("id", .text)
+            t.column("personID", .text).notNull()
+                .references("person", onDelete: .cascade)
+            t.column("normalizedAlias", .text).notNull().check(
+                sql: "length(trim(normalizedAlias)) > 0")
+            t.column("source", .text).notNull().check(
+                sql: "source IN ('manual-name', 'transcript-suggestion', 'voice-suggestion')")
+            t.column("confidence", .double).notNull().check(
+                sql: "confidence >= 0 AND confidence <= 1")
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+            t.column("deletedAt", .datetime)
+            t.uniqueKey(["personID", "normalizedAlias"])
+        }
+        try db.create(
+            index: "personAlias_on_normalizedAlias",
+            on: "personAlias",
+            columns: ["normalizedAlias"])
+    }
+
+    private static func addPersonReferenceToSpeaker(in db: Database) throws {
+        try db.alter(table: "speaker") { t in
+            t.add(column: "personID", .text)
+                .references("person", onDelete: .setNull)
+        }
+        try db.create(
+            index: "speaker_on_personID",
+            on: "speaker",
+            columns: ["personID"])
+    }
+
 }

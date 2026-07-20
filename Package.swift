@@ -10,15 +10,15 @@ let package = Package(
     ],
     products: [
         .library(name: "PortavozCore", targets: ["PortavozCore"]),
+        .library(name: "ApplicationKit", targets: ["ApplicationKit"]),
+        .library(name: "PlatformKit", targets: ["PlatformKit"]),
         .library(name: "ModelStoreKit", targets: ["ModelStoreKit"]),
         .library(name: "AudioCaptureKit", targets: ["AudioCaptureKit"]),
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
         .library(name: "DiarizationKit", targets: ["DiarizationKit"]),
         .library(name: "IntelligenceKit", targets: ["IntelligenceKit"]),
-        .library(name: "ContextFeedKit", targets: ["ContextFeedKit"]),
         .library(name: "StorageKit", targets: ["StorageKit"]),
         .library(name: "AudioPlaybackKit", targets: ["AudioPlaybackKit"]),
-        .library(name: "SyncKit", targets: ["SyncKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
         .executable(name: "portavoz-app", targets: ["portavoz-app"]),
@@ -50,6 +50,20 @@ let package = Package(
     targets: [
         // Shared domain primitives every Kit builds on.
         .target(name: "PortavozCore"),
+
+        // Concrete Apple platform/security adapters. Core owns only the ports;
+        // executable composition roots inject these implementations.
+        .target(name: "PlatformKit", dependencies: ["PortavozCore"]),
+
+        // Application workflows enter through this boundary. Dependencies
+        // are added one capability at a time with each extracted use case;
+        // local Ask now joins lifecycle, processing, reads, import, and export.
+        .target(
+            name: "ApplicationKit",
+            dependencies: [
+                "PortavozCore", "AudioPlaybackKit", "TranscriptionKit",
+                "DiarizationKit", "IntelligenceKit", "StorageKit",
+            ]),
 
         // Curated model registry + sha256-verified downloads, shared by every
         // Kit that loads ML models (transcription, diarization, summaries).
@@ -85,7 +99,6 @@ let package = Package(
                 .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
                 .product(name: "Transformers", package: "swift-transformers"),
             ]),
-        .target(name: "ContextFeedKit", dependencies: ["PortavozCore"]),
         .target(
             name: "StorageKit",
             dependencies: [
@@ -95,12 +108,13 @@ let package = Package(
         ),
         // Synchronized meeting playback (M11/D27): mixes the per-channel
         // audio into one timeline, generates waveforms, exports clips.
-        .target(name: "AudioPlaybackKit", dependencies: ["PortavozCore"]),
+        // Self-contained over AVFoundation/Accelerate: it exposes no Core
+        // types, so it carries no module dependencies.
+        .target(name: "AudioPlaybackKit", dependencies: []),
 
-        .target(name: "SyncKit", dependencies: ["PortavozCore"]),
-        // IntegrationsKit is the cross-cutting layer over stored meetings
-        // (export, MCP-ish surfaces, RAG retrieval): the ONLY Kit allowed to
-        // depend on sibling Kits (IntelligenceKit + StorageKit, D31).
+        // IntegrationsKit is the outbound-adapter layer over stored meetings
+        // (export, MCP protocol, providers, private sync transport). Application
+        // orchestration belongs to ApplicationKit, including local Ask.
         .target(
             name: "IntegrationsKit",
             dependencies: ["PortavozCore", "IntelligenceKit", "StorageKit"]),
@@ -111,7 +125,8 @@ let package = Package(
         .executableTarget(
             name: "portavoz-app",
             dependencies: [
-                "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "Sparkle", package: "Sparkle"),
@@ -121,26 +136,30 @@ let package = Package(
         .executableTarget(
             name: "portavoz-cli",
             dependencies: [
-                "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
+                "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit", "IntegrationsKit",
+                "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
+                .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
 
         .testTarget(
             name: "PortavozTests",
             dependencies: [
+                "portavoz-app",
+                "ApplicationKit",
                 "PortavozCore",
+                "PlatformKit",
                 "ModelStoreKit",
                 "AudioCaptureKit",
                 "TranscriptionKit",
                 "DiarizationKit",
                 "IntelligenceKit",
-                "ContextFeedKit",
                 "StorageKit",
                 "AudioPlaybackKit",
-                "SyncKit",
                 "IntegrationsKit",
+                .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
     ]

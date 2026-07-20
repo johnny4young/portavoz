@@ -51,6 +51,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac
+        CODE_SIGN_ENTITLEMENTS: packaging/portavoz-local.entitlements
         INFOPLIST_KEY_CFBundleDevelopmentRegion: en
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."
         INFOPLIST_KEY_NSAudioCaptureUsageDescription: "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac."
@@ -59,6 +60,8 @@ targets:
     dependencies:
       - package: Portavoz
         products:
+          - ApplicationKit
+          - PlatformKit
           - AudioCaptureKit
           - PortavozCore
           - ModelStoreKit

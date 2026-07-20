@@ -7,9 +7,14 @@ final class InsightsUITests: XCTestCase {
     @MainActor
     func testInsightsRendersHeatmap() {
         let app = XCUIApplication.portavoz(seedDemo: true)
+        // Keep the retained evidence independent of the user's persisted picker choice.
+        app.launchArguments += ["-insightsScope", "week"]
         app.launchPortavoz()
         defer { app.terminate() }
 
+        XCTAssertTrue(
+            app.waitForSeededLibraryToSettle(),
+            "the seeded library must settle before navigating away")
         let insights = app.buttons["library-insights-button"]
         XCTAssertTrue(insights.waitForExistence(timeout: 15), "the library must offer Insights")
         insights.click()
@@ -28,6 +33,7 @@ final class InsightsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "insights-balance").exists,
             "Insights must show the talk-balance tile")
+        attachScreenshot(of: app, named: "band-2p-insights")
     }
 
     @MainActor
@@ -36,7 +42,12 @@ final class InsightsUITests: XCTestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        app.buttons["library-insights-button"].click()
+        XCTAssertTrue(
+            app.waitForSeededLibraryToSettle(),
+            "the seeded library must settle before navigating away")
+        let insights = app.buttons["library-insights-button"]
+        XCTAssertTrue(insights.waitForExistence(timeout: 15))
+        insights.click()
         XCTAssertTrue(
             app.control(withIdentifier: "insights-participants").waitForExistence(timeout: 10),
             "Insights must show the 'who you talk with' panel (3a)")

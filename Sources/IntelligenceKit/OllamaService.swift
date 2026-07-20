@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// First-class local models via Ollama (D25/M12) — the answer to GAPS #7
 /// ("a Mac without Apple Intelligence can't summarize locally"). Ollama
@@ -67,8 +68,23 @@ public enum OllamaService {
 
     /// A summary provider backed by a local Ollama model. No key: Ollama
     /// ignores the bearer, and nothing leaves the machine (D8-clean).
-    public static func summaryProvider(model: String) -> OpenAICompatibleSummaryProvider {
+    public static func summaryProvider(
+        model: String,
+        gateway: any DataEgressGateway,
+        consentSource: DataEgressConsentSource = .explicitSummaryProvider
+    ) -> OpenAICompatibleSummaryProvider {
         OpenAICompatibleSummaryProvider(
-            endpoint: openAIEndpoint, model: model, apiKey: "ollama")
+            endpoint: openAIEndpoint,
+            model: model,
+            apiKey: "ollama",
+            gateway: gateway,
+            consentSource: consentSource)
+    }
+
+    /// Stable identity used by both the summary material cache and durable
+    /// operation fingerprints. It mirrors the provider's endpoint-host/model
+    /// identity instead of inventing a second Ollama-specific key.
+    public static func providerID(model: String) -> String {
+        "\(openAIEndpoint.host ?? "localhost")/\(model)"
     }
 }

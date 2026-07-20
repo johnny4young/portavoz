@@ -9,7 +9,7 @@ Portavoz is a **privacy-first, 100% local meeting assistant for macOS** (Swift 6
 - GitHub: https://github.com/johnny4young/portavoz — SwiftUI app in `Sources/portavoz-app/`, real site in `site/`, design brief in `docs/design/claude-design-brief.md`, product docs in `docs/`.
 - Reference screenshot: `assets/reference/meeting-detail.png` (the repo's showcase seed).
 
-Brand personality: **serio pero cálido, técnico sin frialdad, honesto**. Bilingual ES/EN by birth.
+Brand personality: **serious but warm, technical without being cold, honest**. Bilingual ES/EN from the outset.
 
 ---
 
@@ -20,7 +20,7 @@ Brand personality: **serio pero cálido, técnico sin frialdad, honesto**. Bilin
 - **Sentence case everywhere.** No Title Case headings, no exclamation marks. Em-dashes carry the signature turn: "Sabe quién dijo qué — localmente."
 - **Suggestions are questions.** The chip contract in copy: phrased as a question ("S2 → Marta?", "Summarize as Standup?"), applied with one click, never applied alone. Help text always ends with the reassurance: "nothing changes on its own."
 - **Deletion is honest**: "Deleted, not gone" — the trash keeps meetings 30 days and says so.
-- **You/tú voice**, direct: "build it yourself if you'd rather not take our word." First person plural only for commitments.
+- **Direct second-person voice**: "build it yourself if you'd rather not take our word." First person plural only for commitments.
 - **No emoji in UI.** The only glyph-as-icon is ✦ (sparkles) for AI suggestions and ▸ for co-authored summary lines.
 - Example microcopy: "Your history is never hostage." · "Computed on your Mac, from your library — nothing leaves it." · "Or skip — they download on your first recording."
 
@@ -28,7 +28,7 @@ Brand personality: **serio pero cálido, técnico sin frialdad, honesto**. Bilin
 
 - **Two palettes, one system.** App: macOS system **indigo** accent (`--accent`, light #5856d6 / dark #5e5ce6) on native neutrals. Web: slate `#0e1120` ground with violet `#5226bf` radial gradients, warm-paper ink `#f3f1ec`, and exactly ONE amber accent `#fdbf47` (the waveform's peak bar). In the **Aurora direction (canonical)** the icon's world enters the app shell in controlled doses: `--aurora-window` (slate→dark gradient), `--aurora-sidebar` (deep glass), `--aurora-header` (violet radial) and `--aurora-selection` (indigo→violet). Amber remains reserved for the user's voice.
 - **DS stance on the accent debt:** list selection is INDIGO (`--accent`), never the user's system accent. Resolved here; the app should adopt `.tint` explicitly.
-- **Voces (dirección B — «el color ES la voz»):** the user's voice is ALWAYS solid amber (`--voice-me`); every other speaker gets a stable hue (`--voice-1`…`--voice-6`, assigned by order of appearance, persistent per named person) used consistently across pills, talk-time bars, lyrics highlights, player waveform and the web constellation. The UI stays neutral so voice is the only meaningful color; indigo is reserved for system interaction (✦ chips, links, selection).
+- **Voices (direction B — «color IS voice»):** the user's voice is ALWAYS solid amber (`--voice-me`); every other speaker gets a stable hue (`--voice-1`…`--voice-6`, assigned by order of appearance, persistent per named person) used consistently across pills, talk-time bars, lyrics highlights, player waveform and the web constellation. The UI stays neutral so voice is the only meaningful color; indigo is reserved for system interaction (✦ chips, links, selection).
 - **Semantics:** green = mic OK/success · orange = warning (mic low, permissions) · red = destructive/recording dot · ✦ AI suggestion = always accent indigo.
 - **Surfaces:** flat quaternary fills (`--surface-card`), no borders, no shadows on cards. Floating panels use material blur + hairline + soft shadow. Backgrounds are solid; gradients exist ONLY as the brand's violet radials on the web.
 - **Type:** app = system font (SF Pro), macOS text-style scale (largeTitle.bold pages → title2.bold tile values → headline card titles → caption helpers); numbers ALWAYS tabular (`monospacedDigit`). Web = Fraunces (display, `SOFT 50`, weight 560, amber italics on the em-dash turn) + Instrument Sans (body) + IBM Plex Mono (commands & measured numbers).

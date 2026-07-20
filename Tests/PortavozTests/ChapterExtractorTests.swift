@@ -1,7 +1,7 @@
 import PortavozCore
 import XCTest
 
-@testable import IntegrationsKit
+@testable import ApplicationKit
 
 final class ChapterExtractorTests: XCTestCase {
     private func segment(_ start: TimeInterval, _ end: TimeInterval, _ text: String) -> TranscriptSegment {

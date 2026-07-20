@@ -1,11 +1,8 @@
 import AppKit
-import AudioPlaybackKit
-import DiarizationKit
+import ApplicationKit
 import IntegrationsKit
 import IntelligenceKit
-import ModelStoreKit
 import PortavozCore
-import StorageKit
 import SwiftUI
 import TranscriptionKit
 import UniformTypeIdentifiers
@@ -19,26 +16,30 @@ import UniformTypeIdentifiers
 // paying for line-count only.
 // swiftlint:disable file_length
 
+private struct PersonRememberOffer {
+    let speaker: Speaker
+    let source: PersonAliasSource
+}
+
 /// Transcript with editable speaker pills (the M3 leftover), the latest
 /// summary snapshot, and its checkable action items.
 struct MeetingDetailView: View {
     @Environment(AppServices.self) private var services
+    @Environment(\.openSettings) private var openSettings
     let meetingID: MeetingID
     @Binding var route: Route?
+    @State private var model: MeetingDetailModel
 
-    @State private var detail: MeetingDetail?
+    private var detail: MeetingReviewReadModel? { model.state.readModel }
     /// The live Companion's answer cards, persisted (D26) so the meeting can
-    /// be reviewed afterward. Loaded lazily; empty hides the rail section.
-    @State private var companionCards: [CompanionCard] = []
-    /// AI topic headings per chapter, keyed by the chapter's start time. Filled
-    /// lazily; a chapter with no entry falls back to its real-excerpt title.
-    @State private var chapterTitles: [TimeInterval: String] = [:]
-    @State private var summary: (draft: SummaryDraft, version: Int)?
-    @State private var player: MeetingPlayer?
-    @State private var waveform: [Waveform.Bucket] = []
-    @State private var channelURLs: [URL] = []
-    @State private var compressing = false
-    @State private var compressMessage: String?
+    /// be reviewed afterward. Empty hides the rail section.
+    private var companionCards: [CompanionCard] { detail?.companionCards ?? [] }
+    private var summary: MeetingReviewSummary? { detail?.summary }
+    private var player: MeetingPlaybackSession? { model.state.playback?.session }
+    private var waveform: [MeetingWaveformBucket] {
+        model.state.playback?.waveform ?? []
+    }
+    private var playbackTaskID: String? { detail?.meeting.audioDirectory }
     @State private var renamingSpeaker: Speaker?
     @State private var newName = ""
     @State private var exportDocument: ExportDocument?
@@ -49,8 +50,7 @@ struct MeetingDetailView: View {
     @State private var gistResult: URL?
     @State private var gistError: String?
     @State private var summaryNotice: String?
-    @State private var nameSuggestions: [NameSuggestion] = []
-    @State private var suggestingNames = false
+    @State private var summarySetupIssue: SummarySetupIssue?
     /// Refine state lives in RefineService (keyed by meeting) so the work
     /// and its draft survive navigating away from this view.
     private var refinePhase: RefineService.Phase? { services.refines.phase(for: meetingID) }
@@ -63,36 +63,44 @@ struct MeetingDetailView: View {
     private var refineDraft: RefineDraft? {
         if case .draft(let draft) = refinePhase { return draft } else { return nil }
     }
-    /// Applying a draft (and other row actions) stays view-local: it is a
-    /// short DB write, not a long re-pass.
+    /// Applying a draft stays view-local as presentation state while the
+    /// atomic mutation and optional Companion refresh cross ApplicationKit.
     @State private var applying: String?
     @State private var actionError: String?
+    @State private var retryingProcessing = false
     @State private var editingTitle = false
     @State private var newTitle = ""
-    /// Typed-recipe suggestion (M13b): detected once per visit, offered as
-    /// a chip — never applied on its own.
-    @State private var suggestedRecipe: Recipe?
-    @State private var detectedRecipeOnce = false
     /// Presents the "New structure…" sheet from the Structure menu.
     @State private var showingNewStructure = false
-    /// Content-based title suggestion — same contract: chip, click, never solo.
-    @State private var suggestedTitle: String?
-    @State private var suggestedTitleOnce = false
     /// Which summary tab is showing (0 = overview · 1…N = `##` sections ·
     /// 1000 = action items).
     @State private var summaryTabSelection = 0
-    /// Cross-meeting voice matches (D8/D21): computed once per visit when
-    /// the gallery has voices and unnamed speakers exist — chips only.
-    @State private var voiceSuggestions: [VoiceMatcher.Match] = []
-    @State private var voiceMatchedOnce = false
     /// After the user confirms a name (rename or chip), offer — never do —
     /// remembering that speaker's voice for future meetings.
     @State private var rememberOffer: Speaker?
     @State private var rememberingVoice = false
+    /// Canonical people are a separate explicit-consent path from encrypted
+    /// voice memory. Alias matches only open a chooser; they never auto-link.
+    @State private var personOffer: PersonRememberOffer?
+    @State private var personCandidates: [Person] = []
+    @State private var choosingPerson: PersonRememberOffer?
+    @State private var findingPerson = false
+    /// Explicit summary-source navigation. Audio meetings seek the playhead
+    /// without surprising playback; text-only meetings use this ID to focus
+    /// the cited row.
+    @State private var evidenceFocusSegmentID: UUID?
+    /// Evidence can be clicked before a long waveform finishes preparing.
+    /// Keep the exact seek until the player exists instead of dropping it.
+    @State private var pendingEvidenceSeek: TimeInterval?
 
-    private struct ReloadID: Hashable {
-        let meetingID: MeetingID
-        let libraryVersion: Int
+    init(
+        services: AppServices,
+        meetingID: MeetingID,
+        route: Binding<Route?>
+    ) {
+        self.meetingID = meetingID
+        _route = route
+        _model = State(initialValue: services.makeMeetingDetailModel(meetingID))
     }
 
     /// The post-meeting mirror (6a-2): opt-in, shown once right after a
@@ -110,18 +118,25 @@ struct MeetingDetailView: View {
                 ProgressView()
             }
         }
-        .task(id: ReloadID(meetingID: meetingID, libraryVersion: services.libraryVersion)) {
-            await reload()
+        .task { await model.observe() }
+        .task(id: playbackTaskID) { await refreshPlayback() }
+        .task(id: model.state.revision) { await refreshPresentation() }
+        .onChange(of: services.pendingMeetingSeek) { _, _ in
+            consumePendingMeetingSeekIfMatching()
         }
-        .onDisappear { player?.invalidate() }
+        .onDisappear { model.invalidatePlayback() }
     }
 
     /// The loaded detail: the scrolling content plus the toolbar, sheet, and
     /// the stack of exporter/confirmation/alert modifiers. The branchy pieces
     /// live in the extracted subviews and computed bindings below so this
     /// stays a flat composition.
-    private func loaded(_ detail: MeetingDetail) -> some View {
-        loadedBody(detail)
+    private func loaded(_ detail: MeetingReviewReadModel) -> some View {
+        loadedAlertsAndEditors(detail)
+    }
+
+    private func loadedSheetsAndDialogs(_ detail: MeetingReviewReadModel) -> some View {
+        loadedBody(detail).onAppear { model.firstContentDidAppear() }
             // No `.navigationTitle`: the meeting title already lives in the
             // header below, and showing it in the window bar too read as a
             // duplicate. The window bar keeps the app's own title.
@@ -144,6 +159,24 @@ struct MeetingDetailView: View {
             ) {
                 gistConfirmButtons(detail)
             }
+            .confirmationDialog(
+                Text(L10n.format(
+                    "Who is %@?",
+                    choosingPerson?.speaker.displayName ?? "")),
+                isPresented: personChoiceBinding,
+                titleVisibility: .visible
+            ) {
+                personChoiceButtons
+            } message: {
+                Text(L10n.text(
+                    // One-line UI explanation.
+                    // swiftlint:disable:next line_length
+                    "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically."))
+            }
+    }
+
+    private func loadedAlertsAndEditors(_ detail: MeetingReviewReadModel) -> some View {
+        loadedSheetsAndDialogs(detail)
             .alert("Gist published", isPresented: gistResultBinding) {
                 gistPublishedButtons
             } message: {
@@ -153,6 +186,17 @@ struct MeetingDetailView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(summaryNotice ?? "")
+            }
+            .alert("Summary needs setup", isPresented: summarySetupBinding) {
+                Button("Open Intelligence Settings") {
+                    services.pendingSettingsCategory = .intelligence
+                    openSettings()
+                }
+                .accessibilityIdentifier("detail-summary-open-settings")
+                Button("Not now", role: .cancel) {}
+                    .accessibilityIdentifier("detail-summary-not-now")
+            } message: {
+                Text(summarySetupIssue?.message ?? "")
             }
             .alert("Couldn’t complete", isPresented: gistErrorBinding) {
                 Button("OK", role: .cancel) {}
@@ -165,7 +209,7 @@ struct MeetingDetailView: View {
             .sheet(isPresented: $showingNewStructure) {
                 CustomStructureSheet(existing: nil) { recipe in
                     CustomRecipeStore.upsert(recipe)
-                    regenerate(language: summary?.draft.language ?? "en", recipe: recipe)
+                    regenerate(language: summaryLanguage(summary?.draft.language), recipe: recipe)
                 }
             }
             .alert("Rename speaker", isPresented: renameBinding) {
@@ -179,7 +223,7 @@ struct MeetingDetailView: View {
 // MARK: - Loaded content (subviews & presentation bindings)
 
 extension MeetingDetailView {
-    private func loadedBody(_ detail: MeetingDetail) -> some View {
+    private func loadedBody(_ detail: MeetingReviewReadModel) -> some View {
         // A fixed-height composition (NOT one big page scroll): header and
         // summary sit at the top, the transcript fills the middle and scrolls
         // in its own viewport, and the player is DOCKED at the bottom — so you
@@ -208,7 +252,9 @@ extension MeetingDetailView {
 
     private var transcriptHeader: some View {
         HStack {
-            Text("Transcript").font(.headline)
+            Text("Transcript")
+                .font(.headline)
+                .accessibilityIdentifier("detail-transcript-title")
             if player != nil {
                 Spacer()
                 Text("Click a line to jump there")
@@ -222,23 +268,24 @@ extension MeetingDetailView {
     /// audio (sized to fill the space above the docked player), or a plain
     /// scrolling list otherwise.
     @ViewBuilder
-    private func transcriptArea(_ detail: MeetingDetail) -> some View {
+    private func transcriptArea(_ detail: MeetingReviewReadModel) -> some View {
         if player != nil {
             GeometryReader { geometry in
                 transcriptLines(detail, carouselHeight: max(180, geometry.size.height))
             }
         } else {
-            ScrollView { transcriptLines(detail, carouselHeight: 440) }
+            transcriptLines(detail, carouselHeight: 440)
         }
     }
 
-    private func transcriptLines(_ detail: MeetingDetail, carouselHeight: CGFloat) -> some View {
+    private func transcriptLines(_ detail: MeetingReviewReadModel, carouselHeight: CGFloat) -> some View {
         // Own View struct so only it re-renders as the playhead moves — the
         // header and summary above stay put.
         TranscriptSegmentsView(
             segments: detail.segments,
             speakers: detail.speakers,
             player: player,
+            focusedSegmentID: evidenceFocusSegmentID,
             onSeek: { player?.seek(to: $0); player?.play() },
             onRenameTap: { speaker in
                 renamingSpeaker = speaker
@@ -253,23 +300,38 @@ extension MeetingDetailView {
     private var playerDock: some View {
         if let player {
             Divider()
-            MeetingPlayerBar(player: player, waveform: waveform)
+            MeetingPlayerBar(
+                player: player,
+                waveform: waveform,
+                exportClip: { range, destination in
+                    let effect = await model.send(.exportAudioClip(range, to: destination))
+                    guard case .operationFailed(let message) = effect else { return nil }
+                    return message
+                })
             compressRow
         }
     }
 
-    /// The right rail: meeting health + ✦ chapters + the Companion's answers —
+    /// The right rail: processing recovery + privacy receipt + meeting health + ✦ chapters +
+    /// the Companion's answers —
     /// the at-a-glance column beside the transcript. Hidden entirely when it
     /// would be empty. SCROLLS on its own so a long Companion list (many
     /// cards) never grows the page and pushes the header or docked player
     /// off-screen — the rail stays within its column, everything else stays put.
     @ViewBuilder
-    private func detailRail(_ detail: MeetingDetail) -> some View {
+    private func detailRail(_ detail: MeetingReviewReadModel) -> some View {
         let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
-        if hasHealth || hasChapters || !companionCards.isEmpty {
+        let hasProcessingState = detail.meeting.lifecycleState == .needsAttention
+            || detail.processingJobs.contains {
+                $0.state == .pending || $0.state == .running || $0.state == .failed
+            }
+        if hasProcessingState || detail.privacyReceipt != nil
+            || hasHealth || hasChapters || !companionCards.isEmpty {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    processingStatusSection(detail)
+                    privacyReceiptSection(detail.privacyReceipt)
                     if hasHealth {
                         MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
                     }
@@ -283,6 +345,293 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
+    private func processingStatusSection(_ detail: MeetingReviewReadModel) -> some View {
+        let failed = detail.processingJobs.filter { $0.state == .failed }
+        let active = detail.processingJobs.filter {
+            $0.state == .pending || $0.state == .running
+        }
+        if !failed.isEmpty {
+            failedProcessingCard(failed)
+        } else if !active.isEmpty {
+            activeProcessingCard(active)
+        } else if detail.meeting.lifecycleState == .needsAttention {
+            recordingRecoveryCard(detail)
+        }
+    }
+
+    private func failedProcessingCard(_ jobs: [ProcessingJob]) -> some View {
+        processingCard(tint: .orange) {
+            Label(
+                "Processing needs attention",
+                systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                .font(.headline)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("detail-processing-status")
+            Text(failedProcessingExplanation(jobs))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            retryProcessingButton
+        }
+    }
+
+    private var retryProcessingButton: some View {
+        Button {
+            retryingProcessing = true
+            Task {
+                await model.send(.retryProcessing)
+                retryingProcessing = false
+            }
+        } label: {
+            if retryingProcessing {
+                ProgressView().controlSize(.small)
+            } else {
+                Label("Retry processing", systemImage: "arrow.clockwise")
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.small)
+        .disabled(retryingProcessing)
+        .accessibilityIdentifier("detail-retry-processing")
+    }
+
+    private func activeProcessingCard(_ jobs: [ProcessingJob]) -> some View {
+        processingCard(tint: PVDesign.accent) {
+            Label("Processing on this Mac", systemImage: "gearshape.2")
+                .font(.headline)
+                .foregroundStyle(PVDesign.accent)
+                .accessibilityIdentifier("detail-processing-status")
+            Text(activeProcessingExplanation(jobs))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Keep Portavoz open; recovery continues automatically.")
+                .font(.caption.weight(.semibold))
+        }
+    }
+
+    @ViewBuilder
+    private func recordingRecoveryCard(_ detail: MeetingReviewReadModel) -> some View {
+        processingCard(tint: .orange) {
+            Label(
+                "Recording needs recovery",
+                systemImage: "waveform.badge.exclamationmark")
+                .font(.headline)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("detail-processing-status")
+            Text(recoveryExplanation(detail.meeting.lastProcessingError))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            processingRecoveryAction(detail)
+        }
+    }
+
+    @ViewBuilder
+    private func processingRecoveryAction(_ detail: MeetingReviewReadModel) -> some View {
+        if detail.meeting.audioDirectory != nil {
+            Button("Refine transcript") { refine(detail) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .accessibilityIdentifier("detail-recover-with-refine")
+        } else {
+            Button("Open support diagnostics") {
+                services.pendingSettingsCategory = .data
+                openSettings()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .accessibilityIdentifier("detail-open-support-diagnostics")
+        }
+    }
+
+    private func processingCard<Content: View>(
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8, content: content)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(tint.opacity(0.2), lineWidth: 1))
+    }
+
+    private func failedProcessingExplanation(_ jobs: [ProcessingJob]) -> String {
+        let kinds = Set(jobs.map(\.kind))
+        if kinds.contains(.transcription) {
+            // swiftlint:disable:next line_length
+            return L10n.text("Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.")
+        }
+        if kinds.contains(.diarization) {
+            return L10n.text(
+                "Speaker recovery stopped after repeated attempts. Your audio and transcript are still saved.")
+        }
+        return L10n.text(
+            "Background processing stopped after repeated attempts. Your meeting is still saved.")
+    }
+
+    private func activeProcessingExplanation(_ jobs: [ProcessingJob]) -> String {
+        if jobs.contains(where: { $0.kind == .transcription }) {
+            return L10n.text("Recovering the complete transcript from finalized audio.")
+        }
+        if jobs.contains(where: { $0.kind == .diarization }) {
+            return L10n.text("Recovering speaker attribution from finalized audio.")
+        }
+        return L10n.text("Finishing local background processing for this meeting.")
+    }
+
+    private func recoveryExplanation(_ code: String?) -> String {
+        switch code {
+        case "transcription.empty":
+            L10n.text("No reliable speech was found. Run Refine to review the saved audio again.")
+        case "capture.publication.failed":
+            L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
+        default:
+            L10n.text("Portavoz preserved the meeting, but automatic recovery could not finish.")
+        }
+    }
+
+    @ViewBuilder
+    private func privacyReceiptSection(_ receipt: PrivacyReceipt?) -> some View {
+        if let receipt {
+            let tint = privacyReceiptTint(receipt.status)
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Privacy receipt", systemImage: privacyReceiptIcon(receipt.status))
+                    .font(.headline)
+                    .foregroundStyle(tint)
+                    .accessibilityIdentifier("detail-privacy-receipt")
+                Text(privacyReceiptHeadline(receipt))
+                    .font(.callout.weight(.semibold))
+                Text(privacyReceiptExplanation(receipt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                privacyReceiptSyncLine(receipt.syncDisclosure)
+
+                ForEach(Array(receipt.remoteEvents.enumerated()), id: \.element.id) { index, event in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(privacyReceiptOperation(event.operation))
+                            .font(.caption.weight(.semibold))
+                        Text(event.destinationHost)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                        Text(event.attemptedAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("privacy-remote-event-\(index)")
+                }
+
+                if !receipt.generation.isEmpty || !receipt.localDeviceEvents.isEmpty {
+                    Text(L10n.format(
+                        "Model activity: %d · Local transfers: %d",
+                        receipt.generation.count,
+                        receipt.localDeviceEvents.count))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(tint.opacity(0.2), lineWidth: 1)
+            )
+        }
+    }
+
+    /// The on-device claim above stays scoped to tracked processing; this line
+    /// is what keeps the receipt honest once a private iCloud copy exists. It
+    /// stays silent while no cloud copy is recorded.
+    @ViewBuilder
+    private func privacyReceiptSyncLine(_ disclosure: PrivacyReceiptSyncDisclosure) -> some View {
+        if disclosure == .acknowledgedByPrivateCloud {
+            VStack(alignment: .leading, spacing: 2) {
+                Label(L10n.text("Synced to private iCloud"), systemImage: "icloud.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.blue)
+                Text(L10n.text(
+                    "This meeting's text was stored in encrypted fields in your private iCloud database."))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(L10n.text("Synced to private iCloud"))
+            .accessibilityValue(L10n.text(
+                "This meeting's text was stored in encrypted fields in your private iCloud database."))
+            .accessibilityIdentifier("detail-privacy-receipt-sync")
+        }
+    }
+
+    private func privacyReceiptTint(_ status: PrivacyReceiptStatus) -> Color {
+        switch status {
+        case .allContentStayedOnDevice: .green
+        case .noRemoteTransferRecorded: .orange
+        case .remoteTransferAttempted: .orange
+        }
+    }
+
+    private func privacyReceiptIcon(_ status: PrivacyReceiptStatus) -> String {
+        switch status {
+        case .allContentStayedOnDevice: "lock.shield.fill"
+        case .noRemoteTransferRecorded: "clock.badge.questionmark"
+        case .remoteTransferAttempted: "arrow.up.right.square.fill"
+        }
+    }
+
+    private func privacyReceiptHeadline(_ receipt: PrivacyReceipt) -> String {
+        switch receipt.status {
+        case .allContentStayedOnDevice:
+            // Once a private cloud copy exists, an unqualified all-local
+            // headline would contradict the iCloud line right below it.
+            if receipt.syncDisclosure == .acknowledgedByPrivateCloud {
+                L10n.text("No third-party service used")
+            } else {
+                L10n.text("No remote service used")
+            }
+        case .noRemoteTransferRecorded:
+            L10n.text("No remote transfer recorded")
+        case .remoteTransferAttempted:
+            L10n.text("Remote transfer attempted")
+        }
+    }
+
+    private func privacyReceiptExplanation(_ receipt: PrivacyReceipt) -> String {
+        switch receipt.status {
+        case .allContentStayedOnDevice:
+            return L10n.text("All tracked meeting processing stayed on this Mac.")
+        case .noRemoteTransferRecorded:
+            return L10n.format(
+                "Tracking began %@; earlier activity is not covered.",
+                receipt.trackingStartedAt.formatted(date: .abbreviated, time: .shortened))
+        case .remoteTransferAttempted:
+            if receipt.remoteEvents.count == 1 {
+                return L10n.text(
+                    "1 remote transfer attempt was recorded. Content may have left this Mac.")
+            }
+            return L10n.format(
+                "%d remote transfer attempts were recorded. Content may have left this Mac.",
+                receipt.remoteEvents.count)
+        }
+    }
+
+    private func privacyReceiptOperation(_ operation: DataEgressOperation) -> String {
+        switch operation {
+        case .companionKnowledgeAnswer: L10n.text("Companion question only")
+        case .summaryGeneration: L10n.text("Summary material")
+        case .publishGitHubGist: L10n.text("Meeting export")
+        case .createGitHubIssue: L10n.text("GitHub action item")
+        case .createLinearIssue: L10n.text("Linear action item")
+        }
+    }
+
+    @ViewBuilder
     private var refineStatus: some View {
         if let progress = refining ?? applying {
             HStack(spacing: 8) {
@@ -290,13 +639,13 @@ extension MeetingDetailView {
                 Text(progress).foregroundStyle(.secondary)
             }
         }
-        if let message = refineError ?? actionError {
+        if let message = refineError ?? actionError ?? model.state.lastActionError {
             Text(message).font(.caption).foregroundStyle(.red)
         }
     }
 
     @ViewBuilder
-    private func summaryOrGenerate(_ detail: MeetingDetail) -> some View {
+    private func summaryOrGenerate(_ detail: MeetingReviewReadModel) -> some View {
         if let summary {
             summarySection(summary)
         } else if regenerating {
@@ -306,19 +655,22 @@ extension MeetingDetailView {
             }
         } else if !detail.segments.isEmpty {
             Button {
-                regenerate(language: Locale.current.language.languageCode?.identifier ?? "en")
+                regenerate(language: summaryLanguage())
             } label: {
                 Label("Generate summary", systemImage: "sparkles")
             }
+            .accessibilityIdentifier("detail-generate-summary")
         }
     }
 
     @ViewBuilder
     private var compressRow: some View {
-        if canCompressAudio || compressing || compressMessage != nil {
+        if canCompressAudio
+            || model.state.isCompressingAudio
+            || model.state.audioCompressionMessage != nil {
             HStack(spacing: 8) {
                 Button(action: compressAudio) {
-                    if compressing {
+                    if model.state.isCompressingAudio {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
                             Text("Compressing…")
@@ -328,9 +680,10 @@ extension MeetingDetailView {
                     }
                 }
                 .controlSize(.small)
+                .accessibilityIdentifier("detail-compress-audio")
                 .disabled(!canCompressAudio)
                 .help("Converts audio to AAC to save disk space, with no audible loss for speech")
-                if let compressMessage {
+                if let compressMessage = model.state.audioCompressionMessage {
                     Text(compressMessage)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -343,30 +696,11 @@ extension MeetingDetailView {
     /// The .portavoz interchange file (M15 L0): transcript + cast +
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
-    private func exportBundle(_ detail: MeetingDetail, includeAudio: Bool) async {
-        let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
-        let cards = (try? await services.store.companionCards(for: meetingID)) ?? []
-        var audio: [MeetingBundle.AudioAttachment]?
-        if includeAudio, let relative = detail.meeting.audioDirectory {
-            let base = RecordingsLocation.shared.resolve(relative)
-            let attachments = ["system", "microphone"].compactMap { name -> MeetingBundle.AudioAttachment? in
-                guard let url = MeetingAudioLayout.channelFile(named: name, in: base),
-                    let data = try? Data(contentsOf: url)
-                else { return nil }
-                return MeetingBundle.AudioAttachment(
-                    name: name, fileExtension: url.pathExtension, data: data)
-            }
-            audio = attachments.isEmpty ? nil : attachments
-        }
-        let bundle = MeetingBundle(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: summary?.draft,
-            contextItems: notes,
-            companionCards: cards,
-            audioFiles: audio)
-        guard let data = try? bundle.encoded() else {
+    private func exportBundle(_ detail: MeetingReviewReadModel, includeAudio: Bool) async {
+        guard let data = try? await services.exportMeetingBundle(
+            meetingID: detail.meeting.id,
+            includeAudio: includeAudio)
+        else {
             gistError = L10n.text("Could not encode the meeting file.")
             return
         }
@@ -383,8 +717,8 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func gistConfirmButtons(_ detail: MeetingDetail) -> some View {
-        Button("Publish secret gist") { Task { await publishGist(detail) } }
+    private func gistConfirmButtons(_ detail: MeetingReviewReadModel) -> some View {
+        Button("Publish secret gist") { Task { await publishGist() } }
         Button("Cancel", role: .cancel) {}
     }
 
@@ -406,7 +740,7 @@ extension MeetingDetailView {
     /// A compact rename sheet — opens pre-filled with the current title,
     /// selected, so you can type over it or edit. (Replaces the old `.alert`,
     /// whose text field went blank on the second open.)
-    private func renameSheet(_ detail: MeetingDetail) -> some View {
+    private func renameSheet(_ detail: MeetingReviewReadModel) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Rename meeting").font(.headline)
             AutoSelectTextField(text: $newTitle, onSubmit: { commitRename(detail) })
@@ -424,22 +758,19 @@ extension MeetingDetailView {
         .frame(width: 380)
     }
 
-    private func commitRename(_ detail: MeetingDetail) {
+    private func commitRename(_ detail: MeetingReviewReadModel) {
         let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         editingTitle = false
         guard !title.isEmpty else { return }
-        var meeting = detail.meeting
         Task {
-            meeting.title = title
-            try? await services.store.save(meeting)
-            await reload()
-            services.libraryVersion += 1
+            await model.send(.renameMeeting(detail.meeting, title: title))
         }
     }
 
     @ViewBuilder
     private var renameSpeakerButtons: some View {
         TextField("Name", text: $newName)
+            .accessibilityIdentifier("speaker-name-field")
         Button("Save") {
             // Capture NOW: dismissing the alert nils renamingSpeaker
             // before the task runs, which silently dropped the rename.
@@ -448,6 +779,7 @@ extension MeetingDetailView {
                 Task { await rename(speaker, to: name) }
             }
         }
+        .accessibilityIdentifier("speaker-rename-save")
         Button("Cancel", role: .cancel) {}
     }
 
@@ -473,18 +805,65 @@ extension MeetingDetailView {
         Binding(get: { gistError != nil }, set: { if !$0 { gistError = nil } })
     }
 
+    private var summarySetupBinding: Binding<Bool> {
+        Binding(
+            get: { summarySetupIssue != nil },
+            set: { if !$0 { summarySetupIssue = nil } })
+    }
+
     private var renameBinding: Binding<Bool> {
         Binding(
             get: { renamingSpeaker != nil },
             set: { if !$0 { renamingSpeaker = nil } }
         )
     }
+
+    private var personChoiceBinding: Binding<Bool> {
+        Binding(
+            get: { choosingPerson != nil && !personCandidates.isEmpty },
+            set: { presented in
+                if !presented {
+                    choosingPerson = nil
+                    personCandidates = []
+                }
+            })
+    }
+
+    @ViewBuilder
+    private var personChoiceButtons: some View {
+        if let offer = choosingPerson {
+            ForEach(Array(personCandidates.enumerated()), id: \.element.id) { index, person in
+                Button(personCandidateLabel(person, index: index)) {
+                    Task {
+                        await linkPerson(offer, selection: .existing(person.id))
+                    }
+                }
+                .accessibilityIdentifier("person-link-existing-\(index)")
+            }
+            Button(L10n.text("Create a separate person")) {
+                Task { await linkPerson(offer, selection: .createDistinct) }
+            }
+            .accessibilityIdentifier("person-create-distinct")
+        }
+        Button(L10n.text("Cancel"), role: .cancel) {}
+            .accessibilityIdentifier("person-link-cancel")
+    }
+
+    private func personCandidateLabel(_ person: Person, index: Int) -> String {
+        if personCandidates.count == 1 {
+            return L10n.format("Use %@", person.preferredName)
+        }
+        return L10n.format(
+            "Use %@ (person %d)",
+            person.preferredName,
+            index + 1)
+    }
 }
 
 // MARK: - Header, speakers & name suggestions
 
 extension MeetingDetailView {
-    private func header(_ detail: MeetingDetail) -> some View {
+    private func header(_ detail: MeetingReviewReadModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(detail.meeting.title).font(.title2.bold())
@@ -496,14 +875,11 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .help("Rename the meeting")
-                if let suggestion = suggestedTitle {
+                if let suggestion = model.state.suggestedTitle {
                     Button {
-                        suggestedTitle = nil
                         Task {
-                            var meeting = detail.meeting
-                            meeting.title = suggestion
-                            try? await services.store.save(meeting)
-                            services.libraryVersion += 1
+                            await model.send(
+                                .renameMeeting(detail.meeting, title: suggestion))
                         }
                     } label: {
                         ChipLabel(kind: .ai, text: "“\(suggestion)”?")
@@ -531,13 +907,13 @@ extension MeetingDetailView {
     /// (design system: refine · export · delete live with the meeting, not
     /// in the window toolbar). Export is tinted the accent; delete is
     /// destructive red.
-    private func actionRow(_ detail: MeetingDetail) -> some View {
+    private func actionRow(_ detail: MeetingReviewReadModel) -> some View {
         HStack(spacing: 8) {
             refineMenu(detail)
 
             Menu {
-                Button("Export Markdown…") { export(detail, as: .markdown) }
-                Button("Export PDF…") { export(detail, as: .pdf) }
+                Button("Export Markdown…") { export(as: .markdown) }
+                Button("Export PDF…") { export(as: .pdf) }
                 Button("Export meeting file (.portavoz)…") {
                     Task { await exportBundle(detail, includeAudio: false) }
                 }
@@ -563,9 +939,9 @@ extension MeetingDetailView {
                 help: "Move this meeting to Recently deleted"
             ) {
                 Task {
-                    try? await services.store.delete(meetingID)
-                    services.libraryVersion += 1
-                    route = nil
+                    if case .meetingDeleted = await model.send(.deleteMeeting) {
+                        route = nil
+                    }
                 }
             }
         }
@@ -598,51 +974,100 @@ extension MeetingDetailView {
     /// The meeting's cast, with the M6 "1-tap speaker→name" flow: ✦
     /// proposes names the transcript proves; one click applies them.
     @ViewBuilder
-    private func speakersRow(_ detail: MeetingDetail) -> some View {
+    private func speakersRow(_ detail: MeetingReviewReadModel) -> some View {
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
         HStack(spacing: 8) {
             ForEach(detail.speakers) { speaker in
-                SpeakerPill(speaker: speaker, cast: detail.speakers) { speaker in
+                SpeakerPill(
+                    speaker: speaker,
+                    cast: detail.speakers,
+                    accessibilityIdentifier: "cast-speaker-\(speaker.label)"
+                ) { speaker in
                     renamingSpeaker = speaker
                     newName = speaker.displayName ?? ""
                 }
             }
             if !unnamed.isEmpty {
-                if suggestingNames {
+                if model.state.isSuggestingNames {
                     ProgressView().controlSize(.small)
-                } else if nameSuggestions.isEmpty {
+                } else if model.state.nameSuggestions.isEmpty {
                     Button {
-                        Task { await suggestNames(detail) }
+                        Task { await suggestNames() }
                     } label: {
                         Label("Suggest names", systemImage: "sparkles")
                             .font(.caption)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("detail-suggest-names")
                 }
             }
-            ForEach(nameSuggestions, id: \.label) { suggestion in
+            ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
                 Button {
                     Task { await apply(suggestion, in: detail) }
                 } label: {
                     ChipLabel(kind: .ai, text: "\(suggestion.label) → \(suggestion.name)?")
                 }
                 .buttonStyle(.plain)
-                .help("Evidence: \(suggestion.evidence)")
+                .help(nameSuggestionHelp(suggestion))
+                .accessibilityIdentifier("detail-name-suggestion-\(suggestion.label)")
             }
             // Cross-meeting voice matches: same chip contract, waveform icon
             // marks the evidence as "their voice", not the transcript.
-            ForEach(voiceSuggestions, id: \.voiceLabel) { match in
+            ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
                 Button {
                     Task { await apply(match, in: detail) }
                 } label: {
-                    ChipLabel(kind: .voice, text: "\(match.voiceLabel) → \(match.name)?")
+                    ChipLabel(kind: .voice, text: "\(match.speakerLabel) → \(match.name)?")
                 }
                 .buttonStyle(.plain)
                 .help(L10n.format(
                     "Voice match: sounds like “%@” from your remembered voices.", match.name))
             }
+            personOfferChip
             rememberOfferChip
+        }
+    }
+
+    /// The explicit canonical-person boundary (D86). One press creates a
+    /// distinct person only when there are no exact alias candidates; any
+    /// candidate requires a second, visible choice.
+    @ViewBuilder
+    private var personOfferChip: some View {
+        if let offer = personOffer, let name = offer.speaker.displayName {
+            if findingPerson {
+                ProgressView().controlSize(.small)
+            } else {
+                HStack(spacing: 6) {
+                    Label(
+                        L10n.format("Remember %@ as a person?", name),
+                        systemImage: "person.crop.circle.badge.plus")
+                    .font(.caption)
+                    .foregroundStyle(PVDesign.chipOfferInk)
+                    Button(L10n.text("Remember")) {
+                        Task { await findOrCreatePerson(for: offer) }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("person-remember-offer")
+                    Button {
+                        personOffer = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                            .foregroundStyle(PVDesign.chipOfferInk)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.text("Dismiss person offer"))
+                    .accessibilityIdentifier("person-dismiss-offer")
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(PVDesign.chipOfferBg, in: Capsule())
+                .help(L10n.text(
+                    "Links this meeting speaker to local, user-confirmed person memory."))
+            }
         }
     }
 
@@ -687,65 +1112,114 @@ extension MeetingDetailView {
         }
     }
 
-    private func suggestNames(_ detail: MeetingDetail) async {
-        guard #available(macOS 26.0, *) else {
-            gistError = L10n.text("Name suggestions require macOS 26.")
-            return
-        }
-        suggestingNames = true
-        defer { suggestingNames = false }
-        do {
-            // Calendar attendees around the meeting widen the candidate
-            // pool (TCC prompt on first use; denial = empty list).
-            let attendees = await CalendarAttendeeSource()
-                .attendees(around: detail.meeting.startedAt)
-            nameSuggestions = try await SpeakerNamer().suggestNames(
-                segments: detail.segments, speakers: detail.speakers,
-                attendeeCandidates: attendees)
-            if nameSuggestions.isEmpty {
-                gistError = L10n.text(
-                    "The transcript does not prove any names — you can rename the pills manually.")
-            }
-        } catch {
-            gistError = error.localizedDescription
+    private func suggestNames() async {
+        if case .operationFailed(let message) = await model.send(.loadNameSuggestions) {
+            gistError = message
         }
     }
 
-    private func apply(_ suggestion: NameSuggestion, in detail: MeetingDetail) async {
-        guard var speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
+    private func apply(
+        _ suggestion: MeetingNameSuggestion,
+        in detail: MeetingReviewReadModel
+    ) async {
+        guard let speaker = detail.speakers.first(where: { $0.label == suggestion.label }) else {
             return
         }
-        speaker.displayName = suggestion.name
-        try? await services.store.save([speaker])
-        nameSuggestions.removeAll { $0.label == suggestion.label }
-        services.libraryVersion += 1
-        offerToRemember(speaker)
+        let effect = await model.send(
+            .acceptNameSuggestion(speaker, name: suggestion.name))
+        switch effect {
+        case .nameSuggestionAccepted(let renamed):
+            let source: PersonAliasSource = switch suggestion.evidence {
+            case .transcript: .transcriptSuggestion
+            case .calendarCandidate: .calendarSuggestion
+            }
+            offerToRememberPerson(renamed, source: source)
+            await offerToRememberVoice(renamed)
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
+        }
+    }
+
+    private func nameSuggestionHelp(_ suggestion: MeetingNameSuggestion) -> String {
+        switch suggestion.evidence {
+        case .transcript(let quote):
+            L10n.format("Transcript: “%@”", quote)
+        case .calendarCandidate(let candidate):
+            L10n.format("Calendar candidate: %@", candidate)
+        }
     }
 
     // MARK: Cross-meeting voices (D8/D21)
 
-    private func apply(_ match: VoiceMatcher.Match, in detail: MeetingDetail) async {
-        guard var speaker = detail.speakers.first(where: { $0.label == match.voiceLabel }) else {
+    private func apply(_ match: MeetingVoiceSuggestion, in detail: MeetingReviewReadModel) async {
+        guard let speaker = detail.speakers.first(where: { $0.label == match.speakerLabel }) else {
             return
         }
-        speaker.displayName = match.name
-        try? await services.store.save([speaker])
-        voiceSuggestions.removeAll { $0.voiceLabel == match.voiceLabel }
-        services.libraryVersion += 1
+        let effect = await model.send(
+            .acceptVoiceSuggestion(speaker, name: match.name))
+        switch effect {
+        case .voiceSuggestionAccepted(let renamed):
+            offerToRememberPerson(renamed, source: .voiceSuggestion)
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
+        }
+    }
+
+    private func offerToRememberPerson(_ speaker: Speaker, source: PersonAliasSource) {
+        guard !speaker.isMe,
+              speaker.personID == nil,
+              let name = speaker.displayName,
+              !name.isEmpty
+        else {
+            personOffer = nil
+            return
+        }
+        personOffer = PersonRememberOffer(speaker: speaker, source: source)
+    }
+
+    private func findOrCreatePerson(for offer: PersonRememberOffer) async {
+        findingPerson = true
+        defer { findingPerson = false }
+        let effect = await model.send(
+            .findCanonicalPeople(offer.speaker, source: offer.source))
+        guard case .canonicalPeopleFound(_, _, let people) = effect else { return }
+        if people.isEmpty {
+            await linkPerson(offer, selection: .createDistinct)
+        } else {
+            personCandidates = people
+            choosingPerson = offer
+        }
+    }
+
+    private func linkPerson(
+        _ offer: PersonRememberOffer,
+        selection: CanonicalPersonSelection
+    ) async {
+        let effect = await model.send(
+            .linkCanonicalPerson(
+                offer.speaker,
+                source: offer.source,
+                selection: selection))
+        guard case .canonicalPersonLinked = effect else { return }
+        personOffer = nil
+        choosingPerson = nil
+        personCandidates = []
     }
 
     /// Offers the remember-this-voice chip after a name was confirmed by a
     /// user gesture. Skipped for "Me" (that's the enrollment in Settings)
     /// and for names already in the gallery (their voice is remembered).
-    private func offerToRemember(_ speaker: Speaker) {
+    private func offerToRememberVoice(_ speaker: Speaker) async {
         guard !speaker.isMe, let name = speaker.displayName, !name.isEmpty else {
             rememberOffer = nil
             return
         }
-        let remembered = (try? VoiceGallery().voices()) ?? []
-        guard !remembered.contains(where: {
-            $0.name.compare(name, options: .caseInsensitive) == .orderedSame
-        }) else {
+        let effect = await model.send(.checkVoiceMemoryOffer(name: name))
+        guard case .voiceMemoryOfferChecked(true) = effect else {
             rememberOffer = nil
             return
         }
@@ -753,23 +1227,21 @@ extension MeetingDetailView {
     }
 
     private func rememberVoice(of speaker: Speaker) async {
-        guard let detail, let name = speaker.displayName else { return }
+        guard detail != nil, speaker.displayName?.isEmpty == false else { return }
         rememberingVoice = true
         defer {
             rememberingVoice = false
             rememberOffer = nil
         }
-        let prints = await extractVoiceprints(detail, speakers: [speaker])
-        guard let voiceprint = prints[speaker.label] else {
+        let effect = await model.send(.rememberVoice(speaker.id))
+        switch effect {
+        case .voiceMemoryInsufficientAudio:
             gistError = L10n.text(
                 "Not enough clear audio from that voice to remember it (about 5 seconds are needed).")
-            return
-        }
-        do {
-            try VoiceGallery().remember(
-                RememberedVoice(name: name, embedding: voiceprint.embedding))
-        } catch {
-            gistError = L10n.format("Could not remember the voice: %@", error.localizedDescription)
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
         }
     }
 
@@ -777,59 +1249,20 @@ extension MeetingDetailView {
     /// has remembered voices, unnamed speakers exist, and the meeting keeps
     /// its system audio. Uses a throwaway diarizer (~14 MB models; the
     /// heavy recording engines are NOT loaded for this).
-    private func suggestFromVoicesIfUseful() async {
-        guard !voiceMatchedOnce, let detail else { return }
-        let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
-        guard !unnamed.isEmpty else { return }
-        guard let gallery = try? VoiceGallery().voices(), !gallery.isEmpty else { return }
-        voiceMatchedOnce = true
-        let prints = await extractVoiceprints(detail, speakers: unnamed)
-        guard !prints.isEmpty else { return }
-        voiceSuggestions = VoiceMatcher.matches(
-            speakers: prints.map { ($0.key, $0.value.embedding) },
-            gallery: gallery)
-    }
-
-    /// One embedding per requested speaker from their system-channel spans.
-    /// Embeddings are transient: nothing is persisted here (persisting is
-    /// the explicit "Remember" gesture only).
-    private func extractVoiceprints(
-        _ detail: MeetingDetail, speakers: [Speaker]
-    ) async -> [String: Voiceprint] {
-        guard let relative = detail.meeting.audioDirectory else { return [:] }
-        let base = RecordingsLocation.shared.resolve(relative)
-        guard let systemURL = MeetingAudioLayout.channelFile(named: "system", in: base) else {
-            return [:]
-        }
-        var ranges: [String: [ClosedRange<TimeInterval>]] = [:]
-        for speaker in speakers {
-            let spans = detail.segments
-                .filter {
-                    $0.speakerID == speaker.id && $0.channel == .system
-                        && $0.endTime > $0.startTime
-                }
-                .map { $0.startTime...$0.endTime }
-            if !spans.isEmpty { ranges[speaker.label] = spans }
-        }
-        guard !ranges.isEmpty,
-            let diarizer = try? await PyannoteDiarizer.loadRecommended(store: ModelStore())
-        else { return [:] }
-        return (try? await diarizer.extractVoiceprints(
-            fromFile: systemURL, rangesBySpeaker: ranges)) ?? [:]
+    private func loadVoiceSuggestions() async {
+        await model.send(.loadVoiceSuggestions)
     }
 }
 
 // MARK: - Summary, export & regenerate
 
 extension MeetingDetailView {
-    private func summarySection(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+    private func summarySection(_ summary: MeetingReviewSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Summary")
                     .font(.headline)
-                Text(summaryBadge(summary))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                summaryBadgeText(summary)
                 Spacer()
                 recipeSuggestionChip(summary)
                 thinSummaryChip(summary)
@@ -847,12 +1280,14 @@ extension MeetingDetailView {
                     ProgressView().controlSize(.small)
                 } else {
                     Menu {
-                        Button("Regenerate in Spanish") { regenerate(language: "es") }
-                        Button("Regenerate in English") { regenerate(language: "en") }
+                        Button("Regenerate in Spanish") { regenerate(language: .spanish) }
+                        Button("Regenerate in English") { regenerate(language: .english) }
                         Menu("Structure") {
                             ForEach(CustomRecipeStore.all()) { recipe in
                                 Button(recipe.displayName) {
-                                    regenerate(language: summary.draft.language, recipe: recipe)
+                                    regenerate(
+                                        language: summaryLanguage(summary.draft.language),
+                                        recipe: recipe)
                                 }
                             }
                             Divider()
@@ -861,8 +1296,12 @@ extension MeetingDetailView {
                         if let alt = alternateEngine {
                             Divider()
                             Menu(alt.label) {
-                                Button("Español") { regenerate(language: "es", engine: alt.engine) }
-                                Button("English") { regenerate(language: "en", engine: alt.engine) }
+                                Button("Español") {
+                                    regenerate(language: .spanish, engine: alt.engine)
+                                }
+                                Button("English") {
+                                    regenerate(language: .english, engine: alt.engine)
+                                }
                             }
                         }
                     } label: {
@@ -883,7 +1322,7 @@ extension MeetingDetailView {
     /// bullet count) · Pendientes (done/total). Parsed from the Markdown so
     /// it works in any language.
     @ViewBuilder
-    private func summaryTabs(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+    private func summaryTabs(_ summary: MeetingReviewSummary) -> some View {
         let parsed = SummarySections.parse(summary.draft.markdown)
         let done = summary.draft.actionItems.filter(\.isDone).count
         let total = summary.draft.actionItems.count
@@ -921,42 +1360,196 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func summaryTabContent(_ summary: (draft: SummaryDraft, version: Int)) -> some View {
+    private func summaryTabContent(_ summary: MeetingReviewSummary) -> some View {
         let parsed = SummarySections.parse(summary.draft.markdown)
         if summaryTabSelection == 1000 {
-            ForEach(summary.draft.actionItems) { item in
-                Toggle(isOn: actionBinding(item)) {
-                    Text(item.text).strikethrough(item.isDone)
+            let evidenceByItem = summary.draft.actionItemEvidence.reduce(
+                into: [UUID: SummaryActionItemEvidence]()
+            ) { result, evidence in
+                if result[evidence.actionItemID] == nil {
+                    result[evidence.actionItemID] = evidence
                 }
-                .toggleStyle(.checkbox)
+            }
+            ForEach(summary.draft.actionItems) { item in
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: actionBinding(item)) {
+                        Text(item.text).strikethrough(item.isDone)
+                    }
+                    .toggleStyle(.checkbox)
+                    .accessibilityIdentifier("action-item-\(item.id.uuidString)")
+                    if let evidence = evidenceByItem[item.id], let detail {
+                        let resolution = evidence.resolveEvidence(
+                            currentTranscriptRevision: detail.meeting.transcriptRevision,
+                            segments: detail.segments)
+                        summaryEvidenceSources(
+                            resolution,
+                            sourceIdentifier:
+                                "summary-action-item-\(item.id.uuidString)-evidence",
+                            staleIdentifier:
+                                "summary-action-item-\(item.id.uuidString)-stale",
+                            unavailableIdentifier:
+                                "summary-action-item-\(item.id.uuidString)-unavailable")
+                    }
+                }
             }
         } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
-            MarkdownText(text: parsed.sections[summaryTabSelection - 1].body)
+            let sectionOrdinal = summaryTabSelection - 1
+            summaryDecisionSection(
+                parsed.sections[sectionOrdinal],
+                sectionOrdinal: sectionOrdinal,
+                draft: summary.draft)
         } else {
-            MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
+            VStack(alignment: .leading, spacing: 8) {
+                MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
+                summaryEvidence(summary.draft)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func summaryDecisionSection(
+        _ section: SummarySections.Section,
+        sectionOrdinal: Int,
+        draft: SummaryDraft
+    ) -> some View {
+        let evidenceByBullet = draft.decisionEvidence
+            .filter { $0.sectionOrdinal == sectionOrdinal }
+            .reduce(into: [Int: SummaryDecisionEvidence]()) { result, evidence in
+                if result[evidence.bulletOrdinal] == nil {
+                    result[evidence.bulletOrdinal] = evidence
+                }
+            }
+        if evidenceByBullet.isEmpty {
+            MarkdownText(text: section.body)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(section.bulletLines.enumerated()), id: \.offset) { index, bullet in
+                    VStack(alignment: .leading, spacing: 6) {
+                        MarkdownText(text: bullet)
+                        if let evidence = evidenceByBullet[index], let detail {
+                            let resolution = evidence.resolveEvidence(
+                                currentTranscriptRevision: detail.meeting.transcriptRevision,
+                                segments: detail.segments)
+                            summaryEvidenceSources(
+                                resolution,
+                                sourceIdentifier: "summary-decision-\(sectionOrdinal)-\(index)-evidence",
+                                staleIdentifier: "summary-decision-\(sectionOrdinal)-\(index)-stale",
+                                unavailableIdentifier:
+                                    "summary-decision-\(sectionOrdinal)-\(index)-unavailable")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func summaryEvidence(_ draft: SummaryDraft) -> some View {
+        if let detail,
+           let claim = draft.claims.first(where: { $0.kind == .overview }) {
+            let resolution = claim.resolveEvidence(
+                currentTranscriptRevision: detail.meeting.transcriptRevision,
+                segments: detail.segments)
+            VStack(alignment: .leading, spacing: 8) {
+                summaryEvidenceSources(
+                    resolution,
+                    sourceIdentifier: "summary-evidence",
+                    staleIdentifier: "summary-evidence-stale",
+                    unavailableIdentifier: "summary-evidence-unavailable")
+                SummaryClaimFeedbackView(claim: claim) { feedback in
+                    let effect = await model.send(
+                        .setSummaryClaimFeedback(claim.id, feedback))
+                    guard case .summaryClaimFeedbackSaved(let savedID) = effect else {
+                        return false
+                    }
+                    return savedID == claim.id
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func summaryEvidenceSources(
+        _ resolution: SummaryClaimEvidenceResolution,
+        sourceIdentifier: String,
+        staleIdentifier: String,
+        unavailableIdentifier: String
+    ) -> some View {
+        switch resolution.status {
+        case .current:
+            HStack(spacing: 6) {
+                Label("Sources", systemImage: "quote.bubble")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(
+                    Array(resolution.segments.enumerated()),
+                    id: \.element.id
+                ) { index, segment in
+                    Button(evidenceClock(segment.startTime)) {
+                        focusEvidence(segment)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .help(segment.text)
+                    .accessibilityIdentifier("\(sourceIdentifier)-\(index)")
+                    .accessibilityValue(segment.text)
+                }
+            }
+        case .stale:
+            Label(
+                "Sources are out of date after transcript changes.",
+                systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(staleIdentifier)
+        case .unavailable:
+            Label(
+                "Sources are no longer available.",
+                systemImage: "exclamationmark.triangle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(unavailableIdentifier)
+        }
+    }
+
+    private func focusEvidence(_ segment: TranscriptSegment) {
+        evidenceFocusSegmentID = segment.id
+        pendingEvidenceSeek = segment.startTime
+        applyPendingEvidenceSeekIfPossible()
+    }
+
+    private func applyPendingEvidenceSeekIfPossible() {
+        guard let seconds = pendingEvidenceSeek, let player else { return }
+        player.seek(to: seconds)
+        pendingEvidenceSeek = nil
+    }
+
+    private func evidenceClock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%d:%02d", total / 60, total % 60)
     }
 
     private enum ExportFormat { case markdown, pdf }
 
-    private func export(_ detail: MeetingDetail, as format: ExportFormat) {
-        let markdown = MeetingExporter.markdown(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: summary?.draft,
-            summaryVersion: summary?.version
-        )
-        switch format {
-        case .markdown:
-            exportType = .plainText
-            exportName = "\(detail.meeting.title).md"
-            exportDocument = ExportDocument(data: Data(markdown.utf8))
-        case .pdf:
-            guard let data = try? MeetingExporter.pdf(fromMarkdown: markdown) else { return }
-            exportType = .pdf
-            exportName = "\(detail.meeting.title).pdf"
-            exportDocument = ExportDocument(data: data)
+    private func export(as format: ExportFormat) {
+        Task {
+            let effect = await model.send(.prepareDocument(
+                format == .markdown ? .markdown : .pdf))
+            switch effect {
+            case .documentPrepared(let document):
+                switch format {
+                case .markdown:
+                    exportType = .plainText
+                case .pdf:
+                    exportType = .pdf
+                }
+                exportName = document.filename
+                exportDocument = ExportDocument(data: document.data)
+            case .operationFailed(let message):
+                gistError = message
+            default:
+                break
+            }
         }
     }
 
@@ -969,7 +1562,7 @@ extension MeetingDetailView {
 
     /// The engine that is NOT the global default, offered as a per-meeting
     /// override in the regenerate menu — only when it can actually run here (M12).
-    private var alternateEngine: (engine: AppServices.SummaryEngine, label: String)? {
+    private var alternateEngine: (engine: SummaryEngine, label: String)? {
         switch services.summaryEngine {
         case .appleOnDevice:
             if let model = services.ollamaModel {
@@ -984,12 +1577,23 @@ extension MeetingDetailView {
         }
     }
 
+    private func summaryLanguage(_ stored: String? = nil) -> LanguageCode {
+        LanguageCode(stored)
+            ?? MeetingLanguagePreferences.resolvedSummaryLanguage(
+                spokenLanguage: detail?.meeting.language)
+    }
+
     private func regenerate(
-        language: String,
-        engine: AppServices.SummaryEngine? = nil,
-        recipe: Recipe? = nil
+        language: LanguageCode,
+        engine: SummaryEngine? = nil,
+        recipe: Recipe? = nil,
+        segments: [TranscriptSegment]? = nil,
+        speakers: [Speaker]? = nil
     ) {
         guard let detail, !regenerating else { return }
+        model.dismissSuggestedRecipe()
+        let sourceSegments = segments ?? detail.segments
+        let sourceSpeakers = speakers ?? detail.speakers
         regenerating = true
         // No explicit recipe keeps whatever structure the summary already
         // has — regenerating in another language must not lose a Standup.
@@ -997,66 +1601,36 @@ extension MeetingDetailView {
             recipe ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) } ?? .general
         Task {
             defer { regenerating = false }
-            let notes = (try? await services.store.contextItems(for: meetingID)) ?? []
-            let request = SummaryRequest(
+            let request = RegenerateSummaryRequest(
                 meetingID: meetingID,
-                segments: detail.segments,
-                speakers: detail.speakers,
+                segments: sourceSegments,
+                speakers: sourceSpeakers,
                 recipe: activeRecipe,
-                targetLanguage: language,
-                glossary: VocabularyPrompt.parse(
-                    UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
-                contextItems: notes
-            )
-
-            // A configured non-Apple engine (Ollama) summarizes directly —
-            // the fingerprint cache + translation pivot are FM-only. `engine`
-            // overrides the global default for this one meeting (M12).
-            if let provider = services.configuredSummaryProvider(override: engine) {
-                if let draft = try? await provider.summarize(request) {
-                    _ = try? await services.store.saveSummary(draft)
-                    services.libraryVersion += 1
-                } else {
-                    gistError = L10n.text("The local model could not generate the summary.")
-                }
-                return
-            }
-
-            guard #available(macOS 26.0, *) else {
-                gistError = L10n.text("On-device summaries require macOS 26 (or choose Ollama in Settings).")
-                return
-            }
-            if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
-                gistError = reason
-                return
-            }
-            let provider = FoundationModelSummaryProvider()
-            let fingerprint = SummaryFingerprint.compute(
-                request: request, providerID: FoundationModelSummaryProvider.providerID)
-
-            // D25 cache: same material + same stored language — with greedy
-            // decoding the model would reproduce the same result.
-            if let hit = try? await services.store.latestSummary(
-                meetingID, fingerprint: fingerprint, language: language) {
+                targetLanguage: language.identifier,
+                providerOverride: engine)
+            let result = await services.regenerateSummary.execute(request)
+            switch result {
+            case .completed:
+                // Keep Spotlight's released broad invalidation until Band 4
+                // replaces it with incremental indexing.
+                await model.send(.searchableContentChanged)
+            case .unchanged(let version):
                 summaryNotice =
                     // One-line UI notice.
                     // swiftlint:disable:next line_length
-                    L10n.format("Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.", hit.version)
-                return
-            }
-            // D25 pivot: same material in another language → translating that
-            // snapshot costs a fraction of summarizing the transcript again.
-            if let pivot = try? await services.store.latestSummary(
-                meetingID, fingerprint: fingerprint),
-                let translated = try? await provider.translate(
-                    pivot.draft, to: language, glossary: request.glossary) {
-                _ = try? await services.store.saveSummary(translated)
-                services.libraryVersion += 1
-                return
-            }
-            if let draft = try? await provider.summarize(request) {
-                _ = try? await services.store.saveSummary(draft)
-                services.libraryVersion += 1
+                    L10n.format("Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.", version)
+            case .unavailable(.requiresMacOS26):
+                summarySetupIssue = .appleRequiresMacOS26
+            case .unavailable(.appleOnDevice(let reason)):
+                summarySetupIssue = .appleUnavailable(reason)
+            case .unavailable(.ollamaModelNotSelected):
+                summarySetupIssue = .ollamaModelNotSelected
+            case .unavailable(.mlxModelNotDownloaded):
+                summarySetupIssue = .mlxModelNotDownloaded
+            case .generationFailed(.localModelNotice):
+                summarySetupIssue = .localEngineFailed
+            case .generationFailed(.silent):
+                break
             }
         }
     }
@@ -1073,40 +1647,70 @@ extension MeetingDetailView {
     /// language (or honoring the Settings pin); the chevron offers a per-meeting
     /// language override, the fix for a meeting whose transcript came out in
     /// the wrong language on weak audio.
-    private func refineMenu(_ detail: MeetingDetail) -> some View {
-        let disabled = refining != nil || detail.meeting.audioDirectory == nil
-        return Menu {
-            Button("Re-transcribe in Spanish") { refine(detail, language: "es") }
-            Button("Re-transcribe in English") { refine(detail, language: "en") }
-        } label: {
-            Group {
-                if refining != nil {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: "wand.and.stars").font(.system(size: 13))
-                }
+    @ViewBuilder
+    private func refineMenu(_ detail: MeetingReviewReadModel) -> some View {
+        let isRefining = refining != nil
+        let disabled = !isRefining && detail.meeting.audioDirectory == nil
+        if isRefining {
+            Button(role: .destructive) {
+                services.refines.cancel(meetingID)
+            } label: {
+                refineControlLabel(isRefining: true)
             }
-            .foregroundStyle(.secondary)
-            .frame(width: 30, height: 30)
-            .background(Circle().fill(.quaternary.opacity(0.5)))
-        } primaryAction: {
-            refine(detail)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .disabled(disabled)
-        .accessibilityIdentifier("detail-refine")
-        .help(
-            L10n.text(
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityIdentifier("detail-refine")
+            .accessibilityValue("cancel")
+            .help(L10n.text("Cancel refine"))
+        } else {
+            Menu {
+                Button("Re-transcribe in Spanish") {
+                    refine(detail, languagePolicy: .fixed(.spanish))
+                }
+                Button("Re-transcribe in English") {
+                    refine(detail, languagePolicy: .fixed(.english))
+                }
+            } label: {
+                refineControlLabel(isRefining: false)
+            } primaryAction: {
+                refine(detail)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(disabled)
+            .accessibilityIdentifier("detail-refine")
+            .accessibilityValue("refine")
+            .help(L10n.text(
                 // swiftlint:disable:next line_length
-                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."
-            ))
+                "Re-transcribe with Whisper (maximum quality) and present the result as a draft — nothing is applied without your confirmation. Use the menu to force a language."))
+        }
     }
 
-    private func refine(_ detail: MeetingDetail, language: String? = nil) {
+    private func refineControlLabel(isRefining: Bool) -> some View {
+        Group {
+            if isRefining {
+                Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+            } else {
+                Image(systemName: "wand.and.stars").font(.system(size: 13))
+            }
+        }
+        .foregroundStyle(.secondary)
+        .frame(width: 30, height: 30)
+        .background(Circle().fill(.quaternary.opacity(0.5)))
+    }
+
+    private func refine(
+        _ detail: MeetingReviewReadModel,
+        languagePolicy: TranscriptLanguagePolicy? = nil
+    ) {
         services.refines.start(
-            meetingID: meetingID, detail: detail, services: services, language: language)
+            meetingID: meetingID,
+            meeting: detail.meeting,
+            speakers: detail.speakers,
+            segments: detail.segments,
+            useCase: services.refineMeeting.draft,
+            languagePolicy: languagePolicy)
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
@@ -1115,47 +1719,33 @@ extension MeetingDetailView {
         Task {
             defer { applying = nil }
             do {
-                if let language = draft.language, var meeting = detail?.meeting {
-                    meeting.language = language
-                    try await services.store.save(meeting)
+                let result = try await services.applyMeetingDetailRefine(
+                    ApplyRefinedMeetingRequest(
+                        meetingID: meetingID,
+                        draft: draft
+                    ) { phase in
+                        if phase == .refreshingCompanion {
+                            await MainActor.run {
+                                applying = L10n.text(
+                                    "Re-checking the Companion's answers…")
+                            }
+                        }
+                    })
+                if result.companion == .persistenceFailed {
+                    actionError = L10n.text(
+                        "The transcript was refined, but Companion cards could not be refreshed.")
                 }
-                try await services.store.replaceCast(
-                    for: meetingID,
-                    speakers: draft.speakers,
-                    segments: draft.segments)
-                await refreshCompanionCards(from: draft.segments)
-                await reload()
-                services.libraryVersion += 1
+                await model.send(.searchableContentChanged)
                 regenerate(
-                    language: summary?.draft.language
-                        ?? Locale.current.language.languageCode?.identifier ?? "en")
+                    language: summaryLanguage(summary?.draft.language),
+                    segments: draft.segments,
+                    speakers: draft.speakers)
+            } catch MeetingDetailRefineApplyError.staleDraft {
+                actionError = L10n.text(
+                    "The transcript changed while you reviewed this draft. Run refine again.")
             } catch {
-                actionError = L10n.format("Could not apply refine: %@", error.localizedDescription)
+                actionError = L10n.format("Could not apply refine: %@", UseCaseErrorMessages.describe(error))
             }
-        }
-    }
-
-    /// Re-runs the Companion over the refined transcript so its answer cards
-    /// improve with it (D26/D7). Gated on the Companion being enabled and
-    /// available. An interrupted/failed pass preserves the old cards; a fully
-    /// successful pass replaces them, including with an empty clean result.
-    private func refreshCompanionCards(from segments: [TranscriptSegment]) async {
-        guard #available(macOS 26.0, *) else { return }
-        guard
-            UserDefaults.standard.bool(forKey: "companionEnabled"),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        else { return }
-        applying = L10n.text("Re-checking the Companion's answers…")
-        let refresh = await CompanionRefresh.regenerate(from: segments, meetingID: meetingID)
-        // An incomplete pass means at least one model call failed/cancelled;
-        // preserve the old snapshot. A COMPLETE empty pass is meaningful: the
-        // refined transcript contains no card-worthy questions, so stale live
-        // cards should be removed.
-        guard refresh.completed else { return }
-        do {
-            try await services.store.replaceCompanionCards(refresh.cards, for: meetingID)
-        } catch {
-            actionError = L10n.text("The transcript was refined, but Companion cards could not be refreshed.")
         }
     }
 
@@ -1232,46 +1822,24 @@ extension MeetingDetailView {
 // MARK: - Gist, rename, playback & lifecycle
 
 extension MeetingDetailView {
-    private func publishGist(_ detail: MeetingDetail) async {
-        guard
-            let token = try? SecretStore.get(service: SecretStore.gitHubTokenService),
-            !token.isEmpty
-        else {
-            gistError = L10n.text("Configure your GitHub token in Settings (⌘,) first.")
-            return
-        }
-        let markdown = MeetingExporter.markdown(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: summary?.draft,
-            summaryVersion: summary?.version
-        )
-        do {
-            gistResult = try await GistPublisher(token: token).publish(
-                markdown: markdown,
-                filename: "\(detail.meeting.title).md",
-                description: detail.meeting.title,
-                isPublic: false
-            )
-        } catch {
-            gistError = error.localizedDescription
+    private func publishGist() async {
+        switch await model.send(.publishGist) {
+        case .gistPublished(let url):
+            gistResult = url
+        case .operationFailed(let message):
+            gistError = message
+        default:
+            break
         }
     }
 
     private func rename(_ speaker: Speaker, to name: String) async {
-        var renamed = speaker
-        renamed.displayName = name.isEmpty ? nil : name
-        do {
-            try await services.store.save([renamed])
-        } catch {
-            actionError = L10n.format("Could not rename: %@", error.localizedDescription)
-            return
+        let effect = await model.send(.renameSpeaker(speaker, name: name))
+        if case .speakerRenamed(let renamed) = effect {
+            renamingSpeaker = nil
+            offerToRememberPerson(renamed, source: .manualName)
+            await offerToRememberVoice(renamed)
         }
-        renamingSpeaker = nil
-        await reload()
-        services.libraryVersion += 1
-        offerToRemember(renamed)
     }
 
     private func actionBinding(_ item: ActionItem) -> Binding<Bool> {
@@ -1279,8 +1847,7 @@ extension MeetingDetailView {
             get: { item.isDone },
             set: { done in
                 Task {
-                    try? await services.store.setActionItem(item.id, done: done)
-                    services.libraryVersion += 1
+                    await model.send(.setActionItem(item.id, done: done))
                 }
             }
         )
@@ -1290,7 +1857,7 @@ extension MeetingDetailView {
 
     /// The meeting's duration, preferring wall-clock (start→end) and falling
     /// back to attributed speech when the meeting has no recorded end.
-    private func mirrorDuration(_ detail: MeetingDetail, health: MeetingHealth) -> TimeInterval {
+    private func mirrorDuration(_ detail: MeetingReviewReadModel, health: MeetingHealth) -> TimeInterval {
         if let ended = detail.meeting.endedAt {
             return ended.timeIntervalSince(detail.meeting.startedAt)
         }
@@ -1299,7 +1866,7 @@ extension MeetingDetailView {
 
     /// The user's own stat for this meeting, matched by the `isMe` speaker.
     private func mirrorMyStat(
-        _ detail: MeetingDetail, health: MeetingHealth
+        _ detail: MeetingReviewReadModel, health: MeetingHealth
     ) -> MeetingHealth.SpeakerStat? {
         guard let me = detail.speakers.first(where: \.isMe) else { return nil }
         return health.stats.first { $0.speakerID == me.id }
@@ -1307,7 +1874,7 @@ extension MeetingDetailView {
 
     /// The mirror shows once, right after a qualifying recording, and only
     /// when the user opted in. Everything is local and gated on real signal.
-    private func mirrorShouldShow(_ detail: MeetingDetail) -> Bool {
+    private func mirrorShouldShow(_ detail: MeetingReviewReadModel) -> Bool {
         guard mirrorAfterMeeting, services.justRecorded == meetingID else { return false }
         let health = MeetingHealth.compute(segments: detail.segments)
         guard mirrorMyStat(detail, health: health) != nil else { return false }
@@ -1316,7 +1883,7 @@ extension MeetingDetailView {
             seconds: mirrorDuration(detail, health: health))
     }
 
-    private func mirrorBinding(_ detail: MeetingDetail) -> Binding<Bool> {
+    private func mirrorBinding(_ detail: MeetingReviewReadModel) -> Binding<Bool> {
         Binding(
             get: { mirrorShouldShow(detail) },
             set: { if !$0 { services.justRecorded = nil } })
@@ -1334,7 +1901,7 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func mirrorSheet(_ detail: MeetingDetail) -> some View {
+    private func mirrorSheet(_ detail: MeetingReviewReadModel) -> some View {
         let health = MeetingHealth.compute(segments: detail.segments)
         if let mine = mirrorMyStat(detail, health: health) {
             MirrorCard(
@@ -1355,92 +1922,35 @@ extension MeetingDetailView {
         }
     }
 
-    private func reload() async {
-        if detail?.meeting.id != meetingID {
-            player?.invalidate()
-            player = nil
-            waveform = []
-            channelURLs = []
-            chapterTitles = [:]
-            companionCards = []
-            summary = nil
-        }
-        let loadedDetail = try? await services.store.detail(meetingID)
+    private func refreshPresentation() async {
+        guard detail != nil else { return }
+        consumePendingMeetingSeekIfMatching()
+        await model.send(.loadMetadataSuggestions)
         guard !Task.isCancelled else { return }
-        detail = loadedDetail
-        let loadedCards = (try? await services.store.companionCards(for: meetingID)) ?? []
-        guard !Task.isCancelled else { return }
-        companionCards = loadedCards
-        let loadedSummary = try? await services.store.summary(meetingID)
-        guard !Task.isCancelled else { return }
-        summary = loadedSummary
-        await loadPlayerIfNeeded()
-        guard !Task.isCancelled else { return }
-        // A palette citation navigated here: jump to the cited moment.
-        if let seek = services.pendingSeek {
-            services.pendingSeek = nil
-            player?.seek(to: seek)
-        }
-        await suggestRecipeIfUseful()
-        await suggestTitleIfUseful()
-        await suggestFromVoicesIfUseful()
-        await titleChaptersIfNeeded()
+        await loadVoiceSuggestions()
     }
 
-    /// Generates a short topic heading for each chapter (Apple Intelligence),
-    /// keyed by start time so re-renders reuse it. Self-healing: only the
-    /// chapters missing a title are generated, so a refine that shifts the
-    /// breaks re-titles just the new ones. Silent no-op without the model —
-    /// the rail then shows the real-excerpt titles.
-    private func titleChaptersIfNeeded() async {
-        guard #available(macOS 26.0, *) else { return }
-        guard FoundationModelSummaryProvider.unavailabilityReason() == nil else { return }
-        guard let detail else { return }
-        let chapters = ChapterExtractor.chapters(from: detail.segments)
-        for (index, chapter) in chapters.enumerated() where chapterTitles[chapter.startTime] == nil {
-            let end = index + 1 < chapters.count ? chapters[index + 1].startTime : .infinity
-            let text = detail.segments
-                .filter { $0.startTime >= chapter.startTime && $0.startTime < end && !$0.text.isEmpty }
-                .prefix(24)
-                .map(\.text)
-                .joined(separator: " ")
-            if let title = await ChapterTitler.title(forChapterText: text) {
-                chapterTitles[chapter.startTime] = title
-            }
-        }
+    /// Consume only requests for this detail. The explicit observation covers
+    /// citations that target an already-open meeting, while refresh covers a
+    /// newly constructed destination and requests that arrive before loading.
+    private func consumePendingMeetingSeekIfMatching() {
+        guard
+            let request = services.pendingMeetingSeek,
+            request.meetingID == meetingID
+        else { return }
+        services.pendingMeetingSeek = nil
+        pendingEvidenceSeek = request.timestamp
+        applyPendingEvidenceSeekIfPossible()
     }
 
-    /// Content-based title chip: only while the title still looks like the
-    /// template output (starts with a digit — "2026-07-09 09.33 Meeting");
-    /// a title the user already wrote is never second-guessed.
-    private func suggestTitleIfUseful() async {
-        guard !suggestedTitleOnce,
-            let detail, let summary,
-            detail.meeting.title.first?.isNumber == true
-        else { return }
-        suggestedTitleOnce = true
-        guard #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        else { return }
-        suggestedTitle = await TitleSuggester.suggest(
-            summaryMarkdown: summary.draft.markdown,
-            currentTitle: detail.meeting.title)
-    }
-
-    /// "Summarize as Standup?" chip source (M13b): classify the meeting
-    /// type once per visit, only while the summary still has the general
-    /// structure, on the scheduler's background lane.
-    private func suggestRecipeIfUseful() async {
-        guard !detectedRecipeOnce,
-            let detail, !detail.segments.isEmpty,
-            let summary, summary.draft.recipeID == Recipe.general.id
-        else { return }
-        detectedRecipeOnce = true
-        guard #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
-        else { return }
-        suggestedRecipe = await MeetingTypeDetector.detect(
-            segments: detail.segments, speakerCount: detail.speakers.count)
+    /// Audio has its own directory-scoped lifetime. Review sections can emit
+    /// several initial revisions; keying this work to those revisions would
+    /// cancel the only player build while later revisions merely deduplicate.
+    private func refreshPlayback() async {
+        guard playbackTaskID != nil else { return }
+        await model.send(.loadPlayback)
+        guard !Task.isCancelled else { return }
+        applyPendingEvidenceSeekIfPossible()
     }
 
     /// "Summarize as Standup?" — the typed-recipe suggestion (M13b). One
@@ -1448,12 +1958,13 @@ extension MeetingDetailView {
     /// any other way. Never applied on its own.
     @ViewBuilder
     private func recipeSuggestionChip(
-        _ summary: (draft: SummaryDraft, version: Int)
+        _ summary: MeetingReviewSummary
     ) -> some View {
-        if let suggested = suggestedRecipe, !regenerating {
+        if let suggested = model.state.suggestedRecipe, !regenerating {
             Button {
-                suggestedRecipe = nil
-                regenerate(language: summary.draft.language, recipe: suggested)
+                regenerate(
+                    language: summaryLanguage(summary.draft.language),
+                    recipe: suggested)
             } label: {
                 ChipLabel(
                     kind: .ai,
@@ -1471,7 +1982,7 @@ extension MeetingDetailView {
     /// and was NOT the engine that produced this summary.
     @ViewBuilder
     private func thinSummaryChip(
-        _ summary: (draft: SummaryDraft, version: Int)
+        _ summary: MeetingReviewSummary
     ) -> some View {
         if !regenerating,
             services.summaryEngine != .mlx,
@@ -1483,7 +1994,7 @@ extension MeetingDetailView {
                 actionItems: summary.draft.actionItems.count,
                 meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt)) {
             Button {
-                regenerate(language: summary.draft.language, engine: .mlx)
+                regenerate(language: summaryLanguage(summary.draft.language), engine: .mlx)
             } label: {
                 Label("Summary looks thin — retry with Built-in?", systemImage: "sparkles")
             }
@@ -1496,7 +2007,19 @@ extension MeetingDetailView {
     }
 
     /// "v3 · en" plus the structure when it is not the default one.
-    private func summaryBadge(_ summary: (draft: SummaryDraft, version: Int)) -> String {
+    private func summaryBadgeText(
+        _ summary: MeetingReviewSummary
+    ) -> some View {
+        let badge = summaryBadge(summary)
+        return Text(badge)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(badge)
+            .accessibilityValue(badge)
+            .accessibilityIdentifier("summary-badge")
+    }
+
+    private func summaryBadge(_ summary: MeetingReviewSummary) -> String {
         var badge = "v\(summary.version) · \(summary.draft.language)"
         if summary.draft.recipeID != Recipe.general.id,
             let recipe = CustomRecipeStore.byID(summary.draft.recipeID) {
@@ -1505,76 +2028,18 @@ extension MeetingDetailView {
         return badge
     }
 
-    /// Builds the synchronized player + waveform once (M11). Audio survives
-    /// refine, so there's no reason to rebuild when the library version bumps.
-    private func loadPlayerIfNeeded() async {
-        guard player == nil, let loadedDetail = detail,
-            let relative = loadedDetail.meeting.audioDirectory
-        else { return }
-        let base = RecordingsLocation.shared.resolve(relative)
-        let system = MeetingAudioLayout.channelFile(named: "system", in: base)
-        let mic = MeetingAudioLayout.channelFile(named: "microphone", in: base)
-        let files = [system, mic].compactMap { $0 }
-        guard !files.isEmpty else { return }
-        let loadedPlayer = await MeetingPlayer.make(channelFiles: files)
-        guard !Task.isCancelled else {
-            loadedPlayer?.invalidate()
-            return
-        }
-        // Off the main actor: a long meeting reads a lot of frames.
-        let loadedWaveform = await Task.detached {
-            Waveform.generate(micFile: mic, systemFile: system, buckets: 600)
-        }.value
-        guard !Task.isCancelled else {
-            loadedPlayer?.invalidate()
-            return
-        }
-        channelURLs = files
-        player = loadedPlayer
-        waveform = loadedWaveform
-        loadedPlayer?.setSilentRanges(
-            Waveform.silentRanges(loadedWaveform, duration: loadedPlayer?.duration ?? 0))
-        // "Solo mi voz": skip everything that isn't the user's mic turns.
-        if let loadedPlayer {
-            let voiceRanges = loadedDetail.segments
-                .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
-                .map { $0.startTime...$0.endTime }
-            loadedPlayer.setNonVoiceRanges(
-                PlaybackRanges.complement(of: voiceRanges, within: loadedPlayer.duration))
-        }
-    }
-
     /// True when there's lossless audio (CAF/WAV) still worth compressing.
     private var canCompressAudio: Bool {
-        !compressing && channelURLs.contains { $0.pathExtension.lowercased() != "m4a" }
+        !model.state.isCompressingAudio
+            && model.state.playback?.canCompressAudio == true
     }
 
-    /// Transcodes the channels to AAC and rebuilds the player from them.
-    /// Originals are removed only after a verified write (M11/D27, T6).
+    /// Sends one user intent; ApplicationKit owns channel resolution,
+    /// failure-safe batch compression, and playback reconstruction.
     private func compressAudio() {
-        let originals = channelURLs.filter { $0.pathExtension.lowercased() != "m4a" }
-        guard !originals.isEmpty else { return }
-        compressing = true
-        compressMessage = nil
         Task {
-            defer { compressing = false }
-            let before = AudioTranscoder.totalBytes(of: channelURLs)
-            do {
-                for url in originals {
-                    _ = try await AudioTranscoder.toAAC(source: url, deleteSource: true)
-                }
-            } catch {
-                compressMessage = error.localizedDescription
-                return
-            }
-            player?.invalidate()
-            player = nil
-            waveform = []
-            channelURLs = []
-            await loadPlayerIfNeeded()
-            let saved = max(0, before - AudioTranscoder.totalBytes(of: channelURLs))
-            let freed = ByteCountFormatter.string(fromByteCount: saved, countStyle: .file)
-            compressMessage = L10n.format("Audio compressed — %@ freed.", freed)
+            _ = await model.send(.compressAudio)
+            applyPendingEvidenceSeekIfPossible()
         }
     }
 
@@ -1588,7 +2053,7 @@ extension MeetingDetailView {
     /// labeled with a real opening line and seeking the player on tap.
     /// Shown only when the meeting actually breaks into more than one.
     @ViewBuilder
-    private func chaptersSection(_ detail: MeetingDetail) -> some View {
+    private func chaptersSection(_ detail: MeetingReviewReadModel) -> some View {
         let chapters = ChapterExtractor.chapters(from: detail.segments)
         if !chapters.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
@@ -1606,7 +2071,7 @@ extension MeetingDetailView {
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(PVDesign.accent)
                                 .frame(width: 44, alignment: .leading)
-                            Text(chapterTitles[chapter.startTime] ?? chapter.title)
+                            Text(model.state.chapterTitles[chapter.startTime] ?? chapter.title)
                                 .font(.callout)
                                 .lineLimit(1)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1663,6 +2128,7 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .disabled(player == nil)
+                .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
                 Text(card.question)
                     .font(.callout.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
@@ -1673,6 +2139,7 @@ extension MeetingDetailView {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            companionCardEvidence(card)
             HStack {
                 Text(companionCardTag(card))
                     .font(.caption2)
@@ -1706,7 +2173,46 @@ extension MeetingDetailView {
         .overlay(
             RoundedRectangle(cornerRadius: 8).strokeBorder(tint.opacity(0.25), lineWidth: 1)
         )
-        .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
+    }
+
+    @ViewBuilder
+    private func companionCardEvidence(_ card: CompanionCard) -> some View {
+        if let evidence = card.evidence, let detail {
+            let question = evidence.resolveQuestion(
+                currentTranscriptRevision: detail.meeting.transcriptRevision,
+                segments: detail.segments)
+            VStack(alignment: .leading, spacing: 5) {
+                companionEvidenceRole(
+                    L10n.text("Question source"),
+                    resolution: question,
+                    identifier: "companion-card-\(card.id.uuidString)-question")
+                if let answer = evidence.resolveAnswer(
+                    currentTranscriptRevision: detail.meeting.transcriptRevision,
+                    segments: detail.segments) {
+                    companionEvidenceRole(
+                        L10n.text("Answer sources"),
+                        resolution: answer,
+                        identifier: "companion-card-\(card.id.uuidString)-answer")
+                }
+            }
+        }
+    }
+
+    private func companionEvidenceRole(
+        _ label: String,
+        resolution: TranscriptEvidenceResolution,
+        identifier: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            summaryEvidenceSources(
+                resolution,
+                sourceIdentifier: "\(identifier)-evidence",
+                staleIdentifier: "\(identifier)-stale",
+                unavailableIdentifier: "\(identifier)-unavailable")
+        }
     }
 
     private func companionCardTag(_ card: CompanionCard) -> String {
@@ -1722,11 +2228,6 @@ extension MeetingDetailView {
     private func removeCompanionCard(_ id: UUID) async {
         // Drop from the UI only after the tombstone lands — a failed delete
         // leaves the card in place instead of stranding a phantom removal.
-        do {
-            try await services.store.deleteCompanionCard(id)
-            companionCards.removeAll { $0.id == id }
-        } catch {
-            actionError = L10n.text("Could not remove the card.")
-        }
+        await model.send(.removeCompanionCard(id))
     }
 }

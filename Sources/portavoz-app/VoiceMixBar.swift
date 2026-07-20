@@ -1,4 +1,4 @@
-import StorageKit
+import ApplicationKit
 import SwiftUI
 
 /// The sidebar's signature (design system): a thin capsule under each
@@ -6,7 +6,7 @@ import SwiftUI
 /// spoke — your amber always reads first. The library becomes a shelf of
 /// conversations you can size up at a glance, no other meeting app has it.
 struct VoiceMixBar: View {
-    let slices: [MeetingStore.VoiceMixSlice]
+    let slices: [LibraryVoiceMixSlice]
     let colorScheme: ColorScheme
 
     var body: some View {

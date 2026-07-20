@@ -1,0 +1,226 @@
+{
+  "nonSandboxedControl": {
+    "operatingSystemVersion": "Version 26.5.2 (Build 25F84)",
+    "probeBundleIdentifier": "app.portavoz.sandbox-capability-probe",
+    "results": [
+      {
+        "capability": "sandbox-entitlement",
+        "detail": "missing-or-false",
+        "observation": "denied",
+        "operation": "read com.apple.security.app-sandbox from the running process"
+      },
+      {
+        "capability": "container-filesystem",
+        "detail": "non-container-path",
+        "observation": "allowed",
+        "operation": "write inside the application support container"
+      },
+      {
+        "capability": "legacy-shared-filesystem-read",
+        "observation": "allowed",
+        "operation": "read a pre-existing support file outside the app container"
+      },
+      {
+        "capability": "legacy-shared-filesystem-write",
+        "observation": "allowed",
+        "operation": "write a support file outside the app container"
+      },
+      {
+        "capability": "external-process-launch",
+        "observation": "allowed",
+        "operation": "launch /usr/bin/true through Foundation.Process",
+        "statusCode": 0,
+        "statusDomain": "Process"
+      },
+      {
+        "capability": "external-process-inherited-sandbox",
+        "observation": "allowed",
+        "operation": "ask /bin/cat to read the outside-container sentinel",
+        "statusCode": 0,
+        "statusDomain": "Process"
+      },
+      {
+        "capability": "shortcuts-cli-resolution",
+        "detail": "unclassified-cli-response",
+        "observation": "observed",
+        "operation": "invoke /usr/bin/shortcuts with a nonexistent probe shortcut",
+        "statusCode": 1,
+        "statusDomain": "Process"
+      },
+      {
+        "capability": "outbound-network-client",
+        "detail": "fixture-matched",
+        "observation": "allowed",
+        "operation": "GET a loopback HTTP fixture",
+        "statusCode": 200,
+        "statusDomain": "HTTP"
+      },
+      {
+        "capability": "keychain-round-trip",
+        "observation": "allowed",
+        "operation": "add, read, and delete a unique generic password",
+        "statusCode": 0,
+        "statusDomain": "OSStatus"
+      },
+      {
+        "capability": "global-hotkey-registration",
+        "observation": "allowed",
+        "operation": "register and unregister Option-Command-F20 with Carbon",
+        "statusCode": 0,
+        "statusDomain": "Carbon"
+      },
+      {
+        "capability": "microphone-capture",
+        "detail": "graph-started-and-stopped",
+        "observation": "allowed",
+        "operation": "start and stop an AVAudioEngine input tap"
+      },
+      {
+        "capability": "core-audio-process-catalog",
+        "detail": "bytes=172",
+        "observation": "allowed",
+        "operation": "read the Core Audio process-object list size",
+        "statusCode": 0,
+        "statusDomain": "OSStatus"
+      },
+      {
+        "capability": "core-audio-process-tap",
+        "detail": "graph-started-and-stopped; TCC responsibility follows the launcher",
+        "observation": "allowed",
+        "operation": "start and stop a private global process-tap graph",
+        "statusCode": 0,
+        "statusDomain": "OSStatus"
+      },
+      {
+        "capability": "accessibility-trust",
+        "detail": "trusted",
+        "observation": "observed",
+        "operation": "read AXIsProcessTrusted without prompting"
+      },
+      {
+        "capability": "calendar-authorization",
+        "observation": "observed",
+        "operation": "read EventKit event authorization without prompting",
+        "statusCode": 0,
+        "statusDomain": "EKAuthorizationStatus"
+      }
+    ],
+    "sandboxEnforcementObserved": false,
+    "schemaVersion": 1
+  },
+  "sandboxed": {
+    "operatingSystemVersion": "Version 26.5.2 (Build 25F84)",
+    "probeBundleIdentifier": "app.portavoz.sandbox-capability-probe",
+    "results": [
+      {
+        "capability": "sandbox-entitlement",
+        "detail": "enabled",
+        "observation": "allowed",
+        "operation": "read com.apple.security.app-sandbox from the running process"
+      },
+      {
+        "capability": "container-filesystem",
+        "detail": "container-path",
+        "observation": "allowed",
+        "operation": "write inside the application support container"
+      },
+      {
+        "capability": "legacy-shared-filesystem-read",
+        "observation": "denied",
+        "operation": "read a pre-existing support file outside the app container",
+        "statusCode": 257,
+        "statusDomain": "NSCocoaErrorDomain"
+      },
+      {
+        "capability": "legacy-shared-filesystem-write",
+        "observation": "denied",
+        "operation": "write a support file outside the app container",
+        "statusCode": 513,
+        "statusDomain": "NSCocoaErrorDomain"
+      },
+      {
+        "capability": "external-process-launch",
+        "observation": "allowed",
+        "operation": "launch /usr/bin/true through Foundation.Process",
+        "statusCode": 0,
+        "statusDomain": "Process"
+      },
+      {
+        "capability": "external-process-inherited-sandbox",
+        "observation": "denied",
+        "operation": "ask /bin/cat to read the outside-container sentinel",
+        "statusCode": 1,
+        "statusDomain": "Process"
+      },
+      {
+        "capability": "shortcuts-cli-resolution",
+        "detail": "unclassified-cli-response",
+        "observation": "observed",
+        "operation": "invoke /usr/bin/shortcuts with a nonexistent probe shortcut",
+        "statusCode": 1,
+        "statusDomain": "Process"
+      },
+      {
+        "capability": "outbound-network-client",
+        "detail": "fixture-matched",
+        "observation": "allowed",
+        "operation": "GET a loopback HTTP fixture",
+        "statusCode": 200,
+        "statusDomain": "HTTP"
+      },
+      {
+        "capability": "keychain-round-trip",
+        "observation": "allowed",
+        "operation": "add, read, and delete a unique generic password",
+        "statusCode": 0,
+        "statusDomain": "OSStatus"
+      },
+      {
+        "capability": "global-hotkey-registration",
+        "observation": "allowed",
+        "operation": "register and unregister Option-Command-F20 with Carbon",
+        "statusCode": 0,
+        "statusDomain": "Carbon"
+      },
+      {
+        "capability": "microphone-capture",
+        "detail": "graph-started-and-stopped",
+        "observation": "allowed",
+        "operation": "start and stop an AVAudioEngine input tap"
+      },
+      {
+        "capability": "core-audio-process-catalog",
+        "detail": "bytes=172",
+        "observation": "allowed",
+        "operation": "read the Core Audio process-object list size",
+        "statusCode": 0,
+        "statusDomain": "OSStatus"
+      },
+      {
+        "capability": "core-audio-process-tap",
+        "detail": "graph-started-and-stopped; TCC responsibility follows the launcher",
+        "observation": "allowed",
+        "operation": "start and stop a private global process-tap graph",
+        "statusCode": 0,
+        "statusDomain": "OSStatus"
+      },
+      {
+        "capability": "accessibility-trust",
+        "detail": "trusted",
+        "observation": "observed",
+        "operation": "read AXIsProcessTrusted without prompting"
+      },
+      {
+        "capability": "calendar-authorization",
+        "observation": "observed",
+        "operation": "read EventKit event authorization without prompting",
+        "statusCode": 0,
+        "statusDomain": "EKAuthorizationStatus"
+      }
+    ],
+    "sandboxEnforcementObserved": true,
+    "schemaVersion": 1
+  },
+  "schemaVersion": 1,
+  "signingMode": "developer-id"
+}

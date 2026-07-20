@@ -1,0 +1,196 @@
+{
+  "buildConfiguration": "release",
+  "checkpoints": [
+    {
+      "baselinePhysicalFootprint": {
+        "maximumBytes": 10339000,
+        "p50Bytes": 10306232,
+        "p95Bytes": 10339000,
+        "sampleCount": 20
+      },
+      "databaseBytes": 4571136,
+      "endingPhysicalFootprint": {
+        "maximumBytes": 10339000,
+        "p50Bytes": 10306232,
+        "p95Bytes": 10339000,
+        "sampleCount": 20
+      },
+      "incrementalPeakPhysicalFootprint": {
+        "maximumBytes": 180224,
+        "p50Bytes": 131072,
+        "p95Bytes": 180224,
+        "sampleCount": 20
+      },
+      "meetingCount": 5,
+      "peakPhysicalFootprint": {
+        "maximumBytes": 10470072,
+        "p50Bytes": 10437304,
+        "p95Bytes": 10470072,
+        "sampleCount": 20
+      },
+      "processCPUTime": {
+        "maximumMilliseconds": 2.7865,
+        "p50Milliseconds": 2.5075,
+        "p95Milliseconds": 2.66175,
+        "sampleCount": 20
+      },
+      "rawEmbeddingBytes": 2048000,
+      "resultCount": 12,
+      "seedMilliseconds": 104.87225,
+      "totalSegments": 1000,
+      "wallTime": {
+        "maximumMilliseconds": 2.741209,
+        "p50Milliseconds": 2.468125,
+        "p95Milliseconds": 2.615375,
+        "sampleCount": 20
+      }
+    },
+    {
+      "baselinePhysicalFootprint": {
+        "maximumBytes": 22282936,
+        "p50Bytes": 21021368,
+        "p95Bytes": 22250168,
+        "sampleCount": 20
+      },
+      "databaseBytes": 44314624,
+      "endingPhysicalFootprint": {
+        "maximumBytes": 22282936,
+        "p50Bytes": 21021368,
+        "p95Bytes": 22282936,
+        "sampleCount": 20
+      },
+      "incrementalPeakPhysicalFootprint": {
+        "maximumBytes": 8830976,
+        "p50Bytes": 8781824,
+        "p95Bytes": 8830976,
+        "sampleCount": 20
+      },
+      "meetingCount": 50,
+      "peakPhysicalFootprint": {
+        "maximumBytes": 31064760,
+        "p50Bytes": 29803192,
+        "p95Bytes": 31031992,
+        "sampleCount": 20
+      },
+      "processCPUTime": {
+        "maximumMilliseconds": 30.549833333333332,
+        "p50Milliseconds": 29.33775,
+        "p95Milliseconds": 30.25720833333333,
+        "sampleCount": 20
+      },
+      "rawEmbeddingBytes": 20480000,
+      "resultCount": 12,
+      "seedMilliseconds": 1086.483167,
+      "totalSegments": 10000,
+      "wallTime": {
+        "maximumMilliseconds": 29.88525,
+        "p50Milliseconds": 28.890833,
+        "p95Milliseconds": 29.720667,
+        "sampleCount": 20
+      }
+    },
+    {
+      "baselinePhysicalFootprint": {
+        "maximumBytes": 27558704,
+        "p50Bytes": 27558704,
+        "p95Bytes": 27558704,
+        "sampleCount": 20
+      },
+      "databaseBytes": 218501120,
+      "endingPhysicalFootprint": {
+        "maximumBytes": 27591472,
+        "p50Bytes": 27558704,
+        "p95Bytes": 27558704,
+        "sampleCount": 20
+      },
+      "incrementalPeakPhysicalFootprint": {
+        "maximumBytes": 11304984,
+        "p50Bytes": 8781824,
+        "p95Bytes": 8847360,
+        "sampleCount": 20
+      },
+      "meetingCount": 250,
+      "peakPhysicalFootprint": {
+        "maximumBytes": 36373296,
+        "p50Bytes": 36340528,
+        "p95Bytes": 36340528,
+        "sampleCount": 20
+      },
+      "processCPUTime": {
+        "maximumMilliseconds": 164.169625,
+        "p50Milliseconds": 153.436,
+        "p95Milliseconds": 161.98229166666667,
+        "sampleCount": 20
+      },
+      "rawEmbeddingBytes": 102400000,
+      "resultCount": 12,
+      "seedMilliseconds": 6384.646458,
+      "totalSegments": 50000,
+      "wallTime": {
+        "maximumMilliseconds": 161.653833,
+        "p50Milliseconds": 150.673583,
+        "p95Milliseconds": 159.068709,
+        "sampleCount": 20
+      }
+    },
+    {
+      "baselinePhysicalFootprint": {
+        "maximumBytes": 43697088,
+        "p50Bytes": 41239488,
+        "p95Bytes": 43697088,
+        "sampleCount": 20
+      },
+      "databaseBytes": 436776960,
+      "endingPhysicalFootprint": {
+        "maximumBytes": 43697088,
+        "p50Bytes": 43385792,
+        "p95Bytes": 43697088,
+        "sampleCount": 20
+      },
+      "incrementalPeakPhysicalFootprint": {
+        "maximumBytes": 18858008,
+        "p50Bytes": 8781824,
+        "p95Bytes": 8912896,
+        "sampleCount": 20
+      },
+      "meetingCount": 500,
+      "peakPhysicalFootprint": {
+        "maximumBytes": 52478912,
+        "p50Bytes": 50021312,
+        "p95Bytes": 52478912,
+        "sampleCount": 20
+      },
+      "processCPUTime": {
+        "maximumMilliseconds": 330.38975,
+        "p50Milliseconds": 311.4619583333333,
+        "p95Milliseconds": 328.4340416666667,
+        "sampleCount": 20
+      },
+      "rawEmbeddingBytes": 204800000,
+      "resultCount": 12,
+      "seedMilliseconds": 13517.115625,
+      "totalSegments": 100000,
+      "wallTime": {
+        "maximumMilliseconds": 340.430042,
+        "p50Milliseconds": 307.053333,
+        "p95Milliseconds": 325.408084,
+        "sampleCount": 20
+      }
+    }
+  ],
+  "configuration": {
+    "embeddingDimension": 512,
+    "measurementRuns": 20,
+    "resultLimit": 12,
+    "segmentsPerMeeting": 200,
+    "warmupRuns": 2
+  },
+  "generatedAt": "2026-07-17T04:37:50.925443Z",
+  "host": {
+    "architecture": "arm64",
+    "operatingSystem": "Version 26.5.2 (Build 25F84)",
+    "physicalMemoryBytes": 38654705664,
+    "processorCount": 14
+  },
+  "schemaVersion": 1
+}

@@ -18,8 +18,8 @@ public struct VoiceprintStore: Sendable {
         }
     }
 
-    public static let defaultKeyService = "app.portavoz.voiceprint-key"
-    private let keyService: String
+    private let secrets: any SecretStoring
+    private let keyIdentifier: SecretIdentifier
     private let fileURL: URL
 
     /// `~/Library/Application Support/Portavoz/voiceprint.enc`
@@ -32,11 +32,13 @@ public struct VoiceprintStore: Sendable {
     }
 
     public init(
+        secrets: any SecretStoring,
         directory: URL = VoiceprintStore.defaultDirectory,
-        keyService: String = VoiceprintStore.defaultKeyService
+        keyIdentifier: SecretIdentifier = .voiceprintKey
     ) {
+        self.secrets = secrets
         self.fileURL = directory.appendingPathComponent("voiceprint.enc")
-        self.keyService = keyService
+        self.keyIdentifier = keyIdentifier
     }
 
     public var exists: Bool {
@@ -54,7 +56,7 @@ public struct VoiceprintStore: Sendable {
 
     public func load() throws -> Voiceprint? {
         guard exists else { return nil }
-        guard let keyText = try SecretStore.get(service: keyService),
+        guard let keyText = try secrets.value(for: keyIdentifier),
             let keyData = Data(base64Encoded: keyText)
         else {
             // File without key: unreadable by construction; treat as absent.
@@ -72,11 +74,11 @@ public struct VoiceprintStore: Sendable {
         if exists {
             try FileManager.default.removeItem(at: fileURL)
         }
-        try SecretStore.delete(service: keyService)
+        try secrets.delete(keyIdentifier)
     }
 
     private func loadOrCreateKey() throws -> SymmetricKey {
-        if let stored = try SecretStore.get(service: keyService) {
+        if let stored = try secrets.value(for: keyIdentifier) {
             guard let data = Data(base64Encoded: stored), data.count == 32 else {
                 throw VoiceprintError.corruptKey
             }
@@ -84,7 +86,7 @@ public struct VoiceprintStore: Sendable {
         }
         let key = SymmetricKey(size: .bits256)
         let data = key.withUnsafeBytes { Data($0) }
-        try SecretStore.set(data.base64EncodedString(), service: keyService)
+        try secrets.set(data.base64EncodedString(), for: keyIdentifier)
         return key
     }
 }

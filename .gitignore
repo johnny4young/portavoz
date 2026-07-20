@@ -12,3 +12,38 @@ Portavoz.xcodeproj/
 __pycache__/
 dist/
 xcuserdata/
+
+# Local agent, design-sync, planning, and ticket state. Durable project truth
+# belongs in the reviewed documents under docs/; execution scratch does not.
+/.agents/
+/.claude/
+/.codex/
+/.design-sync/
+/.planning/
+/.tickets/
+/plans/
+/tickets/
+/docs/plans/
+/docs/tickets/
+/docs/ROADMAP.md
+/docs/refactor-20260714.md
+/docs/STRATEGY-20260716.md
+/PLAN.md
+/PLANS.md
+/TODO.md
+/BACKLOG.md
+/HANDOFF.md
+/NOTES.md
+/REPORT.md
+/reports/
+/scratch/
+/tmp/
+
+# Local test evidence and generated diagnostics. Curated product screenshots
+# stay under assets/screenshots and docs/evidence and remain reviewable.
+*.xcresult/
+*.xcactivitylog
+*.profdata
+/artifacts/
+/screenshots/
+/test-results/

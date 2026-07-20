@@ -22,6 +22,9 @@ public enum PromptFactory {
             "Structure the summary with these sections, in this order: "
                 + recipe.sections.joined(separator: ", ")
                 + ". Translate the headings into the output language.")
+        lines.append(
+            "Return exactly one structured section entry for every listed section, "
+                + "in the same order; keep its bullets empty when nothing applies.")
         lines.append(languageDirective(targetLanguage: targetLanguage, glossary: glossary))
         lines.append(
             "Speakers are labeled in the transcript (\"Me\" is the device owner). "
@@ -30,6 +33,24 @@ public enum PromptFactory {
         lines.append(
             "Report commitments exclusively through the dedicated action-items field, "
                 + "never as a summary section.")
+        lines.append(
+            "When the material has [E#] tags, cite only exact tags that directly support "
+                + "the overview, a decision-bearing bullet, or an action item; "
+                + "never invent or alter a tag.")
+        lines.append(
+            "Attach exact source tags to every supported action item in its dedicated field; "
+                + "use no tags when the commitment is not directly supported.")
+        let decisionSections = recipe.decisionSectionIndexes.compactMap { index in
+            recipe.sections.indices.contains(index) ? recipe.sections[index] : nil
+        }
+        if decisionSections.isEmpty {
+            lines.append("This recipe has no typed decision section; section bullets need no evidence.")
+        } else {
+            lines.append(
+                "These instructed sections contain typed decisions: "
+                    + decisionSections.joined(separator: ", ")
+                    + ". Attach exact source tags to each supported bullet in those sections only.")
+        }
         return lines.joined(separator: "\n")
     }
 
@@ -40,6 +61,7 @@ public enum PromptFactory {
         [
             "You compress meeting transcript excerpts into dense factual notes.",
             "Keep every decision, commitment, number, date, and open question, each attributed to its speaker label.",
+            "Preserve every source tag such as [E1] exactly beside the fact it supports.",
             "Write at most 10 terse bullet points, no preamble.",
             languageDirective(targetLanguage: targetLanguage, glossary: glossary)
         ].joined(separator: "\n")
@@ -99,7 +121,8 @@ public enum PromptFactory {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\n", with: " ")
             guard !content.isEmpty else { continue }
-            let clipped = String(content.prefix(perNoteLimit))
+            let safeContent = TranscriptFormatter.escapeEvidenceTags(in: content)
+            let clipped = String(safeContent.prefix(perNoteLimit))
             let total = Int(item.timestamp)
             let line = String(format: "[%02d:%02d] %@", total / 60, total % 60, clipped)
             guard used + line.count + 1 <= budget else { break }

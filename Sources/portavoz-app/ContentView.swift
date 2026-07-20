@@ -1,6 +1,5 @@
 import AppKit
 import CoreSpotlight
-import IntegrationsKit
 import PortavozCore
 import SwiftUI
 
@@ -14,15 +13,27 @@ enum Route: Hashable {
 }
 
 struct ContentView: View {
-    @Environment(AppServices.self) private var services
+    let services: AppServices
     @Environment(\.openWindow) private var openWindow
     @State private var route: Route?
+    @State private var libraryModel: LibraryModel
+    @State private var insightsModel: InsightsModel
+    @State private var askModel: AskModel
     @State private var reminder = MeetingReminderController()
-    @State private var showOnboarding = false
+    @State private var firstRunHostID = UUID()
+
+    init(services: AppServices) {
+        self.services = services
+        _libraryModel = State(initialValue: services.makeLibraryModel())
+        _insightsModel = State(initialValue: services.makeInsightsModel())
+        _askModel = State(initialValue: services.makeAskModel())
+    }
 
     var body: some View {
         NavigationSplitView {
-            LibraryView(route: $route)
+            LibraryView(
+                model: libraryModel,
+                route: $route)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
                 .background { AuroraSidebarBackground() }
         } detail: {
@@ -31,12 +42,20 @@ struct ContentView: View {
                 case .recording(let event):
                     RecordingView(route: $route, event: event)
                 case .meeting(let id):
-                    MeetingDetailView(meetingID: id, route: $route)
+                    MeetingDetailView(
+                        services: services,
+                        meetingID: id,
+                        route: $route)
                         .id(id)  // reload state when switching meetings
                 case .ask:
-                    AskView(route: $route)
+                    AskView(
+                        model: askModel,
+                        onOpenCitation: { citation in
+                            services.requestMeetingSeek(for: citation)
+                            route = .meeting(citation.meetingID)
+                        })
                 case .insights:
-                    InsightsView(route: $route)
+                    InsightsView(model: insightsModel, route: $route)
                 case nil:
                     ContentUnavailableView(
                         "Portavoz",
@@ -63,15 +82,16 @@ struct ContentView: View {
                 }
                 NSApp.activate(ignoringOtherApps: true)
             }
+            services.palette.onOpenCitation = { citation in
+                services.requestMeetingSeek(for: citation)
+                services.pendingRoute = .meeting(citation.meetingID)
+            }
         }
         .task { await services.seedDemoIfRequested() }
+        .task { await services.seedScaleBenchmarkIfRequested() }
+        .task { positionUITestWindowIfNeeded() }
         .task { await services.purgeExpiredTrash() }
         .task { await services.seedShowcaseIfRequested() }
-        .task(id: services.libraryVersion) {
-            // M16: meetings searchable from Spotlight. Full rebuild — cheap
-            // (metadata only) and immune to delete drift.
-            await SpotlightIndexer.reindexAll(store: services.store)
-        }
         .onOpenURL { url in
             // M16: portavoz://record — Shortcuts/automation tools can start
             // a recording (the user still sees it; nothing records hidden).
@@ -101,9 +121,14 @@ struct ContentView: View {
             // so it must live in the view; it exits the process when done.
             BenchMode.reportStartupIfRequested()
         }
-        .task { await decideOnboarding() }
-        .sheet(isPresented: $showOnboarding) {
-            OnboardingView(isPresented: $showOnboarding)
+        .onAppear { services.firstRun.register(hostID: firstRunHostID) }
+        .task { await services.firstRun.resolve(in: firstRunHostID) }
+        .onDisappear { services.firstRun.unregister(hostID: firstRunHostID) }
+        .sheet(isPresented: Binding(
+            get: { services.firstRun.isPresented(in: firstRunHostID) },
+            set: { services.firstRun.setPresented($0, in: firstRunHostID) }
+        )) {
+            OnboardingView(onFinish: services.firstRun.finish)
                 .portavozLocalized()
                 .environment(services)
                 .tint(PVDesign.accent)
@@ -116,23 +141,29 @@ struct ContentView: View {
         }
     }
 
-    /// First-run setup shows once (GAPS #6). `-show-onboarding` forces it
-    /// (dev/UITest); `-use-temp-store` suppresses it so the coordinate-based
-    /// UI tests never race a surprise sheet; a library that already has
-    /// meetings marks itself onboarded — that user needs no welcome tour.
-    private func decideOnboarding() async {
-        let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-show-onboarding") {
-            showOnboarding = true
-            return
-        }
-        guard !arguments.contains("-use-temp-store"),
-            !UserDefaults.standard.bool(forKey: "hasOnboarded")
+    /// Keep the throwaway XCUITest window clear of persistent desktop
+    /// overlays (for example, an agent progress panel). This is deliberately
+    /// scoped to `-use-temp-store`: production window placement remains owned
+    /// by SwiftUI and the user's saved macOS window state.
+    @MainActor
+    private func positionUITestWindowIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
+              let window = NSApp.windows.first(where: {
+                  !($0 is NSPanel) && $0.canBecomeMain
+              }),
+              let screen = window.screen ?? NSScreen.main
         else { return }
-        if let meetings = try? await services.store.meetings(), !meetings.isEmpty {
-            UserDefaults.standard.set(true, forKey: "hasOnboarded")
-            return
-        }
-        showOnboarding = true
+
+        let visibleFrame = screen.visibleFrame
+        let minimumWidth: CGFloat = 900
+        let leftClearance = min(
+            400,
+            max(0, visibleFrame.width - minimumWidth))
+        let testFrame = NSRect(
+            x: visibleFrame.minX + leftClearance,
+            y: visibleFrame.minY,
+            width: visibleFrame.width - leftClearance,
+            height: visibleFrame.height)
+        window.setFrame(testFrame, display: true, animate: false)
     }
 }
