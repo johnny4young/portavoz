@@ -12,7 +12,8 @@ This document describes only the architecture implemented in the repository.
 It is intentionally independent from roadmap terminology, work-item names,
 migration history, and delivery sequencing. Detailed runtime behavior belongs
 in `docs/specs/`; binding trade-offs belong in `docs/DECISIONS.md`; remaining
-work belongs in `docs/ROADMAP.md` and `docs/GAPS.md`.
+limitations and field validation belong in `docs/GAPS.md`, with deferred Apple
+platform work in `docs/IOS.md`.
 
 ## Architectural style
 
@@ -925,11 +926,15 @@ make install
 - `docs/ARCHITECTURE.md` describes only current structure and invariants.
 - `docs/specs/` describes current runtime behavior by domain.
 - `docs/DECISIONS.md` records binding trade-offs and their reasons.
-- `docs/ROADMAP.md` records project delivery state.
 - `docs/GAPS.md` records unresolved limitations and field-validation needs.
-- `docs/refactor-20260714.md` retains the migration execution plan.
+- `docs/IOS.md` records deferred iOS platform constraints and direction.
 - `README.md` is public product and contributor truth.
 - `CHANGELOG.md` contains user-visible benefits, not internal restructuring.
+
+The repository delivery ledger and completed migration execution ledger are
+local maintainer state.
+`docs/ROADMAP.md` and `docs/refactor-20260714.md` remain on developer machines
+but are gitignored and must not be cited as public project truth.
 
 All explanatory documentation under `docs/` is written in English. Literal
 localized UI copy and bilingual transcript fixtures may remain quoted as test

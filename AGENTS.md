@@ -4,18 +4,19 @@ Portavoz: a privacy-first meeting assistant for Apple platforms, built with Swif
 
 ## At the start of every session
 
-Durable knowledge lives in `docs/` — there is no session handoff file anymore (the HANDOFF was removed in July 2026; its contents moved into the docs below).
+Durable public knowledge lives in `docs/`; the repository roadmap and completed
+migration execution ledger are explicit local-only exceptions.
 
-1. **Current state and next step**: [docs/ROADMAP.md](docs/ROADMAP.md) opens with the current project state, remaining work, and the next concrete step.
-2. **As-built technical knowledge**: [docs/specs/](docs/specs/README.md) — 8 domain specs (capture, transcription, diarization, intelligence, storage, app, interfaces, quality) written from the real code, with implemented behavior separated from planned behavior. Read the spec for the area you will touch BEFORE editing it.
-3. **Architecture refactor work**: [docs/refactor-20260714.md](docs/refactor-20260714.md) is the executable target architecture, band plan, feature-parity contract, commit protocol, and acceptance matrix. Read it before any refactor slice; it is a plan, while specs remain as-built truth.
-4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D118), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (current architecture, clearly labeled target, engineering rules, and migration status), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), [docs/GAPS.md](docs/GAPS.md) (known gaps + pending field validation), [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format), [docs/IOS.md](docs/IOS.md) (iOS phase).
+1. **Current architecture and engineering rules**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes only the implemented system and migration status.
+2. **As-built technical knowledge**: [docs/specs/](docs/specs/README.md) — 8 domain specs (capture, transcription, diarization, intelligence, storage, app, interfaces, quality) written from the real code. Read the spec for the area you will touch BEFORE editing it.
+3. **Outstanding product truth**: [docs/GAPS.md](docs/GAPS.md) records unresolved limitations and field validation; [docs/IOS.md](docs/IOS.md) owns the deferred iOS phase.
+4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D119), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), and [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format).
 
 ## At the end of a significant session
 
-New knowledge goes to its durable home: state/progress -> **ROADMAP**, as-built technical behavior -> the matching **spec**, weighty decisions -> **DECISIONS.md**, gaps/pending work -> **GAPS.md**. Nothing important should live only in the conversation.
+New knowledge goes to its durable home: implemented structure -> **ARCHITECTURE.md**, runtime behavior -> the matching **spec**, weighty decisions -> **DECISIONS.md**, and unresolved limitations or field validation -> **GAPS.md**. Repository delivery status and completed migration sequencing stay in the two ignored local files. Nothing important about the shipped system should live only in the conversation.
 
-All explanatory documentation under `docs/` is written in **English**. Literal localized UI copy and bilingual transcript fixtures may remain quoted as evidence. During the architecture program, **every refactor commit updates `docs/ARCHITECTURE.md`** and every other document whose truth changed in that commit; never defer documentation until the end of a band.
+All explanatory tracked documentation under `docs/` is written in **English**. Literal localized UI copy and bilingual transcript fixtures may remain quoted as evidence. Every architecture change updates `docs/ARCHITECTURE.md` and every other tracked document whose truth changed in that commit.
 
 ## Commands
 
@@ -62,4 +63,5 @@ library) and asserts against `accessibilityIdentifier`s.
 - Keep private tracker IDs, sprint/agent names, local plans, tickets, reports,
   generated projects, result bundles, and ad-hoc screenshots out of tracked
   files. `scripts/check-repository-hygiene.sh` enforces this. Durable accepted
-  project truth under `docs/` is intentionally tracked and is not scratch.
+  project truth under `docs/` is tracked; `docs/ROADMAP.md` and
+  `docs/refactor-20260714.md` are explicit local-only planning files.

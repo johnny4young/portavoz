@@ -19,7 +19,7 @@
 - [ ] Conventional Commit title (`feat:`, `fix:`, `docs:`…).
 - [ ] No audio/transcripts/summaries leave the device without an explicit, visible opt-in.
 - [ ] No code ported from GPL projects (patterns are fine, code is not).
-- [ ] Docs updated where behavior changed (`docs/` — spec, ROADMAP, GAPS, or DECISIONS as applicable).
+- [ ] Tracked docs updated where behavior changed (`docs/` — architecture, spec, GAPS, or DECISIONS as applicable).
 - [ ] `CHANGELOG.md` entry added if this is user-visible (short, catchy, end-user language).
 - [ ] `make install` run if this changes the app UI (so local install matches the change).
 - [ ] UI changes include stable accessibility identifiers and the selectors from

@@ -140,9 +140,10 @@ Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz
 Swift 6 (strict concurrency), SwiftUI, modular SPM workspace. Most Kits depend
 on `PortavozCore`; the few verified cross-Kit dependencies are documented in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). As-built behavior lives in
-[docs/specs/](docs/specs/README.md). The approved, feature-parity-preserving
-architecture migration is tracked in
-[docs/refactor-20260714.md](docs/refactor-20260714.md). The package exposes ten
+[docs/specs/](docs/specs/README.md). The completed, feature-parity-preserving
+macOS convergence and its binding trade-offs are recorded in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+[docs/DECISIONS.md](docs/DECISIONS.md). The package exposes ten
 implemented Kit libraries; speculative package targets are added only with a
 real vertical use case. Current-SDK diagnostics are closed without broad
 concurrency suppressions; the warning-as-error gate is documented below and in

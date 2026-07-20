@@ -24,14 +24,15 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 ## Related documents (outside specs/)
 
-- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D118 and their rationale. The specs cite them by number.
+- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D119 and their rationale. The specs cite them by number.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) — high-level engineering and design rules.
-- [../refactor-20260714.md](../refactor-20260714.md) — approved target architecture, migration bands, commit protocol, and acceptance criteria. It is a plan; this folder remains as-built truth.
-- [../ROADMAP.md](../ROADMAP.md) — phases and milestones with acceptance criteria.
 - [../PRODUCT.md](../PRODUCT.md) — vision, competitive map, FREE/PRO.
 - [../IOS.md](../IOS.md) — technical breakdown of the iOS phase.
 - [../GAPS.md](../GAPS.md) — gap analysis + pending field verification.
-- [../ROADMAP.md](../ROADMAP.md) opens with **"Current state and next step"** — project state is read there (there is no session handoff file).
+
+The repository roadmap and completed migration execution ledger are local
+maintainer state. Current public truth is reconstructed from the architecture,
+decisions, these as-built specs, and the explicit unresolved gaps (D119).
 
 ## Repository rules (for agents)
 

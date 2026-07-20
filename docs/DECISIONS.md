@@ -253,15 +253,14 @@ shell, Unit of Work, Saga/process manager, idempotent processing jobs, and a
 transactional outbox for the recording lifecycle. Use feature-scoped
 `@Observable` models and GRDB observations rather than a new state-management
 or database framework. Every slice must preserve all released features and be
-independently shippable. The full plan and decision gates are recorded in
-`refactor-20260714.md`.
+independently shippable. Binding migration choices are recorded in this
+decision log, while `ARCHITECTURE.md` and the as-built specs describe only the
+implemented result.
 
-**Status:** accepted target under incremental adoption. Band 0 established its
-truth boundaries; Band 1 slices 1A–1C installed schema v6, durable pre-capture
-state, validated atomic file publication, and the captured Unit of Work.
-`ApplicationKit`, jobs, recovery, outbox,
-and scoped observations remain targets. `ARCHITECTURE.md` must always
-distinguish current behavior from this target.
+**Status:** implemented for macOS. `ApplicationKit`, durable capture and
+processing jobs, recovery, atomic publication, and scoped observations are
+current architecture with executable dependency and presentation ratchets.
+Future boundaries still require a concrete vertical use case.
 
 ## D34 — English, commit-synchronized project documentation (Jul 2026)
 
@@ -274,13 +273,14 @@ and unsafe for the next contributor.
 **Decision:** all explanatory documentation under `docs/` is written in
 English. Intentionally localized UI strings, bilingual transcript examples,
 and language-quality fixtures may remain quoted as literals. Every architecture
-refactor commit updates `ARCHITECTURE.md` and every other document whose truth
-changed in that commit: as-built specs for behavior, ROADMAP for status,
-GAPS for remaining work, DECISIONS for binding choices, README for public
+change updates `ARCHITECTURE.md` and every other document whose truth changed
+in that commit: as-built specs for behavior, GAPS for remaining limitations and
+field validation, DECISIONS for binding choices, README for public
 behavior, and RELEASING for shipping changes. CHANGELOG remains reserved for
 user-visible features and fixes; internal refactors or documentation-only
 changes do not receive a misleading product entry. Documentation accuracy and
-feature parity are part of the commit's definition of done.
+feature parity are part of the commit's definition of done. D119 later makes
+the repository roadmap and completed migration ledger explicitly local-only.
 
 ## D35 — Transcript truth and generated-output language are independent (Jul 2026)
 
@@ -3554,9 +3554,10 @@ selected.
 Local agent/design-sync state, scratch planning, tickets, reports, generated
 projects, result bundles, and ad-hoc screenshots are ignored and rejected if
 tracked. Implementation, tests, tooling, and workflows reject private tracker-
-key patterns. Accepted architecture decisions, as-built specs, roadmap truth,
-and the executable refactor plan under `docs/` remain intentionally tracked;
-they are public durable project knowledge rather than local execution scratch.
+key patterns. Accepted architecture decisions, as-built specs, product
+constraints, and explicit gaps under `docs/` remain intentionally tracked;
+the repository roadmap and completed migration ledger are local-only under
+D119.
 
 **Rationale:** risk-based selection removes redundant launches while preserving
 a conservative fallback and an explicit full bilingual gate. Keeping the scope
@@ -3599,3 +3600,28 @@ box gives the compiler and reviewers a local safety argument without weakening
 concurrency checking across an entire framework. Treating diagnostics as errors
 keeps SDK evolution visible, while the D116 wording prevents future mobile work
 from implementing an obsolete unconditional metadata assumption.
+
+## D119 — Keep the roadmap and migration ledger local (Jul 2026)
+
+**Context:** `docs/ROADMAP.md` and `docs/refactor-20260714.md` mixed transient
+delivery sequencing with durable public project truth. The migration plan also
+grew into a large historical execution ledger after macOS convergence was
+complete. Keeping those files tracked made the public repository appear to
+require internal work-state documents even though implemented behavior,
+binding decisions, and unresolved limitations already have dedicated sources.
+
+**Decision:** these two files remain available to maintainers locally but are
+gitignored and rejected if tracked. Public current truth is distributed by
+responsibility: `ARCHITECTURE.md` for implemented structure and invariants,
+`specs/` for runtime behavior, `DECISIONS.md` for binding trade-offs,
+`GAPS.md` for unresolved limitations and field validation, `IOS.md` for the
+deferred mobile phase, `PRODUCT.md` for product intent, and `RELEASING.md` for
+shipping. Contributor guidance, public documentation, source comments, and PR
+templates must not link to these local planning files. Removing them from Git
+must preserve each developer's working copy.
+
+**Rationale:** the public codebase should explain what exists, why it exists,
+and what limitations remain without publishing transient sequencing state.
+Explicit local paths preserve maintainer continuity while repository hygiene
+prevents accidental recommit. Self-contained tracked sources avoid broken links
+and keep architecture review reproducible for outside contributors.

@@ -51,7 +51,8 @@ Founding user and archetype: a Spanish-speaking developer with meetings in Engli
 
 This is the intended entitlement model, not a claim that every PRO row or
 license gate is implemented today. Current implementation status lives in
-[ROADMAP.md](ROADMAP.md) and the as-built [specs/](specs/README.md).
+[ARCHITECTURE.md](ARCHITECTURE.md), [GAPS.md](GAPS.md), and the as-built
+[specs/](specs/README.md).
 
 | | FREE (forever) | PRO |
 |---|---|---|
@@ -76,7 +77,7 @@ license gate is implemented today. Current implementation status lives in
 
 The following is the product vision. It intentionally includes planned
 capabilities; current and deferred status is authoritative in
-[ROADMAP.md](ROADMAP.md), [IOS.md](IOS.md), and the as-built specs.
+[GAPS.md](GAPS.md), [IOS.md](IOS.md), and the as-built specs.
 
 **macOS (primary product):** per-app taps; iPhone as a room mic via Continuity (hybrid meetings: 3 channels); Foundation Models for summaries; menu bar + floating transcript panel; App Intents/Shortcuts + calendar-based auto-recording (EventKit); Core Spotlight; widgets; Focus filters; Handoff; Quick Look; CLI + XPC.
 

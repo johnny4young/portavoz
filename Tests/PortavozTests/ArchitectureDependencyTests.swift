@@ -167,6 +167,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(ci.contains("run: swift build -Xswiftc -warnings-as-errors"))
         XCTAssertTrue(ios.contains("destination supports"))
         XCTAssertTrue(decisions.contains("## D118"))
+        XCTAssertTrue(decisions.contains("## D119"))
     }
 
     func testCoreForbiddenImportsRemainAtDocumentedBaseline() throws {

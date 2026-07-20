@@ -1,6 +1,9 @@
 # iOS/iPadOS — technical implementation plan (phase 3, M14)
 
-Complements D11 (strategy) and the ROADMAP (M14a–d). This document exists so that phase 3 starts with zero wishful thinking: **what is technically feasible on iOS, with which APIs, and what resource budget each component has**.
+Complements D11 (strategy), current architecture, and the field gates in
+`GAPS.md`. This document exists so that the deferred iOS phase starts with zero
+wishful thinking: **what is technically feasible on iOS, with which APIs, and
+what resource budget each component has**.
 
 ## The truth about capture (why iOS ≠ Mac)
 
