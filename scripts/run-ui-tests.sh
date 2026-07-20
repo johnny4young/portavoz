@@ -32,9 +32,15 @@ done
 
 mkdir -p "$results_root"
 
-# Respect an already-selected toolchain (CI pins the newest Xcode via
-# xcode-select); the hardcoded path is only the local-dev default.
-export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+# An explicit DEVELOPER_DIR wins. Otherwise xcodebuild follows the active
+# xcode-select toolchain (CI selects its newest Xcode before invoking us).
+# Only a Command Line Tools selection needs the conventional local fallback.
+if [[ -z "${DEVELOPER_DIR:-}" ]]; then
+  selected_developer_dir="$(xcode-select -p)"
+  if [[ "$selected_developer_dir" == */CommandLineTools ]]; then
+    export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+  fi
+fi
 
 # Compile the app and UI bundle once. English and Spanish then reuse the same
 # products through test-without-building instead of paying the build cost twice.

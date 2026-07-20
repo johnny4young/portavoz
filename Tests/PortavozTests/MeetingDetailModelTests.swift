@@ -427,6 +427,27 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(client.searchReindexRequests, 1)
     }
 
+    func testDocumentFailuresUseLocalizedPresentationMessages() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.prepareDocumentError = ExportMeetingDocumentError.meetingNotFound
+        client.publishGistError = ExportMeetingDocumentError.meetingNotFound
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let document = await model.send(.prepareDocument(.markdown))
+        let gist = await model.send(.publishGist)
+
+        guard case .operationFailed(let documentMessage) = document else {
+            return XCTFail("a missing export meeting must produce a visible failure")
+        }
+        guard case .operationFailed(let gistMessage) = gist else {
+            return XCTFail("a missing gist meeting must produce a visible failure")
+        }
+        let expected = L10n.text("The meeting could not be found.")
+        XCTAssertEqual(documentMessage, expected)
+        XCTAssertEqual(gistMessage, expected)
+    }
+
     func testMetadataCancellationRetriesInsteadOfConsumingOneShotSuggestions() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(
@@ -616,6 +637,8 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var playbackCancellationsRemaining = 0
     var preparedPlaybackResult: PreparedMeetingPlayback?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
+    var prepareDocumentError: (any Error)?
+    var publishGistError: (any Error)?
     var nameSuggestionsResult: [MeetingNameSuggestion] = [
         MeetingNameSuggestion(
             label: "S1",
@@ -715,6 +738,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         format: MeetingDocumentFormat
     ) throws -> PreparedMeetingDocument {
         calls.append(.prepareDocument(meetingID, format))
+        if let prepareDocumentError { throw prepareDocumentError }
         try fail(.prepareDocument)
         return PreparedMeetingDocument(
             data: Data("prepared".utf8),
@@ -723,6 +747,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 
     func publishMeetingDetailGist(_ meetingID: MeetingID) throws -> URL {
         calls.append(.publishGist(meetingID))
+        if let publishGistError { throw publishGistError }
         try fail(.publishGist)
         return URL(string: "https://gist.github.com/portavoz/test")!
     }

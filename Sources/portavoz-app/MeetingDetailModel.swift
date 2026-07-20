@@ -467,7 +467,7 @@ private extension MeetingDetailModel {
                 meetingID,
                 format: format))
         } catch {
-            return .operationFailed(error.localizedDescription)
+            return .operationFailed(UseCaseErrorMessages.describe(error))
         }
     }
 
@@ -475,7 +475,7 @@ private extension MeetingDetailModel {
         do {
             return .gistPublished(try await client.publishMeetingDetailGist(meetingID))
         } catch {
-            return .operationFailed(L10n.text(error.localizedDescription))
+            return .operationFailed(UseCaseErrorMessages.describe(error))
         }
     }
 

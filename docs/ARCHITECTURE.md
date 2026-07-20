@@ -198,6 +198,9 @@ The implemented application workflows include:
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.
+The app maps reachable typed use-case failures to catalog strings at the
+feature-model/presentation boundary; English developer descriptions remain a
+CLI and diagnostic fallback rather than user-facing copy.
 
 ## Presentation and state ownership
 
@@ -748,6 +751,8 @@ that bridge and no import-wide concurrency suppression is used. First-party
 Swift sources compile against the current SDK with warnings treated as errors
 both locally and in the primary GitHub Actions build lane; the Sequoia lane
 continues to prove compatibility with the oldest supported runtime/toolchain.
+Third-party GitHub Actions are pinned to immutable full commit SHAs with their
+human-readable versions in comments; repository hygiene rejects mutable tags.
 
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
@@ -756,6 +761,9 @@ evidence; unknown production Swift paths fall back to the complete English
 suite. An empty selector explicitly means every test; optional selector and
 locale arguments are assembled without empty-array expansion on the system
 Bash runtime. One `build-for-testing` result is reused across selected locales.
+The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
+`xcode-select` toolchain chosen by CI, and falls back to the conventional local
+Xcode path only when Command Line Tools is active.
 The complete 39-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
