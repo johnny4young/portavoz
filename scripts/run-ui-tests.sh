@@ -32,10 +32,13 @@ done
 
 mkdir -p "$results_root"
 
+# Respect an already-selected toolchain (CI pins the newest Xcode via
+# xcode-select); the hardcoded path is only the local-dev default.
+export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+
 # Compile the app and UI bundle once. English and Spanish then reuse the same
 # products through test-without-building instead of paying the build cost twice.
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild build-for-testing "${common[@]}"
+xcodebuild build-for-testing "${common[@]}"
 
 for locale in $locales; do
   test_args=("${common[@]}")
@@ -55,8 +58,7 @@ for locale in $locales; do
     test_args+=("${only_testing[@]}")
   fi
   echo "Running $selector_label in locale: $locale"
-  DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-    xcodebuild test-without-building \
-      "${test_args[@]}" \
-      -resultBundlePath "$result_bundle"
+  xcodebuild test-without-building \
+    "${test_args[@]}" \
+    -resultBundlePath "$result_bundle"
 done

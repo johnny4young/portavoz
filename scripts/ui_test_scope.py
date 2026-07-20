@@ -267,7 +267,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
 
 
 def changed_paths(base: str, head: str) -> list[str]:
-    command = ["git", "diff", "--name-only", "--diff-filter=ACMRTUXB", base, head, "--"]
+    command = ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, head, "--"]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     return result.stdout.splitlines()
 

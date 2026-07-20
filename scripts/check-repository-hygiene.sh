@@ -78,6 +78,7 @@ done
 
 python3 scripts/ui_test_scope.py --validate-catalog
 python3 -m unittest Tests.Tooling.test_ui_test_scope
+python3 -m unittest Tests.Tooling.test_run_ui_tests
 
 if [[ "$failures" -ne 0 ]]; then
   exit 1
