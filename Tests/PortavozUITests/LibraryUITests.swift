@@ -147,7 +147,10 @@ final class LibraryUITests: XCTestCase {
         citation.click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        XCTAssertEqual(currentTime.value as? String, "0:03")
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
     }
 
     @MainActor
@@ -183,7 +186,10 @@ final class LibraryUITests: XCTestCase {
         citation.click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        XCTAssertEqual(currentTime.value as? String, "0:03")
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
     }
 
     @MainActor
