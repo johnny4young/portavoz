@@ -121,6 +121,9 @@ struct MeetingDetailView: View {
         .task { await model.observe() }
         .task(id: playbackTaskID) { await refreshPlayback() }
         .task(id: model.state.revision) { await refreshPresentation() }
+        .onChange(of: services.pendingMeetingSeek) { _, _ in
+            consumePendingMeetingSeekIfMatching()
+        }
         .onDisappear { model.invalidatePlayback() }
     }
 
@@ -1921,15 +1924,23 @@ extension MeetingDetailView {
 
     private func refreshPresentation() async {
         guard detail != nil else { return }
-        // A palette citation navigated here: jump to the cited moment.
-        if let seek = services.pendingSeek {
-            services.pendingSeek = nil
-            pendingEvidenceSeek = seek
-            applyPendingEvidenceSeekIfPossible()
-        }
+        consumePendingMeetingSeekIfMatching()
         await model.send(.loadMetadataSuggestions)
         guard !Task.isCancelled else { return }
         await loadVoiceSuggestions()
+    }
+
+    /// Consume only requests for this detail. The explicit observation covers
+    /// citations that target an already-open meeting, while refresh covers a
+    /// newly constructed destination and requests that arrive before loading.
+    private func consumePendingMeetingSeekIfMatching() {
+        guard
+            let request = services.pendingMeetingSeek,
+            request.meetingID == meetingID
+        else { return }
+        services.pendingMeetingSeek = nil
+        pendingEvidenceSeek = request.timestamp
+        applyPendingEvidenceSeekIfPossible()
     }
 
     /// Audio has its own directory-scoped lifetime. Review sections can emit

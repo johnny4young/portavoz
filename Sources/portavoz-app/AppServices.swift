@@ -11,6 +11,14 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
+/// A citation seek is scoped to one meeting and carries identity so repeated
+/// requests for the same timestamp still publish an observable change.
+struct MeetingSeekRequest: Equatable {
+    let id = UUID()
+    let meetingID: MeetingID
+    let timestamp: TimeInterval
+}
+
 /// Composition root: the database, the ML engines (loaded once, shared by
 /// every recording), and cross-view invalidation. Lives on the main actor;
 /// the engines themselves do their work off it.
@@ -120,13 +128,20 @@ final class AppServices {
     /// ⌘K palette (design system 6a-1): floats over any view; state and owned
     /// tasks live here so it works safely with the library window closed.
     let palette: CommandPaletteController
-    /// One-shot seek consumed by the detail view when a palette citation
-    /// navigates to a meeting — jump to the cited moment.
-    var pendingSeek: TimeInterval?
+    /// One-shot, meeting-scoped seek consumed only by its destination detail.
+    /// Existing details observe it too, so navigating to the already-open
+    /// meeting cannot strand the request waiting for a route reconstruction.
+    var pendingMeetingSeek: MeetingSeekRequest?
     /// The meeting that just finished recording — the detail view shows the
     /// post-meeting mirror (6a-2) once for it, if the setting is on and it
     /// qualifies. One-shot: consumed on show.
     var justRecorded: MeetingID?
+
+    func requestMeetingSeek(for citation: AskCitation) {
+        pendingMeetingSeek = MeetingSeekRequest(
+            meetingID: citation.meetingID,
+            timestamp: citation.timestamp)
+    }
 
     /// The user's average talk-share over their recent meetings (excluding
     /// one) — the mirror compares "% you spoke" against this. Nil when there

@@ -160,6 +160,15 @@ final class LibraryUITests: XCTestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // Keep the citation destination open before invoking the resident
+        // palette. Reassigning the same route does not reconstruct SwiftUI,
+        // so this proves the navigation request reaches a mounted detail.
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        meeting.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "player-current-time").waitForExistence(timeout: 10))
         app.typeKey("k", modifierFlags: .command)
         let field = app.textFields["palette-query-field"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))

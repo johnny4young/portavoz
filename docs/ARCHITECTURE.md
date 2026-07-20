@@ -570,7 +570,10 @@ reciprocal-rank fusion. Local generation is optional: ordinary model failure
 preserves exact citations, while caller cancellation propagates. Embeddings are
 device-local derivation and do not mark a meeting for sync. Meeting Detail
 seeks exact transcript evidence only after its audio player is ready; early
-source selections remain queued until waveform preparation completes.
+source selections remain queued until waveform preparation completes. Ask and
+command-palette citation seeks are meeting-scoped, identity-bearing navigation
+requests: only the matching detail consumes them, and an already-open detail
+observes a new request without depending on route reconstruction.
 
 Waveform generation is stateless and uses Accelerate over range-aligned channel
 spans. Playback supports synchronized channels, silence skipping, local-voice
@@ -768,7 +771,10 @@ assertions use visible-frame intersection rather than conflating visibility
 with a control's temporary enabled or hittable state, and their bounded scroll
 budgets cover the smallest GitHub-hosted Settings viewport. Assertions after
 asynchronous navigation synchronize on the final observable value rather than
-treating the destination element's first frame as completion.
+treating the destination element's first frame as completion. The production
+navigation contract, not a UI-test retry, guarantees that same-meeting citation
+requests are applied; the palette regression explicitly starts from an already-
+open destination so a no-op route assignment cannot satisfy it accidentally.
 The complete 39-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
@@ -910,8 +916,8 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 973 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 344 Swift source files;
+- 974 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 345 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

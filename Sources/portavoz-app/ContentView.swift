@@ -51,7 +51,7 @@ struct ContentView: View {
                     AskView(
                         model: askModel,
                         onOpenCitation: { citation in
-                            services.pendingSeek = citation.timestamp
+                            services.requestMeetingSeek(for: citation)
                             route = .meeting(citation.meetingID)
                         })
                 case .insights:
@@ -83,7 +83,7 @@ struct ContentView: View {
                 NSApp.activate(ignoringOtherApps: true)
             }
             services.palette.onOpenCitation = { citation in
-                services.pendingSeek = citation.timestamp
+                services.requestMeetingSeek(for: citation)
                 services.pendingRoute = .meeting(citation.meetingID)
             }
         }

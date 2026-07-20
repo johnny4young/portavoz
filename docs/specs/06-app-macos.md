@@ -198,8 +198,11 @@ main-actor app client. Each `ContentView` owns a per-window `AskModel`; the
 resident command palette owns one process-scoped `CommandPaletteModel`. The
 models own answer/search tasks and generations, and the palette resets both on
 close/reopen. AppKit owns panel lifetime, keyboard activation, clipboard, and
-window navigation only. Full Ask and palette citations set the same exact
-one-shot seek before opening Meeting Detail (D100).
+window navigation only. Full Ask and palette citations publish the same exact,
+meeting-scoped seek request before opening Meeting Detail. The destination
+consumes it after playback is ready; if that meeting is already open, its
+detail observes the identity-bearing request directly instead of depending on
+a no-op route assignment to reconstruct the view (D100).
 
 `AppServices` owns one process-scoped `FirstRunModel` and one process-scoped
 `LocalDataLedgerModel` (D101). `ResolveFirstRunExperience` decides whether one
@@ -632,8 +635,9 @@ Both surfaces use `ApplicationKit.AskMeetings`. Typing requests up to six FTS
 results with snippet, title, and timestamp; Enter requests hybrid local evidence
 and an optional on-device answer. Missing generation degrades to complete
 evidence rather than losing citations. Citation controls pass storage-
-independent identity and time to composition, then set the one-shot detail seek;
-the palette reopens a main window only when none is visible. ⌘C copies the
+independent identity and time to composition, then set the one-shot,
+meeting-scoped detail seek; the palette reopens a main window only when none is
+visible. ⌘C copies the
 answer and citations through `ApplicationKit.AskMarkdown`. The views and panel
 import no StorageKit, IntegrationsKit, or IntelligenceKit. Disposable bilingual
 UI coverage verifies the full Ask answer, instant palette results, generated
