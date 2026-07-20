@@ -744,7 +744,9 @@ Current dependency APIs are used without deprecated compatibility shims. The
 AVAudioConverter input callback receives its immutable source through one
 lock-protected, one-shot Sendable bridge; unchecked conformance is confined to
 that bridge and no import-wide concurrency suppression is used. First-party
-Swift sources compile against the current SDK with warnings treated as errors.
+Swift sources compile against the current SDK with warnings treated as errors
+both locally and in the primary GitHub Actions build lane; the Sequoia lane
+continues to prove compatibility with the oldest supported runtime/toolchain.
 
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest

@@ -1142,12 +1142,14 @@ segment sets with explicit typed loops so Sequoia exercises the same ranking
 evidence without exceeding its type-checking budget.
 
 Current-SDK diagnostic closure uses `swift build -Xswiftc
--warnings-as-errors`. An architecture characterization preserves the built-in
+-warnings-as-errors` locally and in the primary `macos-latest` CI build. The
+Sequoia lane remains the oldest-runtime/toolchain compatibility proof. An
+architecture characterization preserves the built-in
 vertical scroll coordinate space, supported MLX memory API, narrow
 lock-protected AVAudioConverter input bridge, absence of import-wide
-AVFoundation concurrency suppression, and current no-op/throwing call shapes.
-This leaves first-party Swift warning-free without turning dependency package
-metadata warnings into product exceptions (D118).
+AVFoundation concurrency suppression, current no-op/throwing call shapes, and
+the CI warning gate. This leaves first-party Swift warning-free without turning
+dependency package metadata warnings into product exceptions (D118).
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

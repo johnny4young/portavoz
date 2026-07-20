@@ -3583,8 +3583,9 @@ delivery state, and `@unchecked Sendable` is confined to that documented SDK
 bridge. Portavoz does not apply broad AVFoundation concurrency suppression.
 Unused values, explicitly discarded optional results, and calls whose SDK
 contracts are now nonthrowing follow their current signatures. The maintained
-closure command is `swift build -Xswiftc -warnings-as-errors`, backed by an
-architecture characterization that rejects the superseded patterns.
+closure command is `swift build -Xswiftc -warnings-as-errors`, enforced by the
+primary current-SDK CI build and backed by an architecture characterization
+that rejects both the superseded patterns and removal of that CI gate.
 
 The iOS sync description is also reconciled with D116: staging and transport
 files always retain private owner-only `0600`, durable, same-directory atomic

@@ -146,6 +146,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+Showcase.swift")
         let translation = try Self.contents(
             of: "Sources/portavoz-app/LiveTranslation.swift")
+        let ci = try Self.contents(of: ".github/workflows/ci.yml")
         let ios = try Self.contents(of: "docs/IOS.md")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
@@ -163,6 +164,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(showcase.contains("_ = try? await store.saveSummary"))
         XCTAssertTrue(translation.contains("status = await availability.status("))
         XCTAssertFalse(translation.contains("try? await availability.status("))
+        XCTAssertTrue(ci.contains("run: swift build -Xswiftc -warnings-as-errors"))
         XCTAssertTrue(ios.contains("destination supports"))
         XCTAssertTrue(decisions.contains("## D118"))
     }
