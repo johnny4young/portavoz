@@ -763,7 +763,9 @@ locale arguments are assembled without empty-array expansion on the system
 Bash runtime. One `build-for-testing` result is reused across selected locales.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
-Xcode path only when Command Line Tools is active.
+Xcode path only when Command Line Tools is active. Visual-only screenshot
+assertions use visible-frame intersection rather than conflating visibility
+with a control's temporary enabled or hittable state.
 The complete 39-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.

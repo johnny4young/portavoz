@@ -85,14 +85,19 @@ final class SettingsUITests: XCTestCase {
         // grouped Form that owns the model controls.
         let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
         XCTAssertTrue(settingsForm.exists)
-        for _ in 0..<12 where !whisperDownload.isHittable {
+        func downloadIsVisible() -> Bool {
+            let visibleFormFrame = settingsForm.frame.intersection(settingsWindow.frame)
+            let downloadFrame = whisperDownload.frame
+            return !visibleFormFrame.isEmpty
+                && !downloadFrame.isEmpty
+                && downloadFrame.intersects(visibleFormFrame)
+        }
+        for _ in 0..<12 where !downloadIsVisible() {
             settingsForm.scroll(byDeltaX: 0, deltaY: -6)
         }
         XCTAssertTrue(
-            whisperDownload.isHittable,
+            downloadIsVisible(),
             "the proactive Whisper action must be visible before capturing UI evidence")
-        settingsForm.scroll(byDeltaX: 0, deltaY: -6)
-        settingsForm.scroll(byDeltaX: 0, deltaY: -6)
         let attachment = XCTAttachment(screenshot: settingsWindow.screenshot())
         attachment.name = "sequoia-whisper-background-settings"
         attachment.lifetime = .keepAlways
