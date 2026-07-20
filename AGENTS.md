@@ -9,7 +9,7 @@ Durable knowledge lives in `docs/` — there is no session handoff file anymore 
 1. **Current state and next step**: [docs/ROADMAP.md](docs/ROADMAP.md) opens with the current project state, remaining work, and the next concrete step.
 2. **As-built technical knowledge**: [docs/specs/](docs/specs/README.md) — 8 domain specs (capture, transcription, diarization, intelligence, storage, app, interfaces, quality) written from the real code, with implemented behavior separated from planned behavior. Read the spec for the area you will touch BEFORE editing it.
 3. **Architecture refactor work**: [docs/refactor-20260714.md](docs/refactor-20260714.md) is the executable target architecture, band plan, feature-parity contract, commit protocol, and acceptance matrix. Read it before any refactor slice; it is a plan, while specs remain as-built truth.
-4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D117), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (current architecture, clearly labeled target, engineering rules, and migration status), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), [docs/GAPS.md](docs/GAPS.md) (known gaps + pending field validation), [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format), [docs/IOS.md](docs/IOS.md) (iOS phase).
+4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D118), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (current architecture, clearly labeled target, engineering rules, and migration status), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), [docs/GAPS.md](docs/GAPS.md) (known gaps + pending field validation), [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format), [docs/IOS.md](docs/IOS.md) (iOS phase).
 
 ## At the end of a significant session
 
@@ -21,6 +21,7 @@ All explanatory documentation under `docs/` is written in **English**. Literal l
 
 ```sh
 swift build
+swift build -Xswiftc -warnings-as-errors # current-SDK first-party diagnostics
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
 make test-ui-changed UI_BASE=origin/main  # feature-level XCUITest selected from the diff
 make test-ui-bilingual                    # explicit full EN + ES release gate

@@ -49,13 +49,18 @@ matching device-local derivations, deferring live remote work behind unsent
 local work, making remote deletion privacy-dominant, and suppressing accepted
 remote echo. IntegrationsKit now maps that envelope to one deterministic
 private-zone `MeetingReplica`: small payloads and their digest use encrypted
-values; large payloads use a protected, backup-excluded CKAsset staging file
+values; large payloads use a private owner-only `0600` CKAsset staging file
 whose content CloudKit encrypts by default; matching records preserve system
-fields; deletion saves a tombstone. A separate complete-protected
+fields; deletion saves a tombstone. A separate private owner-only `0600`
 IntegrationsKit store now persists content-free account-scoped consent/seed,
 opaque CKSyncEngine serialization, record system fields, exact attempts,
-bounded retries, replay cursors, and protected remote deferrals. Exact envelope
-bytes use validated `0600` files. Account loss pauses work and a real switch
+bounded retries, replay cursors, and remote deferrals. Each actual destination
+independently probes complete protection and backup exclusion with empty,
+content-free files before publication. When the destination supports a metadata
+capability, the writer applies and verifies it; only `EINVAL` or `ENOTSUP` may
+omit that specific capability, and every other error fails closed. Exact
+envelope and transport-state bytes use validated, durable, same-directory
+atomic `0600` publication (D116). Account loss pauses work and a real switch
 clears old account-scoped metadata; callbacks pass through a thin injected
 delegate to StorageKit's replay authority. A platform-neutral lifecycle owns
 zero-platform local-only launch, explicit enable/seed/retry/pause/remove-device,
@@ -76,13 +81,15 @@ a field gate, not a unit-test claim.
   live/live deferral, deletion priority, and immutable identity fences (D93).
 - **6B2A complete — dormant record codec:** IntegrationsKit owns encrypted
   inline CKRecord values, an encrypted-by-default CKAsset fallback for
-  oversized meetings, strict validation, existing-record reuse, and saved
-  deletion tombstones without creating a runtime (D94).
-- **6B2B complete — durable dormant transport:** protected account/consent/seed,
+  oversized meetings, capability-probed owner-only staging, strict validation,
+  existing-record reuse, and saved deletion tombstones without creating a
+  runtime (D94/D116).
+- **6B2B complete — durable dormant transport:** private owner-only account/consent/seed,
   opaque engine/system-field, exact attempt, retry, cursor, and deferred-replay
-  state survives restart. Partial failures stay independent, account switches
-  reset old account metadata, and a thin injected delegate forwards callbacks
-  without app runtime composition (D95).
+  state survives restart through capability-probed durable atomic publication.
+  Partial failures stay independent, account switches reset old account
+  metadata, and a thin injected delegate forwards callbacks without app runtime
+  composition (D95/D116).
 - **6C1 complete — shared lifecycle policy:** account/driver protocols, six
   truthful phases, and explicit enable/seed/retry/pause/remove-device semantics
   are independent of SwiftUI and CloudKit composition (D96).

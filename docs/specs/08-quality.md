@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 972 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
+Status: 973 package tests passing (13 model-gated) + 39 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1126,7 +1126,7 @@ The primitive always verifies exact size and owner-only permissions, verifies
 supported metadata, publishes through one same-volume rename, leaves no staging
 artifacts, and does not contradict an acknowledged cloud copy with an all-
 content-local status. Architecture coverage rejects reintroducing `FileHandle`
-or a broad compatibility bypass. The current full gate is 972 package tests
+or a broad compatibility bypass. The current full gate is 973 package tests
 (13 gated), with strict lint clean across 344 Swift source files (D115/D116).
 
 The same supported Sequoia lane compiles recovery comparisons and exact Refine
@@ -1141,7 +1141,18 @@ and player behavior. The RAG term-fusion fixture builds its high-cardinality
 segment sets with explicit typed loops so Sequoia exercises the same ranking
 evidence without exceeding its type-checking budget.
 
-Local: `swift test` (if it fails with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` — xcode-select points to CommandLineTools). XCTest, not Swift Testing (D13).
+Current-SDK diagnostic closure uses `swift build -Xswiftc
+-warnings-as-errors`. An architecture characterization preserves the built-in
+vertical scroll coordinate space, supported MLX memory API, narrow
+lock-protected AVAudioConverter input bridge, absence of import-wide
+AVFoundation concurrency suppression, and current no-op/throwing call shapes.
+This leaves first-party Swift warning-free without turning dependency package
+metadata warnings into product exceptions (D118).
+
+Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
+with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
+Testing (D13/D118).
 
 ## UI tests — `Tests/PortavozUITests/` (`make test-ui`, D30)
 
@@ -1160,8 +1171,12 @@ standard-library unit tests characterize skip, targeted, bilingual, harness,
 and conservative-fallback behavior. `make test-ui-changed` consumes that
 policy locally. `scripts/run-ui-tests.sh` performs one `build-for-testing` and
 reuses it with `test-without-building` for each selected locale, retaining an
-xcresult per locale under ignored `dist/ui-test-results/`. Full `make
-test-ui-bilingual` remains mandatory for release and architecture closure.
+xcresult per locale under ignored `dist/ui-test-results/`. An empty selector is
+an explicit complete-suite request. Optional selector and locale arguments are
+assembled without expanding empty arrays under macOS Bash 3.2; tooling tests
+cover complete, scoped, and default-locale runner arguments. Full
+`make test-ui-bilingual` remains mandatory for release and architecture
+closure.
 
 `scripts/check-repository-hygiene.sh` independently rejects tracked agent,
 design-sync, planning, ticket, report, generated-project, result-bundle, and

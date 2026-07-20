@@ -21,8 +21,6 @@ struct FocusedTranscriptView<Row: View>: View {
     var followSignal: Double = 0
     @ViewBuilder var row: (TranscriptSegment, Bool) -> Row
 
-    private let space = "focused-transcript"
-
     var body: some View {
         let focusY = anchor.y * height
         let reach = max(focusY, height - focusY, 1)
@@ -39,7 +37,9 @@ struct FocusedTranscriptView<Row: View>: View {
                                 // the focused line AND the one right above/below
                                 // it fully sharp and readable; only lines
                                 // further out fade.
-                                let midY = geometry.frame(in: .named(space)).midY
+                                let midY = geometry.frame(
+                                    in: .scrollView(axis: .vertical)
+                                ).midY
                                 let deadzone: CGFloat = 58
                                 let far = max(1, reach - deadzone)
                                 let t: CGFloat = min(1, max(0, (abs(midY - focusY) - deadzone) / far))
@@ -59,7 +59,6 @@ struct FocusedTranscriptView<Row: View>: View {
                 .padding(.bottom, height - focusY)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .coordinateSpace(.named(space))
             .frame(height: height)
             .onChange(of: activeID) { _, id in recenter(proxy, id) }
             .onChange(of: followSignal) { _, _ in recenter(proxy, activeID) }

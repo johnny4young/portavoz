@@ -737,16 +737,25 @@ agent state, scratch plans, and local work-item files remain outside version con
 private work-item identifier leakage in implementation files. SwiftUI APIs with SDK-
 overloaded defaults and presentation math that crosses `CGFloat`/`Double`
 boundaries use explicit signatures and types so both the Sequoia and latest
-compiler lanes resolve the same behavior.
+compiler lanes resolve the same behavior. The focused transcript measures rows
+in SwiftUI's built-in vertical scroll-view coordinate space instead of sharing
+a generic named coordinate key with a concurrent visual-effect closure.
+Current dependency APIs are used without deprecated compatibility shims. The
+AVAudioConverter input callback receives its immutable source through one
+lock-protected, one-shot Sendable bridge; unchecked conformance is confined to
+that bridge and no import-wide concurrency suppression is used. First-party
+Swift sources compile against the current SDK with warnings treated as errors.
 
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to bilingual
 evidence; unknown production Swift paths fall back to the complete English
-suite. One `build-for-testing` result is reused across selected locales. The
-complete 39-case English and Spanish suites remain the release/architecture
-closure gate rather than the default cost for documentation or isolated
-surface changes.
+suite. An empty selector explicitly means every test; optional selector and
+locale arguments are assembled without empty-array expansion on the system
+Bash runtime. One `build-for-testing` result is reused across selected locales.
+The complete 39-case English and Spanish suites remain the
+release/architecture closure gate rather than the default cost for
+documentation or isolated surface changes.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
@@ -793,6 +802,8 @@ library or Keychain.
 21. Internal tracker keys and ephemeral planning/tool state do not enter source
     identifiers, comments, or tracked files; durable accepted project truth
     remains in the reviewed `docs/` sources of truth.
+22. SDK concurrency gaps are isolated in the narrowest lock-protected bridge
+    with an explicit safety proof; broad import-level suppression is forbidden.
 
 ## Runtime composition facts
 
@@ -882,7 +893,8 @@ silently.
 The current local acceptance baseline is:
 
 - `swift build` succeeds;
-- 972 package tests pass, with 13 real-model/environment cases gated;
+- `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
+- 973 package tests pass, with 13 real-model/environment cases gated;
 - strict SwiftLint reports zero violations across 344 Swift source files;
 - 39 XCUITest cases pass in English and 39 in Spanish;
 - pull requests run only their selected feature-level UI evidence, while shared
@@ -897,6 +909,7 @@ Run the standard gates with:
 
 ```sh
 swift build
+swift build -Xswiftc -warnings-as-errors
 swift test
 swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh

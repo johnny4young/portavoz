@@ -803,9 +803,11 @@ exercises this same production path in the durable-resume XCUITest (D63).
 **Audio-first Meeting Detail:** the synchronized player drives the
 **Spotify-style lyrics transcript** (`FocusedTranscriptView`: the spoken line
 stays centered in a fixed-height viewport while surrounding lines fade,
-shrink, and blur; its explicit vertical/no-indicator initializer preserves the
-same behavior across the supported Sequoia and latest SwiftUI SDK signatures,
-and its fade/scale/blur values cross `CGFloat`/`Double` boundaries explicitly),
+shrink, and blur; its explicit vertical/no-indicator initializer and built-in
+vertical scroll-view coordinate space preserve the same behavior across the
+supported Sequoia and latest SwiftUI SDK signatures without sharing a generic
+named key with the visual-effect closure, and its fade/scale/blur values cross
+`CGFloat`/`Double` boundaries explicitly),
 click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
 and microphone-only playback. `MeetingDetailModel` owns
 one playback-preparation attempt per recording directory, cancellation retry,

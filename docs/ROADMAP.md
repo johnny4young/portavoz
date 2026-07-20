@@ -13,7 +13,18 @@ vertical use case. The next independent release gate is real production
 CloudKit container/profile/account validation and two-Mac convergence. The iOS
 in-person recorder shell remains deferred in `docs/IOS.md`, and audio remains
 outside sync. All released v0.6.0 behavior remains covered by package and
-bilingual UI gates (D33–D117).
+bilingual UI gates (D33–D118).
+
+- **Current-SDK diagnostics are closed at narrow framework boundaries
+  (Jul 19, 2026):** first-party Swift builds with warnings treated as errors.
+  Focused transcript geometry uses SwiftUI's vertical scroll-view coordinate
+  space; embedded MLX uses its supported memory API; and SpeechAnalyzer's
+  AVAudioConverter callback contains its immutable one-shot buffer in one
+  documented lock-protected Sendable bridge rather than suppressing framework
+  concurrency checks. The iOS sync description now carries D116's exact
+  capability-probed metadata contract. The verified package baseline is 973
+  tests with 13 gated and strict lint remains clean across 344 Swift source
+  files (D118).
 
 - **Open-source contribution gates are risk-scoped and supply-chain hardened
   (Jul 19, 2026):** every XCUITest belongs to an executable feature scope;
@@ -57,7 +68,7 @@ bilingual UI gates (D33–D117).
   fusion fixture bounded without changing operation identity or ranking.
   The fixed vertical transcript viewport uses an explicit SwiftUI signature and typed visual-
   effect arithmetic across supported SDK/compiler combinations. The verified
-  baseline is 972 package tests with 13 gated, strict lint is clean across 344
+  baseline is 973 package tests with 13 gated, strict lint is clean across 344
   Swift source files, and the privacy receipt remains covered by the bilingual
   Meeting Detail smoke (D115/D116).
 
@@ -1209,7 +1220,7 @@ The phase where the user feels that **native is worth it**. Reordered after anal
 
 | Milestone | Scope | Acceptance criterion |
 |---|---|---|
-| **M9 — Release + OSS growth** | **Released (Jul 10, 2026), hardened through D117:** public repository, signed/notarized/stapled DMG, Sparkle appcast, Homebrew cask, reproducible benchmarks, strict CI, immutable Actions, grouped Dependabot updates, scoped UI evidence, repository-hygiene enforcement, issue/PR templates, CODEOWNERS, Code of Conduct, private vulnerability reporting, SECURITY.md, and EN/ES localization. Releases through v0.6.0 retain the same distribution path | ✅ `brew install --cask portavoz`; benchmarks reproducible from the README |
+| **M9 — Release + OSS growth** | **Released (Jul 10, 2026), hardened through D118:** public repository, signed/notarized/stapled DMG, Sparkle appcast, Homebrew cask, reproducible benchmarks, strict CI including current-SDK warnings-as-errors, immutable Actions, grouped Dependabot updates, scoped UI evidence, repository-hygiene enforcement, issue/PR templates, CODEOWNERS, Code of Conduct, private vulnerability reporting, SECURITY.md, and EN/ES localization. Releases through v0.6.0 retain the same distribution path | ✅ `brew install --cask portavoz`; benchmarks reproducible from the README |
 | **M10 — Co-authored notes (D28)** | **Implemented (Jul 2026)**: ContextItem in Core, v3 table, notes→prompt weaving with the 3B model's budget, "▸" co-authorship convention, `addContextNote()` + persistence + regenerate; **notes panel during recording** (TextField + timestamped list with remove, right column) and **co-authorship rendering** in detail ("▸" bullets with a Granola-style accent mark). Remaining: field verification (5 real notes → a summary that expands them) | A meeting with 5 raw notes produces a summary that expands them without contradicting them, with co-authorship marks |
 | **M11 — Audio first-class (D27)** | **Complete (Jul 2026)**: AudioPlaybackKit with synchronized player (Spotify-style carousel transcript in detail and recording), waveform colored by channel, clips (in/out → m4a < 2 s), **skip silence**, **AAC transcode** ("Comprimir audio"), and **import** (button + drag-and-drop → transcribe/diarize/summarize). Crash safety (CAF) already resolved (T1). Covered by XCUITest (D30) | Play any meeting with synchronized highlighting ✅; a `kill -9` at 30 min loses no more than 1 s of audio ✅ (CAF); 30 s clip exported in < 2 s ✅ |
 | **M12 — Multiple engines (D25)** | **Implemented (Jul 2026): (1) summary cache by fingerprint + translation pivot; (2) BYOK with key in Keychain; (3) SpeechAnalyzer benchmarked in the live role vs. Parakeet (spec 02); (4) first-class Ollama as a summary engine (Settings detects + lists models and summarizes 100% locally without a key — closes GAPS #7, verified E2E with gpt-oss:20b); (5) hardware recommender; (6) compact 626 MB Whisper variant for low disk space; (7) per-meeting engine+language override.** **(8) Embedded MLX (D32): Apache-2.0 sha256-pinned Qwen3.5-4B 4-bit (~3 GB), in-process `MLXSummaryProvider` through the GPU, "Built-in (MLX)" option in Settings with verified download/remove, and the recommender suggests it without Apple Intelligence or Ollama (RAM ≥ 8 GB).** Remaining: coalescer append-vs-replace decision (SpeechAnalyzer, requires field verification) | A Mac without Apple Intelligence produces a 100% local summary (through guided Ollama or MLX); hardware recommendation is correct; `bench` compares engines |

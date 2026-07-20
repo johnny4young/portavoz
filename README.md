@@ -144,7 +144,9 @@ on `PortavozCore`; the few verified cross-Kit dependencies are documented in
 architecture migration is tracked in
 [docs/refactor-20260714.md](docs/refactor-20260714.md). The package exposes ten
 implemented Kit libraries; speculative package targets are added only with a
-real vertical use case.
+real vertical use case. Current-SDK diagnostics are closed without broad
+concurrency suppressions; the warning-as-error gate is documented below and in
+the architecture source of truth.
 
 | Module | Responsibility |
 |---|---|
@@ -261,6 +263,7 @@ Requires **Xcode 16+ / Swift 6 on macOS 14.4+**.
 
 ```sh
 swift build
+swift build -Xswiftc -warnings-as-errors
 swift test
 
 # Build and run the app bundle (Info.plist with the mic + system-audio entitlements):

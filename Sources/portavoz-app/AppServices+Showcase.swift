@@ -71,7 +71,7 @@ extension AppServices {
         ])
         // swiftlint:enable line_length
 
-        try? await store.saveSummary(SummaryDraft(
+        _ = try? await store.saveSummary(SummaryDraft(
             meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
             markdown: """
                 La demo del sprint validó la build 214 de Zephyr sobre el cluster \

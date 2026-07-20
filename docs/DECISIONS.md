@@ -3545,8 +3545,11 @@ changes expand to bilingual canaries, an unknown production Swift path falls
 back to the complete English suite, and non-product changes allocate no macOS
 UI runner. The runner builds once and reuses the same test products for every
 selected locale. The complete English and Spanish suites remain mandatory for
-release and architecture closure. CI validates the catalog on every change and
-publishes scoped xcresult evidence when UI execution is selected.
+release and architecture closure. An empty selector is the explicit complete-
+suite form, not a no-op, and the macOS Bash runner assembles optional selector
+and locale arguments without touching empty arrays. CI validates the catalog
+on every change and publishes scoped xcresult evidence when UI execution is
+selected.
 
 Local agent/design-sync state, scratch planning, tickets, reports, generated
 projects, result bundles, and ad-hoc screenshots are ignored and rejected if
@@ -3560,3 +3563,38 @@ a conservative fallback and an explicit full bilingual gate. Keeping the scope
 catalog executable prevents undocumented tests from becoming invisible.
 Separating durable project truth from local work state leaves the public tree
 clean without severing code from the decisions that explain it.
+
+## D118 — Close SDK diagnostics at the narrowest framework boundary (Jul 2026)
+
+**Context:** current Xcode diagnostics identified a generic named-coordinate
+metatype crossing SwiftUI's concurrent visual-effect closure, deprecated MLX
+cache configuration, and an AVAudioConverter `@Sendable` input callback that
+captured a non-Sendable buffer plus mutable one-shot state. Smaller unused-value
+and obsolete throwing-call patterns also obscured a clean diagnostic baseline.
+Import-wide `@preconcurrency` or warning suppression would hide future framework
+drift instead of proving that each boundary remains safe.
+
+**Decision:** the focused transcript uses SwiftUI's built-in vertical
+scroll-view coordinate space, preserving its viewport geometry without a
+generic named key. Embedded MLX memory control uses `MLX.Memory.cacheLimit`.
+SpeechAnalyzer conversion passes its fully initialized, immutable source buffer
+through one private `AudioConverterInputBox`: a lock serializes its one-shot
+delivery state, and `@unchecked Sendable` is confined to that documented SDK
+bridge. Portavoz does not apply broad AVFoundation concurrency suppression.
+Unused values, explicitly discarded optional results, and calls whose SDK
+contracts are now nonthrowing follow their current signatures. The maintained
+closure command is `swift build -Xswiftc -warnings-as-errors`, backed by an
+architecture characterization that rejects the superseded patterns.
+
+The iOS sync description is also reconciled with D116: staging and transport
+files always retain private owner-only `0600`, durable, same-directory atomic
+publication, while complete protection and backup exclusion are independently
+probed and verified when the destination filesystem supports them. This is a
+documentation correction, not a weaker storage behavior.
+
+**Rationale:** standard framework coordinate spaces and supported dependency
+APIs remove avoidable compatibility debt. The single lock-protected callback
+box gives the compiler and reviewers a local safety argument without weakening
+concurrency checking across an entire framework. Treating diagnostics as errors
+keeps SDK evolution visible, while the D116 wording prevents future mobile work
+from implementing an obsolete unconditional metadata assumption.

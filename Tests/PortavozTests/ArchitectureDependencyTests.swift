@@ -133,6 +133,40 @@ final class ArchitectureDependencyTests: XCTestCase {
             "SwiftUI presentation imported an adapter framework: \(forbiddenFrameworkImports)")
     }
 
+    func testCurrentSDKDiagnosticsStayClosedAtFrameworkBoundaries() throws {
+        let focused = try Self.contents(
+            of: "Sources/portavoz-app/FocusedTranscriptView.swift")
+        let mlx = try Self.contents(
+            of: "Sources/IntelligenceKit/MLXSummaryProvider.swift")
+        let speech = try Self.contents(
+            of: "Sources/TranscriptionKit/SpeechAnalyzerEngine.swift")
+        let exporter = try Self.contents(
+            of: "Sources/IntegrationsKit/MeetingExporter.swift")
+        let showcase = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Showcase.swift")
+        let translation = try Self.contents(
+            of: "Sources/portavoz-app/LiveTranslation.swift")
+        let ios = try Self.contents(of: "docs/IOS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(focused.contains(".scrollView(axis: .vertical)"))
+        XCTAssertFalse(focused.contains(".named(space)"))
+        XCTAssertFalse(focused.contains(".coordinateSpace(.named("))
+        XCTAssertTrue(mlx.contains("MLX.Memory.cacheLimit ="))
+        XCTAssertFalse(mlx.contains("MLX.GPU.set(cacheLimit:"))
+        XCTAssertTrue(speech.contains("AudioConverterInputBox: @unchecked Sendable"))
+        XCTAssertTrue(speech.contains("private let lock = NSLock()"))
+        XCTAssertTrue(speech.contains("input.nextBuffer(status: status)"))
+        XCTAssertFalse(speech.contains("@preconcurrency import AVFoundation"))
+        XCTAssertFalse(speech.contains("var fed = false"))
+        XCTAssertFalse(exporter.contains("let bold = CTFontCreateWithName"))
+        XCTAssertTrue(showcase.contains("_ = try? await store.saveSummary"))
+        XCTAssertTrue(translation.contains("status = await availability.status("))
+        XCTAssertFalse(translation.contains("try? await availability.status("))
+        XCTAssertTrue(ios.contains("destination supports"))
+        XCTAssertTrue(decisions.contains("## D118"))
+    }
+
     func testCoreForbiddenImportsRemainAtDocumentedBaseline() throws {
         let forbidden = Set([
             "AppKit", "SwiftUI", "GRDB", "Security", "Network", "FoundationNetworking",

@@ -197,7 +197,8 @@ effort (D65).
 2. **⚠️ Hangs in CLI processes without a bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (first await) suspends FOREVER in `portavoz-cli` — sample shows the cooperative pool empty and the run loop parked (the Speech daemon never responds to a process without bundle/TCC context). **The live-role benchmark must run INSIDE the app** — `NSSpeechRecognitionUsageDescription` has already been added to Info.plist.
 3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
 4. **⚠️ Finalization bug (fixed)**: `finalizeAndFinishThroughEndOfInput()` is called by the FEEDER when the input is exhausted — sequencing it after the `transcriber.results` loop deadlocks (results ends only when someone finalizes; the first benchmark remained parked forever).
-5. **Measured comparison (same 60 s of a real EN meeting, system channel, M4 Max)**:
+5. **AVAudioConverter concurrency boundary**: the converter's `@Sendable` input callback receives its fully initialized, immutable source through one private lock-protected one-shot box. The localized `@unchecked Sendable` proof avoids mutable captures and does not suppress AVFoundation concurrency checking at import scope (D118).
+6. **Measured comparison (same 60 s of a real EN meeting, system channel, M4 Max)**:
 
 | | Parakeet v3 (CLI) | SpeechAnalyzer en_US (in-app) |
 |---|---|---|

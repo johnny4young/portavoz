@@ -185,7 +185,6 @@ public enum MeetingExporter {
     /// `-` bullets and `>` metadata; everything else is body text.
     static func attributedString(fromMarkdown markdown: String) -> NSAttributedString {
         let body = CTFontCreateWithName("Helvetica" as CFString, 11, nil)
-        let bold = CTFontCreateWithName("Helvetica-Bold" as CFString, 11, nil)
         let h1 = CTFontCreateWithName("Helvetica-Bold" as CFString, 20, nil)
         let h2 = CTFontCreateWithName("Helvetica-Bold" as CFString, 14, nil)
         let h3 = CTFontCreateWithName("Helvetica-Bold" as CFString, 12, nil)

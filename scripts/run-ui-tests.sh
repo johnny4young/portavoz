@@ -19,9 +19,13 @@ common=(
 )
 
 only_testing=()
+selector_count=0
 for test in $tests; do
   case "$test" in
-    PortavozUITests/*) only_testing+=("-only-testing:$test") ;;
+    PortavozUITests/*)
+      only_testing+=("-only-testing:$test")
+      selector_count=$((selector_count + 1))
+      ;;
     *) echo "Invalid UI-test selector: $test" >&2; exit 2 ;;
   esac
 done
@@ -34,21 +38,25 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild build-for-testing "${common[@]}"
 
 for locale in $locales; do
-  language=()
+  test_args=("${common[@]}")
   case "$locale" in
     default) ;;
-    en) language=(-testLanguage en -testRegion US) ;;
-    es) language=(-testLanguage es -testRegion ES) ;;
+    en) test_args+=(-testLanguage en -testRegion US) ;;
+    es) test_args+=(-testLanguage es -testRegion ES) ;;
     *) echo "Unsupported UI-test locale: $locale" >&2; exit 2 ;;
   esac
 
   result_bundle="$results_root/$locale.xcresult"
   rm -rf "$result_bundle"
-  echo "Running ${#only_testing[@]} scoped selectors in locale: $locale"
+  selector_label="$selector_count scoped selectors"
+  if [[ -z "$tests" ]]; then
+    selector_label="all tests"
+  else
+    test_args+=("${only_testing[@]}")
+  fi
+  echo "Running $selector_label in locale: $locale"
   DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
     xcodebuild test-without-building \
-      "${common[@]}" \
-      "${language[@]}" \
-      "${only_testing[@]}" \
+      "${test_args[@]}" \
       -resultBundlePath "$result_bundle"
 done
