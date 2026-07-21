@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 993 package tests passing (13 model-gated) + 41 XCUITest UI cases. CI
+Status: 996 package tests passing (13 model-gated) + 41 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -65,6 +65,7 @@ documented below.
 | StopRecordingUseCaseTests | Finalized/missing asset reconciliation, provisional attribution, per-turn mixed-language preservation, exact diarization/transcription initial-job policy and order, empty/partial-lane transcript recovery, truly silent/no-audio outcomes, admission and fallback failures, unconditional engine release, and atomic real-Store snapshot/job adaptation |
 | MeetingStoreTests summary history/evidence | Per-recipe immutable versions, newest-across-recipe selection, retained history, fingerprint cache/pivots, atomic same-meeting overview/decision/action/Companion validation, canonical decision coordinates, stable task/card identity, role-separated links, evidence clear-on-overwrite, revision stamping/staleness, physical-deletion unavailability, correction/unsupported replacement, active-claim fencing, text-erasing clear, and rollback on foreign evidence |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, callback-liveness and two-minute Stop-nudge policy, mic-heartbeat stall/retry/recovery integration, post-close utility-queue publication with independent channel outcomes, recoverable-source invocation, Downmix, **Resample.linear**, startup cleanup |
+| LiveTranscriptionAttacherTests / LiveTranslationStateTests | Bounded newest-only hot attachment, shared cold-model join and failure cancellation, pre-attachment recovery requirement, target-fenced translation state/results, automatic failure-retry copy, and distinct recoverable-outage versus terminal-failure presentation |
 | AudioTranscoderTests / MeetingAudioWorkflowTests | Host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, bounded waveform/session preparation, and injected application codec semantics |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |

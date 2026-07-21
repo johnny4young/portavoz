@@ -135,6 +135,39 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertTrue(controller.translations.isEmpty)
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
+
+    func testVisibleTranslationStatesDescribeAutomaticFailureRetry() {
+        XCTAssertEqual(
+            LiveTranslationState.waitingForTranscript.statusMessageKey,
+            "Live translation will start as soon as captions are available.")
+        XCTAssertEqual(
+            LiveTranslationState.unsupported.statusMessageKey,
+            "Apple Translation does not support this language pair on this Mac.")
+        XCTAssertEqual(
+            LiveTranslationState.failed.statusMessageKey,
+            "Live translation paused after an error. Retrying automatically…")
+        XCTAssertNil(LiveTranslationState.active.statusMessageKey)
+    }
+}
+
+@MainActor
+final class RecordingSystemCaptureHealthPresentationTests: XCTestCase {
+    func testOnlyProlongedRecoverableOutageSuggestsCallMayHaveEnded() {
+        XCTAssertTrue(
+            RecordingSystemCaptureHealth.stalled(secondsWithoutFrames: 120)
+                .shouldSuggestStop)
+        XCTAssertFalse(RecordingSystemCaptureHealth.failed.shouldSuggestStop)
+    }
+
+    func testCompactHUDDistinguishesTerminalFailureFromRecoverableInterruption() {
+        XCTAssertEqual(
+            RecordingSystemCaptureHealth.stalled(secondsWithoutFrames: 8)
+                .compactStatusMessageKey,
+            "Remote audio interrupted")
+        XCTAssertEqual(
+            RecordingSystemCaptureHealth.failed.compactStatusMessageKey,
+            "Remote audio capture failed. Stop and start a new recording to avoid losing the call.")
+    }
 }
 
 private enum LiveTranscriptionTestFailure: Error {

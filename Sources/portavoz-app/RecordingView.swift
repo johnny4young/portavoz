@@ -658,16 +658,8 @@ extension RecordingView {
     }
 
     private var translationStatusMessage: String {
-        switch controller.translationState {
-        case .waitingForTranscript:
-            L10n.text("Live translation will start as soon as captions are available.")
-        case .unsupported:
-            L10n.text("Apple Translation does not support this language pair on this Mac.")
-        case .failed:
-            L10n.text("Live translation paused after an error. Choose the language again to retry.")
-        case .off, .ready, .needsDownload, .translating, .active:
-            ""
-        }
+        guard let key = controller.translationState.statusMessageKey else { return "" }
+        return L10n.text(key)
     }
 }
 

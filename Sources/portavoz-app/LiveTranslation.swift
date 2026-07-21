@@ -17,6 +17,21 @@ enum LiveTranslationState: Equatable {
     case active
     case unsupported
     case failed
+
+    /// Only states that need explanatory UI expose copy. Execution failures
+    /// remain visible while the translation loop backs off and retries.
+    var statusMessageKey: String? {
+        switch self {
+        case .waitingForTranscript:
+            "Live translation will start as soon as captions are available."
+        case .unsupported:
+            "Apple Translation does not support this language pair on this Mac."
+        case .failed:
+            "Live translation paused after an error. Retrying automatically…"
+        case .off, .ready, .needsDownload, .translating, .active:
+            nil
+        }
+    }
 }
 
 #if canImport(Translation)

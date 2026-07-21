@@ -7131,12 +7131,12 @@
         }
       }
     },
-    "Live translation paused after an error. Choose the language again to retry.": {
+    "Live translation paused after an error. Retrying automatically…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La traducción en vivo se pausó por un error. Elige de nuevo el idioma para reintentar."
+            "value": "La traducción en vivo se pausó por un error. Reintentando automáticamente…"
           }
         }
       }
