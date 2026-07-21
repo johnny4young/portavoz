@@ -274,21 +274,30 @@ def changed_paths(base: str, head: str) -> list[str]:
     return result.stdout.splitlines()
 
 
-def working_tree_paths(base: str) -> list[str]:
-    """Return tracked and untracked paths that differ from a committed base."""
-    tracked = subprocess.run(
+def working_tree_paths(base: str, *, cwd: Path | None = None) -> list[str]:
+    """Return index, working-tree, and untracked paths that differ from base."""
+    working_tree = subprocess.run(
         ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, "--"],
         check=True,
         capture_output=True,
         text=True,
+        cwd=cwd,
+    ).stdout.splitlines()
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB", base, "--"],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=cwd,
     ).stdout.splitlines()
     untracked = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard"],
         check=True,
         capture_output=True,
         text=True,
+        cwd=cwd,
     ).stdout.splitlines()
-    return list(dict.fromkeys((*tracked, *untracked)))
+    return list(dict.fromkeys((*working_tree, *staged, *untracked)))
 
 
 def discovered_test_catalog(root: Path) -> set[str]:

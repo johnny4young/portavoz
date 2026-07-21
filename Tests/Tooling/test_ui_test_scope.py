@@ -1,4 +1,6 @@
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -6,7 +8,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from ui_test_scope import ALL_TESTS, HARNESS_TESTS, select_paths, validate_catalog  # noqa: E402
+from ui_test_scope import (  # noqa: E402
+    ALL_TESTS,
+    HARNESS_TESTS,
+    select_paths,
+    validate_catalog,
+    working_tree_paths,
+)
 
 
 class UITestScopeTests(unittest.TestCase):
@@ -57,6 +65,39 @@ class UITestScopeTests(unittest.TestCase):
         selection = select_paths(["Sources/NewCapabilityKit/Unknown.swift"])
         self.assertEqual(selection.tests, ALL_TESTS)
         self.assertEqual(selection.locales, ("en",))
+
+    def test_working_tree_paths_keeps_staged_change_hidden_from_worktree_diff(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            path = repository / "Sources/portavoz-app/RecordingView.swift"
+            path.parent.mkdir(parents=True)
+            subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "ui-scope@example.invalid"],
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "UI Scope Test"],
+                cwd=repository,
+                check=True,
+            )
+            path.write_text("base\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(["git", "commit", "-qm", "base"], cwd=repository, check=True)
+
+            path.write_text("staged\n", encoding="utf-8")
+            subprocess.run(["git", "add", str(path)], cwd=repository, check=True)
+            subprocess.run(
+                ["git", "restore", "--worktree", "--source=HEAD", "--", str(path)],
+                cwd=repository,
+                check=True,
+            )
+
+            self.assertEqual(
+                working_tree_paths("HEAD", cwd=repository),
+                ["Sources/portavoz-app/RecordingView.swift"],
+            )
 
     def test_catalog_covers_every_declared_ui_test(self):
         validate_catalog(ROOT)
