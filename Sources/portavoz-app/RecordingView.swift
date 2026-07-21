@@ -479,15 +479,27 @@ extension RecordingView {
     /// the remote timeline has stopped advancing. This critical notice cannot
     /// be dismissed; it clears only after frames return or the recording ends.
     var systemCaptureHealthBanner: some View {
-        Label {
-            Text(systemCaptureHealthMessage)
-        } icon: {
-            Image(systemName: systemCaptureHealthIcon)
+        HStack(spacing: 10) {
+            Label {
+                Text(systemCaptureHealthMessage)
+            } icon: {
+                Image(systemName: systemCaptureHealthIcon)
+            }
+            .accessibilityIdentifier("recording-system-capture-health")
+            Spacer(minLength: 4)
+            if controller.shouldSuggestStopForRemoteOutage {
+                Button("Stop now") {
+                    Task { await controller.stop(services: services) }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(.red)
+                .accessibilityIdentifier("recording-stop-after-remote-outage")
+            }
         }
         .font(.caption.weight(.medium))
         .foregroundStyle(systemCaptureHealthColor)
         .padding(.horizontal, 20)
-        .accessibilityIdentifier("recording-system-capture-health")
     }
 
     private var systemCaptureHealthMessage: String {
@@ -495,8 +507,13 @@ extension RecordingView {
         case .healthy:
             ""
         case .stalled, .recovering:
-            L10n.text(
-                "Remote audio stopped — reconnecting… Your microphone is still recording.")
+            if controller.shouldSuggestStopForRemoteOutage {
+                L10n.text(
+                    "Remote audio has been unavailable for two minutes. If the call ended, stop this recording.")
+            } else {
+                L10n.text(
+                    "Remote audio stopped — reconnecting… Your microphone is still recording.")
+            }
         case .recovered:
             L10n.text("Remote audio capture recovered.")
         case .failed:

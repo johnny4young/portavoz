@@ -13,3 +13,17 @@ public enum RecordingCaptureHealthEvent: Equatable, Sendable {
     case recovered(channel: AudioChannel, outageSeconds: TimeInterval)
     case streamFailed(channel: AudioChannel)
 }
+
+/// A long callback outage may mean the call ended while Portavoz remained
+/// open. Recovery continues, but presentation should make Stop prominent
+/// after a conservative delay instead of ending a recording automatically.
+public enum RecordingOutageNudgePolicy {
+    public static let stopSuggestionDelay: TimeInterval = 120
+
+    public static func shouldSuggestStop(
+        secondsWithoutFrames: TimeInterval
+    ) -> Bool {
+        secondsWithoutFrames.isFinite
+            && secondsWithoutFrames >= stopSuggestionDelay
+    }
+}

@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence).
 
 ## Channel model (D5)
 
@@ -27,7 +27,7 @@ Two SEPARATE streams, never mixed before diarization:
 - Requires a private aggregate device with `kAudioAggregateDeviceTapListKey` + `kAudioSubTapDriftCompensationKey: true`; the format is read with `kAudioTapPropertyFormat` BEFORE the IOProc.
 - **A tap without TCC permission delivers SILENCE, not an error** (0.0 peak in `system.caf` = missing "Grabación de pantalla y audio del sistema" → enable and relaunch). `RecordingSession.Summary.peaks` detects it.
 - **OUTPUT-change resilience** (real field bug Jul 2026: switching from Mac speaker → headphones left the system channel MUTED): the tap/aggregate binds to the default output when created and does not follow it automatically. `ProcessTapSource` listens to `kAudioHardwarePropertyDefaultOutputDevice` (listener block on a serial rebuild queue) and **rebuilds the graph** (tap+aggregate+IOProc) on the new output while preserving the SAME stream/continuation; it resamples to the original rate and fills the switching gap with silence (mirrors mic input resilience). It cannot be unit-tested without real Core Audio → field verification pending.
-- **Callback-death recovery (D120)**: a second field failure stopped the IOProc callback permanently while microphone frames and the recording remained active. After the first system frame, `RecordingSession` treats persisted microphone frames as a heartbeat. Eight seconds without another system frame emits content-free stalled/retrying health, asks the optional `RecoverableAudioCaptureSource` capability to rebuild this graph in place, and retries no more than every eight seconds. A returning frame emits recovered health. Silent PCM is healthy liveness and never triggers a rebuild; no system frame at all is left to the existing permission/silence checks rather than guessed as a callback death. The pure state machine and full session-to-source recovery are unit tested; a real Core Audio recovery remains a field gate.
+- **Callback-death recovery (D120/D123)**: a second field failure stopped the IOProc callback permanently while microphone frames and the recording remained active. After the first system frame, `RecordingSession` treats persisted microphone frames as a heartbeat. Eight seconds without another system frame emits content-free stalled/retrying health, asks the optional `RecoverableAudioCaptureSource` capability to rebuild this graph in place, and retries no more than every eight seconds. A returning frame emits recovered health. Silent PCM is healthy liveness and never triggers a rebuild; no system frame at all is left to the existing permission/silence checks rather than guessed as a callback death. After two continuous outage minutes, the full view and HUD make Stop prominent because the call may have ended, but recovery continues and Portavoz never stops automatically. The pure policies and full session-to-source recovery are unit tested; a real Core Audio recovery remains a field gate.
 - **App-mode scope**: `captureMode` (`auto`/`app`/`system`) decides between global and direct taps. The direct tap includes the PID of each recognized meeting app and only audio processes whose bundle ID is that app or a dot-delimited child (browser/Zoom/Teams helpers); music and notifications from unrelated apps are excluded. Without a recognized app, an empty list explicitly degrades to the global tap, as explained in Ajustes.
 - The first buffer arrives **~2.4 s after** the mic starts (ScreenCaptureKit startup latency) — constant offset, not drift; the drift harness covers it with a ±5 s range.
 
@@ -72,7 +72,11 @@ finite peak/RMS dBFS from successfully written, signed-PCM-clamped samples, and
 `CaptureFilePublisher` refuses cross-directory publication and existing final
 paths, then one same-directory rename publishes `<channel>.caf`. Missing
 channels stay metadata-free; a staging file that could not publish remains for
-recovery.
+recovery. Header inspection, file-size evidence, streamed SHA-256, and
+publication run sequentially on a dedicated serial utility `DispatchQueue`
+after every writer handle closes. Stop still awaits exact durable evidence, but
+multi-hour blocking file IO does not occupy Swift's cooperative executor, and
+one channel's failure does not block a healthy peer.
 
 At process launch, `ApplicationKit.RecoverInterruptedMeetings` requests pending
 asset evidence through a private macOS adapter. That adapter scans both the

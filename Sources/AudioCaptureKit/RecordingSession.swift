@@ -184,30 +184,24 @@ public actor RecordingSession {
         consumers.removeAll()
         isRecording = false
 
-        var files: [AudioChannel: URL] = [:]
-        var published: [AudioChannel: PublishedCaptureFile] = [:]
-        for (channel, stagingURL) in stagingURLs {
-            let finalURL = outputDirectory.appendingPathComponent(
-                AudioCapturePath.publishedFilename(for: channel))
-            do {
-                let result = try CaptureFilePublisher.publish(
-                    stagingURL: stagingURL,
-                    finalURL: finalURL,
-                    peak: measuredPeaks[channel] ?? 0,
-                    rms: measuredRMS[channel] ?? 0)
-                files[channel] = result.url
-                published[channel] = result
-            } catch {
-                errors[channel] = errors[channel].map { "\($0); \(error)" }
-                    ?? String(describing: error)
-            }
+        // Header inspection, size reads, SHA-256, and publication are bounded
+        // in memory but proportional to recording length. Keep blocking file
+        // work on a utility DispatchQueue rather than Swift's cooperative
+        // executor so closing a multi-hour call cannot delay unrelated tasks.
+        let publication = await CapturePublicationWorker.publish(
+            stagingURLs: stagingURLs,
+            outputDirectory: outputDirectory,
+            peaks: measuredPeaks,
+            rms: measuredRMS)
+        for (channel, error) in publication.errors {
+            errors[channel] = errors[channel].map { "\($0); \(error)" } ?? error
         }
         let summary = Summary(
-            files: files,
+            files: publication.files,
             secondsWritten: seconds,
             peaks: measuredPeaks,
             rms: measuredRMS,
-            publishedFiles: published,
+            publishedFiles: publication.publishedFiles,
             errors: errors)
 
         peaks.removeAll()
@@ -257,5 +251,59 @@ public actor RecordingSession {
         peaks[channel] = peak
         self.rms[channel] = rms
         if let error { errors[channel] = error }
+    }
+}
+
+private struct CapturePublicationBatch: Sendable {
+    var files: [AudioChannel: URL] = [:]
+    var publishedFiles: [AudioChannel: PublishedCaptureFile] = [:]
+    var errors: [AudioChannel: String] = [:]
+}
+
+private enum CapturePublicationWorker {
+    private static let queue = DispatchQueue(
+        label: "app.portavoz.capture-publication",
+        qos: .utility)
+
+    static func publish(
+        stagingURLs: [AudioChannel: URL],
+        outputDirectory: URL,
+        peaks: [AudioChannel: Float],
+        rms: [AudioChannel: Float]
+    ) async -> CapturePublicationBatch {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: publishSynchronously(
+                    stagingURLs: stagingURLs,
+                    outputDirectory: outputDirectory,
+                    peaks: peaks,
+                    rms: rms))
+            }
+        }
+    }
+
+    private static func publishSynchronously(
+        stagingURLs: [AudioChannel: URL],
+        outputDirectory: URL,
+        peaks: [AudioChannel: Float],
+        rms: [AudioChannel: Float]
+    ) -> CapturePublicationBatch {
+        var batch = CapturePublicationBatch()
+        for (channel, stagingURL) in stagingURLs {
+            let finalURL = outputDirectory.appendingPathComponent(
+                AudioCapturePath.publishedFilename(for: channel))
+            do {
+                let result = try CaptureFilePublisher.publish(
+                    stagingURL: stagingURL,
+                    finalURL: finalURL,
+                    peak: peaks[channel] ?? 0,
+                    rms: rms[channel] ?? 0)
+                batch.files[channel] = result.url
+                batch.publishedFiles[channel] = result
+            } catch {
+                batch.errors[channel] = String(describing: error)
+            }
+        }
+        return batch
     }
 }

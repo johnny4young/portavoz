@@ -219,6 +219,44 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: finalURL), existing)
     }
 
+    func testStopPublishesHealthyPeerWhenOneChannelDestinationAlreadyExists() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let chunk = [Float](repeating: 0.25, count: 4_800)
+        let microphone = FakeCaptureSource(
+            channel: .microphone,
+            chunks: [AudioChunk(
+                channel: .microphone,
+                samples: chunk,
+                sampleRate: 48_000,
+                timestamp: 0)])
+        let system = FakeCaptureSource(
+            channel: .system,
+            chunks: [AudioChunk(
+                channel: .system,
+                samples: chunk,
+                sampleRate: 48_000,
+                timestamp: 0)])
+        let session = RecordingSession(outputDirectory: directory)
+        try await session.start(sources: [microphone, system])
+
+        let protectedSystemURL = directory.appendingPathComponent(
+            AudioCapturePath.publishedFilename(for: .system))
+        let protected = Data("keep-existing-system-file".utf8)
+        try protected.write(to: protectedSystemURL)
+
+        let summary = await session.stop()
+
+        XCTAssertNotNil(summary.publishedFiles[.microphone])
+        XCTAssertNil(summary.publishedFiles[.system])
+        XCTAssertNotNil(summary.errors[.system])
+        XCTAssertEqual(try Data(contentsOf: protectedSystemURL), protected)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory
+            .appendingPathComponent(AudioCapturePath.stagingFilename(for: .system)).path))
+    }
+
     func testPublicationClassifiesSilenceAndClampedPCMClipping() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -301,6 +339,15 @@ final class RecordingSummaryTests: XCTestCase {
 }
 
 final class SystemCaptureLivenessPolicyTests: XCTestCase {
+    func testStopSuggestionRequiresTwoMinutesOfContinuousOutage() {
+        XCTAssertFalse(RecordingOutageNudgePolicy.shouldSuggestStop(
+            secondsWithoutFrames: 119.999))
+        XCTAssertTrue(RecordingOutageNudgePolicy.shouldSuggestStop(
+            secondsWithoutFrames: 120))
+        XCTAssertFalse(RecordingOutageNudgePolicy.shouldSuggestStop(
+            secondsWithoutFrames: .infinity))
+    }
+
     func testRequiresARealSystemFrameBeforeMonitoring() {
         var policy = SystemCaptureLivenessPolicy(configuration: .init(
             stallAfter: 8,

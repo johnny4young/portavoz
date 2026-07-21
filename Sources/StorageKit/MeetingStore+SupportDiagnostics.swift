@@ -28,6 +28,8 @@ public struct SupportDiagnosticsStoredMeeting: Sendable {
     public let lifecycleState: MeetingLifecycleState
     public let transcriptRevision: Int
     public let lastProcessingErrorCode: String?
+    public let audioAssets: [SupportDiagnosticsStoredAudioAsset]
+    public let transcript: SupportDiagnosticsStoredTranscript
     public let processingJobs: [SupportDiagnosticsStoredJob]
     public let generationRuns: [SupportDiagnosticsStoredGeneration]
     public let privacyReceipt: SupportDiagnosticsStoredPrivacyReceipt
@@ -37,6 +39,8 @@ public struct SupportDiagnosticsStoredMeeting: Sendable {
         lifecycleState: MeetingLifecycleState,
         transcriptRevision: Int,
         lastProcessingErrorCode: String?,
+        audioAssets: [SupportDiagnosticsStoredAudioAsset],
+        transcript: SupportDiagnosticsStoredTranscript,
         processingJobs: [SupportDiagnosticsStoredJob],
         generationRuns: [SupportDiagnosticsStoredGeneration],
         privacyReceipt: SupportDiagnosticsStoredPrivacyReceipt
@@ -45,9 +49,49 @@ public struct SupportDiagnosticsStoredMeeting: Sendable {
         self.lifecycleState = lifecycleState
         self.transcriptRevision = transcriptRevision
         self.lastProcessingErrorCode = lastProcessingErrorCode
+        self.audioAssets = audioAssets
+        self.transcript = transcript
         self.processingJobs = processingJobs
         self.generationRuns = generationRuns
         self.privacyReceipt = privacyReceipt
+    }
+}
+
+/// Current capture metadata only. Paths, checksums, source identities, and
+/// timestamps are intentionally absent; duration and signal evidence are
+/// sufficient to diagnose a missing, truncated, silent, or clipped channel.
+public struct SupportDiagnosticsStoredAudioAsset: Sendable {
+    public let channel: String
+    public let role: String
+    public let container: String?
+    public let codec: String?
+    public let sampleRate: Double?
+    public let channelCount: Int?
+    public let durationSeconds: TimeInterval?
+    public let byteCount: Int64?
+    public let healthStatus: String
+    public let peakDBFS: Double?
+    public let rmsDBFS: Double?
+}
+
+/// Content-free transcript shape. Counts make empty or one-sided output
+/// diagnosable without copying any language, speaker name, or spoken text.
+public struct SupportDiagnosticsStoredTranscript: Sendable {
+    public let segmentCount: Int
+    public let microphoneSegmentCount: Int
+    public let systemSegmentCount: Int
+    public let attributedSegmentCount: Int
+
+    public init(
+        segmentCount: Int = 0,
+        microphoneSegmentCount: Int = 0,
+        systemSegmentCount: Int = 0,
+        attributedSegmentCount: Int = 0
+    ) {
+        self.segmentCount = segmentCount
+        self.microphoneSegmentCount = microphoneSegmentCount
+        self.systemSegmentCount = systemSegmentCount
+        self.attributedSegmentCount = attributedSegmentCount
     }
 }
 
@@ -125,15 +169,12 @@ extension MeetingStore {
             let eventsByMeeting = try Dictionary(grouping: DataEgressEventRecord
                 .order(Column("attemptedAt"), Column("rowid"))
                 .fetchAll(db), by: \.meetingID)
+            let audioByMeeting = try Self.fetchSupportAudioByMeeting(in: db)
+            let transcriptByMeeting = try Self.fetchSupportTranscriptByMeeting(in: db)
             let syncByMeeting = try Self.fetchSyncDisclosuresByMeeting(in: db)
 
             let evidence = try meetings.map { record in
-                guard let lifecycle = MeetingLifecycleState(rawValue: record.lifecycleState) else {
-                    throw StorageError.invalidPersistedValue(
-                        table: MeetingRecord.databaseTableName,
-                        column: "lifecycleState",
-                        value: record.lifecycleState)
-                }
+                let lifecycle = try Self.supportLifecycleState(record)
                 let meetingID = MeetingID(rawValue: try PersistedIdentity.required(
                     record.id,
                     table: MeetingRecord.databaseTableName,
@@ -153,6 +194,9 @@ extension MeetingStore {
                     lifecycleState: lifecycle,
                     transcriptRevision: record.transcriptRevision,
                     lastProcessingErrorCode: supportSafeCode(record.lastProcessingError),
+                    audioAssets: audioByMeeting[record.id] ?? [],
+                    transcript: transcriptByMeeting[record.id]
+                        ?? SupportDiagnosticsStoredTranscript(),
                     processingJobs: jobs.map(supportJob),
                     generationRuns: runs.map(supportGeneration),
                     privacyReceipt: supportPrivacyReceipt(receipt))
@@ -163,6 +207,18 @@ extension MeetingStore {
                 trackingStartedAt: trackingStartedAt,
                 meetings: evidence)
         }
+    }
+
+    private static func supportLifecycleState(
+        _ record: MeetingRecord
+    ) throws -> MeetingLifecycleState {
+        guard let state = MeetingLifecycleState(rawValue: record.lifecycleState) else {
+            throw StorageError.invalidPersistedValue(
+                table: MeetingRecord.databaseTableName,
+                column: "lifecycleState",
+                value: record.lifecycleState)
+        }
+        return state
     }
 
     private static func fetchSyncDisclosuresByMeeting(
@@ -177,6 +233,62 @@ extension MeetingStore {
                  syncDisclosure(acknowledgedGeneration: row["acknowledgedGeneration"]))
             })
     }
+
+    private static func fetchSupportAudioByMeeting(
+        in db: Database
+    ) throws -> [String: [SupportDiagnosticsStoredAudioAsset]] {
+        let rows = try Row.fetchAll(db, sql: """
+            SELECT meetingID, channel, role, container, codec, sampleRate,
+                   channelCount, durationSeconds, byteCount, healthStatus,
+                   peakDBFS, rmsDBFS
+            FROM audioAsset
+            WHERE deletedAt IS NULL AND supersededAt IS NULL
+            ORDER BY meetingID, channel, createdAt
+            """)
+        return Dictionary(grouping: rows, by: { row in row["meetingID"] as String })
+            .mapValues { $0.map(supportAudioAsset) }
+    }
+
+    private static func fetchSupportTranscriptByMeeting(
+        in db: Database
+    ) throws -> [String: SupportDiagnosticsStoredTranscript] {
+        let rows = try Row.fetchAll(db, sql: """
+            SELECT meetingID,
+                   COUNT(*) AS segmentCount,
+                   SUM(CASE WHEN channel = 'microphone' THEN 1 ELSE 0 END)
+                       AS microphoneSegmentCount,
+                   SUM(CASE WHEN channel = 'system' THEN 1 ELSE 0 END)
+                       AS systemSegmentCount,
+                   SUM(CASE WHEN speakerID IS NOT NULL THEN 1 ELSE 0 END)
+                       AS attributedSegmentCount
+            FROM segment
+            WHERE deletedAt IS NULL
+            GROUP BY meetingID
+            """)
+        return Dictionary(uniqueKeysWithValues: rows.map { row in
+            let meetingID = row["meetingID"] as String
+            return (meetingID, SupportDiagnosticsStoredTranscript(
+                segmentCount: row["segmentCount"],
+                microphoneSegmentCount: row["microphoneSegmentCount"],
+                systemSegmentCount: row["systemSegmentCount"],
+                attributedSegmentCount: row["attributedSegmentCount"]))
+        })
+    }
+}
+
+private func supportAudioAsset(_ row: Row) -> SupportDiagnosticsStoredAudioAsset {
+    SupportDiagnosticsStoredAudioAsset(
+        channel: supportSafeCode(row["channel"] as String) ?? "unknown",
+        role: supportSafeCode(row["role"] as String) ?? "unknown",
+        container: (row["container"] as String?).flatMap(supportSafeCode),
+        codec: (row["codec"] as String?).flatMap(supportSafeCode),
+        sampleRate: supportFinite(row["sampleRate"] as Double?),
+        channelCount: supportNonnegative(row["channelCount"] as Int?),
+        durationSeconds: supportNonnegativeFinite(row["durationSeconds"] as Double?),
+        byteCount: supportNonnegative(row["byteCount"] as Int64?),
+        healthStatus: supportSafeCode(row["healthStatus"] as String) ?? "unknown",
+        peakDBFS: supportFinite(row["peakDBFS"] as Double?),
+        rmsDBFS: supportFinite(row["rmsDBFS"] as Double?))
 }
 
 private func supportJob(_ job: ProcessingJob) -> SupportDiagnosticsStoredJob {
@@ -272,5 +384,20 @@ private func supportSafeLabel(_ value: String) -> String {
           !value.hasPrefix("/"), !value.contains("../"),
           value.unicodeScalars.allSatisfy(allowed.contains)
     else { return "redacted-\(supportDigest(value).prefix(12))" }
+    return value
+}
+
+private func supportFinite(_ value: Double?) -> Double? {
+    guard let value, value.isFinite else { return nil }
+    return value
+}
+
+private func supportNonnegativeFinite(_ value: Double?) -> Double? {
+    guard let value = supportFinite(value), value >= 0 else { return nil }
+    return value
+}
+
+private func supportNonnegative<T: FixedWidthInteger>(_ value: T?) -> T? {
+    guard let value, value >= 0 else { return nil }
     return value
 }

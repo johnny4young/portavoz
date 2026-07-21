@@ -186,7 +186,11 @@ final class SettingsUITests: XCTestCase {
             "the export must confirm that no meeting content was included")
         XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
         let text = try String(contentsOf: destination, encoding: .utf8)
-        XCTAssertTrue(text.contains("\"formatVersion\" : 1"))
+        XCTAssertTrue(text.contains("\"formatVersion\" : 2"))
+        XCTAssertTrue(text.contains("\"audioAssets\""))
+        XCTAssertTrue(text.contains("\"transcript\""))
+        XCTAssertFalse(text.contains("relativePath"))
+        XCTAssertFalse(text.contains("sha256"))
         XCTAssertFalse(text.contains("Revisemos el presupuesto de transcripción."))
         attachScreenshot(of: app, named: "band-3i-redacted-support-export")
     }

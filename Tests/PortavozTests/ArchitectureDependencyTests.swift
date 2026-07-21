@@ -2017,13 +2017,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         for forbidden in [
             "title:", "segments:", "transcriptText", "summaryMarkdown", "actionItem",
             "companionCard", "configJSON", "metricsJSON", "errorMessage",
-            "audioDirectory", "destinationURL", "apiKey"
+            "audioDirectory", "relativePath", "sha256", "sourceAssetID",
+            "destinationURL", "apiKey"
         ] {
             XCTAssertFalse(exporter.contains(forbidden), "Exporter contains \(forbidden)")
         }
         XCTAssertTrue(exporter.contains("meeting.referenceDigest.prefix(12)"))
         XCTAssertTrue(exporter.contains("job.inputFingerprintDigest"))
         XCTAssertTrue(exporter.contains("run.inputFingerprintDigest"))
+        XCTAssertTrue(exporter.contains("durationSeconds"))
+        XCTAssertTrue(exporter.contains("systemSegmentCount"))
 
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
@@ -2033,6 +2036,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(storage.contains("errorMessage:"))
         XCTAssertFalse(storage.contains("configJSON:"))
         XCTAssertFalse(storage.contains("metricsJSON:"))
+        XCTAssertTrue(storage.contains("FROM audioAsset"))
+        XCTAssertTrue(storage.contains("FROM segment"))
+        XCTAssertFalse(storage.contains("SELECT *"))
 
         let settings = try Self.contents(
             of: "Sources/portavoz-app/SupportDiagnosticsSection.swift")

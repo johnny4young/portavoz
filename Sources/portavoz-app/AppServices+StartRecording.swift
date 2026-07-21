@@ -80,11 +80,11 @@ private struct UITestSystemCaptureStallRuntime: StartRecordingRuntime {
     ) async throws -> any StartRecordingSession {
         request.callbacks.health(.stalled(
             channel: .system,
-            secondsWithoutFrames: 8))
+            secondsWithoutFrames: 130))
         request.callbacks.health(.recoveryRequested(
             channel: .system,
             attempt: 1,
-            secondsWithoutFrames: 8))
+            secondsWithoutFrames: 130))
         return UITestSystemCaptureStallSession()
     }
 

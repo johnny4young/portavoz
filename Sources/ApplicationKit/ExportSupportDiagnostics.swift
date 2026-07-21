@@ -104,9 +104,32 @@ public struct SupportDiagnosticsReport: Codable, Equatable, Sendable {
         public let lifecycleState: String
         public let transcriptRevision: Int
         public let lastProcessingError: String?
+        public let audioAssets: [AudioAssetEvidence]
+        public let transcript: TranscriptEvidence
         public let processingJobs: [ProcessingJobEvidence]
         public let generationRuns: [GenerationEvidence]
         public let privacyReceipt: PrivacyEvidence
+    }
+
+    public struct AudioAssetEvidence: Codable, Equatable, Sendable {
+        public let channel: String
+        public let role: String
+        public let container: String?
+        public let codec: String?
+        public let sampleRate: Double?
+        public let channelCount: Int?
+        public let durationSeconds: TimeInterval?
+        public let byteCount: Int64?
+        public let healthStatus: String
+        public let peakDBFS: Double?
+        public let rmsDBFS: Double?
+    }
+
+    public struct TranscriptEvidence: Codable, Equatable, Sendable {
+        public let segmentCount: Int
+        public let microphoneSegmentCount: Int
+        public let systemSegmentCount: Int
+        public let attributedSegmentCount: Int
     }
 
     public struct ProcessingJobEvidence: Codable, Equatable, Sendable {
@@ -160,7 +183,7 @@ public struct SupportDiagnosticsReport: Codable, Equatable, Sendable {
         environment: SupportDiagnosticsEnvironment,
         snapshot: SupportDiagnosticsStorageSnapshot
     ) {
-        formatVersion = 1
+        formatVersion = 2
         self.generatedAt = generatedAt
         self.environment = Self.safe(environment)
         storage = Storage(
@@ -178,6 +201,25 @@ private extension SupportDiagnosticsReport {
             lifecycleState: meeting.lifecycleState.rawValue,
             transcriptRevision: meeting.transcriptRevision,
             lastProcessingError: meeting.lastProcessingErrorCode.flatMap(safeCode),
+            audioAssets: meeting.audioAssets.map { asset in
+                AudioAssetEvidence(
+                    channel: safeCode(asset.channel) ?? "unknown",
+                    role: safeCode(asset.role) ?? "unknown",
+                    container: asset.container.flatMap(safeCode),
+                    codec: asset.codec.flatMap(safeCode),
+                    sampleRate: asset.sampleRate,
+                    channelCount: asset.channelCount,
+                    durationSeconds: asset.durationSeconds,
+                    byteCount: asset.byteCount,
+                    healthStatus: safeCode(asset.healthStatus) ?? "unknown",
+                    peakDBFS: asset.peakDBFS,
+                    rmsDBFS: asset.rmsDBFS)
+            },
+            transcript: TranscriptEvidence(
+                segmentCount: meeting.transcript.segmentCount,
+                microphoneSegmentCount: meeting.transcript.microphoneSegmentCount,
+                systemSegmentCount: meeting.transcript.systemSegmentCount,
+                attributedSegmentCount: meeting.transcript.attributedSegmentCount),
             processingJobs: meeting.processingJobs.map { job in
                 ProcessingJobEvidence(
                     kind: safeCode(job.kind) ?? "unknown",

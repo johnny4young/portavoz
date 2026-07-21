@@ -182,7 +182,10 @@ struct RecordingHUDView: View {
     }
 
     private var hudCaptureHealthMessage: String {
-        switch controller.systemCaptureHealth {
+        if controller.shouldSuggestStopForRemoteOutage {
+            return L10n.text("Call may have ended — stop recording")
+        }
+        return switch controller.systemCaptureHealth {
         case .recovered:
             L10n.text("Remote audio capture recovered.")
         case .healthy, .stalled, .recovering, .failed:

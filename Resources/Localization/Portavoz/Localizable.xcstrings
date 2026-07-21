@@ -7140,6 +7140,46 @@
           }
         }
       }
+    },
+    "Remote audio has been unavailable for two minutes. If the call ended, stop this recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio remoto no está disponible desde hace dos minutos. Si la llamada terminó, detén esta grabación."
+          }
+        }
+      }
+    },
+    "Stop now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener ahora"
+          }
+        }
+      }
+    },
+    "Call may have ended — stop recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La llamada puede haber terminado — detén la grabación"
+          }
+        }
+      }
+    },
+    "Includes app, macOS, model, audio-channel health and timing, transcript counts, processing, provenance, and privacy-receipt status. Never includes meeting text, generated output, prompts, secrets, checksums, full URLs, or file paths. Nothing is sent automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluye el estado de la app, macOS, modelos, salud y duración de los canales de audio, conteos de transcripción, procesamiento, procedencia y recibos de privacidad. Nunca incluye texto de reuniones, contenido generado, instrucciones, secretos, sumas de verificación, URL completas ni rutas de archivos. Nada se envía automáticamente."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

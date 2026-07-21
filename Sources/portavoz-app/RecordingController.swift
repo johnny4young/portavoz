@@ -36,14 +36,6 @@ final class RecordingController {
         case failed(String)
     }
 
-    enum SystemCaptureHealth: Equatable {
-        case healthy
-        case stalled(secondsWithoutFrames: TimeInterval)
-        case recovering(attempt: Int, secondsWithoutFrames: TimeInterval)
-        case recovered
-        case failed
-    }
-
     private(set) var phase: Phase = .idle
     private(set) var failureContext: FailureContext?
     private(set) var captions: [TranscriptSegment] = []
@@ -114,7 +106,7 @@ final class RecordingController {
     /// verified live model was ready. Stop will recover the complete transcript
     /// from finalized audio through the durable worker.
     private(set) var liveTranscriptState = LiveTranscriptState.idle
-    private(set) var systemCaptureHealth = SystemCaptureHealth.healthy
+    private(set) var systemCaptureHealth = RecordingSystemCaptureHealth.healthy
     private var systemRecoveryNoticeTask: Task<Void, Never>?
 
     /// Live speaker hints (field ask jul 2026: two remote voices back to back

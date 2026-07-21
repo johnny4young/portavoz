@@ -3729,3 +3729,33 @@ properties; a conservative false negative merely hides a source link, whereas a
 false positive presents unrelated speech as proof. Exact decision-copy
 rejection fixes the observed non-action without relying on provider obedience or
 language-specific action-verb heuristics.
+
+## D123 — Keep long-call finalization off actor executors and expose content-free capture shape (Jul 2026)
+
+**Context:** a field recording continued for more than two hours after its
+remote channel stopped advancing. Callback recovery now protects future audio,
+but a prolonged outage could still leave an unattended microphone recording.
+Closing a multi-hour PCM capture also performs header inspection, streamed
+SHA-256, and atomic publication proportional to file size, and the existing
+support report omitted the per-channel duration and transcript shape needed to
+diagnose the incident without inspecting private audio or text.
+
+**Decision:** `RecordingOutageNudgePolicy` makes the existing Stop action
+prominent after 120 continuous seconds without remote callbacks, while recovery
+and microphone capture continue and Portavoz never stops automatically.
+`RecordingSession` closes every source, drains consumers, snapshots value
+evidence, and releases writer handles before a dedicated serial utility
+`DispatchQueue` inspects, hashes, and publishes channels sequentially. Stop
+awaits the complete result and preserves per-channel isolation: one failed destination keeps its
+staging file without blocking a healthy peer. The redacted support format moves
+to version 2 and adds only current channel/role/container/codec, finite media
+health/duration/size/signal values, and aggregate transcript channel/
+attribution counts. SQL selects only those fields; paths, checksums, text,
+speaker identity, timestamps, and reusable fingerprints remain absent.
+
+**Rationale:** automatic silence-based Stop could destroy legitimate in-person
+or paused meetings, so a conservative, actionable nudge is safer. Long-file
+work remains bounded and durability-critical but should not occupy Swift's
+cooperative executor. Content-free channel shape turns the exact field failure
+into support evidence while preserving Portavoz's privacy boundary and avoiding
+a second sensitive corpus.

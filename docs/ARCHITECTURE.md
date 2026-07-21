@@ -118,7 +118,7 @@ self-contained over system frameworks and carries no module dependency.
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
-| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
+| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
@@ -478,7 +478,12 @@ stateDiagram-v2
 Each channel writes `<channel>.partial.caf`, validates non-empty audio, computes
 its checksum and level/health evidence, and performs a same-directory
 non-overwriting move to `<channel>.caf`. Stop then installs finalized assets,
-provisional live content, and initial durable work atomically.
+provisional live content, and initial durable work atomically. File inspection,
+streamed SHA-256, and publication execute on a dedicated serial utility
+`DispatchQueue` after every writer handle closes; Stop still awaits that
+evidence, but blocking proportional file work cannot occupy Swift's cooperative
+executor. One channel's publication failure preserves its staging file and
+does not block a healthy peer from publishing.
 
 System-audio callback liveness is monitored independently from acoustic
 silence. Monitoring begins only after the first system frame, then persisted
@@ -490,7 +495,10 @@ recording lifecycle never stop for this degradable recovery. A lock-protected
 state machine keeps the per-chunk check off the `RecordingSession` actor hot
 path, while source recovery remains actor-isolated. The application presents a
 non-dismissible warning and an explicit recovered state; callback or stream
-health events contain no audio or transcript content.
+health events contain no audio or transcript content. After two uninterrupted
+minutes without remote callbacks, Core policy makes Stop prominent in both the
+full recording surface and compact HUD because the call may have ended; it
+never stops automatically or interrupts microphone capture.
 
 At launch, expired leases are recovered before the application workflow
 resumes. It claims supported work serially, renews each lease, recomputes the
@@ -690,9 +698,12 @@ gateway that cannot record an attempt cannot be constructed. One scoped
 exception exists for standalone terminal analysis, which has no library
 meeting to own a durable receipt: after its explicit interactive warning, the
 CLI records the same content-free attempt on the terminal before transport
-instead of in the database. Support diagnostics never include meeting text,
-generated output, prompts, secrets, full URLs, paths, stable database IDs, raw
-failure payloads, or reusable fingerprints.
+instead of in the database. Support diagnostics format 2 adds only active audio
+channel/role/codec, health, finite duration/size/signal metadata, and aggregate
+transcript/attribution counts so truncated and empty captures are diagnosable.
+It never includes meeting text, generated output, prompts, secrets, checksums,
+full URLs, paths, stable database IDs, raw failure payloads, or reusable
+fingerprints.
 
 `PortavozCore` defines stable secret identifiers and the `SecretStoring` port.
 `PlatformKit.KeychainSecretStore` is the concrete device-only adapter and is
@@ -963,8 +974,8 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 991 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 351 Swift source files;
+- 993 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 352 Swift source files;
 - 41 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
