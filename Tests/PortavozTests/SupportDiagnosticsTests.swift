@@ -1,10 +1,19 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
-import StorageKit
+@testable import StorageKit
 import XCTest
 
 final class SupportDiagnosticsTests: XCTestCase {
+    func testSampleRateProjectionRejectsNonsensicalValues() {
+        XCTAssertNil(supportPositiveFinite(nil))
+        XCTAssertNil(supportPositiveFinite(-48_000))
+        XCTAssertNil(supportPositiveFinite(0))
+        XCTAssertNil(supportPositiveFinite(.nan))
+        XCTAssertNil(supportPositiveFinite(.infinity))
+        XCTAssertEqual(supportPositiveFinite(48_000), 48_000)
+    }
+
     func testExportIsUsefulAndRedactsEverySensitiveCorpus() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID(rawValue: UUID(

@@ -282,7 +282,7 @@ private func supportAudioAsset(_ row: Row) -> SupportDiagnosticsStoredAudioAsset
         role: supportSafeCode(row["role"] as String) ?? "unknown",
         container: (row["container"] as String?).flatMap(supportSafeCode),
         codec: (row["codec"] as String?).flatMap(supportSafeCode),
-        sampleRate: supportFinite(row["sampleRate"] as Double?),
+        sampleRate: supportPositiveFinite(row["sampleRate"] as Double?),
         channelCount: supportNonnegative(row["channelCount"] as Int?),
         durationSeconds: supportNonnegativeFinite(row["durationSeconds"] as Double?),
         byteCount: supportNonnegative(row["byteCount"] as Int64?),
@@ -394,6 +394,11 @@ private func supportFinite(_ value: Double?) -> Double? {
 
 private func supportNonnegativeFinite(_ value: Double?) -> Double? {
     guard let value = supportFinite(value), value >= 0 else { return nil }
+    return value
+}
+
+func supportPositiveFinite(_ value: Double?) -> Double? {
+    guard let value = supportFinite(value), value > 0 else { return nil }
     return value
 }
 

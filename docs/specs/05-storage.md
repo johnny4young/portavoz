@@ -391,8 +391,9 @@ row makes no cloud claim (D115).
 coverage boundary, durable job, generation run, egress event, content-free
 sync acknowledgement, current audio-channel metadata, and aggregate transcript
 counts inside one SQLite snapshot, then groups rows in memory to avoid one
-query per meeting. Audio SQL selects only channel/role/codec, health, finite
-duration/size/signal values; transcript SQL selects only per-channel and
+query per meeting. Audio SQL selects only channel/role/codec, health, positive
+finite sample rate, nonnegative duration/size, and finite signal values;
+transcript SQL selects only per-channel and
 attribution counts. The projection does not fetch audio paths or checksums,
 title, language, speaker identity, transcript, summary/action/card text, or
 filesystem paths.
