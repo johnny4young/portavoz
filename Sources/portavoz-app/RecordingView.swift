@@ -61,9 +61,9 @@ struct RecordingView: View {
                 }
                 if controller.translationNeedsDownload {
                     translationDownloadBanner
-                } else if controller.translationState == .waitingForTranscript
-                            || controller.translationState == .unsupported
-                            || controller.translationState == .failed {
+                } else if controller.translationState.shouldPresentStatus(
+                    liveTranscriptState: controller.liveTranscriptState
+                ) {
                     translationStatusBanner
                 }
                 captionsList

@@ -148,6 +148,19 @@ final class LiveTranslationStateTests: XCTestCase {
             "Live translation paused after an error. Retrying automatically…")
         XCTAssertNil(LiveTranslationState.active.statusMessageKey)
     }
+
+    func testWaitingTranslationStatusYieldsToTerminalCaptionFailure() {
+        XCTAssertTrue(LiveTranslationState.waitingForTranscript.shouldPresentStatus(
+            liveTranscriptState: .preparing))
+        XCTAssertFalse(LiveTranslationState.waitingForTranscript.shouldPresentStatus(
+            liveTranscriptState: .failed))
+        XCTAssertTrue(LiveTranslationState.unsupported.shouldPresentStatus(
+            liveTranscriptState: .failed))
+        XCTAssertTrue(LiveTranslationState.failed.shouldPresentStatus(
+            liveTranscriptState: .failed))
+        XCTAssertFalse(LiveTranslationState.active.shouldPresentStatus(
+            liveTranscriptState: .available))
+    }
 }
 
 @MainActor

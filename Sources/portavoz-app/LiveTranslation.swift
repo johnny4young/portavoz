@@ -32,6 +32,20 @@ enum LiveTranslationState: Equatable {
             nil
         }
     }
+
+    /// The live-captions failure banner owns terminal model-load failures.
+    /// Keeping the translation waiting banner beside it would promise that
+    /// captions can still arrive during a recording where they cannot.
+    func shouldPresentStatus(liveTranscriptState: LiveTranscriptState) -> Bool {
+        switch self {
+        case .waitingForTranscript:
+            liveTranscriptState != .failed
+        case .unsupported, .failed:
+            true
+        case .off, .ready, .needsDownload, .translating, .active:
+            false
+        }
+    }
 }
 
 #if canImport(Translation)

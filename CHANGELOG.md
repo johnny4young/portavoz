@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 21, 2026
 
+- **🗣️ One clear live-caption failure** — If live captions cannot start, Portavoz now shows that terminal explanation once instead of also promising that translation will begin when captions arrive.
 - **⏹️ Know when the call is over** — If remote audio stays disconnected for two minutes, Portavoz keeps your microphone safe but brings forward a clear Stop action instead of recording unnoticed. Multi-hour files now finalize on a utility worker, and the redacted support file reports per-channel health and duration plus transcript counts without paths, checksums, or meeting content.
 - **🧹 Cleaner transcripts, trustworthy sources** — Refine now removes punctuation-only rows from every audio channel, legacy noise never enters summary prompts or citations, source links survive only when the cited speech actually supports the claim, and a decision copied verbatim can no longer masquerade as a to-do.
 - **⚡ Live captions that join the meeting when ready** — Start recording immediately on a cold Mac; as soon as the verified local speech model finishes preparing, live captions, translation, and speaker hints connect automatically while the saved audio still guarantees a complete transcript after Stop. Translation now shows preparation, download, unsupported-pair, and automatically retrying failure states instead of silently doing nothing, and an old language can never leak back after you switch targets.
