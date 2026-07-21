@@ -923,7 +923,7 @@ Library, the identified command-palette panel, Insights, Meeting Detail,
 Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints
 so unrelated desktop content is never captured. `make test-ui-en` and
 `make test-ui-es` use Xcode's explicit test language and region flags; the
-complete 40-case suite remains the bilingual release gate. **Real bug caught
+complete 41-case suite remains the bilingual release gate. **Real bug caught
 by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

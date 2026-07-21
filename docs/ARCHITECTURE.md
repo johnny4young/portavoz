@@ -833,7 +833,7 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 40-case English and Spanish suites remain the
+The complete 41-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 
