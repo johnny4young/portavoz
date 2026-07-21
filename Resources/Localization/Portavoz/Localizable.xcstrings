@@ -7090,6 +7090,56 @@
           }
         }
       }
+    },
+    "Audio is safe. Live captions will start automatically when the local model is ready; Stop still creates the complete transcript.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio sigue guardándose correctamente. Los subtítulos en vivo comenzarán automáticamente cuando el modelo local esté listo; al detener la grabación se creará la transcripción completa."
+          }
+        }
+      }
+    },
+    "Live captions could not start. Audio is safe; Stop will create the complete transcript.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron iniciar los subtítulos en vivo. El audio sigue guardándose correctamente; al detener la grabación se creará la transcripción completa."
+          }
+        }
+      }
+    },
+    "Live translation will start as soon as captions are available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción en vivo comenzará cuando haya subtítulos disponibles."
+          }
+        }
+      }
+    },
+    "Apple Translation does not support this language pair on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La función Traducción de Apple no admite este par de idiomas en este Mac."
+          }
+        }
+      }
+    },
+    "Live translation paused after an error. Choose the language again to retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción en vivo se pausó por un error. Elige de nuevo el idioma para reintentar."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

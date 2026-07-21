@@ -1,6 +1,24 @@
 import PortavozCore
 import SwiftUI
 
+enum LiveTranscriptState: Equatable {
+    case idle
+    case preparing
+    case available
+    case failed
+}
+
+enum LiveTranslationState: Equatable {
+    case off
+    case waitingForTranscript
+    case ready
+    case needsDownload
+    case translating
+    case active
+    case unsupported
+    case failed
+}
+
 #if canImport(Translation)
 import Translation
 
@@ -40,6 +58,12 @@ struct LiveTranslationModifier: ViewModifier {
 
     private typealias Row = (id: UUID, text: String, source: String?)
     private typealias Ready = (id: UUID, text: String)
+    private struct Partition {
+        let ready: [Ready]
+        let needsDownload: Bool
+        let hasUnsupportedPair: Bool
+        let cache: [String: LanguageAvailability.Status]
+    }
 
     nonisolated private static func translationLoop(
         box: SessionBox, controller: RecordingController
@@ -55,21 +79,87 @@ struct LiveTranslationModifier: ViewModifier {
         var didPrepare = false
 
         while !Task.isCancelled {
-            let approved = await MainActor.run { controller.translationDownloadApproved }
+            let snapshot = await MainActor.run {
+                (controller.translationTarget, controller.translationDownloadApproved)
+            }
+            guard snapshot.0 == target else { return }
+            let approved = snapshot.1
             if approved && !didPrepare {
-                guard await Self.prepare(box: box, controller: controller) else { continue }
+                guard await Self.prepare(
+                    box: box,
+                    controller: controller,
+                    target: target
+                ) else {
+                    guard await Self.sleep(milliseconds: 2_000) else { return }
+                    continue
+                }
                 didPrepare = true
             }
-            let pending = await Self.pendingRows(controller: controller)
+            let pending = await Self.pendingRows(controller: controller, target: target)
+            if pending.isEmpty {
+                await Self.publishIdleState(controller: controller, target: target)
+                guard await Self.sleep(milliseconds: 700) else { return }
+                continue
+            }
             let partition = await Self.partition(
                 pending, approved: approved, target: target, targetLanguage: targetLanguage,
                 availability: availability, cache: statusCache)
             statusCache = partition.cache
-            await MainActor.run {
-                controller.translationNeedsDownload = partition.needsDownload && !approved
+            if partition.needsDownload && !approved {
+                await MainActor.run {
+                    controller.updateLiveTranslationState(.needsDownload, forTarget: target)
+                }
+            } else if partition.ready.isEmpty, partition.hasUnsupportedPair {
+                await MainActor.run {
+                    controller.updateLiveTranslationState(.unsupported, forTarget: target)
+                }
+            } else if !partition.ready.isEmpty {
+                await MainActor.run {
+                    controller.updateLiveTranslationState(.translating, forTarget: target)
+                }
+                let translated = await Self.apply(
+                    partition.ready,
+                    box: box,
+                    controller: controller,
+                    target: target)
+                await MainActor.run {
+                    controller.updateLiveTranslationState(
+                        translated ? .active : .failed,
+                        forTarget: target)
+                }
             }
-            await Self.apply(partition.ready, box: box, controller: controller)
-            try? await Task.sleep(for: .milliseconds(700))
+            let retryDelay = await Self.translatedRetryDelay(controller: controller)
+            guard await Self.sleep(milliseconds: retryDelay) else { return }
+        }
+    }
+
+    nonisolated private static func translatedRetryDelay(
+        controller: RecordingController
+    ) async -> Int {
+        await MainActor.run { controller.translationState == .failed ? 3_000 : 700 }
+    }
+
+    nonisolated private static func sleep(milliseconds: Int) async -> Bool {
+        do {
+            try await Task.sleep(for: .milliseconds(milliseconds))
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    nonisolated private static func publishIdleState(
+        controller: RecordingController,
+        target: String
+    ) async {
+        await MainActor.run {
+            if controller.liveTranscriptState != .available, controller.captions.isEmpty {
+                controller.updateLiveTranslationState(.waitingForTranscript, forTarget: target)
+            } else if controller.translations.isEmpty {
+                controller.updateLiveTranslationState(.ready, forTarget: target)
+            } else {
+                controller.updateLiveTranslationState(.active, forTarget: target)
+            }
         }
     }
 
@@ -77,26 +167,38 @@ struct LiveTranslationModifier: ViewModifier {
     /// Returns false (and clears approval) if the user cancels, so the loop
     /// falls back to the gated banner instead of auto-presenting the sheet.
     nonisolated private static func prepare(
-        box: SessionBox, controller: RecordingController
+        box: SessionBox,
+        controller: RecordingController,
+        target: String
     ) async -> Bool {
         do {
             try await box.session.prepareTranslation()
-            return true
+            return await MainActor.run { controller.translationTarget == target }
         } catch {
-            await MainActor.run { controller.translationDownloadApproved = false }
-            try? await Task.sleep(for: .milliseconds(700))
+            await MainActor.run {
+                guard controller.translationTarget == target else { return }
+                controller.translationDownloadApproved = false
+                controller.updateLiveTranslationState(.failed, forTarget: target)
+            }
             return false
         }
     }
 
     /// The closed, not-yet-translated caption rows. The newest row is still
     /// growing (the coalescer only ever extends the last one), so it's skipped.
-    nonisolated private static func pendingRows(controller: RecordingController) async -> [Row] {
+    nonisolated private static func pendingRows(
+        controller: RecordingController,
+        target: String
+    ) async -> [Row] {
         await MainActor.run {
+            guard controller.translationTarget == target else { return [] }
             let openID = controller.captions.last?.id
             return controller.captions.suffix(60)
                 .filter {
-                    $0.id != openID && controller.translations[$0.id] == nil && $0.text.count >= 4
+                    $0.id != openID
+                        && controller.translations[$0.id] == nil
+                        && $0.text.count >= 4
+                        && $0.language != target
                 }
                 .map { ($0.id, $0.text, $0.language) }
         }
@@ -109,11 +211,18 @@ struct LiveTranslationModifier: ViewModifier {
     nonisolated private static func partition(
         _ pending: [Row], approved: Bool, target: String, targetLanguage: Locale.Language,
         availability: LanguageAvailability, cache: [String: LanguageAvailability.Status]
-    ) async -> (ready: [Ready], needsDownload: Bool, cache: [String: LanguageAvailability.Status]) {
-        if approved { return (pending.map { ($0.id, $0.text) }, false, cache) }
+    ) async -> Partition {
+        if approved {
+            return Partition(
+                ready: pending.map { ($0.id, $0.text) },
+                needsDownload: false,
+                hasUnsupportedPair: false,
+                cache: cache)
+        }
         var cache = cache
         var ready: [Ready] = []
         var needsDownload = false
+        var hasUnsupportedPair = false
         for row in pending {
             let source = row.source ?? Self.likelySource(for: target)
             let status: LanguageAvailability.Status
@@ -127,30 +236,42 @@ struct LiveTranslationModifier: ViewModifier {
             switch status {
             case .installed: ready.append((row.id, row.text))
             case .supported: needsDownload = true  // downloadable, not yet installed
-            default: break  // unsupported pair — leave the row untranslated
+            default: hasUnsupportedPair = true
             }
         }
-        return (ready, needsDownload, cache)
+        return Partition(
+            ready: ready,
+            needsDownload: needsDownload,
+            hasUnsupportedPair: hasUnsupportedPair,
+            cache: cache)
     }
 
     /// Translates the ready rows and stores the results on the controller.
     nonisolated private static func apply(
-        _ ready: [Ready], box: SessionBox, controller: RecordingController
-    ) async {
-        guard !ready.isEmpty else { return }
+        _ ready: [Ready],
+        box: SessionBox,
+        controller: RecordingController,
+        target: String
+    ) async -> Bool {
+        guard !ready.isEmpty else { return true }
         let requests = ready.map {
             TranslationSession.Request(sourceText: $0.text, clientIdentifier: $0.id.uuidString)
         }
-        guard let responses = try? await box.session.translations(from: requests) else { return }
-        let translated: [(UUID, String)] = responses.compactMap { response in
+        let responses: [TranslationSession.Response]
+        do {
+            responses = try await box.session.translations(from: requests)
+        } catch {
+            return false
+        }
+        let translated: [UUID: String] = responses.reduce(into: [:]) { values, response in
             guard
                 let identifier = response.clientIdentifier,
                 let id = UUID(uuidString: identifier)
-            else { return nil }
-            return (id, response.targetText)
+            else { return }
+            values[id] = response.targetText
         }
-        await MainActor.run {
-            for (id, text) in translated { controller.translations[id] = text }
+        return await MainActor.run {
+            controller.storeLiveTranslations(translated, forTarget: target)
         }
     }
 

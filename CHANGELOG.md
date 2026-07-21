@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 21, 2026
 
+- **⚡ Live captions that join the meeting when ready** — Start recording immediately on a cold Mac; as soon as the verified local speech model finishes preparing, live captions, translation, and speaker hints connect automatically while the saved audio still guarantees a complete transcript after Stop. Translation now shows preparation, download, unsupported-pair, and failure states instead of silently doing nothing, and an old language can never leak back after you switch targets.
 - **🛟 Remote audio that cannot disappear silently** — If the call channel stops delivering audio while your microphone keeps recording, Portavoz now warns you immediately, rebuilds the system tap without ending the recording, retries while the outage continues, and confirms when remote capture returns.
 
 ## July 19, 2026

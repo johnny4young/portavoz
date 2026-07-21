@@ -310,18 +310,6 @@ final class AppServices {
         modelsState = .ready
     }
 
-    /// Starts verified preparation without delaying audio capture. Per-model
-    /// tasks deduplicate concurrent recording, recovery, and offline callers.
-    func prepareRecordingEnginesInBackground() {
-        guard transcriber == nil || diarizer == nil else {
-            modelsState = .ready
-            return
-        }
-        Task { @MainActor [weak self] in
-            try? await self?.loadEnginesIfNeeded()
-        }
-    }
-
     /// Rebuilds diarization with the new identity state on its next use.
     func invalidateDiarizer() {
         diarizer = nil

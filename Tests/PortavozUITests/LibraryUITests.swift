@@ -107,6 +107,32 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        let preparing = app.control(withIdentifier: "recording-transcript-deferred")
+        XCTAssertTrue(preparing.waitForExistence(timeout: 5))
+        let isSpanish = record.label == "Nueva grabación"
+        let preparingPrefix = isSpanish
+            ? "El audio sigue guardándose correctamente."
+            : "Audio is safe."
+        XCTAssertTrue(
+            preparing.label.contains(preparingPrefix),
+            "expected localized preparing copy, saw: \(preparing.label)")
+        XCTAssertTrue(
+            app.staticTexts["Live captions are available now."].waitForExistence(
+                timeout: 8))
+        XCTAssertFalse(preparing.exists)
+        attachScreenshot(of: app, named: "recording-live-transcript-hot-attach")
+    }
+
+    @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

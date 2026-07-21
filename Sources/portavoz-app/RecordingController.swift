@@ -68,14 +68,17 @@ final class RecordingController {
     var translationTarget: String? {
         didSet {
             guard translationTarget != oldValue else { return }
-            translationNeedsDownload = false
+            translations.removeAll()
             translationDownloadApproved = false
+            translationState = translationTarget == nil
+                ? .off
+                : (liveTranscriptState == .available ? .ready : .waitingForTranscript)
         }
     }
     /// The selected translation pair isn't installed yet — set by the live
     /// translation loop when it declines to auto-trigger Apple's download
     /// sheet mid-meeting. Drives the dismissable "download to translate" banner.
-    var translationNeedsDownload = false
+    private(set) var translationState = LiveTranslationState.off
     /// The user tapped "Download" on that banner: only then does the loop
     /// call `prepareTranslation()` (the deliberate, expected download sheet)
     /// so the assets are fetched without ever interrupting the meeting on its own.
@@ -110,14 +113,9 @@ final class RecordingController {
     /// Audio capture is already active, but this meeting started before the
     /// verified live model was ready. Stop will recover the complete transcript
     /// from finalized audio through the durable worker.
-    private(set) var liveTranscriptDeferred = false
+    private(set) var liveTranscriptState = LiveTranscriptState.idle
     private(set) var systemCaptureHealth = SystemCaptureHealth.healthy
     private var systemRecoveryNoticeTask: Task<Void, Never>?
-
-    private func updateSystemLevel(_ rms: Float) {
-        systemChunks += 1
-        systemRMS = systemRMS * 0.98 + rms * 0.02
-    }
 
     /// Live speaker hints (field ask jul 2026: two remote voices back to back
     /// merged into one "Them" row). A DEDICATED diarizer instance — the
@@ -130,6 +128,7 @@ final class RecordingController {
     private var liveTurns: [SpeakerTurn] = []
     private var liveDiarizerTask: Task<Void, Never>?
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
+    private var liveDiarizerStream: AsyncStream<AudioChunk>?
 
     private let coalescer = CaptionCoalescer()
     private var session: (any StartRecordingSession)?
@@ -194,7 +193,9 @@ final class RecordingController {
         resetForRecordingStart()
         self.services = services
         phase = .preparing
-        let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(of: AudioChunk.self)
+        let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(
+            of: AudioChunk.self,
+            bufferingPolicy: .bufferingNewest(128))
         let callbacks = StartRecordingLiveCallbacks(
             caption: { [weak self] segment in
                 await self?.receiveLiveCaption(segment)
@@ -219,6 +220,9 @@ final class RecordingController {
             },
             health: { [weak self] event in
                 Task { @MainActor in self?.receiveCaptureHealth(event) }
+            },
+            liveTranscription: { [weak self] event in
+                Task { @MainActor in self?.receiveLiveTranscription(event) }
             })
         let result = await services.startRecording.execute(StartRecordingRequest(
             eventTitle: event?.title,
@@ -235,6 +239,7 @@ final class RecordingController {
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
         liveDiarizerFeed = nil
+        liveDiarizerStream = nil
         liveDiarizerTask = nil
         session = nil
         recordingShell = nil
@@ -260,7 +265,8 @@ final class RecordingController {
         liveTurns = []
         liveSpeakerLabels = [:]
         tappedMeetingApps = []
-        liveTranscriptDeferred = false
+        liveTranscriptState = .idle
+        translationState = translationTarget == nil ? .off : .waitingForTranscript
         micMuted = false
         failureContext = nil
     }
@@ -293,18 +299,17 @@ final class RecordingController {
             recordingShell = reservation.meeting
             reservedAssets = reservation.assets
             tappedMeetingApps = commit.tappedMeetingApps
-            liveTranscriptDeferred = !commit.liveTranscriptionAvailable
             session = commit.session
             services.requestSpotlightReindex()
             liveDiarizerFeed = diarizerFeed
-            if commit.liveTranscriptionAvailable {
-                startLiveDiarization(
-                    consuming: diarizerStream,
-                    session: commit.session)
-            } else {
-                // Shared background preparation owns a clean install's model
-                // download. Do not create a second session diarizer when live
-                // labels cannot accompany unavailable live captions anyway.
+            liveDiarizerStream = diarizerStream
+            if liveTranscriptState == .idle {
+                liveTranscriptState = commit.liveTranscriptionAvailable
+                    ? .available : .preparing
+            }
+            if liveTranscriptState == .available {
+                startLiveDiarizationIfReady()
+            } else if liveTranscriptState == .failed {
                 liveDiarizerFeed?.finish()
             }
             phase = .recording
@@ -520,6 +525,9 @@ final class RecordingController {
 }
 
 extension RecordingController {
+    var translationNeedsDownload: Bool { translationState == .needsDownload }
+    var liveTranscriptDeferred: Bool { liveTranscriptState == .preparing }
+
     /// Closes the platform session before crossing the durable application
     /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
@@ -532,6 +540,7 @@ extension RecordingController {
         // Live hints end here — the durable workflow re-attributes everything.
         liveDiarizerFeed?.finish()
         liveDiarizerFeed = nil
+        liveDiarizerStream = nil
         liveDiarizerTask?.cancel()
         liveDiarizerTask = nil
         self.session = nil
@@ -681,6 +690,43 @@ extension RecordingController {
 // Callback health is a cohesive presentation concern and stays outside the
 // already-large capture/persistence controller body.
 private extension RecordingController {
+    func updateSystemLevel(_ rms: Float) {
+        systemChunks += 1
+        systemRMS = systemRMS * 0.98 + rms * 0.02
+        if liveTranscriptState == .available {
+            startLiveDiarizationIfReady()
+        }
+    }
+
+    func receiveLiveTranscription(_ event: StartRecordingLiveTranscriptionEvent) {
+        switch event {
+        case .preparing:
+            liveTranscriptState = .preparing
+            if translationTarget != nil { translationState = .waitingForTranscript }
+        case .available:
+            liveTranscriptState = .available
+            if translationTarget != nil, translationState == .waitingForTranscript {
+                translationState = .ready
+            }
+            startLiveDiarizationIfReady()
+        case .failed:
+            liveTranscriptState = .failed
+            if translationTarget != nil { translationState = .waitingForTranscript }
+            liveDiarizerFeed?.finish()
+        }
+    }
+
+    func startLiveDiarizationIfReady() {
+        guard phase == .recording,
+              systemChunks > 0,
+              liveDiarizerTask == nil,
+              let stream = liveDiarizerStream,
+              let session
+        else { return }
+        liveDiarizerStream = nil
+        startLiveDiarization(consuming: stream, session: session)
+    }
+
     func receiveCaptureHealth(_ event: RecordingCaptureHealthEvent) {
         let channel: AudioChannel
         switch event {
@@ -707,6 +753,37 @@ private extension RecordingController {
         case .streamFailed:
             systemCaptureHealth = .failed
         }
+    }
+}
+
+extension RecordingController {
+    /// LiveTranslation can publish only finite user-facing state, never
+    /// framework errors or transcript content as diagnostics.
+    func updateLiveTranslationState(_ state: LiveTranslationState) {
+        guard translationTarget != nil || state == .off else { return }
+        translationState = state
+    }
+
+    /// Old Translation tasks can complete after SwiftUI cancels them. Admit a
+    /// state transition only when it still belongs to the selected language.
+    func updateLiveTranslationState(
+        _ state: LiveTranslationState,
+        forTarget target: String
+    ) {
+        guard translationTarget == target else { return }
+        translationState = state
+    }
+
+    /// Prevents a canceled old-language task from repopulating rendered rows
+    /// after the user has selected a different translation target.
+    @discardableResult
+    func storeLiveTranslations(
+        _ values: [UUID: String],
+        forTarget target: String
+    ) -> Bool {
+        guard translationTarget == target else { return false }
+        translations.merge(values) { _, new in new }
+        return !values.isEmpty
     }
 }
 

@@ -554,8 +554,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(
             adapter.contains("try await services.loadEnginesIfNeeded()"),
             "Recording start must never wait for model preparation")
-        XCTAssertTrue(adapter.contains("services.prepareRecordingEnginesInBackground()"))
-        XCTAssertTrue(controller.contains("if commit.liveTranscriptionAvailable"))
+        XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
+        XCTAssertTrue(adapter.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertTrue(controller.contains("receiveLiveTranscription("))
         XCTAssertFalse(controller.contains("services.store.beginRecording"))
         XCTAssertFalse(controller.contains("MicrophoneSource("))
         XCTAssertFalse(controller.contains("RecordingSession("))

@@ -517,7 +517,10 @@ flowchart LR
     HEALTH -. rebuild request .-> SYSTEM
     HEALTH --> NOTICE[Recording health UI]
     STAGED --> FINAL[validated final CAF]
-    SESSION --> LIVE[Parakeet live transcription]
+    SESSION -. nonblocking newest-only frames .-> BUFFER[Bounded live feeds]
+    RESIDENT[Resident or asynchronously verified Parakeet] --> ATTACH[Live attacher]
+    ATTACH --> BUFFER
+    BUFFER --> LIVE[Parakeet live transcription]
     FINAL --> DURABLE[Parakeet durable first pass]
     FINAL --> REFINE[Whisper quality refinement]
     SYSTEM --> DIARIZE[Pyannote diarization]
@@ -528,7 +531,14 @@ flowchart LR
 ```
 
 Live transcription and batch work use separate scheduler capacity. One model
-role cannot block another. Refine requires Whisper; attribution is degradable.
+role cannot block another. A recording creates bounded per-channel live feeds
+before it starts writing. A resident Parakeet attaches immediately; otherwise
+the recording-scoped attacher joins the process-owned verified load and begins
+consuming only the newest buffered context when it completes. Capture never
+awaits that load and the cold-start session retains its durable transcription
+recovery bit because earlier audio was not live-transcribed. Preparing,
+available, and failed states cross ApplicationKit without raw model errors.
+Refine requires Whisper; attribution is degradable.
 Import requests its required transcriber and optional diarizer independently.
 Durable first-pass recovery and dictation request Parakeet without acquiring
 unrelated models. `ProcessPostCaptureJobs` keeps automatic recognition
@@ -933,9 +943,9 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 978 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 347 Swift source files;
-- 40 XCUITest cases define the English and Spanish release gate;
+- 986 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 349 Swift source files;
+- 41 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

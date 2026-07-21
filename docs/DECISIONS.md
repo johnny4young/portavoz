@@ -3660,3 +3660,39 @@ parity rule. Keeping the per-frame transition off the actor avoids adding a
 latency bottleneck to recording or live transcription. The policy and complete
 session-to-source path are deterministic unit evidence; successful recovery of
 a real Core Audio callback stall remains an explicit field gate.
+
+## D121 — Hot-attach live transcription through bounded recording feeds (Jul 2026)
+
+**Context:** audio-first start correctly allowed a clean or memory-released app
+to record while Parakeet downloaded or compiled, but the active session sampled
+only the engine that was resident at Start. The shared preparation could finish
+successfully without ever connecting that engine to the current recording, so
+captions, live translation, Companion, rolling intelligence, and speaker hints
+remained absent until Stop. Buffering every callback until a multi-minute model
+load completes would turn a degradable feature into unbounded memory growth and
+stale inference work.
+
+**Decision:** every recording creates one bounded `bufferingNewest` audio feed
+per selected channel before capture begins. The producer yields synchronously
+without suspension. A recording-scoped `LiveTranscriptionAttacher` connects a
+resident Parakeet immediately or asynchronously joins the process-owned verified
+Parakeet task after capture has started. A cold attachment consumes only recent
+context and all future frames; finalized channel files remain the source for the
+complete durable first pass, so the session keeps its recovery bit even after
+live captions become available. Stop cancels only the recording waiter, never
+the shared model task, closes the feeds, and drains attached consumers. Typed
+preparing, available, and failed events cross ApplicationKit without concrete
+engines or raw errors. Live diarization uses its own bounded feed and begins
+only after captions are available and a real system frame exists. Translation
+maintains explicit off/waiting/ready/download/translating/active/unsupported/
+failed state, skips rows already in the target language, and clears target-
+dependent cached output whenever the picker changes. Every asynchronous state
+publication and cache write is fenced to the target captured by its task, so a
+canceled framework request cannot publish old-language results after a switch.
+
+**Rationale:** bounded future-oriented attachment restores live value during a
+cold recording without gating the primary artifact, replaying minutes of stale
+audio, or duplicating verified model ownership. Durable recovery preserves
+feature parity for the pre-attachment interval. Finite content-free states make
+degradation understandable and testable while keeping platform Translation and
+speech engines in the executable adapter.

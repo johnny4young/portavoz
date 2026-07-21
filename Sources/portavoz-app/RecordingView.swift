@@ -55,11 +55,16 @@ struct RecordingView: View {
                 if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
                     appTapBanner
                 }
-                if controller.liveTranscriptDeferred {
-                    deferredTranscriptBanner
+                if controller.liveTranscriptState == .preparing
+                    || controller.liveTranscriptState == .failed {
+                    liveTranscriptStatusBanner
                 }
                 if controller.translationNeedsDownload {
                     translationDownloadBanner
+                } else if controller.translationState == .waitingForTranscript
+                            || controller.translationState == .unsupported
+                            || controller.translationState == .failed {
+                    translationStatusBanner
                 }
                 captionsList
                     .frame(maxHeight: .infinity)
@@ -517,14 +522,33 @@ extension RecordingView {
     /// Audio is the primary artifact: a fresh install starts recording now,
     /// while the verified local model prepares in the background. The durable
     /// worker fills the complete transcript from the saved channels after Stop.
-    var deferredTranscriptBanner: some View {
-        Label(
-            "Audio is recording now. The complete transcript will appear after the local model finishes preparing.",
-            systemImage: "waveform.badge.clock")
+    var liveTranscriptStatusBanner: some View {
+        Label {
+            Text(liveTranscriptStatusMessage)
+        } icon: {
+            Image(systemName: controller.liveTranscriptState == .failed
+                ? "exclamationmark.triangle.fill" : "waveform.badge.clock")
+        }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(controller.liveTranscriptState == .failed ? .orange : .secondary)
         .padding(.horizontal, 20)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(liveTranscriptStatusMessage)
         .accessibilityIdentifier("recording-transcript-deferred")
+    }
+
+    private var liveTranscriptStatusMessage: String {
+        switch controller.liveTranscriptState {
+        case .preparing:
+            L10n.text(
+                // swiftlint:disable:next line_length
+                "Audio is safe. Live captions will start automatically when the local model is ready; Stop still creates the complete transcript.")
+        case .failed:
+            L10n.text(
+                "Live captions could not start. Audio is safe; Stop will create the complete transcript.")
+        case .idle, .available:
+            ""
+        }
     }
 
     /// Shown only when the mic stays quiet — the far-field-mic nudge (field
@@ -601,6 +625,32 @@ extension RecordingView {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 20)
+    }
+
+    var translationStatusBanner: some View {
+        Label {
+            Text(translationStatusMessage)
+        } icon: {
+            Image(systemName: controller.translationState == .failed
+                ? "exclamationmark.triangle.fill" : "character.bubble")
+        }
+        .font(.caption)
+        .foregroundStyle(controller.translationState == .failed ? .orange : .secondary)
+        .padding(.horizontal, 20)
+        .accessibilityIdentifier("recording-live-translation-status")
+    }
+
+    private var translationStatusMessage: String {
+        switch controller.translationState {
+        case .waitingForTranscript:
+            L10n.text("Live translation will start as soon as captions are available.")
+        case .unsupported:
+            L10n.text("Apple Translation does not support this language pair on this Mac.")
+        case .failed:
+            L10n.text("Live translation paused after an error. Choose the language again to retry.")
+        case .off, .ready, .needsDownload, .translating, .active:
+            ""
+        }
     }
 }
 
