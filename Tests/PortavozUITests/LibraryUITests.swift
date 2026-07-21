@@ -90,6 +90,23 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecordingWarnsWhenRemoteAudioCallbacksStop() {
+        let app = XCUIApplication.portavoz(simulateSystemCaptureStall: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        let warning = app.control(withIdentifier: "recording-system-capture-health")
+        XCTAssertTrue(
+            warning.waitForExistence(timeout: 10),
+            "callback death must become visible while microphone capture continues")
+        attachScreenshot(of: app, named: "recording-remote-audio-recovery")
+    }
+
+    @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

@@ -121,6 +121,16 @@ struct RecordingHUDView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 hudMeter
+                if controller.systemCaptureHealth != .healthy {
+                    Label {
+                        Text(hudCaptureHealthMessage)
+                    } icon: {
+                        Image(systemName: hudCaptureHealthIcon)
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(hudCaptureHealthColor)
+                    .accessibilityIdentifier("recording-hud-system-capture-health")
+                }
             }
             Button(action: onExpand) {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
@@ -169,5 +179,23 @@ struct RecordingHUDView: View {
         guard level > 0.0001 else { return 0 }
         let decibels = 20 * log10(level)
         return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+    }
+
+    private var hudCaptureHealthMessage: String {
+        switch controller.systemCaptureHealth {
+        case .recovered:
+            L10n.text("Remote audio capture recovered.")
+        case .healthy, .stalled, .recovering, .failed:
+            L10n.text("Remote audio interrupted")
+        }
+    }
+
+    private var hudCaptureHealthIcon: String {
+        controller.systemCaptureHealth == .recovered
+            ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var hudCaptureHealthColor: Color {
+        controller.systemCaptureHealth == .recovered ? .green : .orange
     }
 }

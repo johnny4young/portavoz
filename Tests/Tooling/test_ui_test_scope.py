@@ -31,12 +31,17 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(len(selection.tests), 3)
         self.assertTrue(all("MeetingDetailUITests" in test for test in selection.tests))
 
-    def test_localization_selects_every_test_bilingually(self):
-        selection = select_paths(
-            ["Sources/portavoz-app/Resources/Localization/Portavoz/Localizable.xcstrings"]
-        )
-        self.assertEqual(selection.tests, ALL_TESTS)
+    def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):
+        selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
+        self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
+
+    def test_recording_sources_select_callback_recovery_evidence(self):
+        selection = select_paths(["Sources/AudioCaptureKit/RecordingSession.swift"])
+        self.assertIn(
+            "PortavozUITests/LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop",
+            selection.tests,
+        )
 
     def test_harness_change_selects_two_bilingual_canaries(self):
         selection = select_paths(["Makefile"])

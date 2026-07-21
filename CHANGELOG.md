@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 21, 2026
+
+- **🛟 Remote audio that cannot disappear silently** — If the call channel stops delivering audio while your microphone keeps recording, Portavoz now warns you immediately, rebuilds the system tap without ending the recording, retries while the outage continues, and confirms when remote capture returns.
+
 ## July 19, 2026
 
 - **🌐 Errors that speak your language** — Voice enrollment, remember-voice, refine, and export failures now explain themselves in the app's selected language instead of falling back to English developer text.

@@ -17,7 +17,8 @@ final class StartRecordingUseCaseTests: XCTestCase {
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest(
             callbacks: StartRecordingLiveCallbacks(
                 caption: { await live.record(caption: $0) },
-                chunk: { chunk in Task { await live.record(chunk: chunk) } })))
+                chunk: { chunk in Task { await live.record(chunk: chunk) } },
+                health: { event in Task { await live.record(health: event) } })))
 
         guard case .started(let commit) = result else {
             return XCTFail("recording should start")
@@ -44,6 +45,9 @@ final class StartRecordingUseCaseTests: XCTestCase {
         let liveState = await live.state()
         XCTAssertEqual(liveState.captionCount, 1)
         XCTAssertEqual(liveState.chunkCount, 1)
+        XCTAssertEqual(liveState.healthEvents, [
+            .stalled(channel: .system, secondsWithoutFrames: 8)
+        ])
     }
 
     func testCalendarEventTitleOverridesTemplateAndFixedLanguageIsForwarded() async {
@@ -307,14 +311,22 @@ private actor StartRecordingLiveProbe {
     struct State: Sendable {
         let captionCount: Int
         let chunkCount: Int
+        let healthEvents: [RecordingCaptureHealthEvent]
     }
 
     private var captionCount = 0
     private var chunkCount = 0
+    private var healthEvents: [RecordingCaptureHealthEvent] = []
 
     func record(caption: TranscriptSegment) { captionCount += 1 }
     func record(chunk: AudioChunk) { chunkCount += 1 }
-    func state() -> State { State(captionCount: captionCount, chunkCount: chunkCount) }
+    func record(health: RecordingCaptureHealthEvent) { healthEvents.append(health) }
+    func state() -> State {
+        State(
+            captionCount: captionCount,
+            chunkCount: chunkCount,
+            healthEvents: healthEvents)
+    }
 }
 
 private actor StartRecordingDependencies:
@@ -407,6 +419,9 @@ private actor StartRecordingDependencies:
             samples: [0.1],
             sampleRate: 48_000,
             timestamp: 0))
+        request.callbacks.health(.stalled(
+            channel: .system,
+            secondsWithoutFrames: 8))
         return StartRecordingTestSession()
     }
 

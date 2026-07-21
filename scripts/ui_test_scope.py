@@ -37,6 +37,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "recording-recovery": (
         test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
+        test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
         test_id("LibraryUITests", "testLaunchResumesDurablePostCaptureProcessing"),
     ),
@@ -222,10 +223,10 @@ def select_paths(paths: Iterable[str]) -> Selection:
         if not path:
             continue
 
-        if path == "Sources/portavoz-app/Resources/Localization/Portavoz/Localizable.xcstrings":
-            selected.update(ALL_TESTS)
+        if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
+            selected.update(HARNESS_TESTS)
             locales.add("es")
-            reasons.append(f"{path}: localized product copy")
+            reasons.append(f"{path}: bilingual localization canaries")
             continue
 
         if path in {"Makefile", "project.yml", "scripts/run-ui-tests.sh"} or path == "Tests/PortavozUITests/UITestSupport.swift":
@@ -270,6 +271,23 @@ def changed_paths(base: str, head: str) -> list[str]:
     command = ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, head, "--"]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     return result.stdout.splitlines()
+
+
+def working_tree_paths(base: str) -> list[str]:
+    """Return tracked and untracked paths that differ from a committed base."""
+    tracked = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, "--"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    return list(dict.fromkeys((*tracked, *untracked)))
 
 
 def discovered_test_catalog(root: Path) -> set[str]:
@@ -334,6 +352,11 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("paths", nargs="*", help="Changed paths; otherwise --base and --head are diffed")
     result.add_argument("--base", help="Base Git revision")
     result.add_argument("--head", default="HEAD", help="Head Git revision (default: HEAD)")
+    result.add_argument(
+        "--working-tree",
+        action="store_true",
+        help="Compare --base with the current index, working tree, and untracked files",
+    )
     result.add_argument("--all", action="store_true", help="Select every UI test in both locales")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
@@ -353,7 +376,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         selection = Selection(ALL_TESTS, ("en", "es"), ("explicit full-suite request",))
     else:
         paths = arguments.paths
-        if arguments.base:
+        if arguments.working_tree:
+            if not arguments.base:
+                print("--working-tree requires --base.", file=sys.stderr)
+                return 2
+            paths = working_tree_paths(arguments.base)
+        elif arguments.base:
             paths = changed_paths(arguments.base, arguments.head)
         elif not paths:
             print("Provide changed paths, --base, or --all.", file=sys.stderr)

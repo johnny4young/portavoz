@@ -87,6 +87,67 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertTrue(summary.files.isEmpty)
     }
 
+    func testSystemCallbackStallRequestsRecoveryWhileMicrophoneKeepsWriting() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let clock = TestMonotonicClock()
+        let microphone = FakeCaptureSource(channel: .microphone)
+        let system = FakeRecoverableCaptureSource()
+        let probe = CaptureLivenessProbe()
+        let session = RecordingSession(
+            outputDirectory: directory,
+            livenessConfiguration: .init(stallAfter: 8, retryEvery: 8),
+            monotonicNow: { clock.now })
+
+        try await session.start(
+            sources: [system, microphone],
+            onChunk: { probe.record(chunk: $0) },
+            onHealthEvent: { probe.record(event: $0) })
+
+        clock.now = 1
+        system.yield(at: 0)
+        try await waitUntil { probe.chunkCount(for: .system) == 1 }
+
+        clock.now = 9
+        microphone.yield(at: 8)
+        try await waitUntil {
+            system.recoveryCount == 1
+                && probe.chunkCount(for: .microphone) == 1
+                && probe.events.count == 2
+        }
+        XCTAssertEqual(probe.events, [
+            .stalled(channel: .system, secondsWithoutFrames: 8),
+            .recoveryRequested(channel: .system, attempt: 1, secondsWithoutFrames: 8)
+        ])
+
+        clock.now = 10
+        system.yield(at: 9)
+        try await waitUntil { probe.events.count == 3 }
+        XCTAssertEqual(probe.events.last, .recovered(channel: .system, outageSeconds: 9))
+
+        let summary = await session.stop()
+        XCTAssertNotNil(summary.files[.microphone])
+        XCTAssertNotNil(summary.files[.system])
+    }
+
+    private func waitUntil(
+        timeout: Duration = .seconds(1),
+        _ predicate: @escaping () -> Bool
+    ) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while !predicate() {
+            if clock.now >= deadline {
+                XCTFail("condition did not become true before timeout")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
     func testStopPublishesValidatedCAFAndCompleteMediaEvidence() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -239,6 +300,50 @@ final class RecordingSummaryTests: XCTestCase {
     }
 }
 
+final class SystemCaptureLivenessPolicyTests: XCTestCase {
+    func testRequiresARealSystemFrameBeforeMonitoring() {
+        var policy = SystemCaptureLivenessPolicy(configuration: .init(
+            stallAfter: 8,
+            retryEvery: 8))
+
+        XCTAssertTrue(policy.observe(channel: .microphone, at: 20).isEmpty)
+    }
+
+    func testDetectsRetriesAndRecoversAStalledSystemChannel() {
+        var policy = SystemCaptureLivenessPolicy(configuration: .init(
+            stallAfter: 8,
+            retryEvery: 8))
+
+        XCTAssertTrue(policy.observe(channel: .system, at: 1).isEmpty)
+        XCTAssertTrue(policy.observe(channel: .microphone, at: 8.9).isEmpty)
+        XCTAssertEqual(policy.observe(channel: .microphone, at: 9), [
+            .stalled(secondsWithoutFrames: 8),
+            .recoveryDue(attempt: 1, secondsWithoutFrames: 8)
+        ])
+        XCTAssertTrue(policy.observe(channel: .microphone, at: 16.9).isEmpty)
+        XCTAssertEqual(policy.observe(channel: .microphone, at: 17), [
+            .recoveryDue(attempt: 2, secondsWithoutFrames: 16)
+        ])
+        XCTAssertEqual(policy.observe(channel: .system, at: 18), [
+            .recovered(outageSeconds: 17)
+        ])
+        XCTAssertTrue(policy.observe(channel: .system, at: 19).isEmpty)
+    }
+
+    func testRoomFramesNeverHideOrTriggerTheRemoteChannelPolicy() {
+        var policy = SystemCaptureLivenessPolicy(configuration: .init(
+            stallAfter: 8,
+            retryEvery: 8))
+
+        XCTAssertTrue(policy.observe(channel: .system, at: 1).isEmpty)
+        XCTAssertTrue(policy.observe(channel: .room, at: 20).isEmpty)
+        XCTAssertEqual(policy.observe(channel: .microphone, at: 20), [
+            .stalled(secondsWithoutFrames: 19),
+            .recoveryDue(attempt: 1, secondsWithoutFrames: 19)
+        ])
+    }
+}
+
 private enum FakeCaptureError: Error {
     case startFailed
 }
@@ -265,6 +370,14 @@ private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
         lock.withLock { stops }
     }
 
+    func yield(at timestamp: TimeInterval) {
+        lock.withLock { continuation }?.yield(AudioChunk(
+            channel: channel,
+            samples: [0.1],
+            sampleRate: 48_000,
+            timestamp: timestamp))
+    }
+
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         if let startError { throw startError }
         let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
@@ -283,6 +396,74 @@ private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
             return current
         }
         continuation?.finish()
+    }
+}
+
+private final class FakeRecoverableCaptureSource:
+    RecoverableAudioCaptureSource, @unchecked Sendable
+{
+    let channel = AudioChannel.system
+    private let lock = NSLock()
+    private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+    private var recoveries = 0
+
+    var recoveryCount: Int { lock.withLock { recoveries } }
+
+    func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
+        let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+        lock.withLock { self.continuation = continuation }
+        return stream
+    }
+
+    func yield(at timestamp: TimeInterval) {
+        lock.withLock { continuation }?.yield(AudioChunk(
+            channel: .system,
+            samples: [0.1],
+            sampleRate: 48_000,
+            timestamp: timestamp))
+    }
+
+    func requestRecovery() async {
+        lock.withLock { recoveries += 1 }
+    }
+
+    func stop() async {
+        let continuation = lock.withLock {
+            let current = self.continuation
+            self.continuation = nil
+            return current
+        }
+        continuation?.finish()
+    }
+}
+
+private final class TestMonotonicClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: TimeInterval = 0
+
+    var now: TimeInterval {
+        get { lock.withLock { value } }
+        set { lock.withLock { value = newValue } }
+    }
+}
+
+private final class CaptureLivenessProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var channels: [AudioChannel] = []
+    private var capturedEvents: [RecordingCaptureHealthEvent] = []
+
+    var events: [RecordingCaptureHealthEvent] { lock.withLock { capturedEvents } }
+
+    func chunkCount(for channel: AudioChannel) -> Int {
+        lock.withLock { channels.count(where: { $0 == channel }) }
+    }
+
+    func record(chunk: AudioChunk) {
+        lock.withLock { channels.append(chunk.channel) }
+    }
+
+    func record(event: RecordingCaptureHealthEvent) {
+        lock.withLock { capturedEvents.append(event) }
     }
 }
 

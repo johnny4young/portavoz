@@ -3625,3 +3625,38 @@ and what limitations remain without publishing transient sequencing state.
 Explicit local paths preserve maintainer continuity while repository hygiene
 prevents accidental recommit. Self-contained tracked sources avoid broken links
 and keep architecture review reproducible for outside contributors.
+
+## D120 — Treat system callback liveness as a recoverable capture capability (Jul 2026)
+
+**Context:** a real dual-channel recording continued writing microphone audio
+for more than two hours after the system-channel staging file stopped advancing
+at 33:20. Peak or RMS health cannot identify this failure while recording, and
+acoustic silence is not equivalent: a healthy Core Audio tap continues to emit
+silent PCM callbacks. Stopping the complete recording would discard healthy
+local speech, while checking through the `RecordingSession` actor for every
+chunk would serialize the capture hot path and live consumers.
+
+**Decision:** after the first persisted system frame, persisted microphone
+frames act as the recording heartbeat. Eight seconds without another system
+frame opens one content-free incident, emits stalled health, and requests the
+optional `RecoverableAudioCaptureSource` capability. `ProcessTapSource`
+implements that capability by rebuilding its tap, aggregate device, and IOProc
+on the existing stream and timeline. Continued outages request at most one
+additional recovery every eight seconds; the next system frame emits recovered
+health. Monitoring never starts before a real system frame, ignores room
+frames, and never interprets zero-valued samples as dead callbacks. Stream
+failure remains a separate terminal channel event. Detection is a deterministic
+lock-protected state machine on the writer path; only non-empty signals cross
+the recording actor to find and invoke the recoverable source. Capture and the
+microphone writer remain active throughout. ApplicationKit carries only the
+typed, content-free events, and the app presents an undismissable reconnecting
+warning plus a bounded recovery confirmation.
+
+**Rationale:** frame cadence, not audio content, is the reliable distinction
+between a silent meeting and a dead callback. Capability discovery keeps
+ordinary/test/room sources valid, in-place rebuilding conserves the durable
+timeline, and independent channel degradation preserves Portavoz's audio-first
+parity rule. Keeping the per-frame transition off the actor avoids adding a
+latency bottleneck to recording or live transcription. The policy and complete
+session-to-source path are deterministic unit evidence; successful recovery of
+a real Core Audio callback stall remains an explicit field gate.

@@ -46,19 +46,24 @@ public typealias StartRecordingCaptionHandler =
     @Sendable (TranscriptSegment) async -> Void
 public typealias StartRecordingChunkHandler =
     @Sendable (AudioChunk) -> Void
+public typealias StartRecordingHealthHandler =
+    @Sendable (RecordingCaptureHealthEvent) -> Void
 
 /// Live callbacks stay presentation-owned while the runtime owns stream
 /// setup and teardown. ApplicationKit never receives a concrete audio source.
 public struct StartRecordingLiveCallbacks: Sendable {
     public let caption: StartRecordingCaptionHandler
     public let chunk: StartRecordingChunkHandler
+    public let health: StartRecordingHealthHandler
 
     public init(
         caption: @escaping StartRecordingCaptionHandler = { _ in },
-        chunk: @escaping StartRecordingChunkHandler = { _ in }
+        chunk: @escaping StartRecordingChunkHandler = { _ in },
+        health: @escaping StartRecordingHealthHandler = { _ in }
     ) {
         self.caption = caption
         self.chunk = chunk
+        self.health = health
     }
 }
 

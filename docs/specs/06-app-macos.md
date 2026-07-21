@@ -675,7 +675,7 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
    **CaptionCoalescer**. A no-file startup failure rolls back only the empty
    shell; staging or published evidence preserves it as `needsAttention`
    (D37/D49).
-2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint.
+2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint. D120 callback health crosses the same application callback boundary: if remote frames stop while mic frames continue, the full view and compact HUD show a non-dismissible reconnecting warning, the tap rebuilds in place without stopping the microphone, and a recovered confirmation clears after five seconds.
 3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
    rename staging files without overwrite → one `installCapturedSnapshot`
    transaction for `captured` + finalized/missing assets + provisional live
@@ -886,10 +886,10 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 39 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 40 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + full Ask and command-palette answer/citation paths +
 interrupted staging recovery + durable post-capture resume + typed recording-
-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
+start recovery + visible system-callback recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
@@ -903,7 +903,7 @@ neither SQLite, audio, nor the encrypted participant-voice gallery can touch
 the user's library or Keychain. `-seed-recovery`,
 `-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`,
 `-seed-scale` with optional `-scale-auto-summary-update`,
-`-simulate-recording-start-failure`, and
+`-simulate-recording-start-failure`, `-simulate-system-capture-stall`, and
 `-seed-without-summary` are
 accepted only with the temp
 store. `-simulate-sequoia-capabilities` makes the Foundation Models adapter
@@ -918,9 +918,10 @@ assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-only screenshots at asserted
 Library, the identified command-palette panel, Insights, Meeting Detail,
 Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints
-so unrelated desktop content is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 39-case suite is green in the
-default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
+so unrelated desktop content is never captured. `make test-ui-en` and
+`make test-ui-es` use Xcode's explicit test language and region flags; the
+complete 40-case suite remains the bilingual release gate. **Real bug caught
+by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps
 before forming the range and has unit coverage.

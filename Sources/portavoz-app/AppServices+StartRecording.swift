@@ -10,11 +10,16 @@ extension AppServices {
     /// Recording-start workflow composed from platform preferences, capture
     /// runtime, filesystem evidence, and the durable MeetingStore adapter.
     var startRecording: StartRecording {
-        let runtime: any StartRecordingRuntime = isRecordingFailureFixture
-            ? UITestStartRecordingFailureRuntime()
-            : AppStartRecordingRuntime(
+        let runtime: any StartRecordingRuntime
+        if isRecordingFailureFixture {
+            runtime = UITestStartRecordingFailureRuntime()
+        } else if isSystemCaptureStallFixture {
+            runtime = UITestSystemCaptureStallRuntime()
+        } else {
+            runtime = AppStartRecordingRuntime(
                 services: self,
                 audioRoot: Self.audioRoot)
+        }
         return StartRecording(
             preferences: AppStartRecordingPreferences(),
             audioFiles: AppStartRecordingAudioFiles(root: Self.audioRoot),
@@ -26,6 +31,12 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
             && arguments.contains("-simulate-recording-start-failure")
+    }
+
+    private var isSystemCaptureStallFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-system-capture-stall")
     }
 }
 
@@ -44,6 +55,43 @@ private struct UITestStartRecordingFailureRuntime: StartRecordingRuntime {
 
     func cancelPreparation() async {}
     func scheduleIdleRelease() async {}
+}
+
+private struct UITestSystemCaptureStallRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        request.callbacks.health(.stalled(
+            channel: .system,
+            secondsWithoutFrames: 8))
+        request.callbacks.health(.recoveryRequested(
+            channel: .system,
+            attempt: 1,
+            secondsWithoutFrames: 8))
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
+}
+
+private actor UITestSystemCaptureStallSession: StartRecordingSession {
+    func stop() async -> StopRecordingCapture {
+        StopRecordingCapture(publishedFiles: [:])
+    }
+
+    func voiceprint() async -> Voiceprint? { nil }
+    func cancelVoiceprintRead() async {}
+    nonisolated func setMicrophoneMuted(_ value: Bool) {}
 }
 
 @MainActor
@@ -238,6 +286,8 @@ private actor AppStartRecordingSession: StartRecordingSession {
             try await recordingSession.start(sources: sources) { audio in
                 channelFeeds[audio.channel]?.yield(audio)
                 chunk(audio)
+            } onHealthEvent: { event in
+                request.callbacks.health(event)
             }
         } catch {
             await finishLiveStreams()

@@ -118,7 +118,7 @@ self-contained over system frameworks and carries no module dependency.
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
-| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
+| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
@@ -480,6 +480,18 @@ its checksum and level/health evidence, and performs a same-directory
 non-overwriting move to `<channel>.caf`. Stop then installs finalized assets,
 provisional live content, and initial durable work atomically.
 
+System-audio callback liveness is monitored independently from acoustic
+silence. Monitoring begins only after the first system frame, then persisted
+microphone frames provide a recording heartbeat. Eight seconds without another
+system frame emits a content-free health event and requests a best-effort,
+in-place `ProcessTapSource` graph rebuild; retries remain bounded to one request
+per eight seconds until frames return. Capture, the microphone writer, and the
+recording lifecycle never stop for this degradable recovery. A lock-protected
+state machine keeps the per-chunk check off the `RecordingSession` actor hot
+path, while source recovery remains actor-isolated. The application presents a
+non-dismissible warning and an explicit recovered state; callback or stream
+health events contain no audio or transcript content.
+
 At launch, expired leases are recovered before the application workflow
 resumes. It claims supported work serially, renews each lease, recomputes the
 input fingerprint before capability work, publishes through owner- and
@@ -501,6 +513,9 @@ flowchart LR
     MIC[MicrophoneSource] --> SESSION[RecordingSession actor]
     SYSTEM[ProcessTapSource] --> SESSION
     SESSION --> STAGED[per-channel staged CAF]
+    SESSION -. persisted-frame heartbeat .-> HEALTH[System callback liveness]
+    HEALTH -. rebuild request .-> SYSTEM
+    HEALTH --> NOTICE[Recording health UI]
     STAGED --> FINAL[validated final CAF]
     SESSION --> LIVE[Parakeet live transcription]
     FINAL --> DURABLE[Parakeet durable first pass]
@@ -760,8 +775,10 @@ human-readable versions in comments; repository hygiene rejects mutable tags.
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to bilingual
-evidence; unknown production Swift paths fall back to the complete English
-suite. An empty selector explicitly means every test; optional selector and
+canaries; unknown production Swift paths fall back to the complete English
+suite. The local selector compares the base with committed, staged, unstaged,
+and untracked paths by default, preventing an uncommitted pre-commit smoke from
+becoming an accidental no-op. An empty selector explicitly means every test; optional selector and
 locale arguments are assembled without empty-array expansion on the system
 Bash runtime. One `build-for-testing` result is reused across selected locales.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
@@ -775,7 +792,7 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 39-case English and Spanish suites remain the
+The complete 40-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 
@@ -916,9 +933,9 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 974 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 345 Swift source files;
-- 39 XCUITest cases pass in English and 39 in Spanish;
+- 978 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 347 Swift source files;
+- 40 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

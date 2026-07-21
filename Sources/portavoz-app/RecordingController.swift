@@ -36,6 +36,14 @@ final class RecordingController {
         case failed(String)
     }
 
+    enum SystemCaptureHealth: Equatable {
+        case healthy
+        case stalled(secondsWithoutFrames: TimeInterval)
+        case recovering(attempt: Int, secondsWithoutFrames: TimeInterval)
+        case recovered
+        case failed
+    }
+
     private(set) var phase: Phase = .idle
     private(set) var failureContext: FailureContext?
     private(set) var captions: [TranscriptSegment] = []
@@ -103,6 +111,8 @@ final class RecordingController {
     /// verified live model was ready. Stop will recover the complete transcript
     /// from finalized audio through the durable worker.
     private(set) var liveTranscriptDeferred = false
+    private(set) var systemCaptureHealth = SystemCaptureHealth.healthy
+    private var systemRecoveryNoticeTask: Task<Void, Never>?
 
     private func updateSystemLevel(_ rms: Float) {
         systemChunks += 1
@@ -206,6 +216,9 @@ final class RecordingController {
                     if magnitude > peak { peak = magnitude }
                 }
                 Task { @MainActor in self?.updateMicLevel(peak) }
+            },
+            health: { [weak self] event in
+                Task { @MainActor in self?.receiveCaptureHealth(event) }
             })
         let result = await services.startRecording.execute(StartRecordingRequest(
             eventTitle: event?.title,
@@ -241,6 +254,9 @@ final class RecordingController {
         voicedChunks = 0
         systemRMS = 0
         systemChunks = 0
+        systemCaptureHealth = .healthy
+        systemRecoveryNoticeTask?.cancel()
+        systemRecoveryNoticeTask = nil
         liveTurns = []
         liveSpeakerLabels = [:]
         tappedMeetingApps = []
@@ -660,6 +676,38 @@ extension RecordingController {
         services.requestSpotlightReindex()
     }
 
+}
+
+// Callback health is a cohesive presentation concern and stays outside the
+// already-large capture/persistence controller body.
+private extension RecordingController {
+    func receiveCaptureHealth(_ event: RecordingCaptureHealthEvent) {
+        let channel: AudioChannel
+        switch event {
+        case .stalled(let value, _), .recoveryRequested(let value, _, _),
+             .recovered(let value, _), .streamFailed(let value):
+            channel = value
+        }
+        guard channel == .system else { return }
+        systemRecoveryNoticeTask?.cancel()
+        switch event {
+        case .stalled(_, let secondsWithoutFrames):
+            systemCaptureHealth = .stalled(secondsWithoutFrames: secondsWithoutFrames)
+        case .recoveryRequested(_, let attempt, let secondsWithoutFrames):
+            systemCaptureHealth = .recovering(
+                attempt: attempt,
+                secondsWithoutFrames: secondsWithoutFrames)
+        case .recovered:
+            systemCaptureHealth = .recovered
+            systemRecoveryNoticeTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled, self?.systemCaptureHealth == .recovered else { return }
+                self?.systemCaptureHealth = .healthy
+            }
+        case .streamFailed:
+            systemCaptureHealth = .failed
+        }
+    }
 }
 
 // The rolling-summary pipeline is a cohesive concern and lives outside the

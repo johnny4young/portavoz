@@ -56,10 +56,23 @@ public actor RecordingSession {
     private var peaks: [AudioChannel: Float] = [:]
     private var rms: [AudioChannel: Float] = [:]
     private var errors: [AudioChannel: String] = [:]
+    private let systemLiveness: SystemCaptureLivenessMonitor
     public private(set) var isRecording = false
 
     public init(outputDirectory: URL) {
         self.outputDirectory = outputDirectory
+        systemLiveness = SystemCaptureLivenessMonitor()
+    }
+
+    init(
+        outputDirectory: URL,
+        livenessConfiguration: SystemCaptureLivenessPolicy.Configuration,
+        monotonicNow: @escaping @Sendable () -> TimeInterval
+    ) {
+        self.outputDirectory = outputDirectory
+        systemLiveness = SystemCaptureLivenessMonitor(
+            configuration: livenessConfiguration,
+            monotonicNow: monotonicNow)
     }
 
     /// Starts every source and streams its chunks into its own CAF file.
@@ -71,7 +84,8 @@ public actor RecordingSession {
     /// the writer ever waiting on it.
     public func start(
         sources newSources: [any AudioCaptureSource],
-        onChunk: (@Sendable (AudioChunk) -> Void)? = nil
+        onChunk: (@Sendable (AudioChunk) -> Void)? = nil,
+        onHealthEvent: (@Sendable (RecordingCaptureHealthEvent) -> Void)? = nil
     ) async throws {
         guard !isRecording else { return }
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
@@ -83,6 +97,7 @@ public actor RecordingSession {
                     AudioCapturePath.stagingFilename(for: channel))
                 let stream = try await source.start()
                 sources[channel] = source
+                let livenessMonitor = systemLiveness
 
                 consumers[channel] = Task { [weak self] in
                     var writer: CaptureFileWriter?
@@ -108,6 +123,12 @@ public actor RecordingSession {
                                 sumSquares += Double(magnitude) * Double(magnitude)
                             }
                             sampleCount += Int64(chunk.samples.count)
+                            let signals = livenessMonitor.observe(channel: chunk.channel)
+                            if !signals.isEmpty {
+                                let events = await self?.handleLiveness(signals)
+                                    ?? []
+                                for event in events { onHealthEvent?(event) }
+                            }
                             onChunk?(chunk)
                         }
                         let measuredRMS = sampleCount > 0
@@ -124,6 +145,7 @@ public actor RecordingSession {
                             rms: measuredRMS,
                             error: String(describing: error),
                             for: channel)
+                        onHealthEvent?(.streamFailed(channel: channel))
                     }
                 }
             }
@@ -191,8 +213,35 @@ public actor RecordingSession {
         peaks.removeAll()
         rms.removeAll()
         errors.removeAll()
+        systemLiveness.reset()
 
         return summary
+    }
+
+    private func handleLiveness(
+        _ signals: [SystemCaptureLivenessPolicy.Signal]
+    ) async -> [RecordingCaptureHealthEvent] {
+        var events: [RecordingCaptureHealthEvent] = []
+        for signal in signals {
+            switch signal {
+            case .stalled(let secondsWithoutFrames):
+                events.append(.stalled(
+                    channel: .system,
+                    secondsWithoutFrames: secondsWithoutFrames))
+            case .recoveryDue(let attempt, let secondsWithoutFrames):
+                guard let source = sources[.system] as? any RecoverableAudioCaptureSource else {
+                    continue
+                }
+                await source.requestRecovery()
+                events.append(.recoveryRequested(
+                    channel: .system,
+                    attempt: attempt,
+                    secondsWithoutFrames: secondsWithoutFrames))
+            case .recovered(let outageSeconds):
+                events.append(.recovered(channel: .system, outageSeconds: outageSeconds))
+            }
+        }
+        return events
     }
 
     private func register(writer: CaptureFileWriter, for channel: AudioChannel) {

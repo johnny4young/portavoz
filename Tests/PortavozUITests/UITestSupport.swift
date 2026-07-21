@@ -32,6 +32,7 @@ extension XCUIApplication {
         seedWithoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         simulateRecordingStartFailure: Bool = false,
+        simulateSystemCaptureStall: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -58,6 +59,9 @@ extension XCUIApplication {
         }
         if simulateRecordingStartFailure {
             app.launchArguments.append("-simulate-recording-start-failure")
+        }
+        if simulateSystemCaptureStall {
+            app.launchArguments.append("-simulate-system-capture-stall")
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }

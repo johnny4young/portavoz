@@ -24,7 +24,7 @@ import PortavozCore
 /// `@unchecked Sendable`: Core Audio object IDs are plain integers; mutable
 /// state is owned by `start()`/`stop()` and the serialized IO/rebuild queues.
 @available(macOS 14.4, *)
-public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
+public final class ProcessTapSource: RecoverableAudioCaptureSource, @unchecked Sendable {
     public let channel: AudioChannel = .system
 
     private let processIDs: [pid_t]
@@ -170,6 +170,13 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
                 self.rebuild(delay: 0.5)
             }
         }
+    }
+
+    /// Best-effort recovery requested after the writer observes that this tap
+    /// stopped delivering frames while the microphone remains alive. The
+    /// serialized rebuild queue preserves the current stream and its timeline.
+    public func requestRecovery() async {
+        rebuild()
     }
 
     private func installOutputDeviceListener() {

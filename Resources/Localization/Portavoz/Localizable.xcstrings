@@ -5891,6 +5891,46 @@
         }
       }
     },
+    "Remote audio capture failed. Stop and start a new recording to avoid losing the call.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló la captura del audio remoto. Detén e inicia una grabación nueva para evitar perder la llamada."
+          }
+        }
+      }
+    },
+    "Remote audio capture recovered.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura del audio remoto se recuperó."
+          }
+        }
+      }
+    },
+    "Remote audio interrupted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio remoto interrumpido"
+          }
+        }
+      }
+    },
+    "Remote audio stopped — reconnecting… Your microphone is still recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio remoto se detuvo — reconectando… Tu micrófono sigue grabando."
+          }
+        }
+      }
+    },
     "All tracked meeting processing stayed on this Mac.": {
       "localizations": {
         "es": {

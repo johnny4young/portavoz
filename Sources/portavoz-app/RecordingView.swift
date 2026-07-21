@@ -49,6 +49,9 @@ struct RecordingView: View {
                 if controller.systemAudioMissing && !systemWarningDismissed {
                     systemAudioBanner
                 }
+                if controller.systemCaptureHealth != .healthy {
+                    systemCaptureHealthBanner
+                }
                 if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
                     appTapBanner
                 }
@@ -467,6 +470,50 @@ struct RecordingView: View {
 // view body under the length limit. `private` stays file-scoped, so these
 // still reach `controller` and `systemWarningDismissed`.
 extension RecordingView {
+    /// A tap that stops invoking its callback is different from silent audio:
+    /// the remote timeline has stopped advancing. This critical notice cannot
+    /// be dismissed; it clears only after frames return or the recording ends.
+    var systemCaptureHealthBanner: some View {
+        Label {
+            Text(systemCaptureHealthMessage)
+        } icon: {
+            Image(systemName: systemCaptureHealthIcon)
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(systemCaptureHealthColor)
+        .padding(.horizontal, 20)
+        .accessibilityIdentifier("recording-system-capture-health")
+    }
+
+    private var systemCaptureHealthMessage: String {
+        switch controller.systemCaptureHealth {
+        case .healthy:
+            ""
+        case .stalled, .recovering:
+            L10n.text(
+                "Remote audio stopped — reconnecting… Your microphone is still recording.")
+        case .recovered:
+            L10n.text("Remote audio capture recovered.")
+        case .failed:
+            L10n.text(
+                "Remote audio capture failed. Stop and start a new recording to avoid losing the call.")
+        }
+    }
+
+    private var systemCaptureHealthIcon: String {
+        switch controller.systemCaptureHealth {
+        case .recovered: "checkmark.circle.fill"
+        case .healthy, .stalled, .recovering, .failed: "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var systemCaptureHealthColor: Color {
+        switch controller.systemCaptureHealth {
+        case .recovered: .green
+        case .healthy, .stalled, .recovering, .failed: .orange
+        }
+    }
+
     /// Audio is the primary artifact: a fresh install starts recording now,
     /// while the verified local model prepares in the background. The durable
     /// worker fills the complete transcript from the saved channels after Stop.
