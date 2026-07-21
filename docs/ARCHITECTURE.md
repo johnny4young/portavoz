@@ -114,14 +114,14 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports and the universal lexical transcript-content policy. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
-| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
+| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
@@ -548,6 +548,16 @@ only when the attributed transcript is homogeneous. Diarization failure
 degrades to an unattributed system channel; missing finalized audio remains a
 durable failure.
 
+`TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
+letter or digit is not speech. Whisper applies it while mapping model output;
+ApplicationKit applies it again to both Refine channels before microphone-only
+confidence and bleed rules; StorageKit rejects any accepted Refine aggregate
+that still contains a nonlexical row. Intelligence formatting independently
+filters legacy rows and assigns contiguous evidence tags only to admitted
+speech. This defense in depth prevents punctuation-only rows from becoming UI
+noise, search material, generated facts, or navigable evidence without using a
+language-specific word list.
+
 Transcript recognition language and generated-output language are independent.
 Automatic transcript policy leaves mixed-language meetings unhinted so each
 segment can retain the language spoken. Fixed transcript language is an
@@ -584,6 +594,16 @@ Every evidence write validates current transcript revision and live
 same-meeting sources. Missing, stale, deleted, ambiguous, or partially resolved
 evidence fails closed and disables navigation. Portable bundles remap every
 identity explicitly.
+
+Provider-authored tags establish source identity but not semantic support.
+Before a generated draft can reach persistence, IntelligenceKit retains each
+overview, decision, or action citation only when the rendered statement and
+cited transcript row share distinctive case/diacritic-folded lexical material;
+unsupported and cross-language-unverifiable links disappear while the summary
+text remains usable. The same admission stage removes empty/duplicate tasks and
+any normalized action item copied verbatim from the recipe's explicitly typed
+decision section. Translation pivots carry only evidence and tasks that already
+passed this source-language gate.
 
 ## Search, playback, and derived indexes
 
@@ -943,8 +963,8 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 986 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 349 Swift source files;
+- 991 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 351 Swift source files;
 - 41 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

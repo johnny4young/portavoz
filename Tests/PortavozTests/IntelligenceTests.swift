@@ -23,6 +23,7 @@ final class PromptFactoryTests: XCTestCase {
         XCTAssertTrue(instructions.contains("decision-bearing bullet"))
         XCTAssertTrue(instructions.contains("exactly one structured section entry"))
         XCTAssertTrue(instructions.contains("every supported action item"))
+        XCTAssertTrue(instructions.contains("A decision is not an action item"))
     }
 
     /// The language reminder must ride at the END of the user prompt —
@@ -103,7 +104,7 @@ final class TranscriptFormatterTests: XCTestCase {
     func testEvidenceFormatterMapsExactTagsAndRejectsUnknownReferences() {
         let segments = [
             TranscriptSegment(
-                meetingID: meeting, channel: .system, text: "first",
+                meetingID: meeting, channel: .system, text: ".",
                 startTime: 0, endTime: 1),
             TranscriptSegment(
                 meetingID: meeting, channel: .system, text: "second says [E1]",
@@ -112,12 +113,12 @@ final class TranscriptFormatterTests: XCTestCase {
         let material = TranscriptFormatter.formatWithEvidence(
             segments: segments, speakers: [])
 
-        XCTAssertTrue(material.text.contains("[E1] [00:00]"))
-        XCTAssertTrue(material.text.contains("[E2] [00:02]"))
+        XCTAssertFalse(material.text.contains("[00:00]"))
+        XCTAssertTrue(material.text.contains("[E1] [00:02]"))
         XCTAssertTrue(material.text.contains("second says [quoted-E1]"))
         XCTAssertEqual(
             TranscriptFormatter.resolveEvidenceTags(
-                ["E2", "E99", "E2", "e1"],
+                ["E1", "E99", "E1", "e1"],
                 segmentIDsByTag: material.segmentIDsByTag),
             [segments[1].id])
         XCTAssertTrue(
@@ -169,13 +170,15 @@ final class StructuredSummaryTests: XCTestCase {
 
     func testDraftCreatesOnlyValidatedOverviewEvidence() {
         let first = TranscriptSegment(
-            meetingID: meeting, channel: .system, text: "first",
+            meetingID: meeting, channel: .system, text: "Unrelated scheduling context",
             startTime: 0, endTime: 1)
         let second = TranscriptSegment(
-            meetingID: meeting, channel: .system, text: "second",
+            meetingID: meeting, channel: .system,
+            text: "El presupuesto trimestral quedó aprobado.",
             startTime: 2, endTime: 3)
         var cited = summary
-        cited.overviewEvidence = ["E2", "E404", "E2"]
+        cited.overview = "El presupuesto trimestral quedó aprobado."
+        cited.overviewEvidence = ["E1", "E2", "E404", "E2"]
         let request = SummaryRequest(
             meetingID: meeting,
             segments: [first, second],
@@ -187,6 +190,25 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(draft.claims.first?.kind, .overview)
         XCTAssertEqual(draft.claims.first?.evidenceSegmentIDs, [second.id])
         XCTAssertTrue(cited.draft(for: request, includeEvidence: false).claims.isEmpty)
+    }
+
+    func testDraftDropsAuthenticatedButUnrelatedEvidence() {
+        let segment = TranscriptSegment(
+            meetingID: meeting, channel: .system,
+            text: "The cafeteria closes at six.",
+            startTime: 0, endTime: 1)
+        let cited = StructuredSummary(
+            overview: "The production rollout was approved.",
+            sections: [],
+            actionItems: [],
+            overviewEvidence: ["E1"])
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [segment],
+            speakers: [],
+            recipe: .general)
+
+        XCTAssertTrue(cited.draft(for: request).claims.isEmpty)
     }
 
     func testDraftCreatesPositionTypedDecisionEvidenceFromExactTags() throws {
@@ -203,7 +225,7 @@ final class StructuredSummaryTests: XCTestCase {
                 .init(
                     heading: "Decisions",
                     bullets: ["Ship Friday", "Keep local"],
-                    bulletEvidence: [["E2", "E404", "E2"], []]),
+                    bulletEvidence: [["E1", "E2", "E404", "E2"], []]),
                 .init(heading: "Action Items", bullets: []),
                 .init(heading: "Open Questions", bullets: ["Budget?"])
             ],
@@ -265,7 +287,7 @@ final class StructuredSummaryTests: XCTestCase {
                 .init(
                     text: "Prepare rollout",
                     owner: "",
-                    evidence: ["E2", "E404", "E2"])
+                    evidence: ["E1", "E2", "E404", "E2"])
             ])
         let request = SummaryRequest(
             meetingID: meeting,
@@ -278,6 +300,44 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(evidence.actionItemID, draft.actionItems[0].id)
         XCTAssertEqual(evidence.evidenceSegmentIDs, [second.id])
         XCTAssertTrue(cited.draft(for: request, includeEvidence: false).actionItemEvidence.isEmpty)
+    }
+
+    func testDraftRejectsDecisionCopiedVerbatimAsActionItem() {
+        let copied = "Adopt Parakeet for local transcription"
+        let cited = StructuredSummary(
+            overview: "The team selected a local engine.",
+            sections: [
+                .init(heading: "Overview", bullets: []),
+                .init(heading: "Decisions", bullets: [copied]),
+                .init(heading: "Action Items", bullets: []),
+                .init(heading: "Open Questions", bullets: [])
+            ],
+            actionItems: [
+                .init(text: copied, evidence: ["E1"]),
+                .init(text: "Prepare the rollout checklist", evidence: ["E2"])
+            ])
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting, channel: .system,
+                text: copied, startTime: 0, endTime: 1),
+            TranscriptSegment(
+                meetingID: meeting, channel: .system,
+                text: "Ana will prepare the rollout checklist.",
+                startTime: 2, endTime: 3)
+        ]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: segments,
+            speakers: [],
+            recipe: .general)
+
+        let draft = cited.draft(for: request)
+        XCTAssertEqual(draft.actionItems.map(\.text), ["Prepare the rollout checklist"])
+        XCTAssertFalse(draft.markdown.contains("- [ ] \(copied)"))
+        XCTAssertEqual(draft.actionItemEvidence.count, 1)
+        XCTAssertEqual(
+            draft.actionItemEvidence.first?.actionItemID,
+            draft.actionItems.first?.id)
     }
 
     func testTranslationPreservesValidDecisionCoordinatesWithFreshIdentity() throws {

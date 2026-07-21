@@ -337,7 +337,8 @@ public struct RefineMeeting: ApplicationUseCase {
                 audioDuration: result.audioDuration,
                 processingTime: result.processingTime,
                 speedFactor: result.speedFactor))
-            segments.append(contentsOf: result.segments)
+            segments.append(contentsOf: TranscriptContentPolicy.retainLexicalSegments(
+                result.segments))
             try Task.checkCancellation()
         }
         if let microphone = audio.microphone, !microphone.isSilent {
@@ -351,7 +352,7 @@ public struct RefineMeeting: ApplicationUseCase {
                 audioDuration: result.audioDuration,
                 processingTime: result.processingTime,
                 speedFactor: result.speedFactor))
-            let voiced = result.segments.filter {
+            let voiced = TranscriptContentPolicy.retainLexicalSegments(result.segments).filter {
                 !TranscriptNoiseFilter.isLikelyNoise(
                     text: $0.text,
                     confidence: $0.confidence)

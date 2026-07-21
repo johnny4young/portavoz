@@ -18,7 +18,7 @@ enum TranscriptionTextFilter {
     ]
 
     static func hasLexicalContent(_ text: String) -> Bool {
-        text.unicodeScalars.contains { lexicalCharacters.contains($0) }
+        TranscriptContentPolicy.hasLexicalContent(text)
     }
 
     static func normalizedPhrase(_ text: String) -> String {

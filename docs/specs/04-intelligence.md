@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -22,9 +22,16 @@ one `bulletEvidence` E-tag array per bullet) + actionItems
 (owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)` resolves owners against
 Speakers by label/displayName (case-insensitive) and admits only tags emitted
 for that request. Unknown, altered, repeated, or excess tags disappear; no
-valid tag or an empty overview produces no claim. Tag-shaped literals in
+valid tag, no distinctive lexical overlap, or an empty overview produces no claim. Tag-shaped literals in
 transcript text, speaker names, and user notes are escaped before prompting,
 so content cannot impersonate the provider-owned namespace.
+
+`TranscriptFormatter` excludes legacy rows without letters or digits before
+prompting and numbers only admitted rows, keeping tags contiguous. Exact tag
+resolution is followed by `SummaryEvidenceAdmission`: every overview, typed
+decision, and action source must share a distinctive folded token with the
+statement it supports. If paraphrase or output-language translation prevents a
+deterministic check, the link fails closed while generated text remains visible.
 
 ## Typed overview evidence (D87)
 
@@ -64,7 +71,11 @@ older Ollama/BYOK/MLX responses remain decodable. Foundation Models guided
 generation exposes the same per-item shape. `draft(for:)` first creates each
 durable `ActionItem`, then resolves only exact request-local E-tags into a
 separate `SummaryActionItemEvidence` keyed to that new task ID. Unknown,
-duplicate, altered, empty, or rolling-note tags produce no evidence.
+duplicate, altered, empty, lexically unrelated, or rolling-note tags produce
+no evidence. `SummaryActionAdmission` also removes empty/duplicate tasks and an
+action copied verbatim from a recipe's typed decision section before Markdown,
+action identity, or evidence is created. Provider prompts independently state
+that decisions are not tasks; the deterministic gate remains authoritative.
 
 Translation creates fresh action-item IDs and carries matching evidence by
 task position with fresh evidence IDs; bullet/Markdown coordinates are not

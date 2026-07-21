@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission).
 
 ## Roles and engines (D7)
 
@@ -161,9 +161,12 @@ overrides the sampled policy; automatic mixed-language evidence leaves the
 Whisper hint `nil`, and the aggregate language is recomputed only when the
 result is homogeneous. Summary/UI language never enters recognition.
 
-Digitally silent channels never reach Whisper. Microphone results pass through
-`TranscriptNoiseFilter` and then `MicBleedFilter`, preserving the released
-anti-hallucination and echo behavior. Required preparation/transcription errors
+Digitally silent channels never reach Whisper. `TranscriptContentPolicy`
+removes rows with no letter or digit from both system and microphone results;
+Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
+and intelligence formatting independently enforce the same minimum. Microphone
+results then pass through `TranscriptNoiseFilter` and `MicBleedFilter`,
+preserving the released anti-hallucination and echo behavior. Required preparation/transcription errors
 propagate; diarization degrades to honest unattributed segments; cancellation
 is never swallowed. Every exit after model ownership begins schedules both
 Whisper and recording-engine idle release. The draft carries the source

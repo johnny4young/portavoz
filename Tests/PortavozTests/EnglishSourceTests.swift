@@ -111,6 +111,11 @@ final class EnglishSourceTests: XCTestCase {
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
+        if relative == "Sources/IntelligenceKit/SummaryOutputAdmission.swift" {
+            // This exact line is a bilingual stop-word lexicon used as data by
+            // evidence admission; all explanatory source prose remains English.
+            return line.contains("acordo") && line.contains("reunión")
+        }
         if relative == "Sources/portavoz-app/SettingsView.swift", line.contains("Español") {
             return true
         }

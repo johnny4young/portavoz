@@ -149,7 +149,12 @@ extension StructuredSummary {
         for request: SummaryRequest,
         includeEvidence: Bool = true
     ) -> SummaryDraft {
-        let items = actionItems.map { item -> ActionItem in
+        var admitted = self
+        admitted.actionItems = SummaryActionAdmission.admittedItems(
+            actionItems,
+            sections: sections,
+            recipe: request.recipe)
+        let items = admitted.actionItems.map { item -> ActionItem in
             let owner = request.speakers.first { speaker in
                 speaker.label.caseInsensitiveCompare(item.owner) == .orderedSame
                     || speaker.displayName?.caseInsensitiveCompare(item.owner) == .orderedSame
@@ -159,27 +164,36 @@ extension StructuredSummary {
         let evidence = TranscriptFormatter.formatWithEvidence(
             segments: request.segments,
             speakers: request.speakers)
-        let evidenceIDs = includeEvidence
+        let segmentsByID = Dictionary(
+            request.segments.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first })
+        let resolvedOverviewIDs = includeEvidence
             ? TranscriptFormatter.resolveEvidenceTags(
-                overviewEvidence ?? [], segmentIDsByTag: evidence.segmentIDsByTag)
+                admitted.overviewEvidence ?? [], segmentIDsByTag: evidence.segmentIDsByTag)
             : []
+        let evidenceIDs = SummaryEvidenceAdmission.validatedSegmentIDs(
+            for: admitted.overview,
+            candidateIDs: resolvedOverviewIDs,
+            segmentsByID: segmentsByID)
         let claims = evidenceIDs.isEmpty
-            || overview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || admitted.overview.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? []
             : [SummaryClaim(kind: .overview, evidenceSegmentIDs: evidenceIDs)]
-        let decisions = typedDecisionEvidence(
+        let decisions = admitted.typedDecisionEvidence(
             for: request,
             segmentIDsByTag: evidence.segmentIDsByTag,
+            segmentsByID: segmentsByID,
             includeEvidence: includeEvidence)
-        let actionEvidence = typedActionItemEvidence(
+        let actionEvidence = admitted.typedActionItemEvidence(
             items: items,
             segmentIDsByTag: evidence.segmentIDsByTag,
+            segmentsByID: segmentsByID,
             includeEvidence: includeEvidence)
         return SummaryDraft(
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
             language: request.targetLanguage,
-            markdown: markdown(recipe: request.recipe),
+            markdown: admitted.markdown(recipe: request.recipe),
             actionItems: items,
             claims: claims,
             decisionEvidence: decisions,
@@ -190,6 +204,7 @@ extension StructuredSummary {
     private func typedActionItemEvidence(
         items: [ActionItem],
         segmentIDsByTag: [String: UUID],
+        segmentsByID: [UUID: TranscriptSegment],
         includeEvidence: Bool
     ) -> [SummaryActionItemEvidence] {
         guard includeEvidence, items.count == actionItems.count else { return [] }
@@ -197,16 +212,21 @@ extension StructuredSummary {
             let ids = TranscriptFormatter.resolveEvidenceTags(
                 structured.evidence ?? [],
                 segmentIDsByTag: segmentIDsByTag)
-            guard !ids.isEmpty else { return nil }
+            let validatedIDs = SummaryEvidenceAdmission.validatedSegmentIDs(
+                for: structured.text,
+                candidateIDs: ids,
+                segmentsByID: segmentsByID)
+            guard !validatedIDs.isEmpty else { return nil }
             return SummaryActionItemEvidence(
                 actionItemID: item.id,
-                evidenceSegmentIDs: ids)
+                evidenceSegmentIDs: validatedIDs)
         }
     }
 
     private func typedDecisionEvidence(
         for request: SummaryRequest,
         segmentIDsByTag: [String: UUID],
+        segmentsByID: [UUID: TranscriptSegment],
         includeEvidence: Bool
     ) -> [SummaryDecisionEvidence] {
         guard includeEvidence,
@@ -227,11 +247,15 @@ extension StructuredSummary {
                 let ids = TranscriptFormatter.resolveEvidenceTags(
                     tags,
                     segmentIDsByTag: segmentIDsByTag)
-                guard !ids.isEmpty else { continue }
+                let validatedIDs = SummaryEvidenceAdmission.validatedSegmentIDs(
+                    for: section.bullets[bulletOrdinal],
+                    candidateIDs: ids,
+                    segmentsByID: segmentsByID)
+                guard !validatedIDs.isEmpty else { continue }
                 result.append(SummaryDecisionEvidence(
                     sectionOrdinal: renderedSectionOrdinal,
                     bulletOrdinal: bulletOrdinal,
-                    evidenceSegmentIDs: ids))
+                    evidenceSegmentIDs: validatedIDs))
             }
         }
         return result

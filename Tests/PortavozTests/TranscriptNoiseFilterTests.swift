@@ -63,3 +63,17 @@ final class TranscriptNoiseFilterTests: XCTestCase {
         XCTAssertFalse(noise("You can do that one, okay?", nil))
     }
 }
+
+final class TranscriptContentPolicyTests: XCTestCase {
+    func testPunctuationSymbolsAndEmojiHaveNoLexicalContent() {
+        for text in ["", " ", ".", "...", "—", "¿?", "👏"] {
+            XCTAssertFalse(TranscriptContentPolicy.hasLexicalContent(text), text)
+        }
+    }
+
+    func testLettersDigitsAndAccentedSpeechAreLexical() {
+        for text in ["a", "2026", "¿Qué pasó?", "ação", "日本語"] {
+            XCTAssertTrue(TranscriptContentPolicy.hasLexicalContent(text), text)
+        }
+    }
+}

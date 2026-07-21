@@ -3696,3 +3696,36 @@ audio, or duplicating verified model ownership. Durable recovery preserves
 feature parity for the pre-attachment interval. Finite content-free states make
 degradation understandable and testable while keeping platform Translation and
 speech engines in the executable adapter.
+
+## D122 — Admit lexical transcript and grounded generated output before persistence (Jul 2026)
+
+**Context:** field inspection found punctuation-only system rows in an accepted
+Refine transcript. Those rows also entered summary material, and one generated
+summary attached every claim to the same unrelated late segments while copying
+decision bullets into action items. Exact request-local E-tags prove that a
+provider selected a real row, but they do not prove that the row supports the
+rendered statement. Channel-specific microphone confidence policy cannot guard
+system output, legacy rows, or provider semantics.
+
+**Decision:** `PortavozCore.TranscriptContentPolicy` defines one language-neutral
+minimum: a transcript row must contain at least one Unicode letter or decimal
+digit. Whisper mapping, ApplicationKit Refine for both channels, StorageKit's
+accepted-Refine Unit of Work, and IntelligenceKit transcript formatting enforce
+that contract independently. Microphone confidence and bleed filtering remain
+additional narrower rules. Intelligence assigns evidence tags only after this
+filter. `StructuredSummary.draft(for:)` then admits an overview, decision, or
+action evidence link only when the rendered statement and cited row share at
+least one distinctive case- and diacritic-folded token; unverifiable links fail
+closed without deleting generated text. The same pre-persistence boundary
+deduplicates tasks and rejects any normalized action copied verbatim from the
+recipe's explicitly typed decision section. Translation carries only artifacts
+that passed the original source-language gate.
+
+**Rationale:** lexical integrity belongs to the domain and aggregate boundaries,
+not to one ASR adapter or view. Defense in depth keeps old corrupt rows from
+becoming new model facts while preventing future Refine transactions from
+reintroducing them. Evidence authenticity and semantic support are separate
+properties; a conservative false negative merely hides a source link, whereas a
+false positive presents unrelated speech as proof. Exact decision-copy
+rejection fixes the observed non-action without relying on provider obedience or
+language-specific action-verb heuristics.

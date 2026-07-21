@@ -34,6 +34,9 @@ public enum PromptFactory {
             "Report commitments exclusively through the dedicated action-items field, "
                 + "never as a summary section.")
         lines.append(
+            "A decision is not an action item: never copy a decision bullet into the "
+                + "action-items field unless the transcript states a separate commitment.")
+        lines.append(
             "When the material has [E#] tags, cite only exact tags that directly support "
                 + "the overview, a decision-bearing bullet, or an action item; "
                 + "never invent or alter a tag.")
