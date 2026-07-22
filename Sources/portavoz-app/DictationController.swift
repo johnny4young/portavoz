@@ -191,13 +191,15 @@ final class DictationController {
             panel.close()
             return
         }
-        TextInserter.insert(text)
-        // Confirm the insertion for a beat, then fade — the user sees it took.
-        let words = text.split(whereSeparator: \.isWhitespace).count
-        phase = .inserted(words)
         Task { [weak self] in
+            // The insert awaits the physical modifier release, so the
+            // confirmation below appears when the paste actually posted.
+            await TextInserter.insert(text)
+            guard let self else { return }
+            let words = text.split(whereSeparator: \.isWhitespace).count
+            self.phase = .inserted(words)
             try? await Task.sleep(for: .milliseconds(1600))
-            guard let self, case .inserted = self.phase else { return }
+            guard case .inserted = self.phase else { return }
             self.phase = .idle
             self.panel.close()
         }

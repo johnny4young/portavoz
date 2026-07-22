@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 22, 2026
+
+- **📋 Dictation that respects your clipboard** — Pasting a dictation no longer destroys rich clipboard content: images, files, and styled text are fully restored, a clipboard manager is never overwritten, the paste works on Dvorak and non-Latin keyboard layouts, and the synthesized ⌘V waits for your hotkey fingers to lift so it can never trigger a different shortcut.
+
 ## July 21, 2026
 
 - **🗣️ One clear live-caption failure** — If live captions cannot start, Portavoz now shows that terminal explanation once instead of also promising that translation will begin when captions arrive.
