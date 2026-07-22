@@ -25,6 +25,11 @@ must be deployed before publication. Create/download a **Developer ID** macOS
 provisioning profile for that App ID; an App Store or development profile is
 not a substitute for the direct-download artifact. Do not commit the profile.
 
+Xcode's direct-distribution profile may represent its iCloud service grant as
+the wildcard `*`. The release gate accepts that Apple-issued profile form while
+still requiring the signed app itself to narrow the entitlement to exactly
+`["CloudKit"]`, the production environment, and Portavoz's single container.
+
 ## 1. Pre-flight (repo must be clean & green)
 
 ```sh

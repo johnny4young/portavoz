@@ -1926,7 +1926,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("embedded.provisionprofile"))
         XCTAssertTrue(verifier.contains("security cms -D"))
         XCTAssertTrue(verifier.contains("profile.get(\"ExpirationDate\")"))
-        XCTAssertTrue(verifier.contains("actual.get(key) != value"))
+        XCTAssertTrue(verifier.contains("allow_icloud_services_wildcard=True"))
+        XCTAssertTrue(verifier.contains("actual.get(key) in (\"*\", [\"*\"])"))
         XCTAssertTrue(release.contains("PORTAVOZ_SIGN_IDENTITY:?"))
         XCTAssertTrue(release.contains("PORTAVOZ_NOTARY_PROFILE:?"))
         let preflight = try XCTUnwrap(diskImage.range(

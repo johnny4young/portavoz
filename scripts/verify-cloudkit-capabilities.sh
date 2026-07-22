@@ -24,11 +24,14 @@ trap 'rm -rf "$WORK"' EXIT
 codesign -d --entitlements :- "$APP" > "$SIGNED"
 security cms -D -i "$PROFILE" > "$PROFILE_PLIST"
 
-# Exact arrays matter: accepting an unrelated container or service would make
-# the tracked release contract differ from what was actually signed. Python's
-# plist parser also lets the gate reject an expired profile before notarization.
+# Exact app entitlements matter: accepting an unrelated container or service
+# would make the tracked release contract differ from what was actually signed.
+# Apple may authorize all iCloud services in a Developer ID direct profile with
+# the wildcard value `*`; the app signature must still narrow that authorization
+# to CloudKit. Python's plist parser also lets the gate reject an expired profile
+# before notarization.
 python3 - "$SIGNED" "$PROFILE_PLIST" <<'PY'
-from datetime import datetime
+from datetime import datetime, timezone
 import plistlib
 import sys
 
@@ -45,18 +48,29 @@ expected = {
     "com.apple.developer.aps-environment": "production",
 }
 
-def verify(label, actual):
+def verify(label, actual, allow_icloud_services_wildcard=False):
     for key, value in expected.items():
+        if (
+            allow_icloud_services_wildcard
+            and key == "com.apple.developer.icloud-services"
+            and actual.get(key) in ("*", ["*"])
+        ):
+            continue
         if actual.get(key) != value:
             observed = actual.get(key, "<missing>")
             raise SystemExit(f"{label} has {key} = {observed!r}; expected {value!r}")
 
 verify("signed app", signed)
-verify("provisioning profile", profile.get("Entitlements", {}))
+verify(
+    "provisioning profile",
+    profile.get("Entitlements", {}),
+    allow_icloud_services_wildcard=True,
+)
 expiration = profile.get("ExpirationDate")
 if not isinstance(expiration, datetime):
     raise SystemExit("provisioning profile has no valid ExpirationDate")
-if expiration <= datetime.utcnow():
+now = datetime.now(timezone.utc).replace(tzinfo=None)
+if expiration <= now:
     raise SystemExit(f"provisioning profile expired at {expiration.isoformat()}Z")
 PY
 
