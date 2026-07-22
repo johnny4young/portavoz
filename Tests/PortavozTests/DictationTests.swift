@@ -69,4 +69,14 @@ final class DictationAssemblerTests: XCTestCase {
         XCTAssertEqual(DictationAssembler.text(confirmed: "", partial: "solo parcial"), "solo parcial")
         XCTAssertEqual(DictationAssembler.text(confirmed: "", partial: ""), "")
     }
+
+    func testLexicalContentGateKeepsWordsAndRejectsNoiseArtifacts() {
+        XCTAssertTrue(DictationAssembler.hasLexicalContent("sí"))
+        XCTAssertTrue(DictationAssembler.hasLexicalContent("reunión a las 3"))
+        XCTAssertTrue(DictationAssembler.hasLexicalContent("ok!"))
+        XCTAssertFalse(DictationAssembler.hasLexicalContent(""))
+        XCTAssertFalse(DictationAssembler.hasLexicalContent("."))
+        XCTAssertFalse(DictationAssembler.hasLexicalContent("…"))
+        XCTAssertFalse(DictationAssembler.hasLexicalContent("¿? ,,, —"))
+    }
 }

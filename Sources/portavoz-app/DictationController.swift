@@ -84,6 +84,16 @@ final class DictationController {
     private static let holdThreshold: TimeInterval = 0.5
     private var pressedAt: Date?
 
+    /// The mic keeps capturing this long after the finish gesture so the
+    /// tail of the last word survives — stopping on the release clips it
+    /// mid-phoneme.
+    private static let stopTail: Duration = .milliseconds(250)
+    /// A finish gesture earlier than this is an accidental tap: with the
+    /// stop tail it still yields under ~1 s of audio, which cannot carry a
+    /// deliberate dictation. Discarded silently — no error for a slip.
+    private static let minimumCapture: TimeInterval = 0.75
+    private var listeningSince: Date?
+
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
         switch phase {
@@ -113,6 +123,7 @@ final class DictationController {
         confirmedText = ""
         partialText = ""
         micLevel = 0
+        listeningSince = Date()
         panel.show(controller: self)
 
         session = Task { [weak self, weak services] in
@@ -164,8 +175,16 @@ final class DictationController {
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
         guard phase == .listening else { return }
+        let elapsed = listeningSince.map { Date().timeIntervalSince($0) } ?? .infinity
+        guard elapsed >= Self.minimumCapture else {
+            cancel()
+            return
+        }
         let microphone = self.microphone
-        Task { await microphone?.stop() }
+        Task {
+            try? await Task.sleep(for: Self.stopTail)
+            await microphone?.stop()
+        }
     }
 
     /// Esc in the panel: throw everything away.
@@ -186,7 +205,7 @@ final class DictationController {
         microphone = nil
         feed = nil
         session = nil
-        guard !text.isEmpty else {
+        guard DictationAssembler.hasLexicalContent(text) else {
             phase = .idle
             panel.close()
             return

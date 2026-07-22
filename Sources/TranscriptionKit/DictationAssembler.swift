@@ -10,4 +10,12 @@ public enum DictationAssembler {
             .filter { !$0.isEmpty }
         return pieces.joined(separator: " ")
     }
+
+    /// A dictation worth pasting carries at least one letter or digit. A
+    /// noise artifact that decodes to bare punctuation ("." or "…") must
+    /// never land in the target app — same lexical bar the meeting refine
+    /// applies to transcript rows.
+    public static func hasLexicalContent(_ text: String) -> Bool {
+        text.contains { $0.isLetter || $0.isNumber }
+    }
 }
