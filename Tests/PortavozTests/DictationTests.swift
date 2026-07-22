@@ -56,6 +56,20 @@ final class PasteboardSnapshotTests: XCTestCase {
     }
 }
 
+/// The privacy gate that keeps dictation out of password fields.
+final class SecureFieldGateTests: XCTestCase {
+    func testSecureSubroleOrRoleBlocksAndEverythingElsePasses() {
+        XCTAssertTrue(TextInserter.isSecureField(
+            role: "AXTextField", subrole: "AXSecureTextField"))
+        XCTAssertTrue(TextInserter.isSecureField(
+            role: "AXSecureTextField", subrole: nil))
+        XCTAssertFalse(TextInserter.isSecureField(
+            role: "AXTextField", subrole: "AXSearchField"))
+        XCTAssertFalse(TextInserter.isSecureField(role: "AXTextArea", subrole: nil))
+        XCTAssertFalse(TextInserter.isSecureField(role: nil, subrole: nil))
+    }
+}
+
 /// Pure text assembly for system-wide dictation.
 final class DictationAssemblerTests: XCTestCase {
     func testJoinsConfirmedAndPartial() {

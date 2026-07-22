@@ -7180,6 +7180,16 @@
           }
         }
       }
+    },
+    "Dictation never types into password fields.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado nunca escribe en campos de contraseña."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 22, 2026
 
+- **🔐 Dictation stays out of password fields** — If your cursor is in a password box when a dictation finishes, Portavoz refuses to type and tells you why, so spoken words never become a visible secret.
 - **🎙️ Dictation keeps your last word** — The mic now captures a beat past the release so the end of your sentence never gets clipped, an accidental hotkey tap cancels silently instead of flashing a panel, and a stray noise artifact can no longer paste bare punctuation into your document.
 - **📋 Dictation that respects your clipboard** — Pasting a dictation no longer destroys rich clipboard content: images, files, and styled text are fully restored, a clipboard manager is never overwritten, the paste works on Dvorak and non-Latin keyboard layouts, and the synthesized ⌘V waits for your hotkey fingers to lift so it can never trigger a different shortcut.
 

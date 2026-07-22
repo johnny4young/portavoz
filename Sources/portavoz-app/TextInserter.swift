@@ -23,6 +23,36 @@ enum TextInserter {
     /// contents instead of the dictation.
     static let restoreDelay: Duration = .milliseconds(1500)
 
+    /// True when the element that would receive the paste is a password
+    /// field. Checked at delivery time — focus can move between starting a
+    /// dictation and finishing it — so spoken text can never land in a
+    /// secure field, where it would sit as a plaintext secret.
+    @MainActor
+    static func focusedFieldIsSecure() -> Bool {
+        let systemWide = AXUIElementCreateSystemWide()
+        var focused: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(
+            systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
+        guard status == .success, let focused,
+            CFGetTypeID(focused) == AXUIElementGetTypeID()
+        else { return false }
+        // The cast through CFTypeRef is the sanctioned bridge for AX values.
+        // swiftlint:disable:next force_cast
+        let element = focused as! AXUIElement
+        var role: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        var subrole: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
+        return isSecureField(role: role as? String, subrole: subrole as? String)
+    }
+
+    /// Pure decision, split out for tests: secure text fields report the
+    /// `AXSecureTextField` subrole (some apps put it in the role instead).
+    static func isSecureField(role: String?, subrole: String?) -> Bool {
+        let secure = "AXSecureTextField"
+        return role == secure || subrole == secure
+    }
+
     /// Pastes `text` into the frontmost app, then restores the previous
     /// clipboard contents after the paste has landed. Waits for the physical
     /// hotkey modifiers to be released first, so the synthesized ⌘V cannot

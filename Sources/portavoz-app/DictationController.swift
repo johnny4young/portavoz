@@ -210,6 +210,14 @@ final class DictationController {
             panel.close()
             return
         }
+        // Privacy gate: spoken text must never become a plaintext secret in a
+        // password field. Checked here, not at start — focus can move while
+        // dictating.
+        guard !TextInserter.focusedFieldIsSecure() else {
+            phase = .failed(L10n.text("Dictation never types into password fields."))
+            scheduleFailureDismiss()
+            return
+        }
         Task { [weak self] in
             // The insert awaits the physical modifier release, so the
             // confirmation below appears when the paste actually posted.
