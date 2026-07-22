@@ -97,6 +97,19 @@ output.
 
 **Incremental APIs** (for the rolling summary): `condenseWindow(segments…)` (one map pass over ONLY new content), `condenseNotes(text…)` (collapses the stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app uses them as follows (spec 06): note per 40 s tick over new closed rows → note stack → collapse at > 6000 chars → render; `LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one (visible monotonicity).
 
+## Prompt-injection guard (Jul 2026, pure, tested)
+
+Every prompt that carries meeting material states that the material is quoted
+speech between participants who are never addressing the model: embedded
+requests, commands, and formatting orders are content to report, never
+instructions to follow (`PromptFactory.sourceMaterialGuard()` in summary and
+map-phase notes instructions; equivalent lines in the Companion classifier and
+knowledge prompts). On the output side, `CompanionAnswer.usable` strips
+assistant preambles ("Sure, here's the answer:", "Claro, ...") and drops
+role-drift responses ("as an AI ...") alongside the existing hedges — no card
+beats a drifted card. Accented Spanish vowels in those patterns ride as ICU
+escapes so the file stays inside the English-source gate.
+
 ## Language and glossary — `PromptFactory` (pure, tested)
 
 - **Output policy is independent from recognition (D35):**
