@@ -649,6 +649,17 @@ panel. The slice gate is 667 package tests (13 gated), strict SwiftLint is
 clean across 249 Swift source files, and all 23 XCUITest cases pass in English
 and Spanish (D76).
 
+The real-call field protocol in `docs/FIELD-VALIDATION.md` revalidates every
+format-v2 support key and bounded value before atomically publishing a new
+owner-only evidence directory. `scripts/collect-field-evidence.py` rejects unknown fields,
+content-bearing additions, malformed counts/digests/timestamps, non-Portavoz
+bundles, and `/Applications/Portavoz.app`; its manifest contains only enumerated
+scenario checks, elapsed seconds, app/macOS versions, and support-report metadata.
+Six tooling cases prove valid packaging, path-free manifests, owner-only modes,
+format rejection, unknown-key rejection, release-app refusal, and scenario-check
+scoping, including rejection of natural language smuggled through an identifier
+field. No audio, transcript text, database, or screenshot enters this workflow.
+
 Band 3 slice 3J adds typed Start and Stop unit cases for preparation,
 reservation, capture reconciliation, fallback persistence, critical recovery
 persistence, and destructive cleanup outcomes. The 30th architecture case
