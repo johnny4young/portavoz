@@ -31,6 +31,7 @@ not a substitute for the direct-download artifact. Do not commit the profile.
 git switch main && git pull --ff-only origin main
 git status --short          # must be empty — clean any stray *.d / *.dia / *.swiftdeps first
 swift test                  # green (DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test if "no such module")
+swift test --filter StorageUpgradeTests # clean install + v0.6.0 library upgrade/reopen
 swiftlint --strict          # 0 violations
 ```
 

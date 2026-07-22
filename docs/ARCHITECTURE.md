@@ -974,7 +974,10 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 998 package tests pass, with 13 real-model/environment cases gated;
+- 1,000 package tests pass, with 13 real-model/environment cases gated;
+- disposable clean-install and exact v0.6.0-to-current file-library upgrade
+  rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
+  an implicit sync seed, and pass an idempotent reopen;
 - the 95-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
 - strict SwiftLint reports zero violations across 352 Swift source files;

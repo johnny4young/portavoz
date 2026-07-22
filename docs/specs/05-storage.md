@@ -251,6 +251,16 @@ fields were preserved, the new workflow tables remained empty, integrity was
 `ok`, and foreign-key violations remained zero. The live database was never
 opened by v6 code.
 
+The current release-upgrade gate independently treats migrations `v1`–`v5` as
+the exact schema shipped in Portavoz v0.6.0. It creates a disposable file-backed
+v5 library containing a bilingual transcript, cast, summary and action item,
+note, Companion card, and relative audio reference; opening that file through
+`MeetingStore` must apply `v6`–`v14` without changing any user content. The gate
+requires `PRAGMA integrity_check = ok`, zero foreign-key violations, no implicit
+sync seed, and the same result after a second open. A separate empty-library
+case proves that a clean install creates the latest schema and also reopens
+idempotently. Neither case reads or copies the user's real library.
+
 ### D4 contract (enforced, not aspirational)
 
 - PKs = UUID string. `updatedAt` on every write, `createdAt` preserved on updates (`save()` methods fetch first).
