@@ -96,6 +96,18 @@ documented below.
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
+`make test-recording-stress` is the deterministic reliability gate for capture
+and recovery. It runs 95 focused tests across callback liveness, start/stop,
+crash recovery, cold-model attachment, mixed-language preservation, durable
+jobs, recording persistence, and caption row separation. The first iteration
+builds normally and the remaining 24 reuse that build; every iteration must
+execute at least 90 tests so a stale filter cannot pass with an empty or
+materially incomplete corpus. Temporary logs are deleted only after success
+and preserved on failure. The complete 25-iteration gate (2,375 test
+executions) passes, as do focused Thread Sanitizer and Address Sanitizer runs.
+This deterministic evidence does not replace the real Core Audio callback-
+recovery acceptance in `docs/GAPS.md`.
+
 Band 1 slice 1A additionally ran a manual storage acceptance smoke: copy the
 real v5 database to `/tmp`, migrate only the scratch file through the current
 CLI, and compare legacy logical rows and meeting fields before/after. The v6

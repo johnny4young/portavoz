@@ -12,12 +12,17 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ui test-ui-en test-ui-es test-ui-bilingual test-ui-scoped \
-	test-ui-changed test-ui-preflight project app install
+.PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
+	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install
 
 ## Unit tests (the package suite).
 test:
 	$(XCODE) swift test
+
+## Repeat the focused recording/recovery corpus without rebuilding between
+## iterations. Override the default with PORTAVOZ_STRESS_ITERATIONS=N.
+test-recording-stress:
+	$(XCODE) scripts/run-recording-reliability-stress.sh
 
 build:
 	swift build

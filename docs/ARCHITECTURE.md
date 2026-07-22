@@ -974,7 +974,9 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 993 package tests pass, with 13 real-model/environment cases gated;
+- 998 package tests pass, with 13 real-model/environment cases gated;
+- the 95-test recording/recovery corpus has a fail-closed 25-iteration stress
+  gate and passes both Thread Sanitizer and Address Sanitizer;
 - strict SwiftLint reports zero violations across 352 Swift source files;
 - 41 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
@@ -991,6 +993,7 @@ Run the standard gates with:
 swift build
 swift build -Xswiftc -warnings-as-errors
 swift test
+make test-recording-stress
 swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh
 make test-ui-changed UI_BASE=origin/main

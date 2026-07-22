@@ -24,6 +24,7 @@ All explanatory tracked documentation under `docs/` is written in **English**. L
 swift build
 swift build -Xswiftc -warnings-as-errors # current-SDK first-party diagnostics
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+make test-recording-stress               # 25 repeated recording/recovery runs
 make test-ui-changed UI_BASE=origin/main  # feature-level XCUITest selected from the diff
 make test-ui-bilingual                    # explicit full EN + ES release gate
 ```

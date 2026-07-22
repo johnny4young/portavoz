@@ -1115,8 +1115,7 @@ final class QuestionHeuristicTests: XCTestCase {
     }
 
     @available(macOS 26.0, *)
-    func testClassifierInstructionsCarryTheOwnerNameOnlyWhenKnown() throws {
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
+    func testClassifierInstructionsCarryTheOwnerNameOnlyWhenKnown() {
         let named = LiveCompanion.classifierInstructions(ownerName: "Johnny")
         XCTAssertTrue(named.contains("\"Johnny\""))
         XCTAssertTrue(named.contains("EXCEPTION"))
