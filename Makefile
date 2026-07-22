@@ -47,20 +47,28 @@ test-ui-scoped: project
 	@$(MAKE) --no-print-directory test-ui-preflight
 	UI_TESTS="$(UI_TESTS)" UI_TEST_LOCALES="$(UI_TEST_LOCALES)" scripts/run-ui-tests.sh
 
-## Select UI evidence from a Git range. Known views map to feature-level
-## tests; shared/localization changes expand conservatively; docs-only changes
-## skip XCUITest. Override UI_BASE/UI_HEAD when needed.
+## Select UI evidence from committed, staged, unstaged, and untracked changes
+## against UI_BASE. Known views map to feature-level tests;
+## shared/localization changes expand conservatively; docs-only changes skip
+## XCUITest. Set UI_HEAD explicitly to inspect a committed Git range instead.
 UI_BASE ?= origin/main
-UI_HEAD ?= HEAD
+UI_HEAD ?=
 test-ui-changed:
 	@set -e; \
-	eval "$$(python3 scripts/ui_test_scope.py --base "$(UI_BASE)" --head "$(UI_HEAD)" --format shell)"; \
+	if [ -n "$(UI_HEAD)" ]; then \
+		SELECTOR_OUTPUT="$$(python3 scripts/ui_test_scope.py \
+			--base "$(UI_BASE)" --head "$(UI_HEAD)" --format shell)"; \
+	else \
+		SELECTOR_OUTPUT="$$(python3 scripts/ui_test_scope.py \
+			--base "$(UI_BASE)" --working-tree --format shell)"; \
+	fi; \
+	eval "$$SELECTOR_OUTPUT"; \
 	echo "$$UI_TEST_SCOPE_SUMMARY"; \
 	if [ "$$UI_TEST_REQUIRED" = true ]; then \
 		$(MAKE) --no-print-directory test-ui-scoped \
 			UI_TESTS="$$UI_TESTS" UI_TEST_LOCALES="$$UI_TEST_LOCALES"; \
 	else \
-		echo "No UI tests required for $(UI_BASE)..$(UI_HEAD)."; \
+		echo "No UI tests required for the selected change set."; \
 	fi
 
 ## XCUITest on macOS is sensitive to stale app instances and interrupting

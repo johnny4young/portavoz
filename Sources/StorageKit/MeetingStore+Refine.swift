@@ -115,10 +115,11 @@ private extension MeetingStore {
             segments.allSatisfy({ segment in
                 segment.meetingID == meetingID
                     && segment.speakerID.map(speakerIDs.contains) ?? true
+                    && TranscriptContentPolicy.hasLexicalContent(segment.text)
             })
         else {
             throw StorageError.invalidRefinedMeeting(
-                "children must be unique, meeting-owned, and reference the proposed cast")
+                "children must be lexical, unique, meeting-owned, and reference the proposed cast")
         }
     }
 

@@ -199,7 +199,7 @@ public actor WhisperEngine {
         for result in results {
             for segment in result.segments {
                 let text = Self.cleanSegmentText(segment.text)
-                guard TranscriptionTextFilter.hasLexicalContent(text) else { continue }
+                guard TranscriptContentPolicy.hasLexicalContent(text) else { continue }
                 segments.append(
                     TranscriptSegment(
                         meetingID: meetingID,

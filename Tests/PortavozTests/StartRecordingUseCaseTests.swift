@@ -16,8 +16,10 @@ final class StartRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(StartRecordingRequest(
             callbacks: StartRecordingLiveCallbacks(
-                caption: { await live.record(caption: $0) },
-                chunk: { chunk in Task { await live.record(chunk: chunk) } })))
+                caption: { live.record(caption: $0) },
+                chunk: { live.record(chunk: $0) },
+                health: { live.record(health: $0) },
+                liveTranscription: { live.record(liveTranscription: $0) })))
 
         guard case .started(let commit) = result else {
             return XCTFail("recording should start")
@@ -40,10 +42,13 @@ final class StartRecordingUseCaseTests: XCTestCase {
             ["preferences", "prepare", "count", "reserve", "start"])
         XCTAssertEqual(state.cancelCount, 0)
         XCTAssertEqual(state.releaseCount, 0)
-        try await Task.sleep(for: .milliseconds(10))
-        let liveState = await live.state()
+        let liveState = live.state()
         XCTAssertEqual(liveState.captionCount, 1)
         XCTAssertEqual(liveState.chunkCount, 1)
+        XCTAssertEqual(liveState.healthEvents, [
+            .stalled(channel: .system, secondsWithoutFrames: 8)
+        ])
+        XCTAssertEqual(liveState.liveTranscriptionEvents, [.available])
     }
 
     func testCalendarEventTitleOverridesTemplateAndFixedLanguageIsForwarded() async {
@@ -303,18 +308,48 @@ private actor StartRecordingTestSession: StartRecordingSession {
     nonisolated func setMicrophoneMuted(_ value: Bool) {}
 }
 
-private actor StartRecordingLiveProbe {
+/// The production handlers mix async and synchronous callbacks. Record all of
+/// them inline so this characterization test never depends on detached-task
+/// scheduling or an arbitrary sleep.
+private final class StartRecordingLiveProbe: @unchecked Sendable {
     struct State: Sendable {
         let captionCount: Int
         let chunkCount: Int
+        let healthEvents: [RecordingCaptureHealthEvent]
+        let liveTranscriptionEvents: [StartRecordingLiveTranscriptionEvent]
     }
 
+    private let lock = NSLock()
     private var captionCount = 0
     private var chunkCount = 0
+    private var healthEvents: [RecordingCaptureHealthEvent] = []
+    private var liveTranscriptionEvents: [StartRecordingLiveTranscriptionEvent] = []
 
-    func record(caption: TranscriptSegment) { captionCount += 1 }
-    func record(chunk: AudioChunk) { chunkCount += 1 }
-    func state() -> State { State(captionCount: captionCount, chunkCount: chunkCount) }
+    func record(caption: TranscriptSegment) {
+        lock.withLock { captionCount += 1 }
+    }
+
+    func record(chunk: AudioChunk) {
+        lock.withLock { chunkCount += 1 }
+    }
+
+    func record(health: RecordingCaptureHealthEvent) {
+        lock.withLock { healthEvents.append(health) }
+    }
+
+    func record(liveTranscription: StartRecordingLiveTranscriptionEvent) {
+        lock.withLock { liveTranscriptionEvents.append(liveTranscription) }
+    }
+
+    func state() -> State {
+        lock.withLock {
+            State(
+                captionCount: captionCount,
+                chunkCount: chunkCount,
+                healthEvents: healthEvents,
+                liveTranscriptionEvents: liveTranscriptionEvents)
+        }
+    }
 }
 
 private actor StartRecordingDependencies:
@@ -407,6 +442,10 @@ private actor StartRecordingDependencies:
             samples: [0.1],
             sampleRate: 48_000,
             timestamp: 0))
+        request.callbacks.health(.stalled(
+            channel: .system,
+            secondsWithoutFrames: 8))
+        request.callbacks.liveTranscription(.available)
         return StartRecordingTestSession()
     }
 

@@ -1,35 +1,76 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
-import StorageKit
+@testable import StorageKit
 import XCTest
 
 final class SupportDiagnosticsTests: XCTestCase {
+    func testSampleRateProjectionRejectsNonsensicalValues() {
+        XCTAssertNil(supportPositiveFinite(nil))
+        XCTAssertNil(supportPositiveFinite(-48_000))
+        XCTAssertNil(supportPositiveFinite(0))
+        XCTAssertNil(supportPositiveFinite(.nan))
+        XCTAssertNil(supportPositiveFinite(.infinity))
+        XCTAssertEqual(supportPositiveFinite(48_000), 48_000)
+    }
+
     func testExportIsUsefulAndRedactsEverySensitiveCorpus() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID(rawValue: UUID(
             uuidString: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")!)
-        let meeting = Meeting(
+        var meeting = Meeting(
             id: meetingID,
             title: "SECRET customer roadmap",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            endedAt: Date(timeIntervalSince1970: 1_700_000_600),
             audioDirectory: "Audio/SECRET-local-folder",
-            lifecycleState: .captured)
-        try await store.save(meeting)
+            lifecycleState: .recording)
+        let reservations = [AudioChannel.microphone, .system].map { channel in
+            AudioAsset.pendingCapture(
+                meetingID: meetingID,
+                channel: channel,
+                relativePath: AudioCapturePath.stagingRelativePath(
+                    directory: meeting.audioDirectory!, channel: channel),
+                at: meeting.startedAt)
+        }
+        try await store.beginRecording(meeting, assets: reservations)
         let speaker = Speaker(
             meetingID: meetingID,
             label: "S1",
             displayName: "SECRET participant")
-        try await store.save([speaker])
-        try await store.save([TranscriptSegment(
+        let segment = TranscriptSegment(
             meetingID: meetingID,
             speakerID: speaker.id,
             channel: .system,
             text: "SECRET transcript sentence",
             startTime: 0,
             endTime: 4,
-            isFinal: true)])
+            isFinal: true)
+        let finalized = reservations.map { reservation -> AudioAsset in
+            var asset = reservation
+            asset.relativePath = AudioCapturePath.publishedRelativePath(
+                directory: meeting.audioDirectory!, channel: reservation.channel)
+            asset.container = "caf"
+            asset.codec = "pcm-s16le"
+            asset.sampleRate = 48_000
+            asset.channelCount = 1
+            asset.durationSeconds = reservation.channel == .microphone ? 600 : 200
+            asset.byteCount = reservation.channel == .microphone ? 57_600_128 : 19_200_128
+            asset.sha256 = String(repeating: reservation.channel == .microphone ? "a" : "b", count: 64)
+            asset.healthStatus = .healthy
+            asset.peakDBFS = -6
+            asset.rmsDBFS = -24
+            asset.updatedAt = meeting.startedAt.addingTimeInterval(600)
+            return asset
+        }
+        meeting.endedAt = Date(timeIntervalSince1970: 1_700_000_600)
+        meeting.lifecycleState = .captured
+        try await store.installCapturedSnapshot(CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: finalized,
+            speakers: [speaker],
+            segments: [segment],
+            contextItems: [],
+            companionCards: []))
         _ = try await store.saveSummary(SummaryDraft(
             meetingID: meetingID,
             recipeID: Recipe.general.id,
@@ -102,6 +143,8 @@ final class SupportDiagnosticsTests: XCTestCase {
             "SECRET action item",
             "SECRET raw processing fingerprint",
             "SECRET raw generation fingerprint",
+            String(repeating: "a", count: 64),
+            String(repeating: "b", count: 64),
             "SECRET error",
             "/Users/person/recording.caf",
             "https://token@example.com",
@@ -116,11 +159,18 @@ final class SupportDiagnosticsTests: XCTestCase {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let report = try decoder.decode(SupportDiagnosticsReport.self, from: data)
-        XCTAssertEqual(report.formatVersion, 1)
+        XCTAssertEqual(report.formatVersion, 2)
         XCTAssertEqual(report.storage.schemaVersion, 14)
         XCTAssertEqual(report.storage.meetingCount, 1)
         XCTAssertTrue(report.meetings[0].reference.hasPrefix("meeting-"))
         XCTAssertEqual(report.meetings[0].lifecycleState, "needsAttention")
+        XCTAssertEqual(report.meetings[0].audioAssets.map(\.channel), ["microphone", "system"])
+        XCTAssertEqual(report.meetings[0].audioAssets.map(\.durationSeconds), [600, 200])
+        XCTAssertEqual(report.meetings[0].audioAssets.map(\.healthStatus), ["healthy", "healthy"])
+        XCTAssertEqual(report.meetings[0].transcript.segmentCount, 1)
+        XCTAssertEqual(report.meetings[0].transcript.microphoneSegmentCount, 0)
+        XCTAssertEqual(report.meetings[0].transcript.systemSegmentCount, 1)
+        XCTAssertEqual(report.meetings[0].transcript.attributedSegmentCount, 1)
         XCTAssertEqual(
             report.meetings[0].lastProcessingError,
             "processing.transcription.failed")

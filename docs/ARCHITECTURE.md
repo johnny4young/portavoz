@@ -114,14 +114,14 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports and the universal lexical transcript-content policy. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
-| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, staged CAF writing, audio validation, checksums, levels, and recovery inspection. |
+| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
-| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
+| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
@@ -478,7 +478,27 @@ stateDiagram-v2
 Each channel writes `<channel>.partial.caf`, validates non-empty audio, computes
 its checksum and level/health evidence, and performs a same-directory
 non-overwriting move to `<channel>.caf`. Stop then installs finalized assets,
-provisional live content, and initial durable work atomically.
+provisional live content, and initial durable work atomically. File inspection,
+streamed SHA-256, and publication execute on a dedicated serial utility
+`DispatchQueue` after every writer handle closes; Stop still awaits that
+evidence, but blocking proportional file work cannot occupy Swift's cooperative
+executor. One channel's publication failure preserves its staging file and
+does not block a healthy peer from publishing.
+
+System-audio callback liveness is monitored independently from acoustic
+silence. Monitoring begins only after the first system frame, then persisted
+microphone frames provide a recording heartbeat. Eight seconds without another
+system frame emits a content-free health event and requests a best-effort,
+in-place `ProcessTapSource` graph rebuild; retries remain bounded to one request
+per eight seconds until frames return. Capture, the microphone writer, and the
+recording lifecycle never stop for this degradable recovery. A lock-protected
+state machine keeps the per-chunk check off the `RecordingSession` actor hot
+path, while source recovery remains actor-isolated. The application presents a
+non-dismissible warning and an explicit recovered state; callback or stream
+health events contain no audio or transcript content. After two uninterrupted
+minutes without remote callbacks, Core policy makes Stop prominent in both the
+full recording surface and compact HUD because the call may have ended; it
+never stops automatically or interrupts microphone capture.
 
 At launch, expired leases are recovered before the application workflow
 resumes. It claims supported work serially, renews each lease, recomputes the
@@ -501,8 +521,14 @@ flowchart LR
     MIC[MicrophoneSource] --> SESSION[RecordingSession actor]
     SYSTEM[ProcessTapSource] --> SESSION
     SESSION --> STAGED[per-channel staged CAF]
+    SESSION -. persisted-frame heartbeat .-> HEALTH[System callback liveness]
+    HEALTH -. rebuild request .-> SYSTEM
+    HEALTH --> NOTICE[Recording health UI]
     STAGED --> FINAL[validated final CAF]
-    SESSION --> LIVE[Parakeet live transcription]
+    SESSION -. nonblocking newest-only frames .-> BUFFER[Bounded live feeds]
+    RESIDENT[Resident or asynchronously verified Parakeet] --> ATTACH[Live attacher]
+    ATTACH --> BUFFER
+    BUFFER --> LIVE[Parakeet live transcription]
     FINAL --> DURABLE[Parakeet durable first pass]
     FINAL --> REFINE[Whisper quality refinement]
     SYSTEM --> DIARIZE[Pyannote diarization]
@@ -513,7 +539,14 @@ flowchart LR
 ```
 
 Live transcription and batch work use separate scheduler capacity. One model
-role cannot block another. Refine requires Whisper; attribution is degradable.
+role cannot block another. A recording creates bounded per-channel live feeds
+before it starts writing. A resident Parakeet attaches immediately; otherwise
+the recording-scoped attacher joins the process-owned verified load and begins
+consuming only the newest buffered context when it completes. Capture never
+awaits that load and the cold-start session retains its durable transcription
+recovery bit because earlier audio was not live-transcribed. Preparing,
+available, and failed states cross ApplicationKit without raw model errors.
+Refine requires Whisper; attribution is degradable.
 Import requests its required transcriber and optional diarizer independently.
 Durable first-pass recovery and dictation request Parakeet without acquiring
 unrelated models. `ProcessPostCaptureJobs` keeps automatic recognition
@@ -522,6 +555,16 @@ preserves each segment's detected language, and sets meeting-level language
 only when the attributed transcript is homogeneous. Diarization failure
 degrades to an unattributed system channel; missing finalized audio remains a
 durable failure.
+
+`TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
+letter or digit is not speech. Whisper applies it while mapping model output;
+ApplicationKit applies it again to both Refine channels before microphone-only
+confidence and bleed rules; StorageKit rejects any accepted Refine aggregate
+that still contains a nonlexical row. Intelligence formatting independently
+filters legacy rows and assigns contiguous evidence tags only to admitted
+speech. This defense in depth prevents punctuation-only rows from becoming UI
+noise, search material, generated facts, or navigable evidence without using a
+language-specific word list.
 
 Transcript recognition language and generated-output language are independent.
 Automatic transcript policy leaves mixed-language meetings unhinted so each
@@ -559,6 +602,16 @@ Every evidence write validates current transcript revision and live
 same-meeting sources. Missing, stale, deleted, ambiguous, or partially resolved
 evidence fails closed and disables navigation. Portable bundles remap every
 identity explicitly.
+
+Provider-authored tags establish source identity but not semantic support.
+Before a generated draft can reach persistence, IntelligenceKit retains each
+overview, decision, or action citation only when the rendered statement and
+cited transcript row share distinctive case/diacritic-folded lexical material;
+unsupported and cross-language-unverifiable links disappear while the summary
+text remains usable. The same admission stage removes empty/duplicate tasks and
+any normalized action item copied verbatim from the recipe's explicitly typed
+decision section. Translation pivots carry only evidence and tasks that already
+passed this source-language gate.
 
 ## Search, playback, and derived indexes
 
@@ -645,9 +698,12 @@ gateway that cannot record an attempt cannot be constructed. One scoped
 exception exists for standalone terminal analysis, which has no library
 meeting to own a durable receipt: after its explicit interactive warning, the
 CLI records the same content-free attempt on the terminal before transport
-instead of in the database. Support diagnostics never include meeting text,
-generated output, prompts, secrets, full URLs, paths, stable database IDs, raw
-failure payloads, or reusable fingerprints.
+instead of in the database. Support diagnostics format 2 adds only active audio
+channel/role/codec, health, finite duration/size/signal metadata, and aggregate
+transcript/attribution counts so truncated and empty captures are diagnosable.
+It never includes meeting text, generated output, prompts, secrets, checksums,
+full URLs, paths, stable database IDs, raw failure payloads, or reusable
+fingerprints.
 
 `PortavozCore` defines stable secret identifiers and the `SecretStoring` port.
 `PlatformKit.KeychainSecretStore` is the concrete device-only adapter and is
@@ -760,8 +816,10 @@ human-readable versions in comments; repository hygiene rejects mutable tags.
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to bilingual
-evidence; unknown production Swift paths fall back to the complete English
-suite. An empty selector explicitly means every test; optional selector and
+canaries; unknown production Swift paths fall back to the complete English
+suite. The local selector compares the base with committed, staged, unstaged,
+and untracked paths by default, preventing an uncommitted pre-commit smoke from
+becoming an accidental no-op. An empty selector explicitly means every test; optional selector and
 locale arguments are assembled without empty-array expansion on the system
 Bash runtime. One `build-for-testing` result is reused across selected locales.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
@@ -775,7 +833,7 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 39-case English and Spanish suites remain the
+The complete 41-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 
@@ -916,9 +974,9 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 974 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 345 Swift source files;
-- 39 XCUITest cases pass in English and 39 in Spanish;
+- 993 package tests pass, with 13 real-model/environment cases gated;
+- strict SwiftLint reports zero violations across 352 Swift source files;
+- 41 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

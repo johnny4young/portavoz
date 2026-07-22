@@ -3625,3 +3625,137 @@ and what limitations remain without publishing transient sequencing state.
 Explicit local paths preserve maintainer continuity while repository hygiene
 prevents accidental recommit. Self-contained tracked sources avoid broken links
 and keep architecture review reproducible for outside contributors.
+
+## D120 — Treat system callback liveness as a recoverable capture capability (Jul 2026)
+
+**Context:** a real dual-channel recording continued writing microphone audio
+for more than two hours after the system-channel staging file stopped advancing
+at 33:20. Peak or RMS health cannot identify this failure while recording, and
+acoustic silence is not equivalent: a healthy Core Audio tap continues to emit
+silent PCM callbacks. Stopping the complete recording would discard healthy
+local speech, while checking through the `RecordingSession` actor for every
+chunk would serialize the capture hot path and live consumers.
+
+**Decision:** after the first persisted system frame, persisted microphone
+frames act as the recording heartbeat. Eight seconds without another system
+frame opens one content-free incident, emits stalled health, and requests the
+optional `RecoverableAudioCaptureSource` capability. `ProcessTapSource`
+implements that capability by rebuilding its tap, aggregate device, and IOProc
+on the existing stream and timeline. Continued outages request at most one
+additional recovery every eight seconds; the next system frame emits recovered
+health. Monitoring never starts before a real system frame, ignores room
+frames, and never interprets zero-valued samples as dead callbacks. Stream
+failure remains a separate terminal channel event. Detection is a deterministic
+lock-protected state machine on the writer path; only non-empty signals cross
+the recording actor to find and invoke the recoverable source. Capture and the
+microphone writer remain active throughout. ApplicationKit carries only the
+typed, content-free events, and the app presents an undismissable reconnecting
+warning plus a bounded recovery confirmation.
+
+**Rationale:** frame cadence, not audio content, is the reliable distinction
+between a silent meeting and a dead callback. Capability discovery keeps
+ordinary/test/room sources valid, in-place rebuilding conserves the durable
+timeline, and independent channel degradation preserves Portavoz's audio-first
+parity rule. Keeping the per-frame transition off the actor avoids adding a
+latency bottleneck to recording or live transcription. The policy and complete
+session-to-source path are deterministic unit evidence; successful recovery of
+a real Core Audio callback stall remains an explicit field gate.
+
+## D121 — Hot-attach live transcription through bounded recording feeds (Jul 2026)
+
+**Context:** audio-first start correctly allowed a clean or memory-released app
+to record while Parakeet downloaded or compiled, but the active session sampled
+only the engine that was resident at Start. The shared preparation could finish
+successfully without ever connecting that engine to the current recording, so
+captions, live translation, Companion, rolling intelligence, and speaker hints
+remained absent until Stop. Buffering every callback until a multi-minute model
+load completes would turn a degradable feature into unbounded memory growth and
+stale inference work.
+
+**Decision:** every recording creates one bounded `bufferingNewest` audio feed
+per selected channel before capture begins. The producer yields synchronously
+without suspension. A recording-scoped `LiveTranscriptionAttacher` connects a
+resident Parakeet immediately or asynchronously joins the process-owned verified
+Parakeet task after capture has started. A cold attachment consumes only recent
+context and all future frames; finalized channel files remain the source for the
+complete durable first pass, so the session keeps its recovery bit even after
+live captions become available. Stop cancels only the recording waiter, never
+the shared model task, closes the feeds, and drains attached consumers. Typed
+preparing, available, and failed events cross ApplicationKit without concrete
+engines or raw errors. Live diarization uses its own bounded feed and begins
+only after captions are available and a real system frame exists. Translation
+maintains explicit off/waiting/ready/download/translating/active/unsupported/
+failed state, skips rows already in the target language, and clears target-
+dependent cached output whenever the picker changes. Every asynchronous state
+publication and cache write is fenced to the target captured by its task, so a
+canceled framework request cannot publish old-language results after a switch.
+
+**Rationale:** bounded future-oriented attachment restores live value during a
+cold recording without gating the primary artifact, replaying minutes of stale
+audio, or duplicating verified model ownership. Durable recovery preserves
+feature parity for the pre-attachment interval. Finite content-free states make
+degradation understandable and testable while keeping platform Translation and
+speech engines in the executable adapter.
+
+## D122 — Admit lexical transcript and grounded generated output before persistence (Jul 2026)
+
+**Context:** field inspection found punctuation-only system rows in an accepted
+Refine transcript. Those rows also entered summary material, and one generated
+summary attached every claim to the same unrelated late segments while copying
+decision bullets into action items. Exact request-local E-tags prove that a
+provider selected a real row, but they do not prove that the row supports the
+rendered statement. Channel-specific microphone confidence policy cannot guard
+system output, legacy rows, or provider semantics.
+
+**Decision:** `PortavozCore.TranscriptContentPolicy` defines one language-neutral
+minimum: a transcript row must contain at least one Unicode letter or decimal
+digit. Whisper mapping, ApplicationKit Refine for both channels, StorageKit's
+accepted-Refine Unit of Work, and IntelligenceKit transcript formatting enforce
+that contract independently. Microphone confidence and bleed filtering remain
+additional narrower rules. Intelligence assigns evidence tags only after this
+filter. `StructuredSummary.draft(for:)` then admits an overview, decision, or
+action evidence link only when the rendered statement and cited row share at
+least one distinctive case- and diacritic-folded token; unverifiable links fail
+closed without deleting generated text. The same pre-persistence boundary
+deduplicates tasks and rejects any normalized action copied verbatim from the
+recipe's explicitly typed decision section. Translation carries only artifacts
+that passed the original source-language gate.
+
+**Rationale:** lexical integrity belongs to the domain and aggregate boundaries,
+not to one ASR adapter or view. Defense in depth keeps old corrupt rows from
+becoming new model facts while preventing future Refine transactions from
+reintroducing them. Evidence authenticity and semantic support are separate
+properties; a conservative false negative merely hides a source link, whereas a
+false positive presents unrelated speech as proof. Exact decision-copy
+rejection fixes the observed non-action without relying on provider obedience or
+language-specific action-verb heuristics.
+
+## D123 — Keep long-call finalization off actor executors and expose content-free capture shape (Jul 2026)
+
+**Context:** a field recording continued for more than two hours after its
+remote channel stopped advancing. Callback recovery now protects future audio,
+but a prolonged outage could still leave an unattended microphone recording.
+Closing a multi-hour PCM capture also performs header inspection, streamed
+SHA-256, and atomic publication proportional to file size, and the existing
+support report omitted the per-channel duration and transcript shape needed to
+diagnose the incident without inspecting private audio or text.
+
+**Decision:** `RecordingOutageNudgePolicy` makes the existing Stop action
+prominent after 120 continuous seconds without remote callbacks, while recovery
+and microphone capture continue and Portavoz never stops automatically.
+`RecordingSession` closes every source, drains consumers, snapshots value
+evidence, and releases writer handles before a dedicated serial utility
+`DispatchQueue` inspects, hashes, and publishes channels sequentially. Stop
+awaits the complete result and preserves per-channel isolation: one failed destination keeps its
+staging file without blocking a healthy peer. The redacted support format moves
+to version 2 and adds only current channel/role/container/codec, finite media
+health/duration/size/signal values, and aggregate transcript channel/
+attribution counts. SQL selects only those fields; paths, checksums, text,
+speaker identity, timestamps, and reusable fingerprints remain absent.
+
+**Rationale:** automatic silence-based Stop could destroy legitimate in-person
+or paused meetings, so a conservative, actionable nudge is safer. Long-file
+work remains bounded and durability-critical but should not occupy Swift's
+cooperative executor. Content-free channel shape turns the exact field failure
+into support evidence while preserving Portavoz's privacy boundary and avoiding
+a second sensitive corpus.

@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure).
+Status: implemented, signed with Developer ID, and used in real meetings; published DMGs through 0.6.0 were accepted and stapled by Apple. D74 now requires the inner app to carry independent notarization evidence in the next release. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Companion evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence).
 
 ## Structure
 
@@ -99,7 +99,7 @@ D97's restricted CloudKit/APNs capabilities do not change the D78 decision.
 
 ## Composition — `AppServices` (@MainActor @Observable)
 
-DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), and `whisper` (runtime loaded only for Refine/Import). `modelsState` drives visible live-model preparation. Parakeet and pyannote each have an independently retained, process-scoped task: concurrent callers join the exact verified capability instead of loading a bundle. Recording samples only an already-resident transcriber and starts audio immediately; background preparation may request both afterward. Durable first-pass recovery and Dictation request Parakeet only; Refine/Import request pyannote only at their attribution boundary and never acquire live Parakeet as a side effect. Whisper Turbo/Compact preparation has its own app-scoped serialized task and observable state. Settings can proactively start/retry/delete a variant; the task survives that window, Refine/Import join it, and successful completion retains only an opaque verified token until runtime allocation. The heavyweight runtime keeps its two-minute idle-release policy. Library, Insights, and Meeting Detail receive storage-independent updates from query-scoped Store observations; no app feature consumes a global `libraryVersion` counter.
+DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), and `whisper` (runtime loaded only for Refine/Import). `modelsState` drives visible live-model preparation. Parakeet and pyannote each have an independently retained, process-scoped task: concurrent callers join the exact verified capability instead of loading a bundle. Recording samples any resident transcriber and starts audio immediately through bounded per-channel live feeds; when Parakeet is cold, a recording-scoped attacher joins the process-owned verified load and connects the active session when it completes (D121). Durable first-pass recovery and Dictation request Parakeet only; Refine/Import request pyannote only at their attribution boundary and never acquire live Parakeet as a side effect. Whisper Turbo/Compact preparation has its own app-scoped serialized task and observable state. Settings can proactively start/retry/delete a variant; the task survives that window, Refine/Import join it, and successful completion retains only an opaque verified token until runtime allocation. The heavyweight runtime keeps its two-minute idle-release policy. Library, Insights, and Meeting Detail receive storage-independent updates from query-scoped Store observations; no app feature consumes a global `libraryVersion` counter.
 
 Local voice enrollment is composed in `AppServices+LocalVoiceIdentity` and
 enters `ApplicationKit.ManageLocalVoiceIdentity`. The use case bounds requested
@@ -397,10 +397,13 @@ the same evidence meaning. The sync element exposes its localized status as
 the accessibility label and the complete encryption disclosure as its value,
 so assistive technology receives the same evidence as the visual card.
 
-D76 composes one `ExportSupportDiagnostics` use case above StorageKit's atomic
+D76/D123 compose one `ExportSupportDiagnostics` use case above StorageKit's atomic
 support projection. `AppServices` contributes app/build/OS identity and
 readiness for Parakeet, pyannote, Whisper, Foundation Models, MLX, and Ollama;
 it contributes no endpoint, model secret, Keychain value, or meeting content.
+Format 2 also carries current per-channel codec/health/duration/size/signal
+shape and aggregate transcript channel/attribution counts. Neither layer reads
+audio paths, checksums, text, speaker identities, or timestamps for that shape.
 Settings → Your data exposes the explicit `settings-export-diagnostics`
 action, writes the returned JSON through `NSSavePanel`, and confirms that the
 file remains on the Mac unless the user chooses to share it. The app never
@@ -670,12 +673,12 @@ Surface validated by MacParakeet: global hotkey → speak → hotkey again → t
    private runtime to warm the mic while engines load, atomically calls
    `MeetingStore.beginRecording` for the `recording` shell and pending
    `<channel>.partial.caf` assets, then invokes source start. The runtime owns
-   the concrete mic (+system tap on 14.4+), `RecordingSession`, and direct
-   Parakeet stream per channel; captions return through the callback to
+   the concrete mic (+system tap on 14.4+), `RecordingSession`, bounded live
+   feeds, and recording-scoped Parakeet attachment per channel; captions return through the callback to
    **CaptionCoalescer**. A no-file startup failure rolls back only the empty
    shell; staging or published evidence preserves it as `needsAttention`
    (D37/D49).
-2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint.
+2. Live: captions in LazyVStack (window 150 rows) with **follow-live pausable** (manual scroll pauses; resumes after 10 s or button "Seguir en vivo"); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of new closed rows → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint. D120 callback health crosses the same application callback boundary: if remote frames stop while mic frames continue, the full view and compact HUD show a non-dismissible reconnecting warning, the tap rebuilds in place without stopping the microphone, and a recovered confirmation clears after five seconds. D123 promotes a localized Stop action only after two continuous stalled/recovering outage minutes because the call may have ended, but never stops capture automatically; a terminal tap failure instead tells the user to stop and start a new recording on both surfaces. D121 adds dynamic preparing/available/failure state: a cold model hot-attaches during the same recording, then enables captions and speaker hints without replaying an unbounded backlog. Live translation exposes waiting, deliberate-download, unsupported-pair, and execution-failure states; the waiting banner yields to the terminal live-caption failure banner when captions cannot arrive, execution errors stay visible during the automatic retry backoff, changing target language clears target-dependent rendered rows, and late framework responses are fenced to the task's captured target.
 3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
    rename staging files without overwrite → one `installCapturedSnapshot`
    transaction for `captured` + finalized/missing assets + provisional live
@@ -886,10 +889,10 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 39 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 41 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + full Ask and command-palette answer/citation paths +
 interrupted staging recovery + durable post-capture resume + typed recording-
-start recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
+start recovery + visible system-callback recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Companion source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, Sequoia summary setup routing and Companion requirements), and Settings (all categories,
@@ -903,7 +906,7 @@ neither SQLite, audio, nor the encrypted participant-voice gallery can touch
 the user's library or Keychain. `-seed-recovery`,
 `-seed-processing`, `-seed-refine-running`, `-seed-just-recorded`,
 `-seed-scale` with optional `-scale-auto-summary-update`,
-`-simulate-recording-start-failure`, and
+`-simulate-recording-start-failure`, `-simulate-system-capture-stall`, and
 `-seed-without-summary` are
 accepted only with the temp
 store. `-simulate-sequoia-capabilities` makes the Foundation Models adapter
@@ -918,9 +921,10 @@ assertion in the corresponding `*UITests.swift`; computer-use is the last
 resort. Feature-band evidence retains app-only screenshots at asserted
 Library, the identified command-palette panel, Insights, Meeting Detail,
 Companion evidence, confirmed-person memory, and post-meeting mirror checkpoints
-so unrelated desktop content is never captured. `make test-ui-en` and `make test-ui-es` use Xcode's explicit
-test language and region flags; the complete 39-case suite is green in the
-default and forced-Spanish configurations. **Real bug caught by XCUITest (not computer-use):**
+so unrelated desktop content is never captured. `make test-ui-en` and
+`make test-ui-es` use Xcode's explicit test language and region flags; the
+complete 41-case suite remains the bilingual release gate. **Real bug caught
+by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps
 before forming the range and has unit coverage.

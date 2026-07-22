@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission).
 
 ## Roles and engines (D7)
 
@@ -23,7 +23,7 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
 - **Custom delta filter** (`ParakeetSegmentMapper`): upstream dedup fails with small chunks (re-emits ~all left context). Updates' `tokenTimings` use absolute stream time → filter `startTime > last emitted boundary` and reconstruct text with `joinedText` (handles SentencePiece `▁`).
 - Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
-- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` instantiates one direct Parakeet stream per selected channel only when the verified engine is already resident; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
+- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` creates one bounded, non-suspending feed per selected channel before capture. A recording-scoped attacher connects direct Parakeet streams immediately when the verified engine is resident or joins the process-owned load and connects them later; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
@@ -40,13 +40,17 @@ success (D103).
 ### Audio-first model readiness and recovery (D70)
 
 Recording does not await `ModelStore` downloads or Core ML compilation. The
-app runtime snapshots the currently resident Parakeet instance, starts durable
-mic/system capture, and then joins or starts independently deduplicated
-Parakeet and pyannote preparation tasks. The recording UI states that audio is active and the complete
-transcript will appear after local preparation when live captions are deferred.
+app runtime snapshots the currently resident Parakeet instance, creates bounded
+`bufferingNewest` feeds, and starts durable mic/system capture. A resident model
+attaches immediately; otherwise `LiveTranscriptionAttacher` joins the shared
+verified Parakeet task and connects the same active recording when it completes.
+Only recent context and future frames enter the late live consumers, so a long
+download cannot accumulate an unbounded inference backlog. Typed preparing,
+available, and failed state keeps the recording UI honest.
 
-If no live transcriber existed at Start, or either direct stream throws, the
-session carries a recovery bit into `StopRecording`. Stop admits an exact
+If no live transcriber existed at Start, even if it attaches later, or either
+direct stream throws, the session carries a recovery bit into `StopRecording`
+because the finalized audio before attachment still needs complete coverage. Stop admits an exact
 `.transcription` job whose length-framed fingerprint binds meeting ID, source
 transcript revision, Parakeet provider/model/revision, automatic multilingual
 mode, no vocabulary, and the current finalized channel IDs, health, checksums,
@@ -157,9 +161,12 @@ overrides the sampled policy; automatic mixed-language evidence leaves the
 Whisper hint `nil`, and the aggregate language is recomputed only when the
 result is homogeneous. Summary/UI language never enters recognition.
 
-Digitally silent channels never reach Whisper. Microphone results pass through
-`TranscriptNoiseFilter` and then `MicBleedFilter`, preserving the released
-anti-hallucination and echo behavior. Required preparation/transcription errors
+Digitally silent channels never reach Whisper. `TranscriptContentPolicy`
+removes rows with no letter or digit from both system and microphone results;
+Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
+and intelligence formatting independently enforce the same minimum. Microphone
+results then pass through `TranscriptNoiseFilter` and `MicBleedFilter`,
+preserving the released anti-hallucination and echo behavior. Required preparation/transcription errors
 propagate; diarization degrades to honest unattributed segments; cancellation
 is never swallowed. Every exit after model ownership begins schedules both
 Whisper and recording-engine idle release. The draft carries the source

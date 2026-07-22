@@ -633,6 +633,39 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertTrue(runs.isEmpty)
     }
 
+    func testRefinedCastRejectsPunctuationOnlyRowsBeforeMutation() async throws {
+        let fixture = RefineFixture()
+        let store = try MeetingStore.inMemory()
+        try await fixture.seed(store)
+        let draft = fixture.draft()
+        let punctuation = fixture.segment(
+            text: ".",
+            language: "es",
+            channel: .system,
+            start: 9,
+            end: 10)
+
+        do {
+            try await store.applyRefinedCast(
+                for: fixture.meetingID,
+                expectedTranscriptRevision: 4,
+                language: "es",
+                speakers: draft.speakers,
+                segments: draft.segments + [punctuation],
+                generationRun: draft.generationRun)
+            XCTFail("punctuation-only transcript rows must fail closed")
+        } catch let error as StorageError {
+            guard case .invalidRefinedMeeting = error else {
+                return XCTFail("unexpected storage error: \(error)")
+            }
+        }
+
+        let storedDetail = try await store.detail(fixture.meetingID)
+        let detail = try XCTUnwrap(storedDetail)
+        XCTAssertEqual(detail.meeting.transcriptRevision, 4)
+        XCTAssertEqual(detail.segments.map(\.text), ["Original transcript remains intact."])
+    }
+
     func testStaleDraftRejectsWholeApplyAndPreservesCurrentAggregate() async throws {
         let fixture = RefineFixture()
         let store = try MeetingStore.inMemory()
@@ -758,6 +791,9 @@ private struct RefineFixture: Sendable {
         FileTranscription(
             text: "Revisamos el presupuesto.",
             segments: [
+                segment(
+                    text: ".", language: "es", channel: .system,
+                    start: 0, end: 0.4, confidence: 0.99),
                 segment(
                     text: "Revisamos el presupuesto trimestral y aprobamos el lanzamiento.",
                     language: "es",

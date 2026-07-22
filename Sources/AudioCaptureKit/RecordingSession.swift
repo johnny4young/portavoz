@@ -56,10 +56,23 @@ public actor RecordingSession {
     private var peaks: [AudioChannel: Float] = [:]
     private var rms: [AudioChannel: Float] = [:]
     private var errors: [AudioChannel: String] = [:]
+    private let systemLiveness: SystemCaptureLivenessMonitor
     public private(set) var isRecording = false
 
     public init(outputDirectory: URL) {
         self.outputDirectory = outputDirectory
+        systemLiveness = SystemCaptureLivenessMonitor()
+    }
+
+    init(
+        outputDirectory: URL,
+        livenessConfiguration: SystemCaptureLivenessPolicy.Configuration,
+        monotonicNow: @escaping @Sendable () -> TimeInterval
+    ) {
+        self.outputDirectory = outputDirectory
+        systemLiveness = SystemCaptureLivenessMonitor(
+            configuration: livenessConfiguration,
+            monotonicNow: monotonicNow)
     }
 
     /// Starts every source and streams its chunks into its own CAF file.
@@ -71,7 +84,8 @@ public actor RecordingSession {
     /// the writer ever waiting on it.
     public func start(
         sources newSources: [any AudioCaptureSource],
-        onChunk: (@Sendable (AudioChunk) -> Void)? = nil
+        onChunk: (@Sendable (AudioChunk) -> Void)? = nil,
+        onHealthEvent: (@Sendable (RecordingCaptureHealthEvent) -> Void)? = nil
     ) async throws {
         guard !isRecording else { return }
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
@@ -83,6 +97,7 @@ public actor RecordingSession {
                     AudioCapturePath.stagingFilename(for: channel))
                 let stream = try await source.start()
                 sources[channel] = source
+                let livenessMonitor = systemLiveness
 
                 consumers[channel] = Task { [weak self] in
                     var writer: CaptureFileWriter?
@@ -108,6 +123,12 @@ public actor RecordingSession {
                                 sumSquares += Double(magnitude) * Double(magnitude)
                             }
                             sampleCount += Int64(chunk.samples.count)
+                            let signals = livenessMonitor.observe(channel: chunk.channel)
+                            if !signals.isEmpty {
+                                let events = await self?.handleLiveness(signals)
+                                    ?? []
+                                for event in events { onHealthEvent?(event) }
+                            }
                             onChunk?(chunk)
                         }
                         let measuredRMS = sampleCount > 0
@@ -124,6 +145,7 @@ public actor RecordingSession {
                             rms: measuredRMS,
                             error: String(describing: error),
                             for: channel)
+                        onHealthEvent?(.streamFailed(channel: channel))
                     }
                 }
             }
@@ -162,37 +184,58 @@ public actor RecordingSession {
         consumers.removeAll()
         isRecording = false
 
-        var files: [AudioChannel: URL] = [:]
-        var published: [AudioChannel: PublishedCaptureFile] = [:]
-        for (channel, stagingURL) in stagingURLs {
-            let finalURL = outputDirectory.appendingPathComponent(
-                AudioCapturePath.publishedFilename(for: channel))
-            do {
-                let result = try CaptureFilePublisher.publish(
-                    stagingURL: stagingURL,
-                    finalURL: finalURL,
-                    peak: measuredPeaks[channel] ?? 0,
-                    rms: measuredRMS[channel] ?? 0)
-                files[channel] = result.url
-                published[channel] = result
-            } catch {
-                errors[channel] = errors[channel].map { "\($0); \(error)" }
-                    ?? String(describing: error)
-            }
+        // Header inspection, size reads, SHA-256, and publication are bounded
+        // in memory but proportional to recording length. Keep blocking file
+        // work on a utility DispatchQueue rather than Swift's cooperative
+        // executor so closing a multi-hour call cannot delay unrelated tasks.
+        let publication = await CapturePublicationWorker.publish(
+            stagingURLs: stagingURLs,
+            outputDirectory: outputDirectory,
+            peaks: measuredPeaks,
+            rms: measuredRMS)
+        for (channel, error) in publication.errors {
+            errors[channel] = errors[channel].map { "\($0); \(error)" } ?? error
         }
         let summary = Summary(
-            files: files,
+            files: publication.files,
             secondsWritten: seconds,
             peaks: measuredPeaks,
             rms: measuredRMS,
-            publishedFiles: published,
+            publishedFiles: publication.publishedFiles,
             errors: errors)
 
         peaks.removeAll()
         rms.removeAll()
         errors.removeAll()
+        systemLiveness.reset()
 
         return summary
+    }
+
+    private func handleLiveness(
+        _ signals: [SystemCaptureLivenessPolicy.Signal]
+    ) async -> [RecordingCaptureHealthEvent] {
+        var events: [RecordingCaptureHealthEvent] = []
+        for signal in signals {
+            switch signal {
+            case .stalled(let secondsWithoutFrames):
+                events.append(.stalled(
+                    channel: .system,
+                    secondsWithoutFrames: secondsWithoutFrames))
+            case .recoveryDue(let attempt, let secondsWithoutFrames):
+                guard let source = sources[.system] as? any RecoverableAudioCaptureSource else {
+                    continue
+                }
+                await source.requestRecovery()
+                events.append(.recoveryRequested(
+                    channel: .system,
+                    attempt: attempt,
+                    secondsWithoutFrames: secondsWithoutFrames))
+            case .recovered(let outageSeconds):
+                events.append(.recovered(channel: .system, outageSeconds: outageSeconds))
+            }
+        }
+        return events
     }
 
     private func register(writer: CaptureFileWriter, for channel: AudioChannel) {
@@ -208,5 +251,59 @@ public actor RecordingSession {
         peaks[channel] = peak
         self.rms[channel] = rms
         if let error { errors[channel] = error }
+    }
+}
+
+private struct CapturePublicationBatch: Sendable {
+    var files: [AudioChannel: URL] = [:]
+    var publishedFiles: [AudioChannel: PublishedCaptureFile] = [:]
+    var errors: [AudioChannel: String] = [:]
+}
+
+private enum CapturePublicationWorker {
+    private static let queue = DispatchQueue(
+        label: "app.portavoz.capture-publication",
+        qos: .utility)
+
+    static func publish(
+        stagingURLs: [AudioChannel: URL],
+        outputDirectory: URL,
+        peaks: [AudioChannel: Float],
+        rms: [AudioChannel: Float]
+    ) async -> CapturePublicationBatch {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(returning: publishSynchronously(
+                    stagingURLs: stagingURLs,
+                    outputDirectory: outputDirectory,
+                    peaks: peaks,
+                    rms: rms))
+            }
+        }
+    }
+
+    private static func publishSynchronously(
+        stagingURLs: [AudioChannel: URL],
+        outputDirectory: URL,
+        peaks: [AudioChannel: Float],
+        rms: [AudioChannel: Float]
+    ) -> CapturePublicationBatch {
+        var batch = CapturePublicationBatch()
+        for (channel, stagingURL) in stagingURLs {
+            let finalURL = outputDirectory.appendingPathComponent(
+                AudioCapturePath.publishedFilename(for: channel))
+            do {
+                let result = try CaptureFilePublisher.publish(
+                    stagingURL: stagingURL,
+                    finalURL: finalURL,
+                    peak: peaks[channel] ?? 0,
+                    rms: rms[channel] ?? 0)
+                batch.files[channel] = result.url
+                batch.publishedFiles[channel] = result
+            } catch {
+                batch.errors[channel] = String(describing: error)
+            }
+        }
+        return batch
     }
 }

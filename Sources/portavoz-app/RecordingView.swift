@@ -49,14 +49,22 @@ struct RecordingView: View {
                 if controller.systemAudioMissing && !systemWarningDismissed {
                     systemAudioBanner
                 }
+                if controller.systemCaptureHealth != .healthy {
+                    systemCaptureHealthBanner
+                }
                 if !controller.tappedMeetingApps.isEmpty && !appTapNoteDismissed {
                     appTapBanner
                 }
-                if controller.liveTranscriptDeferred {
-                    deferredTranscriptBanner
+                if controller.liveTranscriptState == .preparing
+                    || controller.liveTranscriptState == .failed {
+                    liveTranscriptStatusBanner
                 }
                 if controller.translationNeedsDownload {
                     translationDownloadBanner
+                } else if controller.translationState.shouldPresentStatus(
+                    liveTranscriptState: controller.liveTranscriptState
+                ) {
+                    translationStatusBanner
                 }
                 captionsList
                     .frame(maxHeight: .infinity)
@@ -467,17 +475,97 @@ struct RecordingView: View {
 // view body under the length limit. `private` stays file-scoped, so these
 // still reach `controller` and `systemWarningDismissed`.
 extension RecordingView {
+    /// A tap that stops invoking its callback is different from silent audio:
+    /// the remote timeline has stopped advancing. This critical notice cannot
+    /// be dismissed; it clears only after frames return or the recording ends.
+    var systemCaptureHealthBanner: some View {
+        HStack(spacing: 10) {
+            Label {
+                Text(systemCaptureHealthMessage)
+            } icon: {
+                Image(systemName: systemCaptureHealthIcon)
+            }
+            .accessibilityIdentifier("recording-system-capture-health")
+            Spacer(minLength: 4)
+            if controller.shouldSuggestStopForRemoteOutage {
+                Button("Stop now") {
+                    Task { await controller.stop(services: services) }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(.red)
+                .accessibilityIdentifier("recording-stop-after-remote-outage")
+            }
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(systemCaptureHealthColor)
+        .padding(.horizontal, 20)
+    }
+
+    private var systemCaptureHealthMessage: String {
+        switch controller.systemCaptureHealth {
+        case .healthy:
+            ""
+        case .stalled, .recovering:
+            if controller.shouldSuggestStopForRemoteOutage {
+                L10n.text(
+                    "Remote audio has been unavailable for two minutes. If the call ended, stop this recording.")
+            } else {
+                L10n.text(
+                    "Remote audio stopped — reconnecting… Your microphone is still recording.")
+            }
+        case .recovered:
+            L10n.text("Remote audio capture recovered.")
+        case .failed:
+            L10n.text(
+                "Remote audio capture failed. Stop and start a new recording to avoid losing the call.")
+        }
+    }
+
+    private var systemCaptureHealthIcon: String {
+        switch controller.systemCaptureHealth {
+        case .recovered: "checkmark.circle.fill"
+        case .healthy, .stalled, .recovering, .failed: "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var systemCaptureHealthColor: Color {
+        switch controller.systemCaptureHealth {
+        case .recovered: .green
+        case .healthy, .stalled, .recovering, .failed: .orange
+        }
+    }
+
     /// Audio is the primary artifact: a fresh install starts recording now,
     /// while the verified local model prepares in the background. The durable
     /// worker fills the complete transcript from the saved channels after Stop.
-    var deferredTranscriptBanner: some View {
-        Label(
-            "Audio is recording now. The complete transcript will appear after the local model finishes preparing.",
-            systemImage: "waveform.badge.clock")
+    var liveTranscriptStatusBanner: some View {
+        Label {
+            Text(liveTranscriptStatusMessage)
+        } icon: {
+            Image(systemName: controller.liveTranscriptState == .failed
+                ? "exclamationmark.triangle.fill" : "waveform.badge.clock")
+        }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(controller.liveTranscriptState == .failed ? .orange : .secondary)
         .padding(.horizontal, 20)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(liveTranscriptStatusMessage)
         .accessibilityIdentifier("recording-transcript-deferred")
+    }
+
+    private var liveTranscriptStatusMessage: String {
+        switch controller.liveTranscriptState {
+        case .preparing:
+            L10n.text(
+                // swiftlint:disable:next line_length
+                "Audio is safe. Live captions will start automatically when the local model is ready; Stop still creates the complete transcript.")
+        case .failed:
+            L10n.text(
+                "Live captions could not start. Audio is safe; Stop will create the complete transcript.")
+        case .idle, .available:
+            ""
+        }
     }
 
     /// Shown only when the mic stays quiet — the far-field-mic nudge (field
@@ -554,6 +642,24 @@ extension RecordingView {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 20)
+    }
+
+    var translationStatusBanner: some View {
+        Label {
+            Text(translationStatusMessage)
+        } icon: {
+            Image(systemName: controller.translationState == .failed
+                ? "exclamationmark.triangle.fill" : "character.bubble")
+        }
+        .font(.caption)
+        .foregroundStyle(controller.translationState == .failed ? .orange : .secondary)
+        .padding(.horizontal, 20)
+        .accessibilityIdentifier("recording-live-translation-status")
+    }
+
+    private var translationStatusMessage: String {
+        guard let key = controller.translationState.statusMessageKey else { return "" }
+        return L10n.text(key)
     }
 }
 

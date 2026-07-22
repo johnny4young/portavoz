@@ -46,19 +46,39 @@ public typealias StartRecordingCaptionHandler =
     @Sendable (TranscriptSegment) async -> Void
 public typealias StartRecordingChunkHandler =
     @Sendable (AudioChunk) -> Void
+public typealias StartRecordingHealthHandler =
+    @Sendable (RecordingCaptureHealthEvent) -> Void
+
+/// Dynamic availability of the active recording's live caption lanes. Audio
+/// capture never waits for these states: durable post-capture transcription
+/// remains the recovery authority for any audio recorded before attachment.
+public enum StartRecordingLiveTranscriptionEvent: Equatable, Sendable {
+    case preparing
+    case available
+    case failed
+}
+
+public typealias StartRecordingLiveTranscriptionHandler =
+    @Sendable (StartRecordingLiveTranscriptionEvent) -> Void
 
 /// Live callbacks stay presentation-owned while the runtime owns stream
 /// setup and teardown. ApplicationKit never receives a concrete audio source.
 public struct StartRecordingLiveCallbacks: Sendable {
     public let caption: StartRecordingCaptionHandler
     public let chunk: StartRecordingChunkHandler
+    public let health: StartRecordingHealthHandler
+    public let liveTranscription: StartRecordingLiveTranscriptionHandler
 
     public init(
         caption: @escaping StartRecordingCaptionHandler = { _ in },
-        chunk: @escaping StartRecordingChunkHandler = { _ in }
+        chunk: @escaping StartRecordingChunkHandler = { _ in },
+        health: @escaping StartRecordingHealthHandler = { _ in },
+        liveTranscription: @escaping StartRecordingLiveTranscriptionHandler = { _ in }
     ) {
         self.caption = caption
         self.chunk = chunk
+        self.health = health
+        self.liveTranscription = liveTranscription
     }
 }
 

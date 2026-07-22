@@ -30,7 +30,7 @@ public enum TranscriptFormatter {
     /// unattributed segments show the channel instead ("system?").
     public static func format(segments: [TranscriptSegment], speakers: [Speaker]) -> String {
         let labelsByID = Dictionary(uniqueKeysWithValues: speakers.map { ($0.id, displayLabel($0)) })
-        return segments.map { segment in
+        return TranscriptContentPolicy.retainLexicalSegments(segments).map { segment in
             let label = segment.speakerID.flatMap { labelsByID[$0] } ?? "\(segment.channel.rawValue)?"
             return "[\(timestamp(segment.startTime))] \(label): \(segment.text)"
         }.joined(separator: "\n")
@@ -44,7 +44,8 @@ public enum TranscriptFormatter {
     ) -> EvidenceMaterial {
         let labelsByID = Dictionary(uniqueKeysWithValues: speakers.map { ($0.id, displayLabel($0)) })
         var idsByTag: [String: UUID] = [:]
-        let lines = segments.enumerated().map { index, segment in
+        let lexicalSegments = TranscriptContentPolicy.retainLexicalSegments(segments)
+        let lines = lexicalSegments.enumerated().map { index, segment in
             let tag = "E\(index + 1)"
             idsByTag[tag] = segment.id
             let rawLabel = segment.speakerID.flatMap { labelsByID[$0] }

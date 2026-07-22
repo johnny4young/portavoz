@@ -90,6 +90,56 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecordingWarnsWhenRemoteAudioCallbacksStop() {
+        let app = XCUIApplication.portavoz(simulateSystemCaptureStall: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        let warning = app.control(withIdentifier: "recording-system-capture-health")
+        XCTAssertTrue(
+            warning.waitForExistence(timeout: 10),
+            "callback death must become visible while microphone capture continues")
+        XCTAssertTrue(
+            app.buttons["recording-stop-after-remote-outage"].waitForExistence(timeout: 5),
+            "a prolonged outage must make Stop explicit without ending capture automatically")
+        let expected = record.label == "Nueva grabación"
+            ? "El audio remoto no está disponible desde hace dos minutos. Si la llamada terminó, detén esta grabación."
+            : "Remote audio has been unavailable for two minutes. If the call ended, stop this recording."
+        XCTAssertTrue(app.staticTexts[expected].exists)
+        attachScreenshot(of: app, named: "recording-remote-audio-recovery")
+    }
+
+    @MainActor
+    func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        let preparing = app.control(withIdentifier: "recording-transcript-deferred")
+        XCTAssertTrue(preparing.waitForExistence(timeout: 5))
+        let isSpanish = record.label == "Nueva grabación"
+        let preparingPrefix = isSpanish
+            ? "El audio sigue guardándose correctamente."
+            : "Audio is safe."
+        XCTAssertTrue(
+            preparing.label.contains(preparingPrefix),
+            "expected localized preparing copy, saw: \(preparing.label)")
+        XCTAssertTrue(
+            app.staticTexts["Live captions are available now."].waitForExistence(
+                timeout: 8))
+        XCTAssertFalse(preparing.exists)
+        attachScreenshot(of: app, named: "recording-live-transcript-hot-attach")
+    }
+
+    @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

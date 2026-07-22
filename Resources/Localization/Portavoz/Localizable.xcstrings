@@ -5891,6 +5891,46 @@
         }
       }
     },
+    "Remote audio capture failed. Stop and start a new recording to avoid losing the call.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló la captura del audio remoto. Detén e inicia una grabación nueva para evitar perder la llamada."
+          }
+        }
+      }
+    },
+    "Remote audio capture recovered.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura del audio remoto se recuperó."
+          }
+        }
+      }
+    },
+    "Remote audio interrupted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio remoto interrumpido"
+          }
+        }
+      }
+    },
+    "Remote audio stopped — reconnecting… Your microphone is still recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio remoto se detuvo — reconectando… Tu micrófono sigue grabando."
+          }
+        }
+      }
+    },
     "All tracked meeting processing stayed on this Mac.": {
       "localizations": {
         "es": {
@@ -7047,6 +7087,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se encontró la reunión."
+          }
+        }
+      }
+    },
+    "Audio is safe. Live captions will start automatically when the local model is ready; Stop still creates the complete transcript.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio sigue guardándose correctamente. Los subtítulos en vivo comenzarán automáticamente cuando el modelo local esté listo; al detener la grabación se creará la transcripción completa."
+          }
+        }
+      }
+    },
+    "Live captions could not start. Audio is safe; Stop will create the complete transcript.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron iniciar los subtítulos en vivo. El audio sigue guardándose correctamente; al detener la grabación se creará la transcripción completa."
+          }
+        }
+      }
+    },
+    "Live translation will start as soon as captions are available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción en vivo comenzará cuando haya subtítulos disponibles."
+          }
+        }
+      }
+    },
+    "Apple Translation does not support this language pair on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La función Traducción de Apple no admite este par de idiomas en este Mac."
+          }
+        }
+      }
+    },
+    "Live translation paused after an error. Retrying automatically…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción en vivo se pausó por un error. Reintentando automáticamente…"
+          }
+        }
+      }
+    },
+    "Remote audio has been unavailable for two minutes. If the call ended, stop this recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio remoto no está disponible desde hace dos minutos. Si la llamada terminó, detén esta grabación."
+          }
+        }
+      }
+    },
+    "Stop now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener ahora"
+          }
+        }
+      }
+    },
+    "Call may have ended — stop recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La llamada puede haber terminado — detén la grabación"
+          }
+        }
+      }
+    },
+    "Includes app, macOS, model, audio-channel health and timing, transcript counts, processing, provenance, and privacy-receipt status. Never includes meeting text, generated output, prompts, secrets, checksums, full URLs, or file paths. Nothing is sent automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluye el estado de la app, macOS, modelos, salud y duración de los canales de audio, conteos de transcripción, procesamiento, procedencia y recibos de privacidad. Nunca incluye texto de reuniones, contenido generado, instrucciones, secretos, sumas de verificación, URL completas ni rutas de archivos. Nada se envía automáticamente."
           }
         }
       }
