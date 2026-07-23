@@ -623,7 +623,7 @@ extension MeetingDetailView {
 
     private func privacyReceiptOperation(_ operation: DataEgressOperation) -> String {
         switch operation {
-        case .companionKnowledgeAnswer: L10n.text("Companion question only")
+        case .companionKnowledgeAnswer: L10n.text("Apuntador question only")
         case .summaryGeneration: L10n.text("Summary material")
         case .publishGitHubGist: L10n.text("Meeting export")
         case .createGitHubIssue: L10n.text("GitHub action item")
@@ -1727,13 +1727,13 @@ extension MeetingDetailView {
                         if phase == .refreshingCompanion {
                             await MainActor.run {
                                 applying = L10n.text(
-                                    "Re-checking the Companion's answers…")
+                                    "Re-checking the Apuntador's answers…")
                             }
                         }
                     })
                 if result.companion == .persistenceFailed {
                     actionError = L10n.text(
-                        "The transcript was refined, but Companion cards could not be refreshed.")
+                        "The transcript was refined, but Apuntador cards could not be refreshed.")
                 }
                 await model.send(.searchableContentChanged)
                 regenerate(
@@ -2100,10 +2100,10 @@ extension MeetingDetailView {
     private var companionCardsSection: some View {
         if !companionCards.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Companion", systemImage: "sparkles")
+                Label("Apuntador", systemImage: "sparkles")
                     .font(.headline)
                     .foregroundStyle(PVDesign.accent)
-                    .accessibilityIdentifier("detail-companion")
+                    .accessibilityIdentifier("detail-apuntador")
                 ForEach(companionCards) { card in
                     companionCardRow(card)
                 }
@@ -2128,7 +2128,7 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .disabled(player == nil)
-                .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
+                .accessibilityIdentifier("apuntador-card-\(Int(card.askedAt))")
                 Text(card.question)
                     .font(.callout.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
@@ -2185,14 +2185,14 @@ extension MeetingDetailView {
                 companionEvidenceRole(
                     L10n.text("Question source"),
                     resolution: question,
-                    identifier: "companion-card-\(card.id.uuidString)-question")
+                    identifier: "apuntador-card-\(card.id.uuidString)-question")
                 if let answer = evidence.resolveAnswer(
                     currentTranscriptRevision: detail.meeting.transcriptRevision,
                     segments: detail.segments) {
                     companionEvidenceRole(
                         L10n.text("Answer sources"),
                         resolution: answer,
-                        identifier: "companion-card-\(card.id.uuidString)-answer")
+                        identifier: "apuntador-card-\(card.id.uuidString)-answer")
                 }
             }
         }

@@ -3759,3 +3759,34 @@ work remains bounded and durability-critical but should not occupy Swift's
 cooperative executor. Content-free channel shape turns the exact field failure
 into support evidence while preserving Portavoz's privacy boundary and avoiding
 a second sensitive corpus.
+
+## D124 — The live copilot's user-facing name is "Apuntador" in every locale
+
+**Context:** the feature shipped as "Companion" (itself renamed from
+"Copiloto" to avoid Microsoft Copilot collision). By mid-2026 the market moved
+under it: Zoom retired its "AI Companion" brand (June 2026), the term "AI
+companion" drifted toward parasocial chatbots, and the live-assistant category
+split between collapsing "undetectable" tools and assistive coaches. Naming
+research (2026-07-22, STRATEGY §16.4) found "Apuntador" — the theater prompter
+who whispers lines from the concha — collision-free as an AI product name,
+evocative and ownable, Spanish-first like "Portavoz" itself, and structurally
+assistive in framing: a prompter helps the performer deliver their own
+performance.
+
+**Decision:** every user-facing surface says "Apuntador" in BOTH locales
+(catalog keys, Settings, Meeting Detail, recording toolbar, docs prose,
+accessibility identifiers `settings-apuntador-*`, `detail-apuntador`,
+`apuntador-card-*`). Three identity classes deliberately keep the old name:
+persisted storage identifiers (tables `companionCard`,
+`companionCardEvidence`, `companionCardEvidenceSegment`; the
+`companion-knowledge-answer` egress operation and related raw values),
+UserDefaults keys (`companionEnabled`, `companionUserName`, the BYOK key), and
+internal Swift symbols/files (`CompanionCard`, `LiveCompanion`,
+`CompanionSessionCoordinator`, …). Storage and preference names are identity —
+renaming them is a migration with zero user value and real risk. The symbol
+rename is deferred as a mechanical follow-up for a quiet tree, because the
+concurrent working tree actively edits those symbols today.
+
+**Rationale:** the user-visible name is marketing surface and must move with
+the market; persisted identity must not move at all; and a symbols-only rename
+can wait without any user-facing inconsistency.

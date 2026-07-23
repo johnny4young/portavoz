@@ -6,7 +6,7 @@ public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
 ## July 22, 2026
-
+- **🎭 Companion is now Apuntador** — The live meeting copilot takes its definitive name: the theater prompter who whispers your line from the wings. Same feature, same privacy, a name that says exactly what it does — in both languages.
 - **🛡️ AI that can't be talked into misbehaving** — Spoken "ignore your instructions" stays quoted meeting content across summaries, translations, naming, chapters, briefs, Ask, and Companion; a drifted answer ("As an AI...") is dropped instead of shown on a card.
 - **🔐 Dictation stays out of password fields** — Portavoz checks the focused field at the last possible moment and refuses to type when macOS cannot verify it, so a focus change or Accessibility hiccup cannot turn spoken words into a visible secret.
 - **🎙️ Dictation keeps your last word** — Capture timing now begins with the real microphone stream, keeps a beat past release, and cancels safely during a cold model start; accidental taps, duplicate stops, and stale sessions cannot paste or leave the mic listening.

@@ -1,10 +1,10 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
-Single-flight actor that serializes EVERY FM call in the process with priorities `interactive > live > background`, FIFO per class, latest-wins by `key` (for discardable Companion ticks), and caller cancellation. Granularity = one call: map-reduce chains release the slot between steps → an interactive job's wait is bounded by the in-flight call (~1–4 s). No FM dependency (7 pure tests, run on any platform). The provider's public methods accept `priority:` (default `.interactive`); the app's rolling summary passes `.background`. Swift 6: `Response<T>` is not Sendable → closures return payloads built inside the slot.
+Single-flight actor that serializes EVERY FM call in the process with priorities `interactive > live > background`, FIFO per class, latest-wins by `key` (for discardable Apuntador ticks), and caller cancellation. Granularity = one call: map-reduce chains release the slot between steps → an interactive job's wait is bounded by the in-flight call (~1–4 s). No FM dependency (7 pure tests, run on any platform). The provider's public methods accept `priority:` (default `.interactive`); the app's rolling summary passes `.background`. Swift 6: `Response<T>` is not Sendable → closures return payloads built inside the slot.
 
 ## On-device summaries — `FoundationModelSummaryProvider`
 
@@ -81,7 +81,7 @@ Translation creates fresh action-item IDs and carries matching evidence by
 task position with fresh evidence IDs; bullet/Markdown coordinates are not
 involved. The source revision and ordered segment IDs remain intact until
 Storage validates them. Completing a task never invokes a provider and never
-changes its generated evidence. Companion-card provenance remains independent
+changes its generated evidence. Apuntador-card provenance remains independent
 and is not inferred from this contract.
 
 ## Human claim feedback is not model material (D88)
@@ -104,7 +104,7 @@ untrusted quoted source: embedded requests, commands, and formatting orders are
 content to report or transform, never instructions to follow.
 `PromptFactory.sourceMaterialGuard()` is shared by summary, map-phase notes,
 finished-summary translation, speaker naming, chapter titles, pre-meeting
-briefs, meeting-type detection, RAG answers, and title suggestions; Companion
+briefs, meeting-type detection, RAG answers, and title suggestions; Apuntador
 keeps equivalent classifier and knowledge rules because its trusted user
 question is distinct from retrieved meeting passages. One coverage test
 enumerates the current Foundation Models entry points and fails if any listed
@@ -130,9 +130,9 @@ escapes so the file stays inside the English-source gate.
 - Verbatim glossary (terms that are never translated) — comes from the user's vocabulary and/or `--glossary`.
 - The real FoundationModels API is verified in the local SDK's `.swiftinterface` — a better source than any documentation.
 
-## BYOK (D8/D67/D68) — gateway-backed summary and Companion clients
+## BYOK (D8/D67/D68) — gateway-backed summary and Apuntador clients
 
-- **`OpenAICompatibleChatCodec`**: internal, transport-free request/response codec shared by the summary and Companion clients for `/chat/completions` endpoints (OpenAI/OpenRouter/Groq/Ollama/LM Studio). One system + one user message go in and text comes out; no URLSession dependency is reachable through this type.
+- **`OpenAICompatibleChatCodec`**: internal, transport-free request/response codec shared by the summary and Apuntador clients for `/chat/completions` endpoints (OpenAI/OpenRouter/Groq/Ollama/LM Studio). One system + one user message go in and text comes out; no URLSession dependency is reachable through this type.
 - **`OpenAICompatibleSummaryClient`**: public summary transport facade that cannot send without an injected `DataEgressGateway`. It declares full meeting-summary material, source meeting identity, exact destination/scope, provider/model, and operation-specific consent separately from the encoded body. Cloud calls do NOT pass through `IntelligenceScheduler` — single-flight exists because of ANE contention and does not apply to the network.
 - **`CompanionBYOKClient`**: accepts the same endpoint/model/key shape and also requires a gateway. Its separate operation declares question-only material so recent transcript context can never be smuggled through summary metadata.
 - **Receipt semantics (D75)**: the production gateway validates those declarations, persists one immutable content-free attempt, and only then exposes the body to URLSession. Receipt failure prevents the call; HTTP failure retains the attempt; redirects are rejected. Intelligence providers never create or interpret receipt rows themselves.
@@ -232,9 +232,9 @@ the released path. The app adapter reuses configured summary-engine selection
 while exposing provider/model metadata through an import-specific port
 (D46/D64).
 
-Slice 2G routes post-refine Companion work through
+Slice 2G routes post-refine Apuntador work through
 `ApplicationKit.ApplyRefinedMeeting` and an app-owned availability/model
-adapter. Companion runs only after the revision-fenced transcript transaction
+adapter. Apuntador runs only after the revision-fenced transcript transaction
 commits. An unavailable provider skips refresh, and an incomplete or canceled
 refresh preserves the prior cards; a complete pass replaces the snapshot,
 including with an empty set when the refined transcript contains no
@@ -295,16 +295,16 @@ meeting-content HTTP receipt boundary.
 - Instructions (`notesBehavior`): each note is a topic the summary MUST cover, expanded with facts, never contradicted; bullets originating from a note are prefixed with **"▸ "** — a cheap token instead of inflating the guided-generation schema; the renderer can display Granola-style coauthorship (black/gray) without changing types. The language instruction still closes the prompt (D18).
 - Full flow wired: **notes panel in `RecordingView`** (TextField + timestamped list with remove, right column, always visible during recording) → `RecordingController.addContextNote()` (anchors to the current moment) → rolling and final summaries see them → persisted at stop (`contextItem` table, v3 migration) → regeneration in the detail reloads them from the store. **Coauthorship rendering** in `MarkdownText`: bullets prefixed with "▸ " are drawn with an accent mark (Granola style — content originating from your note is distinguishable from the pure AI summary). M10 complete except for field verification (5 real notes → summary that expands them).
 
-## Live Companion (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
+## Live Apuntador (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
 
 3-stage pipeline over closed coalescer rows (a row closes when the next one is created — never partial, never reprocessed):
 1. **Pure gate** (tested, es/en): `looksLikeQuestion` (`?`/`¿`, initial interrogatives, minimum 12 chars) **OR `mentions(ownerName)`** — the "te preguntaron" detector: whole-word, case/diacritic-insensitive match of the first name or full name ("John" does NOT trigger inside "Johnny"). The name comes from Ajustes ("Tu nombre") with default `NSFullUserName()`. The common case (nobody asked) costs zero.
 2. **FM classifier** (`DetectedQuestion` @Generable: isQuestion/question/kind) sent to the scheduler with `.live` + key `companion-detect` (latest-wins: ticks never stack up). `logistics` → no card (the classic failure mode for this class of features), **unless the caption names you**: then the card is a PING ("te preguntaron", question without an invented answer, orange tint). Two lessons from the 3B caught by the gated test: (a) `directed` is ALWAYS the deterministic name gate, never the model's opinion (requesting it as a field → it stripped "Johnny," from the question and reported false); (b) the logistics filter needs literal few-shot examples ("¿nos acompañas mañana…?" is logistics, NOT context) — with only the abstract rule, it leaked through.
 3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (app composition injects the resolved `CompanionBYOKClient`; same instructions as on-device, 400 tokens max, `source` = provider host; if the provider or egress-policy call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8/D67). Explicit cancellation never falls through to the local answer.
 
-App: per-recording opt-in ("Companion" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Companion BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
+App: per-recording opt-in ("Apuntador" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Apuntador BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
 
-### Companion transcript evidence (D91)
+### Apuntador transcript evidence (D91)
 
 `CompanionGenerationRequest` carries exact question segment identities and
 `RAGPassage` may carry its source segment identity. Live generation uses the
@@ -323,7 +323,7 @@ resulting `CompanionCardEvidence` is card-identity-keyed, revision-fenced, and
 role-separated. It is attached to the card before the generated artifact
 crosses StorageKit, but generation-run JSON remains content-free.
 
-### Companion-card generation provenance (D66)
+### Apuntador-card generation provenance (D66)
 
 `ProvenanceCompanion` wraps the released pipeline without changing its card
 policy. After the deterministic question/name gate and model availability
@@ -356,7 +356,7 @@ directed ping is still a generated card and identifies Foundation Models even
 when no answer stage was needed. Live and post-Refine persistence boundaries are
 specified in specs 01, 05, and 06.
 
-### Companion egress enforcement (D67)
+### Apuntador egress enforcement (D67)
 
 The production live and post-Refine paths inject IntegrationsKit's
 `URLSessionDataEgressGateway` into `CompanionBYOKClient`. The request carries a
@@ -367,14 +367,14 @@ from its body. The adapter validates those facts before URLSession sees the
 payload and rejects missing-host or non-HTTP(S) destinations. Only provable
 loopback (`localhost`, `*.localhost`, valid `127/8`, or
 `::1`) is local-device; private LAN, `.local`, malformed, and unknown hosts are
-remote. A directly constructed public Companion client uses an explicit-client
+remote. A directly constructed public Apuntador client uses an explicit-client
 consent marker and remains gateway-mandatory.
 
-The body contains static Companion instructions and the classified knowledge
+The body contains static Apuntador instructions and the classified knowledge
 question only. No `RAGPassage`, transcript window, owner identity, or stored
 card content enters the transport metadata or body. Offline tests capture and
 decode the exact request, validate loopback classification and metadata
-rejection, and an architecture test prevents Companion, provenance, or app
+rejection, and an architecture test prevents Apuntador, provenance, or app
 composition from restoring a direct network call.
 
 ### Summary egress enforcement (D68)
@@ -388,7 +388,7 @@ explicit-provider consent. Every call carries its source `MeetingID`,
 and a conservative local-device/remote scope separately from the request body.
 The adapter requires a non-empty POST and rejects absent meeting identity,
 forged destination/provider/model, wrong material classification, and any
-Companion consent marker used for a summary (or vice versa) before transport.
+Apuntador consent marker used for a summary (or vice versa) before transport.
 
 The terminal `summarize` command enters
 `ApplicationKit.SummarizeAudioFile`. ApplicationKit owns file admission,

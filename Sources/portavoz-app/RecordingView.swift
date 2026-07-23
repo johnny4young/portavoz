@@ -193,7 +193,7 @@ struct RecordingView: View {
             }
             if services.companionAvailable {
                 Toggle(isOn: companionBinding) {
-                    Label("Companion", systemImage: "questionmark.bubble")
+                    Label("Apuntador", systemImage: "questionmark.bubble")
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)

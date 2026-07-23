@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Companion-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics).
 
 ## Database
 
@@ -18,10 +18,10 @@ Singular camelCase tables, 1:1 with Codable records:
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — immutable snapshots), **fingerprint** (v4, D25 — language-independent material identity; NULL in old snapshots = never match), generationRunID? (v6) |
 | `actionItem` | id, summaryID (FK CASCADE), meetingID, text, ownerSpeakerID?, isDone (the MUTABLE exception), tombstone |
 | `contextItem` (v3) | id, meetingID (FK CASCADE), kind (note/link/codeSnippet/file), content, timestamp (seconds from start), tombstone — user notes (D28) |
-| `companionCard` (v5) | id, meetingID (FK CASCADE), question, answer, kind, source, directed, askedAt, generationRunID? (v6), createdAt/updatedAt/deletedAt — reviewable Companion snapshot (D26) |
+| `companionCard` (v5) | id, meetingID (FK CASCADE), question, answer, kind, source, directed, askedAt, generationRunID? (v6), createdAt/updatedAt/deletedAt — reviewable Apuntador snapshot (D26) |
 | `audioAsset` (v6) | id, meetingID, channel, role, unique relativePath, optional finalized media metadata/checksum/levels, healthStatus, sourceAssetID lineage, createdAt/updatedAt/supersededAt/deletedAt |
 | `processingJob` (v6) | durable job state, priority/progress, retries, scheduling/lease/error timestamps; UNIQUE meetingID+kind+inputFingerprint; equal-timestamp reads use SQLite insertion order rather than random UUID order |
-| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine, durable post-capture, and external-audio import successful summaries link atomically; accepted Refine links every replacement segment; generated live/post-Refine Companion cards link one current-workflow run and record only conservative external destination scope when transfer is attempted; failed/cancelled attempts persist separately (D62–D67) |
+| `generationRun` (v6) | provider/model/config/input/output/outcome/metrics envelope; nullable `generationRunID` FKs exist on segment, summary, and companionCard. Manual/post-refine, durable post-capture, and external-audio import successful summaries link atomically; accepted Refine links every replacement segment; generated live/post-Refine Apuntador cards link one current-workflow run and record only conservative external destination scope when transfer is attempted; failed/cancelled attempts persist separately (D62–D67) |
 | `outboxEvent` (v6) | idempotent external-side-effect envelope with delivery state, attempts, and retry/delivery timestamps |
 | `meetingPreference` (v6) | one row per meeting for independent transcript/summary language modes and optional recipe/summary/refine engines |
 | `dataEgressEvent` (v7) | immutable content-free attempt: meeting, operation, conservative destination scope/host, classification, consent, provider/model, and attemptedAt; indexed by meeting/time |
@@ -35,7 +35,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `summaryDecisionEvidenceSegment` (v11) | id, decisionID (FK CASCADE), segmentID? (FK SET NULL), ordinal, createdAt; unique decision+ordinal and decision+live-segment |
 | `summaryActionItemEvidence` (v12) | id, actionItemID (unique FK CASCADE), sourceTranscriptRevision, createdAt; one immutable evidence aggregate per durable task |
 | `summaryActionItemEvidenceSegment` (v12) | id, evidenceID (FK CASCADE), segmentID? (FK SET NULL), ordinal, createdAt; unique evidence+ordinal and evidence+live-segment |
-| `companionCardEvidence` (v13) | id, cardID (unique FK CASCADE), sourceTranscriptRevision, createdAt; one immutable evidence aggregate per Companion card |
+| `companionCardEvidence` (v13) | id, cardID (unique FK CASCADE), sourceTranscriptRevision, createdAt; one immutable evidence aggregate per Apuntador card |
 | `companionCardEvidenceSegment` (v13) | id, evidenceID (FK CASCADE), role (`question` or `answer`), segmentID? (FK SET NULL), ordinal, createdAt; unique evidence+role+ordinal and evidence+role+live-segment |
 | `meetingSyncState` (v14) | meetingID (TEXT PK, deliberately no FK), localGeneration, acknowledgedGeneration, changedAt, isDeleted; content-free coalesced mutation state with pending index and purge-surviving deletion evidence |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
@@ -103,7 +103,7 @@ updates only the task row, so its evidence identity and links remain stable.
 Physical segment deletion sets a link null and makes the whole task source
 unavailable rather than partially navigable.
 
-Schema v13 is the additive Companion-card-evidence migration (D91). Existing
+Schema v13 is the additive Apuntador-card-evidence migration (D91). Existing
 cards gain no synthetic evidence. One optional aggregate must target its card,
 contain nonempty unique question links, contain unique answer links, and
 reference only live segments from the same meeting. Storage stamps the current
@@ -142,7 +142,7 @@ generation. The versioned envelope contains source device, generation, change
 time, and either deletion or text-first aggregate mutation. The aggregate
 contains the root, observed speakers, ordered transcript, every live immutable
 summary version with action items/typed evidence/current claim feedback, notes,
-and Companion cards/evidence. It clears the local audio directory and canonical
+and Apuntador cards/evidence. It clears the local audio directory and canonical
 person link and has no audio asset, embedding, generation run, job, receipt,
 model, secret, or voiceprint type.
 
@@ -188,7 +188,7 @@ transaction verifies that the live recording shell is untouched and the asset
 IDs/channels/creation timestamps exactly match their pending reservations. It
 then advances the meeting to `captured`, updates published assets with complete
 CAF/checksum/level/health metadata (or explicit metadata-free missing/pending
-state), and inserts the provisional live cast/transcript, notes, and Companion
+state), and inserts the provisional live cast/transcript, notes, and Apuntador
 cards. A changed shell, preexisting child/summary, malformed finalized
 metadata, final-path uniqueness collision, or child insert failure rolls the
 entire transaction back. GRDB persists `Date` as UTC text with millisecond
@@ -254,7 +254,7 @@ opened by v6 code.
 The current release-upgrade gate independently treats migrations `v1`–`v5` as
 the exact schema shipped in Portavoz v0.6.0. It creates a disposable file-backed
 v5 library containing a bilingual transcript, cast, summary and action item,
-note, Companion card, and relative audio reference; opening that file through
+note, Apuntador card, and relative audio reference; opening that file through
 `MeetingStore` must apply `v6`–`v14` without changing any user content. The gate
 requires `PRAGMA integrity_check = ok`, zero foreign-key violations, no implicit
 sync seed, and the same result after a second open. A separate empty-library
@@ -273,7 +273,7 @@ idempotently. Neither case reads or copies the user's real library.
 - **Tombstones for user meetings** (`deletedAt`; future sync needs them). The
   sole D37 exception is `discardUnstartedRecording`: it can hard-delete only a
   shell still in `recording` state with no speaker, segment, summary, context
-  item, or Companion card. `ApplicationKit.StartRecording` invokes it only
+  item, or Apuntador card. `ApplicationKit.StartRecording` invokes it only
   after checking every reserved staging and published channel path. Assets
   cascade with that no-data rollback. Any file or content preserves the meeting
   for recovery.
@@ -351,7 +351,7 @@ empty name throws `StorageError.invalidPersonLink`.
 
 `meetingExportSnapshot(_:)` is the dedicated read-side aggregate for sharing.
 One GRDB read loads the live meeting, cast, ordered transcript, newest summary
-across every recipe, ordered notes, and ordered Companion cards. The required
+across every recipe, ordered notes, and ordered Apuntador cards. The required
 meeting/cast/transcript projection remains strict; optional summary, note, and
 card decoding retains the released degradable fallback. Audio bytes are not a
 database concern and remain behind the application filesystem port (D52).
@@ -431,10 +431,10 @@ Meeting-bundle import uses the superset
 `saveImportedMeetingBundle(_:at:)` Unit of Work (D51). Before writing it
 validates the relative audio directory; unique speaker/segment/note/card/action
 identities; meeting ownership; cast references; summary/action ownership; and
-current, card-targeted Companion evidence over imported segments.
+current, card-targeted Apuntador evidence over imported segments.
 One transaction rejects an existing meeting ID and inserts the meeting, cast,
 transcript, optional summary as immutable version 1 with its action items,
-notes, Companion cards, and their evidence. A failure in the final evidence
+notes, Apuntador cards, and their evidence. A failure in the final evidence
 link insert rolls back every earlier row, while invalid foreign children are
 rejected before any write.
 
@@ -498,12 +498,12 @@ immutable summary across recipes plus current action items and typed overview/
 decision evidence observe `meeting`, `summary`, `actionItem`, `summaryClaim`,
 `summaryClaimSegment`, `summaryClaimFeedback`, `summaryDecisionEvidence`,
 `summaryDecisionEvidenceSegment`, `summaryActionItemEvidence`, and
-`summaryActionItemEvidenceSegment`; persisted Companion cards observe `meeting`,
+`summaryActionItemEvidenceSegment`; persisted Apuntador cards observe `meeting`,
 `companionCard`, `companionCardEvidence`, and
 `companionCardEvidenceSegment`; the privacy receipt observes `meeting`, `generationRun`,
 `dataEgressEvent`, and `privacyReceiptCoverage`; durable processing observes
 only `meeting` and `processingJob`. Every projection is filtered to one live meeting. The core and
-Companion helpers are shared with `detail` and `companionCards(for:)`, while
+Apuntador helpers are shared with `detail` and `companionCards(for:)`, while
 the summary stream reuses `mostRecentSummarySnapshot`; one-shot and observed
 selection, ordering, tombstone scope, and strict decoding therefore remain
 identical. The app maps these StorageKit edge values into storage-independent
@@ -524,7 +524,7 @@ latest-summary-only `openActionItems(limit:)` query.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Companion cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Companion evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Companion evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Apuntador cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Apuntador evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Apuntador evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
 
 ## Recordings folder — `RecordingsLocation`
 
@@ -558,7 +558,7 @@ enter SQLite, UserDefaults, sync payloads, bundles, or diagnostics.
 1. No SQLCipher (optional and planned, PRODUCT/security).
 2. Manual/post-refine regeneration, durable post-capture generation,
    external-audio import summaries, accepted Refine transcripts, and generated
-   live/post-Refine Companion cards now write
+   live/post-Refine Apuntador cards now write
    validated terminal `generationRun` records. Manual/import success commits run, immutable
    summary, and actions together; durable success additionally shares the job's
    lease/revision-fenced completion and lifecycle transaction. Import summary
@@ -570,7 +570,7 @@ enter SQLite, UserDefaults, sync payloads, bundles, or diagnostics.
    post-attempt failures and cancellations persist separately on a best-effort
    basis. The Store exposes typed run history and summary-link lookup, rejects
    orphaned success and malformed or mismatched links, and stores no meeting
-   content in config/metrics. Companion config may additionally store only the
+   content in config/metrics. Apuntador config may additionally store only the
    `local-device`/`remote` destination scope produced by D67's egress policy;
    it stores no URL or request body. Inline diarization has no separate durable artifact
    link beyond the transcript it attributes; transient suggestions/briefs remain
@@ -621,7 +621,7 @@ ApplicationKit's refine store port. Successful draft generation performs no
 durable write; after D65, a begun failed/cancelled attempt may persist one
 standalone diagnostic run. Acceptance uses optimistic revision fencing and one
 aggregate/provenance transaction.
-Companion cards are a separate optional post-commit replacement, and summaries
+Apuntador cards are a separate optional post-commit replacement, and summaries
 remain immutable history. After D66, a complete refresh atomically replaces
 cards plus successful runs only when the run's post-refine source revision is
 still current. An incomplete refresh preserves the prior snapshot and may store
@@ -662,15 +662,15 @@ Slice 2K makes `MeetingStore` conform to `ImportMeetingBundleStore` through
 the complete imported-bundle Unit of Work. ApplicationKit supplies one
 validated snapshot and one sampled timestamp; StorageKit validates every
 aggregate relation before entering a single GRDB write. Summary/action rows,
-notes, and Companion cards can no longer commit independently of their meeting,
+notes, and Apuntador cards can no longer commit independently of their meeting,
 cast, and transcript. Focused real-Store tests prove full conservation,
 pre-write rejection of foreign children, and rollback when an injected trigger
-rejects the final Companion card (D51).
+rejects the final Apuntador card (D51).
 
 Slice 2L makes `MeetingStore` conform to `ExportMeetingBundleStore` through
 `meetingExportSnapshot(_:)`. One live-rooted GRDB read supplies the meeting,
 cast, ordered transcript, newest summary across recipe histories, notes, and
-Companion cards to ApplicationKit. Audio stays outside SQLite, and no database
+Apuntador cards to ApplicationKit. Audio stays outside SQLite, and no database
 record or SQL detail crosses the port. Focused real-Store tests prove complete
 content conservation, newest-recipe selection, tombstone exclusion, and the
 released optional-row degradation policy (D52).

@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence).
 
 ## Channel model (D5)
 
@@ -89,7 +89,7 @@ duplicate candidates across roots, is `capture.recovery.ambiguous`: every copy
 is preserved and Portavoz neither overwrites nor guesses (D40/D50).
 
 `ApplicationKit.StopRecording` installs `captured`, finalized/missing assets,
-provisional live cast/transcript, notes, Companion cards with optional
+provisional live cast/transcript, notes, Apuntador cards with optional
 role-separated transcript evidence, and the exact first
 job in one StorageKit Unit of Work before derived work. A complete first-pass
 `transcription` job is admitted when captions are empty or any live lane was
@@ -146,8 +146,8 @@ an immutable `ApplicationKit.StopRecording` request. A recording-scoped
 voiceprint read begins while capture is active. The use case reconciles
 finalized or missing assets, derives provisional cast and homogeneous aggregate
 language without translating per-turn text, and installs assets, transcript,
-notes, retained Companion cards and their question/answer evidence, their successful generation-run links,
-completed failed/cancelled Companion attempts, and the exact first diarization
+notes, retained Apuntador cards and their question/answer evidence, their successful generation-run links,
+completed failed/cancelled Apuntador attempts, and the exact first diarization
 job in one StorageKit transaction. Unlinked legacy/bundle-style cards remain
 valid. It then kicks the process supervisor; the controller navigates
 immediately from the typed success. Relaunch resumes the same owner-leased work

@@ -166,11 +166,11 @@ final class MeetingDetailUITests: XCTestCase {
 
         app.control(withIdentifier: "settings-category-voice").click()
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-companion-status")
+            app.control(withIdentifier: "settings-apuntador-status")
                 .waitForExistence(timeout: 5),
             "the voice pane must explain Companion's real platform requirement")
         XCTAssertFalse(
-            app.control(withIdentifier: "settings-companion-enabled").exists,
+            app.control(withIdentifier: "settings-apuntador-enabled").exists,
             "Sequoia must not expose a toggle that cannot work")
         attachScreenshot(of: app, named: "sequoia-companion-requirements")
     }
@@ -326,7 +326,7 @@ final class MeetingDetailUITests: XCTestCase {
 
         let source = app.control(
             withIdentifier:
-                "companion-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
+                "apuntador-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
         guard source.waitForExistence(timeout: 10) else {
             XCTFail("the Companion answer must expose its exact transcript source")
             return
@@ -504,10 +504,10 @@ final class MeetingDetailUITests: XCTestCase {
         // These WAIT: the cards are fetched separately from the meeting
         // detail, so the section lands a beat after the rest of the rail.
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-companion").waitForExistence(timeout: 5),
+            app.control(withIdentifier: "detail-apuntador").waitForExistence(timeout: 5),
             "the right rail must show the persisted Companion answers")
         XCTAssertTrue(
-            app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
+            app.control(withIdentifier: "apuntador-card-6").waitForExistence(timeout: 5),
             "the answered Companion card must render for review")
 
         attachScreenshot(of: app, named: "band-3h-privacy-receipt")
