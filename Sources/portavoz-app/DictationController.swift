@@ -222,17 +222,18 @@ final class DictationController {
         feed: AsyncStream<AudioChunk>.Continuation,
         sessionID: UUID
     ) -> Task<Void, Never> {
-        Task.detached { [weak self] in
+        let updateMeter: @MainActor @Sendable (Float) -> Void = { [weak self] peak in
+            if let self, self.activeSessionID == sessionID {
+                self.micLevel = max(peak, self.micLevel * 0.8)
+            }
+        }
+        return Task.detached {
             do {
                 for try await chunk in stream {
                     guard !Task.isCancelled else { break }
                     let peak = chunk.samples.reduce(Float(0)) { max($0, abs($1)) }
                     feed.yield(chunk)
-                    await MainActor.run {
-                        if let self, self.activeSessionID == sessionID {
-                            self.micLevel = max(peak, self.micLevel * 0.8)
-                        }
-                    }
+                    await updateMeter(peak)
                 }
             } catch {}
             feed.finish()
