@@ -56,9 +56,14 @@ public protocol MeetingSpeakerNameProposing: Sendable {
 
 public struct SuggestMeetingSpeakerNamesRequest: Sendable {
     public let meetingID: MeetingID
+    /// The device owner's display name. Participants address the owner by
+    /// name constantly, so an owner-name proposal for a remote speaker is
+    /// almost always the model misreading who a mention belongs to.
+    public let ownerName: String?
 
-    public init(meetingID: MeetingID) {
+    public init(meetingID: MeetingID, ownerName: String? = nil) {
         self.meetingID = meetingID
+        self.ownerName = ownerName
     }
 }
 
@@ -110,17 +115,39 @@ public struct SuggestMeetingSpeakerNames: ApplicationUseCase {
             proposals,
             transcriptLines: detail.segments.map(\.text),
             unnamedLabels: unnamedLabels,
-            attendeeCandidates: attendeeCandidates)
+            attendeeCandidates: attendeeCandidates,
+            ownerName: request.ownerName,
+            takenNames: detail.speakers.compactMap(\.displayName))
     }
 
     static func verified(
         _ proposals: [MeetingNameProposal],
         transcriptLines: [String],
         unnamedLabels: Set<String>,
-        attendeeCandidates: [String]
+        attendeeCandidates: [String],
+        ownerName: String? = nil,
+        takenNames: [String] = []
     ) -> [MeetingNameSuggestion] {
         let transcriptLines = transcriptLines.compactMap(PersonAliasNormalizer.displayName)
         let candidates = attendeeCandidates.compactMap(PersonAliasNormalizer.displayName)
+        // The same proposed name on two DISTINCT eligible speakers is
+        // evidence for neither: "the name appears in the transcript" cannot
+        // pick between them, and the field failure mode is the owner's name
+        // spreading over the cast. A repeat of one (label, name) pair, or a
+        // proposal on an ineligible label ("Me", already named), does not
+        // poison a valid one.
+        var labelsByName: [String: Set<String>] = [:]
+        for proposal in proposals {
+            let label = proposal.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard unnamedLabels.contains(label),
+                let name = PersonAliasNormalizer.displayName(proposal.name)
+            else { continue }
+            labelsByName[nameKey(name), default: []].insert(label)
+        }
+        let ambiguous = Set(labelsByName.filter { $0.value.count > 1 }.keys)
+        let taken = Set(takenNames.compactMap {
+            PersonAliasNormalizer.displayName($0).map(nameKey)
+        })
         var admittedLabels: Set<String> = []
         var suggestions: [MeetingNameSuggestion] = []
 
@@ -128,7 +155,10 @@ public struct SuggestMeetingSpeakerNames: ApplicationUseCase {
             let label = proposal.label.trimmingCharacters(in: .whitespacesAndNewlines)
             guard let name = PersonAliasNormalizer.displayName(proposal.name),
                   unnamedLabels.contains(label),
-                  !admittedLabels.contains(label)
+                  !admittedLabels.contains(label),
+                  !ambiguous.contains(nameKey(name)),
+                  !taken.contains(nameKey(name)),
+                  !isOwnerAddressed(name, owner: ownerName)
             else {
                 continue
             }
@@ -154,5 +184,33 @@ public struct SuggestMeetingSpeakerNames: ApplicationUseCase {
                 evidence: evidence))
         }
         return suggestions
+    }
+
+    /// Case- and diacritic-folded identity for a display name.
+    private static func nameKey(_ name: String) -> String {
+        name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .lowercased()
+    }
+
+    /// A proposal that matches the owner's name — or is a 4+ character short
+    /// form of its first token ("John" for "Johnny") — reads as participants
+    /// addressing the owner, not as another person's identity. A genuine
+    /// distinct participant sharing that prefix loses only the automatic
+    /// suggestion, never the manual rename.
+    static func isOwnerAddressed(_ name: String, owner: String?) -> Bool {
+        guard let owner,
+            let ownerNormalized = PersonAliasNormalizer.displayName(owner)
+        else { return false }
+        let proposalKey = nameKey(name)
+        let ownerKey = nameKey(ownerNormalized)
+        if proposalKey == ownerKey { return true }
+        guard
+            let proposalFirst = proposalKey
+                .split(whereSeparator: { !$0.isLetter && !$0.isNumber }).first,
+            let ownerFirst = ownerKey
+                .split(whereSeparator: { !$0.isLetter && !$0.isNumber }).first
+        else { return false }
+        if proposalFirst == ownerFirst { return true }
+        return proposalFirst.count >= 4 && ownerFirst.hasPrefix(proposalFirst)
     }
 }

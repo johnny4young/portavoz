@@ -71,6 +71,9 @@ struct RecordingView: View {
                     .padding(.horizontal, 20)
                 ScrollView {
                     VStack(spacing: 10) {
+                        if let state = controller.catchUp.state {
+                            catchUpPanel(state)
+                        }
                         companionCardsPanel
                         notesPanel
                         if let live = controller.liveSummary {
@@ -193,12 +196,21 @@ struct RecordingView: View {
             }
             if services.companionAvailable {
                 Toggle(isOn: companionBinding) {
-                    Label("Companion", systemImage: "questionmark.bubble")
+                    Label("Apuntador", systemImage: "questionmark.bubble")
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
                 .help(L10n.text("Detects questions and suggests on-device answers. It never answers for you."))
             }
+            Button {
+                controller.requestCatchUp()
+            } label: {
+                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
+            }
+            .controlSize(.small)
+            .help(L10n.text(
+                "A quick recap of the last few minutes — for when you zoned out or just joined."))
+            .accessibilityIdentifier("recording-catch-up")
             Button(action: enterCompactMode) {
                 Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
             }
@@ -365,20 +377,6 @@ struct RecordingView: View {
     private func stamp(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds))
         return String(format: "%02d:%02d", total / 60, total % 60)
-    }
-
-    private func liveSummaryPanel(_ markdown: String) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Live summary", systemImage: "sparkles")
-                    .font(.headline)
-                MarkdownText(text: markdown)
-                    .font(.callout)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
     /// Live captions as a Spotify-lyrics carousel (M11): the newest line
@@ -736,5 +734,64 @@ extension RecordingView {
             return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
         }
         return base
+    }
+}
+
+// Recap panels live outside the already-large view body.
+private extension RecordingView {
+    /// The pull-based recap card: generating, the recap itself, or the
+    /// honest capability/insufficient-content explanation. Dismiss is the
+    /// only other action — this card never persists anywhere.
+    private func catchUpPanel(_ state: RecordingCatchUpModel.State) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    controller.catchUp.dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.text("Dismiss catch-up"))
+                .accessibilityIdentifier("recording-catch-up-dismiss")
+            }
+            switch state {
+            case .generating:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(L10n.text("Catching you up…"))
+                        .foregroundStyle(.secondary)
+                }
+            case .ready(let recap):
+                MarkdownText(text: recap)
+                    .font(.callout)
+            case .unavailable(let reason):
+                Text(reason)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("recording-catch-up-panel")
+    }
+
+    private func liveSummaryPanel(_ markdown: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Live summary", systemImage: "sparkles")
+                    .font(.headline)
+                MarkdownText(text: markdown)
+                    .font(.callout)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 }

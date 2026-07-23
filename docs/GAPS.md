@@ -60,12 +60,12 @@ Implemented and tested features whose final criterion can be closed only with a 
 Use the content-free procedure and exact admission checks in
 [`FIELD-VALIDATION.md`](FIELD-VALIDATION.md) for callback recovery, AirPods
 process-tap capture, cold live captions, live translation, post-capture Refine,
-and Companion/name continuity. The collector rejects content-bearing additions
+and Apuntador/name continuity. The collector rejects content-bearing additions
 and never reads `/Applications/Portavoz.app`.
 
 - **Next-release Homebrew install on clean Sequoia** (D74): `brew install --cask johnny4young/tap/portavoz` must install and launch the next public artifact on a Mac with no prior Portavoz receipt. The local v0.6.0 cask reproduction proved the outer DMG passed while the extracted app lacked a stapled ticket; the fixed release gate now rejects that state. Preserve `brew install --verbose --debug` output if any separate failure remains.
 - **Production private sync** (D97/D116): configure `iCloud.app.portavoz.mac`, deploy the production CloudKit schema, and issue an unexpired Developer ID profile with the exact production CloudKit and macOS push capabilities. On two clean Macs using one iCloud account, prove explicit future-change opt-in, separately confirmed existing-library seed, bidirectional edits, encrypted tombstone propagation, restart/retry, silent-push wake, sign-out/in, a real account switch requiring fresh consent, pause, and remove-this-Mac without deleting local meetings or remote records. Record the actual destination's complete-protection and backup-exclusion capabilities and verify that unsupported metadata omits only the unavailable key while `0600`, durable verification, and atomic publication remain intact. Reproduce Homebrew extraction and renew the profile before expiry. Do not market sync as field-proven until this matrix passes.
-- **Companion < 5 s** (D26/D72): on macOS 26 with Apple Intelligence available, a real meeting knowledge question must produce a card in < 5 s; also validate the "you were asked" detector (mention of your name → ping) and, if you configured BYOK, the external answer path with disclosure. Sequoia is intentionally excluded because the current question classifier is Foundation-Models-only; Settings explains this and exposes no dead enable toggle.
+- **Apuntador < 5 s** (D26/D72): on macOS 26 with Apple Intelligence available, a real meeting knowledge question must produce a card in < 5 s; also validate the "you were asked" detector (mention of your name → ping) and, if you configured BYOK, the external answer path with disclosure. Sequoia is intentionally excluded because the current question classifier is Foundation-Models-only; Settings explains this and exposes no dead enable toggle.
 - **Call-safe raw capture (D125)**: on both Sequoia and Tahoe, begin a call
   without Portavoz, confirm participant playback and the user's uplink, then
   start Portavoz without changing devices. Playback and uplink must sound
@@ -92,12 +92,12 @@ and never reads `/Applications/Portavoz.app`.
   meeting; verify that every visible source directly supports the overview,
   unsupported overviews show no source rather than a weak one, and Refine turns
   the prior links stale before the regenerated summary installs fresh links.
-- **Real-model Companion evidence quality (D91)**: on a copied real meeting,
+- **Real-model Apuntador evidence quality (D91)**: on a copied real meeting,
   verify that every detected question keeps its exact spoken turn, every
   context answer exposes only the transcript passages named by exact local-RAG
   citations, and those passages directly support the answer. Knowledge answers
   and directed pings must expose no invented answer source. After Refine, old
-  card evidence must resolve stale until the refreshed Companion snapshot
+  card evidence must resolve stale until the refreshed Apuntador snapshot
   installs sources for the accepted transcript revision.
 - **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
 

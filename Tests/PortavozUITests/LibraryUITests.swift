@@ -136,6 +136,13 @@ final class LibraryUITests: XCTestCase {
             app.staticTexts["Live captions are available now."].waitForExistence(
                 timeout: 8))
         XCTAssertFalse(preparing.exists)
+        // "Catch me up" is a standing recording control on EVERY platform:
+        // tapping answers honestly when the on-device model is unavailable,
+        // so presence is deterministic even where generation is not.
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-catch-up")
+                .waitForExistence(timeout: 5),
+            "the recording bar must offer the catch-up action")
         attachScreenshot(of: app, named: "recording-live-transcript-hot-attach")
     }
 

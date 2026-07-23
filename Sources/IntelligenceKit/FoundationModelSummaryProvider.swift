@@ -261,6 +261,32 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// Collapses an oversized pile of accumulated notes back under the
     /// reduce budget (the live summary calls this occasionally so its notes
     /// never grow unbounded).
+    /// One-shot "catch me up" recap over an already-clipped recent window
+    /// (CatchUpPolicy). When the formatted clip exceeds the chunk budget the
+    /// TAIL survives — in a catch-up, newest speech always wins.
+    public func catchUp(
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        targetLanguage: String,
+        glossary: [String] = [],
+        priority: IntelligenceScheduler.Priority = .interactive
+    ) async throws -> String {
+        if let reason = Self.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let transcript = TranscriptFormatter.format(segments: segments, speakers: speakers)
+        let clipped = String(transcript.suffix(TranscriptFormatter.onDeviceChunkBudget))
+        let session = LanguageModelSession(
+            instructions: PromptFactory.catchUpInstructions(
+                targetLanguage: targetLanguage, glossary: glossary))
+        return try await IntelligenceScheduler.shared.run(priority) {
+            try await session.respond(
+                to: "Excerpt of the last few minutes:\n\n\(clipped)",
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 200)
+            ).content
+        }
+    }
+
     public func condenseNotes(
         _ notes: String,
         targetLanguage: String,

@@ -121,7 +121,7 @@ self-contained over system frameworks and carries no module dependency.
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
-| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
+| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
@@ -227,7 +227,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,
 commitments, talk balance, and bounded finding evidence. Meeting Detail merges
-transcript/cast, newest summary, Companion, privacy receipt, and durable
+transcript/cast, newest summary, Apuntador, privacy receipt, and durable
 processing streams. A failed stream degrades only its section and preserves
 healthy state from the remaining sections.
 
@@ -455,7 +455,7 @@ The current schema version is 14. It includes:
 - meeting-local speakers and explicitly confirmed canonical people/aliases;
 - transcript segments and FTS5 search;
 - immutable summary versions and action items;
-- Companion cards and role-separated source evidence;
+- Apuntador cards and role-separated source evidence;
 - generated overview, decision, and action-item evidence;
 - reversible current-claim feedback stored separately from generated output;
 - immutable generation-run provenance;
@@ -466,7 +466,7 @@ The current schema version is 14. It includes:
   persistence even where runtime delivery uses another mechanism.
 
 Aggregate writes that must remain consistent execute in one transaction.
-Summary, Companion, transcript, evidence, provenance, and durable-job commits
+Summary, Apuntador, transcript, evidence, provenance, and durable-job commits
 use source-revision or owner-lease fences where applicable. Stale work is
 discarded rather than overwriting newer truth.
 
@@ -583,6 +583,13 @@ only when the attributed transcript is homogeneous. Diarization failure
 degrades to an unattributed system channel; missing finalized audio remains a
 durable failure.
 
+On-demand live intelligence is an ephemeral sidecar, never part of capture or
+durable stop. "Catch me up" snapshots only closed caption rows, submits a
+bounded recent clip at interactive priority, and owns one replaceable task.
+Dismiss and Stop synchronously cancel and clear that task before the recording
+crosses the durable application boundary; late model output cannot become
+visible or persisted after recording ends.
+
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;
 ApplicationKit applies it again to both Refine channels before microphone-only
@@ -614,13 +621,13 @@ generation record commit together. Provenance stores provider/model identity,
 operation fingerprint, configuration, language, timing, outcome, and aggregate
 metrics without meeting text.
 
-Summary and Companion sources are typed rather than inferred from rendered
+Summary and Apuntador sources are typed rather than inferred from rendered
 text:
 
 - overview evidence points to ordered transcript segments;
 - decision evidence uses canonical section and bullet coordinates;
 - action-item evidence follows durable task identity;
-- Companion evidence separates the triggering question from answer support;
+- Apuntador evidence separates the triggering question from answer support;
 - answer sources exist only for exact local-retrieval citations;
 - feedback remains a separate reversible human assessment and never rewrites
   generated Markdown.
@@ -646,7 +653,7 @@ pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
 instructions all include the same quoted-source guard: participant speech,
 retrieved passages, and generated meeting material can be reported or
 transformed but cannot redefine the model's role, output shape, or governing
-instructions. Live Companion applies the equivalent rule to its classifier and
+instructions. Live Apuntador applies the equivalent rule to its classifier and
 knowledge paths. Trusted user questions remain separate from untrusted
 retrieved passages, and deterministic admission still validates generated
 identity, evidence, and display output after generation.

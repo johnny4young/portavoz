@@ -23,7 +23,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: L10n.text("General & language")
         case .audio: L10n.text("Audio & dictation")
         case .intelligence: L10n.text("Intelligence")
-        case .voice: L10n.text("My voice & Companion")
+        case .voice: L10n.text("My voice & Apuntador")
         case .agenda: L10n.text("Agenda & automation")
         case .integrations: L10n.text("Integrations")
         case .sync: L10n.text("Sync")
@@ -51,7 +51,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: L10n.text("System language · English/Spanish · menu bar")
         case .audio: L10n.text("Call-safe capture · dictate anywhere · ⌥⌘D")
         case .intelligence: L10n.text("Summary engine · Whisper refine · vocabulary")
-        case .voice: L10n.text("Enrolled voice · your name · Companion")
+        case .voice: L10n.text("Enrolled voice · your name · Apuntador")
         case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
         case .integrations: L10n.text("BYOK OpenAI-compatible · GitHub gists · MCP")
         case .sync: L10n.text("iCloud · status · existing library")
@@ -71,7 +71,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .intelligence:
             "summary engine apple ollama mlx whisper refine vocabulary"
         case .voice:
-            "voice enroll companion name remembered"
+            "voice enroll apuntador name remembered"
         case .agenda:
             "reminder calendar shortcut title template"
         case .integrations:
