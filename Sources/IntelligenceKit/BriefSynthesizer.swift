@@ -30,6 +30,7 @@ public enum BriefSynthesizer {
         bullet MUST cite the number of the passage it comes from. Never \
         comment on the meeting's duration, format or logistics, and never \
         invent facts that are not in a passage.
+        \(PromptFactory.sourceMaterialGuard())
         """
 
     /// nil/empty = nothing worth showing; the section simply hides.

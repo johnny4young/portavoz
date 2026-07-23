@@ -7180,6 +7180,46 @@
           }
         }
       }
+    },
+    "Dictation never types into password fields.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado nunca escribe en campos de contraseña."
+          }
+        }
+      }
+    },
+    "Dictation couldn't verify the focused field, so it didn't type anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no pudo verificar el campo seleccionado, así que no escribió nada."
+          }
+        }
+      }
+    },
+    "Release Command, Option, Control, and Shift, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suelta Comando, Opción, Control y Mayúsculas e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Dictation couldn't type into the focused app. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no pudo escribir en la app seleccionada. Inténtalo de nuevo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

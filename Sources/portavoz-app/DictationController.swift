@@ -7,6 +7,27 @@ import PortavozCore
 import SwiftUI
 import TranscriptionKit
 
+/// Pure capture-edge policy. The minimum is measured from the moment the
+/// microphone stream actually starts, never from model preparation or panel
+/// presentation, so a slow cold start cannot turn a tap into a valid capture.
+struct DictationCapturePolicy {
+    static let minimumCapture: TimeInterval = 0.75
+
+    enum FinishDecision: Equatable {
+        case cancel
+        case stopAfterTail
+    }
+
+    static func finishDecision(
+        captureStartedAt: Date?, now: Date
+    ) -> FinishDecision {
+        guard let captureStartedAt,
+            now.timeIntervalSince(captureStartedAt) >= minimumCapture
+        else { return .cancel }
+        return .stopAfterTail
+    }
+}
+
 /// System-wide dictation (the MacParakeet-validated surface): press the
 /// global hotkey anywhere, speak, press it again — the transcript lands in
 /// whatever app is frontmost. Reuses the meeting pipeline as-is: Parakeet
@@ -43,6 +64,9 @@ final class DictationController {
     private var microphone: MicrophoneSource?
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
+    private var stopTask: Task<Void, Never>?
+    private var failureDismissTask: Task<Void, Never>?
+    private var activeSessionID: UUID?
     private let panel = DictationPanelController()
 
     /// Registers/unregisters the configured hotkey (⌥⌘D by default) to
@@ -84,6 +108,12 @@ final class DictationController {
     private static let holdThreshold: TimeInterval = 0.5
     private var pressedAt: Date?
 
+    /// The mic keeps capturing this long after the finish gesture so the
+    /// tail of the last word survives — stopping on the release clips it
+    /// mid-phoneme.
+    private static let stopTail: Duration = .milliseconds(250)
+    private var captureStartedAt: Date?
+
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
         switch phase {
@@ -95,6 +125,8 @@ final class DictationController {
     }
 
     private func start(services: AppServices) {
+        failureDismissTask?.cancel()
+        failureDismissTask = nil
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard TextInserter.canInsert(promptIfNeeded: true) else {
@@ -113,100 +145,226 @@ final class DictationController {
         confirmedText = ""
         partialText = ""
         micLevel = 0
+        captureStartedAt = nil
+        stopTask?.cancel()
+        stopTask = nil
+        let sessionID = UUID()
+        activeSessionID = sessionID
         panel.show(controller: self)
 
         session = Task { [weak self, weak services] in
             guard let self, let services else { return }
-            do {
-                let engine = try await services.loadTranscriberIfNeeded()
-                let microphone = MicrophoneSource()
-                self.microphone = microphone
-                await microphone.warmUp()
-                let micStream = try await microphone.start()
+            await self.runSession(id: sessionID, services: services)
+        }
+    }
 
-                let (audio, feed) = AsyncStream.makeStream(of: AudioChunk.self)
-                self.feed = feed
-                let pump = Task { [weak self] in
-                    do {
-                        for try await chunk in micStream {
-                            let peak = chunk.samples.reduce(Float(0)) { max($0, abs($1)) }
-                            if let self { self.micLevel = max(peak, self.micLevel * 0.8) }
-                            feed.yield(chunk)
-                        }
-                    } catch {}
-                    feed.finish()
-                }
+    private func runSession(id: UUID, services: AppServices) async {
+        let microphone = MicrophoneSource()
+        var localFeed: AsyncStream<AudioChunk>.Continuation?
+        var pump: Task<Void, Never>?
+        do {
+            let engine = try await services.loadTranscriberIfNeeded()
+            try Task.checkCancellation()
+            guard activeSessionID == id else { return }
+            self.microphone = microphone
 
-                let vocabulary = VocabularyPrompt.parse(
-                    UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-                let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: MeetingID())
-                var captions: [TranscriptSegment] = []
-                let coalescer = CaptionCoalescer()
-                for try await segment in engine.transcribe(audio, hints: hints) {
-                    coalescer.apply(segment, to: &captions)
-                    let closed = captions.dropLast().map(\.text)
-                    self.confirmedText = closed.joined(separator: " ")
-                    self.partialText = captions.last?.text ?? ""
-                }
-                // Stream drained (mic stopped): everything is confirmed now.
-                self.confirmedText = captions.map(\.text).joined(separator: " ")
-                self.partialText = ""
-                await pump.value
-                self.deliver()
-            } catch {
-                self.phase = .failed(L10n.format(
-                    "Dictation failed: %@", error.localizedDescription))
-                self.scheduleFailureDismiss()
+            await microphone.warmUp()
+            try Task.checkCancellation()
+            let micStream = try await microphone.start()
+            try Task.checkCancellation()
+            guard activeSessionID == id else {
+                await microphone.stop()
+                return
             }
+            captureStartedAt = Date()
+
+            let (audio, feed) = AsyncStream.makeStream(of: AudioChunk.self)
+            localFeed = feed
+            self.feed = feed
+            pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)
+
+            let vocabulary = VocabularyPrompt.parse(
+                UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
+            let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: MeetingID())
+            var captions: [TranscriptSegment] = []
+            let coalescer = CaptionCoalescer()
+            for try await segment in engine.transcribe(audio, hints: hints) {
+                try Task.checkCancellation()
+                guard activeSessionID == id else { throw CancellationError() }
+                coalescer.apply(segment, to: &captions)
+                let closed = captions.dropLast().map(\.text)
+                confirmedText = closed.joined(separator: " ")
+                partialText = captions.last?.text ?? ""
+            }
+            confirmedText = captions.map(\.text).joined(separator: " ")
+            partialText = ""
+            await pump?.value
+            try Task.checkCancellation()
+            guard activeSessionID == id else { return }
+            await deliver(sessionID: id)
+        } catch is CancellationError {
+            localFeed?.finish()
+            pump?.cancel()
+            await microphone.stop()
+            await pump?.value
+        } catch {
+            localFeed?.finish()
+            pump?.cancel()
+            await microphone.stop()
+            await pump?.value
+            failSession(id: id, message: L10n.format(
+                "Dictation failed: %@", error.localizedDescription))
+        }
+    }
+
+    private func makeAudioPump(
+        stream: AsyncThrowingStream<AudioChunk, Error>,
+        feed: AsyncStream<AudioChunk>.Continuation,
+        sessionID: UUID
+    ) -> Task<Void, Never> {
+        let updateMeter: @MainActor @Sendable (Float) -> Void = { [weak self] peak in
+            if let self, self.activeSessionID == sessionID {
+                self.micLevel = max(peak, self.micLevel * 0.8)
+            }
+        }
+        return Task.detached {
+            do {
+                for try await chunk in stream {
+                    guard !Task.isCancelled else { break }
+                    let peak = chunk.samples.reduce(Float(0)) { max($0, abs($1)) }
+                    feed.yield(chunk)
+                    await updateMeter(peak)
+                }
+            } catch {}
+            feed.finish()
         }
     }
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
         guard phase == .listening else { return }
+        guard stopTask == nil else { return }
+        guard DictationCapturePolicy.finishDecision(
+            captureStartedAt: captureStartedAt, now: Date()) == .stopAfterTail
+        else {
+            cancel()
+            return
+        }
+        guard let sessionID = activeSessionID else {
+            cancel()
+            return
+        }
         let microphone = self.microphone
-        Task { await microphone?.stop() }
+        stopTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: Self.stopTail)
+            } catch {
+                return
+            }
+            guard let self, self.activeSessionID == sessionID else { return }
+            await microphone?.stop()
+        }
     }
 
     /// Esc in the panel: throw everything away.
     func cancel() {
+        activeSessionID = nil
+        captureStartedAt = nil
+        stopTask?.cancel()
+        stopTask = nil
+        failureDismissTask?.cancel()
+        failureDismissTask = nil
         session?.cancel()
         session = nil
         let microphone = self.microphone
         Task { await microphone?.stop() }
         self.microphone = nil
+        feed?.finish()
         feed = nil
         phase = .idle
         panel.close()
     }
 
-    private func deliver() {
+    private func deliver(sessionID: UUID) async {
+        guard activeSessionID == sessionID else { return }
         let text = DictationAssembler.text(
             confirmed: confirmedText, partial: partialText)
         microphone = nil
         feed = nil
-        session = nil
-        guard !text.isEmpty else {
+        stopTask = nil
+        captureStartedAt = nil
+        guard DictationAssembler.hasLexicalContent(text) else {
+            completeSession(id: sessionID)
             phase = .idle
             panel.close()
             return
         }
-        TextInserter.insert(text)
-        // Confirm the insertion for a beat, then fade — the user sees it took.
-        let words = text.split(whereSeparator: \.isWhitespace).count
-        phase = .inserted(words)
-        Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(1600))
-            guard let self, case .inserted = self.phase else { return }
-            self.phase = .idle
-            self.panel.close()
+        let result = await TextInserter.insert(text)
+        guard activeSessionID == sessionID else { return }
+        switch result {
+        case .inserted:
+            completeSession(id: sessionID)
+            let words = text.split(whereSeparator: \.isWhitespace).count
+            phase = .inserted(words)
+            do {
+                try await Task.sleep(for: .milliseconds(1600))
+            } catch {
+                return
+            }
+            guard case .inserted = phase else { return }
+            phase = .idle
+            panel.close()
+        case .secureField:
+            failSession(
+                id: sessionID,
+                message: L10n.text("Dictation never types into password fields."))
+        case .focusUnavailable:
+            failSession(
+                id: sessionID,
+                message: L10n.text(
+                    "Dictation couldn't verify the focused field, so it didn't type anything."))
+        case .modifiersStillPressed:
+            failSession(
+                id: sessionID,
+                message: L10n.text(
+                    "Release Command, Option, Control, and Shift, then try again."))
+        case .clipboardUnavailable, .eventUnavailable:
+            failSession(
+                id: sessionID,
+                message: L10n.text(
+                    "Dictation couldn't type into the focused app. Try again."))
+        case .cancelled:
+            return
         }
     }
 
+    private func completeSession(id: UUID) {
+        guard activeSessionID == id else { return }
+        activeSessionID = nil
+        session = nil
+        microphone = nil
+        feed = nil
+        stopTask = nil
+        captureStartedAt = nil
+    }
+
+    private func failSession(id: UUID, message: String) {
+        guard activeSessionID == id else { return }
+        completeSession(id: id)
+        phase = .failed(message)
+        scheduleFailureDismiss()
+    }
+
     private func scheduleFailureDismiss() {
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(6))
+        failureDismissTask?.cancel()
+        failureDismissTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(6))
+            } catch {
+                return
+            }
             guard let self, case .failed = self.phase else { return }
+            self.failureDismissTask = nil
             self.phase = .idle
             self.panel.close()
         }

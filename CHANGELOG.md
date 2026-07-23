@@ -5,6 +5,13 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 22, 2026
+
+- **🛡️ AI that can't be talked into misbehaving** — Spoken "ignore your instructions" stays quoted meeting content across summaries, translations, naming, chapters, briefs, Ask, and Companion; a drifted answer ("As an AI...") is dropped instead of shown on a card.
+- **🔐 Dictation stays out of password fields** — Portavoz checks the focused field at the last possible moment and refuses to type when macOS cannot verify it, so a focus change or Accessibility hiccup cannot turn spoken words into a visible secret.
+- **🎙️ Dictation keeps your last word** — Capture timing now begins with the real microphone stream, keeps a beat past release, and cancels safely during a cold model start; accidental taps, duplicate stops, and stale sessions cannot paste or leave the mic listening.
+- **📋 Dictation that respects your clipboard** — Images, files, and styled text are restored without advertising empty formats or overwriting a clipboard manager; layout-aware paste waits for every hotkey finger and visibly refuses instead of triggering a different shortcut.
+
 ## July 21, 2026
 
 - **🗣️ One clear live-caption failure** — If live captions cannot start, Portavoz now shows that terminal explanation once instead of also promising that translation will begin when captions arrive.

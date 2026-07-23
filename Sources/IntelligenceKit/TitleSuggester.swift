@@ -16,6 +16,7 @@ public enum TitleSuggester {
         in the SAME language as the summary: at most six words, no dates, no \
         quotes, no trailing period. Name the concrete topic, never generic \
         words like "meeting", "sync" alone, or "discussion".
+        \(PromptFactory.sourceMaterialGuard())
         Examples:
         - summary about a device-ID bug in the QVTL pipeline → QVTL device-ID bug
         - resumen sobre el presupuesto de transcripción del Q3 → Presupuesto de transcripción Q3
