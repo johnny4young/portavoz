@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 23, 2026
+
+- **🛡️ Recording that leaves your call alone** — Portavoz no longer takes over macOS voice processing when a meeting or dictation starts, so participant playback is not ducked and the meeting app keeps control of your microphone; duplicate speaker bleed is cleaned from the transcript afterward.
+
 ## July 22, 2026
 
 - **🛡️ AI that can't be talked into misbehaving** — Spoken "ignore your instructions" stays quoted meeting content across summaries, translations, naming, chapters, briefs, Ask, and Companion; a drifted answer ("As an AI...") is dropped instead of shown on a card.

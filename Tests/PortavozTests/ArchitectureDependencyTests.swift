@@ -556,11 +556,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Recording start must never wait for model preparation")
         XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
         XCTAssertTrue(adapter.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertTrue(adapter.contains("voiceProcessing: false"))
+        XCTAssertFalse(adapter.contains("aecEnabled"))
         XCTAssertTrue(controller.contains("receiveLiveTranscription("))
         XCTAssertFalse(controller.contains("services.store.beginRecording"))
         XCTAssertFalse(controller.contains("MicrophoneSource("))
         XCTAssertFalse(controller.contains("RecordingSession("))
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
+
+        let microphone = try Self.contents(
+            of: "Sources/AudioCaptureKit/MicrophoneSource.swift")
+        XCTAssertTrue(microphone.contains(
+            "voiceProcessing: Bool = false"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {

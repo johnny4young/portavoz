@@ -118,7 +118,7 @@ self-contained over system frameworks and carries no module dependency.
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
-| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
+| `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
@@ -533,6 +533,15 @@ state. Usable audio remains playable and exportable when derived work fails.
 Microphone and system/process audio remain separate through capture,
 transcription, diarization, playback, and refinement. The microphone channel is
 structurally the local user; system audio requires speaker attribution.
+
+Meeting capture obeys an observational passivity invariant: production
+recording and global dictation never enable AVAudioEngine voice processing,
+other-audio ducking, or a system mute/volume mutation. The conferencing app
+retains ownership of its microphone processing and playback graph. Raw
+microphone spill is handled after capture by transcript bleed filtering rather
+than by modifying the live call. `MicrophoneSource` keeps an explicit
+voice-processing option only for bounded nonmeeting tools such as local voice
+enrollment and the CLI diagnostic flag.
 
 ```mermaid
 flowchart LR
