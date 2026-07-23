@@ -7220,6 +7220,66 @@
           }
         }
       }
+    },
+    "Catch me up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponme al día"
+          }
+        }
+      }
+    },
+    "Catching you up…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poniéndote al día…"
+          }
+        }
+      }
+    },
+    "A quick recap of the last few minutes — for when you zoned out or just joined.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un repaso rápido de los últimos minutos — para cuando te desconectaste o acabas de llegar."
+          }
+        }
+      }
+    },
+    "Not enough conversation yet — try again in a minute.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay suficiente conversación — intenta de nuevo en un minuto."
+          }
+        }
+      }
+    },
+    "Catch-up needs Apple Intelligence on macOS 26. Summaries at Stop still work with your configured engine.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponerte al día necesita Apple Intelligence en macOS 26. Los resúmenes al detener siguen funcionando con tu motor configurado."
+          }
+        }
+      }
+    },
+    "The catch-up could not be generated. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo generar el repaso. La grabación continúa intacta."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

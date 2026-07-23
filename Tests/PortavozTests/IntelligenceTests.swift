@@ -1377,3 +1377,61 @@ final class CompanionAnswerTests: XCTestCase {
 private struct DiscardingEgressRecorder: DataEgressEventRecorder {
     func recordDataEgressEvent(_ event: DataEgressEvent) async throws {}
 }
+
+/// The catch-up recap must stay bounded to the recent past and skip when the
+/// conversation cannot carry one.
+final class CatchUpPolicyTests: XCTestCase {
+    private let meeting = MeetingID()
+
+    private func segment(_ text: String, start: TimeInterval, end: TimeInterval) -> TranscriptSegment {
+        TranscriptSegment(
+            meetingID: meeting, speakerID: nil, channel: .microphone,
+            text: text, startTime: start, endTime: end)
+    }
+
+    func testClipKeepsOnlyTheRecentWindowAndDropsTheGrowingRow() {
+        let captions = [
+            segment("viejo", start: 0, end: 10),
+            segment("dentro uno", start: 700, end: 710),
+            segment("dentro dos", start: 900, end: 910),
+            segment("creciendo", start: 911, end: 940)
+        ]
+        let clip = CatchUpPolicy.clip(captions)
+        XCTAssertEqual(clip.map(\.text), ["dentro uno", "dentro dos"],
+            "rows older than the window and the still-growing newest row stay out")
+    }
+
+    func testWindowBoundaryDerivesFromTheConstantNotAHardcode() {
+        let edge = 1000 - CatchUpPolicy.window
+        let captions = [
+            segment("justo dentro", start: edge, end: edge + 1),
+            segment("segundo", start: 990, end: 1000),
+            segment("creciendo", start: 1001, end: 1002)
+        ]
+        XCTAssertEqual(CatchUpPolicy.clip(captions).count, 2,
+            "a row ending exactly at the window edge is included")
+    }
+
+    func testTooFewClosedRowsYieldNoClip() {
+        XCTAssertTrue(CatchUpPolicy.clip([]).isEmpty)
+        XCTAssertTrue(CatchUpPolicy.clip([segment("solo", start: 0, end: 5)]).isEmpty,
+            "a single row is still growing — nothing is closed")
+        XCTAssertTrue(
+            CatchUpPolicy.clip([
+                segment("uno", start: 0, end: 5),
+                segment("creciendo", start: 6, end: 8)
+            ]).isEmpty,
+            "one closed row is under the minimum")
+    }
+
+    func testCatchUpInstructionsCarryScopeGuardAndLanguage() {
+        let instructions = PromptFactory.catchUpInstructions(
+            targetLanguage: "es", glossary: ["Parakeet"])
+        XCTAssertTrue(instructions.contains("ONLY the last few minutes"))
+        XCTAssertTrue(instructions.contains("never anything older"))
+        XCTAssertTrue(instructions.contains("QUOTED SPEECH"))
+        XCTAssertTrue(instructions.contains("Spanish"))
+        XCTAssertTrue(instructions.contains("Parakeet"))
+        XCTAssertTrue(instructions.contains("No preamble"))
+    }
+}

@@ -42,6 +42,18 @@ final class RecordingController {
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
     private(set) var liveSummary: String?
+    /// On-demand "catch me up" recap of the last few minutes (pull, never
+    /// pushed). Distinct from the rolling summary: it answers "what did I
+    /// just miss", not "what is this meeting about". Owns its own state.
+    let catchUp = RecordingCatchUpModel()
+
+    func requestCatchUp() {
+        catchUp.request(
+            captions: captions,
+            meetingID: meetingID,
+            vocabulary: vocabulary
+        ) { [weak self] in self?.phase == .recording }
+    }
     /// The user's notes during the meeting (D28): intent for the summary.
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
@@ -228,6 +240,7 @@ final class RecordingController {
 
     private func resetForRecordingStart() {
         rollingTask?.cancel()
+        catchUp.dismiss()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
         liveDiarizerFeed = nil
