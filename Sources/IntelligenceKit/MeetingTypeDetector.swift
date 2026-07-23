@@ -26,6 +26,7 @@ public enum MeetingTypeDetector {
         - "for Q3 the goal is the iOS launch; main risk is the review times" → planning
         - "tell me about your experience with distributed systems" → interview
         - "the bug is in the retry loop, look at line 40" → general
+        \(PromptFactory.sourceMaterialGuard())
         When unsure, answer general.
         """
 

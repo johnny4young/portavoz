@@ -8,6 +8,22 @@ import Carbon.HIToolbox
 /// Accessibility permission; `canInsert` checks it and (optionally)
 /// triggers the system prompt.
 enum TextInserter {
+    enum InsertionResult: Equatable {
+        case inserted
+        case secureField
+        case focusUnavailable
+        case modifiersStillPressed
+        case clipboardUnavailable
+        case eventUnavailable
+        case cancelled
+    }
+
+    enum FocusedFieldSecurity: Equatable {
+        case regular
+        case secure
+        case unavailable
+    }
+
     @MainActor
     static func canInsert(promptIfNeeded: Bool) -> Bool {
         if AXIsProcessTrusted() { return true }
@@ -23,27 +39,51 @@ enum TextInserter {
     /// contents instead of the dictation.
     static let restoreDelay: Duration = .milliseconds(1500)
 
-    /// True when the element that would receive the paste is a password
-    /// field. Checked at delivery time — focus can move between starting a
-    /// dictation and finishing it — so spoken text can never land in a
-    /// secure field, where it would sit as a plaintext secret.
+    /// Security classification for the element that would receive the paste.
+    /// Any failed or malformed AX inspection is unavailable, not regular: a
+    /// privacy boundary must fail closed when macOS cannot prove the target.
     @MainActor
-    static func focusedFieldIsSecure() -> Bool {
+    static func focusedFieldSecurity() -> FocusedFieldSecurity {
+        guard AXIsProcessTrusted() else { return .unavailable }
         let systemWide = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
         let status = AXUIElementCopyAttributeValue(
             systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
         guard status == .success, let focused,
             CFGetTypeID(focused) == AXUIElementGetTypeID()
-        else { return false }
+        else { return .unavailable }
         // The cast through CFTypeRef is the sanctioned bridge for AX values.
         // swiftlint:disable:next force_cast
         let element = focused as! AXUIElement
         var role: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        let roleStatus = AXUIElementCopyAttributeValue(
+            element, kAXRoleAttribute as CFString, &role)
+        guard roleStatus == .success, let role = role as? String else {
+            return .unavailable
+        }
+        if isSecureField(role: role, subrole: nil) { return .secure }
+
         var subrole: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole)
-        return isSecureField(role: role as? String, subrole: subrole as? String)
+        let subroleStatus = AXUIElementCopyAttributeValue(
+            element, kAXSubroleAttribute as CFString, &subrole)
+        switch subroleStatus {
+        case .success:
+            guard let subrole = subrole as? String else { return .unavailable }
+            return classifyFocusedField(role: role, subrole: subrole)
+        case .noValue, .attributeUnsupported:
+            // Ordinary text controls commonly have no subrole. That is an
+            // inspected absence, unlike a transient AX failure.
+            return .regular
+        default:
+            return .unavailable
+        }
+    }
+
+    static func classifyFocusedField(
+        role: String?, subrole: String?
+    ) -> FocusedFieldSecurity {
+        guard role != nil else { return .unavailable }
+        return isSecureField(role: role, subrole: subrole) ? .secure : .regular
     }
 
     /// Pure decision, split out for tests: secure text fields report the
@@ -58,20 +98,42 @@ enum TextInserter {
     /// hotkey modifiers to be released first, so the synthesized ⌘V cannot
     /// combine with a still-held ⌥/⇧/⌃ into a different app shortcut.
     @MainActor
-    static func insert(_ text: String) async {
+    static func insert(_ text: String) async -> InsertionResult {
+        guard await waitForModifierRelease() else {
+            return Task.isCancelled ? .cancelled : .modifiersStillPressed
+        }
+        guard !Task.isCancelled else { return .cancelled }
+
+        // This is intentionally the final check before clipboard mutation.
+        // Focus may change while the hotkey modifiers are being released.
+        switch focusedFieldSecurity() {
+        case .secure:
+            return .secureField
+        case .unavailable:
+            return .focusUnavailable
+        case .regular:
+            break
+        }
+
         let pasteboard = NSPasteboard.general
         let snapshot = PasteboardSnapshot(of: pasteboard)
         pasteboard.declareTypes([.string], owner: nil)
-        pasteboard.setString(text, forType: .string)
+        guard pasteboard.setString(text, forType: .string) else {
+            restoreIfStillOurs(snapshot, expectedChangeCount: pasteboard.changeCount)
+            return .clipboardUnavailable
+        }
         let ourChangeCount = pasteboard.changeCount
 
-        await waitForModifierRelease()
-        postCommandV()
+        guard postCommandV() else {
+            restoreIfStillOurs(snapshot, expectedChangeCount: ourChangeCount)
+            return .eventUnavailable
+        }
 
         Task {
             try? await Task.sleep(for: restoreDelay)
             restoreIfStillOurs(snapshot, expectedChangeCount: ourChangeCount)
         }
+        return .inserted
     }
 
     /// Restore only when the pasteboard still holds our dictation: a changed
@@ -98,28 +160,37 @@ enum TextInserter {
     /// paste can fire milliseconds after the keypress, while the chord is
     /// still down. The bound keeps a stuck key from blocking delivery.
     @MainActor
-    private static func waitForModifierRelease() async {
+    private static func waitForModifierRelease() async -> Bool {
         for _ in 0..<50 {
+            guard !Task.isCancelled else { return false }
             let flags = CGEventSource.flagsState(.combinedSessionState)
             let held: CGEventFlags = [
                 .maskCommand, .maskAlternate, .maskControl, .maskShift
             ]
-            if flags.isDisjoint(with: held) { return }
-            try? await Task.sleep(for: .milliseconds(20))
+            if flags.isDisjoint(with: held) { return true }
+            do {
+                try await Task.sleep(for: .milliseconds(20))
+            } catch {
+                return false
+            }
         }
+        return false
     }
 
-    private static func postCommandV() {
+    private static func postCommandV() -> Bool {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyCode = pasteKeyCode()
-        let keyDown = CGEvent(
-            keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        keyDown?.flags = .maskCommand
-        let keyUp = CGEvent(
-            keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        keyUp?.flags = .maskCommand
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        guard
+            let keyDown = CGEvent(
+                keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+            let keyUp = CGEvent(
+                keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+        else { return false }
+        keyDown.flags = .maskCommand
+        keyUp.flags = .maskCommand
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+        return true
     }
 
     /// The key that produces "v" in the CURRENT layout. Hardcoding the QWERTY
@@ -192,6 +263,7 @@ struct PasteboardSnapshot {
 
     init?(of pasteboard: NSPasteboard) {
         let types = pasteboard.types ?? []
+        var capturedTypes: [NSPasteboard.PasteboardType] = []
         var values: [NSPasteboard.PasteboardType: Value] = [:]
         for type in types {
             if let data = pasteboard.data(forType: type) {
@@ -200,10 +272,13 @@ struct PasteboardSnapshot {
                 values[type] = .string(string)
             } else if let list = pasteboard.propertyList(forType: type) {
                 values[type] = .propertyList(list)
+            } else {
+                continue
             }
+            capturedTypes.append(type)
         }
         guard !values.isEmpty else { return nil }
-        self.types = types
+        self.types = capturedTypes
         self.values = values
     }
 

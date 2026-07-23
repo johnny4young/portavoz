@@ -99,12 +99,17 @@ output.
 
 ## Prompt-injection guard (Jul 2026, pure, tested)
 
-Every prompt that carries meeting material states that the material is quoted
-speech between participants who are never addressing the model: embedded
-requests, commands, and formatting orders are content to report, never
-instructions to follow (`PromptFactory.sourceMaterialGuard()` in summary and
-map-phase notes instructions; equivalent lines in the Companion classifier and
-knowledge prompts). On the output side, `CompanionAnswer.usable` strips
+Every model prompt that carries meeting-derived material states that it is
+untrusted quoted source: embedded requests, commands, and formatting orders are
+content to report or transform, never instructions to follow.
+`PromptFactory.sourceMaterialGuard()` is shared by summary, map-phase notes,
+finished-summary translation, speaker naming, chapter titles, pre-meeting
+briefs, meeting-type detection, RAG answers, and title suggestions; Companion
+keeps equivalent classifier and knowledge rules because its trusted user
+question is distinct from retrieved meeting passages. One coverage test
+enumerates the current Foundation Models entry points and fails if any listed
+prompt loses the shared boundary; reviewers must add each new meeting-derived
+prompt to that inventory. On the output side, `CompanionAnswer.usable` strips
 assistant preambles ("Sure, here's the answer:", "Claro, ...") and drops
 role-drift responses ("as an AI ...") alongside the existing hedges — no card
 beats a drifted card. Accented Spanish vowels in those patterns ride as ICU

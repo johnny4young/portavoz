@@ -38,6 +38,21 @@ final class PasteboardSnapshotTests: XCTestCase {
         XCTAssertNil(PasteboardSnapshot(of: pasteboard))
     }
 
+    func testRestoreDoesNotAdvertiseTypesThatWereNotCaptured() {
+        let pasteboard = scratchPasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let uncaptured = NSPasteboard.PasteboardType("app.portavoz.tests.uncaptured")
+        pasteboard.declareTypes([.string, uncaptured], owner: nil)
+        pasteboard.setString("original", forType: .string)
+
+        let snapshot = PasteboardSnapshot(of: pasteboard)
+        pasteboard.clearContents()
+        snapshot?.restore(to: pasteboard)
+
+        XCTAssertEqual(pasteboard.string(forType: .string), "original")
+        XCTAssertFalse(pasteboard.types?.contains(uncaptured) == true)
+    }
+
     func testChangeCountAdvancesWhenAnotherWriterTakesOver() {
         // The restore guard keys on changeCount, not value equality: an
         // identical string written by a clipboard manager still advances the
@@ -58,15 +73,49 @@ final class PasteboardSnapshotTests: XCTestCase {
 
 /// The privacy gate that keeps dictation out of password fields.
 final class SecureFieldGateTests: XCTestCase {
-    func testSecureSubroleOrRoleBlocksAndEverythingElsePasses() {
-        XCTAssertTrue(TextInserter.isSecureField(
-            role: "AXTextField", subrole: "AXSecureTextField"))
-        XCTAssertTrue(TextInserter.isSecureField(
-            role: "AXSecureTextField", subrole: nil))
-        XCTAssertFalse(TextInserter.isSecureField(
-            role: "AXTextField", subrole: "AXSearchField"))
-        XCTAssertFalse(TextInserter.isSecureField(role: "AXTextArea", subrole: nil))
-        XCTAssertFalse(TextInserter.isSecureField(role: nil, subrole: nil))
+    func testSecureSubroleOrRoleBlocksAndRegularFieldsPass() {
+        XCTAssertEqual(
+            TextInserter.classifyFocusedField(
+                role: "AXTextField", subrole: "AXSecureTextField"),
+            .secure)
+        XCTAssertEqual(
+            TextInserter.classifyFocusedField(
+                role: "AXSecureTextField", subrole: nil),
+            .secure)
+        XCTAssertEqual(
+            TextInserter.classifyFocusedField(
+                role: "AXTextField", subrole: "AXSearchField"),
+            .regular)
+        XCTAssertEqual(
+            TextInserter.classifyFocusedField(role: "AXTextArea", subrole: nil),
+            .regular)
+    }
+
+    func testMissingRoleFailsClosed() {
+        XCTAssertEqual(
+            TextInserter.classifyFocusedField(role: nil, subrole: nil),
+            .unavailable)
+    }
+}
+
+final class DictationCapturePolicyTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 10_000)
+
+    func testFinishBeforeMicrophoneStartsCancels() {
+        XCTAssertEqual(
+            DictationCapturePolicy.finishDecision(captureStartedAt: nil, now: now),
+            .cancel)
+    }
+
+    func testFinishUsesActualMicrophoneCaptureDuration() {
+        XCTAssertEqual(
+            DictationCapturePolicy.finishDecision(
+                captureStartedAt: now.addingTimeInterval(-0.74), now: now),
+            .cancel)
+        XCTAssertEqual(
+            DictationCapturePolicy.finishDecision(
+                captureStartedAt: now.addingTimeInterval(-0.75), now: now),
+            .stopAfterTail)
     }
 }
 

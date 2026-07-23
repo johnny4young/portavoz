@@ -217,6 +217,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | First-run welcome | `FirstRunModel` | application process |
 | Local-data receipt | `LocalDataLedgerModel` | application process |
 | Resident menu bar | `MenuBarModel` | menu-bar scene |
+| Global dictation | `DictationController` | application process |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
@@ -250,6 +251,23 @@ The menu-bar scene receives bounded recent-meeting and open-commitment updates
 through an app adapter. EventKit access remains in the adapter and follows the
 no-prompt resident-surface rule. The SwiftUI panel owns commands and rendering,
 not Store or calendar coordination.
+
+Global dictation has one process-scoped, main-actor owner and one UUID-fenced
+session task. Microphone duration starts only after the real stream opens;
+finish-before-readiness cancels, one owned tail task drains an accepted finish,
+and cancellation closes the transcription feed immediately while fencing every
+later state mutation and delivery side effect. Audio sample reduction and feed
+delivery stay off the main actor; only the observable meter update crosses back.
+Failure-dismiss tasks are single-owner and cancelled on restart so an older
+error cannot dismiss a newer session.
+The last-mile `TextInserter` returns a typed result. It waits for physical
+modifiers without swallowing cancellation, refuses a timed-out chord, performs
+a fail-closed Accessibility inspection immediately before clipboard mutation,
+posts a complete synthetic paste pair or restores synchronously, and later
+restores only captured pasteboard representations when its change count still
+owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
+event delivery, and held modifiers become visible failures rather than false
+insertion success.
 
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
@@ -613,6 +631,17 @@ any normalized action item copied verbatim from the recipe's explicitly typed
 decision section. Translation pivots carry only evidence and tasks that already
 passed this source-language gate.
 
+Meeting-derived text is untrusted input at every model boundary. Summary,
+map-note, finished-summary translation, speaker naming, chapter title,
+pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
+instructions all include the same quoted-source guard: participant speech,
+retrieved passages, and generated meeting material can be reported or
+transformed but cannot redefine the model's role, output shape, or governing
+instructions. Live Companion applies the equivalent rule to its classifier and
+knowledge paths. Trusted user questions remain separate from untrusted
+retrieved passages, and deterministic admission still validates generated
+identity, evidence, and display output after generation.
+
 ## Search, playback, and derived indexes
 
 Local lexical search uses FTS5 and query-specific bounded reads. One
@@ -974,7 +1003,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,000 package tests pass, with 13 real-model/environment cases gated;
+- 1,015 package tests pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

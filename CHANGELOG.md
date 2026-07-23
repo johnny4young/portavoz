@@ -7,10 +7,10 @@ entry here — feature name + what it gives you.)
 
 ## July 22, 2026
 
-- **🛡️ AI that can't be talked into misbehaving** — Spoken "ignore your instructions" stays quoted meeting content: summaries and Companion prompts now explicitly refuse instructions embedded in speech, and a drifted answer ("As an AI...") is dropped instead of shown on a card.
-- **🔐 Dictation stays out of password fields** — If your cursor is in a password box when a dictation finishes, Portavoz refuses to type and tells you why, so spoken words never become a visible secret.
-- **🎙️ Dictation keeps your last word** — The mic now captures a beat past the release so the end of your sentence never gets clipped, an accidental hotkey tap cancels silently instead of flashing a panel, and a stray noise artifact can no longer paste bare punctuation into your document.
-- **📋 Dictation that respects your clipboard** — Pasting a dictation no longer destroys rich clipboard content: images, files, and styled text are fully restored, a clipboard manager is never overwritten, the paste works on Dvorak and non-Latin keyboard layouts, and the synthesized ⌘V waits for your hotkey fingers to lift so it can never trigger a different shortcut.
+- **🛡️ AI that can't be talked into misbehaving** — Spoken "ignore your instructions" stays quoted meeting content across summaries, translations, naming, chapters, briefs, Ask, and Companion; a drifted answer ("As an AI...") is dropped instead of shown on a card.
+- **🔐 Dictation stays out of password fields** — Portavoz checks the focused field at the last possible moment and refuses to type when macOS cannot verify it, so a focus change or Accessibility hiccup cannot turn spoken words into a visible secret.
+- **🎙️ Dictation keeps your last word** — Capture timing now begins with the real microphone stream, keeps a beat past release, and cancels safely during a cold model start; accidental taps, duplicate stops, and stale sessions cannot paste or leave the mic listening.
+- **📋 Dictation that respects your clipboard** — Images, files, and styled text are restored without advertising empty formats or overwriting a clipboard manager; layout-aware paste waits for every hotkey finger and visibly refuses instead of triggering a different shortcut.
 
 ## July 21, 2026
 
