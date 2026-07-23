@@ -183,7 +183,11 @@ final class MeetingDetailModelTests: XCTestCase {
         guard case .nameSuggestionsLoaded = names else {
             return XCTFail("name generation must return a typed loaded effect")
         }
-        XCTAssertEqual(model.state.nameSuggestions.map(\.name), ["Ana"])
+        // Voice evidence outranks the text proposal for the same label (the
+        // text chip is suppressed), and the accepted voice suggestion above
+        // consumed its own chip — both arrays end empty.
+        XCTAssertEqual(model.state.nameSuggestions.map(\.name), [])
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.name), [])
         XCTAssertFalse(model.state.isSuggestingNames)
         guard case .voiceMemoryOfferChecked(true) = offer else {
             return XCTFail("the feature owner must preserve duplicate-offer admission")
@@ -338,7 +342,8 @@ final class MeetingDetailModelTests: XCTestCase {
             return XCTFail("a failed voice confirmation must stay visible")
         }
         XCTAssertEqual(voiceMessage, L10n.text("Could not apply this voice suggestion."))
-        XCTAssertEqual(model.state.nameSuggestions.map(\.name), ["Ana"])
+        // Same voice-wins policy: only the voice chip remains for S1.
+        XCTAssertEqual(model.state.nameSuggestions.map(\.name), [])
         XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
         guard case .meetingDeleted = deleteEffect else {
             return XCTFail("best-effort delete must preserve its navigation effect")

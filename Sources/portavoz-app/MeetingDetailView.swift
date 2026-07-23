@@ -1007,6 +1007,7 @@ extension MeetingDetailView {
                     Task { await apply(suggestion, in: detail) }
                 } label: {
                     ChipLabel(kind: .ai, text: "\(suggestion.label) → \(suggestion.name)?")
+                        .fixedSize()
                 }
                 .buttonStyle(.plain)
                 .help(nameSuggestionHelp(suggestion))
@@ -1019,6 +1020,7 @@ extension MeetingDetailView {
                     Task { await apply(match, in: detail) }
                 } label: {
                     ChipLabel(kind: .voice, text: "\(match.speakerLabel) → \(match.name)?")
+                        .fixedSize()
                 }
                 .buttonStyle(.plain)
                 .help(L10n.format(

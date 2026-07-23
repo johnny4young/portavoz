@@ -112,6 +112,14 @@ Field request: remember a participant's voice across meetings to autosuggest the
   candidate. It derives typed evidence from that exact source and ignores
   generator-authored evidence prose. Missing meetings are typed; generation
   failure remains visible; no proposal mutates a speaker.
+  Verification hygiene (Jul 22 field fix): a name proposed for two or more
+  DISTINCT speakers in one batch is evidence for none ("the name appears in
+  the transcript" cannot pick between them); the owner's name — and any
+  4+-character short form of its first token ("John" for "Johnny") — is never
+  suggested for a remote speaker, because participants address the owner
+  constantly; and names already carried by named cast members are taken. In
+  the app, a voiceprint match additionally suppresses any text suggestion for
+  the same label: biometric cross-meeting evidence outranks a model guess.
 - **Defense in depth:** `NameSuggestionFilter` also verifies the concrete
   Foundation Models output before the app adapter maps it into the application
   contract. The model has fabricated names with fabricated evidence, so neither

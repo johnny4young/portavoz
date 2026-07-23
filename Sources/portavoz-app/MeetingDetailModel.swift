@@ -485,6 +485,7 @@ private extension MeetingDetailModel {
         defer { state.isSuggestingNames = false }
         do {
             state.nameSuggestions = try await client.meetingDetailNameSuggestions(meetingID)
+            reconcileSuggestionSources()
             guard !state.nameSuggestions.isEmpty else {
                 return .operationFailed(L10n.text(
                     "No verified name suggestions were found — you can rename the pills manually."))
@@ -501,6 +502,17 @@ private extension MeetingDetailModel {
         didLoadVoiceSuggestions = true
         state.voiceSuggestions = (try? await client.meetingDetailVoiceSuggestions(
             meetingID)) ?? []
+        reconcileSuggestionSources()
+    }
+
+    /// Voice evidence outranks a text proposal for the same speaker: the
+    /// voiceprint match is deterministic, thresholded, and cross-meeting,
+    /// while the text path crossed a language model. Two chips proposing
+    /// different names for one speaker must never render together.
+    private func reconcileSuggestionSources() {
+        guard !state.voiceSuggestions.isEmpty else { return }
+        let voiceLabels = Set(state.voiceSuggestions.map(\.speakerLabel))
+        state.nameSuggestions.removeAll { voiceLabels.contains($0.label) }
     }
 
     func loadMetadataSuggestions() async {
