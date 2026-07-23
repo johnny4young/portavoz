@@ -23,7 +23,7 @@ What Portavoz lacks (Jul 2026) compared with the state of the art measured in th
 | # | Gap | Risk | Plan |
 |---|---|---|---|
 | T1 | ~~WAV crash safety~~ | **RESOLVED**: verified that WAV+kill -9 = 0 readable bytes; capture migrated to CAF (kill -9 → 5.23 s of 6 s preserved); readers with fallback to legacy .wav | ✅ Jul 2026 |
-| T2 | ~~**Taps + VPIO in the same process**~~ | **RESOLVED IN CODE (D124):** real Sequoia and Tahoe calls confirmed that enabling VPIO could duck playback and degrade the meeting app's uplink; meeting and dictation capture are now raw and never enable call-audio ducking | Real-call Sequoia + Tahoe A/B remains below; post-capture bleed filtering replaces live graph mutation |
+| T2 | ~~**Taps + VPIO in the same process**~~ | **RESOLVED IN CODE (D125):** real Sequoia and Tahoe calls confirmed that enabling VPIO could duck playback and degrade the meeting app's uplink; meeting and dictation capture are now raw and never enable call-audio ducking | Real-call Sequoia + Tahoe A/B remains below; post-capture bleed filtering replaces live graph mutation |
 | T3 | ~~FM without a priority policy~~ | **RESOLVED (D29)**: single-flight `IntelligenceScheduler` with priorities, latest-wins per key, 7 tests | ✅ Jul 2026 |
 | T4 | ~~**Unmeasured Mac performance numbers**~~ | **RESOLVED for cold start, recording RAM, drift, DER, refine, summary, exact/lexical/semantic retrieval through 100k segments, 30m/2h/8h detail projections, a real 55.9-minute dual-channel waveform, and Spotlight through 100k meetings. Band 4B brings first content from 522.30 ms to 91.87 ms; Band 4C brings lexical Ask from p95 111.19 ms to 66.89 ms; Band 4E brings semantic wall/CPU p95 from 325.41/328.43 ms to 90.22/91.26 ms; Band 4F brings waveform repeat wall/CPU p95 from 747.53/754.79 ms to 70.11/71.33 ms without a cache; Band 4G brings Spotlight projection wall p95 from 22,085.35 ms to 425.64 ms without an outbox. Battery remains an iOS-phase measurement** | ✅ D79–D85/spec 08 |
 | T5 | ~~Brute-force O(n) semantic RAG~~ | **RESOLVED (D83): the exact adapter streams SQLite-owned BLOBs, scores with Accelerate, retains bounded top-k rowids, and fetches full passages only for winners. 100k wall/CPU p95 is 90.22/91.26 ms with 8.42 MiB incremental footprint** | ✅ Keep the exact Float32 vector layout carried unchanged into schema v14; reconsider sqlite-vec only after a future measured miss |
@@ -66,7 +66,7 @@ and never reads `/Applications/Portavoz.app`.
 - **Next-release Homebrew install on clean Sequoia** (D74): `brew install --cask johnny4young/tap/portavoz` must install and launch the next public artifact on a Mac with no prior Portavoz receipt. The local v0.6.0 cask reproduction proved the outer DMG passed while the extracted app lacked a stapled ticket; the fixed release gate now rejects that state. Preserve `brew install --verbose --debug` output if any separate failure remains.
 - **Production private sync** (D97/D116): configure `iCloud.app.portavoz.mac`, deploy the production CloudKit schema, and issue an unexpired Developer ID profile with the exact production CloudKit and macOS push capabilities. On two clean Macs using one iCloud account, prove explicit future-change opt-in, separately confirmed existing-library seed, bidirectional edits, encrypted tombstone propagation, restart/retry, silent-push wake, sign-out/in, a real account switch requiring fresh consent, pause, and remove-this-Mac without deleting local meetings or remote records. Record the actual destination's complete-protection and backup-exclusion capabilities and verify that unsupported metadata omits only the unavailable key while `0600`, durable verification, and atomic publication remain intact. Reproduce Homebrew extraction and renew the profile before expiry. Do not market sync as field-proven until this matrix passes.
 - **Companion < 5 s** (D26/D72): on macOS 26 with Apple Intelligence available, a real meeting knowledge question must produce a card in < 5 s; also validate the "you were asked" detector (mention of your name → ping) and, if you configured BYOK, the external answer path with disclosure. Sequoia is intentionally excluded because the current question classifier is Foundation-Models-only; Settings explains this and exposes no dead enable toggle.
-- **Call-safe raw capture (D124)**: on both Sequoia and Tahoe, begin a call
+- **Call-safe raw capture (D125)**: on both Sequoia and Tahoe, begin a call
   without Portavoz, confirm participant playback and the user's uplink, then
   start Portavoz without changing devices. Playback and uplink must sound
   identical while the Portavoz mic and system timelines both advance. Repeat
@@ -77,8 +77,8 @@ and never reads `/Applications/Portavoz.app`.
   AirPods recordings produced mic-only evidence, including one digitally silent
   system channel. Silent-channel hallucinations are already rejected and
   automatic/app capture can tap recognized meeting processes before device
-  routing. D124 additionally removes VPIO from meeting capture, eliminating one
-  graph conflict. Repeat the D124 A/B with AirPods: if the process tap remains
+  routing. D125 additionally removes VPIO from meeting capture, eliminating one
+  graph conflict. Repeat the D125 A/B with AirPods: if the process tap remains
   silent, preserve microphone mobility and report the hardware limitation
   rather than forcing the built-in mic.
 - **Device change**: connect/disconnect headphones midway — the mic channel survives (gap of silence, not termination).

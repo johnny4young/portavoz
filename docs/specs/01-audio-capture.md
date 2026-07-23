@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D124 (observational call-safe capture).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Companion evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture).
 
 ## Channel model (D5)
 
@@ -15,7 +15,7 @@ Two SEPARATE streams, never mixed before diarization:
 
 ## MicrophoneSource — `Sources/AudioCaptureKit/MicrophoneSource.swift`
 
-- **Raw by default and for every production meeting (D124)**:
+- **Raw by default and for every production meeting (D125)**:
   `MicrophoneSource` defaults `voiceProcessing` to `false`, and the macOS
   recording composition passes `false` explicitly. The app has no AEC
   preference: stale `aecEnabled` defaults are ignored. This prevents
@@ -140,7 +140,7 @@ capture types or enumerate devices directly.
 
 ## Known limitations and risks
 
-1. **Call coexistence after removing VPIO (D124)**: the unsafe taps + VPIO
+1. **Call coexistence after removing VPIO (D125)**: the unsafe taps + VPIO
    combination is no longer part of meeting or dictation capture. A real-call
    A/B on Sequoia and Tahoe must still prove that starting Portavoz leaves
    participant playback and the meeting app's uplink unchanged while both
@@ -151,7 +151,7 @@ capture types or enumerate devices directly.
      built-in mic to −15…−25 dBFS after switching to AirPods, so hardware
      distance remains a useful warning signal. Later Sequoia and Tahoe calls
      reproduced participant ducking and a muted/extremely quiet conferencing
-     uplink exactly when Portavoz started with VPIO enabled. D124 removes that
+     uplink exactly when Portavoz started with VPIO enabled. D125 removes that
      shared-graph mutation. The live low-mic meter remains useful, but it must
      not be used to dismiss call-coexistence failures.
 2. ~~Crash safety~~ — **RESOLVED**: CAF container verified against kill -9 (above).

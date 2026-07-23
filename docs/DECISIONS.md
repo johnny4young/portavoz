@@ -153,7 +153,7 @@ confirms every suggestion.
 
 ## D24 — Echo cancellation (AEC) by default on the mic channel
 
-> **Superseded by D124 (23 Jul 2026).** The original implementation passed its
+> **Superseded by D125 (23 Jul 2026).** The original implementation passed its
 > CLI smoke but failed the more important call-coexistence invariant in real
 > Sequoia and Tahoe meetings.
 
@@ -194,14 +194,14 @@ confirms every suggestion.
 - **Waveform** per meeting: channel peak envelope downsampled to the requested bucket count and colored by source. The original persisted `waveform.bin` proposal is superseded by D84: measured stateless vectorized generation is fast enough and cannot become stale.
 - **Clips**: mark a range in the waveform/transcript → export `.m4a` (AVAssetExportSession) + attributed MD snippet; "mark" is FREE, "export" is PRO (already in the matrix).
 - **Master + economics**: WAV remains the master (the pipeline requires it); optional AAC transcode after refine as an additional retention policy (D4 already models retention).
-- **Signal conditioning** (reference-app pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate offline denoise/echo cancellation and ~80 Hz high-pass for voice without changing the live call graph (D124).
+- **Signal conditioning** (reference-app pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate offline denoise/echo cancellation and ~80 Hz high-pass for voice without changing the live call graph (D125).
 - **Import external audio as a meeting** (drag an .m4a/.wav into the library → transcribe+diarize+summarize): the refine pipeline already does everything; only the UI entry point is missing.
 - **Recording crash safety** (MacParakeet pattern, verified in its spec): its M4A files fragmented at 1 s survive `kill -9`. Our WAV files through AVAudioFile probably DO NOT (incomplete RIFF header on crash) — verify and migrate the container to **CAF** (append-safe by design, same AVAudioFile) or fragmented M4A. A 1 h recording cannot die with the app.
 - **Storage economics**: 22 min = 126 MB/channel in WAV; MacParakeet stores 64 kbps AAC (~10 MB). Keeping PCM until refine and transcoding afterward is the balance (refine wants the intact signal).
 - **Resolved live-graph risk**: MacParakeet discarded process taps because they
   do not coexist reliably with VPIO in-process. Real Sequoia and Tahoe calls
   later showed call ducking and microphone degradation with that exact
-  combination. D124 removes VPIO from meeting and dictation capture; echo
+  combination. D125 removes VPIO from meeting and dictation capture; echo
   cleanup stays after capture.
 **Rationale:** audio is the product's source of truth; treating it as a dead file gives the differentiated experience away to Otter. Everything is pure AVFoundation — zero new dependencies.
 
@@ -851,7 +851,7 @@ all schedule the existing idle release; successful capture transfers ownership
 to an opaque `StartRecordingSession` instead.
 
 The private macOS runtime owns `MicrophoneSource`, app/global
-`ProcessTapSource` selection, raw input warm-up (D124), preferred-input fallback,
+`ProcessTapSource` selection, raw input warm-up (D125), preferred-input fallback,
 `RecordingSession`, direct per-channel Parakeet streams, their teardown, and
 one recording-scoped voiceprint future shared by live diarization and durable
 Stop. Direct live streams preserve the released D7 live lane; the serial batch
@@ -3768,7 +3768,7 @@ cooperative executor. Content-free channel shape turns the exact field failure
 into support evidence while preserving Portavoz's privacy boundary and avoiding
 a second sensitive corpus.
 
-## D124 — Recording is observational: no live voice-processing takeover (Jul 2026)
+## D125 — Recording is observational: no live voice-processing takeover (Jul 2026)
 
 **Context:** two real calls on macOS 15 Sequoia and macOS 26 Tahoe showed that
 starting Portavoz reduced participant playback and made the user's microphone in

@@ -1287,6 +1287,24 @@ final class ArchitectureDependencyTests: XCTestCase {
             "ARCHITECTURE.md must describe only durable as-built technical facts")
     }
 
+    func testArchitectureDecisionIdentifiersAreUnique() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let identifiers = decisions.split(separator: "\n").compactMap { line -> String? in
+            guard line.hasPrefix("## D") else { return nil }
+            let digits = line.dropFirst(4).prefix(while: \.isNumber)
+            return digits.isEmpty ? nil : "D\(digits)"
+        }
+        let duplicates = Dictionary(grouping: identifiers, by: { $0 })
+            .filter { $0.value.count > 1 }
+            .map(\.key)
+            .sorted()
+
+        XCTAssertFalse(identifiers.isEmpty)
+        XCTAssertTrue(
+            duplicates.isEmpty,
+            "Architecture decision identifiers must be unique: \(duplicates)")
+    }
+
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {
         let policies = [
             "ChapterExtractor", "PlaybackRanges", "SummarySections", "VoiceHue",
