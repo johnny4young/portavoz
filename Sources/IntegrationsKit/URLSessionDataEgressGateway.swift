@@ -96,7 +96,7 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
                 networkRequest,
                 metadata: metadata,
                 classification: .meetingQuestionOnly,
-                label: "Companion")
+                label: "Apuntador")
             guard metadata.consentSource == .companionBYOKSettings
                     || metadata.consentSource == .explicitCompanionClient
             else {

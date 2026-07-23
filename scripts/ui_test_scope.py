@@ -64,7 +64,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-processing": (
         test_id("MeetingDetailUITests", "testFailedDurableProcessingOffersOneRecoveryAction"),
-        test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsCompanion"),
+        test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"),
         test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
     ),
     "meeting-summary": (
@@ -75,7 +75,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testDecisionSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testActionItemSourceJumpsToItsTranscriptAndAudio"),
-        test_id("MeetingDetailUITests", "testCompanionAnswerSourceJumpsToItsTranscriptAndAudio"),
+        test_id("MeetingDetailUITests", "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testSummaryFeedbackIsExplicitReversibleAndLocal"),
     ),
     "meeting-health": (

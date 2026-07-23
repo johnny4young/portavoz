@@ -149,6 +149,22 @@ public enum PromptFactory {
         return lines.joined(separator: "\n")
     }
 
+    /// Instructions for the on-demand "catch me up" recap: someone zoned out
+    /// or just joined, and the answer must cover ONLY the supplied excerpt —
+    /// a second whole-meeting summary would defeat the point.
+    public static func catchUpInstructions(
+        targetLanguage: String, glossary: [String]
+    ) -> String {
+        [
+            "You catch a meeting participant up on ONLY the last few minutes they missed.",
+            "Write 2 to 4 terse bullet points: what changed, was decided, or was asked "
+                + "in the excerpt; never anything older than it.",
+            "No preamble, no headings, no advice.",
+            sourceMaterialGuard(),
+            languageDirective(targetLanguage: targetLanguage, glossary: glossary)
+        ].joined(separator: "\n")
+    }
+
     /// Instructions for translating a FINISHED summary (D25's pivot):
     /// re-expression only — structure, order and content are frozen.
     public static func translationInstructions(

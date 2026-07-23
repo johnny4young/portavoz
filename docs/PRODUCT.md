@@ -35,17 +35,17 @@ Founding user and archetype: a Spanish-speaking developer with meetings in Engli
 | MacWhisper (€59 one-time) / superwhisper ($249 lifetime) | Native Mac | The entire business model (D9/D10) |
 | Krisp | Bot-free audio | **Live Interpreter** → our on-device translated ES↔EN captions (Translation framework) |
 | Jamie (€0–39/month; German, EU hosting) | Native bot-free, **cloud** (its "privacy" = EU sovereignty, NOT local) | **System-wide ⌘J sidebar** ("meeting Spotlight": searches the entire history from any app — idea for our global ⌘K); model selection per task (validation of D25); it is manual pull — no question detection |
-| Cluely ($20–75/month) + interview companions + **Teams "Facilitator" (~Aug-Sep 2026)** | Live-response overlays | The D26 Companion pattern has NO owner in meeting notes: Cluely promises 300 ms and delivers an actual 5–10 s + "cheating" stigma; Microsoft validates proactive question detection and sets a competitive deadline; interview companions (~$9/month) prove demand. Our angle: local (real latency), transparent, and `contexto` answers from YOUR history |
+| Cluely ($20–75/month) + interview companions + **Teams "Facilitator" (~Aug-Sep 2026)** | Live-response overlays | The D26 Apuntador pattern has NO owner in meeting notes: Cluely promises 300 ms and delivers an actual 5–10 s + "cheating" stigma; Microsoft validates proactive question detection and sets a competitive deadline; interview companions (~$9/month) prove demand. Our angle: local (real latency), transparent, and `contexto` answers from YOUR history |
 | Circleback | Action items | Distribution of action items to the right person; post-meeting automations → App Intents |
 | MeetGeek | Templates/agents | Automatic meeting-type detection → automatic Recipe; auto-recording rules with guardrails |
 | Read.ai | Coaching | Local "meeting health": talk-time, interruptions, question ratio (PRO) |
 | Gemini in Meet | Platform | Summary attached to the calendar event (EventKit) + recap email draft |
 | MacParakeet (GPL, Swift; **now 100% free, no paid tier**) | OSS dictation+meetings | Slot scheduler, retention, Homebrew+Sparkle, public benchmarks ("155x realtime") in README; **system-wide dictation mode via hotkey** (a surface we lack); live "Ask" about the meeting; 98 languages with dual-engine Parakeet+WhisperKit (25+73). **Patterns only, never code (GPL)** |
-| Meetily v0.4 (MIT, Rust+Tauri; PRO cloud forthcoming) | Local cross-platform OSS | 7 LLM providers incl. **its own llama.cpp sidecar** (qwen3.5 2b/4b GGUF); recommender: RAM ≥14 GB → 4b, otherwise 2b; Whisper catalog **with q5 variants (turbo 547 MB)** + Parakeet ONNX; **cached EN summary → re-translation without re-generation** (directly relevant to our ES/EN core); summary cache keyed by fingerprint (transcript+prompt+template+model); validatable JSON templates with action items citing segment+timestamp; normalization to −23 LUFS + RNNoise; external audio import as a meeting. **Confirmed gap: zero chat/Q&A/RAG** — our M8+Companion has no OSS rival |
+| Meetily v0.4 (MIT, Rust+Tauri; PRO cloud forthcoming) | Local cross-platform OSS | 7 LLM providers incl. **its own llama.cpp sidecar** (qwen3.5 2b/4b GGUF); recommender: RAM ≥14 GB → 4b, otherwise 2b; Whisper catalog **with q5 variants (turbo 547 MB)** + Parakeet ONNX; **cached EN summary → re-translation without re-generation** (directly relevant to our ES/EN core); summary cache keyed by fingerprint (transcript+prompt+template+model); validatable JSON templates with action items citing segment+timestamp; normalization to −23 LUFS + RNNoise; external audio import as a meeting. **Confirmed gap: zero chat/Q&A/RAG** — our M8+Apuntador has no OSS rival |
 | Humla (MIT, Tauri+Swift sidecars; optional cloud **$7/month/workspace**) | OSS meetings | Dual-stream capture, pyannote community-1 + Sortformer, engine routing **by language**, per-note override, "notes=intent + transcript=facts", **playback with word-by-word highlighting** (→ D27), free self-hosted PocketBase vs paid cloud — the sync monetization model that D12-L2 can copy |
 | Riffado (AGPL) | Plaud companion | AES-256-GCM at rest, signed webhooks, unified backup/restore |
 
-**Structural threats and defense:** (1) platform AI (Zoom AI Companion, Teams Companion, Gemini) — locked into a platform and subscription, no cross-platform library, zero privacy → our single local library is the answer. (2) Apple Sherlocking — Notes already records/transcribes/summarizes on-device and **macOS 26 released `SpeechAnalyzer`/`SpeechTranscriber`, faster than Whisper in public benchmarks**; the OS floor rises every year. Rule: no core feature can be something Apple will obviously make "basic" in 1–2 years. We live above the floor: speaker identity, developer workflow, deep bilingual support, RAG. And we turn the floor into a provider: SpeechAnalyzer is another quality engine in D25 (free, no download).
+**Structural threats and defense:** (1) platform AI (Zoom AI Apuntador, Teams Apuntador, Gemini) — locked into a platform and subscription, no cross-platform library, zero privacy → our single local library is the answer. (2) Apple Sherlocking — Notes already records/transcribes/summarizes on-device and **macOS 26 released `SpeechAnalyzer`/`SpeechTranscriber`, faster than Whisper in public benchmarks**; the OS floor rises every year. Rule: no core feature can be something Apple will obviously make "basic" in 1–2 years. We live above the floor: speaker identity, developer workflow, deep bilingual support, RAG. And we turn the floor into a provider: SpeechAnalyzer is another quality engine in D25 (free, no download).
 
 ## Target FREE vs PRO policy (one-time payment ~$69, launch $49)
 
@@ -96,7 +96,7 @@ capabilities; current and deferred status is authoritative in
 - Domain vocabulary as initial_prompt (service/teammate names).
 - "What did I miss?": a live, Spanish-language catch-up for the last N minutes.
 - "Someone asked you something" detector (name mentioned → notification with the question).
-- **Live Companion (D26/D91)**: questions detected in the conversation ("what is the difference between `var` and `let`?") → card with a suggested answer in <5 s; `contexto` answers from local RAG, `conocimiento` answers from on-device FM (or BYOK with disclosure). Review separates what triggered the card from the exact passages cited by a context answer.
+- **Live Apuntador (D26/D91)**: questions detected in the conversation ("what is the difference between `var` and `let`?") → card with a suggested answer in <5 s; `contexto` answers from local RAG, `conocimiento` answers from on-device FM (or BYOK with disclosure). Review separates what triggered the card from the exact passages cited by a context answer.
 - Live translated ES↔EN captions (Translation framework, on-device; partials in the original language, translation when each segment is finalized).
 
 ## Future (research, not committed)
@@ -112,7 +112,7 @@ capabilities; current and deferred status is authoritative in
 The moments that make people say "no one else does this" — each maps to a milestone:
 
 1. **The waveform that knows who is speaking** (M9): timeline colored by speaker; drag it and the transcript follows; click a sentence and the audio jumps there with live highlighting.
-2. **The Companion card** (M11): someone asks a technical question and the answer is already in your panel before you finish processing the question.
+2. **The Apuntador card** (M11): someone asks a technical question and the answer is already in your panel before you finish processing the question.
 3. **"You were asked"** (M11 + Watch in phase 3): you are distracted, and the watch vibrates with the transcribed question.
 4. **Translated captions floating over Zoom** (M14d, iPad PiP): subtitles in your language over any calling app, composable with translation.
 5. **Dynamic Island recording** (M14c): timer + latest sentence in the island; long-press = mark moment.
@@ -124,7 +124,7 @@ The moments that make people say "no one else does this" — each maps to a mile
 11. **Correct the claim, preserve the record** (Band 5C): a private correction or unsupported mark stays visibly separate from generated text, can be cleared without hidden text history, and travels only through an explicit meeting export.
 12. **A decision you can verify in one click** (Band 5D): each supported decision bullet exposes its exact transcript and audio moments; stale or missing evidence disables navigation instead of presenting false certainty.
 13. **A to-do that remembers the commitment** (Band 5E): the source stays attached to the task even after its checkbox changes, so users can verify who committed to what without searching the meeting or trusting generated text blindly.
-14. **A Companion answer with two kinds of proof** (Band 5F): the card shows where the question was asked separately from which earlier meeting passages supported its answer; knowledge answers and pings never pretend to have transcript support they did not use.
+14. **A Apuntador answer with two kinds of proof** (Band 5F): the card shows where the question was asked separately from which earlier meeting passages supported its answer; knowledge answers and pings never pretend to have transcript support they did not use.
 
 ## Performance targets (world-class = numbers)
 

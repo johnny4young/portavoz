@@ -19,11 +19,15 @@ extension AppServices {
     func meetingDetailNameSuggestions(
         _ meetingID: MeetingID
     ) async throws -> [MeetingNameSuggestion] {
-        try await SuggestMeetingSpeakerNames(
+        // Same owner identity the Apuntador uses: mentions of that name are
+        // people addressing the owner, never another speaker's identity.
+        return try await SuggestMeetingSpeakerNames(
             library: .local(store: store),
             candidates: AppCalendarMeetingNameCandidates(),
             proposer: AppMeetingSpeakerNameProposer())
-            .execute(.init(meetingID: meetingID))
+            .execute(.init(
+                meetingID: meetingID,
+                ownerName: RecordingController.companionOwnerName()))
     }
 }
 

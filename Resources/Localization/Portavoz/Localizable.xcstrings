@@ -361,12 +361,12 @@
         }
       }
     },
-    "Answer Companion knowledge questions with this provider": {
+    "Answer Apuntador knowledge questions with this provider": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Responder preguntas de conocimiento del Companion con este proveedor"
+            "value": "Responder preguntas de conocimiento del Apuntador con este proveedor"
           }
         }
       }
@@ -381,12 +381,12 @@
         }
       }
     },
-    "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model.": {
+    "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Apuntador sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, Companion envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
+            "value": "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, Apuntador envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
           }
         }
       }
@@ -901,12 +901,12 @@
         }
       }
     },
-    "Companion": {
+    "Apuntador": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion"
+            "value": "Apuntador"
           }
         }
       }
@@ -1811,12 +1811,12 @@
         }
       }
     },
-    "Enrolled voice · your name · Companion": {
+    "Enrolled voice · your name · Apuntador": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voz enrolada · tu nombre · Companion"
+            "value": "Voz enrolada · tu nombre · Apuntador"
           }
         }
       }
@@ -2271,12 +2271,12 @@
         }
       }
     },
-    "Key deleted. Companion goes back to answering only on-device.": {
+    "Key deleted. Apuntador goes back to answering only on-device.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clave eliminada. Companion vuelve a responder solo en el dispositivo."
+            "value": "Clave eliminada. Apuntador vuelve a responder solo en el dispositivo."
           }
         }
       }
@@ -2631,12 +2631,12 @@
         }
       }
     },
-    "My voice & Companion": {
+    "My voice & Apuntador": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mi voz y Companion"
+            "value": "Mi voz y Apuntador"
           }
         }
       }
@@ -3251,12 +3251,12 @@
         }
       }
     },
-    "Re-checking the Companion's answers…": {
+    "Re-checking the Apuntador's answers…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revisando las respuestas del Companion…"
+            "value": "Revisando las respuestas del Apuntador…"
           }
         }
       }
@@ -4501,12 +4501,12 @@
         }
       }
     },
-    "The transcript was refined, but Companion cards could not be refreshed.": {
+    "The transcript was refined, but Apuntador cards could not be refreshed.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Companion."
+            "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Apuntador."
           }
         }
       }
@@ -4971,12 +4971,12 @@
         }
       }
     },
-    "When someone asks for you by name (\"%@\", what do you think?), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.": {
+    "When someone asks for you by name (\"%@\", what do you think?), Apuntador highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuando alguien te pregunta por tu nombre (\"%@\", ¿qué opinas?), Companion resalta la tarjeta como “te preguntaron” aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
+            "value": "Cuando alguien te pregunta por tu nombre (\"%@\", ¿qué opinas?), Apuntador resalta la tarjeta como “te preguntaron” aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
           }
         }
       }
@@ -5461,12 +5461,12 @@
         }
       }
     },
-    "voice enroll companion name remembered": {
+    "voice enroll apuntador name remembered": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "voz enrolar companion nombre recordadas"
+            "value": "voz enrolar apuntador nombre recordado"
           }
         }
       }
@@ -5651,72 +5651,72 @@
         }
       }
     },
-    "Enable Companion for recordings": {
+    "Enable Apuntador for recordings": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activar Companion para las grabaciones"
+            "value": "Activar Apuntador para las grabaciones"
           }
         }
       }
     },
-    "Turn it on here or from the recording toolbar. Companion detects questions and suggests private answer cards; it never speaks or answers for you.": {
+    "Turn it on here or from the recording toolbar. Apuntador detects questions and suggests private answer cards; it never speaks or answers for you.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actívalo aquí o desde la barra de grabación. Companion detecta preguntas y sugiere tarjetas privadas con respuestas; nunca habla ni responde por ti."
+            "value": "Actívalo aquí o desde la barra de grabación. Apuntador detecta preguntas y sugiere tarjetas privadas con respuestas; nunca habla ni responde por ti."
           }
         }
       }
     },
-    "Companion is ready on this Mac.": {
+    "Apuntador is ready on this Mac.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion está listo en este Mac."
+            "value": "Apuntador está listo en este Mac."
           }
         }
       }
     },
-    "Live Companion requires macOS 26 and Apple Intelligence.": {
+    "Live Apuntador requires macOS 26 and Apple Intelligence.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion en vivo requiere macOS 26 y Apple Intelligence."
+            "value": "Apuntador en vivo requiere macOS 26 y Apple Intelligence."
           }
         }
       }
     },
-    "On macOS Sequoia, summaries and Refine still work with Ollama, Built-in (MLX), and Whisper. An external BYOK provider cannot enable Companion yet because question detection still uses Apple's on-device model.": {
+    "On macOS Sequoia, summaries and Refine still work with Ollama, Built-in (MLX), and Whisper. An external BYOK provider cannot enable Apuntador yet because question detection still uses Apple's on-device model.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En macOS Sequoia, los resúmenes y Refine siguen funcionando con Ollama, Integrado (MLX) y Whisper. Un proveedor BYOK externo todavía no puede activar Companion porque la detección de preguntas sigue usando el modelo en el dispositivo de Apple."
+            "value": "En macOS Sequoia, los resúmenes y Refine siguen funcionando con Ollama, Integrado (MLX) y Whisper. Un proveedor BYOK externo todavía no puede activar Apuntador porque la detección de preguntas sigue usando el modelo en el dispositivo de Apple."
           }
         }
       }
     },
-    "Live Companion needs Apple Intelligence.": {
+    "Live Apuntador needs Apple Intelligence.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion en vivo necesita Apple Intelligence."
+            "value": "Apuntador en vivo necesita Apple Intelligence."
           }
         }
       }
     },
-    "Apple's on-device model is unavailable: %@. Choose another summary engine if needed; BYOK cannot replace Companion's question detector yet.": {
+    "Apple's on-device model is unavailable: %@. Choose another summary engine if needed; BYOK cannot replace Apuntador's question detector yet.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El modelo en el dispositivo de Apple no está disponible: %@. Elige otro motor de resúmenes si lo necesitas; BYOK todavía no puede reemplazar el detector de preguntas de Companion."
+            "value": "El modelo en el dispositivo de Apple no está disponible: %@. Elige otro motor de resúmenes si lo necesitas; BYOK todavía no puede reemplazar el detector de preguntas de Apuntador."
           }
         }
       }
@@ -5971,12 +5971,12 @@
         }
       }
     },
-    "Companion question only": {
+    "Apuntador question only": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo la pregunta para Companion"
+            "value": "Solo la pregunta para Apuntador"
           }
         }
       }
@@ -7217,6 +7217,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "El dictado no pudo escribir en la app seleccionada. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Catch me up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponme al día"
+          }
+        }
+      }
+    },
+    "Catching you up…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poniéndote al día…"
+          }
+        }
+      }
+    },
+    "A quick recap of the last few minutes — for when you zoned out or just joined.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un repaso rápido de los últimos minutos — para cuando te desconectaste o acabas de llegar."
+          }
+        }
+      }
+    },
+    "Not enough conversation yet — try again in a minute.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay suficiente conversación — intenta de nuevo en un minuto."
+          }
+        }
+      }
+    },
+    "Catch-up needs Apple Intelligence on macOS 26. Summaries at Stop still work with your configured engine.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponerte al día necesita Apple Intelligence en macOS 26. Los resúmenes al detener siguen funcionando con tu motor configurado."
+          }
+        }
+      }
+    },
+    "The catch-up could not be generated. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo generar el repaso. La grabación continúa intacta."
+          }
+        }
+      }
+    },
+    "Dismiss catch-up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar repaso"
           }
         }
       }
