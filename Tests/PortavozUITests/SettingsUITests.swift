@@ -280,14 +280,10 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-capture-mode").waitForExistence(timeout: 5),
             "the Audio pane must offer a capture-source picker")
+        let callSafePolicy = app.control(withIdentifier: "settings-call-safe-capture")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-call-safe-capture")
-                .waitForExistence(timeout: 5),
-            "the Audio pane must expose the always-on call-safe capture policy")
-        // The settings NavigationSplitView animates the detail transition after
-        // the destination is already accessible. Let it settle before keeping
-        // visual evidence so localized labels are not captured mid-slide.
-        Thread.sleep(forTimeInterval: 1)
+            callSafePolicy.waitForStableFrame(),
+            "the Audio pane must expose a stable always-on call-safe capture policy")
         attachScreenshot(of: app, named: "call-safe-audio-settings")
     }
 

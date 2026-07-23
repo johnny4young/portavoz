@@ -117,9 +117,15 @@ extension XCUIApplication {
         // first-frame adjustment finish before a test caches a control.
         Thread.sleep(forTimeInterval: 0.2)
         if shouldOpenSettings {
+            XCTAssertTrue(
+                buttons["library-new-recording-button"]
+                    .waitForStableFrame(timeout: 20),
+                "the library must finish its cold-start layout before opening Settings")
             typeKey(",", modifierFlags: .command)
-            _ = descendants(matching: .any)["settings-category-general"]
-                .waitForExistence(timeout: 10)
+            XCTAssertTrue(
+                descendants(matching: .any)["settings-category-general"]
+                    .waitForExistence(timeout: 10),
+                "the Settings command must open the settings window")
         }
     }
 

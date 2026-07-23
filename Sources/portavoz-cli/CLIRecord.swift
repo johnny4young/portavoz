@@ -5,7 +5,7 @@ import TranscriptionKit
 
 /// `portavoz-cli record [--seconds N] [--mic <name-or-uid>] [--pid <pid> ...]
 ///                      [--system] [--out <dir>] [--transcribe] [--language es]
-///                      [--models-dir <dir>] [--aec]`
+///                      [--models-dir <dir>] [--aec] [--no-aec]`
 ///
 /// With `--transcribe`, every captured channel gets its own live Parakeet
 /// job fed from the recording pipeline; segments print as they stream.
