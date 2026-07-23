@@ -140,7 +140,8 @@ final class LibraryUITests: XCTestCase {
         // tapping answers honestly when the on-device model is unavailable,
         // so presence is deterministic even where generation is not.
         XCTAssertTrue(
-            app.control(withIdentifier: "recording-catch-up").exists,
+            app.control(withIdentifier: "recording-catch-up")
+                .waitForExistence(timeout: 5),
             "the recording bar must offer the catch-up action")
         attachScreenshot(of: app, named: "recording-live-transcript-hot-attach")
     }

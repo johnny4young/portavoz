@@ -755,6 +755,7 @@ private extension RecordingView {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(L10n.text("Dismiss catch-up"))
                 .accessibilityIdentifier("recording-catch-up-dismiss")
             }
             switch state {

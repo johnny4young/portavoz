@@ -976,7 +976,7 @@ extension MeetingDetailView {
     @ViewBuilder
     private func speakersRow(_ detail: MeetingReviewReadModel) -> some View {
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
-        HStack(spacing: 8) {
+        FlowLayout(spacing: 8, rowSpacing: 8) {
             ForEach(detail.speakers) { speaker in
                 SpeakerPill(
                     speaker: speaker,

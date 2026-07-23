@@ -207,6 +207,27 @@ final class MeetingDetailModelTests: XCTestCase {
         ])
     }
 
+    func testVoiceSuggestionKeepsNameLookupSuccessfulWhenItSuppressesText() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.send(.loadVoiceSuggestions)
+        let effect = await model.send(.loadNameSuggestions)
+
+        guard case .nameSuggestionsLoaded = effect else {
+            return XCTFail(
+                "verified voice evidence must keep the suggestion action successful")
+        }
+        XCTAssertTrue(model.state.nameSuggestions.isEmpty)
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
+        XCTAssertNil(model.state.lastActionError)
+        XCTAssertEqual(client.calls, [
+            .loadVoiceSuggestions(fixture.meeting.id),
+            .loadNameSuggestions(fixture.meeting.id),
+        ])
+    }
+
     func testDocumentNameAndVoiceEffectsPreserveFailureAndDegradationPolicy() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])

@@ -574,6 +574,13 @@ only when the attributed transcript is homogeneous. Diarization failure
 degrades to an unattributed system channel; missing finalized audio remains a
 durable failure.
 
+On-demand live intelligence is an ephemeral sidecar, never part of capture or
+durable stop. "Catch me up" snapshots only closed caption rows, submits a
+bounded recent clip at interactive priority, and owns one replaceable task.
+Dismiss and Stop synchronously cancel and clear that task before the recording
+crosses the durable application boundary; late model output cannot become
+visible or persisted after recording ends.
+
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;
 ApplicationKit applies it again to both Refine channels before microphone-only

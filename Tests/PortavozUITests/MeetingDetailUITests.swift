@@ -125,7 +125,7 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
-    func testSequoiaSummaryFailureOpensExactSetupAndExplainsCompanion() {
+    func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() {
         let app = launchOnSeededMeeting(
             withoutSummary: true,
             simulateSequoiaCapabilities: true,
@@ -168,11 +168,11 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-apuntador-status")
                 .waitForExistence(timeout: 5),
-            "the voice pane must explain Companion's real platform requirement")
+            "the voice pane must explain Apuntador's real platform requirement")
         XCTAssertFalse(
             app.control(withIdentifier: "settings-apuntador-enabled").exists,
             "Sequoia must not expose a toggle that cannot work")
-        attachScreenshot(of: app, named: "sequoia-companion-requirements")
+        attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
     }
 
     @MainActor
@@ -320,7 +320,7 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
-    func testCompanionAnswerSourceJumpsToItsTranscriptAndAudio() {
+    func testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
@@ -328,7 +328,7 @@ final class MeetingDetailUITests: XCTestCase {
             withIdentifier:
                 "apuntador-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
         guard source.waitForExistence(timeout: 10) else {
-            XCTFail("the Companion answer must expose its exact transcript source")
+            XCTFail("the Apuntador answer must expose its exact transcript source")
             return
         }
         XCTAssertEqual(
@@ -347,7 +347,7 @@ final class MeetingDetailUITests: XCTestCase {
             for: NSPredicate(format: "value == '0:03'"),
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
-        attachScreenshot(of: app, named: "band-5f-companion-evidence")
+        attachScreenshot(of: app, named: "band-5f-apuntador-evidence")
     }
 
     @MainActor
@@ -499,16 +499,16 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "chapter-200").exists,
             "a chapter must mark the later turn the seed placed at 200 s")
-        // The persisted Companion cards (D26) render in the rail: the seed
+        // The persisted Apuntador cards (D26) render in the rail: the seed
         // has an answered card (askedAt 6) and an "asked you" ping (200).
         // These WAIT: the cards are fetched separately from the meeting
         // detail, so the section lands a beat after the rest of the rail.
         XCTAssertTrue(
             app.control(withIdentifier: "detail-apuntador").waitForExistence(timeout: 5),
-            "the right rail must show the persisted Companion answers")
+            "the right rail must show the persisted Apuntador answers")
         XCTAssertTrue(
             app.control(withIdentifier: "apuntador-card-6").waitForExistence(timeout: 5),
-            "the answered Companion card must render for review")
+            "the answered Apuntador card must render for review")
 
         attachScreenshot(of: app, named: "band-3h-privacy-receipt")
     }

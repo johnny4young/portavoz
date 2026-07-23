@@ -537,6 +537,7 @@ extension RecordingController {
     /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        catchUp.dismiss()
         rollingTask?.cancel()
         phase = .processing(L10n.text("Closing the recording…"))
 
@@ -544,8 +545,7 @@ extension RecordingController {
         micMuted = false
         // Live hints end here — the durable workflow re-attributes everything.
         liveDiarizerFeed?.finish()
-        liveDiarizerFeed = nil
-        liveDiarizerStream = nil
+        (liveDiarizerFeed, liveDiarizerStream) = (nil, nil)
         liveDiarizerTask?.cancel()
         liveDiarizerTask = nil
         self.session = nil

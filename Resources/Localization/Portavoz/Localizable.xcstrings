@@ -5466,7 +5466,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "voz enrolar apuntador nombre recordadas"
+            "value": "voz enrolar apuntador nombre recordado"
           }
         }
       }
@@ -7277,6 +7277,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo generar el repaso. La grabación continúa intacta."
+          }
+        }
+      }
+    },
+    "Dismiss catch-up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar repaso"
           }
         }
       }

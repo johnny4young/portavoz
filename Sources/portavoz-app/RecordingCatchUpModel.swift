@@ -62,12 +62,24 @@ final class RecordingCatchUpModel {
                     segments: labeled, speakers: [me, them],
                     targetLanguage: language, glossary: vocabulary,
                     priority: .interactive)
-                guard let self, isRecording(), !Task.isCancelled else { return }
+                guard let self, !Task.isCancelled else { return }
+                guard isRecording() else {
+                    self.state = nil
+                    self.task = nil
+                    return
+                }
                 self.state = .ready(recap)
+                self.task = nil
             } catch {
-                guard let self, isRecording(), !Task.isCancelled else { return }
+                guard let self, !Task.isCancelled else { return }
+                guard isRecording() else {
+                    self.state = nil
+                    self.task = nil
+                    return
+                }
                 self.state = .unavailable(L10n.text(
                     "The catch-up could not be generated. The recording continues untouched."))
+                self.task = nil
             }
         }
     }

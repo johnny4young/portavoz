@@ -285,7 +285,7 @@ final class SettingsUITests: XCTestCase {
     @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
-        // switch lives in the "My voice & Companion" pane.
+        // switch lives in the "My voice & Apuntador" pane.
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }

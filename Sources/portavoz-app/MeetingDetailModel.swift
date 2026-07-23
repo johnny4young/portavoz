@@ -486,7 +486,7 @@ private extension MeetingDetailModel {
         do {
             state.nameSuggestions = try await client.meetingDetailNameSuggestions(meetingID)
             reconcileSuggestionSources()
-            guard !state.nameSuggestions.isEmpty else {
+            guard !state.nameSuggestions.isEmpty || !state.voiceSuggestions.isEmpty else {
                 return .operationFailed(L10n.text(
                     "No verified name suggestions were found — you can rename the pills manually."))
             }

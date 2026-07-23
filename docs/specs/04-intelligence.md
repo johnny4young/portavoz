@@ -295,6 +295,24 @@ meeting-content HTTP receipt boundary.
 - Instructions (`notesBehavior`): each note is a topic the summary MUST cover, expanded with facts, never contradicted; bullets originating from a note are prefixed with **"▸ "** — a cheap token instead of inflating the guided-generation schema; the renderer can display Granola-style coauthorship (black/gray) without changing types. The language instruction still closes the prompt (D18).
 - Full flow wired: **notes panel in `RecordingView`** (TextField + timestamped list with remove, right column, always visible during recording) → `RecordingController.addContextNote()` (anchors to the current moment) → rolling and final summaries see them → persisted at stop (`contextItem` table, v3 migration) → regeneration in the detail reloads them from the store. **Coauthorship rendering** in `MarkdownText`: bullets prefixed with "▸ " are drawn with an accent mark (Granola style — content originating from your note is distinguishable from the pure AI summary). M10 complete except for field verification (5 real notes → summary that expands them).
 
+## On-demand catch-up
+
+`CatchUpPolicy.clip` is a pure admission boundary over closed live-caption
+rows. It excludes the coalescer's mutable tail, requires at least two admitted
+rows, keeps only the last five minutes, and preserves the newest material when
+prompt formatting reaches its budget. The app maps microphone/system channels
+to local/remote speaker identities and asks
+`FoundationModelSummaryProvider.catchUp` for a 2-4 bullet recap at interactive
+priority. The prompt uses the shared source-material guard and follows the
+homogeneous spoken language when one exists.
+
+Generation is recording-scoped and ephemeral: one task owns one visible card,
+and neither request nor result enters StorageKit. Dismiss cancels and clears
+the task. Stop performs the same cancellation before durable capture handling;
+completion and failure paths independently fence publication on the recording
+still being active. Unsupported platforms return a truthful local capability
+message without attempting provider fallback.
+
 ## Live Apuntador (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
 
 3-stage pipeline over closed coalescer rows (a row closes when the next one is created — never partial, never reprocessed):
