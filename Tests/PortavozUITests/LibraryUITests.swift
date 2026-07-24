@@ -170,9 +170,16 @@ final class LibraryUITests: XCTestCase {
         let earlierRow = app.staticTexts[
             "History row 02 remains readable during live updates."
         ]
+        // A runner's wheel acceleration and window height change how far one
+        // synthetic scroll travels. Keep scrolling in the same user direction
+        // until the same deterministic history row is actually in view.
+        for _ in 0..<5 where !earlierRow.isHittable {
+            transcript.scroll(byDeltaX: 0, deltaY: 8)
+        }
         XCTAssertTrue(
-            earlierRow.waitForExistence(timeout: 3) && earlierRow.isHittable,
+            earlierRow.isHittable,
             "the user must be able to reach an earlier closed row")
+        let readerOwnedY = earlierRow.frame.midY
 
         Thread.sleep(forTimeInterval: 3)
         XCTAssertTrue(
@@ -181,12 +188,14 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(
             earlierRow.isHittable,
             "incoming rows must keep the earlier row in the viewport")
+        XCTAssertEqual(
+            earlierRow.frame.midY,
+            readerOwnedY,
+            accuracy: 1,
+            "incoming rows must not reposition the reader-owned history")
         let newestRow = app.staticTexts[
             "History row 24 remains readable during live updates."
         ]
-        XCTAssertFalse(
-            newestRow.isHittable,
-            "the newest row must stay outside the reader-owned viewport")
         attachScreenshot(of: app, named: "recording-live-transcript-history-paused")
 
         jumpToLive.click()
