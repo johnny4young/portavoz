@@ -73,6 +73,8 @@ safety net.
 
 ## Quality: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
 
+Two whisper.cpp-era hardening patterns are deliberately absent, verified against WhisperKit's source (Jul 2026): per-job decoder-state isolation is structural — WhisperKit prepares fresh decoder inputs and KV cache on every transcription call and Portavoz builds promptTokens per call, so the prompt_past cross-job poisoning class cannot occur; and VAD speech-only stitching is inapplicable because refine requires exact timestamps, which stitching desynchronizes (the pattern's own reference implementation skips it whenever timestamps are requested). The applicable input-side protections already exist: peak normalization, digitally-silent channel skipping, single-worker decoding, and anti-boilerplate hygiene.
+
 Model load degrades before it fails (Jul 2026): a failed load — accelerator context creation is the recurring field class (ANE/GPU contention, stale Metal contexts) — retries exactly once with CPU-only compute units via the pure, tested `AcceleratorFallback`; a user cancel never triggers the second load, and a dual failure surfaces both causes so diagnostics distinguish an accelerator-only fault from a broken model directory. Artifact downloads were already atomic before this (D113: verified sibling staging + streaming sha256 + atomic rename preserving the previous file).
 
 Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 2026):
