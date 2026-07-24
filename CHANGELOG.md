@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 23, 2026
 
+- **🧯 Refine that survives a busy GPU** — If the speech model cannot load on the accelerator (another app hogging the GPU, a stale graphics context), Portavoz now retries once on the CPU instead of failing the refine — slower, but your transcript still arrives.
 - **🛡️ Recording that leaves your call alone** — Portavoz no longer takes over macOS voice processing when a meeting or dictation starts, so participant playback is not ducked and the meeting app keeps control of your microphone; duplicate speaker bleed is cleaned from the transcript afterward.
 
 ## July 22, 2026
