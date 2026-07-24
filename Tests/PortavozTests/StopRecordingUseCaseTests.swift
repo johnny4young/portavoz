@@ -230,7 +230,7 @@ final class StopRecordingUseCaseTests: XCTestCase {
         let dependencies = StopRecordingDependencies(
             shell: fixture.shell,
             existingPaths: [fixture.assets[0].relativePath],
-            installFailuresRemaining: 1)
+            installFailuresRemaining: 3)
         let microphoneOnly = StopRecordingCapture(
             publishedFiles: [.microphone: fixture.publishedFile()])
 
@@ -244,7 +244,7 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(failure, .snapshotPersistenceFailed)
         XCTAssertEqual(failure.category, .critical)
         XCTAssertNil(fallback)
-        XCTAssertEqual(state.installAttempts, 1)
+        XCTAssertEqual(state.installAttempts, 3)
         XCTAssertTrue(state.installs.isEmpty)
         XCTAssertEqual(state.kickCount, 0)
         XCTAssertEqual(state.releaseCount, 1)
@@ -285,7 +285,7 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertNil(fallback)
     }
 
-    func testAdmissionFailureRollsBackThenInstallsNeedsAttentionFallback() async {
+    func testTransientFullSnapshotFailureRetriesWithoutLosingOptionalContent() async throws {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(
             shell: fixture.shell,
@@ -293,35 +293,60 @@ final class StopRecordingUseCaseTests: XCTestCase {
 
         let result = await fixture.useCase(dependencies).execute(fixture.request())
 
-        guard case .processingFailed(let failure, let fallback?) = result else {
-            return XCTFail("failed admission should preserve a fallback")
+        guard case .completed(let commit) = result else {
+            return XCTFail("a rejected optional payload should keep durable processing")
         }
         let state = await dependencies.state()
-        XCTAssertEqual(failure, .snapshotPersistenceFailed)
-        XCTAssertEqual(failure.code, "recording.stop.snapshot.persistence.failed")
-        XCTAssertEqual(failure.category, .critical)
-        XCTAssertEqual(fallback.meeting.lastProcessingError, "processing.enqueue.failed")
         XCTAssertEqual(state.installAttempts, 2)
         XCTAssertEqual(state.installs.count, 1)
-        XCTAssertTrue(state.installs[0].requests.isEmpty)
-        XCTAssertEqual(state.kickCount, 0)
+        let installed = try XCTUnwrap(state.installs.first)
+        XCTAssertEqual(commit.meeting.lifecycleState, .processing)
+        XCTAssertEqual(installed.snapshot.segments.count, fixture.captions.count)
+        XCTAssertEqual(installed.snapshot.contextItems.map(\.content), ["Ship locally"])
+        XCTAssertEqual(installed.snapshot.companionCards.map(\.question), ["When?"])
+        XCTAssertEqual(installed.requests.map(\.kind), [.diarization])
+        XCTAssertEqual(state.kickCount, 1)
         XCTAssertEqual(state.releaseCount, 1)
     }
 
-    func testDoublePersistenceFailureNeverClaimsFallbackCommit() async {
+    func testRejectedCoreSnapshotFallsBackToAudioAndDurableTranscription() async throws {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(
             shell: fixture.shell,
-            installFailuresRemaining: 2)
+            installFailuresRemaining: 3)
 
         let result = await fixture.useCase(dependencies).execute(fixture.request())
 
-        guard case .processingFailed(_, let fallback) = result else {
-            return XCTFail("persistence failure should be explicit")
+        guard case .completed(let commit) = result else {
+            return XCTFail("validated audio should remain resumable after content rejection")
         }
         let state = await dependencies.state()
+        let installed = try XCTUnwrap(state.installs.first)
+        XCTAssertEqual(commit.meeting.lifecycleState, .processing)
+        XCTAssertEqual(state.installAttempts, 4)
+        XCTAssertTrue(installed.snapshot.segments.isEmpty)
+        XCTAssertTrue(installed.snapshot.speakers.isEmpty)
+        XCTAssertEqual(installed.snapshot.contextItems.map(\.content), ["Ship locally"])
+        XCTAssertEqual(installed.requests.map(\.kind), [.transcription])
+        XCTAssertEqual(state.kickCount, 1)
+        XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testEveryPersistenceProjectionFailureNeverClaimsACommit() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(
+            shell: fixture.shell,
+            installFailuresRemaining: 8)
+
+        let result = await fixture.useCase(dependencies).execute(fixture.request())
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail("exhausting the bounded fallback ladder must remain explicit")
+        }
+        let state = await dependencies.state()
+        XCTAssertEqual(failure, .snapshotPersistenceFailed)
         XCTAssertNil(fallback)
-        XCTAssertEqual(state.installAttempts, 2)
+        XCTAssertEqual(state.installAttempts, 8)
         XCTAssertTrue(state.installs.isEmpty)
         XCTAssertEqual(state.kickCount, 0)
         XCTAssertEqual(state.releaseCount, 1)
@@ -357,6 +382,111 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(jobs.map(\.kind), [.diarization])
         let state = await dependencies.state()
         XCTAssertEqual(state.kickCount, 1)
+    }
+
+    func testRealStoreDropsInvalidCompanionProvenanceWithoutLosingAudioOrTranscript() async throws {
+        let fixture = StopRecordingFixture()
+        let store = try MeetingStore.inMemory()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let reservedAssets = fixture.assets
+        try await store.beginRecording(fixture.shell, assets: reservedAssets)
+        let card = CompanionCard(
+            question: "Is this optional payload valid?",
+            answer: "No",
+            kind: .context,
+            source: "on-device",
+            askedAt: 5)
+        let invalidRun = GenerationRun(
+            meetingID: fixture.meetingID,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "b", count: 64),
+            configJSON: #"{"workflow":"wrong"}"#,
+            outputLanguage: "en",
+            startedAt: fixture.startedAt,
+            finishedAt: fixture.now,
+            outcome: .succeeded,
+            metricsJSON: #"{"answerUTF8Bytes":2}"#)
+        let useCase = StopRecording(
+            audioFiles: dependencies,
+            store: store,
+            lifecycle: dependencies,
+            now: { fixture.now })
+
+        let result = await useCase.execute(fixture.request(
+            assets: reservedAssets,
+            companionArtifacts: [CompanionGenerationArtifact(
+                card: card,
+                generationRun: invalidRun)]))
+
+        guard case .completed = result else {
+            if case .processingFailed(let failure, let fallback) = result {
+                return XCTFail(
+                    "optional Companion rejection must degrade to the core capture; "
+                        + "failure=\(failure.code), fallback=\(fallback != nil)")
+            }
+            return XCTFail("optional Companion rejection returned an unexpected outcome")
+        }
+        let loadedDetail = try await store.detail(fixture.meetingID)
+        let detail = try XCTUnwrap(loadedDetail)
+        let assets = try await store.audioAssets(for: fixture.meetingID)
+        let jobs = try await store.processingJobs(for: fixture.meetingID)
+        let cards = try await store.companionCards(for: fixture.meetingID)
+        XCTAssertEqual(detail.meeting.lifecycleState, .processing)
+        XCTAssertEqual(detail.segments.count, fixture.captions.count)
+        XCTAssertEqual(cards.map(\.question), ["When?"])
+        XCTAssertTrue(assets.contains { $0.healthStatus == .healthy })
+        XCTAssertEqual(jobs.map(\.kind), [.diarization])
+    }
+
+    func testRealStoreDropsInvalidCompanionTerminalRunWithoutLosingCoreCapture() async throws {
+        let fixture = StopRecordingFixture()
+        let store = try MeetingStore.inMemory()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let reservedAssets = fixture.assets
+        try await store.beginRecording(fixture.shell, assets: reservedAssets)
+        let invalidRun = GenerationRun(
+            meetingID: fixture.meetingID,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "c", count: 64),
+            configJSON: #"{"workflow":"wrong"}"#,
+            outputLanguage: "en",
+            startedAt: fixture.startedAt,
+            finishedAt: fixture.now,
+            outcome: .failed)
+        let useCase = StopRecording(
+            audioFiles: dependencies,
+            store: store,
+            lifecycle: dependencies,
+            now: { fixture.now })
+
+        let result = await useCase.execute(fixture.request(
+            assets: reservedAssets,
+            companionTerminalRuns: [invalidRun]))
+
+        guard case .completed = result else {
+            if case .processingFailed(let failure, let fallback) = result {
+                return XCTFail(
+                    "invalid optional terminal provenance must degrade to the core capture; "
+                        + "failure=\(failure.code), fallback=\(fallback != nil)")
+            }
+            return XCTFail("optional Companion rejection returned an unexpected outcome")
+        }
+        let loadedDetail = try await store.detail(fixture.meetingID)
+        let detail = try XCTUnwrap(loadedDetail)
+        let assets = try await store.audioAssets(for: fixture.meetingID)
+        let jobs = try await store.processingJobs(for: fixture.meetingID)
+        let runs = try await store.generationRuns(for: fixture.meetingID)
+        let contextItems = try await store.contextItems(for: fixture.meetingID)
+        XCTAssertEqual(detail.meeting.lifecycleState, .processing)
+        XCTAssertEqual(detail.segments.count, fixture.captions.count)
+        XCTAssertEqual(contextItems.map(\.content), ["Ship locally"])
+        XCTAssertTrue(assets.contains { $0.healthStatus == .healthy })
+        XCTAssertEqual(jobs.map(\.kind), [.diarization])
+        XCTAssertTrue(runs.isEmpty)
     }
 }
 
@@ -439,7 +569,9 @@ private struct StopRecordingFixture {
         includeShell: Bool = true,
         assets: [AudioAsset]? = nil,
         captions: [TranscriptSegment]? = nil,
-        capture: StopRecordingCapture? = nil
+        capture: StopRecordingCapture? = nil,
+        companionArtifacts: [CompanionGenerationArtifact] = [],
+        companionTerminalRuns: [GenerationRun] = []
     ) -> StopRecordingRequest {
         StopRecordingRequest(
             recordingShell: includeShell ? (shell ?? self.shell) : nil,
@@ -456,6 +588,8 @@ private struct StopRecordingFixture {
                 kind: .context,
                 source: "on-device",
                 askedAt: 5)],
+            companionArtifacts: companionArtifacts,
+            companionTerminalRuns: companionTerminalRuns,
             capture: capture ?? StopRecordingCapture(
                 publishedFiles: [.system: publishedFile()]),
             voiceprint: Voiceprint(embedding: [0.1, 0.2], createdAt: startedAt))

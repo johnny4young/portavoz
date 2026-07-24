@@ -51,6 +51,113 @@ final class CaptionCoalescerTests: XCTestCase {
         XCTAssertEqual(captions[1].channel, .microphone)
     }
 
+    func testSystemCaptionReplacesEarlierMicrophoneBleed() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment(
+                "eso lo podemos hacer esta semana",
+                channel: .microphone,
+                start: 10,
+                end: 12),
+            to: &captions)
+        coalescer.apply(
+            segment(
+                "eso lo podemos hacer esta semana",
+                channel: .system,
+                start: 10.2,
+                end: 12.1),
+            to: &captions)
+
+        XCTAssertEqual(captions.count, 1)
+        XCTAssertEqual(captions[0].channel, .system)
+    }
+
+    func testLateSystemEvidenceNeverDeletesAnAlreadyClosedMicrophoneRow() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment(
+                "the rollout can happen tomorrow",
+                channel: .microphone,
+                start: 10,
+                end: 12),
+            to: &captions)
+        coalescer.apply(
+            segment(
+                "a distinct interruption stays visible",
+                channel: .system,
+                start: 12.1,
+                end: 13),
+            to: &captions)
+        coalescer.apply(
+            segment(
+                "the rollout can happen tomorrow",
+                channel: .system,
+                start: 10.2,
+                end: 12.1),
+            to: &captions)
+
+        XCTAssertEqual(
+            captions.map(\.text),
+            [
+                "the rollout can happen tomorrow",
+                "a distinct interruption stays visible",
+                "the rollout can happen tomorrow",
+            ])
+    }
+
+    func testMicrophoneCaptionMatchingEarlierSystemAudioIsDropped() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment(
+                "we can deploy the change tomorrow",
+                channel: .system,
+                start: 20,
+                end: 22),
+            to: &captions)
+        coalescer.apply(
+            segment(
+                "we can deploy the change tomorrow",
+                channel: .microphone,
+                start: 20.3,
+                end: 22.2),
+            to: &captions)
+
+        XCTAssertEqual(captions.count, 1)
+        XCTAssertEqual(captions[0].channel, .system)
+    }
+
+    func testDistinctOverlappingMicrophoneSpeechRemainsVisible() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment(
+                "the remote team will review the schema",
+                channel: .system,
+                start: 30,
+                end: 32),
+            to: &captions)
+        coalescer.apply(
+            segment(
+                "I will prepare a separate rollout plan",
+                channel: .microphone,
+                start: 30.4,
+                end: 32.4),
+            to: &captions)
+
+        XCTAssertEqual(captions.map(\.channel), [.system, .microphone])
+    }
+
+    func testShortMicrophoneAcknowledgementIsNeverSuppressedAsBleed() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment("thank you", channel: .system, start: 40, end: 41),
+            to: &captions)
+        coalescer.apply(
+            segment("thank you", channel: .microphone, start: 40.2, end: 41.2),
+            to: &captions)
+
+        XCTAssertEqual(captions.map(\.channel), [.system, .microphone])
+    }
+
     func testPausedSpeakerStaysOnOneRowUntilSentenceCloses() {
         var captions: [TranscriptSegment] = []
         // 4 s pause mid-sentence: still the same intervention.

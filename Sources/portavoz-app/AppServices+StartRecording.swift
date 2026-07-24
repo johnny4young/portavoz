@@ -15,6 +15,8 @@ extension AppServices {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {
             runtime = UITestSystemCaptureStallRuntime()
+        } else if isLiveTranscriptBrowsingFixture {
+            runtime = UITestLiveTranscriptBrowsingRuntime()
         } else if isLiveTranscriptionAttachFixture {
             runtime = UITestLiveTranscriptionAttachRuntime()
         } else {
@@ -45,6 +47,12 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
             && arguments.contains("-simulate-live-transcription-attach")
+    }
+
+    private var isLiveTranscriptBrowsingFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-live-transcript-browsing")
     }
 }
 
@@ -137,6 +145,67 @@ private struct UITestLiveTranscriptionAttachRuntime: StartRecordingRuntime {
 
     func cancelPreparation() async {}
     func scheduleIdleRelease() async {}
+}
+
+private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        request.callbacks.liveTranscription(.available)
+        Task {
+            do {
+                try await Task.sleep(for: .milliseconds(400))
+                for index in 1...18 {
+                    try await emit(index, request: request)
+                }
+                // Give XCUITest a stable frontier to scroll away from before
+                // proving that later rows no longer steal the viewport.
+                try await Task.sleep(for: .seconds(2))
+                for index in 19...24 {
+                    try await emit(index, request: request)
+                }
+            } catch {
+                return
+            }
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
+
+    private func emit(
+        _ index: Int,
+        request: StartRecordingCaptureRequest
+    ) async throws {
+        let start = TimeInterval(index * 2)
+        let isRemote = index.isMultiple(of: 2)
+        let text = isRemote
+            ? String(
+                format: "History row %02d remains readable during live updates.",
+                index)
+            : String(
+                format: "My local update %02d stays distinct while I browse earlier captions.",
+                index)
+        await request.callbacks.caption(TranscriptSegment(
+            meetingID: request.meetingID,
+            channel: isRemote ? .system : .microphone,
+            text: text,
+            language: "en",
+            startTime: start,
+            endTime: start + 1,
+            isFinal: true))
+        try await Task.sleep(for: .milliseconds(90))
+    }
 }
 
 @MainActor

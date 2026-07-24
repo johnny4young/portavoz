@@ -1621,12 +1621,12 @@
         }
       }
     },
-    "Download failed: %@": {
+    "Preparation failed: %@": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La descarga falló: %@"
+            "value": "La preparación falló: %@"
           }
         }
       }
@@ -1641,22 +1641,22 @@
         }
       }
     },
-    "Downloading in background… %d%%": {
+    "Preparing in background; downloads only if needed… %d%%": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descargando en segundo plano… %d%%"
+            "value": "Preparando en segundo plano; descarga solo si hace falta… %d%%"
           }
         }
       }
     },
-    "Downloading Whisper (%@, one time only)… %d%%": {
+    "Preparing Whisper (%@; downloads only if needed)… %d%%": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descargando Whisper (%@, solo una vez)… %d%%"
+            "value": "Preparando Whisper (%@; descarga solo si hace falta)… %d%%"
           }
         }
       }
@@ -2247,6 +2247,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Distingue cada voz, incluida la tuya."
+          }
+        }
+      }
+    },
+    "Jump to live": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ir al texto en vivo"
           }
         }
       }

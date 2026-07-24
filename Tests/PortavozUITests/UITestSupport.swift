@@ -34,6 +34,7 @@ extension XCUIApplication {
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
+        simulateLiveTranscriptBrowsing: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -66,6 +67,9 @@ extension XCUIApplication {
         }
         if simulateLiveTranscriptionAttach {
             app.launchArguments.append("-simulate-live-transcription-attach")
+        }
+        if simulateLiveTranscriptBrowsing {
+            app.launchArguments.append("-simulate-live-transcript-browsing")
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }

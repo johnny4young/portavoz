@@ -15,29 +15,8 @@ import TranscriptionKit
 @MainActor
 @Observable
 final class RecordingController {
-    enum FailureRecovery: Equatable {
-        case retry
-        case library
-        case supportDiagnostics
-    }
-
-    struct FailureContext: Equatable {
-        let code: String
-        let category: FailureCategory
-        let recovery: FailureRecovery
-    }
-
-    enum Phase: Equatable {
-        case idle
-        case preparing
-        case recording
-        case processing(String)
-        case done(MeetingID)
-        case failed(String)
-    }
-
-    private(set) var phase: Phase = .idle
-    private(set) var failureContext: FailureContext?
+    private(set) var phase: RecordingPhase = .idle
+    private(set) var failureContext: RecordingFailureContext?
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
@@ -73,9 +52,9 @@ final class RecordingController {
         didSet {
             guard translationTarget != oldValue else { return }
             translations.removeAll()
+            translationSource = nil
             translationDownloadApproved = false
-            translationState = translationTarget == nil
-                ? .off
+            translationState = translationTarget == nil ? .off
                 : (liveTranscriptState == .available ? .ready : .waitingForTranscript)
         }
     }
@@ -83,6 +62,10 @@ final class RecordingController {
     /// translation loop when it declines to auto-trigger Apple's download
     /// sheet mid-meeting. Drives the dismissable "download to translate" banner.
     private(set) var translationState = LiveTranslationState.off
+    /// Explicit source lane currently owned by Apple Translation. A concrete
+    /// source prevents the framework from presenting its repeated
+    /// auto-detection sheet for short or mixed-language turns.
+    private(set) var translationSource: String?
     /// The user tapped "Download" on that banner: only then does the loop
     /// call `prepareTranslation()` (the deliberate, expected download sheet)
     /// so the assets are fetched without ever interrupting the meeting on its own.
@@ -137,7 +120,10 @@ final class RecordingController {
     private let coalescer = CaptionCoalescer()
     private var session: (any StartRecordingSession)?
     private var rollingTask: Task<Void, Never>?
-    private var summarizedCount = 0
+    /// Identity cursor rather than an array offset: live diarization can split
+    /// one closed row into several stable rows. An offset can then skip a new
+    /// piece or replay unrelated content, while IDs admit exactly unseen rows.
+    private var summarizedCaptionIDs: Set<UUID> = []
     /// Dense notes accumulated window by window; the live summary re-renders
     /// from these so each tick only pays for the NEW transcript.
     private var liveNotes: [String] = []
@@ -253,7 +239,7 @@ final class RecordingController {
         translations = [:]
         liveSummary = nil
         liveNotes = []
-        summarizedCount = 0
+        summarizedCaptionIDs = []
         companionCards = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
@@ -271,6 +257,8 @@ final class RecordingController {
         liveSpeakerLabels = [:]
         tappedMeetingApps = []
         liveTranscriptState = .idle
+        translationSource = nil
+        translationDownloadApproved = false
         translationState = translationTarget == nil ? .off : .waitingForTranscript
         micMuted = false
         failureContext = nil
@@ -333,7 +321,7 @@ final class RecordingController {
 
     private func presentStartFailure(_ failure: StartRecordingFailure) {
         let message: String
-        let recovery: FailureRecovery
+        let recovery: RecordingFailureRecovery
         // Catalog keys stay intact so extraction and lookup remain exact.
         // swiftlint:disable line_length
         switch failure {
@@ -631,7 +619,7 @@ extension RecordingController {
         fallbackPreserved: Bool
     ) {
         let message: String
-        let recovery: FailureRecovery
+        let recovery: RecordingFailureRecovery
         // Catalog keys stay intact so extraction and lookup remain exact.
         // swiftlint:disable line_length
         switch failure {
@@ -672,9 +660,9 @@ extension RecordingController {
         _ message: String,
         code: String,
         category: FailureCategory,
-        recovery: FailureRecovery
+        recovery: RecordingFailureRecovery
     ) {
-        failureContext = FailureContext(
+        failureContext = RecordingFailureContext(
             code: code,
             category: category,
             recovery: recovery)
@@ -762,6 +750,16 @@ private extension RecordingController {
 }
 
 extension RecordingController {
+    /// A SwiftUI Translation task owns exactly one explicit source→target
+    /// pair. Moving to another actor language resets download consent so a
+    /// new language pack is never fetched because of an earlier pair.
+    func beginLiveTranslationPair(_ pair: LiveTranslationPair) {
+        guard translationTarget == pair.target else { return }
+        guard translationSource != pair.source else { return }
+        translationSource = pair.source
+        translationDownloadApproved = false
+    }
+
     /// LiveTranslation can publish only finite user-facing state, never
     /// framework errors or transcript content as diagnostics.
     func updateLiveTranslationState(_ state: LiveTranslationState) {
@@ -770,23 +768,29 @@ extension RecordingController {
     }
 
     /// Old Translation tasks can complete after SwiftUI cancels them. Admit a
-    /// state transition only when it still belongs to the selected language.
+    /// state transition only when it still owns the selected source→target
+    /// lane; checking only the target lets a stale Spanish task overwrite the
+    /// state of a newer French task that translates to the same language.
     func updateLiveTranslationState(
         _ state: LiveTranslationState,
-        forTarget target: String
+        for pair: LiveTranslationPair
     ) {
-        guard translationTarget == target else { return }
+        guard translationTarget == pair.target,
+            translationSource == pair.source
+        else { return }
         translationState = state
     }
 
     /// Prevents a canceled old-language task from repopulating rendered rows
-    /// after the user has selected a different translation target.
+    /// after either side of the selected language lane has changed.
     @discardableResult
     func storeLiveTranslations(
         _ values: [UUID: String],
-        forTarget target: String
+        for pair: LiveTranslationPair
     ) -> Bool {
-        guard translationTarget == target else { return false }
+        guard translationTarget == pair.target,
+            translationSource == pair.source
+        else { return false }
         translations.merge(values) { _, new in new }
         return !values.isEmpty
     }
@@ -799,9 +803,11 @@ private extension RecordingController {
     func refreshLiveSummary() async {
         // The newest row is still growing (coalescer); note only CLOSED rows,
         // and only when there are new ones — silence costs nothing.
-        let closed = max(captions.count - 1, 0)
-        guard closed >= 3, closed > summarizedCount else { return }
-        let window = Array(captions[summarizedCount..<closed])
+        let closedCount = max(captions.count - 1, 0)
+        let window = LiveSummaryWindowPolicy.unsummarizedClosedRows(
+            captions,
+            summarizedIDs: summarizedCaptionIDs)
+        guard closedCount >= 3, !window.isEmpty else { return }
 
         // Attribution runs at stop; live labels are structural: channel.
         let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
@@ -821,7 +827,7 @@ private extension RecordingController {
                 segments: labeled, speakers: [me, them], targetLanguage: language,
                 glossary: vocabulary, priority: .background)
             liveNotes.append(note)
-            summarizedCount = closed  // only once the window is safely noted
+            summarizedCaptionIDs.formUnion(window.map(\.id))
 
             // Keep the pile bounded so long meetings don't slow the ticks.
             var joined = liveNotes.joined(separator: "\n")

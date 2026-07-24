@@ -380,8 +380,9 @@ struct RecordingView: View {
     }
 
     /// Live captions as a Spotify-lyrics carousel (M11): the newest line
-    /// sits low in the viewport (the frontier), older ones rise and fade
-    /// above it. A bounded window keeps long recordings responsive.
+    /// sits low in the viewport until the user scrolls to read history. New
+    /// captions then stop stealing the scroll position until "Jump to live".
+    /// A bounded window keeps long recordings responsive.
     private var captionsList: some View {
         GeometryReader { geo in
             FocusedTranscriptView(
@@ -389,7 +390,9 @@ struct RecordingView: View {
                 activeID: controller.captions.last?.id,
                 height: geo.size.height,
                 anchor: UnitPoint(x: 0.5, y: 0.82),
-                followSignal: controller.captions.last?.endTime ?? 0
+                followSignal: controller.captions.last?.endTime ?? 0,
+                mode: .live,
+                scrollAccessibilityIdentifier: "recording-live-transcript"
             ) { segment, active in
                 captionRow(segment, active: active)
             }

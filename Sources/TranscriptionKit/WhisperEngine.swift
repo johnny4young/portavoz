@@ -146,6 +146,12 @@ public actor WhisperEngine {
             task: .transcribe,
             language: hints.language,
             temperature: 0,
+            // WhisperKit defaults `detectLanguage` to false while prefill is
+            // enabled. With a nil language that silently prefills English,
+            // which can turn Spanish turns into English-looking output.
+            // Explicit automatic detection makes each VAD chunk choose its
+            // spoken language while `.transcribe` preserves that language.
+            detectLanguage: Self.shouldDetectLanguage(for: hints),
             promptTokens: promptTokens,
             // The default (16!) races the workers over shared decoder state
             // and chunks vanish SILENTLY: a real 482 s meeting collapsed to
@@ -208,6 +214,10 @@ public actor WhisperEngine {
             audioDuration: duration,
             processingTime: processingTime
         )
+    }
+
+    static func shouldDetectLanguage(for hints: TranscriptionHints) -> Bool {
+        hints.language == nil
     }
 
     static func buildSegments(

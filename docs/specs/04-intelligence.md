@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -19,10 +19,13 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 **Guided generation**: `GeneratedSummary` (@Generable) → overview + up to four
 exact `overviewEvidence` E-tags + sections (instructed headings, bullets, and
 one `bulletEvidence` E-tag array per bullet) + actionItems
-(owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)` resolves owners against
-Speakers by label/displayName (case-insensitive) and admits only tags emitted
-for that request. Unknown, altered, repeated, or excess tags disappear; no
-valid tag, no distinctive lexical overlap, or an empty overview produces no claim. Tag-shaped literals in
+(owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)`
+admits owners against speakers by label/displayName (case-insensitive),
+canonicalizes them before both Markdown and typed action projection, and clears
+unknown generated names. A matching leading owner prefix is removed from the
+task text so `Daniel: task — Daniel` cannot render. It also admits only tags
+emitted for that request. Unknown, altered, repeated, or excess tags disappear;
+no valid tag, no distinctive lexical overlap, or an empty overview produces no claim. Tag-shaped literals in
 transcript text, speaker names, and user notes are escaped before prompting,
 so content cannot impersonate the provider-owned namespace.
 
@@ -74,7 +77,10 @@ separate `SummaryActionItemEvidence` keyed to that new task ID. Unknown,
 duplicate, altered, empty, lexically unrelated, or rolling-note tags produce
 no evidence. `SummaryActionAdmission` also removes empty/duplicate tasks and an
 action copied verbatim from a recipe's typed decision section before Markdown,
-action identity, or evidence is created. Provider prompts independently state
+action identity, or evidence is created. `groundedOwner` then treats generated
+identity as a cast claim: only an existing speaker label or confirmed display
+name survives, and both Markdown and storage consume that same admitted value.
+Provider prompts independently state
 that decisions are not tasks; the deterministic gate remains authoritative.
 
 Translation creates fresh action-item IDs and carries matching evidence by
@@ -95,7 +101,14 @@ telemetry, privacy receipts, and support diagnostics. This prevents a private
 correction from becoming an implicit prompt or being misrepresented as model
 output.
 
-**Incremental APIs** (for the rolling summary): `condenseWindow(segments…)` (one map pass over ONLY new content), `condenseNotes(text…)` (collapses the stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app uses them as follows (spec 06): note per 40 s tick over new closed rows → note stack → collapse at > 6000 chars → render; `LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one (visible monotonicity).
+**Incremental APIs** (for the rolling summary): `condenseWindow(segments…)`
+(one map pass over ONLY new content), `condenseNotes(text…)` (collapses the
+stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app
+uses them as follows (spec 06): note per 40 s tick over closed row IDs not yet
+admitted → note stack → collapse at > 6000 chars → render;
+`LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one
+(visible monotonicity). The cursor is an identity set, not an array offset, so
+a late live-diarization split cannot skip its fresh child (D133).
 
 ## Prompt-injection guard (Jul 2026, pure, tested)
 

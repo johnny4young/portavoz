@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -15,7 +15,11 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
 ## Attribution — `SpeakerAttributor` (pure functions)
 
 - Mic channel → "Me" (hardware truth, D5). System channel → turn with the greatest temporal overlap.
-- Multi-turn segments are split at turn boundaries with proportional word distribution. No turn → unattributed (honest, editable in the UI).
+- Multi-turn segments are split at turn boundaries with proportional word
+  distribution. The first non-empty child retains the source segment ID and
+  later children receive fresh IDs, preserving provenance and consumer
+  identity without conflating the new pieces. No turn → unattributed (honest,
+  editable in the UI).
 - Turns labeled "Me" (voiceprint on the system channel) are merged with the user's identity.
 
 Standalone terminal diarization enters `ApplicationKit.DiarizeAudioFile`.
@@ -62,7 +66,15 @@ prevents unstable diarization labels from becoming cross-meeting identity.
 Field request: two remote voices speaking one after the other were merged into a single live "Ellos" row — it was not apparent that they were two people. Pipeline:
 
 - `RecordingController` feeds the system channel to a **DEDICATED instance** of `PyannoteDiarizer` (fresh SpeakerManager per session — the durable post-capture pass remains uncontaminated) via `diarize(AsyncStream)`, in 10 s windows; inference runs on the diarizer actor (~14 MB, ms per window — it never competes with Parakeet's live lane).
-- With each turn, `LiveSpeakerLabeler.relabel` (pure, idempotent, 7 tests) relabels CLOSED system rows: a row that crosses two voices is **split** at turn boundaries (reuses `SpeakerAttributor`, proportional word distribution), and each piece shows its **S1/S2** pill (or "Me"→"Yo" via voiceprint). The last row (still growing, a coalescer invariant) is never touched; rows without a covering window remain "Ellos". Split rows receive new IDs → live translation picks them up automatically (it translates closed rows without a translation).
+- With each turn, `LiveSpeakerLabeler.relabel` (pure, idempotent, 7 tests)
+  relabels CLOSED system rows: a row that crosses two voices is **split** at
+  turn boundaries (reuses `SpeakerAttributor`, proportional word
+  distribution), and each piece shows its **S1/S2** pill (or "Me"→"Yo" via
+  voiceprint). The last row (still growing, a coalescer invariant) is never
+  touched; rows without a covering window remain "Ellos". The first split
+  piece keeps the source row ID so existing Companion evidence and translation
+  identity remain valid; additional pieces receive fresh IDs and are picked up
+  by live translation and the identity-based rolling-summary cursor (D133).
 - Live labels are **ephemeral hints**: after Stop's durable handoff, the process-scoped batch pass (`diarizeFile` + micro-cluster merge + attribution) remains the truth and reattributes everything from the file; live S-numbers do not have to match the final ones.
 - Best-effort: if the models fail to load, the feed closes (an entire meeting is not accumulated in memory), and captions remain "Ellos" as before.
 - **Verified with a real meeting** (Jul 2026): the streaming path found ≥2 voices in the first 4 min of the system channel and processed them in 2.4 s (~100× real time) — gated test `testLiveStreamingPathFindsMultipleVoices`.

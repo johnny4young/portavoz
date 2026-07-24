@@ -104,7 +104,7 @@ enum RefineCommand {
 
 private actor RefineProgressPrinter {
     private let clusteringThreshold: Float?
-    private var announcedDownload = false
+    private var announcedPreparation = false
     private var beganTranscription = false
 
     init(clusteringThreshold: Float?) {
@@ -115,12 +115,12 @@ private actor RefineProgressPrinter {
         switch progress {
         case .preparingModels:
             break
-        case .downloadingWhisper(let size, let percent, let path):
-            if !announcedDownload {
+        case .preparingWhisper(let size, let percent, let path):
+            if !announcedPreparation {
                 Swift.print(
-                    "Descargando Whisper large-v3-turbo (CoreML) "
-                        + "(\(size), sha256-verificado)…")
-                announcedDownload = true
+                    "Preparando Whisper large-v3-turbo (CoreML) "
+                        + "(\(size), descarga solo si hace falta, sha256-verificado)…")
+                announcedPreparation = true
             }
             let suffix = path.map { " \($0)" } ?? ""
             Swift.print(

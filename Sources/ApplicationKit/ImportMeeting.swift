@@ -50,7 +50,7 @@ public protocol ImportMeetingPreferences: Sendable {
 /// Stable phases that presentation maps to localized copy.
 public enum ImportMeetingProgress: Equatable, Sendable {
     case preparingModels
-    case downloadingWhisper(size: String, percent: Int)
+    case preparingWhisper(size: String, percent: Int)
     case transcribing
     case identifyingSpeakers
     case generatingSummary

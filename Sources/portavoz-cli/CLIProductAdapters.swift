@@ -595,14 +595,14 @@ actor CLIRefineMeetingProcessor: RefineMeetingProcessor {
         let descriptor = ModelCatalog.whisperLargeV3Turbo
         let report = await store.verify(descriptor)
         if !report.isComplete {
-            await progress(.downloadingWhisper(
+            await progress(.preparingWhisper(
                 size: "\(descriptor.totalSizeBytes / 1_000_000) MB",
                 percent: 0))
             let relay = CLIOrderedProgressRelay<RefineMeetingProgress>(handler: progress)
             do {
                 whisper = try await WhisperEngine.loadRecommended(store: store) { download in
                     guard download.totalBytes > 0 else { return }
-                    relay.send(.downloadingWhisper(
+                    relay.send(.preparingWhisper(
                         size: "\(descriptor.totalSizeBytes / 1_000_000) MB",
                         percent: Int(download.fraction * 100),
                         path: download.currentPath))

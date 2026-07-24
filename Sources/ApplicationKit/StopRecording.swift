@@ -373,9 +373,7 @@ public struct StopRecording: ApplicationUseCase {
             meeting: meeting,
             assets: assets,
             attribution: attribution,
-            initialRequest: initialRequest,
-            failureCode: hasPendingPublication
-                ? "capture.publication.failed" : "processing.enqueue.failed")
+            initialRequest: initialRequest)
     }
 
     private func installInitialDiarization(
@@ -383,8 +381,7 @@ public struct StopRecording: ApplicationUseCase {
         meeting: Meeting,
         assets: [AudioAsset],
         attribution: SpeakerAttributor.Attribution,
-        initialRequest: ProcessingJobRequest,
-        failureCode: String
+        initialRequest: ProcessingJobRequest
     ) async -> StopRecordingResult {
         do {
             try await store.installStoppedSnapshot(
@@ -400,15 +397,12 @@ public struct StopRecording: ApplicationUseCase {
             await lifecycle.kickPostCaptureProcessing()
             return .completed(commit)
         } catch {
-            let fallback = await preserveNeedsAttention(
+            return await recoverRejectedSnapshot(
                 request,
                 meeting: meeting,
                 assets: assets,
                 attribution: attribution,
-                errorCode: failureCode)
-            return .processingFailed(
-                failure: .snapshotPersistenceFailed,
-                fallback: fallback)
+                preferredRequest: initialRequest)
         }
     }
 
@@ -433,15 +427,12 @@ public struct StopRecording: ApplicationUseCase {
             await lifecycle.kickPostCaptureProcessing()
             return .completed(commit)
         } catch {
-            let fallback = await preserveNeedsAttention(
+            return await recoverRejectedSnapshot(
                 request,
                 meeting: meeting,
                 assets: assets,
                 attribution: attribution,
-                errorCode: "processing.transcription.enqueue.failed")
-            return .processingFailed(
-                failure: .snapshotPersistenceFailed,
-                fallback: fallback)
+                preferredRequest: initialRequest)
         }
     }
 
@@ -468,7 +459,9 @@ public struct StopRecording: ApplicationUseCase {
             return .processingFailed(failure: .snapshotPersistenceFailed, fallback: nil)
         }
     }
+}
 
+private extension StopRecording {
     private func reconcileEmptyCapture(
         meeting: Meeting,
         assets: [AudioAsset],
@@ -509,15 +502,116 @@ public struct StopRecording: ApplicationUseCase {
         var fallback = meeting
         fallback.lifecycleState = .needsAttention
         fallback.lastProcessingError = errorCode
+        let candidates = [
+            capturedCoreSnapshot(
+                request,
+                meeting: fallback,
+                assets: assets,
+                attribution: attribution),
+            capturedAudioSnapshot(
+                request,
+                meeting: fallback,
+                assets: assets,
+                includeContext: true),
+            capturedAudioSnapshot(
+                request,
+                meeting: fallback,
+                assets: assets,
+                includeContext: false)
+        ]
+        for snapshot in candidates {
+            do {
+                try await store.installStoppedSnapshot(snapshot, enqueue: [])
+                return StopRecordingCommit(meeting: fallback, assets: assets)
+            } catch {
+                continue
+            }
+        }
+        return nil
+    }
+
+    /// One exact retry preserves every feature across a transient store error.
+    /// If the payload is deterministically rejected, live captions, notes, and
+    /// Companion provenance are independently fallible inputs; the finalized
+    /// CAF files remain the primary artifact. Degrade in bounded steps until
+    /// the durable worker can resume from audio, and only then fall back to a
+    /// visible needs-attention aggregate.
+    private func recoverRejectedSnapshot(
+        _ request: StopRecordingRequest,
+        meeting: Meeting,
+        assets: [AudioAsset],
+        attribution: SpeakerAttributor.Attribution,
+        preferredRequest: ProcessingJobRequest
+    ) async -> StopRecordingResult {
+        if let commit = await installResumableSnapshot(
+            capturedSnapshot(
+                request,
+                meeting: meeting,
+                assets: assets,
+                attribution: attribution),
+            request: preferredRequest,
+            assets: assets) {
+            return .completed(commit)
+        }
+
+        if let commit = await installResumableSnapshot(
+            capturedCoreSnapshot(
+                request,
+                meeting: meeting,
+                assets: assets,
+                attribution: attribution),
+            request: preferredRequest,
+            assets: assets) {
+            return .completed(commit)
+        }
+
+        let hasPendingPublication = assets.contains { $0.healthStatus == .pending }
+        if !hasPendingPublication,
+            let transcription = StopRecordingJobFactory.initialTranscriptionRequest(
+                meeting: meeting,
+                assets: assets) {
+            for includeContext in [true, false] {
+                if let commit = await installResumableSnapshot(
+                    capturedAudioSnapshot(
+                        request,
+                        meeting: meeting,
+                        assets: assets,
+                        includeContext: includeContext),
+                    request: transcription,
+                    assets: assets) {
+                    return .completed(commit)
+                }
+            }
+        }
+
+        let fallback = await preserveNeedsAttention(
+            request,
+            meeting: meeting,
+            assets: assets,
+            attribution: attribution,
+            errorCode: hasPendingPublication
+                ? "capture.publication.failed"
+                : "capture.snapshot.persistence.failed")
+        return .processingFailed(
+            failure: .snapshotPersistenceFailed,
+            fallback: fallback)
+    }
+
+    private func installResumableSnapshot(
+        _ snapshot: CapturedMeetingSnapshot,
+        request: ProcessingJobRequest,
+        assets: [AudioAsset]
+    ) async -> StopRecordingCommit? {
         do {
-            try await store.installStoppedSnapshot(
-                capturedSnapshot(
-                    request,
-                    meeting: fallback,
-                    assets: assets,
-                    attribution: attribution),
-                enqueue: [])
-            return StopRecordingCommit(meeting: fallback, assets: assets)
+            try await store.installStoppedSnapshot(snapshot, enqueue: [request])
+            var processingMeeting = snapshot.meeting
+            processingMeeting.lifecycleState = .processing
+            processingMeeting.lastProcessingError = nil
+            let commit = StopRecordingCommit(
+                meeting: processingMeeting,
+                assets: assets)
+            await lifecycle.kickPostCaptureProcessing()
+            return commit
         } catch {
             return nil
         }
@@ -541,6 +635,44 @@ public struct StopRecording: ApplicationUseCase {
             },
             companionArtifacts: request.companionArtifacts,
             companionTerminalRuns: request.companionTerminalRuns)
+    }
+
+    /// Keeps the user's live transcript, notes, and non-generated Companion
+    /// cards while removing generated payloads that can fail their provenance
+    /// fence. A generated card is never silently downgraded to provenance-free.
+    private func capturedCoreSnapshot(
+        _ request: StopRecordingRequest,
+        meeting: Meeting,
+        assets: [AudioAsset],
+        attribution: SpeakerAttributor.Attribution
+    ) -> CapturedMeetingSnapshot {
+        let generatedCardIDs = Set(request.companionArtifacts.map(\.card.id))
+        return CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: assets,
+            speakers: attribution.speakers,
+            segments: attribution.segments,
+            contextItems: request.contextItems,
+            companionCards: request.companionCards.filter {
+                !generatedCardIDs.contains($0.id)
+            })
+    }
+
+    /// Last resumable projection: validated audio plus optional user notes.
+    /// The durable transcription job rebuilds every spoken row from the CAFs.
+    private func capturedAudioSnapshot(
+        _ request: StopRecordingRequest,
+        meeting: Meeting,
+        assets: [AudioAsset],
+        includeContext: Bool
+    ) -> CapturedMeetingSnapshot {
+        CapturedMeetingSnapshot(
+            meeting: meeting,
+            assets: assets,
+            speakers: [],
+            segments: [],
+            contextItems: includeContext ? request.contextItems : [],
+            companionCards: [])
     }
 
     private func reconciledAssets(

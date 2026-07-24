@@ -127,9 +127,9 @@ private extension RefineService {
         switch progress {
         case .preparingModels:
             L10n.text("Preparing…")
-        case .downloadingWhisper(let size, let percent, _):
+        case .preparingWhisper(let size, let percent, _):
             L10n.format(
-                "Downloading Whisper (%@, one time only)… %d%%",
+                "Preparing Whisper (%@; downloads only if needed)… %d%%",
                 size,
                 percent)
         case .transcribingParticipants:

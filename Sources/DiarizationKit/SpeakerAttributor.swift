@@ -57,9 +57,11 @@ public enum SpeakerAttributor {
                 attributed.append(copy)
                 continue
             }
+            var preservesSourceIdentity = true
             for piece in pieces where !piece.text.isEmpty {
                 attributed.append(
                     TranscriptSegment(
+                        id: preservesSourceIdentity ? segment.id : UUID(),
                         meetingID: segment.meetingID,
                         speakerID: piece.voiceLabel.map {
                             speaker(labeled: $0, isMe: $0 == "Me").id
@@ -72,6 +74,7 @@ public enum SpeakerAttributor {
                         confidence: segment.confidence,
                         isFinal: segment.isFinal
                     ))
+                preservesSourceIdentity = false
             }
         }
 

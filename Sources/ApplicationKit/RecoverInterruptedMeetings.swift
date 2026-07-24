@@ -363,8 +363,21 @@ public struct RecoverInterruptedMeetings: ApplicationUseCase {
                     companionCards: []),
                 at: timestamp)
         } catch {
-            guard meeting.lifecycleState == .needsAttention, !recoveredPending.isEmpty else {
+            guard !recoveredPending.isEmpty else {
                 throw error
+            }
+            // A failed Stop can leave finalized CAFs beside a `recording`
+            // shell. If Refine later attached transcript content, the strict
+            // snapshot replacement correctly refuses to overwrite it. Close
+            // that shell first, then reconcile only the validated pending
+            // assets; StorageKit promotes it to ready when the existing
+            // transcript and complete audio satisfy the recovery invariant.
+            if meeting.lifecycleState == .recording {
+                _ = try await store.markRecoveryNeedsAttention(
+                    meeting.id,
+                    errorCode: "capture.publication.failed",
+                    endedAt: recoveredMeeting.endedAt ?? meeting.startedAt,
+                    at: timestamp)
             }
             // Existing user content is never replaced. Only pending evidence
             // crosses the repeat-safe recovery transaction.

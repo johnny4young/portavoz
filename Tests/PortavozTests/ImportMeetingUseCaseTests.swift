@@ -28,7 +28,7 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(result, fixture.meetingID)
         XCTAssertEqual(state.progress, [
             .preparingModels,
-            .downloadingWhisper(size: "1.6 GB", percent: 42),
+            .preparingWhisper(size: "1.6 GB", percent: 42),
             .transcribing,
             .identifyingSpeakers,
             .generatingSummary,
@@ -628,7 +628,7 @@ private actor ImportDependencies:
     ) async throws {
         events.append("prepare-transcriber")
         if failures.contains(.transcriberPreparation) { throw ImportDependencyError() }
-        await progress(.downloadingWhisper(size: "1.6 GB", percent: 42))
+        await progress(.preparingWhisper(size: "1.6 GB", percent: 42))
     }
 
     func prepareDiarizer() throws {

@@ -1,3 +1,4 @@
+import NaturalLanguage
 import PortavozCore
 import SwiftUI
 
@@ -48,6 +49,85 @@ enum LiveTranslationState: Equatable {
     }
 }
 
+/// One explicit source→target lane. Apple Translation presents a source
+/// picker when a session uses `source: nil` and automatic detection is
+/// uncertain. Live meetings cannot tolerate that modal on every short turn,
+/// so Portavoz resolves each closed caption locally and creates a concrete
+/// session for that language only.
+struct LiveTranslationPair: Equatable, Sendable {
+    let source: String
+    let target: String
+}
+
+enum LiveTranslationRouting {
+    typealias LanguageDetector = (String) -> String?
+
+    static func nextPair(
+        segments: [TranscriptSegment],
+        translatedIDs: Set<UUID>,
+        target: String,
+        detector: LanguageDetector = detectedLanguage
+    ) -> LiveTranslationPair? {
+        guard let normalizedTarget = LanguageCode(target)?.identifier else { return nil }
+        let openID = segments.last?.id
+        for segment in segments.suffix(60) where segment.id != openID {
+            guard !translatedIDs.contains(segment.id), segment.text.count >= 4,
+                let source = sourceLanguage(for: segment, detector: detector),
+                source != normalizedTarget
+            else { continue }
+            return LiveTranslationPair(source: source, target: normalizedTarget)
+        }
+        return nil
+    }
+
+    static func pendingRows(
+        segments: [TranscriptSegment],
+        translatedIDs: Set<UUID>,
+        pair: LiveTranslationPair,
+        detector: LanguageDetector = detectedLanguage
+    ) -> [(id: UUID, text: String)] {
+        let openID = segments.last?.id
+        return segments.suffix(60).compactMap { segment in
+            guard segment.id != openID,
+                !translatedIDs.contains(segment.id),
+                segment.text.count >= 4,
+                sourceLanguage(for: segment, detector: detector) == pair.source
+            else { return nil }
+            return (segment.id, segment.text)
+        }
+    }
+
+    static func sourceLanguage(
+        for segment: TranscriptSegment,
+        detector: LanguageDetector = detectedLanguage
+    ) -> String? {
+        if let explicit = LanguageCode(segment.language)?.identifier {
+            return explicit
+        }
+        guard hasEnoughLanguageEvidence(segment.text) else { return nil }
+        return LanguageCode(detector(segment.text))?.identifier
+    }
+
+    /// Short or low-confidence rows stay in their spoken language. Guessing
+    /// would either translate English into English or revive Apple's modal.
+    static func detectedLanguage(_ text: String) -> String? {
+        guard hasEnoughLanguageEvidence(text) else { return nil }
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(text)
+        guard let candidate = recognizer.languageHypotheses(withMaximum: 1).first,
+            candidate.value >= 0.65
+        else { return nil }
+        return LanguageCode(candidate.key.rawValue)?.identifier
+    }
+
+    private static func hasEnoughLanguageEvidence(_ text: String) -> Bool {
+        let letterCount = text.unicodeScalars.reduce(into: 0) { count, scalar in
+            if CharacterSet.letters.contains(scalar) { count += 1 }
+        }
+        return letterCount >= 12
+    }
+}
+
 #if canImport(Translation)
 import Translation
 
@@ -60,11 +140,21 @@ import Translation
 struct LiveTranslationModifier: ViewModifier {
     @Bindable var controller: RecordingController
 
-    private var configuration: TranslationSession.Configuration? {
+    private var pair: LiveTranslationPair? {
         guard let target = controller.translationTarget else { return nil }
+        return LiveTranslationRouting.nextPair(
+            segments: controller.captions,
+            translatedIDs: Set(controller.translations.keys),
+            target: target)
+    }
+
+    private func configuration(
+        for pair: LiveTranslationPair?
+    ) -> TranslationSession.Configuration? {
+        guard let pair else { return nil }
         return TranslationSession.Configuration(
-            source: nil,  // auto-detect per caption
-            target: Locale.Language(identifier: target)
+            source: Locale.Language(identifier: pair.source),
+            target: Locale.Language(identifier: pair.target)
         )
     }
 
@@ -78,84 +168,82 @@ struct LiveTranslationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let controller = self.controller
-        return content.translationTask(configuration) { session in
+        let pair = self.pair
+        return content.translationTask(configuration(for: pair)) { session in
+            guard let pair else { return }
             // The framework cancels this task when the configuration
             // changes or the view goes away.
-            await Self.translationLoop(box: SessionBox(session: session), controller: controller)
+            await Self.translationLoop(
+                box: SessionBox(session: session),
+                controller: controller,
+                pair: pair)
         }
     }
 
-    private typealias Row = (id: UUID, text: String, source: String?)
     private typealias Ready = (id: UUID, text: String)
-    private struct Partition {
-        let ready: [Ready]
-        let needsDownload: Bool
-        let hasUnsupportedPair: Bool
-        let cache: [String: LanguageAvailability.Status]
-    }
 
     nonisolated private static func translationLoop(
-        box: SessionBox, controller: RecordingController
+        box: SessionBox,
+        controller: RecordingController,
+        pair: LiveTranslationPair
     ) async {
-        // Within one task the target is constant (a picker change restarts
-        // the translationTask). Cache each source→target availability so the
-        // check runs once per language, not once per row every 700 ms.
-        guard let target = await MainActor.run(body: { controller.translationTarget })
-        else { return }
-        let targetLanguage = Locale.Language(identifier: target)
         let availability = LanguageAvailability()
-        var statusCache: [String: LanguageAvailability.Status] = [:]
+        await MainActor.run { controller.beginLiveTranslationPair(pair) }
+        let status = await availability.status(
+            from: Locale.Language(identifier: pair.source),
+            to: Locale.Language(identifier: pair.target))
+        if status == .unsupported {
+            await MainActor.run {
+                controller.updateLiveTranslationState(.unsupported, for: pair)
+            }
+            return
+        }
         var didPrepare = false
 
         while !Task.isCancelled {
             let snapshot = await MainActor.run {
-                (controller.translationTarget, controller.translationDownloadApproved)
+                (
+                    controller.translationTarget,
+                    controller.translationSource,
+                    controller.translationDownloadApproved
+                )
             }
-            guard snapshot.0 == target else { return }
-            let approved = snapshot.1
-            if approved && !didPrepare {
+            guard snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
+            let approved = snapshot.2
+            if status == .supported, !approved {
+                await MainActor.run {
+                    controller.updateLiveTranslationState(.needsDownload, for: pair)
+                }
+                guard await Self.sleep(milliseconds: 700) else { return }
+                continue
+            }
+            if status == .supported, approved, !didPrepare {
                 guard await Self.prepare(
                     box: box,
                     controller: controller,
-                    target: target
+                    pair: pair
                 ) else {
                     guard await Self.sleep(milliseconds: 2_000) else { return }
                     continue
                 }
                 didPrepare = true
             }
-            let pending = await Self.pendingRows(controller: controller, target: target)
+            let pending = await Self.pendingRows(controller: controller, pair: pair)
             if pending.isEmpty {
-                await Self.publishIdleState(controller: controller, target: target)
-                guard await Self.sleep(milliseconds: 700) else { return }
-                continue
+                await Self.publishIdleState(controller: controller, pair: pair)
+                return
             }
-            let partition = await Self.partition(
-                pending, approved: approved, target: target, targetLanguage: targetLanguage,
-                availability: availability, cache: statusCache)
-            statusCache = partition.cache
-            if partition.needsDownload && !approved {
-                await MainActor.run {
-                    controller.updateLiveTranslationState(.needsDownload, forTarget: target)
-                }
-            } else if partition.ready.isEmpty, partition.hasUnsupportedPair {
-                await MainActor.run {
-                    controller.updateLiveTranslationState(.unsupported, forTarget: target)
-                }
-            } else if !partition.ready.isEmpty {
-                await MainActor.run {
-                    controller.updateLiveTranslationState(.translating, forTarget: target)
-                }
-                let translated = await Self.apply(
-                    partition.ready,
-                    box: box,
-                    controller: controller,
-                    target: target)
-                await MainActor.run {
-                    controller.updateLiveTranslationState(
-                        translated ? .active : .failed,
-                        forTarget: target)
-                }
+            await MainActor.run {
+                controller.updateLiveTranslationState(.translating, for: pair)
+            }
+            let translated = await Self.apply(
+                pending,
+                box: box,
+                controller: controller,
+                pair: pair)
+            await MainActor.run {
+                controller.updateLiveTranslationState(
+                    translated ? .active : .failed, for: pair)
             }
             let retryDelay = await Self.translatedRetryDelay(controller: controller)
             guard await Self.sleep(milliseconds: retryDelay) else { return }
@@ -179,15 +267,15 @@ struct LiveTranslationModifier: ViewModifier {
 
     nonisolated private static func publishIdleState(
         controller: RecordingController,
-        target: String
+        pair: LiveTranslationPair
     ) async {
         await MainActor.run {
             if controller.liveTranscriptState != .available, controller.captions.isEmpty {
-                controller.updateLiveTranslationState(.waitingForTranscript, forTarget: target)
+                controller.updateLiveTranslationState(.waitingForTranscript, for: pair)
             } else if controller.translations.isEmpty {
-                controller.updateLiveTranslationState(.ready, forTarget: target)
+                controller.updateLiveTranslationState(.ready, for: pair)
             } else {
-                controller.updateLiveTranslationState(.active, forTarget: target)
+                controller.updateLiveTranslationState(.active, for: pair)
             }
         }
     }
@@ -198,16 +286,21 @@ struct LiveTranslationModifier: ViewModifier {
     nonisolated private static func prepare(
         box: SessionBox,
         controller: RecordingController,
-        target: String
+        pair: LiveTranslationPair
     ) async -> Bool {
         do {
             try await box.session.prepareTranslation()
-            return await MainActor.run { controller.translationTarget == target }
+            return await MainActor.run {
+                controller.translationTarget == pair.target
+                    && controller.translationSource == pair.source
+            }
         } catch {
             await MainActor.run {
-                guard controller.translationTarget == target else { return }
+                guard controller.translationTarget == pair.target,
+                    controller.translationSource == pair.source
+                else { return }
                 controller.translationDownloadApproved = false
-                controller.updateLiveTranslationState(.failed, forTarget: target)
+                controller.updateLiveTranslationState(.failed, for: pair)
             }
             return false
         }
@@ -217,62 +310,17 @@ struct LiveTranslationModifier: ViewModifier {
     /// growing (the coalescer only ever extends the last one), so it's skipped.
     nonisolated private static func pendingRows(
         controller: RecordingController,
-        target: String
-    ) async -> [Row] {
+        pair: LiveTranslationPair
+    ) async -> [Ready] {
         await MainActor.run {
-            guard controller.translationTarget == target else { return [] }
-            let openID = controller.captions.last?.id
-            return controller.captions.suffix(60)
-                .filter {
-                    $0.id != openID
-                        && controller.translations[$0.id] == nil
-                        && $0.text.count >= 4
-                        && $0.language != target
-                }
-                .map { ($0.id, $0.text, $0.language) }
+            guard controller.translationTarget == pair.target,
+                controller.translationSource == pair.source
+            else { return [] }
+            return LiveTranslationRouting.pendingRows(
+                segments: controller.captions,
+                translatedIDs: Set(controller.translations.keys),
+                pair: pair)
         }
-    }
-
-    /// Splits pending rows into ones whose language pair is installed (safe to
-    /// translate now) and flags whether any pair still needs downloading.
-    /// Skipping uninstalled pairs is what prevents Apple's sheet from popping
-    /// up mid-meeting; once the user approves, every row is translated.
-    nonisolated private static func partition(
-        _ pending: [Row], approved: Bool, target: String, targetLanguage: Locale.Language,
-        availability: LanguageAvailability, cache: [String: LanguageAvailability.Status]
-    ) async -> Partition {
-        if approved {
-            return Partition(
-                ready: pending.map { ($0.id, $0.text) },
-                needsDownload: false,
-                hasUnsupportedPair: false,
-                cache: cache)
-        }
-        var cache = cache
-        var ready: [Ready] = []
-        var needsDownload = false
-        var hasUnsupportedPair = false
-        for row in pending {
-            let source = row.source ?? Self.likelySource(for: target)
-            let status: LanguageAvailability.Status
-            if let cached = cache[source] {
-                status = cached
-            } else {
-                status = await availability.status(
-                    from: Locale.Language(identifier: source), to: targetLanguage)
-                cache[source] = status
-            }
-            switch status {
-            case .installed: ready.append((row.id, row.text))
-            case .supported: needsDownload = true  // downloadable, not yet installed
-            default: hasUnsupportedPair = true
-            }
-        }
-        return Partition(
-            ready: ready,
-            needsDownload: needsDownload,
-            hasUnsupportedPair: hasUnsupportedPair,
-            cache: cache)
     }
 
     /// Translates the ready rows and stores the results on the controller.
@@ -280,7 +328,7 @@ struct LiveTranslationModifier: ViewModifier {
         _ ready: [Ready],
         box: SessionBox,
         controller: RecordingController,
-        target: String
+        pair: LiveTranslationPair
     ) async -> Bool {
         guard !ready.isEmpty else { return true }
         let requests = ready.map {
@@ -300,19 +348,7 @@ struct LiveTranslationModifier: ViewModifier {
             values[id] = response.targetText
         }
         return await MainActor.run {
-            controller.storeLiveTranslations(translated, forTarget: target)
-        }
-    }
-
-    /// Best-guess source when a caption has no detected language: the
-    /// opposite of the target for the two languages the picker offers, else
-    /// the device language. Only used to check availability, never to force a
-    /// translation of the wrong pair.
-    nonisolated private static func likelySource(for target: String) -> String {
-        switch target {
-        case "es": return "en"
-        case "en": return "es"
-        default: return Locale.current.language.languageCode?.identifier ?? "en"
+            controller.storeLiveTranslations(translated, for: pair)
         }
     }
 }

@@ -1,13 +1,11 @@
 import Foundation
-import Testing
+import XCTest
 @testable import portavoz_app
 
-@Suite(.serialized)
-struct UITestDefaultsTests {
-    @Test
-    func temporaryStoreLaunchInstallsVolatileOverrides() throws {
+final class UITestDefaultsTests: XCTestCase {
+    func testTemporaryStoreLaunchInstallsVolatileOverrides() throws {
         let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
             defaults.removeVolatileDomain(forName: UserDefaults.argumentDomain)
             defaults.removePersistentDomain(forName: suiteName)
@@ -22,16 +20,15 @@ struct UITestDefaultsTests {
             ],
             defaults: defaults)
 
-        #expect(defaults.bool(forKey: "globalDictationEnabled"))
-        #expect(defaults.integer(forKey: "dictationMouseButton") == 4)
-        #expect(
-            defaults.persistentDomain(forName: suiteName)?["dictationMouseButton"] == nil)
+        XCTAssertTrue(defaults.bool(forKey: "globalDictationEnabled"))
+        XCTAssertEqual(defaults.integer(forKey: "dictationMouseButton"), 4)
+        XCTAssertNil(
+            defaults.persistentDomain(forName: suiteName)?["dictationMouseButton"])
     }
 
-    @Test
-    func ordinaryLaunchAndMalformedPayloadAreIgnored() throws {
+    func testOrdinaryLaunchAndMalformedPayloadAreIgnored() throws {
         let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
             defaults.removeVolatileDomain(forName: UserDefaults.argumentDomain)
             defaults.removePersistentDomain(forName: suiteName)
@@ -41,12 +38,12 @@ struct UITestDefaultsTests {
             arguments: ["Portavoz"],
             environment: [UITestDefaults.environmentKey: #"{"enabled":true}"#],
             defaults: defaults)
-        #expect(defaults.object(forKey: "enabled") == nil)
+        XCTAssertNil(defaults.object(forKey: "enabled"))
 
         UITestDefaults.installIfNeeded(
             arguments: ["Portavoz", "-use-temp-store"],
             environment: [UITestDefaults.environmentKey: "not-json"],
             defaults: defaults)
-        #expect(defaults.object(forKey: "enabled") == nil)
+        XCTAssertNil(defaults.object(forKey: "enabled"))
     }
 }

@@ -147,6 +147,60 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testLiveTranscriptYieldsFollowWhileReadingHistory() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        let transcript = app.control(withIdentifier: "recording-live-transcript")
+        XCTAssertTrue(transcript.waitForExistence(timeout: 8))
+        XCTAssertTrue(
+            app.staticTexts["History row 18 remains readable during live updates."]
+                .waitForExistence(timeout: 8))
+
+        transcript.scroll(byDeltaX: 0, deltaY: 8)
+        let jumpToLive = app.buttons["recording-jump-to-live"]
+        XCTAssertTrue(
+            jumpToLive.waitForExistence(timeout: 5),
+            "manual history browsing must pause automatic follow")
+        let earlierRow = app.staticTexts[
+            "History row 02 remains readable during live updates."
+        ]
+        XCTAssertTrue(
+            earlierRow.waitForExistence(timeout: 3) && earlierRow.isHittable,
+            "the user must be able to reach an earlier closed row")
+
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(
+            jumpToLive.exists,
+            "new live captions must not steal scroll ownership from the reader")
+        XCTAssertTrue(
+            earlierRow.isHittable,
+            "incoming rows must keep the earlier row in the viewport")
+        let newestRow = app.staticTexts[
+            "History row 24 remains readable during live updates."
+        ]
+        XCTAssertFalse(
+            newestRow.isHittable,
+            "the newest row must stay outside the reader-owned viewport")
+        attachScreenshot(of: app, named: "recording-live-transcript-history-paused")
+
+        jumpToLive.click()
+        let resumed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: jumpToLive)
+        XCTAssertEqual(XCTWaiter.wait(for: [resumed], timeout: 5), .completed)
+        let latestVisible = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: newestRow)
+        XCTAssertEqual(XCTWaiter.wait(for: [latestVisible], timeout: 5), .completed)
+    }
+
+    @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

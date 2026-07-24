@@ -3871,3 +3871,175 @@ One-pass matching makes exact spelling predictable, avoids rule-order cascades,
 and is linear in the dictated text apart from the small user-managed rule
 lookup. Keeping meeting transcripts outside this boundary preserves Portavoz's
 source-of-truth contract.
+
+## D127 — Let finalized audio outrank optional live payloads at Stop (Jul 2026)
+
+**Context:** a real call finalized healthy microphone and system CAF files, but
+the captured-snapshot transaction rejected its provisional payload and left the
+meeting as a recording shell. The former fallback retried the same rejected
+snapshot and could also persist an error code that StorageKit did not admit.
+Launch recovery could reconcile published files only after the shell was
+already content-free or marked `needsAttention`; a shell that already carried
+recovered transcript content required another launch and remained alarming in
+the meantime.
+
+**Decision:** `ApplicationKit.StopRecording` first retries the exact full
+snapshot once, because a transient Store failure must not discard a released
+feature. If the same payload is structurally rejected, Stop follows one bounded
+degradation ladder: retain transcript, cast, notes, and only valid Apuntador
+cards; then retain finalized audio plus notes and enqueue exact complete
+transcription; finally retain the strongest canonical `capture.*`
+`needsAttention` projection that StorageKit accepts. Generated Apuntador cards
+without their successful run provenance are omitted rather than relabeled as
+manual or legacy content. Every accepted projection remains atomic and carries
+the durable next action. Launch recovery may mark a stale content-bearing
+recording shell `needsAttention` and install only validated published assets in
+the same pass; StorageKit promotes it directly when the existing transcript and
+asset evidence satisfy the ready invariant.
+
+**Rationale:** healthy finalized audio is the irreplaceable primary artifact;
+optional live and generated projections must not prevent its durable
+publication. One exact retry preserves parity for transient failures, while a
+finite ordered ladder avoids repeating an invalid transaction or inventing
+provenance. Canonical lifecycle codes keep Store invariants and user recovery
+copy aligned, and same-pass launch repair removes a restart-dependent recovery
+gap without weakening aggregate validation.
+
+## D128 — Route live translation through explicit per-turn language lanes (Jul 2026)
+
+**Context:** Apple Translation configured with an unknown source may ask the
+user to choose a language. In a mixed Spanish/English call, repeating that
+framework auto-detection for successive turns produced recurrent modal pickers
+and unstable output after the target changed. Meeting-level language cannot be
+used because different participants may speak different languages.
+
+**Decision:** live translation resolves every closed transcript row to an
+explicit source-to-target pair. Persisted segment language is authoritative;
+when it is absent, a conservative local recognizer may classify only lexical
+text with sufficient length and confidence. Rows already spoken in the target
+language and short or uncertain rows remain exactly as spoken. The app groups
+work by one explicit language pair, configures `TranslationSession` with both
+source and target, and never requests framework source auto-detection. Download
+consent is scoped to the pair. Switching target clears translated rows, active
+source, consent, and in-flight publication through the existing target fence.
+
+**Rationale:** the transcript is a multilingual sequence, not a monolingual
+document. Explicit lanes remove a framework-owned language prompt from the live
+meeting, prevent same-language rows from being needlessly rewritten, and make
+download consent and cancellation deterministic without translating or
+normalizing the source transcript.
+
+## D129 — Give the reader ownership of live-transcript position (Jul 2026)
+
+**Context:** the lyrics-style live transcript automatically followed each new
+row. A user who scrolled up to reread an earlier turn was immediately returned
+to the latest caption, and the playback-oriented fade/blur cylinder made
+rapidly moving live text lose readability before it left the center.
+
+**Decision:** live transcript presentation has an explicit follow state.
+Direct user scroll interaction pauses follow indefinitely; programmatic scrolls
+do not. While browsing history, every visible row is full-opacity, full-scale,
+and unblurred, and incoming rows never change the reader's position. An
+identified **Jump to live** control is the only action that resumes following.
+While following, live captions use a wider sharp zone and tightly bounded
+fade/scale/blur values than playback. Playback keeps its existing focused-lyrics
+treatment. The policy is pure and unit tested; a disposable XCUITest fixture
+proves new rows arrive while the reader remains in history and that the
+explicit action restores the latest row.
+
+**Rationale:** live captions are both an ambient display and a short-term
+record. User interaction is stronger intent than animation, so no timer should
+steal the scroll position. Separating live and playback visual policy preserves
+the designed review experience while keeping active conversation readable and
+accessible.
+
+## D130 — Keep automatic Refine unhinted across the complete channel (Jul 2026)
+
+**Context:** a Stop publication failure left an empty recording shell whose
+stale meeting language was English. Refine reused that aggregate value as a
+Whisper hint and translated Spanish speech into English. Even a homogeneous
+provisional transcript cannot prove that every actor or a later turn uses the
+same language.
+
+**Decision:** automatic Refine never supplies a full-channel language hint.
+WhisperKit language detection is explicitly enabled whenever that hint is nil;
+nil by itself is not automatic because WhisperKit disables detection while
+decoder prefill is enabled and otherwise falls back to English. VAD results
+retain their detected language, and the decoder remains in `.transcribe` mode
+so it never intentionally translates speech. Only the user's explicit
+per-meeting fixed English or Spanish recovery choice may constrain recognition.
+The meeting-level language remains derived metadata installed only when the
+completed attributed transcript is homogeneous.
+
+**Rationale:** a recording is a sequence of multilingual turns, not one
+language slot. Avoiding an aggregate hint prevents stale metadata and one
+speaker's language from translating another speaker's words. Explicit fixed
+recovery remains available when acoustic ambiguity is more important than
+mixed-language fidelity.
+
+## D131 — Prefer direct system captions over matching microphone bleed (Jul 2026)
+
+**Context:** speaker playback can re-enter the microphone during a live call.
+Because microphone and system callbacks arrive independently, the same phrase
+appeared as alternating `Me` and `Them` fragments before post-capture cleanup.
+Callback order is not stable, and legitimate overlapping speech must remain.
+
+**Decision:** a new lexical microphone row is compared only with the newest
+twelve system/room rows and is dropped when it matches direct remote evidence.
+A delayed matching system/room row may replace the microphone copy only while
+that copy is the newest still-open row. Older rows are immutable once
+translation and rolling-summary cursors can observe them. The existing
+conservative bleed threshold remains authoritative, so short acknowledgements
+and distinct overlapping text survive. Finalized audio and per-channel raw
+transcription remain untouched; this policy changes only the live merged
+projection.
+
+**Rationale:** direct system capture is stronger evidence for remote speech than
+acoustic microphone spill. A bounded deterministic admission window corrects
+both adjacent callback orders without an unbounded transcript scan, changing
+the call's audio graph, deleting genuine local participation, or invalidating
+IDs and indexes already consumed downstream.
+
+## D132 — Treat generated summary owners as untrusted cast claims (Jul 2026)
+
+**Context:** a summary provider assigned actions to people whose names were
+merely mentioned in the meeting. Typed action storage later cleared unknown
+owners, but Markdown had already rendered the raw generated name, producing
+visible invented assignments and duplicated forms such as
+`Daniel: task — Daniel`.
+
+**Decision:** structured summary drafting admits an action owner only when it
+case-insensitively matches an existing speaker label or confirmed display name.
+An admitted owner is canonicalized to the cast value before both Markdown and
+typed action projection; unknown names become unassigned. A matching leading
+owner prefix is removed from the action text, and an empty remainder is
+discarded. Prompts reinforce this rule but deterministic post-generation
+admission remains authoritative.
+
+**Rationale:** names inside speech are meeting content, not identity evidence.
+One cast-grounded boundary keeps rendered and typed projections consistent,
+prevents model obedience from becoming a trust requirement, and still preserves
+actions whose ownership is genuinely known.
+
+## D133 — Preserve source identity through live diarization splits (Jul 2026)
+
+**Context:** live diarization can split one closed caption after translation,
+rolling summary, or Apuntador has already referenced its ID. Replacing every
+piece with a fresh ID invalidated Apuntador evidence at Stop and made a valid
+captured-snapshot transaction fail. The rolling summary also used an array
+offset, so inserting a split piece before that offset could skip new speech or
+replay the wrong window.
+
+**Decision:** `SpeakerAttributor` preserves the source segment ID on the first
+non-empty split child and assigns fresh IDs only to additional children.
+Unsplit segments retain their existing identity as before. The rolling live
+summary tracks the IDs of admitted closed captions rather than one mutable array
+offset, so every additional split child remains eligible without destabilizing
+already consumed turns. Stop still retains D127's bounded fallback for any
+other optional provenance rejection.
+
+**Rationale:** a split refines one observation; it does not erase its lineage.
+Keeping one stable anchor preserves foreign-key evidence and translation state,
+while fresh sibling IDs accurately represent newly visible turns. Identity-
+based cursors are robust to insertion, splitting, and callback reordering and
+therefore keep live intelligence independent from presentation-array shape.

@@ -7,6 +7,13 @@ entry here — feature name + what it gives you.)
 
 ## July 24, 2026
 
+- **🛟 Stop always saves the recording** — If optional live or Apuntador content cannot be stored, Portavoz retries the complete handoff once and then preserves the strongest valid transcript, notes, and finalized audio with an explicit recovery path instead of leaving the call unfinished.
+- **🌐 Refine keeps every speaker's language** — Automatic Refine no longer forces one meeting-wide language, so Spanish, English, and mixed-language turns remain in the language each person actually spoke; fixed English or Spanish stays available as an explicit recovery choice.
+- **🧹 Live captions without speaker echo** — When speaker output returns through the microphone, Portavoz now keeps the direct system caption and removes the matching mic duplicate while preserving short acknowledgements and genuinely overlapping speech.
+- **🪪 To-dos name only confirmed speakers** — Generated actions can use an owner only when it matches the meeting cast, preventing a person merely mentioned in conversation from being promoted into a task owner.
+- **⬇️ Whisper that stays ready** — Refine and Import now say when they are preparing and verifying Whisper, download only when a model is actually missing, and keep verified models outside the app bundle across Dev reinstalls and normal updates.
+- **🌍 Translation without language pop-ups** — Mixed Spanish/English calls now translate each completed turn from its own detected language, leave same-language or uncertain text untouched, and never hand source-language selection to a repeated framework prompt.
+- **📖 Read live captions at your pace** — Scroll up and new captions no longer pull you back or blur the history; text stays sharp until you choose **Jump to live**.
 - **🎙️ Recording starts without taking the app down** — If macOS temporarily exposes no usable microphone route, Portavoz now stays open and shows its recoverable recording error instead of crashing while preparing audio.
 
 ## July 23, 2026
