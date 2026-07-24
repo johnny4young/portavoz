@@ -4,6 +4,26 @@ import XCTest
 @testable import AudioCaptureKit
 @testable import PortavozCore
 
+final class AudioInputFormatPolicyTests: XCTestCase {
+    func testAcceptsOnlyFinitePositiveRateWithAtLeastOneChannel() {
+        XCTAssertTrue(AudioInputFormatPolicy.isUsable(
+            sampleRate: 48_000,
+            channelCount: 1))
+        XCTAssertFalse(AudioInputFormatPolicy.isUsable(
+            sampleRate: 0,
+            channelCount: 1))
+        XCTAssertFalse(AudioInputFormatPolicy.isUsable(
+            sampleRate: 48_000,
+            channelCount: 0))
+        XCTAssertFalse(AudioInputFormatPolicy.isUsable(
+            sampleRate: -.infinity,
+            channelCount: 1))
+        XCTAssertFalse(AudioInputFormatPolicy.isUsable(
+            sampleRate: .nan,
+            channelCount: 1))
+    }
+}
+
 final class CaptureFileWriterTests: XCTestCase {
     func testWritesMono16BitCAFReadableByAVAudioFile() throws {
         let directory = FileManager.default.temporaryDirectory
