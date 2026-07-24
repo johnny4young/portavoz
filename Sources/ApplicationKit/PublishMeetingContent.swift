@@ -4,11 +4,21 @@ import PortavozCore
 public enum MeetingDocumentFormat: String, Equatable, Sendable {
     case markdown
     case pdf
+    case srt
+    case vtt
+
+    /// Subtitle formats render from the diarized transcript, not from the
+    /// markdown document.
+    public var isSubtitle: Bool { self == .srt || self == .vtt }
 }
 
 public protocol MeetingDocumentRendering: Sendable {
     func markdown(from detail: MeetingLibraryDetail) async throws -> String
     func pdf(fromMarkdown markdown: String) async throws -> Data
+    func subtitles(
+        from detail: MeetingLibraryDetail,
+        format: MeetingDocumentFormat
+    ) async throws -> String
 }
 
 public protocol ApplicationOutputFileWriting: Sendable {
@@ -118,16 +128,23 @@ public struct PrepareMeetingDocument: ApplicationUseCase {
         guard let detail = try await library.detail(request.meetingID) else {
             throw ExportMeetingDocumentError.meetingNotFound
         }
-        let markdown = try await documents.markdown(from: detail)
         switch request.format {
         case .markdown:
+            let markdown = try await documents.markdown(from: detail)
             return PreparedMeetingDocument(
                 data: Data(markdown.utf8),
                 filename: "\(detail.meeting.title).md")
         case .pdf:
+            let markdown = try await documents.markdown(from: detail)
             return PreparedMeetingDocument(
                 data: try await documents.pdf(fromMarkdown: markdown),
                 filename: "\(detail.meeting.title).pdf")
+        case .srt, .vtt:
+            let subtitles = try await documents.subtitles(
+                from: detail, format: request.format)
+            return PreparedMeetingDocument(
+                data: Data(subtitles.utf8),
+                filename: "\(detail.meeting.title).\(request.format.rawValue)")
         }
     }
 }
@@ -188,6 +205,15 @@ public struct ExportMeetingDocument: ApplicationUseCase {
                 throw ExportMeetingDocumentError.outputFileRequired
             }
             let data = try await documents.pdf(fromMarkdown: markdown)
+            try await files.write(data, to: outputURL)
+            return .written(path: outputURL.path, bytes: data.count)
+        case .srt, .vtt:
+            guard let outputURL = request.outputURL, let files else {
+                throw ExportMeetingDocumentError.outputFileRequired
+            }
+            let subtitles = try await documents.subtitles(
+                from: detail, format: request.format)
+            let data = Data(subtitles.utf8)
             try await files.write(data, to: outputURL)
             return .written(path: outputURL.path, bytes: data.count)
         }

@@ -59,6 +59,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
     ),
     "meeting-naming": (
+        test_id("MeetingDetailUITests", "testExportMenuOffersSubtitleFormats"),
         test_id("MeetingDetailUITests", "testUnnamedSpeakerOffersExplicitNameSuggestions"),
         test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
     ),

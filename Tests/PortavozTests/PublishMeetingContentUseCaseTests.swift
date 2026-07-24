@@ -273,6 +273,14 @@ private actor MeetingDocumentsFake: MeetingDocumentRendering {
         _ = markdown
         return Data([1, 2, 3])
     }
+
+    func subtitles(
+        from detail: MeetingLibraryDetail,
+        format: MeetingDocumentFormat
+    ) -> String {
+        _ = detail
+        return format == .vtt ? "WEBVTT\n\nfixture" : "1\nfixture"
+    }
 }
 
 private actor OutputFilesSpy: ApplicationOutputFileWriting {

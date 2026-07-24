@@ -569,6 +569,28 @@ final class MeetingDetailUITests: XCTestCase {
         attachScreenshot(of: app, named: "band-4f-vectorized-waveform")
     }
 
+    /// The export menu is the only path to subtitle files, so both the SRT
+    /// and VTT items must exist for a seeded diarized meeting.
+    @MainActor
+    func testExportMenuOffersSubtitleFormats() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "detail-export-menu")
+        XCTAssertTrue(
+            menu.waitForExistence(timeout: 10),
+            "the action row must offer the export menu")
+        menu.click()
+        XCTAssertTrue(
+            app.menuItems["detail-export-srt"].waitForExistence(timeout: 5),
+            "the diarized transcript must export as SRT")
+        XCTAssertTrue(
+            app.menuItems["detail-export-vtt"].exists,
+            "the diarized transcript must export as VTT")
+        // Close the menu without exporting — the save panel is native UI.
+        app.typeKey(.escape, modifierFlags: [])
+    }
+
     /// Marking in/out reveals the clip export button (M11). Advances the
     /// playhead by playing, so it doesn't depend on clicking a transcript
     /// line (dimmed/clipped in the focus carousel).

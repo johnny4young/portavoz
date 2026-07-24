@@ -88,6 +88,7 @@ reported (D75/D103).
 
 ## Exporters — IntegrationsKit
 
+- `SubtitleExport` (Jul 2026): SRT and WebVTT from the diarized transcript with caption discipline — consecutive same-speaker rows merge only while the cue stays under six seconds and two 42-character lines; cue text sanitizes the arrow separator; timestamps derive from integer milliseconds (the classic subtitle bug class is centisecond slippage) with SRT's comma and VTT's period exactly; nonlexical rows never become cues. Reached from the Meeting Detail export menu, `PrepareMeetingDocument`, and the CLI export formats `srt`/`vtt`.
 - `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
 - **Single-meeting document preparation/publication (D103/D105):**
   ApplicationKit loads one coherent current detail/General-summary projection.

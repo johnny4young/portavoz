@@ -63,6 +63,16 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
             try MeetingExporter.pdf(fromMarkdown: markdown)
         }.value
     }
+
+    func subtitles(
+        from detail: MeetingLibraryDetail,
+        format: MeetingDocumentFormat
+    ) async throws -> String {
+        SubtitleExport.render(
+            format == .vtt ? .vtt : .srt,
+            segments: detail.segments,
+            speakers: detail.speakers)
+    }
 }
 
 private actor AppGistDocumentPublisher: MeetingDocumentPublishing {
