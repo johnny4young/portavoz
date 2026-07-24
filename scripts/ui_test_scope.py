@@ -105,6 +105,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
+        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
     ),
     "settings-voice": (
         test_id("SettingsUITests", "testVoicePaneOffersTheMirrorOptIn"),
@@ -173,6 +174,11 @@ def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
+    # Before the generic "section"/"settings" buckets: dictation UI lives in
+    # the Audio pane, and its system-wide surface (triggers, paste) has no
+    # other XCUITest-reachable evidence.
+    if any(token in lowered for token in ("dictation", "mousebutton", "hotkey", "textinserter")):
+        return {"settings-audio"}
     if any(token in lowered for token in ("ask", "commandpalette")):
         return {"ask", "library"}
     if any(token in lowered for token in ("insight",)):
@@ -202,6 +208,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if any(token in lowered for token in ("dictation", "mouseptt")):
+        return {"settings-audio"}
     if "subtitle" in lowered:
         return {"meeting-export"}
     if "insight" in lowered:

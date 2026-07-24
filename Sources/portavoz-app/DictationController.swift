@@ -61,6 +61,10 @@ final class DictationController {
     private(set) var targetApp: String?
 
     private var hotkey: GlobalHotkey?
+    private var mousePTT: MouseButtonPTT?
+    /// True while the active session was started by the mouse button, so
+    /// only that button's release may deliver (`MousePTTGesture`).
+    private var mouseOwnsSession = false
     private var microphone: MicrophoneSource?
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
@@ -101,6 +105,50 @@ final class DictationController {
                 else { return }
                 self.finishAndInsert()
             })
+    }
+
+    /// Arms/disarms the push-to-talk mouse button to match the Settings
+    /// toggle AND the recorded button. Separate from `syncHotkey` because
+    /// the event tap needs Accessibility trust the Carbon hotkey does not;
+    /// without it the tap silently stays down and dictation remains
+    /// keyboard-only until the paste path prompts for the permission.
+    func syncMousePTT(services: AppServices) {
+        mousePTT?.invalidate()
+        mousePTT = nil
+        guard UserDefaults.standard.bool(forKey: Self.defaultsKey) else { return }
+        let button = MouseButtonSetting.load()
+        guard button != MouseButtonSetting.off else { return }
+        mousePTT = MouseButtonPTT(
+            button: button,
+            onPress: { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.handleMouse(.press, services: services)
+            },
+            onRelease: { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.handleMouse(.release, services: services)
+            })
+    }
+
+    private func handleMouse(
+        _ event: MousePTTGesture.Event, services: AppServices
+    ) {
+        switch MousePTTGesture.action(
+            for: event,
+            isListening: phase == .listening,
+            mouseOwnsSession: mouseOwnsSession) {
+        case .start:
+            mouseOwnsSession = true
+            start(services: services)
+            // A refused start (missing Accessibility trust) must not leave
+            // the button claiming a session that never began.
+            if phase != .listening { mouseOwnsSession = false }
+        case .finish:
+            mouseOwnsSession = false
+            finishAndInsert()
+        case .ignore:
+            break
+        }
     }
 
     /// Press-to-release lapse that separates a toggle TAP from a
@@ -270,6 +318,7 @@ final class DictationController {
     func cancel() {
         activeSessionID = nil
         captureStartedAt = nil
+        mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
         failureDismissTask?.cancel()
@@ -346,6 +395,7 @@ final class DictationController {
         feed = nil
         stopTask = nil
         captureStartedAt = nil
+        mouseOwnsSession = false
     }
 
     private func failSession(id: UUID, message: String) {

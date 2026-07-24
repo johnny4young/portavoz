@@ -7350,6 +7350,46 @@
           }
         }
       }
+    },
+    "Push-to-talk mouse button": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón del mouse para dictar"
+          }
+        }
+      }
+    },
+    "Click a mouse button…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic con un botón del mouse…"
+          }
+        }
+      }
+    },
+    "Button %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón %d"
+          }
+        }
+      }
+    },
+    "Remove the push-to-talk mouse button": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar el botón del mouse para dictar"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

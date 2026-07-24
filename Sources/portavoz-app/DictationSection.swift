@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Settings section for system-wide dictation: one toggle, one hotkey.
-/// Registering/unregistering happens immediately via the shared
-/// `DictationController` so no restart is needed.
+/// Settings section for system-wide dictation: the enable toggle and both
+/// physical triggers (hotkey + mouse button). Registering/unregistering
+/// happens immediately via the shared `DictationController` so no restart
+/// is needed.
 struct DictationSection: View {
     @Environment(AppServices.self) private var services
     @AppStorage(DictationController.defaultsKey) private var enabled = false
@@ -13,10 +14,14 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-toggle")
                 .onChange(of: enabled) {
                     services.dictation.syncHotkey(services: services)
+                    services.dictation.syncMousePTT(services: services)
                 }
             if enabled {
                 HotkeyRecorder {
                     services.dictation.syncHotkey(services: services)
+                }
+                MouseButtonRecorder {
+                    services.dictation.syncMousePTT(services: services)
                 }
             }
             Text(

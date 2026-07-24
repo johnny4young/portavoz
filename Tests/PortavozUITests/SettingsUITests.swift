@@ -287,6 +287,35 @@ final class SettingsUITests: XCTestCase {
         attachScreenshot(of: app, named: "call-safe-audio-settings")
     }
 
+    /// Enabling dictation must reveal both physical triggers: the hotkey
+    /// recorder and the push-to-talk mouse-button recorder.
+    @MainActor
+    func testDictationOffersTriggersLanguageAndDictionary() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let audio = app.control(withIdentifier: "settings-category-audio")
+        XCTAssertTrue(audio.waitForExistence(timeout: 10))
+        audio.click()
+
+        let toggle = app.control(withIdentifier: "settings-dictation-toggle")
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: 5),
+            "the Audio pane must offer the dictation enable toggle")
+        toggle.click()
+        // Leave dictation the way we found it for whatever test runs next.
+        defer { toggle.click() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-hotkey-recorder")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the hotkey recorder")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-mouse-recorder").exists,
+            "enabling dictation must reveal the push-to-talk mouse-button recorder")
+    }
+
     @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
