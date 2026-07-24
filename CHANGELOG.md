@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 24, 2026
+
+- **🎙️ Recording starts without taking the app down** — If macOS temporarily exposes no usable microphone route, Portavoz now stays open and shows its recoverable recording error instead of crashing while preparing audio.
+
 ## July 23, 2026
 
 - **🖱️ Dictate with a mouse button** — Hold the middle or an additional mouse button anywhere on your Mac, speak, release: your words land where your cursor is. The click stays with Portavoz — the app under the pointer never sees it — and the keyboard hotkey keeps working exactly as before.

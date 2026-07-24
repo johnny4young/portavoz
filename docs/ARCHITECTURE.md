@@ -558,7 +558,13 @@ retains ownership of its microphone processing and playback graph. Raw
 microphone spill is handled after capture by transcript bleed filtering rather
 than by modifying the live call. `MicrophoneSource` keeps an explicit
 voice-processing option only for bounded nonmeeting tools such as local voice
-enrollment and the CLI diagnostic flag.
+enrollment and the CLI diagnostic flag. Microphone graph preparation is also
+fail-closed: warm-up and device-restart paths validate a finite positive
+hardware sample rate and at least one input channel before calling
+`AVAudioEngine.prepare()`, while one serial queue owns warm-up, start, stop, and
+device-restart graph mutation. Capture also awaits its explicit warm-up task
+before entering that owner. An unavailable route crosses the existing typed
+recording-start boundary instead of escaping as an Objective-C exception.
 
 ```mermaid
 flowchart LR

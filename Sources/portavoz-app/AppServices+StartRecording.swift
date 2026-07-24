@@ -253,6 +253,10 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
                 try? voiceprintStore.load()
             })
         do {
+            // Warm-up owns the same AVAudioEngine and restart queue as
+            // capture. Do not install a tap while it may still be preparing
+            // the graph on another task.
+            await prepared.warmup.value
             try await active.start(request)
             return active
         } catch {

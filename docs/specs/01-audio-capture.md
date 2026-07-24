@@ -25,7 +25,13 @@ Two SEPARATE streams, never mixed before diarization:
   that may explicitly request voice processing.
 - **`warmUp()`**: starts the selected raw input engine without a tap while the
   process tap and optional live models prepare. It yields no samples; the
-  session clock still anchors at the first real tap callback.
+  session clock still anchors at the first real tap callback. The warm-up
+  validates that the hardware format has a finite positive sample rate and at
+  least one channel before asking `AVAudioEngine` to prepare. An unavailable
+  route is therefore a recoverable start failure rather than an Objective-C
+  exception that terminates the process. Capture waits for an in-flight warm-up
+  before installing its tap, and every warm-up, start, stop, and device-restart
+  graph mutation is serialized on one queue.
 - **Device-change resilience**: observes `AVAudioEngineConfigurationChange` (connecting headphones SILENTLY STOPS the engine — real bug: a mic died at minute 24 of 30). On change: reinstalls the tap, retries every 0.5 s if there is no usable input, resamples the new device to the stream's original rate (`Resample.linear`, tested), and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold).
 - Device selection by UID/name (`--mic` in CLI) through `kAudioOutputUnitProperty_CurrentDevice`; on restart, if the pinned device has disappeared, it falls back to the default. The app preserves the preferred UID, marks it unavailable in Ajustes, and uses the default input only for that recording.
 - **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. The call is untouched and the dual timeline remains aligned.
