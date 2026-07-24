@@ -7330,6 +7330,26 @@
           }
         }
       }
+    },
+    "Export subtitles (SRT)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar subtítulos (SRT)…"
+          }
+        }
+      }
+    },
+    "Export subtitles (VTT)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar subtítulos (VTT)…"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

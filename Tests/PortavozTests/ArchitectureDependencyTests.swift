@@ -426,6 +426,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(applicationDocuments.contains("struct PrepareMeetingDocument"))
         XCTAssertTrue(cliExport.contains("application.exportMeetingDocument("))
         XCTAssertTrue(cliExport.contains("meetingID: meetingID"))
+        XCTAssertTrue(cliExport.contains("md|pdf|srt|vtt"))
+        XCTAssertTrue(cliExport.contains("MeetingDocumentFormat("))
+        XCTAssertTrue(cliExport.contains("fileExtension: gist ? \"md\" : format"))
         XCTAssertTrue(cliIssues.contains("application.publishMeetingActionItems("))
         XCTAssertTrue(cliIssues.contains("meetingID: meetingID"))
         XCTAssertTrue(cliComposition.contains(

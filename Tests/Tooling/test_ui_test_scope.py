@@ -51,6 +51,17 @@ class UITestScopeTests(unittest.TestCase):
             selection.tests,
         )
 
+    def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
+        selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
+        self.assertEqual(
+            selection.tests,
+            (
+                "PortavozUITests/MeetingDetailUITests/"
+                "testExportMenuOffersSubtitleFormats",
+            ),
+        )
+        self.assertEqual(selection.locales, ("en",))
+
     def test_harness_change_selects_two_bilingual_canaries(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)

@@ -914,6 +914,10 @@ extension MeetingDetailView {
             Menu {
                 Button("Export Markdown…") { export(as: .markdown) }
                 Button("Export PDF…") { export(as: .pdf) }
+                Button("Export subtitles (SRT)…") { export(as: .srt) }
+                .accessibilityIdentifier("detail-export-srt")
+                Button("Export subtitles (VTT)…") { export(as: .vtt) }
+                .accessibilityIdentifier("detail-export-vtt")
                 Button("Export meeting file (.portavoz)…") {
                     Task { await exportBundle(detail, includeAudio: false) }
                 }
@@ -932,6 +936,7 @@ extension MeetingDetailView {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .accessibilityIdentifier("detail-export-menu")
             .help(L10n.text("Export or share this meeting"))
 
             roundButton(
@@ -1531,12 +1536,17 @@ extension MeetingDetailView {
         return String(format: "%d:%02d", total / 60, total % 60)
     }
 
-    private enum ExportFormat { case markdown, pdf }
+    private enum ExportFormat { case markdown, pdf, srt, vtt }
 
     private func export(as format: ExportFormat) {
         Task {
-            let effect = await model.send(.prepareDocument(
-                format == .markdown ? .markdown : .pdf))
+            let documentFormat: MeetingDocumentFormat = switch format {
+            case .markdown: .markdown
+            case .pdf: .pdf
+            case .srt: .srt
+            case .vtt: .vtt
+            }
+            let effect = await model.send(.prepareDocument(documentFormat))
             switch effect {
             case .documentPrepared(let document):
                 switch format {
@@ -1544,6 +1554,10 @@ extension MeetingDetailView {
                     exportType = .plainText
                 case .pdf:
                     exportType = .pdf
+                case .srt:
+                    exportType = .portavozSRT
+                case .vtt:
+                    exportType = .portavozVTT
                 }
                 exportName = document.filename
                 exportDocument = ExportDocument(data: document.data)

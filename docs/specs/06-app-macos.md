@@ -899,12 +899,12 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 41 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 42 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
 chips + time grouping + full Ask and command-palette answer/citation paths +
 interrupted staging recovery + durable post-capture resume + typed recording-
 start recovery + visible system-callback recovery), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Apuntador source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
-memory, newest-recipe reload, right
+memory, SRT/WebVTT export-menu availability, newest-recipe reload, right
 rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, Sequoia summary setup routing and Apuntador requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
 Whisper preparation, explicit iCloud sync opt-in/existing-library separation,

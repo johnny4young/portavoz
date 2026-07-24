@@ -93,11 +93,32 @@ public actor WhisperEngine {
             tokenizerDirectory: tokenizerDirectory)
     }
 
-    /// Loads only from opaque verified preparation evidence.
+    /// Loads only from opaque verified preparation evidence. A failed load
+    /// retries exactly once on CPU-only compute — accelerator context
+    /// creation is the recurring field failure class (ANE/GPU contention,
+    /// stale Metal contexts), and slow refine beats no refine. A cancel
+    /// never triggers the second load.
     public static func loadPrepared(_ prepared: PreparedModel) async throws -> WhisperEngine {
+        try await AcceleratorFallback.run {
+            try await load(prepared, computeOptions: nil)
+        } cpuFallback: {
+            try await load(
+                prepared,
+                computeOptions: ModelComputeOptions(
+                    melCompute: .cpuOnly,
+                    audioEncoderCompute: .cpuOnly,
+                    textDecoderCompute: .cpuOnly))
+        }
+    }
+
+    private static func load(
+        _ prepared: PreparedModel,
+        computeOptions: ModelComputeOptions?
+    ) async throws -> WhisperEngine {
         let config = WhisperKitConfig(
             modelFolder: prepared.modelDirectory.path,
             tokenizerFolder: prepared.tokenizerDirectory,
+            computeOptions: computeOptions,
             verbose: false,
             load: true,
             download: false

@@ -16,11 +16,33 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
         let pdf = try await useCase.execute(.init(
             meetingID: fixture.meetingID,
             format: .pdf))
+        let srt = try await useCase.execute(.init(
+            meetingID: fixture.meetingID,
+            format: .srt))
+        let vtt = try await useCase.execute(.init(
+            meetingID: fixture.meetingID,
+            format: .vtt))
 
         XCTAssertEqual(markdown.filename, "Weekly Sync / Q3.md")
         XCTAssertEqual(markdown.data, Data("# Weekly Sync".utf8))
         XCTAssertEqual(pdf.filename, "Weekly Sync / Q3.pdf")
         XCTAssertEqual(pdf.data, Data([1, 2, 3]))
+        XCTAssertEqual(srt.filename, "Weekly Sync / Q3.srt")
+        XCTAssertEqual(srt.data, Data("1\nfixture".utf8))
+        XCTAssertEqual(vtt.filename, "Weekly Sync / Q3.vtt")
+        XCTAssertEqual(vtt.data, Data("WEBVTT\n\nfixture".utf8))
+    }
+
+    func testDocumentFormatsOwnTheirAcceptedFileExtensions() {
+        XCTAssertEqual(MeetingDocumentFormat(fileExtension: "md"), .markdown)
+        XCTAssertEqual(MeetingDocumentFormat(fileExtension: "MARKDOWN"), .markdown)
+        XCTAssertEqual(MeetingDocumentFormat(fileExtension: "PDF"), .pdf)
+        XCTAssertEqual(MeetingDocumentFormat(fileExtension: "srt"), .srt)
+        XCTAssertEqual(MeetingDocumentFormat(fileExtension: "VTT"), .vtt)
+        XCTAssertNil(MeetingDocumentFormat(fileExtension: "txt"))
+        XCTAssertEqual(MeetingDocumentFormat.markdown.filenameExtension, "md")
+        XCTAssertEqual(MeetingDocumentFormat.srt.subtitleFormat, .srt)
+        XCTAssertNil(MeetingDocumentFormat.pdf.subtitleFormat)
     }
 
     func testPrepareDocumentRejectsMissingMeetingBeforeRendering() async {
@@ -41,6 +63,24 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
         }
         let markdownCalls = await documents.markdownCalls
         XCTAssertEqual(markdownCalls, 0)
+    }
+
+    func testPrepareSubtitleDoesNotRenderAnUnrelatedMarkdownDocument() async throws {
+        let fixture = PublishingFixture()
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: fixture.library,
+            documents: documents)
+
+        let document = try await useCase.execute(.init(
+            meetingID: fixture.meetingID,
+            format: .srt))
+
+        XCTAssertEqual(document.filename, "Weekly Sync.srt")
+        let markdownCalls = await documents.markdownCalls
+        let subtitleFormats = await documents.subtitleFormats
+        XCTAssertEqual(markdownCalls, 0)
+        XCTAssertEqual(subtitleFormats, [.srt])
     }
 
     func testExportReturnsMarkdownWithoutTouchingFilesystem() async throws {
@@ -85,6 +125,36 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
         } catch let error as ExportMeetingDocumentError {
             XCTAssertEqual(error, .outputFileRequired)
         }
+    }
+
+    func testSubtitleExportDoesNotRenderAnUnrelatedMarkdownDocument() async throws {
+        let fixture = PublishingFixture()
+        let documents = MeetingDocumentsFake()
+        let files = OutputFilesSpy()
+        let useCase = ExportMeetingDocument(
+            library: fixture.library,
+            documents: documents,
+            files: files)
+        let destination = URL(fileURLWithPath: "/tmp/meeting.vtt")
+
+        let result = try await useCase.execute(ExportMeetingDocumentRequest(
+            meetingID: fixture.meetingID,
+            format: .vtt,
+            outputURL: destination))
+
+        XCTAssertEqual(
+            result,
+            .written(path: destination.path, bytes: Data("WEBVTT\n\nfixture".utf8).count))
+        let markdownCalls = await documents.markdownCalls
+        let subtitleFormats = await documents.subtitleFormats
+        XCTAssertEqual(markdownCalls, 0)
+        XCTAssertEqual(subtitleFormats, [.vtt])
+    }
+
+    func testOutputRequirementCopyAppliesToEveryNonStreamingFormat() {
+        XCTAssertEqual(
+            ExportMeetingDocumentError.outputFileRequired.errorDescription,
+            "this export format requires --out <path>")
     }
 
     func testExplicitPublisherReceivesSluggedCurrentDocument() async throws {
@@ -262,6 +332,7 @@ private actor PublishingReaderFake: MeetingLibraryQueryReading {
 
 private actor MeetingDocumentsFake: MeetingDocumentRendering {
     private(set) var markdownCalls = 0
+    private(set) var subtitleFormats: [MeetingSubtitleFormat] = []
 
     func markdown(from detail: MeetingLibraryDetail) -> String {
         _ = detail
@@ -272,6 +343,15 @@ private actor MeetingDocumentsFake: MeetingDocumentRendering {
     func pdf(fromMarkdown markdown: String) -> Data {
         _ = markdown
         return Data([1, 2, 3])
+    }
+
+    func subtitles(
+        from detail: MeetingLibraryDetail,
+        format: MeetingSubtitleFormat
+    ) -> String {
+        _ = detail
+        subtitleFormats.append(format)
+        return format == .vtt ? "WEBVTT\n\nfixture" : "1\nfixture"
     }
 }
 
