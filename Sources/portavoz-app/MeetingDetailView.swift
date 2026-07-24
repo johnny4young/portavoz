@@ -1550,10 +1550,14 @@ extension MeetingDetailView {
             switch effect {
             case .documentPrepared(let document):
                 switch format {
-                case .markdown, .srt, .vtt:
+                case .markdown:
                     exportType = .plainText
                 case .pdf:
                     exportType = .pdf
+                case .srt:
+                    exportType = .portavozSRT
+                case .vtt:
+                    exportType = .portavozVTT
                 }
                 exportName = document.filename
                 exportDocument = ExportDocument(data: document.data)

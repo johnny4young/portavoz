@@ -28,7 +28,7 @@ and benchmark harnesses deliberately retain isolated direct construction.
 | `diarize` | `--file <wav> [--attribute] [--threshold t] [--language es] [--models-dir <dir>]` |
 | `summarize` | `--file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]` — full wav→transcript→diarization→summary pipeline |
 | `meetings` | `list \| show <uuid> \| search <texto> \| refine <uuid> [--file <wav>] [--language es] [--vocab "…"] [--db] [--models-dir]` |
-| `export` | `--meeting <uuid> [--format md\|pdf] [--out <path>] [--gist [--public]]` |
+| `export` | `--meeting <uuid> [--format md\|pdf\|srt\|vtt] [--out <path>] [--gist [--public]]` — Markdown may print to stdout; PDF and subtitle formats require an output path |
 | `secrets` | `set-github-token <token> \| clear-github-token` (Keychain; equivalents for Linear) |
 | `voice` | `enroll [--file <wav>] \| status \| delete` |
 | `der` | `--file <wav> --reference <rttm> [--threshold t] [--collar s]` — DER harness |
@@ -88,15 +88,18 @@ reported (D75/D103).
 
 ## Exporters — IntegrationsKit
 
-- `SubtitleExport` (Jul 2026): SRT and WebVTT from the diarized transcript with caption discipline — consecutive same-speaker rows merge only while the cue stays under six seconds and two 42-character lines; cue text sanitizes the arrow separator; timestamps derive from integer milliseconds (the classic subtitle bug class is centisecond slippage) with SRT's comma and VTT's period exactly; nonlexical rows never become cues. Reached from the Meeting Detail export menu, `PrepareMeetingDocument`, and the CLI export formats `srt`/`vtt`.
+- `SubtitleExport` (Jul 2026): SRT and WebVTT from the diarized transcript with caption discipline — consecutive rows merge only when their `SpeakerID` matches and the rendered cue, including its speaker prefix, remains within six seconds and 84 characters. Transcript text and user-assigned speaker names collapse line whitespace and neutralize the timestamp arrow; integer-millisecond timestamps use SRT's comma and VTT's period exactly; nonlexical rows never become cues. Reached from the Meeting Detail export menu, `PrepareMeetingDocument`, and the CLI export formats `srt`/`vtt`.
 - `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
 - **Single-meeting document preparation/publication (D103/D105):**
   ApplicationKit loads one coherent current detail/General-summary projection.
-  Meeting Detail receives canonical Markdown/PDF bytes and its released
-  title-based suggested filename for the native save surface. Terminal export
-  returns Markdown, writes Markdown/PDF through an injected file port, or
-  invokes an explicit Gist publisher. Secret-Gist adapters resolve credentials only after the local
-  document exists. Pending issue publication uses the same projection shape,
+  Meeting Detail receives canonical Markdown/PDF/SRT/WebVTT bytes and its
+  released title-based suggested filename for the native save surface.
+  Subtitle formats render directly from the diarized transcript through a
+  narrowed format port and retain extension-specific macOS content types.
+  Terminal export returns Markdown, writes Markdown/PDF/SRT/WebVTT through an
+  injected file port, or invokes an explicit Gist publisher. Secret-Gist
+  adapters resolve credentials only after the local document exists. Pending
+  issue publication uses the same projection shape,
   resolves owner names from its cast, filters unfinished actions, and preserves
   their stored order. SwiftUI and command files do not read Store, render the
   canonical document, or construct IntegrationsKit publishers.

@@ -45,13 +45,13 @@ public enum SubtitleExport {
     struct Cue: Equatable {
         var start: TimeInterval
         var end: TimeInterval
+        var speakerID: SpeakerID?
         var speaker: String?
         var text: String
 
         var displayText: String {
-            let safe = text.replacingOccurrences(of: "-->", with: "->")
-            guard let speaker else { return safe }
-            return "\(speaker): \(safe)"
+            guard let speaker else { return text }
+            return "\(speaker): \(text)"
         }
     }
 
@@ -63,17 +63,17 @@ public enum SubtitleExport {
         speakers: [Speaker]
     ) -> [Cue] {
         let names = Dictionary(uniqueKeysWithValues: speakers.map {
-            ($0.id, $0.isMe ? ($0.displayName ?? "Me") : ($0.displayName ?? $0.label))
+            ($0.id, speakerName($0))
         })
         var cues: [Cue] = []
         for segment in segments {
-            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = inlineText(segment.text)
             guard TranscriptContentPolicy.hasLexicalContent(text) else { continue }
             let speaker = segment.speakerID.flatMap { names[$0] }
             if var last = cues.last,
-                last.speaker == speaker,
+                last.speakerID == segment.speakerID,
                 segment.endTime - last.start <= maximumCueSeconds,
-                last.text.count + text.count + 1 <= maximumCueCharacters {
+                last.displayText.count + text.count + 1 <= maximumCueCharacters {
                 last.end = max(last.end, segment.endTime)
                 last.text += " " + text
                 cues[cues.count - 1] = last
@@ -81,11 +81,31 @@ public enum SubtitleExport {
                 cues.append(Cue(
                     start: segment.startTime,
                     end: max(segment.endTime, segment.startTime),
+                    speakerID: segment.speakerID,
                     speaker: speaker,
                     text: text))
             }
         }
         return cues
+    }
+
+    /// Subtitle payload is line-oriented. Collapse every whitespace run so a
+    /// transcript or user-assigned speaker name cannot inject a second line or
+    /// cue, and neutralize the timestamp arrow in both fields.
+    static func inlineText(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "-->", with: "->")
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    private static func speakerName(_ speaker: Speaker) -> String {
+        let preferred = speaker.isMe
+            ? (speaker.displayName ?? "Me")
+            : (speaker.displayName ?? speaker.label)
+        let normalized = inlineText(preferred)
+        if !normalized.isEmpty { return normalized }
+        return speaker.isMe ? "Me" : inlineText(speaker.label)
     }
 
     /// Milliseconds from seconds without float drift at the boundary: the

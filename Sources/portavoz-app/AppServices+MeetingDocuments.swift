@@ -66,10 +66,14 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
 
     func subtitles(
         from detail: MeetingLibraryDetail,
-        format: MeetingDocumentFormat
+        format: MeetingSubtitleFormat
     ) async throws -> String {
-        SubtitleExport.render(
-            format == .vtt ? .vtt : .srt,
+        let exportFormat: SubtitleExport.Format = switch format {
+        case .srt: .srt
+        case .vtt: .vtt
+        }
+        return SubtitleExport.render(
+            exportFormat,
             segments: detail.segments,
             speakers: detail.speakers)
     }

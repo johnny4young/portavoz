@@ -119,12 +119,12 @@ self-contained over system frameworks and carries no module dependency.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
+| `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
-| `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
+| `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
@@ -312,10 +312,14 @@ engine release, deterministic UI fixtures, and content-free signposts.
 
 Meeting Detail document actions also enter the application boundary. One
 workflow loads the selected meeting and latest General summary coherently,
-renders the canonical Markdown once, and returns either Markdown or PDF bytes
-with the released title-based suggested filename for the native save surface.
-Explicit secret-Gist publication uses the same coherent source and renderer.
-The app adapter owns utility-priority rendering, lazy credential resolution, gateway-backed
+then renders only the requested representation: canonical Markdown, PDF
+derived from that Markdown, or SRT/WebVTT directly from the diarized
+transcript. The typed subtitle port cannot receive a Markdown/PDF request,
+speaker identity—not display-name equality—controls cue merging, and the
+native save surface receives an extension-specific content type plus the
+released title-based suggested filename. Explicit secret-Gist publication
+uses the same coherent source and Markdown renderer. The app adapter owns
+utility-priority rendering, lazy credential resolution, gateway-backed
 publisher construction, and native platform presentation. The route-owned
 `MeetingDetailModel` owns document actions and typed effects; SwiftUI owns the
 user gesture, off-device confirmation, save panel state, and localized result.
@@ -573,7 +577,9 @@ consuming only the newest buffered context when it completes. Capture never
 awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
-Refine requires Whisper; attribution is degradable.
+Refine requires Whisper. Loading a verified model first uses the selected
+accelerator configuration; a failure triggers one cancellation-aware CPU-only
+retry before both underlying causes are surfaced. Attribution is degradable.
 Import requests its required transcriber and optional diarizer independently.
 Durable first-pass recovery and dictation request Parakeet without acquiring
 unrelated models. `ProcessPostCaptureJobs` keeps automatic recognition
@@ -689,18 +695,24 @@ meeting content to logs.
 
 ## Open-format export and backup
 
-Canonical Markdown and PDF rendering live in `IntegrationsKit`. Meeting bundles
-carry a versioned relational aggregate with canonical identity remapping and
-optional audio. Machine-local paths, canonical-person links, voiceprints,
-secrets, embeddings, and transport state are not portable.
+Canonical Markdown, PDF, and diarized SRT/WebVTT rendering live in
+`IntegrationsKit`. Subtitle cues use millisecond-accurate format-specific
+timestamps, normalize line-oriented fields, neutralize timestamp arrows, keep
+same-name speakers separate by `SpeakerID`, and merge consecutive rows only
+within the rendered six-second/84-character budget. Meeting bundles carry a
+versioned relational aggregate with canonical identity remapping and optional
+audio. Machine-local paths, canonical-person links, voiceprints, secrets,
+embeddings, and transport state are not portable.
 
 Single-meeting rendering and explicit publication enter ApplicationKit. The
 macOS detail workflow loads one coherent detail projection, renders through an
-injected document port, and returns Markdown or PDF bytes plus the released
-title-based suggested filename for the native save surface. Secret-Gist
-publication and terminal export use the same coherent projection and canonical
-renderer; terminal export may return Markdown, write Markdown/PDF through an injected filesystem
-port, or invoke an explicit publisher. Pending action-item publication
+injected document port, and returns Markdown, PDF, SRT, or WebVTT bytes plus
+the released title-based suggested filename for the native save surface.
+Subtitle rendering reads the diarized transcript directly and cannot fail
+because of unrelated Markdown preparation. Secret-Gist publication and
+terminal export use the same coherent projection and canonical renderer;
+terminal export may return Markdown, write Markdown/PDF/SRT/WebVTT through an
+injected filesystem port, or invoke an explicit publisher. Pending action-item publication
 similarly reads one current detail and summary, resolves owners from that
 snapshot, and publishes only unfinished items in stable order. Remote paths
 complete local admission and no-op checks before the publisher prepares its
@@ -759,8 +771,9 @@ CLI publishing adapters resolve a credential lazily only after ApplicationKit
 has admitted the local document or pending work, preserving local errors and
 no-op behavior before any device-secret read.
 The macOS meeting-document adapter follows the same ordering: local
-Markdown/PDF preparation never reads a credential, and secret-Gist publication
-resolves the GitHub token only after the coherent meeting document exists.
+Markdown/PDF/SRT/WebVTT preparation never reads a credential, and secret-Gist
+publication resolves the GitHub token only after the coherent meeting document
+exists.
 Encrypted voice stores receive the Core port directly; other capability clients
 receive resolved credential values, and no capability module constructs
 Keychain. SQLite and UserDefaults do not store secrets. Voiceprints are
@@ -962,9 +975,12 @@ behind aspirational diagrams:
   process lifetime, and maps content-free events to OSLog/signposts; it does
   not claim jobs or decide retries, fingerprints, dependencies, publication,
   or terminal outcomes.
-- Meeting Detail Markdown/PDF preparation and secret-Gist publication enter
-  ApplicationKit. The SwiftUI view does not construct the canonical renderer,
-  publisher, or network gateway and does not read the publishing credential.
+- Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
+  publication enter ApplicationKit. The SwiftUI view does not construct the
+  canonical renderer, publisher, or network gateway and does not read the
+  publishing credential. Subtitle adapters receive only the narrowed
+  `MeetingSubtitleFormat`; native presentation uses extension-specific subtitle
+  content types.
 - Meeting Detail participant-voice suggestions and explicit memory enter
   ApplicationKit. The SwiftUI view does not read the encrypted gallery,
   resolve recording files, load a diarization model, or match embeddings.
@@ -1019,14 +1035,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,015 package tests pass, with 13 real-model/environment cases gated;
+- 1,042 package tests pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 95-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 352 Swift source files;
-- 41 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 357 Swift source files;
+- 42 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

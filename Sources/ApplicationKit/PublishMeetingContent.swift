@@ -7,9 +7,42 @@ public enum MeetingDocumentFormat: String, Equatable, Sendable {
     case srt
     case vtt
 
-    /// Subtitle formats render from the diarized transcript, not from the
-    /// markdown document.
-    public var isSubtitle: Bool { self == .srt || self == .vtt }
+    public init?(fileExtension: String) {
+        switch fileExtension.lowercased() {
+        case "md", "markdown":
+            self = .markdown
+        case "pdf":
+            self = .pdf
+        case "srt":
+            self = .srt
+        case "vtt":
+            self = .vtt
+        default:
+            return nil
+        }
+    }
+
+    public var filenameExtension: String {
+        self == .markdown ? "md" : rawValue
+    }
+
+    public var subtitleFormat: MeetingSubtitleFormat? {
+        switch self {
+        case .srt:
+            .srt
+        case .vtt:
+            .vtt
+        case .markdown, .pdf:
+            nil
+        }
+    }
+}
+
+/// Narrows the subtitle-rendering port so callers cannot accidentally route a
+/// Markdown or PDF request through an adapter that silently emits SRT.
+public enum MeetingSubtitleFormat: String, Equatable, Sendable {
+    case srt
+    case vtt
 }
 
 public protocol MeetingDocumentRendering: Sendable {
@@ -17,7 +50,7 @@ public protocol MeetingDocumentRendering: Sendable {
     func pdf(fromMarkdown markdown: String) async throws -> Data
     func subtitles(
         from detail: MeetingLibraryDetail,
-        format: MeetingDocumentFormat
+        format: MeetingSubtitleFormat
     ) async throws -> String
 }
 
@@ -50,7 +83,7 @@ public enum ExportMeetingDocumentError: Error, Equatable, LocalizedError, Sendab
         case .meetingNotFound:
             "no such meeting"
         case .outputFileRequired:
-            "--format pdf requires --out <path>"
+            "this export format requires --out <path>"
         }
     }
 }
@@ -140,11 +173,14 @@ public struct PrepareMeetingDocument: ApplicationUseCase {
                 data: try await documents.pdf(fromMarkdown: markdown),
                 filename: "\(detail.meeting.title).pdf")
         case .srt, .vtt:
+            guard let subtitleFormat = request.format.subtitleFormat else {
+                preconditionFailure("subtitle branch requires a subtitle format")
+            }
             let subtitles = try await documents.subtitles(
-                from: detail, format: request.format)
+                from: detail, format: subtitleFormat)
             return PreparedMeetingDocument(
                 data: Data(subtitles.utf8),
-                filename: "\(detail.meeting.title).\(request.format.rawValue)")
+                filename: "\(detail.meeting.title).\(request.format.filenameExtension)")
         }
     }
 }
@@ -175,8 +211,8 @@ public struct ExportMeetingDocument: ApplicationUseCase {
         guard let detail = try await library.detail(request.meetingID) else {
             throw ExportMeetingDocumentError.meetingNotFound
         }
-        let markdown = try await documents.markdown(from: detail)
         if let publisher {
+            let markdown = try await documents.markdown(from: detail)
             try await publisher.prepare()
             await request.progress(.publishing)
             return .published(try await publisher.publish(
@@ -188,6 +224,7 @@ public struct ExportMeetingDocument: ApplicationUseCase {
 
         switch request.format {
         case .markdown:
+            let markdown = try await documents.markdown(from: detail)
             guard let outputURL = request.outputURL else {
                 return .markdown(markdown)
             }
@@ -204,6 +241,7 @@ public struct ExportMeetingDocument: ApplicationUseCase {
             guard let files else {
                 throw ExportMeetingDocumentError.outputFileRequired
             }
+            let markdown = try await documents.markdown(from: detail)
             let data = try await documents.pdf(fromMarkdown: markdown)
             try await files.write(data, to: outputURL)
             return .written(path: outputURL.path, bytes: data.count)
@@ -211,8 +249,11 @@ public struct ExportMeetingDocument: ApplicationUseCase {
             guard let outputURL = request.outputURL, let files else {
                 throw ExportMeetingDocumentError.outputFileRequired
             }
+            guard let subtitleFormat = request.format.subtitleFormat else {
+                preconditionFailure("subtitle branch requires a subtitle format")
+            }
             let subtitles = try await documents.subtitles(
-                from: detail, format: request.format)
+                from: detail, format: subtitleFormat)
             let data = Data(subtitles.utf8)
             try await files.write(data, to: outputURL)
             return .written(path: outputURL.path, bytes: data.count)

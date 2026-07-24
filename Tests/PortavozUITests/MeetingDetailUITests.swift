@@ -585,7 +585,7 @@ final class MeetingDetailUITests: XCTestCase {
             app.menuItems["detail-export-srt"].waitForExistence(timeout: 5),
             "the diarized transcript must export as SRT")
         XCTAssertTrue(
-            app.menuItems["detail-export-vtt"].exists,
+            app.menuItems["detail-export-vtt"].waitForExistence(timeout: 5),
             "the diarized transcript must export as VTT")
         // Close the menu without exporting — the save panel is native UI.
         app.typeKey(.escape, modifierFlags: [])

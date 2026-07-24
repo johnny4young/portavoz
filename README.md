@@ -38,7 +38,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 - **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, exports any span as an audio clip, and compresses every channel without removing an original until all outputs verify.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
 - **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
-- **Open format.** Your meetings are Markdown + SQLite you own. No accounts, no lock-in.
+- **Open format.** Your meetings are SQLite you own, with Markdown, SRT, WebVTT, and portable `.portavoz` exports. No accounts, no lock-in.
 
 ## Status
 
@@ -64,7 +64,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Recording failures stay actionable** — Start and Stop retain exact typed outcomes instead of forwarding raw system text. Recoverable cases offer retry or the Library; uncertain local state opens private support diagnostics and includes a stable reference you can copy.
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
 - **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
-- **Whisper refine** — prepare Turbo or Compact proactively in Settings; the verified download continues after Settings closes and Refine/Import reuse it. The cancellable maximum-quality re-pass becomes a draft you approve (never a silent overwrite), at 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting only to recover one that came out wrong.
+- **Whisper refine** — prepare Turbo or Compact proactively in Settings; the verified download continues after Settings closes and Refine/Import reuse it. If Core ML cannot load the verified model on the preferred accelerator, Portavoz retries once on CPU before failing with both causes preserved. The cancellable maximum-quality re-pass becomes a draft you approve (never a silent overwrite), at 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting only to recover one that came out wrong.
 - **Import any audio** — drag in a recording or a `.portavoz` bundle. Recordings are transcribed, diarized, and summarized like a live capture; bundles restore the remapped transcript, summary, notes, Apuntador, and validated optional audio as one all-or-nothing meeting. Large files stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
 
 **Understand the meeting**
@@ -94,7 +94,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
 
 **Own your data**
-- **Open format** — Markdown + a SQLite file you own. Full-library backup reads one consistent snapshot, shows partial progress honestly, and publishes portable Markdown without replacing existing files; per-meeting `.portavoz` bundles optionally include audio, and **trash** restores meetings before automatic purge after 30 days. No accounts, no lock-in.
+- **Open format** — a SQLite file you own, canonical Markdown, diarized SRT/WebVTT subtitles, and portable `.portavoz` bundles. Full-library backup reads one consistent snapshot, shows partial progress honestly, and publishes Markdown without replacing existing files; per-meeting bundles optionally include audio, and **trash** restores meetings before automatic purge after 30 days. No accounts, no lock-in.
 - **iCloud sync that asks first** *(next release; production field validation pending)* — optionally sync encrypted meeting text and portable metadata through your private iCloud database. Future changes and the existing library are separate choices; Settings always shows this Mac's real state. Audio, local paths, voiceprints, secrets, and embeddings never sync, and Pause/Remove never delete your local meetings or remote records. Public enablement waits for the documented production-container and two-Mac release matrix.
 - **Privacy receipt** — every meeting explains whether tracked processing stayed on your Mac, a remote transfer was attempted, or iCloud acknowledged an encrypted private copy. It shows purpose, destination host, and time but no copied transcript, prompt, notes, summary, or action-item text. Upgraded libraries state the exact date tracking began instead of guessing about older activity.
 
@@ -156,12 +156,12 @@ the architecture source of truth.
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; exact-revision SHA-256 downloads, atomic repair, verified-installation evidence, and a serialized shared process lifecycle |
 | `AudioCaptureKit` | Call-safe raw mic capture + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
-| `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
+| `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine with one-shot CPU load fallback), exact privacy-safe initial/Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Apuntador, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Apuntador clients |
 | `AudioPlaybackKit` | Synchronized player, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
 | `StorageKit` | GRDB/SQLite schema v14, FTS5 search, additive canonical people/aliases, typed source-revision-fenced overview, decision, action-item, and role-separated Apuntador evidence with separate reversible overview feedback, a content-free generation-fenced per-meeting mutation journal plus exact-generation text-first aggregate projection/atomic remote replay (the separate CloudKit adapter cannot redefine these rules), scoped Library/Insights/Meeting Detail observations, one-read Spotlight and whole-library backup projections, versioned snapshots, atomic recovered/accepted transcripts, summary and Apuntador-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
-| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, bundle/export formats, MCP protocol handling, deterministic meeting-sync envelopes, and the private-zone CloudKit boundary: encrypted inline/private-asset records, capability-probed protection metadata over mandatory owner-only durable atomic publication for account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
+| `IntegrationsKit` | Canonical Markdown/PDF and identity-preserving SRT/WebVTT exporters; gateway-only GitHub/Linear/Gist publishers; EventKit calendar; bundle formats; MCP protocol handling; deterministic meeting-sync envelopes; and the private-zone CloudKit boundary: encrypted inline/private-asset records, capability-probed protection metadata over mandatory owner-only durable atomic publication for account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
 
 The macOS app owns per-window `LibraryModel`, `InsightsModel`, and `AskModel`
 state owners plus process-scoped command-palette, first-run, and local-data
@@ -183,7 +183,7 @@ source-indexed optional synthesis.
 CLI list/detail/search/open-item and MCP library reads also enter through one
 bounded ApplicationKit query boundary; detail and its latest General summary
 come from one read-consistent SQLite snapshot. Transcription, diarization,
-summarization, persisted Refine, Markdown/PDF/Gist export, GitHub/Linear action
+summarization, persisted Refine, Markdown/PDF/SRT/WebVTT/Gist export, GitHub/Linear action
 publication, local voice identity, and pinned-model commands enter matching
 ApplicationKit workflows; command files retain parsing and terminal output,
 while CLI composition adapters own concrete files, models, Store, providers,
@@ -196,11 +196,13 @@ cancellations, and terminal action timing. The macOS process supervisor only
 coalesces kicks and schedules the next persisted wake; its adapter retains
 recording paths, concrete engines/providers, preferences, Shortcuts, and
 content-free telemetry.
-Meeting Detail Markdown/PDF preparation and secret-Gist publication also load
-one coherent snapshot through ApplicationKit. The macOS adapter owns canonical
-rendering, post-admission credentials, and gateway-backed publication while
-SwiftUI retains the explicit confirmation, native save panel, and localized
-result.
+Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist publication
+also load one coherent snapshot through ApplicationKit. Subtitle rendering
+uses the diarized transcript directly and preserves the requested extension;
+it does not build an unrelated Markdown document. The macOS adapter owns
+canonical rendering, post-admission credentials, and gateway-backed
+publication while SwiftUI retains the explicit confirmation, native save
+panel, and localized result.
 Participant voice-memory suggestions and explicit persistence enter a separate
 ApplicationKit workflow; the macOS adapter owns encrypted gallery access,
 recording paths, transient embedding extraction, and model construction while

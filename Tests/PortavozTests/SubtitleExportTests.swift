@@ -55,6 +55,21 @@ final class SubtitleExportTests: XCTestCase {
         XCTAssertEqual(cues.count, 2, "a full cue must not absorb the next row")
     }
 
+    func testCharacterCapIncludesTheRenderedSpeakerPrefix() {
+        let ana = Speaker(meetingID: meeting, label: "S1", displayName: "Ana")
+        let first = String(repeating: "a", count: 77)
+        let cues = SubtitleExport.cues(
+            segments: [
+                segment(first, start: 0, end: 1, speaker: ana.id),
+                segment("bb", start: 1, end: 2, speaker: ana.id),
+            ],
+            speakers: [ana])
+
+        XCTAssertEqual(
+            cues.count, 2,
+            "the visible 'Ana: ' prefix must count toward the 84-character cap")
+    }
+
     func testSpeakerChangeAlwaysSplitsAndPrefixesNames() {
         let ana = Speaker(meetingID: meeting, label: "S1", displayName: "Ana")
         let me = Speaker(meetingID: meeting, label: "Me", isMe: true)
@@ -70,11 +85,39 @@ final class SubtitleExportTests: XCTestCase {
         XCTAssertTrue(rendered.hasPrefix("1\n00:00:00,000 --> 00:00:01,000\n"))
     }
 
-    func testArrowInsideSpeechCannotForgeACueBoundary() {
+    func testDistinctSpeakersWithTheSameDisplayNameNeverMerge() {
+        let firstAlex = Speaker(meetingID: meeting, label: "S1", displayName: "Alex")
+        let secondAlex = Speaker(meetingID: meeting, label: "S2", displayName: "Alex")
         let cues = SubtitleExport.cues(
-            segments: [segment("A --> B es la ruta", start: 0, end: 2)],
-            speakers: [])
-        XCTAssertEqual(cues[0].displayText, "A -> B es la ruta")
+            segments: [
+                segment("primero", start: 0, end: 1, speaker: firstAlex.id),
+                segment("segundo", start: 1, end: 2, speaker: secondAlex.id),
+            ],
+            speakers: [firstAlex, secondAlex])
+
+        XCTAssertEqual(cues.count, 2)
+        XCTAssertEqual(cues.map(\.speakerID), [firstAlex.id, secondAlex.id])
+        XCTAssertEqual(cues.map(\.displayText), ["Alex: primero", "Alex: segundo"])
+    }
+
+    func testCueFieldsCannotForgeSubtitleLinesOrTimestampArrows() {
+        let ana = Speaker(
+            meetingID: meeting,
+            label: "S1",
+            displayName: "Ana\n--> Ops")
+        let cues = SubtitleExport.cues(
+            segments: [
+                segment(
+                    "A --> B\n\nes\tla ruta",
+                    start: 0,
+                    end: 2,
+                    speaker: ana.id),
+            ],
+            speakers: [ana])
+
+        XCTAssertEqual(cues[0].displayText, "Ana -> Ops: A -> B es la ruta")
+        XCTAssertFalse(cues[0].displayText.contains("\n"))
+        XCTAssertFalse(cues[0].displayText.contains("-->"))
     }
 
     func testNonLexicalRowsStayOut() {

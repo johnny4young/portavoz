@@ -2,10 +2,11 @@ import ApplicationKit
 import Foundation
 import PortavozCore
 
-/// `portavoz-cli export --meeting <uuid> [--format md|pdf] [--out <path>]
+/// `portavoz-cli export --meeting <uuid> [--format md|pdf|srt|vtt] [--out <path>]
 ///                      [--gist [--public]] [--db <path>]`
 ///
-/// Markdown prints to stdout unless --out is given; PDF requires --out.
+/// Markdown prints to stdout unless --out is given; every other format
+/// requires --out.
 /// --gist publishes OFF-device (explicit opt-in, D8) using the token from
 /// the Keychain (`secrets set-github-token`) or PORTAVOZ_GITHUB_TOKEN.
 enum ExportCommand {
@@ -49,7 +50,10 @@ enum ExportCommand {
         }
 
         guard let meetingRaw, let uuid = UUID(uuidString: meetingRaw) else {
-            print("Usage: portavoz-cli export --meeting <uuid> [--format md|pdf] [--out <path>] [--gist [--public]]")
+            print(
+                "Usage: portavoz-cli export --meeting <uuid> "
+                    + "[--format md|pdf|srt|vtt] [--out <path>] "
+                    + "[--gist [--public]]")
             return
         }
 
@@ -59,14 +63,10 @@ enum ExportCommand {
                 platform: platform)
             let meetingID = MeetingID(rawValue: uuid)
 
-            let documentFormat: MeetingDocumentFormat
-            switch gist ? "md" : format {
-            case "md":
-                documentFormat = .markdown
-            case "pdf":
-                documentFormat = .pdf
-            default:
-                print("error: unknown format \(format) (md|pdf)")
+            guard let documentFormat = MeetingDocumentFormat(
+                fileExtension: gist ? "md" : format)
+            else {
+                print("error: unknown format \(format) (md|pdf|srt|vtt)")
                 return
             }
 
