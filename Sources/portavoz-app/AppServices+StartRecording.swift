@@ -158,7 +158,6 @@ private struct AppStartRecordingPreferences: StartRecordingPreferences {
             transcriptLanguage: MeetingLanguagePreferences.transcript(),
             vocabulary: VocabularyPrompt.parse(
                 defaults.string(forKey: "customVocabulary") ?? ""),
-            voiceProcessingEnabled: defaults.object(forKey: "aecEnabled") as? Bool ?? true,
             preferredInputDeviceID: preferredInput,
             captureMode: mode)
     }
@@ -203,7 +202,10 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         }
         let microphone = MicrophoneSource(
             deviceIdentifier: microphoneID,
-            voiceProcessing: preferences.voiceProcessingEnabled)
+            // A meeting recorder must be observational. Enabling AVAudioEngine
+            // voice processing also changes the output node and can duck the
+            // call or contend with the meeting app's own microphone processing.
+            voiceProcessing: false)
         let warmup = Task { await microphone.warmUp() }
 
         var sources: [any AudioCaptureSource] = [microphone]

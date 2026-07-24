@@ -1246,7 +1246,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | Mic/system drift | < 50 ms / 30 min | **4 ms / 22 min** (+4 ppm linear) |
 | DER (AMI 2 speakers) | < 15% | **7.6%** (collar 0.25 s) |
 | ES summary of EN meeting | < 30 s | **3.8 s** (glossary intact) |
-| AEC convergence | — | **~2 s** (hence the warm-up) |
+| Former VPIO AEC convergence | historical only | **~2 s**; D125 removes VPIO from meeting capture because call coexistence is the higher-order requirement |
 | Cold start | < 1.5 s | **0.94 s cold / ~0.26 s warm** (`--bench-startup`) |
 | FTS at 1k meetings (80k segments) | < 50 ms | **p50 22.8 ms / p95 23.9 ms** (`portavoz-cli bench-fts`) |
 | Exact FTS at 100k segments | p95 < 50 ms | **p50 30.25 ms / p95 30.99 ms** (`bench-scale`, D81) |
@@ -1269,7 +1269,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | Silent meeting "sin voz" | WhisperKit EnergyVAD absolute threshold 0.02 | prior peak normalization |
 | Repeated `Yo: .` and `Me: Thank you.` without speaking | Loose-punctuation deltas and Whisper silence boilerplate at VAD cadence | lexical hygiene + repeated-boilerplate filter on mic |
 | Mic died when headphones connected (min 24/30) | AVAudioEngine stops on config-change, silent stream | restart + resample + silence gap |
-| Phantom "Yo" with speakers | mic captured system audio (100% echo; text-only dedup covered only 57%) | AEC VPIO by default (D24) |
+| Phantom "Yo" with speakers | mic captured system audio (100% echo; early text-only dedup covered only 57%) | Refined microphone/system overlap filtering after capture; VPIO removed from meetings by D125 after it interfered with live calls |
 | False drift of 115 ms | real offset 2.4 s outside the script's ±2 s range | ±5 s range + edge warning |
 | Speaker rename was not saved | alert-dismiss nilled the state before the Task | capture values on tap |
 | "Sugerir nombres" overflowed context | blind prefix + schema + assistants > 4096 tokens | targeted NamingExcerpt + retry at half size |

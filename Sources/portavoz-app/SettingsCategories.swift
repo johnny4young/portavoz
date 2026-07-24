@@ -49,7 +49,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .general: L10n.text("System language · English/Spanish · menu bar")
-        case .audio: L10n.text("Echo cancellation · dictate anywhere · ⌥⌘D")
+        case .audio: L10n.text("Call-safe capture · dictate anywhere · ⌥⌘D")
         case .intelligence: L10n.text("Summary engine · Whisper refine · vocabulary")
         case .voice: L10n.text("Enrolled voice · your name · Apuntador")
         case .agenda: L10n.text("Reminder · end-of-meeting Shortcut · title template")
@@ -67,7 +67,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general:
             "language english spanish menu bar launch login"
         case .audio:
-            "echo aec dictation hotkey microphone mic level"
+            "call safe capture echo aec dictation hotkey microphone mic level"
         case .intelligence:
             "summary engine apple ollama mlx whisper refine vocabulary"
         case .voice:

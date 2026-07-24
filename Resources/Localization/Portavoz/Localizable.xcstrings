@@ -7290,6 +7290,46 @@
           }
         }
       }
+    },
+    "Always on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siempre activa"
+          }
+        }
+      }
+    },
+    "Call-safe capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura segura para llamadas"
+          }
+        }
+      }
+    },
+    "Call-safe capture · dictate anywhere · ⌥⌘D": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura segura · dicta donde sea · ⌥⌘D"
+          }
+        }
+      }
+    },
+    "Portavoz leaves macOS voice processing to your meeting app and never enables call-audio ducking while it records. Duplicate speaker bleed is removed from the transcript after capture.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz deja el procesamiento de voz de macOS en manos de tu app de reuniones y nunca atenúa el audio de la llamada mientras graba. Las voces remotas duplicadas se eliminan del transcript después de la captura."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

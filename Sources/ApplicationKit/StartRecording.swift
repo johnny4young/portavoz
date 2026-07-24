@@ -15,7 +15,6 @@ public struct StartRecordingPreferencesSnapshot: Sendable {
     public let titleLocaleIdentifier: String
     public let transcriptLanguage: TranscriptLanguagePolicy
     public let vocabulary: [String]
-    public let voiceProcessingEnabled: Bool
     public let preferredInputDeviceID: String?
     public let captureMode: StartRecordingCaptureMode
 
@@ -24,7 +23,6 @@ public struct StartRecordingPreferencesSnapshot: Sendable {
         titleLocaleIdentifier: String,
         transcriptLanguage: TranscriptLanguagePolicy,
         vocabulary: [String],
-        voiceProcessingEnabled: Bool,
         preferredInputDeviceID: String?,
         captureMode: StartRecordingCaptureMode
     ) {
@@ -32,7 +30,6 @@ public struct StartRecordingPreferencesSnapshot: Sendable {
         self.titleLocaleIdentifier = titleLocaleIdentifier
         self.transcriptLanguage = transcriptLanguage
         self.vocabulary = vocabulary
-        self.voiceProcessingEnabled = voiceProcessingEnabled
         self.preferredInputDeviceID = preferredInputDeviceID
         self.captureMode = captureMode
     }

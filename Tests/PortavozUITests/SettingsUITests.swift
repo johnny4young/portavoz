@@ -280,6 +280,11 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-capture-mode").waitForExistence(timeout: 5),
             "the Audio pane must offer a capture-source picker")
+        let callSafePolicy = app.control(withIdentifier: "settings-call-safe-capture")
+        XCTAssertTrue(
+            callSafePolicy.waitForStableFrame(),
+            "the Audio pane must expose a stable always-on call-safe capture policy")
+        attachScreenshot(of: app, named: "call-safe-audio-settings")
     }
 
     @MainActor

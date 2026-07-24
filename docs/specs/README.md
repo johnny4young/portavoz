@@ -13,7 +13,7 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 | Spec | Covers | Kits |
 |---|---|---|
-| [01-audio-capture.md](01-audio-capture.md) | Dual-channel capture, AEC, resilience, formats, configurable folder | AudioCaptureKit |
+| [01-audio-capture.md](01-audio-capture.md) | Dual-channel call-safe capture, resilience, formats, configurable folder | AudioCaptureKit |
 | [02-transcription.md](02-transcription.md) | Live STT (Parakeet), refine (Whisper), coalescer, vocabulary, model registry | TranscriptionKit, ModelStoreKit |
 | [03-diarization-identity.md](03-diarization-identity.md) | Diarization, attribution, voiceprint, names | DiarizationKit, IntelligenceKit (naming) |
 | [04-intelligence.md](04-intelligence.md) | FM/BYOK summaries, rolling summary, local RAG, embeddings | IntelligenceKit |

@@ -23,7 +23,7 @@ and benchmark harnesses deliberately retain isolated direct construction.
 | Command | Usage (from the code) |
 |---|---|
 | `devices` | Lists inputs (including iPhones via Continuity) |
-| `record` | `[--seconds N] [--mic <name-or-uid>] [--pid <pid> …] [--system] [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>] [--no-aec]` |
+| `record` | `[--seconds N] [--mic <name-or-uid>] [--pid <pid> …] [--system] [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>] [--aec] [--no-aec]` — raw capture is the default; `--aec` explicitly opts into voice processing for diagnostics, while legacy `--no-aec` remains a compatible no-op |
 | `transcribe` | `--file <wav> [--engine parakeet\|whisper] [--vocab "a,b,c"] [--language es] [--models-dir <dir>]` |
 | `diarize` | `--file <wav> [--attribute] [--threshold t] [--language es] [--models-dir <dir>]` |
 | `summarize` | `--file <wav> [--out-language es] [--glossary a,b,c] [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]` — full wav→transcript→diarization→summary pipeline |

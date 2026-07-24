@@ -556,11 +556,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Recording start must never wait for model preparation")
         XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
         XCTAssertTrue(adapter.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertTrue(adapter.contains("voiceProcessing: false"))
+        XCTAssertFalse(adapter.contains("aecEnabled"))
         XCTAssertTrue(controller.contains("receiveLiveTranscription("))
         XCTAssertFalse(controller.contains("services.store.beginRecording"))
         XCTAssertFalse(controller.contains("MicrophoneSource("))
         XCTAssertFalse(controller.contains("RecordingSession("))
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
+
+        let microphone = try Self.contents(
+            of: "Sources/AudioCaptureKit/MicrophoneSource.swift")
+        XCTAssertTrue(microphone.contains(
+            "voiceProcessing: Bool = false"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
@@ -1278,6 +1285,24 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertNil(
             forbidden.firstMatch(in: architecture, range: range),
             "ARCHITECTURE.md must describe only durable as-built technical facts")
+    }
+
+    func testArchitectureDecisionIdentifiersAreUnique() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let identifiers = decisions.split(separator: "\n").compactMap { line -> String? in
+            guard line.hasPrefix("## D") else { return nil }
+            let digits = line.dropFirst(4).prefix(while: \.isNumber)
+            return digits.isEmpty ? nil : "D\(digits)"
+        }
+        let duplicates = Dictionary(grouping: identifiers, by: { $0 })
+            .filter { $0.value.count > 1 }
+            .map(\.key)
+            .sorted()
+
+        XCTAssertFalse(identifiers.isEmpty)
+        XCTAssertTrue(
+            duplicates.isEmpty,
+            "Architecture decision identifiers must be unique: \(duplicates)")
     }
 
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {

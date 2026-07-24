@@ -14,9 +14,10 @@ import PortavozCore
 ///   different rate its audio is resampled to the stream's original rate,
 ///   and the capture gap is padded with silence so the file stays aligned
 ///   with the system channel.
-/// - **Acoustic echo**: with speakers, the mic hears the meeting audio and
-///   every remote participant becomes a phantom "Me". Voice processing
-///   (Apple's AEC) subtracts the system output from the mic signal.
+///
+/// Raw capture is the default. Apple's voice-processing IO changes both the
+/// input and output graph and may duck other audio, so meeting and dictation
+/// surfaces must opt in only when they explicitly own that trade-off.
 ///
 /// `@unchecked Sendable`: the engine and continuation are mutated only from
 /// `start()`/`stop()` and the serial `restartQueue`; the tap block runs
@@ -62,21 +63,19 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// - Parameters:
     ///   - deviceIdentifier: UID or name of the input device to use (macOS).
     ///     Nil uses the system default input.
-    ///   - voiceProcessing: enables Apple's echo cancellation so the mic
-    ///     channel carries only the local voice even on speakers. On by
-    ///     default; disable for raw capture.
-    public init(deviceIdentifier: String? = nil, voiceProcessing: Bool = true) {
+    ///   - voiceProcessing: explicitly enables Apple's echo cancellation.
+    ///     It is off by default because voice-processing IO also changes the
+    ///     output path and can interfere with an active call.
+    public init(deviceIdentifier: String? = nil, voiceProcessing: Bool = false) {
         self.deviceIdentifier = deviceIdentifier
         self.voiceProcessing = voiceProcessing
     }
 
-    /// Starts the engine (and the echo canceller) WITHOUT a tap, so the
-    /// AEC's adaptive filter converges while the app is still preparing
-    /// models. Without it, the first seconds of a recording leak echo
-    /// (measured: mic/system RMS ratio 0.38 in the first 2 s, 0.03–0.11
-    /// once converged). Yields no chunks and the session clock still
-    /// anchors at the first real tap callback. Safe to skip — `start()`
-    /// does the full setup itself when the engine isn't warm.
+    /// Starts the engine WITHOUT a tap while the caller prepares the rest of
+    /// its pipeline. Yields no chunks and the session clock still anchors at
+    /// the first real tap callback. Explicit voice-processing clients also
+    /// use this time for their adaptive filter to converge. Safe to skip —
+    /// `start()` does the full setup itself when the engine isn't warm.
     public func warmUp() async {
         restartQueue.sync {
             guard continuation == nil, !engine.isRunning else { return }
@@ -90,7 +89,7 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         let input = engine.inputNode
         if !engine.isRunning {
-            // Cold start; a warm engine already has device + AEC applied.
+            // Cold start; a warm engine already has device policy applied.
             try applyPinnedDeviceIfNeeded(required: true)
             applyVoiceProcessingIfEnabled()
         }

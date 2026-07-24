@@ -2,10 +2,9 @@ import ApplicationKit
 import SwiftUI
 
 /// Settings section: audio capture options — which microphone to record from,
-/// what to capture for the other side, and echo cancellation (D24).
+/// what to capture for the other side, and the call-safe capture invariant.
 struct AudioSection: View {
     @Environment(AppServices.self) private var services
-    @AppStorage("aecEnabled") private var aecEnabled = true
     @AppStorage("preferredInputUID") private var preferredInputUID = "default"
     @AppStorage("captureMode") private var captureMode = "auto"
     @State private var inputs: [AudioInputOption] = []
@@ -38,11 +37,18 @@ struct AudioSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
-            Toggle("Echo cancellation (recommended with speakers)", isOn: $aecEnabled)
+            HStack {
+                Label("Call-safe capture", systemImage: "checkmark.shield")
+                Spacer()
+                Text("Always on")
+                    .foregroundStyle(.green)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings-call-safe-capture")
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Subtracts speaker output from the microphone so other participants do not appear as “Me”. With HEADPHONES there is no echo, so you can turn it off safely. Applies from the next recording. (If you sound distant on the call, it is usually the Mac built-in microphone picking you up from far away — nearby headset microphones such as AirPods usually sound much better.)"
+                "Portavoz leaves macOS voice processing to your meeting app and never enables call-audio ducking while it records. Duplicate speaker bleed is removed from the transcript after capture."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

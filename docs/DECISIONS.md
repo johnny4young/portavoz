@@ -153,6 +153,10 @@ confirms every suggestion.
 
 ## D24 — Echo cancellation (AEC) by default on the mic channel
 
+> **Superseded by D125 (23 Jul 2026).** The original implementation passed its
+> CLI smoke but failed the more important call-coexistence invariant in real
+> Sequoia and Tahoe meetings.
+
 **Context:** in a real meeting played through speakers, the mic captured system audio through the air: ~100% of the "Me" channel was echo from the other participants, duplicating the transcript and breaking the mic→Me premise (D5). Suppressing it by text alone detects only ~57% (the echo arrives degraded and is transcribed differently). The user explicitly rejects being forced to use headphones (the reference Rust app handles this well).
 **Decision:** `MicrophoneSource` enables **Apple voice processing** (`setVoiceProcessingEnabled(true)`, system AEC against the default output) **by default**, with `voiceProcessingOtherAudioDuckingConfiguration` set to `.min` to avoid attenuating meeting audio. Opt-out: "Cancelación de eco" toggle in Settings (`aecEnabled`) and `record --no-aec`. If the device rejects voice processing, it degrades to raw capture without failing. In the same layer: resilience to `AVAudioEngineConfigurationChange` (mid-recording device change) by reinstalling the tap, linearly resampling to the stream's original rate, and filling the gap with silence — the channel never silently dies or misaligns the timeline.
 **Verified (2026-07-07):** CLI smoke test (engine starts with VPIO, WAV written). Field test pending: real meeting with speakers ("Me" must not duplicate others) and switching headphones mid-recording.
@@ -190,11 +194,15 @@ confirms every suggestion.
 - **Waveform** per meeting: channel peak envelope downsampled to the requested bucket count and colored by source. The original persisted `waveform.bin` proposal is superseded by D84: measured stateless vectorized generation is fast enough and cannot become stale.
 - **Clips**: mark a range in the waveform/transcript → export `.m4a` (AVAssetExportSession) + attributed MD snippet; "mark" is FREE, "export" is PRO (already in the matrix).
 - **Master + economics**: WAV remains the master (the pipeline requires it); optional AAC transcode after refine as an additional retention policy (D4 already models retention).
-- **Signal conditioning** (reference-app pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate RNNoise-style denoise (Apple already provides AEC+NS through voice processing, D24) and ~80 Hz high-pass for voice.
+- **Signal conditioning** (reference-app pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate offline denoise/echo cancellation and ~80 Hz high-pass for voice without changing the live call graph (D125).
 - **Import external audio as a meeting** (drag an .m4a/.wav into the library → transcribe+diarize+summarize): the refine pipeline already does everything; only the UI entry point is missing.
 - **Recording crash safety** (MacParakeet pattern, verified in its spec): its M4A files fragmented at 1 s survive `kill -9`. Our WAV files through AVAudioFile probably DO NOT (incomplete RIFF header on crash) — verify and migrate the container to **CAF** (append-safe by design, same AVAudioFile) or fragmented M4A. A 1 h recording cannot die with the app.
 - **Storage economics**: 22 min = 126 MB/channel in WAV; MacParakeet stores 64 kbps AAC (~10 MB). Keeping PCM until refine and transcoding afterward is the balance (refine wants the intact signal).
-- **⚠️ Verified risk to monitor**: MacParakeet DISCARDED process taps because they "do not coexist reliably with VPIO in-process" — exactly our D6+D24 combination. Our evidence (1 real meeting with both active) is insufficient. Documented Plan B: OFFLINE post-recording echo cancellation (derive mic-cleaned with delay estimation), which is what they do.
+- **Resolved live-graph risk**: MacParakeet discarded process taps because they
+  do not coexist reliably with VPIO in-process. Real Sequoia and Tahoe calls
+  later showed call ducking and microphone degradation with that exact
+  combination. D125 removes VPIO from meeting and dictation capture; echo
+  cleanup stays after capture.
 **Rationale:** audio is the product's source of truth; treating it as a dead file gives the differentiated experience away to Otter. Everything is pure AVFoundation — zero new dependencies.
 
 ## D28 — Co-authored notes: Granola's loop over timestamped context
@@ -843,7 +851,7 @@ all schedule the existing idle release; successful capture transfers ownership
 to an opaque `StartRecordingSession` instead.
 
 The private macOS runtime owns `MicrophoneSource`, app/global
-`ProcessTapSource` selection, AEC warm-up, preferred-input fallback,
+`ProcessTapSource` selection, raw input warm-up (D125), preferred-input fallback,
 `RecordingSession`, direct per-channel Parakeet streams, their teardown, and
 one recording-scoped voiceprint future shared by live diarization and durable
 Stop. Direct live streams preserve the released D7 live lane; the serial batch
@@ -3790,3 +3798,40 @@ concurrent working tree actively edits those symbols today.
 **Rationale:** the user-visible name is marketing surface and must move with
 the market; persisted identity must not move at all; and a symbols-only rename
 can wait without any user-facing inconsistency.
+
+## D125 — Recording is observational: no live voice-processing takeover (Jul 2026)
+
+**Context:** two real calls on macOS 15 Sequoia and macOS 26 Tahoe showed that
+starting Portavoz reduced participant playback and made the user's microphone in
+the meeting app mute or become extremely quiet. The shared field shape matched
+the implementation: meeting capture enabled `AVAudioEngine` voice processing by
+default. Apple voice-processing IO changes both the input and output nodes, and
+its “minimum” other-audio ducking level is still ducking. It also competes with
+the meeting application's own echo cancellation and microphone processing. The
+before/after support snapshots retained healthy dual-channel files, but only 8
+of 242 live segments and 3 of 175 refined segments came from the microphone,
+which corroborates the weak local signal without exposing meeting content.
+
+**Decision:** meeting recording and global dictation always construct
+`MicrophoneSource` in raw mode. Raw is also the source's default and the CLI
+default; `--aec` is an explicit diagnostic-only opt-in, while the former
+`--no-aec` spelling remains a compatibility no-op. The application no longer
+stores or exposes an AEC recording preference, so an old `aecEnabled=true`
+default cannot reactivate VPIO. Settings presents the invariant as “Call-safe
+capture — Always on.” The process tap remains unmuted and independent, and
+post-capture `MicBleedFilter` continues removing remote speech duplicated
+through speakers. Explicit short voice-enrollment capture may still request
+voice processing because it is not a meeting recorder and already owns that
+bounded action.
+
+**Verification:** source-level architecture tests require raw production
+composition and reject the retired preference; focused unit, localization, and
+Audio Settings XCUITest cover the policy and its visible status. A real-call A/B
+on Sequoia and Tahoe remains the final field gate: playback and uplink must sound
+identical immediately before and after Portavoz starts, while both Portavoz
+channels advance.
+
+**Rationale:** a meeting assistant must never alter the meeting it observes.
+Preventing call interference outranks live acoustic echo cancellation.
+Transcript-level bleed rejection is degradable and reviewable; changing the
+shared hardware graph is neither.

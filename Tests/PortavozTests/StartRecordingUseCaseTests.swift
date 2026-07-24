@@ -59,7 +59,6 @@ final class StartRecordingUseCaseTests: XCTestCase {
             titleLocaleIdentifier: preferences.titleLocaleIdentifier,
             transcriptLanguage: .fixed(.spanish),
             vocabulary: preferences.vocabulary,
-            voiceProcessingEnabled: preferences.voiceProcessingEnabled,
             preferredInputDeviceID: preferences.preferredInputDeviceID,
             captureMode: preferences.captureMode)
         let dependencies = StartRecordingDependencies(preferences: preferences)
@@ -272,7 +271,6 @@ private struct StartRecordingFixture {
             titleLocaleIdentifier: "en_US",
             transcriptLanguage: .automatic,
             vocabulary: ["Portavoz", "Trinity"],
-            voiceProcessingEnabled: true,
             preferredInputDeviceID: "preferred-mic",
             captureMode: .meetingApps)
     }

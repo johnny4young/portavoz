@@ -5,7 +5,7 @@ import TranscriptionKit
 
 /// `portavoz-cli record [--seconds N] [--mic <name-or-uid>] [--pid <pid> ...]
 ///                      [--system] [--out <dir>] [--transcribe] [--language es]
-///                      [--models-dir <dir>] [--no-aec]`
+///                      [--models-dir <dir>] [--aec] [--no-aec]`
 ///
 /// With `--transcribe`, every captured channel gets its own live Parakeet
 /// job fed from the recording pipeline; segments print as they stream.
@@ -21,7 +21,7 @@ enum RecordCommand {
         var transcribe = false
         var language: String?
         var modelsDir: String?
-        var voiceProcessing = true
+        var voiceProcessing = false
 
         var index = 0
         while index < arguments.count {
@@ -48,7 +48,11 @@ enum RecordCommand {
             case "--models-dir":
                 index += 1
                 if index < arguments.count { modelsDir = arguments[index] }
+            case "--aec":
+                voiceProcessing = true
             case "--no-aec":
+                // Backward-compatible spelling from the former AEC-by-default
+                // CLI. Raw, call-safe capture is now already the default.
                 voiceProcessing = false
             default:
                 print("Unknown option: \(arguments[index])")

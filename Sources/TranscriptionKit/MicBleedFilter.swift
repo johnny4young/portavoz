@@ -3,11 +3,11 @@ import PortavozCore
 
 /// Removes speaker bleed from the refined microphone channel.
 ///
-/// With speakers, the microphone hears the room; echo cancellation removes
-/// most of it live, but the residue that survives in the WAV is loud enough
-/// for Whisper's batch pass to transcribe. Every such segment lands on the
-/// "Me" speaker and poisons who-said-what (field evidence, Jul 10: a user
-/// who barely spoke showed 52% talk time after refine).
+/// With speakers, the microphone hears the room while the system tap records
+/// the same remote speech directly. The microphone copy can be loud enough for
+/// Whisper's batch pass to transcribe. Every such segment lands on the "Me"
+/// speaker and poisons who-said-what (field evidence, Jul 10: a user who barely
+/// spoke showed 52% talk time after refine).
 ///
 /// The tell is textual: a mic segment whose words already appear in the
 /// system channel around the same instant is the room, not the user — the

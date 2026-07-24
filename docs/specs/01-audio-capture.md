@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (AEC), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture).
 
 ## Channel model (D5)
 
@@ -15,8 +15,17 @@ Two SEPARATE streams, never mixed before diarization:
 
 ## MicrophoneSource — `Sources/AudioCaptureKit/MicrophoneSource.swift`
 
-- **AEC by default (D24)**: `setVoiceProcessingEnabled(true)` on the input node + `voiceProcessingOtherAudioDuckingConfiguration = .min` (without this, AEC attenuates the meeting audio the user hears). Opt-out: `init(voiceProcessing: false)`, UI "Cancelación de eco" (`aecEnabled` in UserDefaults), CLI `record --no-aec`. If the device rejects voice processing, it degrades to raw capture without failing.
-- **`warmUp()`**: starts the engine WITHOUT a tap so that AEC's adaptive filter converges while models load. Measured: AEC takes ~2 s to converge (mic/system RMS ratio 0.38 at 0–2 s → 0.03–0.11 afterward); without warm-up the first seconds of captions leak echo.
+- **Raw by default and for every production meeting (D125)**:
+  `MicrophoneSource` defaults `voiceProcessing` to `false`, and the macOS
+  recording composition passes `false` explicitly. The app has no AEC
+  preference: stale `aecEnabled` defaults are ignored. This prevents
+  AVAudioEngine from changing the shared output graph or enabling call-audio
+  ducking. The CLI is raw by default and exposes `--aec` only as an explicit
+  diagnostic opt-in; short local-voice enrollment remains the sole app workflow
+  that may explicitly request voice processing.
+- **`warmUp()`**: starts the selected raw input engine without a tap while the
+  process tap and optional live models prepare. It yields no samples; the
+  session clock still anchors at the first real tap callback.
 - **Device-change resilience**: observes `AVAudioEngineConfigurationChange` (connecting headphones SILENTLY STOPS the engine — real bug: a mic died at minute 24 of 30). On change: reinstalls the tap, retries every 0.5 s if there is no usable input, resamples the new device to the stream's original rate (`Resample.linear`, tested), and **fills the gap with silence** so the timeline remains aligned with the system channel (gap = samples expected by clock − delivered; 0.5 s threshold).
 - Device selection by UID/name (`--mic` in CLI) through `kAudioOutputUnitProperty_CurrentDevice`; on restart, if the pinned device has disappeared, it falls back to the default. The app preserves the preferred UID, marks it unavailable in Ajustes, and uses the default input only for that recording.
 - **Local mute**: `setMuted` replaces every mic-channel buffer with exactly the same number of zero samples. The call is untouched and the dual timeline remains aligned.
@@ -131,9 +140,20 @@ capture types or enumerate devices directly.
 
 ## Known limitations and risks
 
-1. **⚠️ Taps + VPIO in the same process**: MacParakeet rejected them because they "do not coexist reliably." Our evidence (1 real meeting with both) is insufficient — monitor glitches/dropouts on the system channel with AEC active. Plan B (D27): offline post-recording echo cancellation.
+1. **Call coexistence after removing VPIO (D125)**: the unsafe taps + VPIO
+   combination is no longer part of meeting or dictation capture. A real-call
+   A/B on Sequoia and Tahoe must still prove that starting Portavoz leaves
+   participant playback and the meeting app's uplink unchanged while both
+   Portavoz channels continue advancing.
    - **Field finding (21 Jul 2026): system callbacks can stop while the mic continues.** One real recording's system staging file stopped advancing after 33:20 while the microphone continued for more than two hours. D120 now detects that shape, warns without interrupting the mic, and rebuilds/retries the tap. Still pending: reproduce callback death and verify that a returning IOProc clears the warning and resumes the same timeline.
-   - **Field finding (Jul 2026): the user's voice sounded DISTANT to others — cause = the Mac's BUILT-IN MICROPHONE (far-field), NOT AEC/Bluetooth.** Measured in the real recording (mic channel, RMS/s): with the Mac mic (min 0–3:55), the user's voice remained **≤ -45 dBFS** (mostly -50 to -60), very quiet/roomy; connecting **AirPods at 3:56** raised it to **-15…-25 dBFS** with a -68 floor (loud and clean). In other words, Bluetooth **fixed** the problem; it did not cause it (corrects a previously inverted hypothesis). Portavoz does not control what the call app (Zoom/Meet) sends to others; its own capture from the built-in mic is also quiet. **Implemented mitigation: live mic level meter** in `RecordingView` (`RecordingController.micLevel`, smoothed per-chunk peak on a dB scale) + "se te oye bajo — acércate o usa audífonos con micrófono" warning when `micLevelLow` (EMA of VOICED chunks below the threshold after ~15 s of speech; it does not confuse silence with a distant voice). (Note: in that same recording, switching output to AirPods triggered the muted-system-channel bug — fixed, see above — and the built-in mic→AirPods change at 3:56 had no interruption: input resilience OK.)
+   - **Corrected field finding (23 Jul 2026): microphone distance was not the
+     complete explanation.** One earlier trace improved from ≤ −45 dBFS on the
+     built-in mic to −15…−25 dBFS after switching to AirPods, so hardware
+     distance remains a useful warning signal. Later Sequoia and Tahoe calls
+     reproduced participant ducking and a muted/extremely quiet conferencing
+     uplink exactly when Portavoz started with VPIO enabled. D125 removes that
+     shared-graph mutation. The live low-mic meter remains useful, but it must
+     not be used to dismiss call-coexistence failures.
 2. ~~Crash safety~~ — **RESOLVED**: CAF container verified against kill -9 (above).
 3. **No "room" channel** yet (iPhone as a room mic through Continuity — planned, PRODUCT).
 4. PCM = ~126 MB per channel per 22 min (CAF, same bitrate as WAV); **AAC transcode resolved in M11/D112** through the ApplicationKit "Comprimir audio" workflow. It verifies every channel before removing any raw original and fails closed when a canonical output already exists.

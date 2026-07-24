@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 23, 2026
+
+- **🛡️ Recording that leaves your call alone** — Portavoz no longer takes over macOS voice processing when a meeting or dictation starts, so participant playback is not ducked and the meeting app keeps control of your microphone; duplicate speaker bleed is cleaned from the transcript afterward.
+
 ## July 22, 2026
 - **🪪 Name suggestions that stop guessing you** — Your own name (and its short forms) can no longer be proposed for other speakers, a name claimed by several speakers at once is treated as no evidence at all, voice matches now outrank text guesses for the same person, and the cast row wraps cleanly instead of squeezing chips into slivers.
 - **⏪ "Catch me up" during the meeting** — Zoned out or joined late? One click recaps the last five minutes in 2-4 bullets, on-device, without touching the recording — and on Macs without Apple Intelligence it says so honestly instead of hiding.
