@@ -38,6 +38,20 @@ struct DictationCapturePolicy {
 @Observable
 final class DictationController {
     static let defaultsKey = "globalDictationEnabled"
+    /// "auto" (or absent) lets the multilingual engine detect; "es"/"en"
+    /// pin one dictation language without touching meeting settings.
+    static let languageKey = "dictationLanguage"
+    /// Bilingual hesitation-filler removal; on by default — polished text
+    /// is the point of dictation, and the filter only ever drops tokens
+    /// that are meaningless in both languages.
+    static let fillerFilterKey = "dictationFillerFilter"
+    /// The deterministic replacement rules as one JSON string
+    /// (`DictationTextRules` codec).
+    static let replacementsKey = "dictationReplacements"
+
+    static var fillerFilterEnabled: Bool {
+        (UserDefaults.standard.object(forKey: fillerFilterKey) as? Bool) ?? true
+    }
 
     enum Phase: Equatable {
         case idle
@@ -233,7 +247,15 @@ final class DictationController {
 
             let vocabulary = VocabularyPrompt.parse(
                 UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-            let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: MeetingID())
+            // Language stays constrained to the two dictation languages: any
+            // stored value outside {es, en} means auto-detect.
+            let languageSetting = UserDefaults.standard.string(
+                forKey: Self.languageKey)
+            let hints = TranscriptionHints(
+                language: ["es", "en"].contains(languageSetting)
+                    ? languageSetting : nil,
+                vocabulary: vocabulary,
+                meetingID: MeetingID())
             var captions: [TranscriptSegment] = []
             let coalescer = CaptionCoalescer()
             for try await segment in engine.transcribe(audio, hints: hints) {
@@ -336,8 +358,16 @@ final class DictationController {
 
     private func deliver(sessionID: UUID) async {
         guard activeSessionID == sessionID else { return }
-        let text = DictationAssembler.text(
-            confirmed: confirmedText, partial: partialText)
+        // The two-tier dictionary's deterministic tier plus the filler
+        // filter run on the final text only — meeting transcripts stay
+        // verbatim records and never pass through here.
+        let text = DictationTextRules.apply(
+            DictationAssembler.text(
+                confirmed: confirmedText, partial: partialText),
+            replacements: DictationTextRules.decode(
+                replacements: UserDefaults.standard.string(
+                    forKey: Self.replacementsKey) ?? ""),
+            removeFillers: Self.fillerFilterEnabled)
         microphone = nil
         feed = nil
         stopTask = nil

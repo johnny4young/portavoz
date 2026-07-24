@@ -1,12 +1,15 @@
 import SwiftUI
 
-/// Settings section for system-wide dictation: the enable toggle and both
-/// physical triggers (hotkey + mouse button). Registering/unregistering
+/// Settings section for system-wide dictation: the enable toggle, both
+/// physical triggers (hotkey + mouse button), the constrained language,
+/// and the deterministic dictionary tier. Registering/unregistering
 /// happens immediately via the shared `DictationController` so no restart
 /// is needed.
 struct DictationSection: View {
     @Environment(AppServices.self) private var services
     @AppStorage(DictationController.defaultsKey) private var enabled = false
+    @AppStorage(DictationController.languageKey) private var language = "auto"
+    @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
 
     var body: some View {
         Section("Dictation") {
@@ -23,6 +26,15 @@ struct DictationSection: View {
                 MouseButtonRecorder {
                     services.dictation.syncMousePTT(services: services)
                 }
+                Picker("Dictation language", selection: $language) {
+                    Text("Automatic (Spanish + English)").tag("auto")
+                    Text("Spanish").tag("es")
+                    Text("English").tag("en")
+                }
+                .accessibilityIdentifier("settings-dictation-language")
+                Toggle("Filter out filler words", isOn: $filterFillers)
+                    .accessibilityIdentifier("settings-dictation-filler")
+                DictationDictionaryEditor()
             }
             Text(
                 // One-line UI help text.
