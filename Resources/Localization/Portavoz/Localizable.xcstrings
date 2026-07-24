@@ -7350,6 +7350,136 @@
           }
         }
       }
+    },
+    "Push-to-talk mouse button": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón del mouse para dictar"
+          }
+        }
+      }
+    },
+    "Click a mouse button…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic con un botón del mouse…"
+          }
+        }
+      }
+    },
+    "Button %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón %d"
+          }
+        }
+      }
+    },
+    "Remove the push-to-talk mouse button": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar el botón del mouse para dictar"
+          }
+        }
+      }
+    },
+    "Dictation language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma del dictado"
+          }
+        }
+      }
+    },
+    "Automatic (Spanish + English)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático (español + inglés)"
+          }
+        }
+      }
+    },
+    "Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Español"
+          }
+        }
+      }
+    },
+    "Filter out filler words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrar muletillas"
+          }
+        }
+      }
+    },
+    "Text replacements": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazos de texto"
+          }
+        }
+      }
+    },
+    "Heard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchado"
+          }
+        }
+      }
+    },
+    "Type instead": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir esto"
+          }
+        }
+      }
+    },
+    "Add replacement": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar reemplazo"
+          }
+        }
+      }
+    },
+    "Remove replacement": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar reemplazo"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

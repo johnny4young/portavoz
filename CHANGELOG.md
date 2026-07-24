@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 23, 2026
 
+- **🖱️ Dictate with a mouse button** — Hold a spare mouse button anywhere on your Mac, speak, release: your words land where your cursor is. The click stays with Portavoz — the app under the pointer never sees it — and the keyboard hotkey keeps working exactly as before.
+- **📔 A dictation dictionary that types it your way** — Teach Portavoz exact spellings ("k8s" → "Kubernetes") that apply every time you dictate, let it drop filler words in Spanish and English, and pin dictation to one language when a mixed room confuses auto-detect.
 - **🎬 Subtitles from any meeting** — Export a diarized SRT or WebVTT straight from the meeting: caption-sized cues with speaker names, exact millisecond timing, ready for video editors and players.
 - **🧯 Refine that survives a busy GPU** — If the speech model cannot load on the accelerator (another app hogging the GPU, a stale graphics context), Portavoz now retries once on the CPU instead of failing the refine — slower, but your transcript still arrives.
 - **🛡️ Recording that leaves your call alone** — Portavoz no longer takes over macOS voice processing when a meeting or dictation starts, so participant playback is not ducked and the meeting app keeps control of your microphone; duplicate speaker bleed is cleaned from the transcript afterward.

@@ -287,6 +287,48 @@ final class SettingsUITests: XCTestCase {
         attachScreenshot(of: app, named: "call-safe-audio-settings")
     }
 
+    /// Enabling dictation must reveal both physical triggers (hotkey +
+    /// push-to-talk mouse button), the {es,en}-constrained language picker,
+    /// the filler filter, and the deterministic dictionary quick-add.
+    @MainActor
+    func testDictationOffersTriggersLanguageAndDictionary() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let audio = app.control(withIdentifier: "settings-category-audio")
+        XCTAssertTrue(audio.waitForExistence(timeout: 10))
+        audio.click()
+
+        let toggle = app.control(withIdentifier: "settings-dictation-toggle")
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: 5),
+            "the Audio pane must offer the dictation enable toggle")
+        // The app under test shares the real UserDefaults, so dictation may
+        // already be on — ENSURE enabled instead of toggling blind, and put
+        // the user's original state back afterwards.
+        let wasEnabled = Self.isOn(toggle)
+        if !wasEnabled { toggle.click() }
+        defer { if !wasEnabled { toggle.click() } }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-hotkey-recorder")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the hotkey recorder")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-mouse-recorder").exists,
+            "enabling dictation must reveal the push-to-talk mouse-button recorder")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-language").exists,
+            "enabling dictation must reveal the constrained language picker")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-filler").exists,
+            "enabling dictation must reveal the filler-word filter toggle")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-dict-add").exists,
+            "enabling dictation must reveal the dictionary quick-add")
+    }
+
     @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
@@ -334,5 +376,10 @@ final class SettingsUITests: XCTestCase {
         systemToggle.click()  // back to launch/system English
         XCTAssertTrue(app.staticTexts["Use system language"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["General & language"].exists)
+    }
+
+    /// A macOS checkbox reports its state as "1"/1 through Accessibility.
+    private static func isOn(_ toggle: XCUIElement) -> Bool {
+        (toggle.value as? Int) == 1 || (toggle.value as? String) == "1"
     }
 }

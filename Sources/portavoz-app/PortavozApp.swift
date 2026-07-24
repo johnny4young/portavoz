@@ -40,6 +40,7 @@ struct PortavozApp: App {
         // Global feature, not a window feature: ⌥⌘D must work even with
         // the library window closed.
         services.dictation.syncHotkey(services: services)
+        services.dictation.syncMousePTT(services: services)
     }
 
     @AppStorage("menuBarEnabled") private var menuBarEnabled = true

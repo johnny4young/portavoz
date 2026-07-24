@@ -62,6 +62,27 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(selection.locales, ("en",))
 
+    def test_dictation_surfaces_select_only_the_audio_pane_evidence(self):
+        for path in [
+            "Sources/portavoz-app/DictationSection.swift",
+            "Sources/portavoz-app/MouseButtonPTT.swift",
+            "Sources/portavoz-app/DictationController.swift",
+            "Sources/TranscriptionKit/DictationTextRules.swift",
+            "Sources/TranscriptionKit/MousePTTGesture.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(
+                selection.tests,
+                (
+                    "PortavozUITests/SettingsUITests/"
+                    "testAudioPaneOffersCaptureSourceControls",
+                    "PortavozUITests/SettingsUITests/"
+                    "testDictationOffersTriggersLanguageAndDictionary",
+                ),
+                path,
+            )
+            self.assertEqual(selection.locales, ("en",), path)
+
     def test_harness_change_selects_two_bilingual_canaries(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)

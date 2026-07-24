@@ -38,6 +38,20 @@ struct DictationCapturePolicy {
 @Observable
 final class DictationController {
     static let defaultsKey = "globalDictationEnabled"
+    /// "auto" (or absent) lets the multilingual engine detect; "es"/"en"
+    /// pin one dictation language without touching meeting settings.
+    static let languageKey = "dictationLanguage"
+    /// Bilingual hesitation-filler removal; on by default — polished text
+    /// is the point of dictation, and the filter only ever drops tokens
+    /// that are meaningless in both languages.
+    static let fillerFilterKey = "dictationFillerFilter"
+    /// The deterministic replacement rules as one JSON string
+    /// (`DictationTextRules` codec).
+    static let replacementsKey = "dictationReplacements"
+
+    static var fillerFilterEnabled: Bool {
+        (UserDefaults.standard.object(forKey: fillerFilterKey) as? Bool) ?? true
+    }
 
     enum Phase: Equatable {
         case idle
@@ -61,6 +75,10 @@ final class DictationController {
     private(set) var targetApp: String?
 
     private var hotkey: GlobalHotkey?
+    private var mousePTT: MouseButtonPTT?
+    /// True while the active session was started by the mouse button, so
+    /// only that button's release may deliver (`MousePTTGesture`).
+    private var mouseOwnsSession = false
     private var microphone: MicrophoneSource?
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
@@ -101,6 +119,50 @@ final class DictationController {
                 else { return }
                 self.finishAndInsert()
             })
+    }
+
+    /// Arms/disarms the push-to-talk mouse button to match the Settings
+    /// toggle AND the recorded button. Separate from `syncHotkey` because
+    /// the event tap needs Accessibility trust the Carbon hotkey does not;
+    /// without it the tap silently stays down and dictation remains
+    /// keyboard-only until the paste path prompts for the permission.
+    func syncMousePTT(services: AppServices) {
+        mousePTT?.invalidate()
+        mousePTT = nil
+        guard UserDefaults.standard.bool(forKey: Self.defaultsKey) else { return }
+        let button = MouseButtonSetting.load()
+        guard button != MouseButtonSetting.off else { return }
+        mousePTT = MouseButtonPTT(
+            button: button,
+            onPress: { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.handleMouse(.press, services: services)
+            },
+            onRelease: { [weak self, weak services] in
+                guard let self, let services else { return }
+                self.handleMouse(.release, services: services)
+            })
+    }
+
+    private func handleMouse(
+        _ event: MousePTTGesture.Event, services: AppServices
+    ) {
+        switch MousePTTGesture.action(
+            for: event,
+            isListening: phase == .listening,
+            mouseOwnsSession: mouseOwnsSession) {
+        case .start:
+            mouseOwnsSession = true
+            start(services: services)
+            // A refused start (missing Accessibility trust) must not leave
+            // the button claiming a session that never began.
+            if phase != .listening { mouseOwnsSession = false }
+        case .finish:
+            mouseOwnsSession = false
+            finishAndInsert()
+        case .ignore:
+            break
+        }
     }
 
     /// Press-to-release lapse that separates a toggle TAP from a
@@ -185,7 +247,15 @@ final class DictationController {
 
             let vocabulary = VocabularyPrompt.parse(
                 UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
-            let hints = TranscriptionHints(vocabulary: vocabulary, meetingID: MeetingID())
+            // Language stays constrained to the two dictation languages: any
+            // stored value outside {es, en} means auto-detect.
+            let languageSetting = UserDefaults.standard.string(
+                forKey: Self.languageKey)
+            let hints = TranscriptionHints(
+                language: ["es", "en"].contains(languageSetting)
+                    ? languageSetting : nil,
+                vocabulary: vocabulary,
+                meetingID: MeetingID())
             var captions: [TranscriptSegment] = []
             let coalescer = CaptionCoalescer()
             for try await segment in engine.transcribe(audio, hints: hints) {
@@ -270,6 +340,7 @@ final class DictationController {
     func cancel() {
         activeSessionID = nil
         captureStartedAt = nil
+        mouseOwnsSession = false
         stopTask?.cancel()
         stopTask = nil
         failureDismissTask?.cancel()
@@ -287,8 +358,16 @@ final class DictationController {
 
     private func deliver(sessionID: UUID) async {
         guard activeSessionID == sessionID else { return }
-        let text = DictationAssembler.text(
-            confirmed: confirmedText, partial: partialText)
+        // The two-tier dictionary's deterministic tier plus the filler
+        // filter run on the final text only — meeting transcripts stay
+        // verbatim records and never pass through here.
+        let text = DictationTextRules.apply(
+            DictationAssembler.text(
+                confirmed: confirmedText, partial: partialText),
+            replacements: DictationTextRules.decode(
+                replacements: UserDefaults.standard.string(
+                    forKey: Self.replacementsKey) ?? ""),
+            removeFillers: Self.fillerFilterEnabled)
         microphone = nil
         feed = nil
         stopTask = nil
@@ -346,6 +425,7 @@ final class DictationController {
         feed = nil
         stopTask = nil
         captureStartedAt = nil
+        mouseOwnsSession = false
     }
 
     private func failSession(id: UUID, message: String) {
