@@ -7480,6 +7480,346 @@
           }
         }
       }
+    },
+    "General meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reunión general"
+          }
+        }
+      }
+    },
+    "Standup": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standup"
+          }
+        }
+      }
+    },
+    "1:1": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1:1"
+          }
+        }
+      }
+    },
+    "Planning": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planeación"
+          }
+        }
+      }
+    },
+    "Interview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista"
+          }
+        }
+      }
+    },
+    "Discovery": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descubrimiento"
+          }
+        }
+      }
+    },
+    "Postmortem": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Postmortem"
+          }
+        }
+      }
+    },
+    "Retrospective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retrospectiva"
+          }
+        }
+      }
+    },
+    "Overview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumen"
+          }
+        }
+      }
+    },
+    "Decisions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decisiones"
+          }
+        }
+      }
+    },
+    "Action Items": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes"
+          }
+        }
+      }
+    },
+    "Open Questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas abiertas"
+          }
+        }
+      }
+    },
+    "Progress": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avances"
+          }
+        }
+      }
+    },
+    "Blockers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloqueos"
+          }
+        }
+      }
+    },
+    "Next Up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo que sigue"
+          }
+        }
+      }
+    },
+    "Topics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temas"
+          }
+        }
+      }
+    },
+    "Feedback": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feedback"
+          }
+        }
+      }
+    },
+    "Agreements": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acuerdos"
+          }
+        }
+      }
+    },
+    "Goals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivos"
+          }
+        }
+      }
+    },
+    "Scope Decisions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decisiones de alcance"
+          }
+        }
+      }
+    },
+    "Risks": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riesgos"
+          }
+        }
+      }
+    },
+    "Next Steps": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximos pasos"
+          }
+        }
+      }
+    },
+    "Background": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trayectoria"
+          }
+        }
+      }
+    },
+    "Strengths": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fortalezas"
+          }
+        }
+      }
+    },
+    "Concerns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reservas"
+          }
+        }
+      }
+    },
+    "Context": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contexto"
+          }
+        }
+      }
+    },
+    "Problems Uncovered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Problemas detectados"
+          }
+        }
+      }
+    },
+    "Needs & Constraints": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesidades y restricciones"
+          }
+        }
+      }
+    },
+    "What Happened": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué pasó"
+          }
+        }
+      }
+    },
+    "Root Causes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Causas raíz"
+          }
+        }
+      }
+    },
+    "What Went Well": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué funcionó"
+          }
+        }
+      }
+    },
+    "Follow-ups": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguimientos"
+          }
+        }
+      }
+    },
+    "Went Well": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo que funcionó"
+          }
+        }
+      }
+    },
+    "Needs Improvement": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por mejorar"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

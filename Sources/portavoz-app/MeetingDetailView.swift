@@ -1289,17 +1289,7 @@ extension MeetingDetailView {
                     Menu {
                         Button("Regenerate in Spanish") { regenerate(language: .spanish) }
                         Button("Regenerate in English") { regenerate(language: .english) }
-                        Menu("Structure") {
-                            ForEach(CustomRecipeStore.all()) { recipe in
-                                Button(recipe.displayName) {
-                                    regenerate(
-                                        language: summaryLanguage(summary.draft.language),
-                                        recipe: recipe)
-                                }
-                            }
-                            Divider()
-                            Button("New structure…") { showingNewStructure = true }
-                        }
+                        structureSubmenu(summary)
                         if let alt = alternateEngine {
                             Divider()
                             Menu(alt.label) {
@@ -1316,6 +1306,7 @@ extension MeetingDetailView {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
+                    .accessibilityIdentifier("detail-regenerate-menu")
                 }
             }
             summaryTabs(summary)
@@ -1323,6 +1314,27 @@ extension MeetingDetailView {
         }
         .padding(14)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// Every seeded and custom structure, with the sections each one
+    /// produces visible under its name BEFORE generating.
+    private func structureSubmenu(_ summary: MeetingReviewSummary) -> some View {
+        Menu("Structure") {
+            ForEach(CustomRecipeStore.all()) { recipe in
+                Button {
+                    regenerate(
+                        language: summaryLanguage(summary.draft.language),
+                        recipe: recipe)
+                } label: {
+                    Text(recipe.localizedDisplayName)
+                    Text(recipe.localizedSectionSummary)
+                }
+                .accessibilityIdentifier("detail-structure-\(recipe.id)")
+            }
+            Divider()
+            Button("New structure…") { showingNewStructure = true }
+        }
+        .accessibilityIdentifier("detail-structure-menu")
     }
 
     /// The tab strip (design system): Resumen · each `##` section (with its
@@ -1984,10 +1996,11 @@ extension MeetingDetailView {
             } label: {
                 ChipLabel(
                     kind: .ai,
-                    text: L10n.format("Summarize as %@?", suggested.displayName))
+                    text: L10n.format("Summarize as %@?", suggested.localizedDisplayName))
             }
             .buttonStyle(.plain)
-            .help("This meeting looks like a \(suggested.displayName) — restructure the summary with one click. Nothing changes unless you accept.")
+            .accessibilityIdentifier("detail-recipe-suggestion")
+            .help("This meeting looks like a \(suggested.localizedDisplayName) — restructure the summary with one click. Nothing changes unless you accept.")
         }
     }
 

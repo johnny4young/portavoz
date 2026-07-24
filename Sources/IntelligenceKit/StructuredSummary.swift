@@ -59,8 +59,12 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
 }
 
 extension StructuredSummary {
-    /// Renders the canonical markdown snapshot for a `SummaryDraft`.
-    public func markdown(recipe: Recipe) -> String {
+    /// Renders the canonical markdown snapshot for a `SummaryDraft`. The
+    /// output language localizes the one heading WE write (the canonical
+    /// action-items block) — every other heading arrives already translated
+    /// by the model. `isActionItemsHeading` recognizes both spellings on
+    /// re-parse.
+    public func markdown(recipe: Recipe, language: String? = nil) -> String {
         var parts: [String] = []
         let trimmedOverview = overview.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedOverview.isEmpty {
@@ -78,7 +82,9 @@ extension StructuredSummary {
             parts.append(block)
         }
         if !actionItems.isEmpty {
-            var block = "## Action Items"
+            let heading = language?.lowercased().hasPrefix("es") == true
+                ? "Pendientes" : "Action Items"
+            var block = "## \(heading)"
             for item in actionItems {
                 let owner = item.owner.isEmpty ? "" : " — \(item.owner)"
                 block += "\n- [ ] \(item.text)\(owner)"
@@ -115,7 +121,11 @@ extension StructuredSummary {
             if line.hasPrefix("## ") {
                 if let current { sections.append(current) }
                 let heading = String(line.dropFirst(3))
+                // Only the two headings OUR renderer emits for the canonical
+                // block — the broader isActionItemsHeading set would swallow
+                // a real "Next Steps" section on re-parse.
                 inActionItems = heading.caseInsensitiveCompare("Action Items") == .orderedSame
+                    || heading.caseInsensitiveCompare("Pendientes") == .orderedSame
                 current = inActionItems ? nil : Section(heading: heading, bullets: [])
             } else if inActionItems, line.hasPrefix("- ") {
                 var text = String(line.dropFirst(2))
@@ -193,7 +203,8 @@ extension StructuredSummary {
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
             language: request.targetLanguage,
-            markdown: admitted.markdown(recipe: request.recipe),
+            markdown: admitted.markdown(
+                recipe: request.recipe, language: request.targetLanguage),
             actionItems: items,
             claims: claims,
             decisionEvidence: decisions,

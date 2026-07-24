@@ -19,12 +19,18 @@ public enum MeetingTypeDetector {
         one-on-one (two people, personal check-in, feedback, career or work agreements), \
         planning (scoping goals, risks and next steps for future work), \
         interview (one side evaluates the other's background and skills), \
+        discovery (learning a user's or customer's problems, needs and context), \
+        postmortem (reconstructing an incident: timeline, causes, follow-ups), \
+        retro (a team reviews how a period went: went well, to improve, agreements), \
         general (anything else: reviews, debugging sessions, broad discussions).
         Examples:
         - "yesterday I finished the migration, today I'll take the API, no blockers" → standup
         - "how are you feeling about the workload? — honestly a bit stretched" → one-on-one
         - "for Q3 the goal is the iOS launch; main risk is the review times" → planning
         - "tell me about your experience with distributed systems" → interview
+        - "walk me through how your team handles invoices today" → discovery
+        - "the outage started at 9:14 when the deploy hit the primary region" → postmortem
+        - "this sprint the reviews went great but the handoffs kept slipping" → retro
         - "the bug is in the retry loop, look at line 40" → general
         \(PromptFactory.sourceMaterialGuard())
         When unsure, answer general.
@@ -70,7 +76,8 @@ public enum MeetingTypeDetector {
 @available(macOS 26.0, *)
 @Generable(description: "Meeting type classification")
 struct DetectedMeetingType {
-    @Guide(description: "Exactly one of: standup, one-on-one, planning, interview, general")
+    @Guide(description: "Exactly one of: standup, one-on-one, planning, interview, "
+        + "discovery, postmortem, retro, general")
     var type: String
 }
 #endif
