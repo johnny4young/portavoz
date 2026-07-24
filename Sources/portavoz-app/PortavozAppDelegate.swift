@@ -13,6 +13,17 @@ final class PortavozAppDelegate: NSObject, NSApplicationDelegate {
     /// adaptor before any scene exists.
     @MainActor static weak var services: AppServices?
 
+    /// Returning from System Settings after granting Accessibility is the
+    /// permission lifecycle signal macOS gives us. Retry a previously failed
+    /// mouse event tap without prompting during ordinary launches.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        _ = notification
+        MainActor.assumeIsolated {
+            guard let services = Self.services else { return }
+            services.dictation.syncMousePTT(services: services)
+        }
+    }
+
     /// Double-clicking a `.portavoz` file: import it as a new meeting and
     /// navigate there (same pendingRoute channel as Spotlight hits).
     func application(_ application: NSApplication, open urls: [URL]) {

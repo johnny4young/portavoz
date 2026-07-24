@@ -3835,3 +3835,39 @@ channels advance.
 Preventing call interference outranks live acoustic echo cancellation.
 Transcript-level bleed rejection is degradable and reviewable; changing the
 shared hardware graph is neither.
+
+## D126 — Separate dictation input ownership from authoritative text delivery (Jul 2026)
+
+**Context:** system-wide dictation now accepts both a Carbon hotkey and an
+explicitly configured mouse button, then optionally removes bilingual
+hesitation fillers and applies user spelling corrections. Treating the mouse
+gesture as speech-engine behavior would reverse the input boundary. Applying
+corrections sequentially also allowed one rule's output to become another
+rule's input, contradicting the promise that the matched preferred spelling is
+authoritative. A session event tap additionally cannot be created before
+Accessibility is granted and macOS exposes no direct permission-granted
+callback.
+
+**Decision:** the app target owns Carbon, `CGEventTap`, Settings recorders,
+permission prompts, and the pure `MousePTTGesture` ownership table. CGEvent
+indices 0/1 are permanently ineligible; index 2 is vendor-facing Button 3
+(middle click), and every higher index is an additional button. Stored invalid
+values normalize to Off. Registration is idempotent, retries when the app
+becomes active after System Settings, and cancels a mouse-owned capture before
+rebinding can discard its consumed release. Local event monitors are removed
+when their Settings rows disappear.
+
+TranscriptionKit owns the content-only `DictationTextRules`. It canonicalizes
+one rule snapshot, removes only the conservative bilingual filler set when
+enabled, and matches every replacement against the original final dictation in
+one longest-trigger-first pass. Replacement output is never re-matched. These
+rules run only at dictation delivery; recording, live captions, durable
+transcription, and Refine remain verbatim inputs to their existing hygiene
+policies.
+
+**Rationale:** hardware-event ownership and permission lifecycle are macOS app
+concerns, while deterministic post-ASR text policy is reusable speech behavior.
+One-pass matching makes exact spelling predictable, avoids rule-order cascades,
+and is linear in the dictated text apart from the small user-managed rule
+lookup. Keeping meeting transcripts outside this boundary preserves Portavoz's
+source-of-truth contract.

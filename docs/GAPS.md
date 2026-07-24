@@ -72,6 +72,15 @@ and never reads `/Applications/Portavoz.app`.
   identical while the Portavoz mic and system timelines both advance. Repeat
   through built-in speaker/mic and AirPods. Export content-free diagnostics
   before and after Refine.
+- **Mouse push-to-talk delivery**: with Accessibility granted, configure
+  vendor-facing Button 3 (middle click) and one additional mouse button in
+  separate runs. In a third-party editor, prove press starts, release inserts
+  once, the target app never receives the configured click, unconfigured
+  buttons still pass through, timeout re-arming works, and rebinding during an
+  active mouse-owned session cancels safely. Repeat once after revoking and
+  re-granting Accessibility through System Settings. XCUITest covers Settings
+  and pure ownership rules but cannot drive a session event tap into another
+  process.
 - **System callback recovery (D120, field 21 Jul 2026)**: one real recording's system channel stopped advancing after 33:20 while microphone capture continued for more than two hours. In another real call, reproduce a complete callback stall and prove that Portavoz shows the remote-audio warning within about eight seconds, keeps microphone capture active, rebuilds the same process tap, resumes the same system timeline, and clears the warning after frames return. Code and deterministic source/session/UI fixtures are complete; real Core Audio recovery is not yet claimed.
 - **AirPods system-channel continuity** (C, field 13 Jul 2026, OPEN): two
   AirPods recordings produced mic-only evidence, including one digitally silent

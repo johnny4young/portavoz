@@ -86,6 +86,7 @@ struct HotkeyRecorder: View {
             }
             .accessibilityIdentifier("settings-dictation-hotkey-recorder")
         }
+        .onDisappear(perform: stopRecording)
     }
 
     private func startRecording() {

@@ -87,7 +87,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Fits your workflow**
 - **Apuntador while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. In review, each saved card separates the exact question moment from the transcript passages cited by a context answer. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
-- **Dictate anywhere** — a global hotkey (⌥⌘D) transcribes straight into any app, tap-to-toggle or hold-to-talk.
+- **Dictate anywhere** — use the configurable global hotkey or a middle/additional mouse button to transcribe straight into any app. Exact-spelling replacements, an optional ES/EN filler filter, and a dedicated dictation-language choice polish only the delivered dictation; meeting transcripts remain verbatim.
 - **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
 - **Review suggestions that wait for you** — optional titles, summary structures, and chapter labels are admitted against one meeting revision, stay inert until you accept them, and never make a failed rename look saved.
