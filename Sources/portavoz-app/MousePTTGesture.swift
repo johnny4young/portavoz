@@ -1,18 +1,17 @@
-import Foundation
-
 /// Pure decision table for the mouse-button push-to-talk trigger. A spare
 /// mouse button is a dedicated PTT surface: press starts capture, release
 /// delivers. Unlike the keyboard hotkey there is no tap-vs-hold
 /// discriminator — the capture-minimum policy already cancels an
-/// accidental click's too-short session. Lives here (not in the app
-/// executable) so it is unit-testable.
-public enum MousePTTGesture {
-    public enum Event: Sendable {
+/// accidental click's too-short session. It lives in the app executable's
+/// input boundary and is unit-tested through the app target; it does not
+/// belong to the transcription engine.
+enum MousePTTGesture {
+    enum Event: Sendable {
         case press
         case release
     }
 
-    public enum Action: Equatable, Sendable {
+    enum Action: Equatable, Sendable {
         case start
         case finish
         case ignore
@@ -22,7 +21,7 @@ public enum MousePTTGesture {
     ///   - isListening: a dictation session is currently capturing.
     ///   - mouseOwnsSession: the active session was started by this mouse
     ///     button (false when the keyboard hotkey started it).
-    public static func action(
+    static func action(
         for event: Event,
         isListening: Bool,
         mouseOwnsSession: Bool

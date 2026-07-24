@@ -1,13 +1,13 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,042 package tests passing (13 model-gated) + 42 XCUITest UI cases. CI
+Status: 1,059 package tests passing (13 model-gated) + 43 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
 gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The latest full English
-and Spanish release gates each cover all 42 cases and retain app-only
+and Spanish release gates each cover all 43 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim
@@ -21,7 +21,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 357 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 362 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -70,6 +70,8 @@ documented below.
 | AudioTranscoderTests / MeetingAudioWorkflowTests | Host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, bounded waveform/session preparation, and injected application codec semantics |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | AcceleratorFallbackTests / SubtitleExportTests / ExportDocumentTypesTests | One cancellation-aware CPU retry with both Whisper load failures preserved; exact SRT/VTT timestamps, lexical filtering, rendered prefix-aware cue bounds, same-name speaker identity separation, line/arrow sanitization; and extension-preserving text-conforming macOS subtitle content types |
+| DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
+| UITestDefaultsTests | Disposable XCUITest launches overlay selected preferences in volatile `NSArgumentDomain`; ordinary launches and malformed payloads are ignored |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
 | CaptionCoalescerTests | 13 coalescer cases (merge, identity, channels, pauses, limits, loose punctuation, early split of `system` after sentence) |
 | DiarizationTests | Catalog, SpeakerAttributor (multi-turn), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (units), live streaming (gated) |

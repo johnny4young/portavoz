@@ -177,7 +177,10 @@ def app_features(filename: str) -> set[str]:
     # Before the generic "section"/"settings" buckets: dictation UI lives in
     # the Audio pane, and its system-wide surface (triggers, paste) has no
     # other XCUITest-reachable evidence.
-    if any(token in lowered for token in ("dictation", "mousebutton", "hotkey", "textinserter")):
+    if any(
+        token in lowered
+        for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
+    ):
         return {"settings-audio"}
     if any(token in lowered for token in ("ask", "commandpalette")):
         return {"ask", "library"}

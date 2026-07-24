@@ -5,8 +5,8 @@ import Foundation
 /// replacement is the user's spelling authority — applied verbatim,
 /// including its casing.
 public struct DictationReplacement: Codable, Equatable, Sendable {
-    public var trigger: String
-    public var replacement: String
+    public let trigger: String
+    public let replacement: String
 
     public init(trigger: String, replacement: String) {
         self.trigger = trigger
@@ -58,26 +58,42 @@ public enum DictationTextRules {
             of: "\\s{2,}", with: " ", options: [.regularExpression])
     }
 
-    /// Longest trigger first so "pull request" wins over "pull"; matches are
-    /// case-insensitive whole words with punctuation-aware boundaries (a
-    /// trigger like "k8s" still matches before a comma, and "cat" never
-    /// rewrites "concatenate").
+    /// One regex pass prevents replacements from cascading into later rules:
+    /// when "alpha" → "beta" and "beta" → "gamma", dictated "alpha" remains
+    /// "beta" — the first matching rule is the user's spelling authority.
+    /// Longest trigger first makes "pull request" win over "pull"; matches
+    /// remain case-insensitive whole words with punctuation-aware boundaries.
     static func applying(
         _ replacements: [DictationReplacement], to text: String
     ) -> String {
-        var result = text
-        let ordered = replacements
-            .filter { !$0.trigger.isEmpty }
+        let ordered = canonical(replacements)
             .sorted { $0.trigger.count > $1.trigger.count }
-        for rule in ordered {
-            let escaped = NSRegularExpression.escapedPattern(for: rule.trigger)
-            let pattern = "(?i)(?<![\\p{L}\\p{N}])\(escaped)(?![\\p{L}\\p{N}])"
-            result = result.replacingOccurrences(
-                of: pattern,
-                with: NSRegularExpression.escapedTemplate(for: rule.replacement),
-                options: [.regularExpression])
+        guard !ordered.isEmpty else { return text }
+
+        let alternatives = ordered
+            .map { NSRegularExpression.escapedPattern(for: $0.trigger) }
+            .joined(separator: "|")
+        let pattern =
+            "(?<![\\p{L}\\p{N}])(?:\(alternatives))(?![\\p{L}\\p{N}])"
+        guard let expression = try? NSRegularExpression(
+            pattern: pattern, options: [.caseInsensitive])
+        else { return text }
+
+        let source = text as NSString
+        let result = NSMutableString(string: text)
+        let matches = expression.matches(
+            in: text, range: NSRange(location: 0, length: source.length))
+        for match in matches.reversed() {
+            let heard = source.substring(with: match.range)
+            guard let rule = ordered.first(where: {
+                $0.trigger.compare(
+                    heard, options: [.caseInsensitive]) == .orderedSame
+            }) else { continue }
+            // Replace exact ranges rather than regex templates: "$1" and "\"
+            // in a user's preferred spelling must remain literal.
+            result.replaceCharacters(in: match.range, with: rule.replacement)
         }
-        return result
+        return result as String
     }
 
     // MARK: - Storage codec (UserDefaults carries the rules as one JSON string)
@@ -87,13 +103,38 @@ public enum DictationTextRules {
             let rules = try? JSONDecoder().decode(
                 [DictationReplacement].self, from: data)
         else { return [] }
-        return rules
+        return canonical(rules)
     }
 
     public static func encode(_ replacements: [DictationReplacement]) -> String {
-        guard let data = try? JSONEncoder().encode(replacements),
+        guard let data = try? JSONEncoder().encode(canonical(replacements)),
             let json = String(bytes: data, encoding: .utf8)
         else { return "[]" }
         return json
+    }
+
+    /// Settings normally writes clean rules, but defaults can be edited or
+    /// inherited from older builds. Keep the newest case-insensitive trigger,
+    /// trim trigger edges, and reject deletion-shaped empty values so the UI
+    /// never receives duplicate ForEach identities or dead matchers.
+    private static func canonical(
+        _ replacements: [DictationReplacement]
+    ) -> [DictationReplacement] {
+        var newestFirst: [DictationReplacement] = []
+        for rule in replacements.reversed() {
+            let trigger = rule.trigger.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+            guard !trigger.isEmpty,
+                !rule.replacement.trimmingCharacters(
+                    in: .whitespacesAndNewlines).isEmpty,
+                !newestFirst.contains(where: {
+                    $0.trigger.compare(
+                        trigger, options: [.caseInsensitive]) == .orderedSame
+                })
+            else { continue }
+            newestFirst.append(DictationReplacement(
+                trigger: trigger, replacement: rule.replacement))
+        }
+        return newestFirst.reversed()
     }
 }

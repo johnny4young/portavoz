@@ -66,9 +66,9 @@ class UITestScopeTests(unittest.TestCase):
         for path in [
             "Sources/portavoz-app/DictationSection.swift",
             "Sources/portavoz-app/MouseButtonPTT.swift",
+            "Sources/portavoz-app/MousePTTGesture.swift",
             "Sources/portavoz-app/DictationController.swift",
             "Sources/TranscriptionKit/DictationTextRules.swift",
-            "Sources/TranscriptionKit/MousePTTGesture.swift",
         ]:
             selection = select_paths([path])
             self.assertEqual(

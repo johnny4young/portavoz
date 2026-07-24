@@ -293,6 +293,11 @@ final class SettingsUITests: XCTestCase {
     @MainActor
     func testDictationOffersTriggersLanguageAndDictionary() {
         let app = XCUIApplication.portavoz(openSettings: true)
+        // AppServices merges these values into the process's volatile
+        // NSArgumentDomain under -use-temp-store. The real preference domain
+        // is neither read for these keys nor mutated by the test.
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationReplacements":"[{\"trigger\":\"codex fixture\",\"replacement\":\"Codex Fixture\"}]"}"#
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -304,29 +309,33 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             toggle.waitForExistence(timeout: 5),
             "the Audio pane must offer the dictation enable toggle")
-        // The app under test shares the real UserDefaults, so dictation may
-        // already be on — ENSURE enabled instead of toggling blind, and put
-        // the user's original state back afterwards.
-        let wasEnabled = Self.isOn(toggle)
-        if !wasEnabled { toggle.click() }
-        defer { if !wasEnabled { toggle.click() } }
+        XCTAssertTrue(Self.isOn(toggle), "the isolated launch must enable dictation")
 
         XCTAssertTrue(
             app.control(withIdentifier: "settings-dictation-hotkey-recorder")
                 .waitForExistence(timeout: 5),
             "enabling dictation must reveal the hotkey recorder")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-mouse-recorder").exists,
+            app.control(withIdentifier: "settings-dictation-mouse-recorder")
+                .waitForExistence(timeout: 5),
             "enabling dictation must reveal the push-to-talk mouse-button recorder")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-language").exists,
+            app.control(withIdentifier: "settings-dictation-language")
+                .waitForExistence(timeout: 5),
             "enabling dictation must reveal the constrained language picker")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-filler").exists,
+            app.control(withIdentifier: "settings-dictation-filler")
+                .waitForExistence(timeout: 5),
             "enabling dictation must reveal the filler-word filter toggle")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-dict-add").exists,
+            app.control(withIdentifier: "settings-dictation-dict-add")
+                .waitForExistence(timeout: 5),
             "enabling dictation must reveal the dictionary quick-add")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-dict-remove")
+                .waitForExistence(timeout: 5),
+            "a seeded replacement must expose its removal control")
+        attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 
     @MainActor

@@ -76,6 +76,7 @@ final class DictationController {
 
     private var hotkey: GlobalHotkey?
     private var mousePTT: MouseButtonPTT?
+    private var mousePTTButton: Int?
     /// True while the active session was started by the mouse button, so
     /// only that button's release may deliver (`MousePTTGesture`).
     private var mouseOwnsSession = false
@@ -124,16 +125,37 @@ final class DictationController {
     /// Arms/disarms the push-to-talk mouse button to match the Settings
     /// toggle AND the recorded button. Separate from `syncHotkey` because
     /// the event tap needs Accessibility trust the Carbon hotkey does not;
-    /// without it the tap silently stays down and dictation remains
-    /// keyboard-only until the paste path prompts for the permission.
-    func syncMousePTT(services: AppServices) {
+    /// setup can prompt explicitly and returning from System Settings retries
+    /// a tap that could not be created while permission was absent.
+    func syncMousePTT(
+        services: AppServices,
+        promptIfNeeded: Bool = false
+    ) {
+        let enabled = UserDefaults.standard.bool(forKey: Self.defaultsKey)
+        let storedButton = MouseButtonSetting.load()
+        let desiredButton = enabled
+            && MouseButtonSetting.isEligible(storedButton) ? storedButton : nil
+        if mousePTT != nil, mousePTTButton == desiredButton { return }
+
+        // Rebinding or disabling while the mouse owns capture would otherwise
+        // discard the matching release event and strand a listening session.
+        if mouseOwnsSession, phase == .listening {
+            cancel()
+        }
         mousePTT?.invalidate()
         mousePTT = nil
-        guard UserDefaults.standard.bool(forKey: Self.defaultsKey) else { return }
-        let button = MouseButtonSetting.load()
-        guard button != MouseButtonSetting.off else { return }
-        mousePTT = MouseButtonPTT(
-            button: button,
+        mousePTTButton = nil
+        guard let desiredButton else { return }
+
+        // Configuring a system-wide mouse trigger is the earliest useful time
+        // to explain its Accessibility requirement. A denied/pending prompt
+        // leaves the keyboard hotkey intact; applicationDidBecomeActive retries
+        // after the user returns from System Settings.
+        if promptIfNeeded {
+            _ = TextInserter.canInsert(promptIfNeeded: true)
+        }
+        guard let ptt = MouseButtonPTT(
+            button: desiredButton,
             onPress: { [weak self, weak services] in
                 guard let self, let services else { return }
                 self.handleMouse(.press, services: services)
@@ -142,6 +164,9 @@ final class DictationController {
                 guard let self, let services else { return }
                 self.handleMouse(.release, services: services)
             })
+        else { return }
+        mousePTT = ptt
+        mousePTTButton = desiredButton
     }
 
     private func handleMouse(

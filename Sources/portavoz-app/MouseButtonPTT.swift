@@ -4,8 +4,9 @@ import SwiftUI
 
 /// The configured push-to-talk mouse button as stored settings. Button
 /// numbers follow `CGEvent`: 0 = left, 1 = right, 2 = middle, 3+ = extra
-/// buttons. Only 2+ are eligible — rebinding a primary button would break
-/// clicking everywhere, so left/right can never become a PTT trigger.
+/// buttons. In vendor-facing labels those are Button 1, Button 2, Button 3,
+/// and Button 4+. Middle click and additional buttons are eligible; left and
+/// right can never become a PTT trigger.
 struct MouseButtonSetting {
     static let buttonKey = "dictationMouseButton"
     /// Sentinel for "no mouse PTT configured" (also the left button's
@@ -15,11 +16,12 @@ struct MouseButtonSetting {
     static func isEligible(_ button: Int) -> Bool { button >= 2 }
 
     static func load(from defaults: UserDefaults = .standard) -> Int {
-        defaults.integer(forKey: buttonKey)
+        let stored = defaults.integer(forKey: buttonKey)
+        return isEligible(stored) ? stored : off
     }
 
     static func save(_ button: Int, to defaults: UserDefaults = .standard) {
-        defaults.set(button, forKey: buttonKey)
+        defaults.set(isEligible(button) ? button : off, forKey: buttonKey)
     }
 
     /// Human ordinal: hardware button 2 reads "Button 3" like mouse vendors
@@ -155,6 +157,7 @@ struct MouseButtonRecorder: View {
                 .accessibilityIdentifier("settings-dictation-mouse-clear")
             }
         }
+        .onDisappear(perform: stopRecording)
     }
 
     private var currentLabel: String {

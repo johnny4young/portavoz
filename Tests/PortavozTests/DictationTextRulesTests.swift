@@ -57,6 +57,18 @@ final class DictationTextRulesTests: XCTestCase {
             "open a PR and PULL main")
     }
 
+    func testReplacementsAreSinglePassAndNeverCascade() {
+        let rules = [
+            DictationReplacement(trigger: "alpha", replacement: "beta"),
+            DictationReplacement(trigger: "beta", replacement: "gamma"),
+        ]
+        XCTAssertEqual(
+            DictationTextRules.apply(
+                "alpha then beta", replacements: rules, removeFillers: false),
+            "beta then gamma",
+            "a replacement must not become input to a later rule")
+    }
+
     func testTriggersWithRegexMetacharactersMatchLiterally() {
         let rules = [DictationReplacement(trigger: "c++", replacement: "C++")]
         XCTAssertEqual(
@@ -82,6 +94,19 @@ final class DictationTextRulesTests: XCTestCase {
             rules)
         XCTAssertEqual(DictationTextRules.decode(replacements: "not json"), [])
         XCTAssertEqual(DictationTextRules.decode(replacements: ""), [])
+    }
+
+    func testCodecCanonicalizesCorruptOrDuplicateStoredRules() {
+        let rules = [
+            DictationReplacement(trigger: "  gancho  ", replacement: "old"),
+            DictationReplacement(trigger: "", replacement: "dead"),
+            DictationReplacement(trigger: "GANCHO", replacement: "Gancho"),
+            DictationReplacement(trigger: "keep", replacement: "   "),
+        ]
+        XCTAssertEqual(
+            DictationTextRules.decode(
+                replacements: DictationTextRules.encode(rules)),
+            [DictationReplacement(trigger: "GANCHO", replacement: "Gancho")])
     }
 
     func testFillerPassRunsBeforeReplacementsAndResultIsTrimmed() {

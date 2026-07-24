@@ -1,5 +1,6 @@
-import TranscriptionKit
 import XCTest
+
+@testable import portavoz_app
 
 final class MousePTTGestureTests: XCTestCase {
     func testPressStartsWhenIdleAndFinishesWhenListening() {

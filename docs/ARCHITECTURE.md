@@ -260,6 +260,19 @@ later state mutation and delivery side effect. Audio sample reduction and feed
 delivery stay off the main actor; only the observable meter update crosses back.
 Failure-dismiss tasks are single-owner and cancelled on restart so an older
 error cannot dismiss a newer session.
+System-wide input adapters remain at the app boundary: Carbon owns the keyboard
+hotkey and a session `CGEventTap` owns one explicitly configured middle or
+additional mouse button. The pure `MousePTTGesture` table also remains in the app
+target because it decides presentation/input ownership, not speech recognition.
+The tap registration is idempotent, cancels a mouse-owned capture before
+rebinding can discard its release event, and retries after the app returns from
+the Accessibility permission flow. Invalid persisted button numbers normalize
+to disabled; CGEvent indices 0/1 (left/right) are never eligible.
+TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
+removal followed by one non-cascading, longest-trigger-first replacement pass.
+The policy reads one canonicalized rule snapshot at delivery, never mutates a
+meeting transcript, and treats the first match against the original dictation
+as the user's authoritative spelling.
 The last-mile `TextInserter` returns a typed result. It waits for physical
 modifiers without swallowing cancellation, refuses a timed-out chord, performs
 a fail-closed Accessibility inspection immediately before clipboard mutation,

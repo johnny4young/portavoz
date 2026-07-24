@@ -16,11 +16,19 @@ struct DictationDictionaryEditor: View {
         LabeledContent("Text replacements") {
             VStack(alignment: .trailing, spacing: 6) {
                 HStack(spacing: 6) {
-                    TextField(L10n.text("Heard"), text: $newTrigger)
+                    TextField(
+                        "",
+                        text: $newTrigger,
+                        prompt: Text(L10n.text("Heard")))
                         .frame(width: 110)
+                        .accessibilityLabel(L10n.text("Heard"))
                         .accessibilityIdentifier("settings-dictation-dict-trigger")
-                    TextField(L10n.text("Type instead"), text: $newReplacement)
+                    TextField(
+                        "",
+                        text: $newReplacement,
+                        prompt: Text(L10n.text("Type instead")))
                         .frame(width: 110)
+                        .accessibilityLabel(L10n.text("Type instead"))
                         .accessibilityIdentifier("settings-dictation-dict-replacement")
                     Button {
                         add()
@@ -52,6 +60,7 @@ struct DictationDictionaryEditor: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(L10n.text("Remove replacement"))
+                        .accessibilityIdentifier("settings-dictation-dict-remove")
                     }
                     .font(.callout)
                 }

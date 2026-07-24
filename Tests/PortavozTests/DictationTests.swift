@@ -119,6 +119,37 @@ final class DictationCapturePolicyTests: XCTestCase {
     }
 }
 
+final class MouseButtonSettingTests: XCTestCase {
+    private func scratchDefaults() -> (defaults: UserDefaults, suiteName: String) {
+        let name = "portavoz-mouse-setting-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return (defaults, name)
+    }
+
+    func testMiddleAndAdditionalButtonsAreEligibleButPrimaryButtonsAreNot() {
+        XCTAssertFalse(MouseButtonSetting.isEligible(0))
+        XCTAssertFalse(MouseButtonSetting.isEligible(1))
+        XCTAssertTrue(MouseButtonSetting.isEligible(2))
+        XCTAssertTrue(MouseButtonSetting.isEligible(7))
+    }
+
+    func testInvalidStoredOrSavedButtonsNormalizeToOff() {
+        let (defaults, suiteName) = scratchDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(1, forKey: MouseButtonSetting.buttonKey)
+        XCTAssertEqual(MouseButtonSetting.load(from: defaults), MouseButtonSetting.off)
+
+        MouseButtonSetting.save(-1, to: defaults)
+        XCTAssertEqual(
+            defaults.integer(forKey: MouseButtonSetting.buttonKey),
+            MouseButtonSetting.off)
+        MouseButtonSetting.save(3, to: defaults)
+        XCTAssertEqual(MouseButtonSetting.load(from: defaults), 3)
+    }
+}
+
 /// Pure text assembly for system-wide dictation.
 final class DictationAssemblerTests: XCTestCase {
     func testJoinsConfirmedAndPartial() {

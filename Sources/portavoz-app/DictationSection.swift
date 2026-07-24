@@ -17,14 +17,16 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-toggle")
                 .onChange(of: enabled) {
                     services.dictation.syncHotkey(services: services)
-                    services.dictation.syncMousePTT(services: services)
+                    services.dictation.syncMousePTT(
+                        services: services, promptIfNeeded: enabled)
                 }
             if enabled {
                 HotkeyRecorder {
                     services.dictation.syncHotkey(services: services)
                 }
                 MouseButtonRecorder {
-                    services.dictation.syncMousePTT(services: services)
+                    services.dictation.syncMousePTT(
+                        services: services, promptIfNeeded: true)
                 }
                 Picker("Dictation language", selection: $language) {
                     Text("Automatic (Spanish + English)").tag("auto")
