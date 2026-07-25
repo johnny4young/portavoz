@@ -26,13 +26,15 @@ final class RecordingController {
     /// just miss", not "what is this meeting about". Owns its own state.
     let catchUp = RecordingCatchUpModel()
 
-    func requestCatchUp() {
-        catchUp.request(
-            captions: captions,
-            meetingID: meetingID,
-            vocabulary: vocabulary
-        ) { [weak self] in self?.phase == .recording }
-    }
+    /// Pre-meeting objectives with live check-off (APUN-003). The checklist
+    /// is plain UI state; only the automatic pass on the rolling tick is
+    /// Apuntador work and respects that opt-in.
+    let objectives = RecordingObjectivesModel()
+
+    /// On-demand next-question suggestion (APUN-004): sibling of catch-up,
+    /// with the still-pending objectives riding along so a suggestion can
+    /// steer back to what the meeting set out to do.
+    let nextQuestion = RecordingNextQuestionModel()
     /// The user's notes during the meeting (D28): intent for the summary.
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
@@ -127,7 +129,7 @@ final class RecordingController {
     /// Dense notes accumulated window by window; the live summary re-renders
     /// from these so each tick only pays for the NEW transcript.
     private var liveNotes: [String] = []
-    private var meetingID = MeetingID()
+    private(set) var meetingID = MeetingID()
     private weak var services: AppServices?
     private var audioRelative = ""
     /// Durable aggregate created before capture starts. It remains the source
@@ -143,7 +145,7 @@ final class RecordingController {
 
     /// User-defined domain terms reused by the optional rolling summary.
     /// StartRecording samples the same setting for transcription hints.
-    private var vocabulary: [String] {
+    var vocabulary: [String] {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
@@ -227,6 +229,8 @@ final class RecordingController {
     private func resetForRecordingStart() {
         rollingTask?.cancel()
         catchUp.dismiss()
+        nextQuestion.dismiss()
+        objectives.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
         liveDiarizerFeed = nil
@@ -363,6 +367,13 @@ final class RecordingController {
                     try? await Task.sleep(for: .seconds(40))
                     guard let self, self.phase == .recording else { return }
                     await self.refreshLiveSummary()
+                    // Objective check-off shares the tick but stays
+                    // Apuntador-gated — it is a model judgment about the
+                    // conversation, exactly what the opt-in covers.
+                    guard self.phase == .recording, self.companionEnabled else { continue }
+                    await self.objectives.runAutomaticCheck(
+                        captions: self.captions,
+                        elapsed: Date().timeIntervalSince(self.startedAt))
                 }
             }
         }
@@ -526,6 +537,7 @@ extension RecordingController {
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
         catchUp.dismiss()
+        nextQuestion.dismiss()
         rollingTask?.cancel()
         phase = .processing(L10n.text("Closing the recording…"))
 
@@ -548,7 +560,8 @@ extension RecordingController {
             recordingShell: recordingShell,
             reservedAssets: reservedAssets,
             captions: captions,
-            contextItems: contextItems,
+            contextItems: contextItems
+                + objectives.contextItems(meetingID: meetingID),
             companionCards: companionCards,
             companionArtifacts: companionCards.compactMap {
                 companionArtifactsByCardID[$0.id]

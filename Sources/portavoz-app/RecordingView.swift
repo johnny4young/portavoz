@@ -74,6 +74,12 @@ struct RecordingView: View {
                         if let state = controller.catchUp.state {
                             catchUpPanel(state)
                         }
+                        if let state = controller.nextQuestion.state {
+                            RecordingNextQuestionCard(state: state) {
+                                controller.nextQuestion.dismiss()
+                            }
+                        }
+                        RecordingObjectivesPanel(controller: controller)
                         companionCardsPanel
                         notesPanel
                         if let live = controller.liveSummary {
@@ -131,40 +137,6 @@ struct RecordingView: View {
         .onDisappear { hud.close() }
     }
 
-    @ViewBuilder
-    private var recordingFailureActions: some View {
-        if let context = controller.failureContext {
-            switch context.recovery {
-            case .retry:
-                Button("Try again") {
-                    Task { await controller.start(services: services, event: event) }
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("recording-retry")
-            case .library:
-                Button("Open Library") { route = nil }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("recording-open-library")
-            case .supportDiagnostics:
-                Button("Open support diagnostics") {
-                    services.pendingSettingsCategory = .data
-                    openSettings()
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("recording-open-support-diagnostics")
-            }
-        }
-        Button("Back") { route = nil }
-            .accessibilityIdentifier("recording-back")
-    }
-
-    private var preparingText: String {
-        if case .downloading(let status) = services.modelsState {
-            return status
-        }
-        return "Preparing…"
-    }
-
     /// The 4a top bar: recording dot + timer + mic meter on the left; the
     /// live controls (Translate, Companion, HUD) and the red Stop on the
     /// right — all in one compact row, so the words below own the space.
@@ -183,6 +155,7 @@ struct RecordingView: View {
                 }
             }
             compactMeter
+            RecordingTalkBalanceCue(captions: controller.captions)
             Spacer()
             if #available(macOS 15.0, *) {
                 Picker("Translate", selection: translationBinding) {
@@ -211,6 +184,15 @@ struct RecordingView: View {
             .help(L10n.text(
                 "A quick recap of the last few minutes — for when you zoned out or just joined."))
             .accessibilityIdentifier("recording-catch-up")
+            Button {
+                controller.requestNextQuestion()
+            } label: {
+                Label(L10n.text("Suggest a question"), systemImage: "lightbulb")
+            }
+            .controlSize(.small)
+            .help(L10n.text(
+                "One or two questions worth asking next, grounded in the conversation and your open objectives."))
+            .accessibilityIdentifier("recording-next-question")
             Button(action: enterCompactMode) {
                 Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
             }
@@ -738,6 +720,43 @@ extension RecordingView {
         }
         return base
     }
+}
+
+private extension RecordingView {
+    @ViewBuilder
+    private var recordingFailureActions: some View {
+        if let context = controller.failureContext {
+            switch context.recovery {
+            case .retry:
+                Button("Try again") {
+                    Task { await controller.start(services: services, event: event) }
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("recording-retry")
+            case .library:
+                Button("Open Library") { route = nil }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("recording-open-library")
+            case .supportDiagnostics:
+                Button("Open support diagnostics") {
+                    services.pendingSettingsCategory = .data
+                    openSettings()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("recording-open-support-diagnostics")
+            }
+        }
+        Button("Back") { route = nil }
+            .accessibilityIdentifier("recording-back")
+    }
+
+    private var preparingText: String {
+        if case .downloading(let status) = services.modelsState {
+            return status
+        }
+        return "Preparing…"
+    }
+
 }
 
 // Recap panels live outside the already-large view body.

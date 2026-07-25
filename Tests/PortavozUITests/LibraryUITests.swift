@@ -209,6 +209,50 @@ final class LibraryUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [latestVisible], timeout: 5), .completed)
     }
 
+    /// The live assist surface (APUN-003/004): objectives with manual
+    /// check-off, the next-question action, and the talk-balance cue that
+    /// appears once closed captions exist.
+    @MainActor
+    func testRecordingOffersObjectivesNextQuestionAndTalkBalance() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        // Settle like the browsing test does: interacting during the
+        // preparing→recording transition finds a half-mounted hierarchy.
+        let transcript = app.control(withIdentifier: "recording-live-transcript")
+        XCTAssertTrue(transcript.waitForExistence(timeout: 8))
+        XCTAssertTrue(
+            app.staticTexts["History row 18 remains readable during live updates."]
+                .waitForExistence(timeout: 8))
+
+        let panel = app.control(withIdentifier: "recording-objectives-panel")
+        XCTAssertTrue(
+            panel.waitForExistence(timeout: 8),
+            "the recording surface must offer the objectives panel")
+        let field = app.control(withIdentifier: "recording-objective-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.click()
+        app.typeText("Cerrar el presupuesto del trimestre")
+        app.control(withIdentifier: "recording-objective-add").click()
+        XCTAssertTrue(
+            app.staticTexts["Cerrar el presupuesto del trimestre"]
+                .waitForExistence(timeout: 5),
+            "an added objective must appear in the checklist")
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-next-question").exists,
+            "the bar must offer the next-question action")
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-talk-balance")
+                .waitForExistence(timeout: 8),
+            "closed captions must surface the talk-balance cue")
+    }
+
     @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
