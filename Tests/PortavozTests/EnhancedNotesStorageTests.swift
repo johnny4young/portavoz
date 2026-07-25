@@ -175,6 +175,28 @@ final class EnhancedNotesStorageTests: XCTestCase {
         XCTAssertEqual(pending.count, 1, "the tombstone itself is a portable change")
     }
 
+    func testReviewNotesProjectionKeepsOnlyTypedNotes() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Notas", startedAt: Date())
+        try await store.save(meeting)
+        try await store.save([
+            ContextItem(
+                meetingID: meeting.id, kind: .note,
+                content: "revisar budget", timestamp: 10),
+            ContextItem(
+                meetingID: meeting.id, kind: .link,
+                content: "https://example.com", timestamp: 20)
+        ])
+
+        let projected = try await store.database.read { db in
+            try MeetingStore.fetchMeetingReviewNotes(meeting.id, in: db)
+        }
+        XCTAssertEqual(
+            projected.items.map(\.content), ["revisar budget"],
+            "links and other kinds have their own surfaces, not My notes")
+        XCTAssertNil(projected.enhanced)
+    }
+
     func testV15SchemaShapeColumnsTriggersAndConstraints() throws {
         let database = try DatabaseQueue()
         let migrator = StorageSchema.migrator()

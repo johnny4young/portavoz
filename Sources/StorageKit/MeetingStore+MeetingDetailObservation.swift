@@ -160,8 +160,11 @@ extension MeetingStore {
         in database: Database
     ) throws -> (items: [ContextItem], enhanced: EnhancedNote?) {
         guard try liveMeetingExists(id, in: database) else { return ([], nil) }
+        // The section is the user's NOTES: links, objectives, and code
+        // snippets have their own surfaces and stay out of it.
         let items = try ContextItemRecord
             .filter(Column("meetingID") == id.rawValue.uuidString)
+            .filter(Column("kind") == ContextItem.Kind.note.rawValue)
             .filter(Column("deletedAt") == nil)
             .order(Column("timestamp"))
             .fetchAll(database)

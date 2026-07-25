@@ -9,7 +9,12 @@ final class EnhanceMeetingNotesUseCaseTests: XCTestCase {
         let fixture = Fixture(targetLanguage: "es", override: .mlx)
         let blank = ContextItem(
             meetingID: fixture.meetingID, kind: .note, content: "   ", timestamp: 3)
-        let store = EnhancedNotesStoreSpy(contextItems: [fixture.note, blank])
+        let link = ContextItem(
+            meetingID: fixture.meetingID,
+            kind: .link,
+            content: "https://example.com/rollout",
+            timestamp: 5)
+        let store = EnhancedNotesStoreSpy(contextItems: [fixture.note, blank, link])
         let provider = EnhancementProviderSpy(markdown: "# enhanced")
         let resolver = EnhancementResolverSpy(resolution: .available(provider))
         let runID = GenerationRunID()
@@ -34,7 +39,9 @@ final class EnhanceMeetingNotesUseCaseTests: XCTestCase {
         XCTAssertEqual(requests.first?.targetLanguage, "es")
         XCTAssertEqual(requests.first?.glossary, ["Portavoz"])
         // Blank notes are dropped BEFORE fingerprinting, so trimming a
-        // whitespace-only note later cannot fake a material change.
+        // whitespace-only note later cannot fake a material change — and
+        // non-note kinds (links, objectives, snippets) never enter the
+        // enhancement material at all.
         XCTAssertEqual(
             requests.first?.contextItems.map(\.content), ["Expand the rollout risk"])
         XCTAssertEqual(notes.map(\.markdown), ["# enhanced"])
@@ -63,7 +70,12 @@ final class EnhanceMeetingNotesUseCaseTests: XCTestCase {
         let fixture = Fixture()
         let blank = ContextItem(
             meetingID: fixture.meetingID, kind: .note, content: " ", timestamp: 1)
-        let store = EnhancedNotesStoreSpy(contextItems: [blank])
+        let link = ContextItem(
+            meetingID: fixture.meetingID,
+            kind: .link,
+            content: "https://example.com",
+            timestamp: 2)
+        let store = EnhancedNotesStoreSpy(contextItems: [blank, link])
         let resolver = EnhancementResolverSpy(
             resolution: .unavailable(.ollamaModelNotSelected))
         let useCase = EnhanceMeetingNotes(

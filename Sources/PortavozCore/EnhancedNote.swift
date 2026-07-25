@@ -1,7 +1,7 @@
 import Foundation
 
 /// The LLM-expanded version of the user's own meeting notes (NOTES-001,
-/// the Granola/anarlog pattern): one separate document per meeting, built
+/// the Granola pattern): one separate document per meeting, built
 /// FROM the raw timestamped notes plus the transcript. The raw
 /// `ContextItem` notes are never modified — this is an additional artifact
 /// the user can regenerate, and its fingerprint says exactly which inputs

@@ -3,7 +3,7 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
-/// Enhance-my-notes (NOTES-001/D135, the Granola/anarlog pattern): expand
+/// Enhance-my-notes (NOTES-001/D135, the Granola pattern): expand
 /// the user's own timestamped notes with transcript facts into ONE separate
 /// regenerable document. The raw notes are never modified. Mirrors
 /// `RegenerateSummary` exactly — same provider resolver (FM/Ollama/MLX/BYOK
@@ -107,8 +107,12 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
     public func execute(
         _ request: EnhanceMeetingNotesRequest
     ) async -> EnhanceMeetingNotesResult {
+        // Only the user's typed notes: links, objectives, and code
+        // snippets are other surfaces' material, and the recipe's contract
+        // ("expand each NOTE") would misrepresent them.
         let notes = ((try? await store.enhancementContextItems(
             for: request.meetingID)) ?? [])
+            .filter { $0.kind == .note }
             .filter { !$0.content.trimmingCharacters(in: .whitespaces).isEmpty }
         guard !notes.isEmpty else { return .noNotes }
         let glossary = await preferences.glossary()
@@ -151,17 +155,21 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
         let startedAt = now()
         do {
             let draft = try await provider.summarize(request)
+            // One clock read: the run's finish instant is also what storage
+            // persists as the document's createdAt on first insert.
+            let finishedAt = now()
             let note = EnhancedNote(
                 meetingID: request.meetingID,
                 markdown: draft.markdown,
                 language: request.targetLanguage,
                 inputFingerprint: fingerprint,
-                createdAt: startedAt)
+                createdAt: finishedAt)
             let run = generationRun(
                 request: request,
                 provider: provider,
                 fingerprint: fingerprint,
                 startedAt: startedAt,
+                finishedAt: finishedAt,
                 outcome: .succeeded,
                 outputUTF8Bytes: draft.markdown.utf8.count)
             do {
@@ -176,6 +184,7 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
                 provider: provider,
                 fingerprint: fingerprint,
                 startedAt: startedAt,
+                finishedAt: now(),
                 outcome: error is CancellationError ? .cancelled : .failed,
                 outputUTF8Bytes: nil)
             // Provenance persistence is intentionally best effort.
@@ -189,6 +198,7 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
         provider: any SummaryRegenerationProvider,
         fingerprint: String,
         startedAt: Date,
+        finishedAt: Date,
         outcome: GenerationRunOutcome,
         outputUTF8Bytes: Int?
     ) -> GenerationRun {
@@ -208,7 +218,7 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
             ]),
             outputLanguage: request.targetLanguage,
             startedAt: startedAt,
-            finishedAt: now(),
+            finishedAt: finishedAt,
             outcome: outcome,
             metricsJSON: outputUTF8Bytes.map {
                 Self.json(["outputUTF8Bytes": String($0)])
