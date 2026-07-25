@@ -16,6 +16,13 @@ public enum LiveTranscriptionBench {
         public var characters = 0
         public var firstResultAt: Double?
         public var lags: [Double] = []
+        /// Every final row in emission order — the hypothesis an accuracy
+        /// pass (MODEL-001 WER/CER) scores against a reference transcript.
+        public var finalTexts: [String] = []
+
+        public var hypothesis: String {
+            finalTexts.joined(separator: " ")
+        }
 
         public func percentile(_ p: Double) -> Double {
             guard !lags.isEmpty else { return 0 }
@@ -106,6 +113,7 @@ public enum LiveTranscriptionBench {
                 if segment.isFinal {
                     result.finals += 1
                     result.characters += segment.text.count
+                    result.finalTexts.append(segment.text)
                     result.lags.append(elapsed - segment.endTime)
                     log(String(
                         format: "[%6.2fs] final lag %+5.2fs  %@",
