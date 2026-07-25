@@ -34,11 +34,21 @@ public struct MCPServer: Sendable {
 
     private let serverName: String
     private let serverVersion: String
+    /// Optional guidance surfaced to clients in the `initialize` response —
+    /// the MCP-sanctioned place to state the server's contract (read-only,
+    /// which tool to reach for) before any tool is called.
+    private let instructions: String?
     private let tools: [MCPTool]
 
-    public init(serverName: String = "portavoz", serverVersion: String = "0.1.0", tools: [MCPTool]) {
+    public init(
+        serverName: String = "portavoz",
+        serverVersion: String = "0.1.0",
+        instructions: String? = nil,
+        tools: [MCPTool]
+    ) {
         self.serverName = serverName
         self.serverVersion = serverVersion
+        self.instructions = instructions
         self.tools = tools
     }
 
@@ -64,11 +74,7 @@ public struct MCPServer: Sendable {
 
         switch method {
         case "initialize":
-            return encode(result: [
-                "protocolVersion": Self.protocolVersion,
-                "capabilities": ["tools": [String: Any]()],
-                "serverInfo": ["name": serverName, "version": serverVersion]
-            ], id: id)
+            return encode(result: initializeResult(), id: id)
 
         case "ping":
             return encode(result: [String: Any](), id: id)
@@ -116,6 +122,18 @@ public struct MCPServer: Sendable {
     }
 
     // MARK: - JSON-RPC envelopes
+
+    private func initializeResult() -> [String: Any] {
+        var result: [String: Any] = [
+            "protocolVersion": Self.protocolVersion,
+            "capabilities": ["tools": [String: Any]()],
+            "serverInfo": ["name": serverName, "version": serverVersion]
+        ]
+        if let instructions {
+            result["instructions"] = instructions
+        }
+        return result
+    }
 
     private func encode(result: [String: Any], id: Any) -> String {
         encodeEnvelope(["jsonrpc": "2.0", "id": id, "result": result])
