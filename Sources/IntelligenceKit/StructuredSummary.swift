@@ -62,8 +62,10 @@ extension StructuredSummary {
     /// Renders the canonical markdown snapshot for a `SummaryDraft`. The
     /// output language localizes the one heading WE write (the canonical
     /// action-items block) — every other heading arrives already translated
-    /// by the model. `isActionItemsHeading` recognizes both spellings on
-    /// re-parse.
+    /// by the model. `parse` reads back exactly the two headings written
+    /// here; `isActionItemsHeading` below is the deliberately broader set
+    /// used only to drop a model-narrated duplicate section while
+    /// rendering.
     public func markdown(recipe: Recipe, language: String? = nil) -> String {
         var parts: [String] = []
         let trimmedOverview = overview.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -104,10 +106,11 @@ extension StructuredSummary {
         ].contains(normalized)
     }
 
-    /// Inverse of `markdown(recipe:)` for snapshots WE rendered (every
-    /// stored summary goes through that renderer, so the format is ours).
-    /// The "## Action Items" block parses into `actionItems` — text and
-    /// owner label split on the renderer's " — " — never into a section.
+    /// Inverse of `markdown(recipe:language:)` for snapshots WE rendered
+    /// (every stored summary goes through that renderer, so the format is
+    /// ours). The canonical block — "## Action Items" or its Spanish
+    /// "## Pendientes" — parses into `actionItems`, text and owner label
+    /// split on the renderer's " — ", never into a section.
     /// Returns nil only when the text has none of the renderer's shape.
     public static func parse(markdown: String) -> StructuredSummary? {
         var overviewLines: [String] = []

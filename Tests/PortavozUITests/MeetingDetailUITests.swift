@@ -609,7 +609,13 @@ final class MeetingDetailUITests: XCTestCase {
             structure.waitForExistence(timeout: 5),
             "the regenerate menu must offer the Structure submenu")
         structure.click()
-        for id in ["standup", "discovery", "postmortem", "retro"] {
+        // Every built-in id, not just the new ones: the submenu renders
+        // `Recipe.all + custom()`, so a template silently dropping out of
+        // the catalog is exactly the regression this guards.
+        for id in [
+            "general", "standup", "one-on-one", "planning", "interview",
+            "discovery", "postmortem", "retro"
+        ] {
             XCTAssertTrue(
                 app.menuItems["detail-structure-\(id)"].waitForExistence(timeout: 5),
                 "the Structure submenu must seed the \(id) template")

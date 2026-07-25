@@ -166,9 +166,11 @@ produces BEFORE generating; the "Summarize as X?" chip
 (`detail-recipe-suggestion`) localizes the suggested name. Section headings
 inside a generated summary are translated by the model (prompt rule); the
 one heading WE render — the canonical action-items block — now follows the
-output language ("Pendientes" for `es`, recognized by
-`isActionItemsHeading` on re-parse), passed as
-`markdown(recipe:language:)`.
+output language ("Pendientes" for `es`), passed as
+`markdown(recipe:language:)`. `parse` reads back exactly those two
+headings and no others: the broader `isActionItemsHeading` set stays
+confined to dropping a model-narrated duplicate section while rendering,
+so a genuine "Next Steps" section survives the round trip.
 
 ## Fingerprint cache + translation pivot (D25) — `SummaryFingerprint` + `translate`
 
