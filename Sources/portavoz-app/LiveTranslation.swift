@@ -187,17 +187,8 @@ struct LiveTranslationModifier: ViewModifier {
         controller: RecordingController,
         pair: LiveTranslationPair
     ) async {
-        let availability = LanguageAvailability()
-        await MainActor.run { controller.beginLiveTranslationPair(pair) }
-        let status = await availability.status(
-            from: Locale.Language(identifier: pair.source),
-            to: Locale.Language(identifier: pair.target))
-        if status == .unsupported {
-            await MainActor.run {
-                controller.updateLiveTranslationState(.unsupported, for: pair)
-            }
-            return
-        }
+        guard let status = await Self.openLane(controller: controller, pair: pair)
+        else { return }
         var didPrepare = false
 
         while !Task.isCancelled {
@@ -230,8 +221,16 @@ struct LiveTranslationModifier: ViewModifier {
             }
             let pending = await Self.pendingRows(controller: controller, pair: pair)
             if pending.isEmpty {
+                // Idle is not the end of the lane. `translationTask` only
+                // re-runs when the CONFIGURATION changes, and a lull whose
+                // next caption is the same language produces an identical
+                // configuration — returning here would strand that lane
+                // until someone spoke a different language. The guard at the
+                // top of the loop is what ends a lane the controller has
+                // moved on from.
                 await Self.publishIdleState(controller: controller, pair: pair)
-                return
+                guard await Self.sleep(milliseconds: 700) else { return }
+                continue
             }
             await MainActor.run {
                 controller.updateLiveTranslationState(.translating, for: pair)
@@ -248,6 +247,30 @@ struct LiveTranslationModifier: ViewModifier {
             let retryDelay = await Self.translatedRetryDelay(controller: controller)
             guard await Self.sleep(milliseconds: retryDelay) else { return }
         }
+    }
+
+    /// Claims the lane and resolves whether Apple Translation can serve it.
+    /// nil means the pair is unsupported on this Mac and the loop must not
+    /// start — the UI already carries that explanation.
+    nonisolated private static func openLane(
+        controller: RecordingController,
+        pair: LiveTranslationPair
+    ) async -> LanguageAvailability.Status? {
+        await MainActor.run { controller.beginLiveTranslationPair(pair) }
+        // Keep the receiver named: ArchitectureDependencyTests pins this call
+        // shape so `status` can never regress to `try? await`, which would
+        // swallow the unsupported-pair answer instead of surfacing it.
+        let availability = LanguageAvailability()
+        let status = await availability.status(
+            from: Locale.Language(identifier: pair.source),
+            to: Locale.Language(identifier: pair.target))
+        guard status != .unsupported else {
+            await MainActor.run {
+                controller.updateLiveTranslationState(.unsupported, for: pair)
+            }
+            return nil
+        }
+        return status
     }
 
     nonisolated private static func translatedRetryDelay(

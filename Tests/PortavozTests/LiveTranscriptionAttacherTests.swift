@@ -200,6 +200,44 @@ final class LiveTranslationStateTests: XCTestCase {
 }
 
 final class LiveTranslationRoutingTests: XCTestCase {
+    /// Why the translation loop must survive an idle lull: after everything
+    /// in a lane is translated, the next caption in the SAME language
+    /// reproduces the SAME pair — and an identical pair builds an identical
+    /// `TranslationSession.Configuration`, which SwiftUI does not treat as a
+    /// change. Nothing would restart a loop that returned when it went idle.
+    func testCaptionAfterAnIdleLullReproducesTheSameLaneInsteadOfANewOne() throws {
+        let first = segment(
+            text: "La primera intervención ya fue traducida.",
+            language: "es",
+            start: 0)
+        let open = segment(text: "Fila abierta.", language: "es", start: 2)
+
+        let idlePair = LiveTranslationRouting.nextPair(
+            segments: [first, open],
+            translatedIDs: [first.id],
+            target: "en")
+        XCTAssertNil(idlePair, "a fully translated lane has nothing pending")
+
+        let afterLull = segment(
+            text: "Una intervención nueva llega después de la pausa.",
+            language: "es",
+            start: 4)
+        let resumed = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: [first, afterLull, open],
+            translatedIDs: [first.id],
+            target: "en"))
+
+        XCTAssertEqual(resumed, LiveTranslationPair(source: "es", target: "en"))
+        XCTAssertEqual(
+            LiveTranslationRouting.pendingRows(
+                segments: [first, afterLull, open],
+                translatedIDs: [first.id],
+                pair: resumed
+            ).map(\.id),
+            [afterLull.id],
+            "the resumed lane must carry the post-lull row")
+    }
+
     func testMixedMeetingRoutesOnlyClosedTurnsThatDifferFromTarget() throws {
         let spanish = segment(
             text: "Esta intervención permanece en español.",
@@ -444,5 +482,42 @@ private struct EchoLiveTranscriptionEngine: TranscriptionEngine {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+}
+
+/// macOS 14 has no `onScrollPhaseChange`, so reader intent is inferred from
+/// the content offset. These pin the two ways that inference can go wrong:
+/// stealing ownership from our own recentering, or never yielding it.
+final class TranscriptScrollIntentPolicyTests: XCTestCase {
+    func testTravelDuringOurOwnRecenterIsNotReaderIntent() {
+        XCTAssertFalse(
+            TranscriptScrollIntentPolicy.isReaderScroll(
+                offsetDelta: 240,
+                secondsSinceProgrammaticScroll:
+                    TranscriptScrollIntentPolicy.settleWindow / 2),
+            "a recenter moves the offset far; that travel is ours, not the reader's")
+    }
+
+    func testTravelAfterTheAnimationSettlesYieldsOwnership() {
+        XCTAssertTrue(
+            TranscriptScrollIntentPolicy.isReaderScroll(
+                offsetDelta: -TranscriptScrollIntentPolicy.minimumTravel,
+                secondsSinceProgrammaticScroll:
+                    TranscriptScrollIntentPolicy.settleWindow + 0.01),
+            "once the recenter settled, deliberate travel is the reader taking over")
+    }
+
+    func testLayoutJitterBelowOneRowIsIgnored() {
+        XCTAssertFalse(
+            TranscriptScrollIntentPolicy.isReaderScroll(
+                offsetDelta: TranscriptScrollIntentPolicy.minimumTravel - 0.5,
+                secondsSinceProgrammaticScroll: 10),
+            "sub-row travel is layout noise, not a scroll")
+    }
+
+    func testSettleWindowOutlastsTheRecenterAnimation() {
+        // The 0.35 s recenter animation must finish inside the window, or
+        // its own tail would read as the reader.
+        XCTAssertGreaterThan(TranscriptScrollIntentPolicy.settleWindow, 0.35)
     }
 }
