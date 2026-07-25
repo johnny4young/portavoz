@@ -8,6 +8,9 @@ entry here — feature name + what it gives you.)
 ## July 25, 2026
 
 - **📝 Your notes, enhanced** — A new "My notes" section in every meeting shows exactly what you typed, and one click expands each note with what the transcript says around that moment — your words stay verbatim in bold, the AI only adds the facts. Regenerate it in Spanish or English anytime; your raw notes are never touched.
+- **🎯 Objectives that check themselves off** — Write what the meeting should achieve before it starts; as the conversation genuinely covers each objective, Apuntador ticks it (with a spark so you know it was him), and the summary reports what stayed open. You can always check or uncheck by hand.
+- **💡 "What should I ask next?"** — One click and Apuntador suggests one or two questions worth asking right now — grounded in what was just said and in your still-open objectives, in the meeting's language.
+- **⚖️ A talk-balance meter that keeps you honest** — A small bar next to the mic meter shows your share of the last five minutes; it turns amber only when you have really been carrying the conversation. Measured, never judged.
 - **🧭 An MCP server your agent can trust blind** — Portavoz's local MCP server now introduces itself with its contract: strictly read-only, everything on your Mac. Long transcripts arrive in tidy pages that say exactly how to ask for the next one, and search accepts a result limit — no more one-shot megabyte walls.
 
 ## July 24, 2026

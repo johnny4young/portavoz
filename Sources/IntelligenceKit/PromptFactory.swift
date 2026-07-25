@@ -153,6 +153,25 @@ public enum PromptFactory {
         return lines.joined(separator: "\n")
     }
 
+    /// Instructions for the on-demand next-question suggestion (APUN-004):
+    /// the user asks "what should I ask now?" and wants questions the
+    /// EXCERPT earns — follow-ups on what was just said, or a bridge to a
+    /// still-open objective — never generic interview filler.
+    public static func nextQuestionInstructions(
+        targetLanguage: String, glossary: [String]
+    ) -> String {
+        [
+            "You suggest what a meeting participant should ask NEXT.",
+            "Write 1 or 2 short questions grounded in the excerpt: follow up on "
+                + "something just said, surface an unstated risk or detail, or steer "
+                + "toward a listed open objective. Never invent facts and never ask "
+                + "something the excerpt already answers.",
+            "One question per line, no preamble, no numbering, no advice.",
+            sourceMaterialGuard(),
+            languageDirective(targetLanguage: targetLanguage, glossary: glossary)
+        ].joined(separator: "\n")
+    }
+
     /// Instructions for the on-demand "catch me up" recap: someone zoned out
     /// or just joined, and the answer must cover ONLY the supplied excerpt —
     /// a second whole-meeting summary would defeat the point.
