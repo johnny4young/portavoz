@@ -168,8 +168,7 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
                 request: request,
                 provider: provider,
                 fingerprint: fingerprint,
-                startedAt: startedAt,
-                finishedAt: finishedAt,
+                timing: RunTiming(startedAt: startedAt, finishedAt: finishedAt),
                 outcome: .succeeded,
                 outputUTF8Bytes: draft.markdown.utf8.count)
             do {
@@ -183,8 +182,7 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
                 request: request,
                 provider: provider,
                 fingerprint: fingerprint,
-                startedAt: startedAt,
-                finishedAt: now(),
+                timing: RunTiming(startedAt: startedAt, finishedAt: now()),
                 outcome: error is CancellationError ? .cancelled : .failed,
                 outputUTF8Bytes: nil)
             // Provenance persistence is intentionally best effort.
@@ -193,12 +191,16 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
         }
     }
 
+    private struct RunTiming {
+        let startedAt: Date
+        let finishedAt: Date
+    }
+
     private func generationRun(
         request: SummaryRequest,
         provider: any SummaryRegenerationProvider,
         fingerprint: String,
-        startedAt: Date,
-        finishedAt: Date,
+        timing: RunTiming,
         outcome: GenerationRunOutcome,
         outputUTF8Bytes: Int?
     ) -> GenerationRun {
@@ -217,8 +219,8 @@ public struct EnhanceMeetingNotes: ApplicationUseCase {
                 "workflow": "manual-enhancement"
             ]),
             outputLanguage: request.targetLanguage,
-            startedAt: startedAt,
-            finishedAt: finishedAt,
+            startedAt: timing.startedAt,
+            finishedAt: timing.finishedAt,
             outcome: outcome,
             metricsJSON: outputUTF8Bytes.map {
                 Self.json(["outputUTF8Bytes": String($0)])
