@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 25, 2026
+
+- **🧭 An MCP server your agent can trust blind** — Portavoz's local MCP server now introduces itself with its contract: strictly read-only, everything on your Mac. Long transcripts arrive in tidy pages that say exactly how to ask for the next one, and search accepts a result limit — no more one-shot megabyte walls.
+
 ## July 24, 2026
 
 - **🛟 Stop always saves the recording** — If optional live or Apuntador content cannot be stored, Portavoz retries the complete handoff once and then preserves the strongest valid transcript, notes, and finalized audio with an explicit recovery path instead of leaving the call unfinished.
@@ -15,8 +19,6 @@ entry here — feature name + what it gives you.)
 - **🌍 Translation without language pop-ups** — Mixed Spanish/English calls now translate each completed turn from its own detected language, leave same-language or uncertain text untouched, and never hand source-language selection to a repeated framework prompt.
 - **📖 Read live captions at your pace** — Scroll up and new captions no longer pull you back or blur the history; text stays sharp until you choose **Jump to live**.
 - **🎙️ Recording starts without taking the app down** — If macOS temporarily exposes no usable microphone route, Portavoz now stays open and shows its recoverable recording error instead of crashing while preparing audio.
-
-## July 24, 2026
 
 - **📋 Meeting templates that show their cards** — Three new summary structures join the deck: Discovery, Postmortem, and Retrospective. Every template now lists the sections it produces right in the picker — in Spanish — so you know what you'll get before regenerating, and Spanish summaries finally title their task list "Pendientes".
 
