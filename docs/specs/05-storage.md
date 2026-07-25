@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery).
 
 ## Database
 
@@ -205,6 +205,17 @@ job constraint/write failure therefore rolls the snapshot and job back
 together; package tests inject that failure and verify the original recording
 shell plus pending reservation remain untouched.
 
+D127 preserves that atomic boundary while making rejection recovery ordered
+and finite. ApplicationKit submits the exact full snapshot one additional time
+for a transient Store failure. A repeated rejection may submit a core snapshot
+that retains transcript, cast, notes, and only Companion cards with valid
+provenance; then an audio/notes snapshot with exact complete-transcription work;
+then canonical `capture.publication.failed` or
+`capture.snapshot.persistence.failed` needs-attention projections. StorageKit
+does not special-case or partially accept any rung: every request still passes
+the same reservation, child, provenance, job, and lifecycle invariants in one
+transaction. Generated cards cannot enter without their successful run.
+
 Slice 1D-a maps `processingJob` through strict `ProcessingJobID`, open typed
 kinds, states, requests/failures, and `ProcessingJobRecord`. One enqueue
 transaction inserts each `(meetingID, kind, inputFingerprint)` only once and
@@ -235,6 +246,13 @@ an already-ready meeting can validate exact evidence but cannot be downgraded
 or mutated. Publication-only recovery returns an aggregate with existing
 transcript content and no jobs to `ready`; usable audio without transcript is
 retained as `needsAttention` with `transcription.empty`.
+For a stale content-bearing `recording` shell, ApplicationKit first performs the
+repeat-safe transition to `needsAttention` with
+`capture.publication.failed`, then invokes this same asset transaction in the
+same launch pass. It never replaces existing transcript children. The Store
+derives `ready` only when the existing content and complete validated assets
+already satisfy the publication-only invariant; otherwise the shell remains
+explicitly recoverable (D127).
 `markMeetingNeedsAttention` is repeat-safe and accepts only incomplete live
 states. The app invokes expired-lease recovery and these boundaries at process
 launch, then runs the concrete D42 diarization/summary executor. Normal Stop

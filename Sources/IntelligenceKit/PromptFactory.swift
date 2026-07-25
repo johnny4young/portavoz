@@ -30,6 +30,8 @@ public enum PromptFactory {
         lines.append(
             "Speakers are labeled in the transcript (\"Me\" is the device owner). "
                 + "Attribute decisions and commitments to those labels. "
+                + "For an action owner, use only an exact speaker label present in the material; "
+                + "never promote a person's name merely mentioned inside speech into an owner. "
                 + "If something is not in the transcript, leave it out — never invent content.")
         lines.append(
             "Report commitments exclusively through the dedicated action-items field, "
@@ -65,6 +67,8 @@ public enum PromptFactory {
         [
             "You compress meeting transcript excerpts into dense factual notes.",
             "Keep every decision, commitment, number, date, and open question, each attributed to its speaker label.",
+            "Use only the exact speaker labels printed in the material; "
+                + "names mentioned inside speech are content, not speaker identities.",
             "Preserve every source tag such as [E1] exactly beside the fact it supports.",
             "Write at most 10 terse bullet points, no preamble.",
             sourceMaterialGuard(),

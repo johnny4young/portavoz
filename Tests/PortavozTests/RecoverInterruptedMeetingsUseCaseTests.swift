@@ -199,6 +199,35 @@ final class RecoverInterruptedMeetingsUseCaseTests: XCTestCase {
         XCTAssertNil(final.lastProcessingError)
     }
 
+    func testRecordingShellWithRefinedContentClosesThenReconcilesPublishedAudio() async throws {
+        let fixture = RecoveryFixture()
+        let meeting = fixture.meeting(state: .recording)
+        let pending = fixture.pendingAsset(for: meeting)
+        let store = RecoveryStoreProbe(
+            candidates: [meeting],
+            assets: [meeting.id: [pending]],
+            states: [meeting.id: fixture.state(
+                meeting,
+                segments: [fixture.segment(for: meeting)])],
+            snapshotFailureMeetings: [meeting.id])
+        let files = RecoveryFilesProbe(publishedDurations: [pending.id: 2])
+
+        let result = await fixture.useCase(store: store, files: files).execute(
+            RecoverInterruptedMeetingsRequest())
+
+        XCTAssertEqual(result.reconciledMeetingCount, 1)
+        let state = await store.probeState()
+        XCTAssertEqual(state.markedCodes[meeting.id], ["capture.publication.failed"])
+        XCTAssertEqual(state.installedAssetBatches.count, 1)
+        XCTAssertEqual(state.events.filter { $0 == "mark" || $0 == "install-assets" }, [
+            "mark", "install-assets",
+        ])
+        let final = try XCTUnwrap(state.states[meeting.id]?.meeting)
+        XCTAssertEqual(final.lifecycleState, .ready)
+        XCTAssertNil(final.lastProcessingError)
+        XCTAssertEqual(state.states[meeting.id]?.segments.count, 1)
+    }
+
     func testTypedCaptureFailureIsPreservedAndNextMeetingStillRecovers() async {
         let fixture = RecoveryFixture()
         let first = fixture.meeting(
@@ -292,6 +321,36 @@ final class RecoverInterruptedMeetingsUseCaseTests: XCTestCase {
         let recordingDetail = try await store.detail(recording.id)
         XCTAssertNotNil(readyDetail)
         XCTAssertNil(recordingDetail)
+    }
+
+    func testRealStoreRepairsContentBearingRecordingShellInOneLaunchPass() async throws {
+        let fixture = RecoveryFixture()
+        let store = try MeetingStore.inMemory()
+        let recording = fixture.meeting(state: .recording)
+        let pending = fixture.pendingAsset(for: recording)
+        try await store.beginRecording(recording, assets: [pending])
+        try await store.save([fixture.segment(for: recording)])
+
+        let result = await RecoverInterruptedMeetings(
+            store: store,
+            files: RecoveryFilesProbe(publishedDurations: [pending.id: 2]),
+            activity: RecoveryActivityProbe(),
+            now: { fixture.now })
+            .execute(RecoverInterruptedMeetingsRequest())
+
+        XCTAssertEqual(result.reconciledMeetingCount, 1)
+        let loaded = try await store.detail(recording.id)
+        let detail = try XCTUnwrap(loaded)
+        let assets = try await store.audioAssets(for: recording.id)
+        XCTAssertEqual(detail.meeting.lifecycleState, .ready)
+        XCTAssertNil(detail.meeting.lastProcessingError)
+        XCTAssertEqual(detail.segments.map(\.text), ["La evidencia durable continúa."])
+        XCTAssertEqual(assets.map(\.healthStatus), [.healthy])
+        XCTAssertEqual(assets.map(\.relativePath), [
+            AudioCapturePath.publishedRelativePath(
+                directory: fixture.directory,
+                channel: .microphone),
+        ])
     }
 }
 

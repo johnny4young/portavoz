@@ -24,6 +24,10 @@ final class PromptFactoryTests: XCTestCase {
         XCTAssertTrue(instructions.contains("exactly one structured section entry"))
         XCTAssertTrue(instructions.contains("every supported action item"))
         XCTAssertTrue(instructions.contains("A decision is not an action item"))
+        XCTAssertTrue(instructions.contains("only an exact speaker label"))
+        XCTAssertTrue(
+            PromptFactory.notesInstructions(targetLanguage: "es", glossary: [])
+                .contains("names mentioned inside speech are content"))
     }
 
     /// The injection guard rides on EVERY prompt that carries meeting
@@ -202,6 +206,55 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(draft.actionItems.count, 2)
         XCTAssertEqual(draft.actionItems[0].ownerSpeakerID, ana.id)  // "S1" vs "s1"
         XCTAssertNil(draft.actionItems[1].ownerSpeakerID)
+    }
+
+    func testDraftDropsInventedOwnerNamesFromTypedItemsAndMarkdown() {
+        let me = Speaker(meetingID: meeting, label: "Me", isMe: true)
+        let them = Speaker(meetingID: meeting, label: "Them")
+        var generated = summary
+        generated.actionItems = [
+            .init(
+                text: "Daniel: prepare the rollout plan",
+                owner: "Daniel")
+        ]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [],
+            speakers: [me, them],
+            recipe: .general,
+            targetLanguage: "en",
+            glossary: [])
+
+        let draft = generated.draft(for: request)
+
+        XCTAssertEqual(draft.actionItems.count, 1)
+        XCTAssertNil(draft.actionItems[0].ownerSpeakerID)
+        XCTAssertTrue(draft.markdown.contains("- [ ] prepare the rollout plan"))
+        XCTAssertFalse(draft.markdown.contains("Daniel"))
+    }
+
+    func testDraftCanonicalizesTrustedOwnerAndRemovesDuplicatedPrefix() {
+        let speaker = Speaker(
+            meetingID: meeting,
+            label: "S1",
+            displayName: "Ana")
+        var generated = summary
+        generated.actionItems = [
+            .init(text: "s1: publish the migration guide", owner: "s1")
+        ]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [],
+            speakers: [speaker],
+            recipe: .general,
+            targetLanguage: "en",
+            glossary: [])
+
+        let draft = generated.draft(for: request)
+
+        XCTAssertEqual(draft.actionItems.first?.ownerSpeakerID, speaker.id)
+        XCTAssertTrue(draft.markdown.contains("- [ ] publish the migration guide — Ana"))
+        XCTAssertFalse(draft.markdown.contains("s1:"))
     }
 
     func testDraftCreatesOnlyValidatedOverviewEvidence() {

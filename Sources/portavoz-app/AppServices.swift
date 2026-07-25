@@ -89,11 +89,11 @@ final class AppServices {
     var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
     var whisperVariantID: String?
-    var whisperDownloadState: WhisperDownloadState = .idle
+    var whisperPreparationState: WhisperPreparationState = .idle
     @ObservationIgnored var whisperPreparedModel: WhisperEngine.PreparedModel?
     @ObservationIgnored var whisperPreparation: WhisperPreparation?
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
-    @ObservationIgnored var whisperProgressObservers: [UUID: WhisperProgressObserver] = [:]
+    @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     var whisperIdleGeneration = 0
     private(set) var mlxDownloaded = false
 

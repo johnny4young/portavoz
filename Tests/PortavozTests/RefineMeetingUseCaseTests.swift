@@ -26,7 +26,7 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         let state = await dependencies.state()
         XCTAssertEqual(state.progress, [
             .preparingModels,
-            .downloadingWhisper(size: "1.6 GB", percent: 42),
+            .preparingWhisper(size: "1.6 GB", percent: 42),
             .transcribingParticipants,
             .transcribed(
                 channel: .system,
@@ -153,6 +153,26 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(draft.segments.map(\.language), ["es", "en"])
         XCTAssertNil(draft.generationRun?.outputLanguage)
         XCTAssertEqual(state.releaseCount, 1)
+    }
+
+    func testAutomaticEmptyTranscriptDoesNotForceStaleMeetingLanguage() async throws {
+        let fixture = RefineFixture()
+        let dependencies = RefineDependencies(
+            audio: RefineMeetingAudio(system: fixture.audio.system, microphone: nil),
+            systemTranscription: fixture.systemTranscription,
+            microphoneTranscription: fixture.microphoneTranscription,
+            turns: [])
+        let request = RefineMeetingRequest(
+            detail: fixture.detail(segments: [])) { progress in
+                await dependencies.record(progress)
+            }
+
+        let draft = try await fixture.useCase(dependencies)(request)
+
+        let state = await dependencies.state()
+        XCTAssertEqual(state.languageHints, [nil])
+        XCTAssertEqual(draft.language, "es")
+        XCTAssertTrue(draft.segments.allSatisfy { $0.language == "es" })
     }
 
     func testExplicitRecoveryLanguageOverridesMixedEvidence() async throws {
@@ -1104,7 +1124,7 @@ private actor RefineDependencies:
     func prepare(progress: @escaping RefineMeetingProgressHandler) async throws {
         events.append("prepare")
         if failures.contains(.preparation) { throw RefineDependencyError() }
-        await progress(.downloadingWhisper(size: "1.6 GB", percent: 42))
+        await progress(.preparingWhisper(size: "1.6 GB", percent: 42))
     }
 
     func transcriptionProvider() -> RefineMeetingTranscriptionProvider {

@@ -55,9 +55,9 @@ extension AppServices {
         switch phase {
         case .preparingModels:
             L10n.text("Preparing models…")
-        case .downloadingWhisper(let size, let percent):
+        case .preparingWhisper(let size, let percent):
             L10n.format(
-                "Downloading Whisper (%@, one time only)… %d%%",
+                "Preparing Whisper (%@; downloads only if needed)… %d%%",
                 size,
                 percent)
         case .transcribing:
@@ -135,8 +135,8 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
         _ = try await services.loadWhisperIfNeeded(
             progress: { _ in },
-            downloadProgress: { size, percent in
-                Task { await progress(.downloadingWhisper(size: size, percent: percent)) }
+            preparationProgress: { size, percent in
+                Task { await progress(.preparingWhisper(size: size, percent: percent)) }
             })
     }
 

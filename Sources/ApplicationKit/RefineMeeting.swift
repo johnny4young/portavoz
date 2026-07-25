@@ -74,7 +74,7 @@ public protocol RefineMeetingPreferences: Sendable {
 /// Stable phases that presentation maps to localized copy.
 public enum RefineMeetingProgress: Equatable, Sendable {
     case preparingModels
-    case downloadingWhisper(size: String, percent: Int, path: String? = nil)
+    case preparingWhisper(size: String, percent: Int, path: String? = nil)
     case transcribingParticipants
     case transcribingMicrophone
     case transcribed(
@@ -212,8 +212,6 @@ public struct RefineMeeting: ApplicationUseCase {
         let policy = request.languagePolicy ?? preferences.transcriptLanguage
         let hints = TranscriptionHints(
             language: SpokenLanguageDetector.transcriptionLanguageHint(
-                for: detail.meeting,
-                segments: detail.segments,
                 policy: policy),
             vocabulary: preferences.vocabulary,
             meetingID: detail.meeting.id)

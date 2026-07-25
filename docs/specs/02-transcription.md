@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission).
 
 ## Roles and engines (D7)
 
@@ -83,16 +83,19 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
 2. **Peak-normalize before transcription** (`AudioLevel.normalizePeak`, target 0.9, gain cap 20x): WhisperKit's EnergyVAD gates on ABSOLUTE energy (0.02 threshold), and a low-volume meeting falls below it → "no hay voz."
 3. **Coverage retry based on CLEAN segments**: if transcribed speech < 20% of file duration (audio > 60 s), decode again sequentially (`chunkingStrategy: nil` — that path DOES propagate errors) and WITHOUT promptTokens. Two covered traps: poisoned chunks return valid timespans with text that `cleanSegmentText` empties (raw coverage is misleading), and the vocabulary prompt derails windows that do not mention the terms (verified: with 12 terms, only the chunk that said them survived). Verified: 3 → 82 segments with vocabulary.
 4. **Anti-silence hygiene**: segments without lexical content (for example, `.` alone) do not enter the final result; in addition, if the mic channel produces the same short Whisper boilerplate on a VAD cadence (real case: `Me: Thank you.` every ~30 s without the user speaking), post-processing removes it. An isolated occurrence of "Thank you" is preserved.
-5. **Spoken language preserved per segment (D35)**:
-   `TranscriptLanguagePolicy.automatic` sets `hints.language` only when
-   transcript evidence is homogeneous (`Meeting.language` with no prior
-   segments, per-segment tags, or local `NLLanguageRecognizer`). If the meeting
-   is mixed — for example, one person speaks Spanish and another English — it
-   leaves the hint `nil` so Whisper auto-detects each speaker/segment. A fixed
-   transcript policy is an explicit recovery tool for weak/noisy audio; summary
-   and UI language never become recognition fallbacks. Refine recomputes
-   `Meeting.language` from the attributed result and clears stale aggregate
-   metadata when the result is mixed or unknown.
+5. **Spoken language preserved per segment (D35/D130)**:
+   `TranscriptLanguagePolicy.automatic` always leaves the full-channel
+   `hints.language` nil, even when stale meeting metadata or provisional
+   segments appear homogeneous. `WhisperEngine` also sets WhisperKit
+   `detectLanguage = true` in that mode: nil alone is insufficient because
+   WhisperKit otherwise disables detection while decoder prefill is enabled
+   and falls back to English. Each VAD result retains its detected language,
+   while `task = .transcribe` preserves spoken-language output instead of
+   requesting translation. A fixed transcript policy is an explicit
+   per-meeting recovery tool for weak/noisy audio; summary and UI language
+   never become recognition fallbacks. Refine recomputes `Meeting.language`
+   from the attributed result and clears stale aggregate metadata when the
+   result is mixed or unknown.
 
 - Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.
@@ -119,7 +122,12 @@ pinned model and tokenizer artifact must pass its expected SHA-256 digest;
 actual preparation always re-enters `ModelStore` verification/repair before a
 new token can be produced. Settings inventory, support diagnostics, and MLX
 provider resolution use the shared verified lifecycle rather than separate
-filesystem probes.
+filesystem probes. The production root is
+`~/Library/Application Support/Portavoz/Models`, not the application bundle, so
+`make install`, Sparkle replacement, and Homebrew application-bundle upgrades
+preserve verified models. Progress is presented as **preparing** because an
+installed descriptor still emits verification callbacks; network download
+occurs only for missing or corrupt pinned artifacts.
 
 ### Role-specific speech readiness (D73)
 
@@ -161,9 +169,10 @@ global transcript policy and vocabulary once, and maps typed progress while the
 use case prepares required Whisper, transcribes, requests pyannote only for
 best-effort attribution, and builds the
 reviewable `RefineDraft`. A per-meeting fixed Spanish/English recovery choice
-overrides the sampled policy; automatic mixed-language evidence leaves the
+overrides the sampled policy; automatic mode always leaves the complete-channel
 Whisper hint `nil`, and the aggregate language is recomputed only when the
-result is homogeneous. Summary/UI language never enters recognition.
+result is homogeneous. Summary/UI language and stale meeting metadata never
+enter recognition.
 
 Digitally silent channels never reach Whisper. `TranscriptContentPolicy`
 removes rows with no letter or digit from both system and microphone results;
@@ -224,7 +233,35 @@ M12 interpretation: both remain below 1 s p95 — SpeechAnalyzer IS viable for t
 
 ## Caption coalescer — `CaptionCoalescer` (used by the app)
 
-The newest row grows while the channel keeps speaking: mid-sentence pauses ≤ 6 s stay in the row, continuation < 2 s after a closed sentence flows on the microphone, but on `system`/`room` the pause after a sentence splits earlier (0.6 s) so two consecutive remote participants appear as two `Ellos` rows even before refine. Hard split at 280 chars. Deltas without lexical content are discarded except final punctuation that completes an existing row (an isolated `"."` does not create `Yo: .`). Stable row identity (id/startTime are preserved) → SwiftUI does not rebuild, and translation translates only closed rows (only the last global row can grow). 13 tests.
+The newest row grows while the channel keeps speaking: mid-sentence pauses ≤ 6 s stay in the row, continuation < 2 s after a closed sentence flows on the microphone, but on `system`/`room` the pause after a sentence splits earlier (0.6 s) so two consecutive remote participants appear as two `Ellos` rows even before refine. Hard split at 280 chars. Deltas without lexical content are discarded except final punctuation that completes an existing row (an isolated `"."` does not create `Yo: .`). Stable row identity (id/startTime are preserved) → SwiftUI does not rebuild, and translation translates only closed rows (only the last global row can grow).
+
+The merged live projection also applies a bounded twelve-row cross-channel
+admission rule (D131). Matching microphone spill is dropped when recent direct
+system or room speech already exists; a delayed direct row replaces a matching
+microphone copy only while that mic row is still newest and open. Older rows
+stay immutable after translation or rolling-summary consumers can observe
+them. The existing three-word bleed minimum keeps short acknowledgements and
+distinct overlapping speech. Raw channels and finalized audio remain
+unchanged. 18 tests cover growth/split rules, both adjacent callback orders,
+and the closed-row immutability fence.
+
+## Live translation lanes (D128)
+
+The source transcript remains a multilingual sequence. For each closed row,
+`LiveTranslationRouting` first trusts its persisted BCP-47 language. If that is
+absent, a local `NLLanguageRecognizer` fallback requires at least 12 letters and
+confidence of 0.65; shorter or uncertain rows remain exactly as spoken. Rows
+already in the selected target language are also left untouched.
+
+Eligible rows are grouped into one explicit source-to-target lane at a time.
+The macOS adapter constructs `TranslationSession.Configuration` with both
+languages; it never supplies a nil source and therefore never delegates source
+selection to a framework modal during the meeting. Download consent belongs to
+that exact pair. Switching the target cancels and fences old work, clears
+translated rows, active source, and consent, then resolves the new lanes from
+the original transcript. Routing and state transitions have deterministic mixed
+Spanish/English, same-target, unknown, consent, cancellation, and stale-result
+tests.
 
 ## Vocabulary — `VocabularyPrompt`
 

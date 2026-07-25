@@ -143,8 +143,8 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
         _ = try await services.loadWhisperIfNeeded(
             descriptor: descriptor,
             progress: { _ in },
-            downloadProgress: { size, percent in
-                Task { await progress(.downloadingWhisper(size: size, percent: percent)) }
+            preparationProgress: { size, percent in
+                Task { await progress(.preparingWhisper(size: size, percent: percent)) }
             })
     }
 

@@ -125,6 +125,12 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(WhisperEngine.cleanSegmentText("<|es|><|transcribe|>"), "")
     }
 
+    func testWhisperAutomaticModeExplicitlyEnablesLanguageDetection() {
+        XCTAssertTrue(WhisperEngine.shouldDetectLanguage(for: TranscriptionHints()))
+        XCTAssertFalse(WhisperEngine.shouldDetectLanguage(
+            for: TranscriptionHints(language: "es")))
+    }
+
     func testWhisperPostprocessDropsRepeatedMicrophoneThankYouHallucinations() {
         let meeting = MeetingID()
         let segments = [
@@ -779,32 +785,11 @@ final class VocabularyPromptTests: XCTestCase {
 }
 
 final class SpokenLanguageDetectorTests: XCTestCase {
-    func testUsesMeetingLanguageOnlyWhenThereAreNoSegments() {
-        let meeting = Meeting(
-            title: "Customer call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            language: "es-CO")
-
-        XCTAssertEqual(
-            SpokenLanguageDetector.transcriptionLanguageHint(
-                for: meeting,
-                segments: []),
-            "es")
+    func testAutomaticRefineDoesNotPinOneLanguage() {
+        XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint())
     }
 
-    func testSegmentEvidenceOverridesMeetingLanguageForRefineHint() {
-        let meeting = Meeting(
-            title: "Customer call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            language: "es")
-        let segments = [languageSegment("This meeting was actually in English.", language: "en")]
-
-        XCTAssertEqual(
-            SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments),
-            "en")
-    }
-
-    func testHomogeneousSegmentLanguageTagsBecomeRefineHint() {
+    func testHomogeneousSegmentLanguageTagsBecomeMeetingMetadata() {
         let segments = [
             languageSegment("This text was already refined in English.", language: "es-CO"),
             languageSegment("Another contaminated line after a refine pass.", language: "es"),
@@ -813,33 +798,18 @@ final class SpokenLanguageDetectorTests: XCTestCase {
         XCTAssertEqual(SpokenLanguageDetector.homogeneousLanguage(in: segments), "es")
     }
 
-    func testMixedSegmentLanguageTagsDoNotForceRefineHint() {
-        let meeting = Meeting(
-            title: "Mixed call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            language: "es")
+    func testMixedSegmentLanguageTagsDoNotForceMeetingMetadata() {
         let segments = [
             languageSegment("uno dos tres", language: "es"),
             languageSegment("one two three", language: "en"),
         ]
 
         XCTAssertNil(SpokenLanguageDetector.homogeneousLanguage(in: segments))
-        XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments))
     }
 
-    func testExplicitTranscriptPolicyOverridesMixedAutoDetection() {
-        let meeting = Meeting(
-            title: "Mixed call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
-        let segments = [
-            languageSegment("uno dos tres", language: "es"),
-            languageSegment("one two three", language: "en"),
-        ]
-
+    func testExplicitTranscriptPolicyPinsRecoveryLanguage() {
         XCTAssertEqual(
             SpokenLanguageDetector.transcriptionLanguageHint(
-                for: meeting,
-                segments: segments,
                 policy: .fixed(.spanish)),
             "es")
     }

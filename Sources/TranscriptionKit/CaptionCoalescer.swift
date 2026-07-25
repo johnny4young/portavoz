@@ -12,6 +12,10 @@ import PortavozCore
 /// Only the newest row ever grows — everything before it is frozen, which is
 /// what lets consumers (live translation) treat closed rows as immutable.
 public struct CaptionCoalescer: Sendable {
+    /// Cross-channel comparisons stay bounded so a long meeting never turns
+    /// live caption admission into a whole-transcript scan.
+    private static let micBleedLookbackRows = 12
+
     /// A silence this long always starts a new row, even mid-sentence.
     public var maxGapSeconds: TimeInterval
     /// After a closed sentence, a pause this long starts a new row; quicker
@@ -51,6 +55,7 @@ public struct CaptionCoalescer: Sendable {
         }
         // Low mic signal produces character noise ("DDDDD") — never a row.
         if TranscriptionTextFilter.isCharacterNoise(text) { return }
+        if suppressMicrophoneBleed(segment, in: &captions) { return }
 
         guard let last = captions.last, last.channel == segment.channel,
             shouldExtend(last, with: segment)
@@ -75,7 +80,52 @@ public struct CaptionCoalescer: Sendable {
         )
     }
 
+    /// The system tap is the direct source for remote participants. When the
+    /// room copy reaches the microphone, Parakeet can emit the same phrase on
+    /// both channels a fraction of a second apart. Prefer the direct system
+    /// row, whether it arrived before or after the microphone copy.
+    ///
+    /// Short acknowledgements remain untouched because `MicBleedFilter`
+    /// requires at least three lexical words; that conservative boundary
+    /// avoids erasing a real "yes" or "thank you" spoken over another person.
+    private func suppressMicrophoneBleed(
+        _ incoming: TranscriptSegment,
+        in captions: inout [TranscriptSegment]
+    ) -> Bool {
+        let lowerBound = max(0, captions.count - Self.micBleedLookbackRows)
+        let recentRemote = captions[lowerBound...].filter(Self.isRemoteChannel)
+
+        if incoming.channel == .microphone {
+            return MicBleedFilter.isBleed(incoming, system: Array(recentRemote))
+        }
+        guard Self.isRemoteChannel(incoming) else { return false }
+
+        // Only the newest row is still mutable. Removing an older, already
+        // closed row would invalidate translation IDs and the rolling
+        // summary's cursor after those consumers had observed it. The normal
+        // delayed-callback case is adjacent: a microphone copy opens, then
+        // the direct system result arrives and replaces it before it closes.
+        if let index = captions.indices.last,
+            captions[index].channel == .microphone,
+            MicBleedFilter.isBleed(
+                captions[index],
+                system: Array(recentRemote) + [incoming]) {
+            captions.remove(at: index)
+        }
+        return false
+    }
+
+    private static func isRemoteChannel(_ segment: TranscriptSegment) -> Bool {
+        segment.channel == .system || segment.channel == .room
+    }
+
     private func shouldExtend(_ last: TranscriptSegment, with segment: TranscriptSegment) -> Bool {
+        // A delayed callback can describe audio that predates the current
+        // open row. Never fold that older turn into newer visible speech;
+        // append it with its own stable identity instead. Normal chunk
+        // overlap remains mergeable because its start is still at or after
+        // the row's original start.
+        guard segment.startTime >= last.startTime else { return false }
         let gap = segment.startTime - last.endTime
         guard gap < maxGapSeconds else { return false }
         guard last.text.count < maxRowCharacters else { return false }

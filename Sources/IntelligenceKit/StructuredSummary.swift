@@ -154,6 +154,7 @@ extension StructuredSummary {
             actionItems,
             sections: sections,
             recipe: request.recipe)
+            .compactMap { Self.groundedOwner($0, speakers: request.speakers) }
         let items = admitted.actionItems.map { item -> ActionItem in
             let owner = request.speakers.first { speaker in
                 speaker.label.caseInsensitiveCompare(item.owner) == .orderedSame
@@ -199,6 +200,50 @@ extension StructuredSummary {
             decisionEvidence: decisions,
             actionItemEvidence: actionEvidence
         )
+    }
+
+    /// Generated owner strings are untrusted. A participant name merely
+    /// mentioned in speech must not become an action owner or speaker label.
+    /// Admit only a label/display name already present in the request's cast,
+    /// canonicalize it for rendering, and remove the common duplicated
+    /// `Owner: task — Owner` prefix before the Markdown reaches the UI.
+    private static func groundedOwner(
+        _ item: Item,
+        speakers: [Speaker]
+    ) -> Item? {
+        let rawOwner = item.owner.trimmingCharacters(in: .whitespacesAndNewlines)
+        let speaker = rawOwner.isEmpty ? nil : speakers.first { candidate in
+            candidate.label.caseInsensitiveCompare(rawOwner) == .orderedSame
+                || candidate.displayName?.caseInsensitiveCompare(rawOwner) == .orderedSame
+        }
+        var admitted = item
+        admitted.text = strippingOwnerPrefix(from: item.text, owner: rawOwner)
+        admitted.owner = speaker.map { speaker in
+            if let displayName = speaker.displayName?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !displayName.isEmpty {
+                return displayName
+            }
+            return speaker.label
+        } ?? ""
+        return admitted.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil
+            : admitted
+    }
+
+    private static func strippingOwnerPrefix(from text: String, owner: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !owner.isEmpty else { return trimmed }
+        for separator in [":", " —", " -"] {
+            let prefix = owner + separator
+            guard trimmed.range(
+                of: prefix,
+                options: [.anchored, .caseInsensitive]) != nil
+            else { continue }
+            return trimmed.dropFirst(prefix.count)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return trimmed
     }
 
     private func typedActionItemEvidence(

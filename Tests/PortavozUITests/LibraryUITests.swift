@@ -147,6 +147,69 @@ final class LibraryUITests: XCTestCase {
     }
 
     @MainActor
+    func testLiveTranscriptYieldsFollowWhileReadingHistory() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        record.click()
+
+        let transcript = app.control(withIdentifier: "recording-live-transcript")
+        XCTAssertTrue(transcript.waitForExistence(timeout: 8))
+        XCTAssertTrue(
+            app.staticTexts["History row 18 remains readable during live updates."]
+                .waitForExistence(timeout: 8))
+
+        transcript.scroll(byDeltaX: 0, deltaY: 8)
+        let jumpToLive = app.buttons["recording-jump-to-live"]
+        XCTAssertTrue(
+            jumpToLive.waitForExistence(timeout: 5),
+            "manual history browsing must pause automatic follow")
+        let earlierRow = app.staticTexts[
+            "History row 02 remains readable during live updates."
+        ]
+        // A runner's wheel acceleration and window height change how far one
+        // synthetic scroll travels. Keep scrolling in the same user direction
+        // until the same deterministic history row is actually in view.
+        for _ in 0..<5 where !earlierRow.isHittable {
+            transcript.scroll(byDeltaX: 0, deltaY: 8)
+        }
+        XCTAssertTrue(
+            earlierRow.isHittable,
+            "the user must be able to reach an earlier closed row")
+        let readerOwnedY = earlierRow.frame.midY
+
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(
+            jumpToLive.exists,
+            "new live captions must not steal scroll ownership from the reader")
+        XCTAssertTrue(
+            earlierRow.isHittable,
+            "incoming rows must keep the earlier row in the viewport")
+        XCTAssertEqual(
+            earlierRow.frame.midY,
+            readerOwnedY,
+            accuracy: 1,
+            "incoming rows must not reposition the reader-owned history")
+        let newestRow = app.staticTexts[
+            "History row 24 remains readable during live updates."
+        ]
+        attachScreenshot(of: app, named: "recording-live-transcript-history-paused")
+
+        jumpToLive.click()
+        let resumed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: jumpToLive)
+        XCTAssertEqual(XCTWaiter.wait(for: [resumed], timeout: 5), .completed)
+        let latestVisible = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: newestRow)
+        XCTAssertEqual(XCTWaiter.wait(for: [latestVisible], timeout: 5), .completed)
+    }
+
+    @MainActor
     func testSeededMeetingsGroupByRecency() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

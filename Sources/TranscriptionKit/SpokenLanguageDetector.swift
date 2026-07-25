@@ -2,10 +2,11 @@ import Foundation
 import NaturalLanguage
 import PortavozCore
 
-/// Infers spoken language from transcript evidence so a quality re-pass
-/// preserves what was said instead of drifting toward UI or summary language.
-/// Refine only receives a pinned language when the evidence is homogeneous;
-/// mixed meetings stay on Whisper auto-detect.
+/// Infers spoken language from transcript evidence for meeting metadata and
+/// summary routing. Quality transcription is intentionally stricter:
+/// automatic Refine never pins one language for an entire audio channel,
+/// because one call can contain several languages even when its provisional
+/// transcript or stale meeting metadata looks homogeneous.
 public enum SpokenLanguageDetector {
     private static let minimumLetters = 24
     private static let minimumSegmentLetters = 18
@@ -13,16 +14,13 @@ public enum SpokenLanguageDetector {
     private static let maximumCharacters = 8_000
     private static let letters = CharacterSet.letters
 
-    /// Language to pass into a transcription engine. Returns nil for mixed
-    /// or uncertain meetings so multilingual audio remains auto-detected.
+    /// Language to pass into a quality transcription engine. Automatic policy
+    /// always leaves Whisper in multilingual transcription mode; only an
+    /// explicit per-meeting recovery choice may pin a language.
     public static func transcriptionLanguageHint(
-        for meeting: Meeting,
-        segments: [TranscriptSegment],
         policy: TranscriptLanguagePolicy = .automatic
     ) -> String? {
         policy.languageHint
-            ?? homogeneousLanguage(in: segments)
-            ?? (segments.isEmpty ? canonicalLanguageCode(meeting.language) : nil)
     }
 
     /// Meeting-level metadata: only set when all available evidence points

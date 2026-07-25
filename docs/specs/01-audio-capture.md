@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery).
 
 ## Channel model (D5)
 
@@ -102,6 +102,12 @@ main actor because meeting-length hashing and signal measurement must not block
 launch. Missing files remain explicit missing evidence. Staging plus final, or
 duplicate candidates across roots, is `capture.recovery.ambiguous`: every copy
 is preserved and Portavoz neither overwrites nor guesses (D40/D50).
+If a stale `recording` shell already contains transcript or other recovered
+children, the use case first marks it with canonical
+`capture.publication.failed`, then installs only the validated asset evidence in
+the same launch pass. StorageKit derives `ready` when that existing transcript
+and the complete published assets satisfy the aggregate invariant; a second
+restart is not part of the recovery protocol (D127).
 
 `ApplicationKit.StopRecording` installs `captured`, finalized/missing assets,
 provisional live cast/transcript, notes, Apuntador cards with optional
@@ -126,6 +132,14 @@ Stop applies the same D77 boundary with distinct local-state, invalid-input,
 snapshot-persistence, recovery-persistence, and destructive-cleanup failures.
 Its result still carries a committed fallback when one exists, so typed errors
 cannot misrepresent preserved audio or a successful recovery write.
+Snapshot rejection first receives one exact retry so a transient persistence
+failure keeps every released payload. A repeated rejection enters D127's
+bounded ladder: core transcript/cast/notes plus valid Companion provenance;
+then finalized audio/notes plus complete durable transcription; finally the
+strongest canonical `capture.*` needs-attention projection. Generated Companion
+cards without their successful run are omitted rather than persisted with
+invented provenance. Every accepted rung remains atomic, discoverable, and
+recoverable.
 
 `CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 
@@ -181,11 +195,13 @@ after capture recovery through `ApplicationKit.ProcessPostCaptureJobs`. That
 workflow owns lease heartbeats, exact fingerprints, dependent-job admission,
 retry/cancellation policy, terminal action timing, and engine-release timing;
 the app retains concrete files, models, preferences, Shortcut, and process
-supervision. Job-admission failure cannot
-expose a half-installed captured snapshot, and the use case attempts an
-explicit `needsAttention` snapshot fallback without deleting audio. Empty
-publication evidence preserves staging/final recovery files or discards only
-an untouched empty shell (D48/D66).
+supervision. Job-admission failure cannot expose a half-installed captured
+snapshot. D127 first repeats the exact snapshot once, then conserves core live
+content before falling back to finalized audio plus durable transcription and,
+only if needed, an explicit canonical `needsAttention` projection. No rung
+deletes audio or downgrades generated provenance. Empty publication evidence
+preserves staging/final recovery files or discards only an untouched empty
+shell (D48/D66).
 
 ## External-audio ownership (D46)
 

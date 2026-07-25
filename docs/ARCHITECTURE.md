@@ -452,6 +452,14 @@ expected filename, or aggregate file size as proof.
 The macOS composition root owns one store and lifecycle for Settings, summary
 provider resolution, import, durable post-capture work, support diagnostics,
 live transcription, diarization, refinement, and voice-memory extraction.
+Production model artifacts live in the stable user-domain
+`~/Library/Application Support/Portavoz/Models` root, outside both
+`Portavoz.app` and `Portavoz Dev.app`. Replacing either application bundle
+therefore does not remove a verified model; only the explicit model-delete
+workflow mutates that installation. Refine, Import, Settings, and CLI describe
+the shared operation as preparation because a complete installation still
+passes through verification and emits progress, while network transfer occurs
+only for missing or corrupt pinned artifacts.
 Disposable automation receives an isolated empty model root and never inspects
 host installations. Settings verifies in the background and renders a checking
 state until evidence exists; it never exposes a partial installation as
@@ -520,6 +528,16 @@ evidence, but blocking proportional file work cannot occupy Swift's cooperative
 executor. One channel's publication failure preserves its staging file and
 does not block a healthy peer from publishing.
 
+If the atomic captured snapshot is rejected, ApplicationKit retries that exact
+payload once to preserve every released feature after a transient Store
+failure. A repeated rejection enters one bounded audio-priority ladder: core
+transcript/cast/notes with only provenance-valid Apuntador cards; finalized
+audio/notes plus exact durable transcription; then canonical `capture.*`
+needs-attention projections. Every rung remains an ordinary StorageKit atomic
+request. Generated content is never downgraded into provenance-free content,
+and healthy finalized audio is never deleted because an optional projection is
+invalid.
+
 System-audio callback liveness is monitored independently from acoustic
 silence. Monitoring begins only after the first system frame, then persisted
 microphone frames provide a recording heartbeat. Eight seconds without another
@@ -544,6 +562,12 @@ retry dates; superseded work and exhausted optional summaries are cancelled
 without hiding the captured meeting. The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle
 state. Usable audio remains playable and exportable when derived work fails.
+A stale `recording` shell that already contains recovered transcript content is
+repairable in the same launch pass: recovery marks it with canonical
+`capture.publication.failed`, installs only revalidated asset evidence, and
+lets StorageKit derive `ready` when the existing content and complete assets
+satisfy the aggregate invariant. Recovery never replaces existing transcript
+children or depends on a second restart.
 
 ## Audio, transcription, and attribution
 
@@ -596,6 +620,19 @@ consuming only the newest buffered context when it completes. Capture never
 awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
+The live merged projection performs bounded cross-channel admission: a new
+microphone row is compared with the newest twelve direct system/room captions,
+while a delayed direct row may replace only the newest still-open matching
+microphone row. Closed rows remain immutable for translation and rolling-summary
+cursors. The conservative lexical threshold preserves short acknowledgements
+and distinct overlapping speech; raw channel transcription and finalized audio
+are never rewritten by this presentation-time coalescer.
+Live diarization may still project one closed source row into multiple
+speaker-labeled pieces. That transformation preserves the source ID on the
+first non-empty piece and assigns fresh IDs only to additional pieces, so
+Companion evidence retains a valid lineage anchor and translation caches do not
+lose the original turn. The rolling summary tracks admitted caption IDs rather
+than an array offset, admitting new split pieces without skipping later speech.
 Refine requires Whisper. Loading a verified model first uses the selected
 accelerator configuration; a failure triggers one cancellation-aware CPU-only
 retry before both underlying causes are surfaced. Attribution is degradable.
@@ -615,6 +652,16 @@ Dismiss and Stop synchronously cancel and clear that task before the recording
 crosses the durable application boundary; late model output cannot become
 visible or persisted after recording ends.
 
+Live translation treats that transcript as a sequence of language-tagged
+turns, not as one meeting-level source language. Persisted segment language is
+authoritative; a conservative local recognizer may classify only sufficiently
+long, high-confidence unknown text. Closed rows already spoken in the target
+language and short or uncertain rows remain unchanged. Eligible rows run
+through an explicit source-to-target Apple Translation lane; source
+auto-detection is never delegated to the framework, and download consent
+belongs to that exact pair. A target switch cancels and fences prior work and
+clears all translated state before new lanes are resolved.
+
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;
 ApplicationKit applies it again to both Refine channels before microphone-only
@@ -626,9 +673,14 @@ noise, search material, generated facts, or navigable evidence without using a
 language-specific word list.
 
 Transcript recognition language and generated-output language are independent.
-Automatic transcript policy leaves mixed-language meetings unhinted so each
-segment can retain the language spoken. Fixed transcript language is an
-explicit recovery choice. Summary language either follows homogeneous speech
+Automatic durable transcription and Refine never pin a complete channel to an
+aggregate meeting language, even when existing metadata appears homogeneous;
+WhisperKit language detection is explicitly enabled because a nil language
+alone would keep prefill's English fallback. The decoder stays in transcription
+mode, and each segment retains the language recognized for its VAD result.
+Fixed transcript language is an explicit per-meeting recovery choice.
+Meeting-level language is derived only after attribution when the completed
+transcript is homogeneous. Summary language either follows homogeneous speech
 or uses an explicit English/Spanish setting, with app locale as the fallback
 for mixed or unknown speech.
 
@@ -669,8 +721,12 @@ cited transcript row share distinctive case/diacritic-folded lexical material;
 unsupported and cross-language-unverifiable links disappear while the summary
 text remains usable. The same admission stage removes empty/duplicate tasks and
 any normalized action item copied verbatim from the recipe's explicitly typed
-decision section. Translation pivots carry only evidence and tasks that already
-passed this source-language gate.
+decision section. An action owner is admitted only when it matches an existing
+speaker label or confirmed display name, is canonicalized before Markdown and
+typed projection, and has any duplicated leading owner prefix removed. Unknown
+generated names become unassigned rather than visible identity claims.
+Translation pivots carry only evidence and tasks that already passed this
+source-language gate.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
@@ -910,9 +966,16 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 41-case English and Spanish suites remain the
+The complete 42-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
+
+The live transcript has reader-owned scroll state independent from the
+playback lyrics treatment. Direct interaction pauses following indefinitely,
+incoming rows preserve that position, and browsing rows render without
+fade/scale/blur. Only the identified Jump to live action resumes following;
+programmatic scroll phases do not. Live-follow mode uses a wider sharp zone and
+tighter visual bounds than playback.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
@@ -1054,14 +1117,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,042 package tests pass, with 13 real-model/environment cases gated;
+- 1,083 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
-- the 95-test recording/recovery corpus has a fail-closed 25-iteration stress
+- the 105-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 357 Swift source files;
-- 42 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 364 production Swift source files;
+- 44 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

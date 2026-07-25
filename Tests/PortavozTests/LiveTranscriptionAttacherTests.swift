@@ -101,12 +101,28 @@ final class LiveTranslationStateTests: XCTestCase {
         let controller = RecordingController()
         let segmentID = UUID()
         controller.translationTarget = "es"
+        controller.beginLiveTranslationPair(LiveTranslationPair(source: "en", target: "es"))
+        controller.translationDownloadApproved = true
         controller.translations[segmentID] = "Presupuesto aprobado"
 
         controller.translationTarget = "en"
 
         XCTAssertTrue(controller.translations.isEmpty)
+        XCTAssertNil(controller.translationSource)
+        XCTAssertFalse(controller.translationDownloadApproved)
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
+    }
+
+    func testChangingSourceLaneRequiresFreshDownloadConsent() {
+        let controller = RecordingController()
+        controller.translationTarget = "en"
+        controller.beginLiveTranslationPair(LiveTranslationPair(source: "es", target: "en"))
+        controller.translationDownloadApproved = true
+
+        controller.beginLiveTranslationPair(LiveTranslationPair(source: "fr", target: "en"))
+
+        XCTAssertEqual(controller.translationSource, "fr")
+        XCTAssertFalse(controller.translationDownloadApproved)
     }
 
     func testDisablingTranslationClearsStateAndRenderedRows() {
@@ -125,14 +141,34 @@ final class LiveTranslationStateTests: XCTestCase {
         let controller = RecordingController()
         let segmentID = UUID()
         controller.translationTarget = "es"
+        let stalePair = LiveTranslationPair(source: "en", target: "es")
+        controller.beginLiveTranslationPair(stalePair)
         controller.translationTarget = "en"
 
         XCTAssertFalse(controller.storeLiveTranslations(
             [segmentID: "Respuesta antigua"],
-            forTarget: "es"))
-        controller.updateLiveTranslationState(.active, forTarget: "es")
+            for: stalePair))
+        controller.updateLiveTranslationState(.active, for: stalePair)
 
         XCTAssertTrue(controller.translations.isEmpty)
+        XCTAssertEqual(controller.translationState, .waitingForTranscript)
+    }
+
+    func testCanceledPreviousSourceCannotPublishIntoNewPairWithSameTarget() {
+        let controller = RecordingController()
+        let segmentID = UUID()
+        controller.translationTarget = "en"
+        let stalePair = LiveTranslationPair(source: "es", target: "en")
+        controller.beginLiveTranslationPair(stalePair)
+        controller.beginLiveTranslationPair(LiveTranslationPair(source: "fr", target: "en"))
+
+        XCTAssertFalse(controller.storeLiveTranslations(
+            [segmentID: "Stale Spanish result"],
+            for: stalePair))
+        controller.updateLiveTranslationState(.active, for: stalePair)
+
+        XCTAssertTrue(controller.translations.isEmpty)
+        XCTAssertEqual(controller.translationSource, "fr")
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
@@ -160,6 +196,215 @@ final class LiveTranslationStateTests: XCTestCase {
             liveTranscriptState: .failed))
         XCTAssertFalse(LiveTranslationState.active.shouldPresentStatus(
             liveTranscriptState: .available))
+    }
+}
+
+final class LiveTranslationRoutingTests: XCTestCase {
+    /// Why the translation loop must survive an idle lull: after everything
+    /// in a lane is translated, the next caption in the SAME language
+    /// reproduces the SAME pair — and an identical pair builds an identical
+    /// `TranslationSession.Configuration`, which SwiftUI does not treat as a
+    /// change. Nothing would restart a loop that returned when it went idle.
+    func testCaptionAfterAnIdleLullReproducesTheSameLaneInsteadOfANewOne() throws {
+        let first = segment(
+            text: "La primera intervención ya fue traducida.",
+            language: "es",
+            start: 0)
+        let open = segment(text: "Fila abierta.", language: "es", start: 2)
+
+        let idlePair = LiveTranslationRouting.nextPair(
+            segments: [first, open],
+            translatedIDs: [first.id],
+            target: "en")
+        XCTAssertNil(idlePair, "a fully translated lane has nothing pending")
+
+        let afterLull = segment(
+            text: "Una intervención nueva llega después de la pausa.",
+            language: "es",
+            start: 4)
+        let resumed = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: [first, afterLull, open],
+            translatedIDs: [first.id],
+            target: "en"))
+
+        XCTAssertEqual(resumed, LiveTranslationPair(source: "es", target: "en"))
+        XCTAssertEqual(
+            LiveTranslationRouting.pendingRows(
+                segments: [first, afterLull, open],
+                translatedIDs: [first.id],
+                pair: resumed
+            ).map(\.id),
+            [afterLull.id],
+            "the resumed lane must carry the post-lull row")
+    }
+
+    func testMixedMeetingRoutesOnlyClosedTurnsThatDifferFromTarget() throws {
+        let spanish = segment(
+            text: "Esta intervención permanece en español.",
+            language: "es",
+            start: 0)
+        let english = segment(
+            text: "This contribution remains in English.",
+            language: "en",
+            start: 2)
+        let open = segment(
+            text: "La fila más reciente todavía está creciendo.",
+            language: "es",
+            start: 4)
+        let segments = [spanish, english, open]
+
+        let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            translatedIDs: [],
+            target: "en"))
+        let pending = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedIDs: [],
+            pair: pair)
+
+        XCTAssertEqual(pair, LiveTranslationPair(source: "es", target: "en"))
+        XCTAssertEqual(pending.map(\.id), [spanish.id])
+    }
+
+    func testTargetLanguageRowsRemainOriginalWithoutBlockingTheNextSourceLane() throws {
+        let english = segment(
+            text: "This contribution remains in English.",
+            language: "en-US",
+            start: 0)
+        let french = segment(
+            text: "Cette intervention reste en français.",
+            language: "fr",
+            start: 2)
+        let open = segment(
+            text: "This newest row is still open.",
+            language: "en",
+            start: 4)
+
+        let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: [english, french, open],
+            translatedIDs: [],
+            target: "en"))
+
+        XCTAssertEqual(pair, LiveTranslationPair(source: "fr", target: "en"))
+    }
+
+    func testUnknownLongRowUsesDeterministicLocalDetection() {
+        let unknown = segment(
+            text: "This row has enough evidence for local language detection.",
+            language: nil,
+            start: 0)
+        let open = segment(text: "Newest open row.", language: nil, start: 2)
+
+        let pair = LiveTranslationRouting.nextPair(
+            segments: [unknown, open],
+            translatedIDs: [],
+            target: "es",
+            detector: { _ in "en" })
+
+        XCTAssertEqual(pair, LiveTranslationPair(source: "en", target: "es"))
+    }
+
+    func testShortUnknownRowNeverGuessesOrRequestsFrameworkAutoDetection() {
+        let short = segment(text: "Thanks.", language: nil, start: 0)
+        let open = segment(text: "Open.", language: nil, start: 2)
+        var detectorCalls = 0
+
+        let pair = LiveTranslationRouting.nextPair(
+            segments: [short, open],
+            translatedIDs: [],
+            target: "en",
+            detector: { _ in
+                detectorCalls += 1
+                return "es"
+            })
+
+        XCTAssertNil(pair)
+        XCTAssertEqual(detectorCalls, 0)
+    }
+
+    private func segment(
+        text: String,
+        language: String?,
+        start: TimeInterval
+    ) -> TranscriptSegment {
+        TranscriptSegment(
+            meetingID: MeetingID(),
+            channel: .system,
+            text: text,
+            language: language,
+            startTime: start,
+            endTime: start + 1,
+            isFinal: true)
+    }
+}
+
+final class TranscriptFocusVisualPolicyTests: XCTestCase {
+    func testLiveFollowKeepsNearbyHistorySharpLonger() {
+        let style = TranscriptFocusVisualPolicy.style(
+            distance: 100,
+            reach: 400,
+            mode: .live,
+            isFollowing: true)
+
+        XCTAssertEqual(style.opacity, 1, accuracy: 0.001)
+        XCTAssertEqual(style.scale, 1, accuracy: 0.001)
+        XCTAssertEqual(style.blurRadius, 0, accuracy: 0.001)
+    }
+
+    func testBrowsingHistoryDisablesCylinderFadingAndBlur() {
+        let style = TranscriptFocusVisualPolicy.style(
+            distance: 390,
+            reach: 400,
+            mode: .live,
+            isFollowing: false)
+
+        XCTAssertEqual(style.opacity, 1, accuracy: 0.001)
+        XCTAssertEqual(style.scale, 1, accuracy: 0.001)
+        XCTAssertEqual(style.blurRadius, 0, accuracy: 0.001)
+    }
+
+    func testLiveEdgeTreatmentRemainsReadable() {
+        let style = TranscriptFocusVisualPolicy.style(
+            distance: 400,
+            reach: 400,
+            mode: .live,
+            isFollowing: true)
+
+        XCTAssertGreaterThanOrEqual(style.opacity, 0.52)
+        XCTAssertGreaterThanOrEqual(style.scale, 0.95)
+        XCTAssertLessThanOrEqual(style.blurRadius, 0.65)
+    }
+
+    func testRollingSummaryIdentityCursorAdmitsNewDiarizationSplitPiece() {
+        let meetingID = MeetingID()
+        let originalID = UUID()
+        let retainedPiece = TranscriptSegment(
+            id: originalID,
+            meetingID: meetingID,
+            channel: .system,
+            text: "first voice",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        let newPiece = TranscriptSegment(
+            meetingID: meetingID,
+            channel: .system,
+            text: "second voice",
+            startTime: 1,
+            endTime: 2,
+            isFinal: true)
+        let open = TranscriptSegment(
+            meetingID: meetingID,
+            channel: .system,
+            text: "still growing",
+            startTime: 2,
+            endTime: 3)
+
+        let window = LiveSummaryWindowPolicy.unsummarizedClosedRows(
+            [retainedPiece, newPiece, open],
+            summarizedIDs: [originalID])
+
+        XCTAssertEqual(window.map(\.id), [newPiece.id])
     }
 }
 
@@ -237,5 +482,42 @@ private struct EchoLiveTranscriptionEngine: TranscriptionEngine {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+}
+
+/// macOS 14 has no `onScrollPhaseChange`, so reader intent is inferred from
+/// the content offset. These pin the two ways that inference can go wrong:
+/// stealing ownership from our own recentering, or never yielding it.
+final class TranscriptScrollIntentPolicyTests: XCTestCase {
+    func testTravelDuringOurOwnRecenterIsNotReaderIntent() {
+        XCTAssertFalse(
+            TranscriptScrollIntentPolicy.isReaderScroll(
+                offsetDelta: 240,
+                secondsSinceProgrammaticScroll:
+                    TranscriptScrollIntentPolicy.settleWindow / 2),
+            "a recenter moves the offset far; that travel is ours, not the reader's")
+    }
+
+    func testTravelAfterTheAnimationSettlesYieldsOwnership() {
+        XCTAssertTrue(
+            TranscriptScrollIntentPolicy.isReaderScroll(
+                offsetDelta: -TranscriptScrollIntentPolicy.minimumTravel,
+                secondsSinceProgrammaticScroll:
+                    TranscriptScrollIntentPolicy.settleWindow + 0.01),
+            "once the recenter settled, deliberate travel is the reader taking over")
+    }
+
+    func testLayoutJitterBelowOneRowIsIgnored() {
+        XCTAssertFalse(
+            TranscriptScrollIntentPolicy.isReaderScroll(
+                offsetDelta: TranscriptScrollIntentPolicy.minimumTravel - 0.5,
+                secondsSinceProgrammaticScroll: 10),
+            "sub-row travel is layout noise, not a scroll")
+    }
+
+    func testSettleWindowOutlastsTheRecenterAnimation() {
+        // The 0.35 s recenter animation must finish inside the window, or
+        // its own tail would read as the reader.
+        XCTAssertGreaterThan(TranscriptScrollIntentPolicy.settleWindow, 0.35)
     }
 }
