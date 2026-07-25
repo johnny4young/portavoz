@@ -7830,6 +7830,146 @@
           }
         }
       }
+    },
+    "Objectives": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivos"
+          }
+        }
+      }
+    },
+    "Add an objective…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega un objetivo…"
+          }
+        }
+      }
+    },
+    "Add objective (⏎)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar objetivo (⏎)"
+          }
+        }
+      }
+    },
+    "Toggle objective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar o desmarcar objetivo"
+          }
+        }
+      }
+    },
+    "Checked off by Apuntador": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcado por el Apuntador"
+          }
+        }
+      }
+    },
+    "Remove objective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar objetivo"
+          }
+        }
+      }
+    },
+    "What should this meeting achieve? Objectives get checked off as the conversation covers them, and the summary reports what stayed open.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué debería lograr esta reunión? Los objetivos se van marcando cuando la conversación los cubre, y el resumen reporta lo que quedó abierto."
+          }
+        }
+      }
+    },
+    "Suggest a question": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerir una pregunta"
+          }
+        }
+      }
+    },
+    "One or two questions worth asking next, grounded in the conversation and your open objectives.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una o dos preguntas que vale la pena hacer ahora, basadas en la conversación y tus objetivos abiertos."
+          }
+        }
+      }
+    },
+    "Thinking of a good question…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pensando una buena pregunta…"
+          }
+        }
+      }
+    },
+    "Dismiss suggestion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar sugerencia"
+          }
+        }
+      }
+    },
+    "Question suggestions need Apple Intelligence on macOS 26. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las sugerencias de preguntas necesitan Apple Intelligence en macOS 26. La grabación continúa sin cambios."
+          }
+        }
+      }
+    },
+    "No suggestion this time. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hubo sugerencia esta vez. La grabación continúa sin cambios."
+          }
+        }
+      }
+    },
+    "You spoke %d%% of the last five minutes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablaste el %d%% de los últimos cinco minutos."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

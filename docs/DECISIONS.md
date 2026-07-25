@@ -4043,3 +4043,29 @@ Keeping one stable anchor preserves foreign-key evidence and translation state,
 while fresh sibling IDs accurately represent newly visible turns. Identity-
 based cursors are robust to insertion, splitting, and callback reordering and
 therefore keep live intelligence independent from presentation-array shape.
+
+## D134 — Live assist stays measured, conservative, and schema-free (Jul 2026)
+
+**Context:** APUN-003/004 add pre-meeting objectives with live check-off, an
+on-demand next-question suggestion, and a rolling talk-time cue. Each could
+have justified new tables, new toggles, or an eager model loop; the live
+surface's rules (D26 opt-in, D29 priorities, measured-not-judged mirror
+philosophy) already answer most of those questions.
+
+**Decision:** Objectives persist as `ContextItem` rows with the new
+`objective` kind — no schema migration; the check-off state folds into the
+content ("✓ " prefix) and the check-off moment into the timestamp, so the D28
+notes block carries what was covered and what stayed open into every summary.
+The automatic check-off rides the existing 40-second rolling tick at
+`.background`, is gated by the same Apuntador opt-in (it is a model judgment
+about the conversation), holds a deliberately high bar (announced topics are
+NOT covered; doubt leaves an objective pending), and can only check — never
+uncheck — from the offered pending list. The next-question suggestion clones
+the catch-up concern exactly (pull-based, `.interactive`, capability-honest,
+stale-fenced) and carries still-open objectives so suggestions can steer back
+to them. The talk-time cue is pure channel math (microphone = the user) with
+no model call, so it does NOT ride the Apuntador opt-in; it renders only once
+closed captions exist and emphasizes only past 60 seconds of speech and a
+two-thirds share — measured, not judged. Seeding objectives from the
+pre-meeting brief is deferred: the brief dies at the recording route boundary
+today, and widening that boundary belongs to its own change.
