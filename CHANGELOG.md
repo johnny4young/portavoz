@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 25, 2026
 
+- **📝 Your notes, enhanced** — A new "My notes" section in every meeting shows exactly what you typed, and one click expands each note with what the transcript says around that moment — your words stay verbatim in bold, the AI only adds the facts. Regenerate it in Spanish or English anytime; your raw notes are never touched.
 - **🧭 An MCP server your agent can trust blind** — Portavoz's local MCP server now introduces itself with its contract: strictly read-only, everything on your Mac. Long transcripts arrive in tidy pages that say exactly how to ask for the next one, and search accepts a result limit — no more one-shot megabyte walls.
 
 ## July 24, 2026

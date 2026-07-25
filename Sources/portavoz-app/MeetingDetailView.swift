@@ -51,6 +51,8 @@ struct MeetingDetailView: View {
     @State private var gistError: String?
     @State private var summaryNotice: String?
     @State private var summarySetupIssue: SummarySetupIssue?
+    @State private var enhancingNotes = false
+    @State private var notesNotice: String?
     /// Refine state lives in RefineService (keyed by meeting) so the work
     /// and its draft survive navigating away from this view.
     private var refinePhase: RefineService.Phase? { services.refines.phase(for: meetingID) }
@@ -236,6 +238,7 @@ extension MeetingDetailView {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     summaryOrGenerate(detail)
+                    notesSection(detail)
                     transcriptHeader
                     transcriptArea(detail)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1660,6 +1663,140 @@ extension MeetingDetailView {
             case .generationFailed(.silent):
                 break
             }
+        }
+    }
+}
+
+// MARK: - Enhanced notes (NOTES-001/D135)
+
+extension MeetingDetailView {
+    /// The user's own notes: the raw timestamped items until enhanced, then
+    /// the one regenerable enhanced document. The raw notes are never
+    /// modified — the enhanced doc repeats each note verbatim in bold.
+    @ViewBuilder
+    private func notesSection(_ detail: MeetingReviewReadModel) -> some View {
+        let notes = detail.notes
+        if !notes.contextItems.isEmpty || notes.enhanced != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                notesHeader(detail)
+                notesContent(notes)
+                if let notesNotice {
+                    Text(notesNotice).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private func notesHeader(_ detail: MeetingReviewReadModel) -> some View {
+        HStack {
+            Text("My notes")
+                .font(.headline)
+                .accessibilityIdentifier("detail-notes-title")
+            Spacer()
+            if enhancingNotes {
+                ProgressView().controlSize(.small)
+            } else if !detail.segments.isEmpty {
+                Menu {
+                    Button("Enhance in Spanish") { enhanceNotes(language: .spanish) }
+                    Button("Enhance in English") { enhanceNotes(language: .english) }
+                    if let alt = alternateEngine {
+                        Divider()
+                        Menu(alt.label) {
+                            Button("Español") {
+                                enhanceNotes(language: .spanish, engine: alt.engine)
+                            }
+                            Button("English") {
+                                enhanceNotes(language: .english, engine: alt.engine)
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Enhance", systemImage: "sparkles")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityIdentifier("detail-enhance-notes")
+                .help("Expand each note with what the transcript shows around its moment")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func notesContent(_ notes: MeetingReviewNotes) -> some View {
+        if let enhanced = notes.enhanced {
+            ScrollView {
+                MarkdownText(text: enhanced.markdown)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 220)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(notes.contextItems) { item in
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(Self.noteTimestamp(item.timestamp))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.tertiary)
+                            Text(item.content)
+                                .font(.callout)
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 140)
+        }
+    }
+
+    private static func noteTimestamp(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded())
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    private func enhanceNotes(language: LanguageCode, engine: SummaryEngine? = nil) {
+        guard let detail, !enhancingNotes else { return }
+        enhancingNotes = true
+        notesNotice = nil
+        Task {
+            defer { enhancingNotes = false }
+            let request = EnhanceMeetingNotesRequest(
+                meetingID: meetingID,
+                segments: detail.segments,
+                speakers: detail.speakers,
+                targetLanguage: language.identifier,
+                providerOverride: engine)
+            applyEnhanceNotesResult(await services.enhanceMeetingNotes.execute(request))
+        }
+    }
+
+    private func applyEnhanceNotesResult(_ result: EnhanceMeetingNotesResult) {
+        switch result {
+        case .completed(persisted: true):
+            break  // The notes observation refreshes the section.
+        case .completed(persisted: false):
+            notesNotice = L10n.text("The enhanced notes could not be saved. Try again.")
+        case .unchanged:
+            // swiftlint:disable:next line_length
+            notesNotice = L10n.text("Your enhanced notes already match this material — change the transcript or your notes to produce new ones.")
+        case .noNotes:
+            notesNotice = L10n.text("Add notes during the recording to enhance them here.")
+        case .unavailable(.requiresMacOS26):
+            summarySetupIssue = .appleRequiresMacOS26
+        case .unavailable(.appleOnDevice(let reason)):
+            summarySetupIssue = .appleUnavailable(reason)
+        case .unavailable(.ollamaModelNotSelected):
+            summarySetupIssue = .ollamaModelNotSelected
+        case .unavailable(.mlxModelNotDownloaded):
+            summarySetupIssue = .mlxModelNotDownloaded
+        case .generationFailed(.localModelNotice):
+            summarySetupIssue = .localEngineFailed
+        case .generationFailed(.silent):
+            // Unlike the summary's silent path, this is a click-driven
+            // action: an honest one-liner beats a spinner that just stops.
+            notesNotice = L10n.text("Enhancing didn't work this time. Try again in a moment.")
         }
     }
 }

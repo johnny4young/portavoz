@@ -186,6 +186,7 @@ final class MeetingDetailModel {
     private var companionCards: [CompanionCard] = []
     private var privacyReceipt: PrivacyReceipt?
     private var processingJobs: [ProcessingJob] = []
+    private var notes = MeetingReviewNotes()
     private var didLoadVoiceSuggestions = false
     private var didCompleteTitleSuggestion = false
     private var didCompleteRecipeSuggestion = false
@@ -682,6 +683,9 @@ private extension MeetingDetailModel {
         case .processingJobs(let value):
             processingJobs = value
             markObserved(.processing)
+        case .notes(let value):
+            notes = value
+            markObserved(.notes)
         case .failed(let section):
             failedSections.insert(section)
             observedSections.remove(section)
@@ -716,7 +720,8 @@ private extension MeetingDetailModel {
             summary: summary,
             companionCards: companionCards,
             privacyReceipt: privacyReceipt,
-            processingJobs: processingJobs)
+            processingJobs: processingJobs,
+            notes: notes)
     }
 
     func refreshPhase() {

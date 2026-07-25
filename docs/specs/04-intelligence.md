@@ -333,6 +333,24 @@ meeting-content HTTP receipt boundary.
 - Instructions (`notesBehavior`): each note is a topic the summary MUST cover, expanded with facts, never contradicted; bullets originating from a note are prefixed with **"▸ "** — a cheap token instead of inflating the guided-generation schema; the renderer can display Granola-style coauthorship (black/gray) without changing types. The language instruction still closes the prompt (D18).
 - Full flow wired: **notes panel in `RecordingView`** (TextField + timestamped list with remove, right column, always visible during recording) → `RecordingController.addContextNote()` (anchors to the current moment) → rolling and final summaries see them → persisted at stop (`contextItem` table, v3 migration) → regeneration in the detail reloads them from the store. **Coauthorship rendering** in `MarkdownText`: bullets prefixed with "▸ " are drawn with an accent mark (Granola style — content originating from your note is distinguishable from the pure AI summary). M10 complete except for field verification (5 real notes → summary that expands them).
 
+## Enhanced notes (NOTES-001/D135) — the notes→document expansion (implemented)
+
+`ApplicationKit.EnhanceMeetingNotes` is the Granola-pattern complement to the
+D28 weave: instead of covering notes inside the summary, it produces ONE
+separate regenerable document FROM them. It reuses the summary machinery
+wholesale — `SummaryRegenerationProviderResolver` (FM/Ollama/MLX/BYOK, per-call
+engine override), `SummaryFingerprint` (its internal `enhanced-notes` recipe id
+keeps these fingerprints disjoint from every summary cache row), and the
+D62–D78 provenance regime (`GenerationRunKind.enhancedNotes`; exact
+fingerprint + language hit → `.unchanged`, no model call, no run; succeeded run
+commits atomically with the `EnhancedNote`; failed/cancelled runs persist
+best-effort with content-free sorted-keys config/metrics JSON). The recipe's
+contract: each raw note repeated verbatim in bold, in order, expanded with one
+to three sentences of what the transcript shows around that note's moment;
+contradictions stated plainly; only the notes covered; nothing invented.
+Whitespace-only notes are dropped before fingerprinting; a meeting with no
+usable notes answers `.noNotes` before resolving any provider.
+
 ## On-demand catch-up
 
 `CatchUpPolicy.clip` is a pure admission boundary over closed live-caption

@@ -75,6 +75,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testTabbedSummaryRevealsTheCoauthoringBullet"),
         test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
         test_id("MeetingDetailUITests", "testStructureMenuOffersSeededTemplates"),
+        test_id("MeetingDetailUITests", "testMyNotesSectionShowsRawNotesAndOffersEnhancement"),
     ),
     "meeting-evidence": (
         test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),

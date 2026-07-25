@@ -7830,6 +7830,96 @@
           }
         }
       }
+    },
+    "My notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mis notas"
+          }
+        }
+      }
+    },
+    "Enhance in Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar en español"
+          }
+        }
+      }
+    },
+    "Enhance in English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar en inglés"
+          }
+        }
+      }
+    },
+    "Enhance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar"
+          }
+        }
+      }
+    },
+    "Expand each note with what the transcript shows around its moment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amplía cada nota con lo que la transcripción muestra alrededor de ese momento"
+          }
+        }
+      }
+    },
+    "The enhanced notes could not be saved. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron guardar las notas mejoradas. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Your enhanced notes already match this material — change the transcript or your notes to produce new ones.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus notas mejoradas ya corresponden a este material — cambia la transcripción o tus notas para producir unas nuevas."
+          }
+        }
+      }
+    },
+    "Add notes during the recording to enhance them here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega notas durante la grabación para mejorarlas aquí."
+          }
+        }
+      }
+    },
+    "Enhancing didn't work this time. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La mejora no funcionó esta vez. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

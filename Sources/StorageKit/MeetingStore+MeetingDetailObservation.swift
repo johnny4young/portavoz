@@ -42,6 +42,22 @@ extension MeetingStore {
         return observedStream(observation)
     }
 
+    /// The user's notes (raw context items + the enhanced document) refresh
+    /// independently: a notes failure degrades only its own section, never
+    /// the transcript root.
+    public func observeMeetingReviewNotes(
+        _ id: MeetingID
+    ) -> AsyncThrowingStream<(items: [ContextItem], enhanced: EnhancedNote?), Error> {
+        let observation = ValueObservation.tracking(
+            regions: [
+                Table("meeting"), Table("contextItem"), Table("enhancedNote")
+            ],
+            fetch: { database in
+                try Self.fetchMeetingReviewNotes(id, in: database)
+            })
+        return observedStream(observation)
+    }
+
     /// Persisted Companion evidence is independent from cast and summary
     /// reads, so deleting a card refreshes only the right-rail projection.
     public func observeMeetingReviewCompanionCards(
@@ -137,6 +153,25 @@ extension MeetingStore {
     ) throws -> [CompanionCard] {
         guard try liveMeetingExists(id, in: database) else { return [] }
         return try companionCards(meetingID: id, in: database)
+    }
+
+    static func fetchMeetingReviewNotes(
+        _ id: MeetingID,
+        in database: Database
+    ) throws -> (items: [ContextItem], enhanced: EnhancedNote?) {
+        guard try liveMeetingExists(id, in: database) else { return ([], nil) }
+        let items = try ContextItemRecord
+            .filter(Column("meetingID") == id.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .order(Column("timestamp"))
+            .fetchAll(database)
+            .map { try $0.item }
+        let enhanced = try EnhancedNoteRecord
+            .filter(Column("meetingID") == id.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .fetchOne(database)
+            .map { try $0.note() }
+        return (items, enhanced)
     }
 
     private static func liveMeetingExists(
