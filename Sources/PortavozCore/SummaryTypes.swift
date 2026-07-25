@@ -64,7 +64,37 @@ public struct Recipe: Codable, Sendable, Identifiable {
         instructions: "This is an interview. Summarize the candidate's background, observed strengths, concerns raised, and agreed next steps. Attribute opinions to who voiced them. Never invent content."
     )
 
-    public static let all: [Recipe] = [.general, .standup, .oneOnOne, .planning, .interview]
+    public static let discovery = Recipe(
+        id: "discovery",
+        displayName: "Discovery",
+        sections: ["Context", "Problems Uncovered", "Needs & Constraints", "Next Steps"],
+        // One-line prompt instruction.
+        // swiftlint:disable:next line_length
+        instructions: "This is a discovery or user-research conversation. Capture the interviewee's context, the problems in THEIR OWN words (quote short phrases), explicit needs and constraints, and the agreed next steps. Report, don't pitch. Never invent content."
+    )
+
+    public static let postmortem = Recipe(
+        id: "postmortem",
+        displayName: "Postmortem",
+        sections: ["What Happened", "Root Causes", "What Went Well", "Follow-ups"],
+        // One-line prompt instruction.
+        // swiftlint:disable:next line_length
+        instructions: "This is a blameless incident postmortem. Reconstruct the timeline of what happened, the root causes discussed (systems and process, never individuals), what worked during the response, and the follow-up actions with owners. Never invent content."
+    )
+
+    public static let retro = Recipe(
+        id: "retro",
+        displayName: "Retrospective",
+        sections: ["Went Well", "Needs Improvement", "Agreements"],
+        // One-line prompt instruction.
+        // swiftlint:disable:next line_length
+        instructions: "This is a team retrospective. Group what went well and what needs improvement by theme, keeping who raised each point, and capture the concrete agreements the team committed to. Never invent content."
+    )
+
+    public static let all: [Recipe] = [
+        .general, .standup, .oneOnOne, .planning, .interview,
+        .discovery, .postmortem, .retro
+    ]
 
     public static func byID(_ id: String) -> Recipe? {
         all.first { $0.id == id }
@@ -77,7 +107,7 @@ public struct Recipe: Codable, Sendable, Identifiable {
         switch id {
         case Self.general.id, Self.planning.id:
             [1]
-        case Self.oneOnOne.id:
+        case Self.oneOnOne.id, Self.retro.id:
             [2]
         default:
             []

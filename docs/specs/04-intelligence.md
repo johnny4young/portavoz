@@ -52,7 +52,8 @@ typed links with fresh claim IDs; Storage owns revision validation/stamping.
 ## Typed decision evidence (D89)
 
 `Recipe.decisionSectionIndexes` classifies semantics explicitly: General and
-Planning index 1, and 1:1 index 2. Standup, Interview, and custom structures
+Planning index 1, and 1:1 and Retrospective index 2 (the "Agreements"
+section). Standup, Interview, Discovery, Postmortem, and custom structures
 classify none; headings are never inferred across languages. A provider result
 must contain exactly the recipe's section count, and a classified section must
 contain exactly one evidence array per bullet. `StructuredSummary` then maps
@@ -159,6 +160,30 @@ escapes so the file stays inside the English-source gate.
 The durable post-capture worker selects Ollama through `OllamaService.summaryProvider(model:gateway:consent:)` (an `OpenAICompatibleSummaryProvider` against `localhost:11434/v1`, **without an API key** — Ollama ignores it, nothing leaves the device), verified embedded MLX, or available Apple FM. Ollama summary generation still crosses the gateway with `local-device` scope and Settings consent; its content-free health and model-discovery requests remain direct because they contain no meeting material. ApplicationKit's regeneration and import adapters consume explicit availability without constructing providers inside the use cases. The **live rolling summary remains FM-only** (it uses the incremental `condenseWindow`/`summarizeNotes` APIs that Ollama/MLX do not have). `OllamaService`: `isRunning()` (GET `/api/version`), `models()` (GET `/api/tags`, pure/tested `parseModels`). Settings retains the engine picker, detection, model list, localized typed reasons, and prominent Apply action. `LocalSummaryProviderPolicy` is pure and tested against Apple availability, name-screened Ollama models, MLX hardware eligibility, and low-memory/disk guidance. **Closes GAPS #7** (a Mac without Apple Intelligence summarizes 100% locally); verified E2E with gpt-oss:20b (ES summary in 24 s) + UITest of the Settings section. Every provider stamps its own material fingerprint, but the released Meeting Detail path performs cache lookup and translation pivot only for Apple FM; configured Ollama/MLX regenerates directly. **Per-meeting override (M12)**: the `RegenerateSummary` provider resolver forces an engine for one meeting without changing the global default; the detail menu offers language (es/en) and, when there is a real choice, the **alternative engine** (Apple↔Ollama — only the one that is not the default and only if it is usable here: Ollama with a configured model, or Apple with `appleSummaryAvailable`). An Apple override preserves its cache and pivot path.
 
 **Embedded MLX (D32, Jul 2026)**: third engine `summaryEngine = "mlx"` — `MLXSummaryProvider` (IntelligenceKit) runs **Qwen3.5-4B 4-bit** (Apache-2.0, sha256-pinned in `ModelCatalog.mlxQwen35`, 3 GB; `mlxQwen3` remains in the catalog for A/B) in-process on the GPU via `mlx-swift-lm` (exact 3.31.4 — successor to mlx-swift-examples; the tokenizer is provided by `swift-transformers` through the `MLXHuggingFace` macros). **Field A/B (Jul 10, refined 56 min / 852-segment sprint demo)**: Qwen3-4B collapsed into a degenerate loop twice (34k and 68k chars truncated); Qwen3.5-4B with `enable_thinking: false` (additionalContext — the 3.5 family reasons by default and loses the JSON prompt) produced decisions + open questions + 11 action items with owners in clean Spanish in 89 s. `maxTokens` 16384 as a pure anti-runaway safeguard. Reuses the prompt and JSON contract from `OpenAICompatibleSummaryProvider.prompt/parseStructured` — same `StructuredSummary`, same fingerprint. `MLXModelCache` (actor) keeps ONE `ModelContainer` loaded and serializes generation (`container.perform`, temperature 0); it does not pass through `IntelligenceScheduler` (GPU, not ANE). Settings → "Built-in (MLX)": `MLXModelRow` row with verified download/status/delete (`AppServices.mlxDownloaded/downloadMLX/deleteMLXModel`); `LocalSummaryProviderPolicy` suggests it with RAM ≥ 8 GB when Apple Intelligence is unavailable and Ollama has no eligible name-screened model. **Shipping**: SwiftPM does not compile Metal shaders → `scripts/build-mlx-metallib.sh` caches `mlx-swift_Cmlx.bundle` (one-time xcodebuild, keyed by mlx-swift version), and `make-app.sh` copies it to `Contents/Resources`. **E2E verification**: `portavoz-app --mlx-smoke [real]` — synthetic ES in 3 s; with `real`, summarizes the most recent meeting in the library (read-only). Verified with a real meeting of 40 min / 686 segments: 44 s, coherent decisions and action items. There is no test under `swift test` because the CLI runner cannot have a metallib. **Memory (critical)**: without `MLX.Memory.cacheLimit`, MLX's buffer cache grows without limit on long prompts — 31 GB of RSS was observed on that same meeting before macOS suspended the process. `MLXModelCache` sets the supported API to 20 MB (the LLMEval value) and `maxTokens: 16384` as the generation cap; with that, the real peak is ~4.5 GB (2.3 GB weights + KV + runtime) (D118).
+
+## Seeded summary templates (TMPL, Jul 2026)
+
+`Recipe.all` seeds eight templates: General, Standup, 1:1, Planning,
+Interview, Discovery, Postmortem, Retrospective — each with fixed sections
+and one anti-invention instruction line. `MeetingTypeDetector` carries the
+same label set in BOTH its few-shot instructions and the `@Guide` string
+(adding a template means touching both, or the classifier never emits it);
+its gate still collapses unknown ids and `general` to nil. Presentation is
+Spanish-first: built-in names and section titles are catalog keys rendered
+through `Recipe.localizedDisplayName`/`localizedSectionSummary` (app-side
+`RecipeDisplay.swift`); custom structures stay verbatim because their text
+belongs to the user. The Meeting Detail Structure submenu
+(`detail-structure-menu`, items `detail-structure-<id>`) shows each
+template's section list under its name so the user sees what a structure
+produces BEFORE generating; the "Summarize as X?" chip
+(`detail-recipe-suggestion`) localizes the suggested name. Section headings
+inside a generated summary are translated by the model (prompt rule); the
+one heading WE render — the canonical action-items block — now follows the
+output language ("Pendientes" for `es`), passed as
+`markdown(recipe:language:)`. `parse` reads back exactly those two
+headings and no others: the broader `isActionItemsHeading` set stays
+confined to dropping a model-narrated duplicate section while rendering,
+so a genuine "Next Steps" section survives the round trip.
 
 ## Fingerprint cache + translation pivot (D25) — `SummaryFingerprint` + `translate`
 

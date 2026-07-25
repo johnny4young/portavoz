@@ -591,6 +591,40 @@ final class MeetingDetailUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
     }
 
+    /// The Structure submenu must offer every seeded template — including
+    /// discovery, postmortem, and retro — with the sections each one
+    /// produces visible before generating.
+    @MainActor
+    func testStructureMenuOffersSeededTemplates() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "detail-regenerate-menu")
+        XCTAssertTrue(
+            menu.waitForExistence(timeout: 10),
+            "a summarized meeting must offer the regenerate menu")
+        menu.click()
+        let structure = app.menuItems["detail-structure-menu"]
+        XCTAssertTrue(
+            structure.waitForExistence(timeout: 5),
+            "the regenerate menu must offer the Structure submenu")
+        structure.click()
+        // Every built-in id, not just the new ones: the submenu renders
+        // `Recipe.all + custom()`, so a template silently dropping out of
+        // the catalog is exactly the regression this guards.
+        for id in [
+            "general", "standup", "one-on-one", "planning", "interview",
+            "discovery", "postmortem", "retro"
+        ] {
+            XCTAssertTrue(
+                app.menuItems["detail-structure-\(id)"].waitForExistence(timeout: 5),
+                "the Structure submenu must seed the \(id) template")
+        }
+        // Close without regenerating.
+        app.typeKey(.escape, modifierFlags: [])
+        app.typeKey(.escape, modifierFlags: [])
+    }
+
     /// Marking in/out reveals the clip export button (M11). Advances the
     /// playhead by playing, so it doesn't depend on clicking a transcript
     /// line (dimmed/clipped in the focus carousel).

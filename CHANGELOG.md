@@ -16,6 +16,10 @@ entry here — feature name + what it gives you.)
 - **📖 Read live captions at your pace** — Scroll up and new captions no longer pull you back or blur the history; text stays sharp until you choose **Jump to live**.
 - **🎙️ Recording starts without taking the app down** — If macOS temporarily exposes no usable microphone route, Portavoz now stays open and shows its recoverable recording error instead of crashing while preparing audio.
 
+## July 24, 2026
+
+- **📋 Meeting templates that show their cards** — Three new summary structures join the deck: Discovery, Postmortem, and Retrospective. Every template now lists the sections it produces right in the picker — in Spanish — so you know what you'll get before regenerating, and Spanish summaries finally title their task list "Pendientes".
+
 ## July 23, 2026
 
 - **🖱️ Dictate with a mouse button** — Hold the middle or an additional mouse button anywhere on your Mac, speak, release: your words land where your cursor is. The click stays with Portavoz — the app under the pointer never sees it — and the keyboard hotkey keeps working exactly as before.

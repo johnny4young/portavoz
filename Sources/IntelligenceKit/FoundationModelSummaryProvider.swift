@@ -192,7 +192,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             meetingID: pivot.meetingID,
             recipeID: pivot.recipeID,
             language: targetLanguage,
-            markdown: complete.markdown(recipe: .general),
+            markdown: complete.markdown(recipe: .general, language: targetLanguage),
             actionItems: items,
             fingerprint: pivot.fingerprint,
             claims: pivot.claims.map { claim in
