@@ -173,7 +173,7 @@ final class LibraryUITests: XCTestCase {
         // A runner's wheel acceleration and window height change how far one
         // synthetic scroll travels. Keep scrolling in the same user direction
         // until the same deterministic history row is actually in view.
-        for _ in 0..<5 where !earlierRow.isHittable {
+        for _ in 0..<12 where !earlierRow.isHittable {
             transcript.scroll(byDeltaX: 0, deltaY: 8)
         }
         XCTAssertTrue(

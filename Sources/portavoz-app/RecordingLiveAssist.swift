@@ -30,6 +30,7 @@ struct RecordingObjectivesPanel: View {
                     draft.trimmingCharacters(in: .whitespaces).isEmpty
                         ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityLabel(L10n.text("Add objective (⏎)"))
                 .accessibilityIdentifier("recording-objective-add")
                 .help(L10n.text("Add objective (⏎)"))
             }
@@ -65,6 +66,7 @@ struct RecordingObjectivesPanel: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.text("Toggle objective"))
+            .accessibilityIdentifier("recording-objective-toggle")
             Text(objective.text)
                 .font(.callout)
                 .strikethrough(objective.checkedAt != nil)
@@ -84,6 +86,7 @@ struct RecordingObjectivesPanel: View {
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(L10n.text("Remove objective"))
             .help(L10n.text("Remove objective"))
         }
     }
