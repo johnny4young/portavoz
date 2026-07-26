@@ -17,6 +17,7 @@ enum LiveTranslationState: Equatable {
     case translating
     case active
     case unsupported
+    case partiallyUnsupported
     case failed
 
     /// Only states that need explanatory UI expose copy. Execution failures
@@ -27,6 +28,11 @@ enum LiveTranslationState: Equatable {
             "Live translation will start as soon as captions are available."
         case .unsupported:
             "Apple Translation does not support this language pair on this Mac."
+        case .partiallyUnsupported:
+            """
+            Some captions stay in their original language because Apple Translation \
+            does not support their language pair on this Mac.
+            """
         case .failed:
             "Live translation paused after an error. Retrying automatically…"
         case .off, .ready, .needsDownload, .translating, .active:
@@ -41,7 +47,7 @@ enum LiveTranslationState: Equatable {
         switch self {
         case .waitingForTranscript:
             liveTranscriptState != .failed
-        case .unsupported, .failed:
+        case .unsupported, .partiallyUnsupported, .failed:
             true
         case .off, .ready, .needsDownload, .translating, .active:
             false
@@ -64,14 +70,14 @@ enum LiveTranslationRouting {
 
     static func nextPair(
         segments: [TranscriptSegment],
-        translatedIDs: Set<UUID>,
+        handledIDs: Set<UUID>,
         target: String,
         detector: LanguageDetector = detectedLanguage
     ) -> LiveTranslationPair? {
         guard let normalizedTarget = LanguageCode(target)?.identifier else { return nil }
         let openID = segments.last?.id
         for segment in segments.suffix(60) where segment.id != openID {
-            guard !translatedIDs.contains(segment.id), segment.text.count >= 4,
+            guard !handledIDs.contains(segment.id), segment.text.count >= 4,
                 let source = sourceLanguage(for: segment, detector: detector),
                 source != normalizedTarget
             else { continue }
@@ -82,14 +88,14 @@ enum LiveTranslationRouting {
 
     static func pendingRows(
         segments: [TranscriptSegment],
-        translatedIDs: Set<UUID>,
+        handledIDs: Set<UUID>,
         pair: LiveTranslationPair,
         detector: LanguageDetector = detectedLanguage
     ) -> [(id: UUID, text: String)] {
         let openID = segments.last?.id
         return segments.suffix(60).compactMap { segment in
             guard segment.id != openID,
-                !translatedIDs.contains(segment.id),
+                !handledIDs.contains(segment.id),
                 segment.text.count >= 4,
                 sourceLanguage(for: segment, detector: detector) == pair.source
             else { return nil }
@@ -144,7 +150,7 @@ struct LiveTranslationModifier: ViewModifier {
         guard let target = controller.translationTarget else { return nil }
         return LiveTranslationRouting.nextPair(
             segments: controller.captions,
-            translatedIDs: Set(controller.translations.keys),
+            handledIDs: controller.liveTranslationHandledIDs,
             target: target)
     }
 
@@ -265,8 +271,15 @@ struct LiveTranslationModifier: ViewModifier {
             from: Locale.Language(identifier: pair.source),
             to: Locale.Language(identifier: pair.target))
         guard status != .unsupported else {
+            let pending = await pendingRows(controller: controller, pair: pair)
             await MainActor.run {
-                controller.updateLiveTranslationState(.unsupported, for: pair)
+                if pending.isEmpty {
+                    controller.updateLiveTranslationState(.unsupported, for: pair)
+                } else {
+                    controller.markUnsupportedLiveTranslationRows(
+                        Set(pending.map(\.id)),
+                        for: pair)
+                }
             }
             return nil
         }
@@ -341,7 +354,7 @@ struct LiveTranslationModifier: ViewModifier {
             else { return [] }
             return LiveTranslationRouting.pendingRows(
                 segments: controller.captions,
-                translatedIDs: Set(controller.translations.keys),
+                handledIDs: controller.liveTranslationHandledIDs,
                 pair: pair)
         }
     }

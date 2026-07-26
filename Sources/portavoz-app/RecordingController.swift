@@ -54,6 +54,8 @@ final class RecordingController {
         didSet {
             guard translationTarget != oldValue else { return }
             translations.removeAll()
+            unsupportedTranslationRowIDs.removeAll()
+            hasUnsupportedTranslationRows = false
             translationSource = nil
             translationDownloadApproved = false
             translationState = translationTarget == nil ? .off
@@ -63,11 +65,18 @@ final class RecordingController {
     /// The selected translation pair isn't installed yet — set by the live
     /// translation loop when it declines to auto-trigger Apple's download
     /// sheet mid-meeting. Drives the dismissable "download to translate" banner.
-    private(set) var translationState = LiveTranslationState.off
+    var translationState = LiveTranslationState.off
     /// Explicit source lane currently owned by Apple Translation. A concrete
     /// source prevents the framework from presenting its repeated
     /// auto-detection sheet for short or mixed-language turns.
-    private(set) var translationSource: String?
+    var translationSource: String?
+    /// Closed rows whose explicit pair is unsupported remain in their spoken
+    /// language but count as handled so they cannot starve later lanes.
+    var unsupportedTranslationRowIDs: Set<UUID> = []
+    var hasUnsupportedTranslationRows = false
+    var liveTranslationHandledIDs: Set<UUID> {
+        Set(translations.keys).union(unsupportedTranslationRowIDs)
+    }
     /// The user tapped "Download" on that banner: only then does the loop
     /// call `prepareTranslation()` (the deliberate, expected download sheet)
     /// so the assets are fetched without ever interrupting the meeting on its own.
@@ -162,6 +171,8 @@ final class RecordingController {
         phase = .idle
         captions = []
         translations = [:]
+        unsupportedTranslationRowIDs = []
+        hasUnsupportedTranslationRows = false
         liveSummary = nil
         companionCards = []
         companionArtifactsByCardID = [:]
@@ -241,6 +252,8 @@ final class RecordingController {
         reservedAssets = []
         captions = []
         translations = [:]
+        unsupportedTranslationRowIDs = []
+        hasUnsupportedTranslationRows = false
         liveSummary = nil
         liveNotes = []
         summarizedCaptionIDs = []
@@ -759,53 +772,6 @@ private extension RecordingController {
         case .streamFailed:
             systemCaptureHealth = .failed
         }
-    }
-}
-
-extension RecordingController {
-    /// A SwiftUI Translation task owns exactly one explicit source→target
-    /// pair. Moving to another actor language resets download consent so a
-    /// new language pack is never fetched because of an earlier pair.
-    func beginLiveTranslationPair(_ pair: LiveTranslationPair) {
-        guard translationTarget == pair.target else { return }
-        guard translationSource != pair.source else { return }
-        translationSource = pair.source
-        translationDownloadApproved = false
-    }
-
-    /// LiveTranslation can publish only finite user-facing state, never
-    /// framework errors or transcript content as diagnostics.
-    func updateLiveTranslationState(_ state: LiveTranslationState) {
-        guard translationTarget != nil || state == .off else { return }
-        translationState = state
-    }
-
-    /// Old Translation tasks can complete after SwiftUI cancels them. Admit a
-    /// state transition only when it still owns the selected source→target
-    /// lane; checking only the target lets a stale Spanish task overwrite the
-    /// state of a newer French task that translates to the same language.
-    func updateLiveTranslationState(
-        _ state: LiveTranslationState,
-        for pair: LiveTranslationPair
-    ) {
-        guard translationTarget == pair.target,
-            translationSource == pair.source
-        else { return }
-        translationState = state
-    }
-
-    /// Prevents a canceled old-language task from repopulating rendered rows
-    /// after either side of the selected language lane has changed.
-    @discardableResult
-    func storeLiveTranslations(
-        _ values: [UUID: String],
-        for pair: LiveTranslationPair
-    ) -> Bool {
-        guard translationTarget == pair.target,
-            translationSource == pair.source
-        else { return false }
-        translations.merge(values) { _, new in new }
-        return !values.isEmpty
     }
 }
 

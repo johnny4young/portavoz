@@ -165,17 +165,14 @@ extension StructuredSummary {
         includeEvidence: Bool = true
     ) -> SummaryDraft {
         var admitted = self
-        admitted.actionItems = SummaryActionAdmission.admittedItems(
+        let groundedActions = SummaryActionAdmission.admittedItems(
             actionItems,
             sections: sections,
             recipe: request.recipe)
-            .compactMap { Self.groundedOwner($0, speakers: request.speakers) }
-        let items = admitted.actionItems.map { item -> ActionItem in
-            let owner = request.speakers.first { speaker in
-                speaker.label.caseInsensitiveCompare(item.owner) == .orderedSame
-                    || speaker.displayName?.caseInsensitiveCompare(item.owner) == .orderedSame
-            }
-            return ActionItem(text: item.text, ownerSpeakerID: owner?.id)
+            .compactMap { Self.groundedAction($0, speakers: request.speakers) }
+        admitted.actionItems = groundedActions.map(\.item)
+        let items = groundedActions.map {
+            ActionItem(text: $0.item.text, ownerSpeakerID: $0.ownerSpeakerID)
         }
         let evidence = TranscriptFormatter.formatWithEvidence(
             segments: request.segments,
@@ -218,20 +215,21 @@ extension StructuredSummary {
         )
     }
 
-    /// Generated owner strings are untrusted. A participant name merely
-    /// mentioned in speech must not become an action owner or speaker label.
-    /// Admit only a label/display name already present in the request's cast,
-    /// canonicalize it for rendering, and remove the common duplicated
-    /// `Owner: task — Owner` prefix before the Markdown reaches the UI.
-    private static func groundedOwner(
+    private struct GroundedAction {
+        let item: Item
+        let ownerSpeakerID: SpeakerID?
+    }
+
+    /// Generated owner strings are untrusted. Exact labels take precedence;
+    /// a display name is admitted only when it uniquely identifies one cast
+    /// member. Carry the resolved ID beside the rendered value so typed
+    /// projection never re-resolves an ambiguous canonical name.
+    private static func groundedAction(
         _ item: Item,
         speakers: [Speaker]
-    ) -> Item? {
+    ) -> GroundedAction? {
         let rawOwner = item.owner.trimmingCharacters(in: .whitespacesAndNewlines)
-        let speaker = rawOwner.isEmpty ? nil : speakers.first { candidate in
-            candidate.label.caseInsensitiveCompare(rawOwner) == .orderedSame
-                || candidate.displayName?.caseInsensitiveCompare(rawOwner) == .orderedSame
-        }
+        let speaker = matchedSpeaker(for: rawOwner, speakers: speakers)
         var admitted = item
         admitted.text = strippingOwnerPrefix(from: item.text, owner: rawOwner)
         admitted.owner = speaker.map { speaker in
@@ -242,9 +240,27 @@ extension StructuredSummary {
             }
             return speaker.label
         } ?? ""
-        return admitted.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? nil
-            : admitted
+        guard !admitted.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        return GroundedAction(item: admitted, ownerSpeakerID: speaker?.id)
+    }
+
+    private static func matchedSpeaker(
+        for owner: String,
+        speakers: [Speaker]
+    ) -> Speaker? {
+        guard !owner.isEmpty else { return nil }
+        let labelMatches = speakers.filter {
+            $0.label.caseInsensitiveCompare(owner) == .orderedSame
+        }
+        if labelMatches.count == 1 {
+            return labelMatches[0]
+        }
+        guard labelMatches.isEmpty else { return nil }
+        let nameMatches = speakers.filter {
+            $0.displayName?.caseInsensitiveCompare(owner) == .orderedSame
+        }
+        return nameMatches.count == 1 ? nameMatches[0] : nil
     }
 
     private static func strippingOwnerPrefix(from text: String, owner: String) -> String {

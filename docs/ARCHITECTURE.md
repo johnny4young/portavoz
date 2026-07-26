@@ -661,8 +661,11 @@ long, high-confidence unknown text. Closed rows already spoken in the target
 language and short or uncertain rows remain unchanged. Eligible rows run
 through an explicit source-to-target Apple Translation lane; source
 auto-detection is never delegated to the framework, and download consent
-belongs to that exact pair. A target switch cancels and fences prior work and
-clears all translated state before new lanes are resolved.
+belongs to that exact pair. Rows in an unsupported pair stay in their original
+language and are recorded as handled passthrough, so they cannot starve later
+supported language lanes; presentation retains an honest partial-support state.
+A target switch cancels and fences prior work and clears all translated and
+unsupported-passthrough state before new lanes are resolved.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;
@@ -723,10 +726,13 @@ cited transcript row share distinctive case/diacritic-folded lexical material;
 unsupported and cross-language-unverifiable links disappear while the summary
 text remains usable. The same admission stage removes empty/duplicate tasks and
 any normalized action item copied verbatim from the recipe's explicitly typed
-decision section. An action owner is admitted only when it matches an existing
-speaker label or confirmed display name, is canonicalized before Markdown and
-typed projection, and has any duplicated leading owner prefix removed. Unknown
-generated names become unassigned rather than visible identity claims.
+decision section. An action owner is admitted only when it uniquely matches an
+existing speaker label or confirmed display name. A unique exact label takes
+precedence; display-name matches are admitted only when unique. Drafting carries
+the resolved `SpeakerID` beside the canonical rendered owner instead of
+resolving that text a second time, and removes any duplicated leading owner
+prefix. Unknown or ambiguous generated names become unassigned rather than
+visible identity claims.
 Translation pivots carry only evidence and tasks that already passed this
 source-language gate.
 
@@ -976,8 +982,11 @@ The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
 incoming rows preserve that position, and browsing rows render without
 fade/scale/blur. Only the identified Jump to live action resumes following;
-programmatic scroll phases do not. Live-follow mode uses a wider sharp zone and
-tighter visual bounds than playback.
+macOS 15+ uses SwiftUI scroll phases; macOS 14.4 uses a document-scoped AppKit
+bridge that observes user-initiated live-scroll events from the enclosing
+`NSScrollView`, including legacy mouse-wheel events without a start/end pair.
+Programmatic `scrollTo` does not emit either reader-intent signal. Live-follow
+mode uses a wider sharp zone and tighter visual bounds than playback.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
@@ -1119,13 +1128,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,083 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,143 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 105-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 364 production Swift source files;
+- strict SwiftLint reports zero violations across 379 production Swift source files;
 - 44 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

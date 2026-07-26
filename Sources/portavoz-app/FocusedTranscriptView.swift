@@ -52,30 +52,6 @@ enum TranscriptFocusVisualPolicy {
     }
 }
 
-/// Pure reader-intent policy for the platforms without `onScrollPhaseChange`
-/// (macOS 14, which the package still supports). Without a phase signal the
-/// only evidence is the content offset itself, and our own recentering moves
-/// that same offset — so travel is only read as intent once the programmatic
-/// animation has settled, and only past a threshold that layout jitter
-/// cannot reach.
-enum TranscriptScrollIntentPolicy {
-    /// Slightly longer than the 0.35 s recenter animation.
-    static let settleWindow: TimeInterval = 0.45
-    /// A row is ~40 pt tall; smaller travel is layout noise, not a reader.
-    static let minimumTravel: CGFloat = 6
-    /// Named space the offset is measured in. It lives here because a
-    /// generic view cannot hold a static stored property.
-    static let coordinateSpace = "focused-transcript-scroll"
-
-    static func isReaderScroll(
-        offsetDelta: CGFloat,
-        secondsSinceProgrammaticScroll: TimeInterval
-    ) -> Bool {
-        guard secondsSinceProgrammaticScroll > settleWindow else { return false }
-        return abs(offsetDelta) >= minimumTravel
-    }
-}
-
 /// A Spotify-lyrics-style transcript: the active line stays centered while
 /// the others carousel past. Playback always follows its active line. Live
 /// recording follows the newest caption until the user scrolls, then yields
@@ -95,9 +71,6 @@ struct FocusedTranscriptView<Row: View>: View {
     @ViewBuilder var row: (TranscriptSegment, Bool) -> Row
 
     @State private var isFollowing = true
-    /// macOS 14 fallback state: when our own recentering last moved the
-    /// offset, so its travel is not mistaken for the reader's.
-    @State private var lastProgrammaticScroll = Date.distantPast
 
     var body: some View {
         let focusY = anchor.y * height
@@ -132,9 +105,18 @@ struct FocusedTranscriptView<Row: View>: View {
                         .padding(.top, focusY)
                         .padding(.bottom, height - focusY)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background { scrollOffsetReader() }
-                    }
-                    .coordinateSpace(name: TranscriptScrollIntentPolicy.coordinateSpace)),
+                        .background {
+                            if #available(macOS 15.0, *) {
+                                EmptyView()
+                            } else {
+                                LegacyScrollInteractionTracker {
+                                    guard mode == .live else { return }
+                                    isFollowing = false
+                                }
+                                .frame(width: 0, height: 0)
+                            }
+                        }
+                    }),
                 onUserScroll: { isFollowing = false })
             .frame(height: height)
             .overlay(alignment: .bottomTrailing) {
@@ -187,37 +169,9 @@ struct FocusedTranscriptView<Row: View>: View {
                 onUserScroll()
             }
         } else {
-            // macOS 14 has no scroll-phase signal; `scrollOffsetReader`
-            // inside the content supplies the intent instead.
+            // The document-scoped AppKit bridge inside the content owns the
+            // macOS 14 user-only live-scroll signal.
             content
-        }
-    }
-
-    /// The macOS 14 half of reader-owned scrolling. It rides INSIDE the
-    /// scrolled content, so its frame in the scroll coordinate space is the
-    /// content offset. Rapid captions keep refreshing the settle window, so
-    /// on macOS 14 a scroll made between two fast recenters can be missed —
-    /// the reader simply scrolls again, which beats macOS 14 never yielding
-    /// ownership at all.
-    @ViewBuilder
-    private func scrollOffsetReader() -> some View {
-        if #unavailable(macOS 15.0) {
-            GeometryReader { geometry in
-                Color.clear
-                    .onChange(
-                        of: geometry.frame(
-                            in: .named(TranscriptScrollIntentPolicy.coordinateSpace)
-                        ).minY
-                    ) { previous, current in
-                        guard mode == .live, isFollowing else { return }
-                        guard TranscriptScrollIntentPolicy.isReaderScroll(
-                            offsetDelta: current - previous,
-                            secondsSinceProgrammaticScroll:
-                                Date().timeIntervalSince(lastProgrammaticScroll))
-                        else { return }
-                        isFollowing = false
-                    }
-            }
         }
     }
 
@@ -227,9 +181,6 @@ struct FocusedTranscriptView<Row: View>: View {
         animated: Bool = true
     ) {
         guard let id else { return }
-        // Stamped before the move so the macOS 14 offset reader attributes
-        // the travel that follows to us, not to the reader.
-        lastProgrammaticScroll = Date()
         if animated {
             withAnimation(.easeInOut(duration: 0.35)) {
                 proxy.scrollTo(id, anchor: anchor)
