@@ -44,6 +44,41 @@ swiftlint --strict          # 0 violations
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
 - Stray SwiftPM artifacts (`*.d`, `*.dia`, `*.swiftdeps`) sometimes leak to the repo root from an Xcode/XCUITest build — they are **not** git-ignored, so delete them before releasing.
 
+### Performance gate (PERF-001/PERF-008)
+
+```sh
+make perf-ledger            # scorecard in dist/perf-ledger/ledger.md; non-zero on a budget miss
+```
+
+Run it on the **named stable Mac**, not on a laptop under load and not in
+hosted CI: the scorecard prints `authoritative` only when every report comes
+from one release build on one Apple Silicon machine that matches the committed
+baseline, and `informational` otherwise. Treat an informational scorecard as
+unmeasured.
+
+- **Exit 0** — every measured journey is inside its budget.
+- **Exit 2** — regression candidates. PERF-008 wants three stable runs before
+  one counts, so re-run; if it repeats, it is real.
+- **Exit 1** — a journey missed its absolute budget, or a declared checkpoint
+  was missing from a report. Do not release.
+
+A **Comparability** line means the baseline was built with a different Swift
+toolchain, or predates toolchain recording. It does not invalidate the run; it
+says a delta may be codegen rather than product code, so weigh it before
+blaming a commit.
+
+The scorecard also lists the journeys this run did **not** measure — cold
+start, recording memory, live lag, drift, DER, refine, summary. They need a
+microphone, a real recording, or Instruments, so they stay hand-run; their
+commands are in the `source` field of each metric in
+`docs/evidence/perf-thresholds.json`. Reading "not measured" as "fine" is the
+one mistake this ledger exists to prevent.
+
+To move a baseline forward after an accepted improvement, copy the new report
+into `docs/evidence/` and point the `baselines` map in
+`docs/evidence/perf-thresholds.json` at it — a reviewable commit, never a
+silent overwrite.
+
 ## 2. Verify the release prerequisites
 
 ```sh

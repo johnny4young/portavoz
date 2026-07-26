@@ -4152,3 +4152,47 @@ credentials, silent background sends, and server-side copies. The provenance
 line the recap carries claims only what is always true — that the transcript
 is not included — and deliberately does NOT claim the material never left
 the device, because a BYOK or remote engine may have produced the summary.
+## D137 — Performance numbers are a contract, not a memory (Jul 2026)
+
+**Context:** Portavoz measures itself well — eight harnesses cover search,
+detail, semantic retrieval, waveform, Spotlight, drift, DER, and memory. What
+it did not do is RETAIN. Every published number lived as prose in a spec, no
+Makefile target invoked a benchmark, `RELEASING.md` never ran one, and the only
+tracked evidence came from a single five-hour session. Nothing in the release
+recipe would have noticed a ten-fold regression.
+
+**Decision:** PERF-001 lands as a declared contract plus a gate.
+`docs/evidence/perf-thresholds.json` states every release-relevant metric: its
+journey, its budget, and the exact selector that pulls it out of a harness
+report. Budgets are copied from the Target column of spec 08's measured-numbers
+table — the contract records the promise the product already made, it does not
+invent a new one. `make perf-ledger` runs the unattended harnesses, resolves
+every metric, compares it against its budget and against the baseline the
+contract names, and answers with one scorecard and one exit code.
+
+Three rules make the answer trustworthy:
+
+1. **Absolute misses fail; regressions are candidates.** PERF-008 fails a
+   release on a budget miss, but only counts a p95 regression after three
+   stable runs — so one run reports a candidate (exit 2) and `--strict` is how
+   a release decides to treat candidates as blockers.
+2. **A journey that was not measured says so.** Cold start, recording memory,
+   live lag, drift, DER, refine, and summary need a microphone, a real
+   recording, or Instruments. They stay declared in the contract and are
+   printed as `not measured` with the exact command that produces them. A
+   partial run can never read as a green one.
+3. **Authority is earned by the machine.** The scorecard claims
+   `authoritative` only when every report comes from one release build on one
+   Apple Silicon Mac that matches the baseline machine; mixed hosts, a debug
+   build, or another Mac make it `informational`. That is PERF-001's "a stable
+   Apple Silicon machine is the release authority; noisy hosted CI is
+   informational only", enforced rather than remembered. The macOS version is
+   deliberately excluded from machine identity: upgrading the OS must surface
+   as whatever it does to the numbers, not silently discard the baseline.
+
+**Rationale:** the numbers were never the hard part; keeping them true across
+releases is. Encoding them where a script can check them converts a claim that
+decays into one that fails loudly, and it costs one tracked JSON file plus a
+gate that reuses every harness already written. Moving a baseline forward stays
+a reviewable edit of that file, so an accepted regression is always someone's
+explicit decision.
