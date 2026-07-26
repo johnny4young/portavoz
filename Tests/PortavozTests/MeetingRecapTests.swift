@@ -109,6 +109,26 @@ final class MeetingRecapTests: XCTestCase {
         XCTAssertFalse(recap.markdown.contains("prepare the rollout"))
     }
 
+    func testAllClosedTellsEveryAudienceTheMeetingLeftNothingOpen() {
+        let fixture = Fixture()
+        let closed = fixture.summary(actionItems: [
+            ActionItem(text: "prepare the rollout", ownerSpeakerID: fixture.ana.id, isDone: true)
+        ])
+
+        let recap = RecapComposer.compose(
+            meeting: fixture.meeting,
+            speakers: fixture.speakers,
+            summary: closed,
+            audience: .participant(fixture.me.id),
+            timeZone: .gmt)
+
+        // "Nothing is assigned to you" alone would imply the others still
+        // owe something: nothing open is a fact about the meeting.
+        XCTAssertTrue(recap.markdown.contains("Nothing was left open."))
+        XCTAssertFalse(recap.markdown.contains("Nothing is assigned to you."))
+        XCTAssertFalse(recap.markdown.contains("## Your commitments"))
+    }
+
     func testSpanishSummaryProducesASpanishRecap() {
         let fixture = Fixture()
         let summary = fixture.summary(

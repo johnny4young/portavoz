@@ -90,11 +90,14 @@ public enum RecapComposer {
             .joined(separator: "\n")
         }
 
+        // Nothing open is a fact about the MEETING, not about the reader:
+        // telling one participant only "nothing is assigned to you" would
+        // imply the others still owe something.
+        guard !open.isEmpty else {
+            return ["## \(labels.commitments)\n\(labels.noneOpen)"]
+        }
         switch audience {
         case .everyone:
-            guard !open.isEmpty else {
-                return ["## \(labels.commitments)\n\(labels.noneOpen)"]
-            }
             return ["## \(labels.commitments)\n\(lines(open, withOwner: true))"]
         case .participant(let speakerID):
             let mine = open.filter { $0.ownerSpeakerID == speakerID }
