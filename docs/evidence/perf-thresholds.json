@@ -11,6 +11,12 @@
     "confirmationRuns": 3,
     "note": "PERF-008 needs three stable runs before a p95 regression is real, so a single run reports candidates rather than failures."
   },
+  "stability": {
+    "maximumDispersionRatio": 1.25,
+    "minimumMedianForDispersion": 1.0,
+    "minimumSamplesForDispersion": 10,
+    "note": "A timed metric whose p95 exceeds its own p50 by more than this ran on a busy machine: the samples disagree with each other, so the number is not evidence for or against a budget. Only timed units qualify — byte deltas are lumpy by page granularity, not by contention — and only distributions with enough samples for p95 to differ from the maximum. PERF-001 names a stable machine as the release authority, and identity alone does not make one stable."
+  },
   "baselines": {
     "note": "The committed evidence each harness is compared against, relative to docs/evidence/. Moving a baseline forward is a deliberate, reviewable edit of this file.",
     "scale": "scale-baseline-20260716-after-search.json",
@@ -29,8 +35,13 @@
       "budgetMaximum": 50,
       "select": {
         "list": "library",
-        "where": { "totalSegments": 100000 },
-        "path": ["exactSearch", "p95Milliseconds"]
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "exactSearch",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -42,8 +53,13 @@
       "budgetMaximum": 100,
       "select": {
         "list": "library",
-        "where": { "totalSegments": 100000 },
-        "path": ["questionRetrieval", "p95Milliseconds"]
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "questionRetrieval",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -54,8 +70,13 @@
       "unit": "ms",
       "select": {
         "list": "longMeetings",
-        "where": { "durationMinutes": 120 },
-        "path": ["detailInitialObservation", "p95Milliseconds"]
+        "where": {
+          "durationMinutes": 120
+        },
+        "path": [
+          "detailInitialObservation",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -66,8 +87,13 @@
       "unit": "ms",
       "select": {
         "list": "longMeetings",
-        "where": { "durationMinutes": 120 },
-        "path": ["meetingHealth", "p95Milliseconds"]
+        "where": {
+          "durationMinutes": 120
+        },
+        "path": [
+          "meetingHealth",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -78,8 +104,13 @@
       "unit": "ms",
       "select": {
         "list": "longMeetings",
-        "where": { "durationMinutes": 480 },
-        "path": ["meetingHealth", "p95Milliseconds"]
+        "where": {
+          "durationMinutes": 480
+        },
+        "path": [
+          "meetingHealth",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -91,8 +122,13 @@
       "budgetMaximum": 100,
       "select": {
         "list": "checkpoints",
-        "where": { "totalSegments": 100000 },
-        "path": ["wallTime", "p95Milliseconds"]
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "wallTime",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -104,8 +140,13 @@
       "budgetMaximum": 100,
       "select": {
         "list": "checkpoints",
-        "where": { "totalSegments": 100000 },
-        "path": ["processCPUTime", "p95Milliseconds"]
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "processCPUTime",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -116,8 +157,13 @@
       "unit": "bytes",
       "select": {
         "list": "checkpoints",
-        "where": { "totalSegments": 100000 },
-        "path": ["incrementalPeakPhysicalFootprint", "p95Bytes"]
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "incrementalPeakPhysicalFootprint",
+          "p95Bytes"
+        ]
       }
     },
     {
@@ -129,8 +175,14 @@
       "budgetMaximum": 500,
       "select": {
         "list": "snapshotCheckpoints",
-        "where": { "meetingCount": 100000 },
-        "path": ["projection", "wallTime", "p95Milliseconds"]
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "wallTime",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -142,8 +194,14 @@
       "budgetMaximum": 500,
       "select": {
         "list": "snapshotCheckpoints",
-        "where": { "meetingCount": 100000 },
-        "path": ["projection", "processCPUTime", "p95Milliseconds"]
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "processCPUTime",
+          "p95Milliseconds"
+        ]
       }
     },
     {
@@ -155,8 +213,14 @@
       "budgetMaximum": 167772160,
       "select": {
         "list": "snapshotCheckpoints",
-        "where": { "meetingCount": 100000 },
-        "path": ["projection", "peakPhysicalFootprint", "p95Bytes"]
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "peakPhysicalFootprint",
+          "p95Bytes"
+        ]
       }
     },
     {
@@ -168,8 +232,14 @@
       "budgetMaximum": 100663296,
       "select": {
         "list": "snapshotCheckpoints",
-        "where": { "meetingCount": 100000 },
-        "path": ["projection", "incrementalPeakPhysicalFootprint", "p95Bytes"]
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "incrementalPeakPhysicalFootprint",
+          "p95Bytes"
+        ]
       }
     },
     {
@@ -180,7 +250,12 @@
       "unit": "ms",
       "budgetMaximum": 150,
       "source": "portavoz-cli bench-waveform over a long dual-channel recording copied to scratch",
-      "select": { "path": ["firstGeneration", "wallMilliseconds"] }
+      "select": {
+        "path": [
+          "firstGeneration",
+          "wallMilliseconds"
+        ]
+      }
     },
     {
       "id": "waveform.repeat.wall.p95",
@@ -190,7 +265,13 @@
       "unit": "ms",
       "budgetMaximum": 100,
       "source": "portavoz-cli bench-waveform over a long dual-channel recording copied to scratch",
-      "select": { "path": ["repeatedGeneration", "wallTime", "p95Milliseconds"] }
+      "select": {
+        "path": [
+          "repeatedGeneration",
+          "wallTime",
+          "p95Milliseconds"
+        ]
+      }
     },
     {
       "id": "waveform.repeat.cpu.p95",
@@ -200,7 +281,13 @@
       "unit": "ms",
       "budgetMaximum": 100,
       "source": "portavoz-cli bench-waveform over a long dual-channel recording copied to scratch",
-      "select": { "path": ["repeatedGeneration", "processCPUTime", "p95Milliseconds"] }
+      "select": {
+        "path": [
+          "repeatedGeneration",
+          "processCPUTime",
+          "p95Milliseconds"
+        ]
+      }
     },
     {
       "id": "detail.first-content",
@@ -210,7 +297,12 @@
       "unit": "ms",
       "budgetMaximum": 300,
       "source": "make install && scripts/run-detail-ui-baseline.sh (Instruments, Portavoz Dev only)",
-      "select": { "path": ["firstContent", "durationMilliseconds"] }
+      "select": {
+        "path": [
+          "firstContent",
+          "durationMilliseconds"
+        ]
+      }
     },
     {
       "id": "detail.potential-hangs",
@@ -220,7 +312,12 @@
       "unit": "count",
       "budgetMaximum": 0,
       "source": "make install && scripts/run-detail-ui-baseline.sh (Instruments, Portavoz Dev only)",
-      "select": { "path": ["responsiveness", "potentialHangCount"] }
+      "select": {
+        "path": [
+          "responsiveness",
+          "potentialHangCount"
+        ]
+      }
     },
     {
       "id": "startup.cold-first-frame",

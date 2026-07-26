@@ -62,6 +62,11 @@ unmeasured.
 - **Exit 1** — a journey missed its absolute budget, or a declared checkpoint
   was missing from a report. Do not release.
 
+**Verdict withheld — unstable samples** means the metric missed its budget
+while its own iterations disagreed with each other: the machine was busy, so
+the number convicts nobody. Close what is competing for the CPU and measure
+again; that section is the ledger refusing to guess, not a bug.
+
 A **Comparability** line means the baseline was built with a different Swift
 toolchain, or predates toolchain recording. It does not invalidate the run; it
 says a delta may be codegen rather than product code, so weigh it before

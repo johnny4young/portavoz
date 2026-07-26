@@ -41,6 +41,7 @@ REGRESSION = "regression-candidate"
 DIAGNOSTIC = "diagnostic"
 NOT_MEASURED = "not-measured"
 UNRESOLVED = "unresolved"
+UNSTABLE = "unstable"
 
 
 class ContractError(Exception):
@@ -60,6 +61,9 @@ class MetricResult:
     budget_minimum: float | None = None
     baseline: float | None = None
     change_fraction: float | None = None
+    #: p95 / p50 of this metric's own samples. Above the contract's limit the
+    #: 20 iterations disagreed with each other, so the number is not evidence.
+    dispersion: float | None = None
     detail: str = ""
 
     def as_dict(self) -> dict[str, Any]:
@@ -77,6 +81,7 @@ class MetricResult:
             ("budgetMinimum", self.budget_minimum),
             ("baseline", self.baseline),
             ("changeFraction", self.change_fraction),
+            ("dispersion", self.dispersion),
         ):
             if value is not None:
                 payload[key] = value
@@ -111,6 +116,15 @@ class Ledger:
     @property
     def not_measured(self) -> list[MetricResult]:
         return [r for r in self.results if r.status == NOT_MEASURED]
+
+    @property
+    def unstable(self) -> list[MetricResult]:
+        return [r for r in self.results if r.status == UNSTABLE]
+
+    @property
+    def dispersed(self) -> list[MetricResult]:
+        """Every metric whose samples disagreed, verdict withheld or not."""
+        return [r for r in self.results if r.dispersion is not None]
 
 
 # MARK: - Contract
@@ -175,6 +189,21 @@ def select_value(report: Any, selector: dict[str, Any]) -> float | None:
     return float(node)
 
 
+def median_selector(selector: dict[str, Any]) -> dict[str, Any] | None:
+    """The p50 counterpart of a p95 selector, when the schema carries one.
+
+    Every harness reports `p50…`/`p95…` side by side, so the median of the
+    very same distribution is one substitution away. Metrics that select a
+    single scalar (a first-run wall time, a hang count) have no counterpart
+    and simply carry no dispersion.
+    """
+    path = list(selector.get("path", []))
+    if not path or "p95" not in path[-1]:
+        return None
+    path[-1] = path[-1].replace("p95", "p50")
+    return {**selector, "path": path}
+
+
 # MARK: - Evaluation
 
 
@@ -230,6 +259,9 @@ def evaluate(
             ledger.results.append(result)
             continue
         result.measured = measured
+        result.dispersion = _dispersion(
+            report, selector, measured, metric["unit"],
+            contract.get("stability") or {})
 
         baseline_report = baselines.get(harness)
         if baseline_report is not None:
@@ -280,13 +312,61 @@ def _apply_comparability(
             "difference may be codegen rather than product code")
 
 
+#: Units where a wide p95/p50 spread means the process was descheduled.
+#: Byte deltas are lumpy by nature — page granularity and allocator behavior
+#: move them without the machine being busy at all.
+TIMED_UNITS = frozenset({"ms", "s"})
+
+
+def _dispersion(
+    report: Any,
+    selector: dict[str, Any],
+    measured: float,
+    unit: str,
+    stability: dict[str, Any],
+) -> float | None:
+    """How far this metric's own samples spread, when that is meaningful.
+
+    Returned only when the spread exceeds the contract's limit: a tight
+    distribution needs no comment. Three guards keep the signal honest —
+    only timed units, only enough samples for p95 to differ from the maximum,
+    and only measurements large enough for a ratio to mean anything (0.4 ms
+    bouncing to 0.6 ms is 1.5x and says nothing about the machine).
+    """
+    if unit not in TIMED_UNITS:
+        return None
+    counterpart = median_selector(selector)
+    if counterpart is None:
+        return None
+
+    samples = select_value(
+        report, {**selector, "path": selector["path"][:-1] + ["sampleCount"]})
+    minimum = float(stability.get("minimumSamplesForDispersion", 10))
+    if samples is None or samples < minimum:
+        # With a handful of runs p95 IS the maximum, so the ratio is not a
+        # statistic about the machine.
+        return None
+
+    median = select_value(report, counterpart)
+    floor = float(stability.get("minimumMedianForDispersion", 1.0))
+    if median is None or median <= 0 or median < floor:
+        return None
+    ratio = measured / median
+    limit = float(stability.get("maximumDispersionRatio", 1.25))
+    return ratio if ratio > limit else None
+
+
 def _status_for(result: MetricResult, regression_rules: dict[str, Any]) -> str:
     measured = result.measured
     assert measured is not None
-    if result.budget_maximum is not None and measured > result.budget_maximum:
-        return FAIL
-    if result.budget_minimum is not None and measured < result.budget_minimum:
-        return FAIL
+    over_budget = (
+        (result.budget_maximum is not None and measured > result.budget_maximum)
+        or (result.budget_minimum is not None
+            and measured < result.budget_minimum))
+    if over_budget:
+        # A sample that disagrees with itself cannot convict. Withholding the
+        # verdict is the honest answer — not a pass, not a failure.
+        return UNSTABLE if result.dispersion is not None else FAIL
     if result.change_fraction is not None:
         tolerance = _tolerance_for(result.unit, regression_rules)
         if result.change_fraction > tolerance:
@@ -350,6 +430,16 @@ def _apply_authority(
                 "the baseline was measured on a different machine")
             return
 
+    # PERF-001 names a STABLE machine as the authority. Identity is not
+    # enough: samples that disagree with each other prove the machine was
+    # busy while it measured, whatever Mac it is.
+    if ledger.dispersed:
+        worst = max(ledger.dispersed, key=lambda r: r.dispersion or 0)
+        ledger.authority_reason = (
+            f"samples disagreed with themselves (worst: {worst.title} at "
+            f"{worst.dispersion:.2f}x its median) — the machine was busy")
+        return
+
     ledger.authority = "authoritative"
 
 
@@ -404,6 +494,7 @@ STATUS_MARK = {
     DIAGNOSTIC: "· diagnostic",
     NOT_MEASURED: "— not measured",
     UNRESOLVED: "? unresolved",
+    UNSTABLE: "🎲 unstable — no verdict",
 }
 
 
@@ -466,6 +557,29 @@ def render_markdown(ledger: Ledger, generated_at: str | None = None) -> str:
                 f"- **{result.title}**: {result.change_fraction * 100:+.1f}% "
                 f"against the baseline")
         lines.append("")
+    if ledger.unstable:
+        lines.append("## Verdict withheld — unstable samples")
+        lines.append(
+            "These metrics missed their budget, but their own 20 iterations "
+            "disagreed with each other, so the run cannot convict them. "
+            "Re-measure on a quiet machine.")
+        for result in ledger.unstable:
+            assert result.dispersion is not None
+            lines.append(
+                f"- **{result.title}**: "
+                f"{_format_value(result.measured, result.unit)} vs "
+                f"{_format_budget(result)}, but p95 is "
+                f"{result.dispersion:.2f}x its own median")
+        lines.append("")
+    noisy = [r for r in ledger.dispersed if r.status != UNSTABLE]
+    if noisy:
+        lines.append("## Noisy but inside budget")
+        for result in noisy:
+            assert result.dispersion is not None
+            lines.append(
+                f"- **{result.title}** — p95 is {result.dispersion:.2f}x its "
+                "own median; the budget held anyway")
+        lines.append("")
     if ledger.unresolved:
         lines.append("## Unresolved")
         lines.append(
@@ -495,6 +609,8 @@ def build_document(
             "regressionCandidates": len(ledger.regressions),
             "notMeasured": len(ledger.not_measured),
             "unresolved": len(ledger.unresolved),
+            "unstable": len(ledger.unstable),
+            "dispersed": len(ledger.dispersed),
         },
     }
     if generated_at:
@@ -511,7 +627,7 @@ def build_document(
 
 
 def exit_code(ledger: Ledger, strict: bool = False) -> int:
-    if ledger.failures or ledger.unresolved:
+    if ledger.failures or ledger.unresolved or ledger.unstable:
         return 1
     if ledger.regressions:
         return 1 if strict else 2
