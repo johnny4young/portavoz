@@ -282,6 +282,18 @@ owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
 insertion success.
 
+Live Apuntador keeps endpoint admission split across layers: the pure,
+deterministic `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel,
+noise, question/name, and speculative-material rules, while
+`RecordingController` owns exactly one main-actor silence deadline. Both a real
+row close and a two-second silence expiry enter one shared detection dispatch;
+the app never closes or rewrites the coalescer's mutable row. Every accepted
+delta re-arms the deadline, and recording activation or an in-meeting opt-in
+also synchronizes it so an already-visible remote question cannot be stranded
+at either lifecycle boundary. Recording activation first drains every row that
+closed while Start was still preparing, then arms the open tail. Disabling
+Apuntador, stopping, or resetting the session cancels the pending deadline.
+
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
 from an application workflow. The app adapter samples preferences and time once
@@ -1128,7 +1140,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,143 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,154 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

@@ -9,6 +9,23 @@ import PortavozCore
 // after two seconds of delta silence so a question followed by silence still
 // cards during the meeting.
 extension RecordingController {
+    /// Live callbacks can publish more than one caption row before Start
+    /// returns its committed session. Detection stays disabled during that
+    /// preparation window, so drain every row that already closed, then arm
+    /// the still-open tail once the lifecycle becomes `.recording`.
+    func activateCompanionDetectionAfterRecordingStart() {
+        guard phase == .recording else { return }
+        for closed in captions.dropLast() where TurnEndpointPolicy.shouldDetect(
+            after: speculativeTurnMark,
+            rowID: closed.id,
+            textCount: closed.text.count
+        ) {
+            dispatchCompanionDetection(for: closed)
+        }
+        lastOpenRowID = captions.last?.id
+        armTurnEndpointDeadline()
+    }
+
     /// The coalescer only ever grows the NEWEST row; when the newest row's
     /// id changes, the previous one closed for good — that's the moment a
     /// caption becomes a companion candidate. The D138 turn endpointer may
@@ -36,6 +53,7 @@ extension RecordingController {
     /// mark plus the card dedup absorb the eventual real close.
     func armTurnEndpointDeadline() {
         turnEndpointTask?.cancel()
+        turnEndpointTask = nil
         guard companionEnabled, phase == .recording,
               captions.last?.channel == .system else { return }
         turnEndpointTask = Task { @MainActor [weak self] in
@@ -47,12 +65,6 @@ extension RecordingController {
 
     private func fireTurnEndpoint() {
         guard phase == .recording, let open = captions.last else { return }
-        guard TurnEndpointPolicy.isTurnEndCandidate(
-            channel: open.channel,
-            text: open.text,
-            confidence: open.confidence,
-            ownerName: Self.companionOwnerName())
-        else { return }
         guard TurnEndpointPolicy.shouldDetect(
             after: speculativeTurnMark,
             rowID: open.id,
@@ -71,18 +83,17 @@ extension RecordingController {
     @discardableResult
     private func dispatchCompanionDetection(for row: TranscriptSegment) -> Bool {
         guard companionEnabled, phase == .recording else { return false }
-        guard FoundationModelsCapability.current().isAvailable else { return false }
-        guard #available(macOS 26.0, *) else { return false }
         // "Asked you" (D26): a mention of your name opens the gate
         // even when the sentence does not look like a question ("Johnny, tell us about the deploy").
         let ownerName = Self.companionOwnerName()
-        guard
-            row.channel == .system,
-            // Don't burn a model call on a garbled/low-confidence caption.
-            !TranscriptNoiseFilter.isLikelyNoise(text: row.text, confidence: row.confidence),
-            QuestionHeuristic.looksLikeQuestion(row.text)
-                || ownerName.map({ QuestionHeuristic.mentions($0, in: row.text) }) == true
-        else { return false }
+        guard TurnEndpointPolicy.isTurnEndCandidate(
+            channel: row.channel,
+            text: row.text,
+            confidence: row.confidence,
+            ownerName: ownerName
+        ) else { return false }
+        guard FoundationModelsCapability.current().isAvailable else { return false }
+        guard #available(macOS 26.0, *) else { return false }
         let closed = row
 
         let passages = recentPassages()

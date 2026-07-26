@@ -4213,13 +4213,17 @@ problem: there was no endpointing to tax.)
 `RecordingController`: every live delta re-arms a 2.0 s deadline; when it
 fires, the still-open remote row is treated as a finished turn and runs the
 SAME detection dispatch a real close runs — same channel/noise/question
-gates, same scheduler key, same card admission. Three properties are binding:
+gates, same scheduler key, same card admission. Recording activation first
+drains rows that closed while Start was preparing and then arms the open tail;
+enabling Apuntador mid-recording arms the already-open remote row, while
+disabling it cancels the deadline. Three properties are binding:
 
 1. **The caption model is untouched.** The coalescer keeps its delta-driven
    closing; the open row stays open for presentation, dictation, translation,
    and the summary. Only Apuntador detection consumes it early.
 2. **Speculation can never out-detect the close.** The policy's gates mirror
-   the real-close gates exactly, and both paths share one dispatch method.
+   the real-close gates exactly because both paths share one dispatch method
+   and that method is the only caller of the candidate gate.
 3. **One detection per (row, text length).** A `SpeculativeTurnMark` makes
    the eventual real close free when the text did not change, and a late
    delta that grows the text is a genuinely new candidate that re-detects;

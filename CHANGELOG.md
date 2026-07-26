@@ -7,7 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 26, 2026
 
-- **🤫 Apuntador answers even when the room goes quiet** — Before, a question needed the NEXT person to speak before Portavoz could react; if everyone waited silently for your answer, no card ever came. Now two seconds of silence is enough: the question is detected and answered exactly when everyone is looking at you.
+- **🤫 Apuntador answers even when the room goes quiet** — Before, a question needed the NEXT person to speak before Portavoz could react; if everyone waited silently for your answer, no card ever came. Now two seconds of silence is enough — even when you enable Apuntador after the question is already visible — so it reacts exactly when everyone is looking at you.
 
 ## July 25, 2026
 

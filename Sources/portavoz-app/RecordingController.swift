@@ -44,7 +44,13 @@ final class RecordingController {
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
     var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
-        didSet { UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled") }
+        didSet {
+            UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled")
+            // The toggle is available during a recording. Enabling it while a
+            // remote row is already open must start that row's silence clock;
+            // disabling it must cancel any pending speculative detection.
+            armTurnEndpointDeadline()
+        }
     }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
@@ -188,6 +194,10 @@ final class RecordingController {
         companionTerminalRuns = []
         contextItems = []
         liveNotes = []
+        lastOpenRowID = nil
+        turnEndpointTask?.cancel()
+        turnEndpointTask = nil
+        speculativeTurnMark = nil
         recordingShell = nil
         reservedAssets = []
         failureContext = nil
@@ -336,6 +346,7 @@ final class RecordingController {
                 liveDiarizerFeed?.finish()
             }
             phase = .recording
+            activateCompanionDetectionAfterRecordingStart()
             startRollingSummaryIfAvailable()
         case .preparationFailed(let failure):
             diarizerFeed.finish()
