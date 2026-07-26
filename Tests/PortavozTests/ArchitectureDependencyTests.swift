@@ -1698,6 +1698,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(diagnostics.contains("CompanionCardEvidence"))
     }
 
+    func testShareableRecapStaysSummaryDerivedReviewedAndUnsent() throws {
+        let composer = try Self.contents(of: "Sources/ApplicationKit/MeetingRecap.swift")
+        let sheet = try Self.contents(of: "Sources/portavoz-app/MeetingRecapSheet.swift")
+        let exporter = try Self.contents(of: "Sources/IntegrationsKit/MeetingExporter.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The transcript cannot reach a recap: the composer never receives
+        // one, which is a stronger guarantee than filtering it out later.
+        XCTAssertFalse(composer.contains("TranscriptSegment"))
+        XCTAssertFalse(sheet.contains("TranscriptSegment"))
+        XCTAssertFalse(sheet.contains("detail.segments"))
+        // Nothing is sent from the review sheet: no transport, no gateway,
+        // no credential. The destinations are the clipboard and the system
+        // share sheet, both chosen by the user.
+        for transport in ["URLSession", "DataEgress", "gateway", "secrets", "publish"] {
+            XCTAssertFalse(
+                sheet.contains(transport),
+                "the recap sheet must not reach \(transport)")
+        }
+        XCTAssertTrue(sheet.contains("ShareLink("))
+        // One channel renderer for every shared surface.
+        XCTAssertTrue(exporter.contains("public static func render("))
+        XCTAssertTrue(composer.contains("isActionItemsHeading"))
+        XCTAssertTrue(detail.contains("MeetingRecapSheet("))
+        XCTAssertTrue(decisions.contains("## D136"))
+    }
+
     func testMeetingSyncJournalStaysContentFreeGenerationFencedAndAdapterFree() throws {
         let manifest = try Self.contents(of: "Package.swift")
         let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")

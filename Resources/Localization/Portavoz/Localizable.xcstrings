@@ -8060,6 +8060,166 @@
           }
         }
       }
+    },
+    "Share a recap": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir un resumen"
+          }
+        }
+      }
+    },
+    "Share a recap…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir un resumen…"
+          }
+        }
+      }
+    },
+    "Read it, edit anything, then choose where it goes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Léelo, edita lo que quieras y luego elige a dónde va."
+          }
+        }
+      }
+    },
+    "For": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para"
+          }
+        }
+      }
+    },
+    "Everyone": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo el equipo"
+          }
+        }
+      }
+    },
+    "As": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como"
+          }
+        }
+      }
+    },
+    "Your edits are kept — the new choices are not applied yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus cambios se conservan — las opciones nuevas aún no se aplican."
+          }
+        }
+      }
+    },
+    "Redraft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rehacer borrador"
+          }
+        }
+      }
+    },
+    "Subject": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asunto"
+          }
+        }
+      }
+    },
+    "Portavoz sends nothing. The transcript is never included.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no envía nada. La transcripción nunca se incluye."
+          }
+        }
+      }
+    },
+    "Copy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        }
+      }
+    },
+    "Share…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir…"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        }
+      }
+    },
+    "Email": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        }
+      }
+    },
+    "Slack": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slack"
+          }
+        }
+      }
+    },
+    "Markdown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

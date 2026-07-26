@@ -7,6 +7,7 @@ entry here — feature name + what it gives you.)
 
 ## July 25, 2026
 
+- **📨 The recap you actually send** — After a meeting, Portavoz drafts the message: what was decided and who owes what, in the meeting's language. Pick a person and it leads with their commitments; pick Email, Slack or Markdown and it arrives shaped for that. Edit anything, then copy it or use the share sheet — Portavoz never sends it for you, and the transcript is never included.
 - **📝 Your notes, enhanced** — A new "My notes" section in every meeting shows exactly what you typed, and one click expands each note with what the transcript says around that moment — your words stay verbatim in bold, the AI only adds the facts. Regenerate it in Spanish or English anytime; your raw notes are never touched.
 - **🎯 Objectives that check themselves off** — Write what the meeting should achieve before it starts; as the conversation genuinely covers each objective, Apuntador ticks it (with a spark so you know it was him), and the summary reports what stayed open. You can always check or uncheck by hand.
 - **💡 "What should I ask next?"** — One click and Apuntador suggests one or two questions worth asking right now — grounded in what was just said and in your still-open objectives, in the meeting's language.

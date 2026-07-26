@@ -613,6 +613,43 @@ final class MeetingDetailUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
     }
 
+    /// FEATURE-003: the recap opens as an editable draft the user reviews
+    /// before choosing a destination — and it never carries the transcript.
+    @MainActor
+    func testRecapSheetDraftsFromTheSummaryWithoutTheTranscript() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "detail-export-menu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 10))
+        menu.click()
+        let recapItem = app.menuItems["detail-share-recap"]
+        XCTAssertTrue(
+            recapItem.waitForExistence(timeout: 5),
+            "a summarized meeting must offer the recap")
+        recapItem.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "recap-title").waitForExistence(timeout: 10),
+            "the recap opens for review instead of sending anything")
+        let editor = app.control(withIdentifier: "recap-body")
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        let draft = (editor.value as? String) ?? ""
+        XCTAssertTrue(
+            draft.contains("Pendientes"),
+            "the seeded Spanish summary produces a Spanish recap, saw: \(draft)")
+        XCTAssertTrue(
+            draft.contains("Ana"),
+            "open commitments carry their owner")
+        XCTAssertFalse(
+            draft.contains("Revisemos el presupuesto de transcripción."),
+            "the recap is summary-derived: no transcript line may appear in it")
+        XCTAssertTrue(app.control(withIdentifier: "recap-copy").exists)
+        XCTAssertTrue(app.control(withIdentifier: "recap-privacy-note").exists)
+        attachScreenshot(of: app, named: "meeting-detail-share-recap")
+        app.control(withIdentifier: "recap-done").click()
+    }
+
     /// The Structure submenu must offer every seeded template — including
     /// discovery, postmortem, and retro — with the sections each one
     /// produces visible before generating.

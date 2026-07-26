@@ -90,6 +90,7 @@ reported (D75/D103).
 ## Exporters — IntegrationsKit
 
 - `SubtitleExport` (Jul 2026): SRT and WebVTT from the diarized transcript with caption discipline — consecutive rows merge only when their `SpeakerID` matches and the rendered cue, including its speaker prefix, remains within six seconds and 84 characters. Transcript text and user-assigned speaker names collapse line whitespace and neutralize the timestamp arrow; integer-millisecond timestamps use SRT's comma and VTT's period exactly; nonlexical rows never become cues. Reached from the Meeting Detail export menu, `PrepareMeetingDocument`, and the CLI export formats `srt`/`vtt`.
+- `MeetingExporter.render(_:format:)` (Jul 2026): the single channel renderer for Portavoz-authored Markdown — plain text strips markers, Slack emits mrkdwn (`*bold*`, `•` bullets, no `#`), Markdown passes through canonical. Both the summary copy and the shareable recap ride it, so a channel convention is fixed in one place.
 - `MeetingExporter`: canonical Markdown (title/metadata/summary with demoted headings/pending items/attributed transcript) and **PDF via pure CoreText** (without AppKit — builds for iOS; US Letter pagination verified with CGPDFDocument).
 - **Single-meeting document preparation/publication (D103/D105):**
   ApplicationKit loads one coherent current detail/General-summary projection.

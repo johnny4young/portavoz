@@ -47,6 +47,7 @@ struct MeetingDetailView: View {
     @State private var exportName = "reunion"
     @State private var regenerating = false
     @State private var showGistConfirm = false
+    @State private var showingRecap = false
     @State private var gistResult: URL?
     @State private var gistError: String?
     @State private var summaryNotice: String?
@@ -145,6 +146,7 @@ struct MeetingDetailView: View {
             .navigationTitle("Portavoz")
             .sheet(isPresented: refineDraftBinding) { refineSheet }
             .sheet(isPresented: mirrorBinding(detail)) { mirrorSheet(detail) }
+            .sheet(isPresented: $showingRecap) { recapSheet(detail) }
             .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
             .fileExporter(
                 isPresented: exportBinding,
@@ -915,6 +917,13 @@ extension MeetingDetailView {
             refineMenu(detail)
 
             Menu {
+                // First: the thing you actually do after a meeting. The raw
+                // formats below are for archiving, not for telling people
+                // what happened.
+                Button("Share a recap…") { showingRecap = true }
+                    .accessibilityIdentifier("detail-share-recap")
+                    .disabled(summary == nil)
+                Divider()
                 Button("Export Markdown…") { export(as: .markdown) }
                 Button("Export PDF…") { export(as: .pdf) }
                 Button("Export subtitles (SRT)…") { export(as: .srt) }
@@ -1797,6 +1806,23 @@ extension MeetingDetailView {
             // Unlike the summary's silent path, this is a click-driven
             // action: an honest one-liner beats a spinner that just stops.
             notesNotice = L10n.text("Enhancing didn't work this time. Try again in a moment.")
+        }
+    }
+}
+
+// MARK: - Share recap (FEATURE-003/D136)
+
+extension MeetingDetailView {
+    /// Reachable only with a summary: the recap is summary-derived, so
+    /// without one there is nothing honest to draft.
+    @ViewBuilder
+    private func recapSheet(_ detail: MeetingReviewReadModel) -> some View {
+        if let summary {
+            MeetingRecapSheet(
+                meeting: detail.meeting,
+                speakers: detail.speakers,
+                summary: summary.draft,
+                dismiss: { showingRecap = false })
         }
     }
 }

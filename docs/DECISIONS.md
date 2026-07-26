@@ -4096,3 +4096,46 @@ degradable read, so a notes failure can never blank the transcript.
 Keeping enhancement OUT of the summary artifact keeps both regenerable
 independently, keeps the summary cache honest, and gives the "your notes,
 expanded" loop its own provenance and sync story at the cost of one table.
+
+## D136 — The shareable recap is summary-derived and never sent by us (Jul 2026)
+
+**Context:** the meeting ends and the real job begins: telling people what
+happened. Exporting Markdown or a PDF hands over a document; it does not
+write the message. Competitors close this loop by generating a recap and
+wiring an outbound integration (mail credentials, a Slack token, a share
+link on their servers) — each one a standing key and a new place meeting
+content can leak from.
+
+**Decision:** FEATURE-003 adds a recap that Portavoz DRAFTS and the user
+SENDS. Three properties are binding:
+
+1. **Summary-derived.** `RecapComposer` (ApplicationKit, pure) receives the
+   meeting, the cast, and the summary — never `TranscriptSegment`s. A recap
+   therefore cannot leak raw speech even if the user forwards it widely, and
+   the guarantee is structural rather than a filter that could regress.
+2. **Reviewed before it moves.** The composed draft opens in an editable
+   sheet. Changing audience or channel never overwrites text the user has
+   already edited: the new choices are held and a `Redraft` action applies
+   them explicitly. Nothing is transmitted from the sheet — the destinations
+   are the clipboard and the system share sheet (D12's L0 share step), both
+   chosen by the user, so no credential, no gateway, and no egress receipt
+   is involved.
+3. **It speaks the meeting's language.** Section labels come from a
+   bilingual content table keyed on the summary's language, not from `L10n`:
+   the recap is addressed to the people who were in the room, whatever
+   language the reader's interface happens to be in.
+
+Commitments are re-rendered from the library's real done state — open items
+only, with owners resolved from the cast — so a stale action-items section
+narrated inside the summary snapshot never contradicts the current truth.
+An audience of one participant leads with that person's own commitments.
+Channel shaping reuses `MeetingExporter.render(_:format:)`, the same
+renderer as the summary copy, so no channel grows its own Slack dialect.
+
+**Rationale:** the honest boundary for a local-first product is to make the
+message excellent and stop at the user's own send button. Refusing outbound
+integrations costs one click and removes an entire class of standing
+credentials, silent background sends, and server-side copies. The provenance
+line the recap carries claims only what is always true — that the transcript
+is not included — and deliberately does NOT claim the material never left
+the device, because a BYOK or remote engine may have produced the summary.

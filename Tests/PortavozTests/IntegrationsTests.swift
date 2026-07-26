@@ -84,6 +84,31 @@ final class MeetingExporterTests: XCTestCase {
         XCTAssertTrue(plain.contains("• Deploy el viernes"))
     }
 
+    /// The recap rides the same renderer as the summary copy, so a channel
+    /// never grows its own dialect (FEATURE-003).
+    func testRenderShapesAnyPortavozMarkdownForAChannel() {
+        let recap = """
+            Cerramos el rollout.
+
+            ## Pendientes
+            - Ana: preparar el **deploy**
+            """
+
+        let slack = MeetingExporter.render(recap, format: .slack)
+        XCTAssertFalse(slack.contains("#"))
+        XCTAssertTrue(slack.contains("*Pendientes*"))
+        XCTAssertTrue(slack.contains("• Ana: preparar el *deploy*"))
+
+        let plain = MeetingExporter.render(recap, format: .plainText)
+        XCTAssertFalse(plain.contains("#"))
+        XCTAssertFalse(plain.contains("*"))
+        XCTAssertTrue(plain.contains("• Ana: preparar el deploy"))
+
+        XCTAssertEqual(
+            MeetingExporter.render(recap, format: .markdown), recap + "\n",
+            "Markdown is canonical and passes through unchanged")
+    }
+
     func testMarkdownWithoutSummarySkipsThatSection() {
         let (record, speakers, segments, _) = fixture()
         let markdown = MeetingExporter.markdown(
