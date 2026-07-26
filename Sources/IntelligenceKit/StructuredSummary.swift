@@ -97,8 +97,10 @@ extension StructuredSummary {
     }
 
     /// Headings that mean "action items" in the languages the app ships:
-    /// those sections duplicate the canonical block and are skipped.
-    static func isActionItemsHeading(_ heading: String) -> Bool {
+    /// those sections duplicate the canonical block and are skipped. Public
+    /// because the recap composer drops the same sections for the same
+    /// reason — it re-renders commitments from the library's real done state.
+    public static func isActionItemsHeading(_ heading: String) -> Bool {
         let normalized = heading.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return [
             "action items", "action item", "pendientes", "next steps",

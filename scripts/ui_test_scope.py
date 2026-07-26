@@ -63,6 +63,11 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-export": (
         test_id("MeetingDetailUITests", "testExportMenuOffersSubtitleFormats"),
     ),
+    "meeting-recap": (
+        test_id(
+            "MeetingDetailUITests",
+            "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript"),
+    ),
     "meeting-naming": (
         test_id("MeetingDetailUITests", "testUnnamedSpeakerOffersExplicitNameSuggestions"),
         test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
@@ -207,6 +212,8 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-audio"}
     if "exportdocument" in lowered:
         return {"meeting-export"}
+    if "recap" in lowered:
+        return {"meeting-recap"}
     if any(token in lowered for token in ("summary", "companion")):
         return {"meeting-summary", "meeting-evidence", "meeting-processing", "settings-intelligence"}
     if any(token in lowered for token in ("speaker", "meetingname", "voicememory")):
@@ -224,6 +231,8 @@ def lower_layer_features(path: str) -> set[str]:
         return {"settings-audio"}
     if "subtitle" in lowered:
         return {"meeting-export"}
+    if "recap" in lowered:
+        return {"meeting-recap"}
     if "insight" in lowered:
         return {"insights"}
     if any(token in lowered for token in ("ask", "brief")):

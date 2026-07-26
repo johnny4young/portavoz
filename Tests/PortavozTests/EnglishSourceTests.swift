@@ -127,6 +127,13 @@ final class EnglishSourceTests: XCTestCase {
         if relative == "Sources/portavoz-app/MeetingDetailView.swift", line.contains("Español") {
             return true
         }
+        if relative == "Sources/ApplicationKit/MeetingRecap.swift" {
+            // The recap speaks the MEETING's language (D136), so its section
+            // labels are a bilingual content table rather than UI prose.
+            // Explanatory source prose in this file stays English.
+            return line.contains("reunión") || line.contains("transcripción")
+                || line.contains("título")
+        }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional
             // prose: the bilingual transcript is what the screenshot shows.
