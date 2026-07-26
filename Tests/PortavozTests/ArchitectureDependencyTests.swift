@@ -293,8 +293,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
         let provenance = try Self.contents(
             of: "Sources/IntelligenceKit/CompanionGenerationProvenance.swift")
+        // Live detection split into its own extension file (D138); the BYOK
+        // wiring pins apply to the pair.
         let recording = try Self.contents(
             of: "Sources/portavoz-app/RecordingController.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
         let refresh = try Self.contents(of: "Sources/portavoz-app/CompanionRefresh.swift")
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
         let appApplication = try Self.contents(
@@ -571,6 +575,72 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/AudioCaptureKit/MicrophoneSource.swift")
         XCTAssertTrue(microphone.contains(
             "voiceProcessing: Bool = false"))
+    }
+
+    func testTurnEndpointStaysDeterministicPolicyDrivenAndCoalescerFree() throws {
+        let policy = try Self.contents(
+            of: "Sources/IntelligenceKit/TurnEndpointPolicy.swift")
+        // Detection lives in its own extension file; card-state mutation
+        // stays in the main file behind recordCompanionOutcome.
+        let mainController = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let detectionController = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
+        let controller = mainController + detectionController
+        let coalescer = try Self.contents(
+            of: "Sources/TranscriptionKit/CaptionCoalescer.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The endpointer never touches the caption model: rows still close
+        // only when the next delta appends, so presentation and dictation
+        // (which share the coalescer) are untouched.
+        XCTAssertFalse(coalescer.contains("TurnEndpoint"))
+        XCTAssertFalse(coalescer.contains("Task.sleep"))
+        // The controller consumes the policy rather than embedding thresholds,
+        // and speculation reuses the SAME dispatch as the real close — no
+        // second detection path that could drift.
+        XCTAssertTrue(controller.contains("TurnEndpointPolicy.silenceSeconds"))
+        XCTAssertTrue(controller.contains("TurnEndpointPolicy.isTurnEndCandidate("))
+        XCTAssertTrue(controller.contains("TurnEndpointPolicy.shouldDetect("))
+        XCTAssertEqual(
+            controller.components(
+                separatedBy: "TurnEndpointPolicy.isTurnEndCandidate("
+            ).count - 1,
+            1,
+            "real-close and silence paths must share one candidate gate")
+        XCTAssertTrue(controller.contains("turnEndpointTask?.cancel()"))
+        XCTAssertTrue(controller.contains("dispatchCompanionDetection(for:"))
+        let enabledStart = try XCTUnwrap(mainController.range(
+            of: "var companionEnabled"))
+        let translationStart = try XCTUnwrap(mainController.range(
+            of: "/// Live caption translations",
+            range: enabledStart.upperBound..<mainController.endIndex))
+        let enabledProperty = mainController[
+            enabledStart.lowerBound..<translationStart.lowerBound]
+        XCTAssertTrue(enabledProperty.contains("armTurnEndpointDeadline()"))
+
+        let applyStart = try XCTUnwrap(mainController.range(
+            of: "private func applyStartRecordingResult"))
+        let failureStart = try XCTUnwrap(mainController.range(
+            of: "private func presentStartFailure",
+            range: applyStart.upperBound..<mainController.endIndex))
+        let startResult = mainController[
+            applyStart.lowerBound..<failureStart.lowerBound]
+        let recordingPhase = try XCTUnwrap(startResult.range(
+            of: "phase = .recording"))
+        let lifecycleActivation = try XCTUnwrap(startResult.range(
+            of: "activateCompanionDetectionAfterRecordingStart()",
+            range: recordingPhase.upperBound..<startResult.endIndex))
+        XCTAssertLessThan(recordingPhase.lowerBound, lifecycleActivation.lowerBound)
+        XCTAssertTrue(detectionController.contains(
+            "for closed in captions.dropLast()"))
+        XCTAssertTrue(detectionController.contains(
+            "lastOpenRowID = captions.last?.id"))
+        // The policy is deterministic: no model, no scheduler, no clock.
+        XCTAssertFalse(policy.contains("LanguageModelSession"))
+        XCTAssertFalse(policy.contains("IntelligenceScheduler"))
+        XCTAssertFalse(policy.contains("Date("))
+        XCTAssertTrue(decisions.contains("## D138"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {

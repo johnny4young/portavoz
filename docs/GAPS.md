@@ -51,6 +51,13 @@ What Portavoz lacks (Jul 2026) compared with the state of the art measured in th
 - **OSS growth after publication**: distribution is solved; discoverability,
   adoption, and trust in a native Swift + MIT product remain ongoing work.
 - **Watch companion**: Teams "Facilitator" arrives ~Aug-Sep 2026. Being first in local meeting notes matters (M13).
+- **Semantic end-of-turn model (APUN-005 tail)**: the deterministic D138
+  endpointer covers turn ends visible in the transcript (punctuation,
+  interrogatives, owner mentions). pipecat smart-turn v3 (8.7 MB int8, BSD-2,
+  ~12 ms, 23 languages, sha256-pinnable) would add intonation-only turn ends
+  but ships ONNX-only; adoption is deliberately deferred until an official
+  CoreML artifact exists or an onnxruntime dependency is justified on its own
+  merits. Re-check the pipecat-ai/smart-turn-v3 repo when revisiting.
 - **Public benchmarks**: reproducible latency, drift, DER, summary, refine,
   startup, FTS, semantic, long-audio waveform, large-library Spotlight, and
   memory numbers are published. The next credibility step is retaining these

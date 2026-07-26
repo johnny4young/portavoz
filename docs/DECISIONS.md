@@ -4196,3 +4196,59 @@ decays into one that fails loudly, and it costs one tracked JSON file plus a
 gate that reuses every harness already written. Moving a baseline forward stays
 a reviewable edit of that file, so an accepted regression is always someone's
 explicit decision.
+## D138 — Silence is an endpoint: the deterministic stage-0 turn detector (Jul 2026)
+
+**Context:** closing a caption row is delta-driven — a row closes only when
+the NEXT Parakeet delta appends a new one. Silence therefore never closed a
+row, and an Apuntador candidate only existed once a row closed. The
+consequence went beyond latency: when a remote participant asked a question
+and the room went quiet waiting for the user's answer, no card could be
+produced during the meeting at all. The one moment the prompter is most
+needed was the one moment it structurally could not act. (APUN-005's research
+framing — "remove the 300–800 ms silence-endpointing tax" — understated the
+problem: there was no endpointing to tax.)
+
+**Decision:** a deterministic turn endpointer, not a model.
+`TurnEndpointPolicy` (IntelligenceKit, pure) plus one deadline task in
+`RecordingController`: every live delta re-arms a 2.0 s deadline; when it
+fires, the still-open remote row is treated as a finished turn and runs the
+SAME detection dispatch a real close runs — same channel/noise/question
+gates, same scheduler key, same card admission. Recording activation first
+drains rows that closed while Start was preparing and then arms the open tail;
+enabling Apuntador mid-recording arms the already-open remote row, while
+disabling it cancels the deadline. Three properties are binding:
+
+1. **The caption model is untouched.** The coalescer keeps its delta-driven
+   closing; the open row stays open for presentation, dictation, translation,
+   and the summary. Only Apuntador detection consumes it early.
+2. **Speculation can never out-detect the close.** The policy's gates mirror
+   the real-close gates exactly because both paths share one dispatch method
+   and that method is the only caller of the candidate gate.
+3. **One detection per (row, text length).** A `SpeculativeTurnMark` makes
+   the eventual real close free when the text did not change, and a late
+   delta that grows the text is a genuinely new candidate that re-detects;
+   the existing per-question card dedup absorbs the overlap.
+
+The 2.0 s constant is derived from the pipeline's own numbers: the live
+window's worst-case structural latency is 1.4 s (1.0 s chunk + 0.4 s right
+context), so two seconds of delta silence implies the speaker stopped at
+least 0.6 s ago — the same sentence pause that would have closed the row had
+anyone kept talking.
+
+**The model this stage was researched around stays out, with a revisit
+trigger.** pipecat smart-turn v3 (8.7 MB int8, BSD-2, ~12 ms, 23 languages
+incl. ES, sha256-pinnable from HF) is a real candidate for the cases a
+transcript heuristic cannot see — intonation-only turn ends without
+punctuation. But it ships ONNX-only: adopting it today means either an
+onnxruntime dependency (a heavyweight binary xcframework to serve an 8 MB
+model) or converting and self-hosting a CoreML artifact with weaker
+provenance. Neither is worth it while the deterministic stage covers the
+transcribable cases; GAPS records the trigger (an official CoreML artifact,
+or an onnxruntime decision made for its own sake).
+
+**Rationale:** the honest reading of APUN-005 was that the product gap was
+structural, not statistical. A two-line policy and one timer close the
+"question, then silence" hole entirely and cut several seconds in the common
+case; a 360 MB (v2) or new-runtime (v3) dependency would have improved
+recall on a minority of turns while leaving the same hole open on Sequoia
+and non-FM Macs, where detection cannot run anyway.

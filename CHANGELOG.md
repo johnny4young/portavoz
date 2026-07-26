@@ -5,6 +5,10 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 26, 2026
+
+- **🤫 Apuntador answers even when the room goes quiet** — Before, a question needed the NEXT person to speak before Portavoz could react; if everyone waited silently for your answer, no card ever came. Now two seconds of silence is enough — even when you enable Apuntador after the question is already visible — so it reacts exactly when everyone is looking at you.
+
 ## July 25, 2026
 
 - **📨 The recap you actually send** — After a meeting, Portavoz drafts the message: what was decided and who owes what, in the meeting's language. Pick a person and it leads with their commitments; pick Email, Slack or Markdown and it arrives shaped for that. Edit anything, then copy it or use the share sheet — Portavoz never sends it for you, and the transcript is never included.
