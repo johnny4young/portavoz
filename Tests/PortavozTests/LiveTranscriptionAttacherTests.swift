@@ -106,7 +106,7 @@ final class LiveTranslationStateTests: XCTestCase {
         controller.beginLiveTranslationPair(pair)
         controller.translationDownloadApproved = true
         controller.translations[segmentID] = "Presupuesto aprobado"
-        controller.markUnsupportedLiveTranslationRows([unsupportedID], for: pair)
+        controller.markUnsupportedLiveTranslationRows(Set([unsupportedID]), for: pair)
 
         controller.translationTarget = "en"
 
@@ -215,7 +215,7 @@ final class LiveTranslationStateTests: XCTestCase {
         let unsupportedID = UUID()
 
         controller.markUnsupportedLiveTranslationRows(
-            [unsupportedID],
+            Set([unsupportedID]),
             for: unsupportedPair)
 
         XCTAssertTrue(controller.liveTranslationHandledIDs.contains(unsupportedID))
