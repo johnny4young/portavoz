@@ -18,10 +18,10 @@
     "note": "A timed metric whose p95 exceeds its own p50 by more than this ran on a busy machine: the samples disagree with each other, so the number is not evidence for or against a budget. Only timed units qualify — byte deltas are lumpy by page granularity, not by contention — and only distributions with enough samples for p95 to differ from the maximum. PERF-001 names a stable machine as the release authority, and identity alone does not make one stable."
   },
   "baselines": {
-    "note": "The committed evidence each harness is compared against, relative to docs/evidence/. Moving a baseline forward is a deliberate, reviewable edit of this file.",
-    "scale": "scale-baseline-20260716-after-search.json",
-    "semantic": "semantic-scale-after-adapter-20260717.json",
-    "spotlight": "spotlight-scale-after-snapshot-20260717.json",
+    "note": "The committed evidence each harness is compared against, relative to docs/evidence/. Moving a baseline forward is a deliberate, reviewable edit of this file. The July 2026 files stay tracked as the D79-D85 record; they are simply no longer the reference.",
+    "scale": "scale-baseline-20260726.json",
+    "semantic": "semantic-scale-20260726.json",
+    "spotlight": "spotlight-scale-20260726.json",
     "waveform": "waveform-scale-after-accelerate-20260717.json",
     "detail-ui": "detail-ui-baseline-20260716-after-health.json"
   },
