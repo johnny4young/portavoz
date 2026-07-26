@@ -1135,7 +1135,7 @@ The current local acceptance baseline is:
 - the 105-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
 - strict SwiftLint reports zero violations across 379 production Swift source files;
-- 44 XCUITest cases define the English and Spanish release gate;
+- 48 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
