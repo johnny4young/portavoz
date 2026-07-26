@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
+    FEATURE_TESTS,
     HARNESS_TESTS,
     select_paths,
     validate_catalog,
@@ -50,6 +51,13 @@ class UITestScopeTests(unittest.TestCase):
             "PortavozUITests/LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop",
             selection.tests,
         )
+
+    def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/LegacyScrollInteractionTracker.swift"]
+        )
+        self.assertEqual(selection.tests, FEATURE_TESTS["recording-recovery"])
+        self.assertEqual(selection.locales, ("en",))
 
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])

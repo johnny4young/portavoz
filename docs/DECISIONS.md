@@ -3921,13 +3921,19 @@ language and short or uncertain rows remain exactly as spoken. The app groups
 work by one explicit language pair, configures `TranslationSession` with both
 source and target, and never requests framework source auto-detection. Download
 consent is scoped to the pair. Switching target clears translated rows, active
-source, consent, and in-flight publication through the existing target fence.
+source, consent, unsupported-passthrough rows, and in-flight publication through
+the existing target fence. If Apple reports one pair unsupported, every pending
+row in that lane remains exactly as spoken but is marked handled, routing
+continues to later supported lanes, and the UI retains a partial-support state
+instead of presenting a terminal failure.
 
 **Rationale:** the transcript is a multilingual sequence, not a monolingual
 document. Explicit lanes remove a framework-owned language prompt from the live
 meeting, prevent same-language rows from being needlessly rewritten, and make
 download consent and cancellation deterministic without translating or
-normalizing the source transcript.
+normalizing the source transcript. Treating unsupported work as passthrough
+prevents one minority language from starving every translatable turn that
+follows.
 
 ## D129 — Give the reader ownership of live-transcript position (Jul 2026)
 
@@ -3938,14 +3944,19 @@ rapidly moving live text lose readability before it left the center.
 
 **Decision:** live transcript presentation has an explicit follow state.
 Direct user scroll interaction pauses follow indefinitely; programmatic scrolls
-do not. While browsing history, every visible row is full-opacity, full-scale,
-and unblurred, and incoming rows never change the reader's position. An
+do not. macOS 15+ uses SwiftUI scroll-phase events. On the minimum macOS 14.4
+runtime, a zero-size AppKit bridge lives in the scroll document and observes
+`NSScrollView.didLiveScrollNotification` only for its enclosing scroll view;
+that user-only event includes legacy mouse-wheel scrolling without a start/end
+pair, while `ScrollViewProxy.scrollTo` does not generate it.
+While browsing history, every visible row is full-opacity, full-scale, and
+unblurred, and incoming rows never change the reader's position. An
 identified **Jump to live** control is the only action that resumes following.
 While following, live captions use a wider sharp zone and tightly bounded
 fade/scale/blur values than playback. Playback keeps its existing focused-lyrics
-treatment. The policy is pure and unit tested; a disposable XCUITest fixture
-proves new rows arrive while the reader remains in history and that the
-explicit action restores the latest row.
+treatment. The visual policy and AppKit observer scope are unit tested; a
+disposable XCUITest fixture proves new rows arrive while the reader remains in
+history and that the explicit action restores the latest row.
 
 **Rationale:** live captions are both an ambient display and a short-term
 record. User interaction is stronger intent than animation, so no timer should
@@ -4009,17 +4020,19 @@ visible invented assignments and duplicated forms such as
 `Daniel: task — Daniel`.
 
 **Decision:** structured summary drafting admits an action owner only when it
-case-insensitively matches an existing speaker label or confirmed display name.
-An admitted owner is canonicalized to the cast value before both Markdown and
-typed action projection; unknown names become unassigned. A matching leading
-owner prefix is removed from the action text, and an empty remainder is
-discarded. Prompts reinforce this rule but deterministic post-generation
-admission remains authoritative.
+case-insensitively resolves to exactly one cast member. A unique exact speaker
+label has priority; a display name is accepted only when it is unique in the
+meeting cast. Drafting resolves once, carries that `SpeakerID` beside the
+canonical rendered owner into typed projection, and never performs a second
+ambiguous name lookup. Unknown and duplicate display names become unassigned. A
+matching leading owner prefix is removed from the action text, and an empty
+remainder is discarded. Prompts reinforce this rule but deterministic
+post-generation admission remains authoritative.
 
 **Rationale:** names inside speech are meeting content, not identity evidence.
-One cast-grounded boundary keeps rendered and typed projections consistent,
-prevents model obedience from becoming a trust requirement, and still preserves
-actions whose ownership is genuinely known.
+One cast-grounded resolution keeps rendered and typed projections consistent,
+prevents model obedience or array order from becoming a trust requirement, and
+still preserves actions whose ownership is genuinely known.
 
 ## D133 — Preserve source identity through live diarization splits (Jul 2026)
 

@@ -20,10 +20,12 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 exact `overviewEvidence` E-tags + sections (instructed headings, bullets, and
 one `bulletEvidence` E-tag array per bullet) + actionItems
 (owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)`
-admits owners against speakers by label/displayName (case-insensitive),
-canonicalizes them before both Markdown and typed action projection, and clears
-unknown generated names. A matching leading owner prefix is removed from the
-task text so `Daniel: task — Daniel` cannot render. It also admits only tags
+resolves owners once against the cast: a unique exact label wins, while a
+display name is admitted only when unique. The resolved `SpeakerID` travels
+beside the canonical rendered owner into typed action projection; unknown and
+ambiguous generated names are cleared rather than re-resolved by array order. A
+matching leading owner prefix is removed from the task text so
+`Daniel: task — Daniel` cannot render. It also admits only tags
 emitted for that request. Unknown, altered, repeated, or excess tags disappear;
 no valid tag, no distinctive lexical overlap, or an empty overview produces no claim. Tag-shaped literals in
 transcript text, speaker names, and user notes are escaped before prompting,

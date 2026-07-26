@@ -706,6 +706,13 @@ Capture timing starts when the microphone stream actually opens, not when model 
    shell; staging or published evidence preserves it as `needsAttention`
    (D37/D49).
 2. Live: captions in LazyVStack (window 150 rows) with **reader-owned live follow** (direct scroll pauses indefinitely; incoming rows preserve the reader position and remain fully sharp; only the identified "Jump to live" action resumes follow); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; the first child preserves the source ID, later children are fresh; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **rolling monotonic summary** every ~40 s (FM note only of closed row IDs not yet admitted → stack → collapse > 6000 chars → render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint. D120 callback health crosses the same application callback boundary: if remote frames stop while mic frames continue, the full view and compact HUD show a non-dismissible reconnecting warning, the tap rebuilds in place without stopping the microphone, and a recovered confirmation clears after five seconds. D123 promotes a localized Stop action only after two continuous stalled/recovering outage minutes because the call may have ended, but never stops capture automatically; a terminal tap failure instead tells the user to stop and start a new recording on both surfaces. D121 adds dynamic preparing/available/failure state: a cold model hot-attaches during the same recording, then enables captions and speaker hints without replaying an unbounded backlog. D131 keeps the live merged projection clean when speaker output returns through the mic: within a bounded twelve-row window, direct system/room speech replaces matching microphone bleed in either callback order, while short acknowledgements and distinct overlapping speech remain. D133 keeps split lineage stable for Companion evidence, translation caches, and rolling-summary admission. Live translation exposes waiting, deliberate-download, unsupported-pair, and execution-failure states; the waiting banner yields to the terminal live-caption failure banner when captions cannot arrive, execution errors stay visible during the automatic retry backoff, and late framework responses are fenced to the task's full source-target pair. D128 resolves every closed row to an explicit source-target pair from persisted per-turn language or a conservative local fallback, leaves target-language and uncertain rows as spoken, never asks Apple Translation to auto-detect the source, scopes consent to the pair, and clears all target-dependent state on a picker change.
+   On macOS 15+, SwiftUI scroll phases are the reader-intent signal. On the
+   minimum macOS 14.4 runtime, a zero-size bridge inside the scroll document
+   observes user-initiated live-scroll events only for its enclosing
+   `NSScrollView`, including legacy mouse wheels without a start/end pair;
+   programmatic recentering does not emit that signal. Unsupported translation
+   lanes remain original-language handled passthrough, so later supported lanes
+   continue while the banner reports partial support.
 3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
    rename staging files without overwrite → one `installCapturedSnapshot`
    transaction for `captured` + finalized/missing assets + provisional live
@@ -887,7 +894,11 @@ carousel also runs during live recording, but D129 gives it a separate visual
 policy and reader-owned follow state: direct user scroll disables automatic
 following indefinitely, browsing rows stay fully opaque/unscaled/unblurred,
 and only `recording-jump-to-live` resumes the wider, gently bounded live focus
-treatment. Programmatic scroll phases do not claim reader intent. Audio
+treatment. SwiftUI scroll phases detect reader intent on macOS 15+; the
+minimum macOS 14.4 runtime uses a zero-size AppKit bridge inside the scroll
+document that observes user-initiated live-scroll events only for its enclosing
+`NSScrollView`, including legacy mouse wheels without a start/end pair.
+Programmatic recentering does not claim reader intent. Audio
 import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
 mixed-language recognition. `make test-ui` covers the player, highlight,
 compression action, and clip-export button; preflight closes stale app
