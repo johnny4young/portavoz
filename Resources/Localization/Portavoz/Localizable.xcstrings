@@ -8230,6 +8230,16 @@
           }
         }
       }
+    },
+    "Starts a new Portavoz meeting recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia una nueva grabación de reunión en Portavoz."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -643,6 +643,35 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D138"))
     }
 
+    func testAppIntentsStaySDKOnlySoMetadataExtractionCannotBreak() throws {
+        let intents = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppIntents.swift")
+        let extractor = try Self.contents(
+            of: "scripts/build-appintents-metadata.sh")
+        let packager = try Self.contents(of: "scripts/make-app.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The release pipeline compiles this ONE file standalone to extract
+        // App Intents metadata (D139). An import of any project module would
+        // break that compile — at release time, not at test time — so the
+        // SDK-only diet is enforced here.
+        let allowedImports: Set<String> = ["AppIntents", "AppKit", "Foundation"]
+        let imports = intents.split(separator: "\n")
+            .filter { $0.hasPrefix("import ") }
+            .map { String($0.dropFirst("import ".count)) }
+        for module in imports {
+            XCTAssertTrue(
+                allowedImports.contains(module),
+                "PortavozAppIntents.swift must stay SDK-only; found: \(module)")
+        }
+        // The extractor uses the SHIPPING module name, and the packager
+        // fails the build rather than shipping silently without intents.
+        XCTAssertTrue(extractor.contains("-module-name portavoz_app"))
+        XCTAssertTrue(extractor.contains("declares no actions"))
+        XCTAssertTrue(packager.contains("scripts/build-appintents-metadata.sh"))
+        XCTAssertTrue(decisions.contains("## D139"))
+    }
+
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/FailureCategory.swift")
         let start = try Self.contents(of: "Sources/ApplicationKit/StartRecording.swift")
