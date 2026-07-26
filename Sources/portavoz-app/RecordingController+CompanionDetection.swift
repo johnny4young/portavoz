@@ -58,15 +58,21 @@ extension RecordingController {
             rowID: open.id,
             textCount: open.text.count)
         else { return }
+        // Mark only what actually dispatched: if a gate declined (FM
+        // unavailable, opt-out mid-deadline), the eventual real close must
+        // remain free to detect this row.
+        guard dispatchCompanionDetection(for: open) else { return }
         speculativeTurnMark = SpeculativeTurnMark(
             rowID: open.id, textCount: open.text.count)
-        dispatchCompanionDetection(for: open)
     }
 
-    private func dispatchCompanionDetection(for row: TranscriptSegment) {
-        guard companionEnabled, phase == .recording else { return }
-        guard FoundationModelsCapability.current().isAvailable else { return }
-        guard #available(macOS 26.0, *) else { return }
+    /// Returns whether a detection actually left for the scheduler, so the
+    /// speculative path records its mark only on real work.
+    @discardableResult
+    private func dispatchCompanionDetection(for row: TranscriptSegment) -> Bool {
+        guard companionEnabled, phase == .recording else { return false }
+        guard FoundationModelsCapability.current().isAvailable else { return false }
+        guard #available(macOS 26.0, *) else { return false }
         // "Asked you" (D26): a mention of your name opens the gate
         // even when the sentence does not look like a question ("Johnny, tell us about the deploy").
         let ownerName = Self.companionOwnerName()
@@ -76,13 +82,13 @@ extension RecordingController {
             !TranscriptNoiseFilter.isLikelyNoise(text: row.text, confidence: row.confidence),
             QuestionHeuristic.looksLikeQuestion(row.text)
                 || ownerName.map({ QuestionHeuristic.mentions($0, in: row.text) }) == true
-        else { return }
+        else { return false }
         let closed = row
 
         let passages = recentPassages()
         let candidate = closed.text
         let askedAt = closed.startTime
-        guard let services else { return }
+        guard let services else { return false }
         let language = closed.language.flatMap { LanguageCode($0)?.identifier }
         let sourceMeetingID = meetingID
         Task { @MainActor [weak self] in
@@ -104,6 +110,7 @@ extension RecordingController {
                 askedAt: askedAt))
             self.recordCompanionOutcome(result, sourceMeetingID: sourceMeetingID)
         }
+        return true
     }
 
     /// The live meeting's recent closed rows as RAG passages, so a
