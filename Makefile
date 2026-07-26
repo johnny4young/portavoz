@@ -13,11 +13,19 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
-	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install
+	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
+	perf-ledger
 
 ## Unit tests (the package suite).
 test:
 	$(XCODE) swift test
+
+## Release performance ledger (PERF-001/PERF-008): run the unattended
+## benchmark harnesses, evaluate every journey against its declared budget and
+## the committed baseline, and write one scorecard. Fails on a budget miss.
+## PORTAVOZ_PERF_STRICT=1 also fails on regression candidates.
+perf-ledger:
+	scripts/run-perf-ledger.sh
 
 ## Repeat the focused recording/recovery corpus without rebuilding between
 ## iterations. Override the default with PORTAVOZ_STRESS_ITERATIONS=N.

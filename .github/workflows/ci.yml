@@ -78,3 +78,8 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Reject local planning state, generated files, and ticket-key leakage
         run: scripts/check-repository-hygiene.sh
+      # The performance gate decides whether a release ships, so its rules run
+      # on every PR. The benchmarks themselves stay off hosted CI: PERF-001
+      # makes a stable Mac the only measurement authority.
+      - name: Release performance ledger rules
+        run: python3 -m unittest Tests.Tooling.test_perf_ledger
