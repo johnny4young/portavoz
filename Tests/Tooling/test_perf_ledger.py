@@ -272,6 +272,96 @@ class AuthorityTests(unittest.TestCase):
         self.assertEqual(ledger.authority, "authoritative")
 
 
+class StabilityTests(unittest.TestCase):
+    """A sample that disagrees with itself is not evidence either way."""
+
+    def _report(self, p50: float, p95: float, samples: int = 20) -> dict:
+        report = scale_report(p95)
+        entry = report["library"][1]
+        entry["exactSearch"]["p50Milliseconds"] = p50
+        entry["exactSearch"]["sampleCount"] = samples
+        return report
+
+    def test_a_dispersed_over_budget_metric_withholds_the_verdict(self):
+        # The real case: p95 141.40 against a p50 of 92.66 — the machine was
+        # busy, so the budget miss cannot be attributed to the product.
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report(40.0, 60.0)})
+        result = ledger.results[0]
+        self.assertEqual(result.status, perf_ledger.UNSTABLE)
+        self.assertAlmostEqual(result.dispersion, 1.5)
+        # No verdict is not a pass.
+        self.assertEqual(perf_ledger.exit_code(ledger), 1)
+        markdown = perf_ledger.render_markdown(ledger)
+        self.assertIn("Verdict withheld", markdown)
+        self.assertIn("1.50x its own median", markdown)
+
+    def test_a_tight_over_budget_metric_still_fails(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report(58.0, 60.0)})
+        self.assertEqual(ledger.results[0].status, perf_ledger.FAIL)
+        self.assertIsNone(ledger.results[0].dispersion)
+
+    def test_dispersion_inside_budget_passes_but_is_reported(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report(20.0, 40.0)})
+        result = ledger.results[0]
+        self.assertEqual(result.status, perf_ledger.PASS)
+        self.assertAlmostEqual(result.dispersion, 2.0)
+        self.assertIn("Noisy but inside budget", perf_ledger.render_markdown(ledger))
+
+    def test_any_dispersion_costs_the_run_its_authority(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report(20.0, 40.0)})
+        self.assertEqual(ledger.authority, "informational")
+        self.assertIn("machine was busy", ledger.authority_reason)
+
+    def test_a_tight_distribution_keeps_authority(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report(29.0, 30.0)})
+        self.assertEqual(ledger.authority, "authoritative")
+        self.assertIsNone(ledger.results[0].dispersion)
+
+    def test_tiny_measurements_are_exempt(self):
+        # 0.4 ms bouncing to 0.6 ms is 1.5x and says nothing about the machine.
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report(0.4, 0.6)})
+        self.assertIsNone(ledger.results[0].dispersion)
+        self.assertEqual(ledger.authority, "authoritative")
+
+    def test_a_scalar_metric_carries_no_dispersion(self):
+        # A first-run wall time or a hang count has no median counterpart.
+        metric = latency_metric(select={"path": ["firstGeneration", "wallMs"]})
+        ledger = perf_ledger.evaluate(
+            contract(metric), {"scale": {"firstGeneration": {"wallMs": 10.0}}})
+        self.assertIsNone(ledger.results[0].dispersion)
+        self.assertEqual(ledger.results[0].status, perf_ledger.PASS)
+
+    def test_median_selector_mirrors_only_percentile_paths(self):
+        self.assertEqual(
+            perf_ledger.median_selector(
+                {"list": "x", "path": ["wallTime", "p95Milliseconds"]}),
+            {"list": "x", "path": ["wallTime", "p50Milliseconds"]})
+        self.assertIsNone(
+            perf_ledger.median_selector({"path": ["firstGeneration", "wallMs"]}))
+
+    def test_too_few_samples_cannot_prove_a_busy_machine(self):
+        # With three runs p95 IS the maximum, so the ratio is not a statistic.
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()),
+            {"scale": self._report(40.0, 60.0, samples=3)})
+        self.assertIsNone(ledger.results[0].dispersion)
+        self.assertEqual(ledger.results[0].status, perf_ledger.FAIL)
+
+    def test_byte_metrics_are_exempt_from_the_contention_rule(self):
+        # Footprint deltas move with page granularity, not with scheduling.
+        metric = latency_metric(unit="bytes", budgetMaximum=10)
+        ledger = perf_ledger.evaluate(
+            contract(metric), {"scale": self._report(40.0, 60.0)})
+        self.assertIsNone(ledger.results[0].dispersion)
+        self.assertEqual(ledger.results[0].status, perf_ledger.FAIL)
+
+
 class ToolchainTests(unittest.TestCase):
     """A codegen change must be visible, not silently blamed on the code."""
 
