@@ -206,6 +206,11 @@ def app_features(filename: str) -> set[str]:
         return {"library"}
     if any(token in lowered for token in ("meetingbrief", "meetingreminder")):
         return {"meeting-brief", "library"}
+    if "legacyscrollinteractiontracker" in lowered:
+        # This AppKit escape exists only for reader-owned live transcript
+        # history on macOS 14. Keep a new focused bridge from silently
+        # expanding one interaction fix to the complete bilingual suite.
+        return {"recording-recovery"}
     if "focusedtranscript" in lowered:
         return {"meeting-audio", "recording-recovery"}
     if any(token in lowered for token in ("meetingplayer", "audioworkflow", "meetingaudio")):

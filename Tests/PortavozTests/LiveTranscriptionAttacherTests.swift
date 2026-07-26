@@ -100,14 +100,18 @@ final class LiveTranslationStateTests: XCTestCase {
     func testChangingTargetCannotReuseTranslationsFromThePreviousLanguage() {
         let controller = RecordingController()
         let segmentID = UUID()
+        let unsupportedID = UUID()
         controller.translationTarget = "es"
-        controller.beginLiveTranslationPair(LiveTranslationPair(source: "en", target: "es"))
+        let pair = LiveTranslationPair(source: "en", target: "es")
+        controller.beginLiveTranslationPair(pair)
         controller.translationDownloadApproved = true
         controller.translations[segmentID] = "Presupuesto aprobado"
+        controller.markUnsupportedLiveTranslationRows(Set([unsupportedID]), for: pair)
 
         controller.translationTarget = "en"
 
         XCTAssertTrue(controller.translations.isEmpty)
+        XCTAssertTrue(controller.liveTranslationHandledIDs.isEmpty)
         XCTAssertNil(controller.translationSource)
         XCTAssertFalse(controller.translationDownloadApproved)
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
@@ -180,6 +184,9 @@ final class LiveTranslationStateTests: XCTestCase {
             LiveTranslationState.unsupported.statusMessageKey,
             "Apple Translation does not support this language pair on this Mac.")
         XCTAssertEqual(
+            LiveTranslationState.partiallyUnsupported.statusMessageKey,
+            "Some captions stay in their original language because Apple Translation does not support their language pair on this Mac.")
+        XCTAssertEqual(
             LiveTranslationState.failed.statusMessageKey,
             "Live translation paused after an error. Retrying automatically…")
         XCTAssertNil(LiveTranslationState.active.statusMessageKey)
@@ -192,10 +199,33 @@ final class LiveTranslationStateTests: XCTestCase {
             liveTranscriptState: .failed))
         XCTAssertTrue(LiveTranslationState.unsupported.shouldPresentStatus(
             liveTranscriptState: .failed))
+        XCTAssertTrue(LiveTranslationState.partiallyUnsupported.shouldPresentStatus(
+            liveTranscriptState: .available))
         XCTAssertTrue(LiveTranslationState.failed.shouldPresentStatus(
             liveTranscriptState: .failed))
         XCTAssertFalse(LiveTranslationState.active.shouldPresentStatus(
             liveTranscriptState: .available))
+    }
+
+    func testUnsupportedLaneRemainsVisibleAfterAnotherLaneSucceeds() {
+        let controller = RecordingController()
+        controller.translationTarget = "en"
+        let unsupportedPair = LiveTranslationPair(source: "zu", target: "en")
+        controller.beginLiveTranslationPair(unsupportedPair)
+        let unsupportedID = UUID()
+
+        controller.markUnsupportedLiveTranslationRows(
+            Set([unsupportedID]),
+            for: unsupportedPair)
+
+        XCTAssertTrue(controller.liveTranslationHandledIDs.contains(unsupportedID))
+        XCTAssertEqual(controller.translationState, .partiallyUnsupported)
+
+        let supportedPair = LiveTranslationPair(source: "es", target: "en")
+        controller.beginLiveTranslationPair(supportedPair)
+        controller.updateLiveTranslationState(.active, for: supportedPair)
+
+        XCTAssertEqual(controller.translationState, .partiallyUnsupported)
     }
 }
 
@@ -214,7 +244,7 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let idlePair = LiveTranslationRouting.nextPair(
             segments: [first, open],
-            translatedIDs: [first.id],
+            handledIDs: [first.id],
             target: "en")
         XCTAssertNil(idlePair, "a fully translated lane has nothing pending")
 
@@ -224,14 +254,14 @@ final class LiveTranslationRoutingTests: XCTestCase {
             start: 4)
         let resumed = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: [first, afterLull, open],
-            translatedIDs: [first.id],
+            handledIDs: [first.id],
             target: "en"))
 
         XCTAssertEqual(resumed, LiveTranslationPair(source: "es", target: "en"))
         XCTAssertEqual(
             LiveTranslationRouting.pendingRows(
                 segments: [first, afterLull, open],
-                translatedIDs: [first.id],
+                handledIDs: [first.id],
                 pair: resumed
             ).map(\.id),
             [afterLull.id],
@@ -255,11 +285,11 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: segments,
-            translatedIDs: [],
+            handledIDs: [],
             target: "en"))
         let pending = LiveTranslationRouting.pendingRows(
             segments: segments,
-            translatedIDs: [],
+            handledIDs: [],
             pair: pair)
 
         XCTAssertEqual(pair, LiveTranslationPair(source: "es", target: "en"))
@@ -282,7 +312,7 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: [english, french, open],
-            translatedIDs: [],
+            handledIDs: [],
             target: "en"))
 
         XCTAssertEqual(pair, LiveTranslationPair(source: "fr", target: "en"))
@@ -297,7 +327,7 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = LiveTranslationRouting.nextPair(
             segments: [unknown, open],
-            translatedIDs: [],
+            handledIDs: [],
             target: "es",
             detector: { _ in "en" })
 
@@ -311,7 +341,7 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = LiveTranslationRouting.nextPair(
             segments: [short, open],
-            translatedIDs: [],
+            handledIDs: [],
             target: "en",
             detector: { _ in
                 detectorCalls += 1
@@ -320,6 +350,34 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         XCTAssertNil(pair)
         XCTAssertEqual(detectorCalls, 0)
+    }
+
+    func testHandledUnsupportedLaneDoesNotBlockLaterSupportedLanguage() throws {
+        let unsupported = segment(
+            text: "Lokhu kungumbhalo ongasekelwa ukuhumusha.",
+            language: "zu",
+            start: 0)
+        let spanish = segment(
+            text: "Esta intervención posterior sí puede traducirse.",
+            language: "es",
+            start: 2)
+        let open = segment(
+            text: "This newest row is still open.",
+            language: "en",
+            start: 4)
+        let segments = [unsupported, spanish, open]
+
+        let first = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            handledIDs: [],
+            target: "en"))
+        let next = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            handledIDs: [unsupported.id],
+            target: "en"))
+
+        XCTAssertEqual(first, LiveTranslationPair(source: "zu", target: "en"))
+        XCTAssertEqual(next, LiveTranslationPair(source: "es", target: "en"))
     }
 
     private func segment(
@@ -482,42 +540,5 @@ private struct EchoLiveTranscriptionEngine: TranscriptionEngine {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
-    }
-}
-
-/// macOS 14 has no `onScrollPhaseChange`, so reader intent is inferred from
-/// the content offset. These pin the two ways that inference can go wrong:
-/// stealing ownership from our own recentering, or never yielding it.
-final class TranscriptScrollIntentPolicyTests: XCTestCase {
-    func testTravelDuringOurOwnRecenterIsNotReaderIntent() {
-        XCTAssertFalse(
-            TranscriptScrollIntentPolicy.isReaderScroll(
-                offsetDelta: 240,
-                secondsSinceProgrammaticScroll:
-                    TranscriptScrollIntentPolicy.settleWindow / 2),
-            "a recenter moves the offset far; that travel is ours, not the reader's")
-    }
-
-    func testTravelAfterTheAnimationSettlesYieldsOwnership() {
-        XCTAssertTrue(
-            TranscriptScrollIntentPolicy.isReaderScroll(
-                offsetDelta: -TranscriptScrollIntentPolicy.minimumTravel,
-                secondsSinceProgrammaticScroll:
-                    TranscriptScrollIntentPolicy.settleWindow + 0.01),
-            "once the recenter settled, deliberate travel is the reader taking over")
-    }
-
-    func testLayoutJitterBelowOneRowIsIgnored() {
-        XCTAssertFalse(
-            TranscriptScrollIntentPolicy.isReaderScroll(
-                offsetDelta: TranscriptScrollIntentPolicy.minimumTravel - 0.5,
-                secondsSinceProgrammaticScroll: 10),
-            "sub-row travel is layout noise, not a scroll")
-    }
-
-    func testSettleWindowOutlastsTheRecenterAnimation() {
-        // The 0.35 s recenter animation must finish inside the window, or
-        // its own tail would read as the reader.
-        XCTAssertGreaterThan(TranscriptScrollIntentPolicy.settleWindow, 0.35)
     }
 }

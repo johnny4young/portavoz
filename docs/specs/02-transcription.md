@@ -260,10 +260,13 @@ The macOS adapter constructs `TranslationSession.Configuration` with both
 languages; it never supplies a nil source and therefore never delegates source
 selection to a framework modal during the meeting. Download consent belongs to
 that exact pair. Switching the target cancels and fences old work, clears
-translated rows, active source, and consent, then resolves the new lanes from
-the original transcript. Routing and state transitions have deterministic mixed
-Spanish/English, same-target, unknown, consent, cancellation, and stale-result
-tests.
+translated rows, unsupported-passthrough IDs, active source, and consent, then
+resolves the new lanes from the original transcript. An unsupported pair keeps
+its closed rows exactly as spoken and marks them handled, allowing routing to
+advance to later supported languages while the UI reports partial support.
+Routing and state transitions have deterministic mixed Spanish/English,
+same-target, unknown, unsupported-then-supported, consent, cancellation, and
+stale-result tests.
 
 ## Vocabulary — `VocabularyPrompt`
 

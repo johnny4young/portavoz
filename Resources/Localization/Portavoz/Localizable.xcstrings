@@ -7141,6 +7141,16 @@
         }
       }
     },
+    "Some captions stay in their original language because Apple Translation does not support their language pair on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos subtítulos permanecen en su idioma original porque la función Traducción de Apple no admite ese par de idiomas en este Mac."
+          }
+        }
+      }
+    },
     "Live translation paused after an error. Retrying automatically…": {
       "localizations": {
         "es": {

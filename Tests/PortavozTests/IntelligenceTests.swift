@@ -257,6 +257,49 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertFalse(draft.markdown.contains("s1:"))
     }
 
+    func testDraftLeavesAmbiguousDisplayNameUnassigned() {
+        let first = Speaker(meetingID: meeting, label: "S1", displayName: "Alex")
+        let second = Speaker(meetingID: meeting, label: "S2", displayName: "Alex")
+        var generated = summary
+        generated.actionItems = [
+            .init(text: "Alex: prepare the migration plan", owner: "Alex")
+        ]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [],
+            speakers: [first, second],
+            recipe: .general,
+            targetLanguage: "en",
+            glossary: [])
+
+        let draft = generated.draft(for: request)
+
+        XCTAssertNil(draft.actionItems.first?.ownerSpeakerID)
+        XCTAssertTrue(draft.markdown.contains("- [ ] prepare the migration plan"))
+        XCTAssertFalse(draft.markdown.contains("— Alex"))
+    }
+
+    func testDraftPreservesExactLabelIdentityWhenDisplayNamesMatch() {
+        let first = Speaker(meetingID: meeting, label: "S1", displayName: "Alex")
+        let second = Speaker(meetingID: meeting, label: "S2", displayName: "Alex")
+        var generated = summary
+        generated.actionItems = [
+            .init(text: "S2: publish the migration guide", owner: "S2")
+        ]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: [],
+            speakers: [first, second],
+            recipe: .general,
+            targetLanguage: "en",
+            glossary: [])
+
+        let draft = generated.draft(for: request)
+
+        XCTAssertEqual(draft.actionItems.first?.ownerSpeakerID, second.id)
+        XCTAssertTrue(draft.markdown.contains("- [ ] publish the migration guide — Alex"))
+    }
+
     func testDraftCreatesOnlyValidatedOverviewEvidence() {
         let first = TranscriptSegment(
             meetingID: meeting, channel: .system, text: "Unrelated scheduling context",
