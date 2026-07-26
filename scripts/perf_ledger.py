@@ -16,6 +16,11 @@ Two rules keep the answer honest:
   baseline is reported as a candidate, because PERF-008 requires three stable
   runs before calling it real — `--strict` is how a release turns candidates
   into failures.
+
+Exit codes: 0 when every measured journey is inside its budget; 1 on a budget
+miss or on an unresolved metric (a contract that cannot be evaluated is not a
+pass); 2 when the only findings are regression candidates, or 1 for those too
+under `--strict`.
 """
 
 from __future__ import annotations
@@ -205,13 +210,16 @@ def evaluate(
         )
 
         report = reports.get(harness)
-        if report is None:
+        selector = metric.get("select")
+        if report is None or selector is None:
+            # A manual metric carries no selector, so a report handed to it
+            # cannot resolve it: say it is unmeasured rather than crash.
             result.detail = metric.get(
                 "source", "no report supplied for this harness in this run")
             ledger.results.append(result)
             continue
 
-        measured = select_value(report, metric["select"])
+        measured = select_value(report, selector)
         if measured is None:
             result.status = UNRESOLVED
             result.detail = "the supplied report carries no such checkpoint"
@@ -407,6 +415,15 @@ def render_markdown(ledger: Ledger, generated_at: str | None = None) -> str:
             lines.append(
                 f"- **{result.title}**: {result.change_fraction * 100:+.1f}% "
                 f"against the baseline")
+        lines.append("")
+    if ledger.unresolved:
+        lines.append("## Unresolved")
+        lines.append(
+            "These metrics fail the run: the harness reported, but the "
+            "declared checkpoint was absent — usually a corpus smaller than "
+            "the contract asks for.")
+        for result in ledger.unresolved:
+            lines.append(f"- **{result.title}** — {result.detail}")
         lines.append("")
     if ledger.not_measured:
         lines.append("## Declared but not measured in this run")

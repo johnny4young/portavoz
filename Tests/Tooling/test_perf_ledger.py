@@ -181,6 +181,28 @@ class HonestyTests(unittest.TestCase):
         # A contract that cannot be evaluated is not a pass.
         self.assertEqual(perf_ledger.exit_code(ledger), 1)
 
+    def test_unresolved_metrics_are_explained_in_the_scorecard(self):
+        report = scale_report(30.0)
+        report["library"] = [report["library"][0]]
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": report})
+        markdown = perf_ledger.render_markdown(ledger)
+        # The run fails on these, so the scorecard must name them and say why
+        # rather than leaving a bare marker in the table.
+        self.assertIn("## Unresolved", markdown)
+        self.assertIn("Exact search", markdown.split("## Unresolved")[1])
+        self.assertIn("no such checkpoint", markdown)
+
+    def test_a_report_handed_to_a_manual_metric_does_not_crash(self):
+        # The CLI accepts any --report name; a manual metric has no selector,
+        # so it must stay unmeasured instead of raising KeyError.
+        manual = latency_metric(harness="manual", source="portavoz-cli der")
+        del manual["select"]
+        ledger = perf_ledger.evaluate(
+            contract(manual), {"manual": scale_report(30.0)})
+        self.assertEqual(ledger.results[0].status, perf_ledger.NOT_MEASURED)
+        self.assertIn("der", ledger.results[0].detail)
+
     def test_every_declared_metric_appears_in_the_scorecard(self):
         manual = latency_metric(id="manual.metric", harness="manual")
         del manual["select"]

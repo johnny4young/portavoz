@@ -3,7 +3,12 @@
 #
 # Runs the unattended benchmark harnesses, evaluates every measurement against
 # the declared contract in docs/evidence/perf-thresholds.json, and writes one
-# scorecard. Exits non-zero when a journey misses its budget.
+# scorecard.
+#
+# Exit 0: every measured journey is inside its budget.
+# Exit 1: a budget miss, an unresolved metric, or a harness that could not run.
+# Exit 2: regression candidates only — PERF-008 wants three stable runs before
+#         one counts. PORTAVOZ_PERF_STRICT=1 makes those exit 1 instead.
 #
 # The harnesses that need a microphone, a real call, a real recording, or
 # Instruments stay out of this run on purpose. They are still declared in the
