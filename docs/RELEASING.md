@@ -62,6 +62,11 @@ unmeasured.
 - **Exit 1** — a journey missed its absolute budget, or a declared checkpoint
   was missing from a report. Do not release.
 
+A **Comparability** line means the baseline was built with a different Swift
+toolchain, or predates toolchain recording. It does not invalidate the run; it
+says a delta may be codegen rather than product code, so weigh it before
+blaming a commit.
+
 The scorecard also lists the journeys this run did **not** measure — cold
 start, recording memory, live lag, drift, DER, refine, summary. They need a
 microphone, a real recording, or Instruments, so they stay hand-run; their

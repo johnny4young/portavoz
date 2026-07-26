@@ -91,6 +91,10 @@ class Ledger:
     authority: str = "informational"
     authority_reason: str = ""
     hosts: dict[str, Any] = field(default_factory=dict)
+    toolchain: dict[str, Any] = field(default_factory=dict)
+    #: Why a difference against the baseline may not be attributable to the
+    #: product code. Empty when the comparison is clean.
+    comparability: str = ""
 
     @property
     def failures(self) -> list[MetricResult]:
@@ -238,7 +242,42 @@ def evaluate(
         ledger.results.append(result)
 
     _apply_authority(ledger, contract, reports, baselines)
+    _apply_comparability(ledger, reports, baselines)
     return ledger
+
+
+def _toolchain_of(reports: dict[str, Any]) -> dict[str, Any]:
+    """The most complete toolchain any report in the set declared."""
+    declared = [r.get("toolchain") for r in reports.values() if isinstance(r, dict)]
+    declared = [t for t in declared if isinstance(t, dict) and t]
+    return max(declared, key=len) if declared else {}
+
+
+def _apply_comparability(
+    ledger: Ledger,
+    reports: dict[str, Any],
+    baselines: dict[str, Any],
+) -> None:
+    """State plainly when a delta may be codegen rather than product code.
+
+    A different toolchain does NOT cost the run its authority — the machine
+    is what PERF-001 makes authoritative. It costs the COMPARISON its
+    attribution, and saying so is the difference between evidence and a
+    number that merely looks like one.
+    """
+    ledger.toolchain = _toolchain_of(reports)
+    current = ledger.toolchain.get("swift")
+    baseline = _toolchain_of(baselines).get("swift")
+    if not baselines:
+        return
+    if baseline is None:
+        ledger.comparability = (
+            "the baseline predates toolchain recording, so a codegen "
+            "difference cannot be ruled out")
+    elif current and baseline != current:
+        ledger.comparability = (
+            f"built with Swift {current}; the baseline used {baseline}, so a "
+            "difference may be codegen rather than product code")
 
 
 def _status_for(result: MetricResult, regression_rules: dict[str, Any]) -> str:
@@ -379,10 +418,21 @@ def render_markdown(ledger: Ledger, generated_at: str | None = None) -> str:
             f"{host.get('processorCount')} cores · "
             f"{int(host.get('physicalMemoryBytes', 0)) // (1024 ** 3)} GiB · "
             f"{host.get('operatingSystem')}")
+    if ledger.toolchain:
+        chain = ledger.toolchain
+        parts = [f"Swift {chain['swift']}"] if chain.get("swift") else []
+        for key in ("target", "xcode"):
+            if chain.get(key):
+                parts.append(str(chain[key]))
+        if parts:
+            lines.append("Toolchain: " + " · ".join(parts))
     authority = (
         "**authoritative**" if ledger.authority == "authoritative"
         else f"**informational** ({ledger.authority_reason})")
-    lines += [f"Authority: {authority}", ""]
+    lines.append(f"Authority: {authority}")
+    if ledger.comparability:
+        lines.append(f"Comparability: ⚠️ {ledger.comparability}")
+    lines.append("")
 
     lines += ["| Journey | Metric | Target | Measured | Baseline | Δ | Status |",
               "|---|---|---|---|---|---|---|"]
@@ -453,6 +503,10 @@ def build_document(
         document["authorityReason"] = ledger.authority_reason
     if ledger.hosts:
         document["host"] = ledger.hosts
+    if ledger.toolchain:
+        document["toolchain"] = ledger.toolchain
+    if ledger.comparability:
+        document["comparability"] = ledger.comparability
     return document
 
 

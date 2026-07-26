@@ -272,6 +272,58 @@ class AuthorityTests(unittest.TestCase):
         self.assertEqual(ledger.authority, "authoritative")
 
 
+class ToolchainTests(unittest.TestCase):
+    """A codegen change must be visible, not silently blamed on the code."""
+
+    def _report(self, swift: str | None) -> dict:
+        report = scale_report(30.0)
+        if swift is not None:
+            report["toolchain"] = {
+                "swift": swift, "target": "arm64-apple-macosx26.0"}
+        return report
+
+    def test_toolchain_is_recorded_and_shown(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report("6.3.3")})
+        self.assertEqual(ledger.toolchain.get("swift"), "6.3.3")
+        self.assertIn("Swift 6.3.3", perf_ledger.render_markdown(ledger))
+        self.assertEqual(
+            perf_ledger.build_document(ledger)["toolchain"]["swift"], "6.3.3")
+
+    def test_a_baseline_without_a_toolchain_says_so(self):
+        # Every baseline committed before this existed is in that state.
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()),
+            {"scale": self._report("6.3.3")},
+            {"scale": self._report(None)})
+        self.assertIn("predates toolchain recording", ledger.comparability)
+        self.assertIn("Comparability", perf_ledger.render_markdown(ledger))
+
+    def test_a_different_toolchain_is_flagged_as_an_attribution_caveat(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()),
+            {"scale": self._report("6.3.3")},
+            {"scale": self._report("6.2.0")})
+        self.assertIn("6.2.0", ledger.comparability)
+        self.assertIn("codegen", ledger.comparability)
+        # The machine is what grants authority; the toolchain only qualifies
+        # what a delta can be blamed on.
+        self.assertEqual(ledger.authority, "authoritative")
+
+    def test_the_same_toolchain_leaves_the_comparison_clean(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()),
+            {"scale": self._report("6.3.3")},
+            {"scale": self._report("6.3.3")})
+        self.assertEqual(ledger.comparability, "")
+        self.assertNotIn("Comparability", perf_ledger.render_markdown(ledger))
+
+    def test_a_run_without_a_baseline_raises_no_caveat(self):
+        ledger = perf_ledger.evaluate(
+            contract(latency_metric()), {"scale": self._report("6.3.3")})
+        self.assertEqual(ledger.comparability, "")
+
+
 class SelectorTests(unittest.TestCase):
     def test_where_clause_picks_the_declared_checkpoint(self):
         report = scale_report(42.0)

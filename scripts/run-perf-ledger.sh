@@ -76,6 +76,55 @@ else
   echo "==> Detail-UI trace skipped (set PORTAVOZ_PERF_INCLUDE_DETAIL_UI=1 after make install)"
 fi
 
+# Record the toolchain that built these binaries. Without it, a shift in the
+# numbers cannot be told apart from a codegen change, which is exactly the
+# question a comparison against an older baseline raises.
+swift --version > "$OUTPUT_DIR/.toolchain-swift.txt" 2>/dev/null || true
+xcodebuild -version > "$OUTPUT_DIR/.toolchain-xcode.txt" 2>/dev/null || true
+python3 - "$OUTPUT_DIR" <<'STAMP'
+import json
+import re
+import sys
+from pathlib import Path
+
+directory = Path(sys.argv[1])
+
+
+def read(name: str) -> list[str]:
+    path = directory / name
+    if not path.is_file():
+        return []
+    return path.read_text(encoding="utf-8").splitlines()
+
+
+swift_lines = read(".toolchain-swift.txt")
+xcode_lines = read(".toolchain-xcode.txt")
+toolchain: dict[str, str] = {}
+for line in swift_lines:
+    if match := re.search(r"Swift version (.+)", line):
+        toolchain["swift"] = match.group(1).strip()
+    elif line.startswith("Target:"):
+        toolchain["target"] = line.removeprefix("Target:").strip()
+if xcode_lines:
+    toolchain["xcode"] = xcode_lines[0].strip()
+    if len(xcode_lines) > 1:
+        toolchain["xcodeBuild"] = (
+            xcode_lines[1].removeprefix("Build version ").strip())
+
+if toolchain:
+    for report in sorted(directory.glob("*.json")):
+        if report.name == "ledger.json":
+            continue
+        payload = json.loads(report.read_text())
+        # Merge, never replace: the detail-UI harness records its own
+        # Instruments toolchain and must keep it.
+        existing = payload.get("toolchain")
+        payload["toolchain"] = {
+            **(existing if isinstance(existing, dict) else {}), **toolchain}
+        report.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+STAMP
+rm -f "$OUTPUT_DIR/.toolchain-swift.txt" "$OUTPUT_DIR/.toolchain-xcode.txt"
+
 # The contract names its own baselines, so moving one forward stays a
 # reviewable edit of a tracked file rather than a flag someone remembers.
 baselines=()
