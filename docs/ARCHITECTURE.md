@@ -473,7 +473,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 14. It includes:
+The current schema version is 15. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -484,6 +484,8 @@ The current schema version is 14. It includes:
 - generated overview, decision, and action-item evidence;
 - reversible current-claim feedback stored separately from generated output;
 - immutable generation-run provenance;
+- one regenerable enhanced-notes document per meeting (raw notes stay
+  untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;
 - owner-leased durable processing jobs;
 - a content-free per-meeting sync generation journal;

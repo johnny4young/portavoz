@@ -6,7 +6,7 @@ Status: implemented and in production (the user's DB survived a real incident th
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v14` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v15` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -39,6 +39,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `companionCardEvidenceSegment` (v13) | id, evidenceID (FK CASCADE), role (`question` or `answer`), segmentID? (FK SET NULL), ordinal, createdAt; unique evidence+role+ordinal and evidence+role+live-segment |
 | `meetingSyncState` (v14) | meetingID (TEXT PK, deliberately no FK), localGeneration, acknowledgedGeneration, changedAt, isDeleted; content-free coalesced mutation state with pending index and purge-surviving deletion evidence |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
+| `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect
@@ -273,7 +274,7 @@ The current release-upgrade gate independently treats migrations `v1`–`v5` as
 the exact schema shipped in Portavoz v0.6.0. It creates a disposable file-backed
 v5 library containing a bilingual transcript, cast, summary and action item,
 note, Apuntador card, and relative audio reference; opening that file through
-`MeetingStore` must apply `v6`–`v14` without changing any user content. The gate
+`MeetingStore` must apply `v6`–`v15` without changing any user content. The gate
 requires `PRAGMA integrity_check = ok`, zero foreign-key violations, no implicit
 sync seed, and the same result after a second open. A separate empty-library
 case proves that a clean install creates the latest schema and also reopens

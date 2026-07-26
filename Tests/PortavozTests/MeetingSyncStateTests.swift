@@ -21,7 +21,7 @@ final class MeetingSyncStateTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 14)
+            XCTAssertEqual(StorageSchema.version, 15)
             XCTAssertEqual(
                 try Set(db.columns(in: "meetingSyncState").map(\.name)),
                 [
@@ -42,7 +42,7 @@ final class MeetingSyncStateTests: XCTestCase {
                      WHERE type = 'trigger' AND name LIKE '%_sync_%'
                      ORDER BY name
                     """)
-            XCTAssertEqual(triggers.count, 48)
+            XCTAssertEqual(triggers.count, 51)
             XCTAssertTrue(triggers.contains("meeting_sync_au"))
             XCTAssertTrue(triggers.contains("companionCardEvidenceSegment_sync_au"))
             XCTAssertTrue(triggers.contains("summaryClaimFeedback_sync_au"))

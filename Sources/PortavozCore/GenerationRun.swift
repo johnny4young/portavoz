@@ -6,6 +6,7 @@ public enum GenerationRunKind: String, Codable, Sendable {
     case companion
     case summary
     case transcript
+    case enhancedNotes
 }
 
 public enum GenerationRunOutcome: String, Codable, Sendable {

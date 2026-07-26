@@ -1756,6 +1756,44 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D92"))
     }
 
+    func testEnhancedNotesStayAtomicPortableAndProvenanceFenced() throws {
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let notesSchema = try Self.contents(of: "Sources/StorageKit/Schema+EnhancedNotes.swift")
+        let storage = try Self.contents(of: "Sources/StorageKit/MeetingStore+EnhancedNotes.swift")
+        let useCase = try Self.contents(of: "Sources/ApplicationKit/EnhanceMeetingNotes.swift")
+        let observation = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+
+        // v15 owns its own triggers — the registered v14 list is never edited.
+        XCTAssertTrue(schema.contains("registerMigration(\"v15\")"))
+        XCTAssertTrue(schema.contains("createEnhancedNotes(in: db)"))
+        XCTAssertTrue(schema.contains("createEnhancedNoteSyncTriggers(in: db)"))
+        // One regenerable document per meeting, replaced in place.
+        XCTAssertTrue(notesSchema.contains(
+            "t.column(\"meetingID\", .text).notNull().unique().indexed()"))
+        // Provenance stays device-local: severed on run pruning, never synced.
+        XCTAssertTrue(notesSchema.contains(
+            ".references(\"generationRun\", onDelete: .setNull)"))
+        XCTAssertTrue(notesSchema.contains(
+            "let portableColumns = [\"markdown\", \"language\", \"inputFingerprint\", \"deletedAt\"]"))
+        // The succeeded run commits atomically WITH its artifact (D62-D78),
+        // and replacement is an explicit update — never ON CONFLICT REPLACE.
+        XCTAssertTrue(storage.contains("requires a succeeded run"))
+        XCTAssertFalse(storage.contains("onConflict: .replace"))
+        // Exact fingerprint + language reuse performs no model operation, so
+        // it creates no GenerationRun (D62).
+        XCTAssertTrue(useCase.contains("existing.inputFingerprint == fingerprint"))
+        // Notes refresh independently: a notes failure degrades only its own
+        // section, never the transcript root.
+        XCTAssertTrue(observation.contains("func observeMeetingReviewNotes("))
+        XCTAssertTrue(observation.contains(
+            "regions: [\n                Table(\"meeting\"), Table(\"contextItem\"), Table(\"enhancedNote\")\n            ]"))
+        // The view reaches enhancement through the use case, never the store.
+        XCTAssertTrue(detail.contains("services.enhanceMeetingNotes.execute"))
+        XCTAssertFalse(detail.contains("saveEnhancedNote"))
+    }
+
     func testMeetingSyncEnvelopeKeepsPortableReplayOutsideCloudKitCallbacks() throws {
         let manifest = try Self.contents(of: "Package.swift")
         let aggregate = try Self.contents(

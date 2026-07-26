@@ -167,7 +167,7 @@ class CollectFieldEvidenceTests(unittest.TestCase):
                 "models": [{"capability": "live-transcription", "state": "installed"}],
             },
             "storage": {
-                "schemaVersion": 14,
+                "schemaVersion": 15,
                 "privacyTrackingStartedAt": "2026-07-01T12:00:00Z",
                 "meetingCount": 1,
             },

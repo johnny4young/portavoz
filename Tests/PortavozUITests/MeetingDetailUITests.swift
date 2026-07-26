@@ -217,6 +217,28 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testMyNotesSectionShowsRawNotesAndOffersEnhancement() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        // Presence-only scope: clicking Enhance would invoke a real model
+        // provider, which is not deterministic on a runner. The seeded raw
+        // note and the section's stable controls are.
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-notes-title")
+                .waitForExistence(timeout: 10),
+            "a meeting with notes must surface the My notes section")
+        XCTAssertTrue(
+            app.staticTexts["revisar budget Q3"].exists,
+            "the raw seeded note is shown verbatim before any enhancement")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-enhance-notes")
+                .waitForExistence(timeout: 5),
+            "a meeting with transcript and notes must offer the enhance menu")
+        attachScreenshot(of: app, named: "meeting-detail-my-notes")
+    }
+
+    @MainActor
     func testSummarySourceJumpsToItsTranscriptAndAudio() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
