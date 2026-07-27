@@ -31,18 +31,68 @@ public enum MicBleedFilter {
 
     static func isBleed(_ mic: TranscriptSegment, system: [TranscriptSegment]) -> Bool {
         let micWords = words(mic.text)
-        // One- or two-word utterances ("Yeah.", "Thank you") carry too
-        // little signal to match reliably — other filters handle those.
+        // A single word is too little evidence ("yes", "no", a name). Two
+        // words are admitted only when both channels cover the same instant
+        // and the normalized phrases are exact copies.
+        guard micWords.count >= 2 else { return false }
+
+        let nearby = system.filter {
+            $0.startTime < mic.endTime + overlapSlackSeconds
+                && $0.endTime > mic.startTime - overlapSlackSeconds
+        }
+
+        for segment in nearby {
+            let remoteWords = words(segment.text)
+            guard !remoteWords.isEmpty else { continue }
+            let actuallyOverlaps =
+                min(mic.endTime, segment.endTime) > max(mic.startTime, segment.startTime)
+
+            if actuallyOverlaps, micWords == remoteWords {
+                return true
+            }
+
+            // Live engines report overlapping rolling windows. A direct
+            // system row may therefore contain only the trailing edge of the
+            // noisier microphone copy ("...do it right now" / "it right
+            // now"). Three contiguous edge words plus real time overlap are
+            // stronger evidence than bag-of-words containment alone.
+            if actuallyOverlaps,
+                longestContiguousEdgeOverlap(micWords, remoteWords) >= 3
+            {
+                return true
+            }
+        }
+
+        // The broader containment fallback is intentionally reserved for
+        // three or more words. Batch ASR timestamps can drift enough that two
+        // copies no longer overlap exactly.
         guard micWords.count >= 3 else { return false }
         var systemWords = Set<String>()
-        for segment in system
-            where segment.startTime < mic.endTime + overlapSlackSeconds
-                && segment.endTime > mic.startTime - overlapSlackSeconds {
+        for segment in nearby {
             systemWords.formUnion(words(segment.text))
         }
         guard !systemWords.isEmpty else { return false }
         let contained = micWords.filter(systemWords.contains).count
         return Double(contained) / Double(micWords.count) >= containmentThreshold
+    }
+
+    private static func longestContiguousEdgeOverlap(
+        _ left: [String],
+        _ right: [String]
+    ) -> Int {
+        let maximum = min(left.count, right.count)
+        guard maximum > 0 else { return 0 }
+
+        for length in stride(from: maximum, through: 1, by: -1) {
+            if left.suffix(length).elementsEqual(right.prefix(length))
+                || right.suffix(length).elementsEqual(left.prefix(length))
+                || left.prefix(length).elementsEqual(right.prefix(length))
+                || left.suffix(length).elementsEqual(right.suffix(length))
+            {
+                return length
+            }
+        }
+        return 0
     }
 
     private static func words(_ text: String) -> [String] {

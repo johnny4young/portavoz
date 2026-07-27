@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 
-final class AutomationUITests: XCTestCase {
+final class AutomationUITests: PortavozUITestCase {
     @MainActor
     func testRecordURLRoutesIntoAVisibleRecording() async throws {
         let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)

@@ -110,6 +110,34 @@ final class LibraryObservationTests: XCTestCase {
         XCTAssertTrue(removed.isEmpty)
     }
 
+    func testSearchObservationMatchesEitherBilingualQueryAsACompleteVariant() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        let spanish = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "La hoja de ruta queda lista en agosto",
+            startTime: 3,
+            endTime: 5,
+            isFinal: true)
+        let partial = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "La hoja de ruta no tiene fecha",
+            startTime: 8,
+            endTime: 10,
+            isFinal: true)
+        try await store.save([spanish, partial])
+
+        var iterator = store.observeLibrarySearch(
+            ["august roadmap", "agosto hoja de ruta"]
+        ).makeAsyncIterator()
+        let hits = try await nextSearch(&iterator)
+
+        XCTAssertEqual(hits.map(\.segmentID), [spanish.id])
+    }
+
     func testCorruptMeetingRowsDoNotStopIndependentLibraryQueries() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Corrupt", startedAt: Date())

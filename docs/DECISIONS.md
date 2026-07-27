@@ -4355,3 +4355,45 @@ supports the surface; it must not be extracted into the macOS metadata bundle.
 preserves composability, and avoids two controls that perform the same
 operation. It also aligns implementation with the already documented macOS
 contract instead of asking users to understand an unsupported duplicate.
+
+## D142 — Separate live bleed admission from readable paragraph projection (Jul 2026)
+
+**Context:** field calls through Mac speakers still showed exact two-word and
+rolling partial copies as alternating `Me`/`Them` rows. The earlier
+three-word bag-of-words threshold intentionally preserved them. At the same
+time, genuine consecutive rows from one person looked fragmented, but generic
+`Them` may still represent two back-to-back people before live diarization
+resolves their voices.
+
+**Decision:** direct system/room audio may suppress an exact two-word
+microphone copy only when both channel timelines truly overlap. A contiguous
+three-word rolling edge may also suppress the longer noisy copy. One-word
+speech, sequential acknowledgements, distinct overlap, finalized audio, and
+raw per-channel transcription remain unchanged. Readable paragraph grouping is
+a separate bounded view projection: it groups microphone rows or rows with the
+same stable live voice, carries their translations, keeps the first ID for
+diffing, and never groups generic `Them`.
+
+**Rationale:** direct capture is stronger evidence than acoustic spill, but
+short language alone is not enough to erase speech. Temporal evidence makes
+the admission rule safer, while a presentation-only paragraph projection
+improves readability without invalidating translation, Apuntador, rolling
+summary, persistence, or speaker-lineage consumers.
+
+## D143 — Expand Library search bilingually without an LLM or broad token OR (Jul 2026)
+
+**Context:** a user searching `august` expected meetings that contain `agosto`,
+and a selected Library hit opened the right meeting but not its exact transcript
+moment. Semantic or generative expansion would add model readiness, latency,
+non-determinism, and privacy surface to the instant sidebar path.
+
+**Decision:** ApplicationKit expands a compact, explicit English/Spanish
+meeting lexicon in both directions. StorageKit treats each complete expanded
+query as one conjunctive FTS5 variant and ORs the variants; unknown product and
+technical terms remain exact. Selecting a hit publishes its meeting ID and
+timestamp through the existing one-shot seek channel before route navigation.
+
+**Rationale:** deterministic local expansion covers high-value bilingual
+calendar and meeting vocabulary on every supported Mac, keeps FTS ranking and
+tests reproducible, and reuses the proven source-jump contract instead of
+creating a second navigation mechanism.

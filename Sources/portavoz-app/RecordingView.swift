@@ -243,17 +243,24 @@ struct RecordingView: View {
     /// captions then stop stealing the scroll position until "Jump to live".
     /// A bounded window keeps long recordings responsive.
     private var captionsList: some View {
-        GeometryReader { geo in
+        let projection = LiveCaptionParagraphProjector.project(
+            captions: Array(controller.captions.suffix(150)),
+            liveSpeakerLabels: controller.liveSpeakerLabels,
+            translations: controller.translations)
+        return GeometryReader { geo in
             FocusedTranscriptView(
-                segments: Array(controller.captions.suffix(150)),
-                activeID: controller.captions.last?.id,
+                segments: projection.segments,
+                activeID: projection.segments.last?.id,
                 height: geo.size.height,
                 anchor: UnitPoint(x: 0.5, y: 0.82),
-                followSignal: controller.captions.last?.endTime ?? 0,
+                followSignal: projection.segments.last?.endTime ?? 0,
                 mode: .live,
                 scrollAccessibilityIdentifier: "recording-live-transcript"
             ) { segment, active in
-                captionRow(segment, active: active)
+                captionRow(
+                    segment,
+                    active: active,
+                    translation: projection.translations[segment.id])
             }
         }
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
@@ -262,7 +269,11 @@ struct RecordingView: View {
     /// One lyrics line (4a): a voice-colored pill + the words. The active
     /// (newest) line reads bigger; when it's YOURS it sits in an
     /// amber-tinted card — your voice is the only color with meaning.
-    private func captionRow(_ segment: TranscriptSegment, active: Bool) -> some View {
+    private func captionRow(
+        _ segment: TranscriptSegment,
+        active: Bool,
+        translation: String?
+    ) -> some View {
         let voice = liveVoice(for: segment)
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(voice.label)
@@ -275,7 +286,7 @@ struct RecordingView: View {
                 Text(segment.text)
                     .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
-                if let translated = controller.translations[segment.id] {
+                if let translated = translation {
                     // The language bridge (6a-3): a secondary rail under the
                     // real line. Not amber — amber is reserved for YOUR voice
                     // (voices B); this reads as a quiet translation.

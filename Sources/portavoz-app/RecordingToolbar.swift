@@ -27,8 +27,11 @@ struct RecordingToolbar: View {
                     stopButton
                 }
                 HStack(spacing: 12) {
-                    secondaryControls
-                        .labelStyle(.iconOnly)
+                    ViewThatFits(in: .horizontal) {
+                        secondaryControls
+                        secondaryControls
+                            .labelStyle(.iconOnly)
+                    }
                     Spacer(minLength: 0)
                 }
             }
@@ -71,6 +74,11 @@ struct RecordingToolbar: View {
                 .pickerStyle(.menu)
                 .fixedSize()
                 .controlSize(.small)
+                .help(L10n.text(
+                    "Show an English or Spanish translation below each spoken caption."))
+                .accessibilityIdentifier("recording-translation-picker")
+                .accessibilityHint(L10n.text(
+                    "Show an English or Spanish translation below each spoken caption."))
             }
             if companionAvailable {
                 Toggle(isOn: companionBinding) {
@@ -79,6 +87,9 @@ struct RecordingToolbar: View {
                 .toggleStyle(.button)
                 .controlSize(.small)
                 .help(L10n.text(
+                    "Detects questions and suggests on-device answers. It never answers for you."))
+                .accessibilityIdentifier("recording-companion")
+                .accessibilityHint(L10n.text(
                     "Detects questions and suggests on-device answers. It never answers for you."))
             }
             Button {
@@ -90,6 +101,8 @@ struct RecordingToolbar: View {
             .help(L10n.text(
                 "A quick recap of the last few minutes — for when you zoned out or just joined."))
             .accessibilityIdentifier("recording-catch-up")
+            .accessibilityHint(L10n.text(
+                "A quick recap of the last few minutes — for when you zoned out or just joined."))
             Button {
                 controller.requestNextQuestion()
             } label: {
@@ -99,11 +112,16 @@ struct RecordingToolbar: View {
             .help(L10n.text(
                 "One or two questions worth asking next, grounded in the conversation and your open objectives."))
             .accessibilityIdentifier("recording-next-question")
+            .accessibilityHint(L10n.text(
+                "One or two questions worth asking next, grounded in the conversation and your open objectives."))
             Button(action: onCompact) {
                 Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
             }
             .controlSize(.small)
             .help(L10n.text(
+                "Floating mini panel with the timer and captions — records without covering your meeting"))
+            .accessibilityIdentifier("recording-hud")
+            .accessibilityHint(L10n.text(
                 "Floating mini panel with the timer and captions — records without covering your meeting"))
         }
     }

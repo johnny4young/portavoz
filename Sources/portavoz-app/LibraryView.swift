@@ -8,6 +8,9 @@ import UniformTypeIdentifiers
 struct LibraryView: View {
     let model: LibraryModel
     @Binding var route: Route?
+    let recordingActive: Bool
+    let onReturnToRecording: () -> Void
+    let onOpenSearchHit: (LibrarySearchHit) -> Void
 
     /// To-dos fold away when the user wants a lean sidebar; the choice
     /// survives relaunches.
@@ -96,13 +99,21 @@ struct LibraryView: View {
                             Text("No matches").foregroundStyle(.secondary)
                         }
                         ForEach(state.hits, id: \.segmentID) { hit in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(hit.snippet).lineLimit(2)
-                                Text("\(hit.meetingTitle) · \(timestamp(hit.startTime))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            Button {
+                                onOpenSearchHit(hit)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(hit.snippet).lineLimit(2)
+                                    Text("\(hit.meetingTitle) · \(timestamp(hit.startTime))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .tag(Route.meeting(hit.meetingID))
+                            .buttonStyle(.plain)
+                            .selectionDisabled()
+                            .accessibilityIdentifier(
+                                "library-search-hit-\(hit.segmentID.uuidString)")
                         }
                     }
                 } else {
@@ -397,16 +408,27 @@ extension LibraryView {
     /// peak — the brand mark on the button you press most.
     private var recordButton: some View {
         Button {
-            route = .recording(nil)
+            if recordingActive {
+                onReturnToRecording()
+            } else {
+                route = .recording(nil)
+            }
         } label: {
             HStack(spacing: 8) {
-                HStack(alignment: .bottom, spacing: 2) {
-                    Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 6)
-                    Capsule().fill(VoicePalette.me).frame(width: 2.5, height: 13)
-                    Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 8)
+                if recordingActive {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 9, height: 9)
+                    Text("Return to recording").fontWeight(.medium)
+                } else {
+                    HStack(alignment: .bottom, spacing: 2) {
+                        Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 6)
+                        Capsule().fill(VoicePalette.me).frame(width: 2.5, height: 13)
+                        Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 8)
+                    }
+                    .frame(height: 13)
+                    Text("New recording").fontWeight(.medium)
                 }
-                .frame(height: 13)
-                Text("New recording").fontWeight(.medium)
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
@@ -420,7 +442,13 @@ extension LibraryView {
         }
         .buttonStyle(.plain)
         .keyboardShortcut("n")
-        .accessibilityIdentifier("library-new-recording-button")
+        .accessibilityIdentifier(
+            recordingActive
+                ? "library-return-to-recording"
+                : "library-new-recording-button")
+        .help(recordingActive
+            ? L10n.text("Return to the recording in progress")
+            : L10n.text("Start a new recording"))
     }
 
     /// One of the vertical action chips (Import / Ask / Insights): a stacked

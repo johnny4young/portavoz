@@ -1,5 +1,32 @@
 import XCTest
 
+class PortavozUITestCase: XCTestCase {
+    private var notificationCenterInterruptionMonitor: NSObjectProtocol?
+
+    override func setUp() {
+        super.setUp()
+        notificationCenterInterruptionMonitor = addUIInterruptionMonitor(
+            withDescription: "Dismiss external Notification Center banners"
+        ) { _ in
+            let notificationCenter = XCUIApplication(
+                bundleIdentifier: "com.apple.UserNotificationCenter")
+            guard notificationCenter.dialogs.firstMatch.exists else {
+                return false
+            }
+            notificationCenter.typeKey(.escape, modifierFlags: [])
+            return true
+        }
+    }
+
+    override func tearDown() {
+        if let notificationCenterInterruptionMonitor {
+            removeUIInterruptionMonitor(notificationCenterInterruptionMonitor)
+        }
+        notificationCenterInterruptionMonitor = nil
+        super.tearDown()
+    }
+}
+
 enum UITestLocale {
     static var environmentLocale: String? {
         let value = ProcessInfo.processInfo.environment["PORTAVOZ_UI_TEST_LOCALE"]
@@ -53,7 +80,11 @@ extension XCUIApplication {
         if seedBrief { app.launchArguments.append("-seed-brief") }
         if seedRefineRunning { app.launchArguments.append("-seed-refine-running") }
         if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }
-        if seedRecovery { app.launchArguments.append("-seed-recovery") }
+        if seedRecovery {
+            app.launchArguments.append("-seed-recovery")
+            app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
+                NSTemporaryDirectory() + "portavoz-recovery-ready-\(UUID().uuidString)"
+        }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
         if seedProcessingFailure { app.launchArguments.append("-seed-processing-failure") }
         if seedWithoutSummary { app.launchArguments.append("-seed-without-summary") }
@@ -142,6 +173,19 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// Reassert Portavoz as the foreground app before a critical interaction.
+    ///
+    /// Full-suite runs can overlap with unrelated apps that legitimately raise
+    /// their own windows. XCUITest then reports Portavoz controls as not
+    /// hittable even though their layout is valid. Reactivating the app is
+    /// non-destructive and avoids teaching the harness to dismiss or terminate
+    /// arbitrary third-party windows.
+    @MainActor
+    func prepareForInteraction(timeout: TimeInterval = 10) -> Bool {
+        activate()
+        return wait(for: .runningForeground, timeout: timeout)
+    }
+
     /// Seeded-library launches mutate the sidebar once after the first frame.
     /// Waiting for the row to become hittable keeps a later toolbar click from
     /// resolving against the pre-seed accessibility snapshot.
@@ -157,6 +201,7 @@ extension XCUIApplication {
         }
         guard FileManager.default.fileExists(atPath: readyPath) else { return false }
         try? FileManager.default.removeItem(atPath: readyPath)
+        guard prepareForInteraction(timeout: timeout) else { return false }
 
         let meeting = descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))

@@ -138,9 +138,18 @@ final class AppServices {
     var justRecorded: MeetingID?
 
     func requestMeetingSeek(for citation: AskCitation) {
-        pendingMeetingSeek = MeetingSeekRequest(
+        requestMeetingSeek(
             meetingID: citation.meetingID,
             timestamp: citation.timestamp)
+    }
+
+    func requestMeetingSeek(
+        meetingID: MeetingID,
+        timestamp: TimeInterval
+    ) {
+        pendingMeetingSeek = MeetingSeekRequest(
+            meetingID: meetingID,
+            timestamp: timestamp)
     }
 
     /// The user's average talk-share over their recent meetings (excluding

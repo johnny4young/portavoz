@@ -469,9 +469,9 @@ Production model artifacts live in the stable user-domain
 `Portavoz.app` and `Portavoz Dev.app`. Replacing either application bundle
 therefore does not remove a verified model; only the explicit model-delete
 workflow mutates that installation. Refine, Import, Settings, and CLI describe
-the shared operation as preparation because a complete installation still
-passes through verification and emits progress, while network transfer occurs
-only for missing or corrupt pinned artifacts.
+the operation as local verification until `ModelStore` reports missing or
+corrupt artifacts; only that latter activity is labeled as a download. Download
+percentage is never synthesized for a checksum-only pass.
 Disposable automation receives an isolated empty model root and never inspects
 host installations. Settings verifies in the background and renders a checking
 state until evidence exists; it never exposes a partial installation as
@@ -513,6 +513,10 @@ Query-specific projections use explicit scope and ordering. Whole-library
 backup performs one newest-first database snapshot. Spotlight uses a bounded
 projection and client-state reconciliation. Library, Insights, Meeting Detail,
 and the menu bar use independent GRDB observations sized to their surface.
+Library search expands a small deterministic English/Spanish meeting lexicon
+locally, then groups each complete language variant under FTS5 `OR` rather
+than weakening every token into a broad union. A selected hit emits the same
+one-shot meeting/timestamp seek request used by Ask evidence before routing.
 
 ## Durable recording lifecycle
 
@@ -638,9 +642,13 @@ The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
 while a delayed direct row may replace only the newest still-open matching
 microphone row. Closed rows remain immutable for translation and rolling-summary
-cursors. The conservative lexical threshold preserves short acknowledgements
-and distinct overlapping speech; raw channel transcription and finalized audio
-are never rewritten by this presentation-time coalescer.
+cursors. Single-word acknowledgements and sequential turns remain conservative;
+exact two-word copies require real channel overlap, while three-word contiguous
+rolling edges can reject a longer noisy microphone copy. Distinct overlapping
+speech remains. A separate view-only projector groups consecutive microphone
+rows or rows from the same stable live voice within bounded gap/size limits.
+It never groups generic `Them`, never mutates raw caption IDs, and projects
+translation text alongside the visible paragraph.
 Live diarization may still project one closed source row into multiple
 speaker-labeled pieces. That transformation preserves the source ID on the
 first non-empty piece and assigns fresh IDs only to additional pieces, so
@@ -786,7 +794,10 @@ each request so a completed compression cannot leave stale URLs behind.
 Spotlight indexing is a process-scoped, protected, coalescing reconciler. It
 compares compact client state, publishes bounded batches to a named index,
 retries transient failures, and repairs missed work at launch without exposing
-meeting content to logs.
+meeting content to logs. Removal of the obsolete default-index domain retries
+until successful, then records a versioned local migration marker so neither
+later reconciliations nor future app launches wake Core Spotlight for the same
+one-way cleanup.
 
 ## Open-format export and backup
 

@@ -146,7 +146,7 @@ final class CaptionCoalescerTests: XCTestCase {
         XCTAssertEqual(captions.map(\.channel), [.system, .microphone])
     }
 
-    func testShortMicrophoneAcknowledgementIsNeverSuppressedAsBleed() {
+    func testOverlappingTwoWordMicrophoneCopyIsSuppressedAsBleed() {
         var captions: [TranscriptSegment] = []
         coalescer.apply(
             segment("thank you", channel: .system, start: 40, end: 41),
@@ -155,7 +155,36 @@ final class CaptionCoalescerTests: XCTestCase {
             segment("thank you", channel: .microphone, start: 40.2, end: 41.2),
             to: &captions)
 
+        XCTAssertEqual(captions.map(\.channel), [.system])
+    }
+
+    func testSequentialTwoWordAcknowledgementRemainsVisible() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment("thank you", channel: .system, start: 40, end: 41),
+            to: &captions)
+        coalescer.apply(
+            segment("thank you", channel: .microphone, start: 41.1, end: 42),
+            to: &captions)
+
         XCTAssertEqual(captions.map(\.channel), [.system, .microphone])
+    }
+
+    func testRollingSystemSuffixSuppressesLongerMicrophoneCopy() {
+        var captions: [TranscriptSegment] = []
+        coalescer.apply(
+            segment(
+                "we can we can do it right now",
+                channel: .microphone,
+                start: 50,
+                end: 53),
+            to: &captions)
+        coalescer.apply(
+            segment("it right now", channel: .system, start: 51.8, end: 53.1),
+            to: &captions)
+
+        XCTAssertEqual(captions.map(\.text), ["it right now"])
+        XCTAssertEqual(captions.map(\.channel), [.system])
     }
 
     func testPausedSpeakerStaysOnOneRowUntilSentenceCloses() {

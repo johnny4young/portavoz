@@ -6,7 +6,7 @@ import XCTest
 /// tabbed summary (with a coauthoring ▸ bullet under Decisiones), meeting
 /// health, chapters, a content-free privacy receipt in the right rail, and a
 /// player.
-final class MeetingDetailUITests: XCTestCase {
+final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
         let app = XCUIApplication.portavoz(
@@ -251,6 +251,9 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertEqual(
             source.value as? String,
             "El rollout del modelo queda para el viernes.")
+        XCTAssertTrue(
+            app.prepareForInteraction(),
+            "Portavoz must be foreground before activating a summary source")
         XCTAssertTrue(
             source.waitForStableFrame(),
             "the localized source control must finish layout before activation")

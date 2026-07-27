@@ -25,7 +25,8 @@ extension AppServices: LibraryModelClient {
     func observeLibrarySearch(
         _ query: String
     ) -> AsyncThrowingStream<[LibrarySearchHit], Error> {
-        mapStream(store.observeLibrarySearch(query)) { hits in
+        let queries = BilingualSearchQueryExpander().expand(query)
+        return mapStream(store.observeLibrarySearch(queries)) { hits in
             hits.map(makeApplicationSearchHit)
         }
     }

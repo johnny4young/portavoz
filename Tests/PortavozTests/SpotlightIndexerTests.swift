@@ -14,6 +14,7 @@ final class SpotlightIndexerTests: XCTestCase {
             store: store,
             enabled: true,
             backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
             debounce: .milliseconds(250),
             retryDelays: [],
             sleep: { _ in try await sleeper.sleep() })
@@ -33,7 +34,7 @@ final class SpotlightIndexerTests: XCTestCase {
         XCTAssertEqual(status, .idle)
     }
 
-    func testMatchingClientStateSkipsReplacementButRetriesLegacyCleanup() async throws {
+    func testMatchingClientStateSkipsReplacementAndCleansLegacyIndexOnceAcrossRequests() async throws {
         let store = try await seededStore()
         let documents = try await store.spotlightDocuments()
         let backend = SpotlightBackendSpy(
@@ -42,16 +43,46 @@ final class SpotlightIndexerTests: XCTestCase {
             store: store,
             enabled: true,
             backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
             debounce: .zero,
             retryDelays: [],
             sleep: { _ in })
 
         await indexer.requestReindex()
         await indexer.waitUntilIdle()
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
 
         let snapshot = await backend.snapshot()
         XCTAssertEqual(snapshot.replacements, 0)
         XCTAssertEqual(snapshot.legacyRemovals, 1)
+        let status = await indexer.status
+        XCTAssertEqual(status, .idle)
+    }
+
+    func testLegacyCleanupFailureRetriesUntilItSucceeds() async throws {
+        let store = try await seededStore()
+        let documents = try await store.spotlightDocuments()
+        let backend = SpotlightBackendSpy(
+            clientState: SpotlightIndexer.clientState(for: documents),
+            legacyRemovalFailures: 1)
+        let indexer = SpotlightIndexer(
+            store: store,
+            enabled: true,
+            backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
+            debounce: .zero,
+            retryDelays: [.zero],
+            sleep: { _ in })
+
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
+
+        let snapshot = await backend.snapshot()
+        XCTAssertEqual(snapshot.replacements, 0)
+        XCTAssertEqual(snapshot.legacyRemovals, 2)
         let status = await indexer.status
         XCTAssertEqual(status, .idle)
     }
@@ -63,6 +94,7 @@ final class SpotlightIndexerTests: XCTestCase {
             store: store,
             enabled: true,
             backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
             debounce: .zero,
             retryDelays: [.zero, .zero],
             sleep: { _ in })
@@ -84,6 +116,7 @@ final class SpotlightIndexerTests: XCTestCase {
             store: store,
             enabled: true,
             backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
             debounce: .zero,
             retryDelays: [.zero],
             sleep: { _ in })
@@ -103,12 +136,56 @@ final class SpotlightIndexerTests: XCTestCase {
         XCTAssertEqual(recoveredStatus, .idle)
     }
 
+    func testSuccessfulLegacyCleanupSurvivesIndexerRecreation() async throws {
+        let store = try await seededStore()
+        let documents = try await store.spotlightDocuments()
+        let backend = SpotlightBackendSpy(
+            clientState: SpotlightIndexer.clientState(for: documents))
+        let cleanupState = SpotlightLegacyCleanupStateSpy()
+
+        let first = SpotlightIndexer(
+            store: store,
+            enabled: true,
+            backend: backend,
+            legacyCleanupState: cleanupState,
+            debounce: .zero,
+            retryDelays: [],
+            sleep: { _ in })
+        await first.requestReindex()
+        await first.waitUntilIdle()
+
+        let relaunched = SpotlightIndexer(
+            store: store,
+            enabled: true,
+            backend: backend,
+            legacyCleanupState: cleanupState,
+            debounce: .zero,
+            retryDelays: [],
+            sleep: { _ in })
+        await relaunched.requestReindex()
+        await relaunched.waitUntilIdle()
+
+        let snapshot = await backend.snapshot()
+        XCTAssertEqual(snapshot.replacements, 0)
+        XCTAssertEqual(snapshot.legacyRemovals, 1)
+    }
+
     private func seededStore() async throws -> MeetingStore {
         let store = try MeetingStore.inMemory()
         try await store.save(Meeting(
             title: "Searchable",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000)))
         return store
+    }
+}
+
+private actor SpotlightLegacyCleanupStateSpy: SpotlightLegacyCleanupState {
+    private var complete = false
+
+    func isComplete() -> Bool { complete }
+
+    func markComplete() {
+        complete = true
     }
 }
 
@@ -121,13 +198,19 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
 
     private var clientState: Data?
     private var remainingReplacementFailures: Int
+    private var remainingLegacyRemovalFailures: Int
     private var replacementCount = 0
     private var documentCounts: [Int] = []
     private var legacyRemovalCount = 0
 
-    init(clientState: Data? = nil, replacementFailures: Int = 0) {
+    init(
+        clientState: Data? = nil,
+        replacementFailures: Int = 0,
+        legacyRemovalFailures: Int = 0
+    ) {
         self.clientState = clientState
         remainingReplacementFailures = replacementFailures
+        remainingLegacyRemovalFailures = legacyRemovalFailures
     }
 
     func lastClientState() async throws -> Data? { clientState }
@@ -144,6 +227,10 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
 
     func removeLegacyDefaultItems() async throws {
         legacyRemovalCount += 1
+        if remainingLegacyRemovalFailures > 0 {
+            remainingLegacyRemovalFailures -= 1
+            throw SpotlightBackendSpyError.injectedFailure
+        }
     }
 
     func snapshot() -> Snapshot {

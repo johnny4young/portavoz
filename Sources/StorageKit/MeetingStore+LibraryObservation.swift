@@ -59,7 +59,24 @@ extension MeetingStore {
         limit: Int = 20,
         requireAll: Bool = true
     ) -> AsyncThrowingStream<[SearchHit], Error> {
-        let match = Self.ftsQuery(from: query, requireAll: requireAll)
+        observeLibrarySearch(
+            [query],
+            limit: limit,
+            requireAllWithinEachQuery: requireAll)
+    }
+
+    /// Observes several equivalent queries as one ranked FTS expression.
+    /// Terms within each language variant remain ANDed while the variants are
+    /// ORed, so "August roadmap" also finds "agosto hoja de ruta" without
+    /// matching every transcript that happens to say only "roadmap".
+    public func observeLibrarySearch(
+        _ queries: [String],
+        limit: Int = 20,
+        requireAllWithinEachQuery: Bool = true
+    ) -> AsyncThrowingStream<[SearchHit], Error> {
+        let match = Self.ftsQuery(
+            fromAny: queries,
+            requireAllWithinEachQuery: requireAllWithinEachQuery)
         guard !match.isEmpty else {
             return AsyncThrowingStream { continuation in
                 continuation.yield([])
@@ -72,6 +89,22 @@ extension MeetingStore {
                 try Self.fetchSearch(in: database, match: match, limit: limit)
             })
         return observedStream(observation)
+    }
+
+    static func ftsQuery(
+        fromAny queries: [String],
+        requireAllWithinEachQuery: Bool = true
+    ) -> String {
+        var seen = Set<String>()
+        return queries.compactMap { query -> String? in
+            let expression = ftsQuery(
+                from: query,
+                requireAll: requireAllWithinEachQuery)
+            guard !expression.isEmpty, seen.insert(expression).inserted else {
+                return nil
+            }
+            return "(\(expression))"
+        }.joined(separator: " OR ")
     }
 }
 

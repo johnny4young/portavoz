@@ -74,7 +74,11 @@ public protocol RefineMeetingPreferences: Sendable {
 /// Stable phases that presentation maps to localized copy.
 public enum RefineMeetingProgress: Equatable, Sendable {
     case preparingModels
-    case preparingWhisper(size: String, percent: Int, path: String? = nil)
+    case preparingWhisper(
+        size: String,
+        percent: Int,
+        path: String? = nil,
+        isDownloading: Bool = true)
     case transcribingParticipants
     case transcribingMicrophone
     case transcribed(

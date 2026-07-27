@@ -791,6 +791,26 @@
         }
       }
     },
+    "Checking files already on this Mac…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando los archivos que ya están en esta Mac…"
+          }
+        }
+      }
+    },
+    "Checking Whisper already on this Mac…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Whisper, que ya está en esta Mac…"
+          }
+        }
+      }
+    },
     "Choose": {
       "localizations": {
         "es": {
@@ -1617,6 +1637,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descargar ahora"
+          }
+        }
+      }
+    },
+    "Downloading in background… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando en segundo plano… %d%%"
+          }
+        }
+      }
+    },
+    "Downloading Whisper (%@)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper (%@)… %d%%"
           }
         }
       }
@@ -8247,6 +8287,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Portavoz no pudo abrir la pantalla de grabación."
+          }
+        }
+      }
+    },
+    "Return to recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la grabación"
+          }
+        }
+      }
+    },
+    "Return to the recording in progress": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la grabación en curso"
+          }
+        }
+      }
+    },
+    "Start a new recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar una nueva grabación"
+          }
+        }
+      }
+    },
+    "Show an English or Spanish translation below each spoken caption.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar una traducción al inglés o español debajo de cada frase hablada."
           }
         }
       }

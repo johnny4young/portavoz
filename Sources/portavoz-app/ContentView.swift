@@ -33,7 +33,17 @@ struct ContentView: View {
         NavigationSplitView {
             LibraryView(
                 model: libraryModel,
-                route: $route)
+                route: $route,
+                recordingActive: services.recording.canReturnToLiveSession,
+                onReturnToRecording: {
+                    route = .recording(nil)
+                },
+                onOpenSearchHit: { hit in
+                    services.requestMeetingSeek(
+                        meetingID: hit.meetingID,
+                        timestamp: hit.startTime)
+                    route = .meeting(hit.meetingID)
+                })
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
                 .background { AuroraSidebarBackground() }
         } detail: {
