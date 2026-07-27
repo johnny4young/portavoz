@@ -433,14 +433,19 @@ regeneration's setup-issue mapping and reporting `.unchanged`/`.noNotes`
 honestly inline. Generation stays view-side like summary regeneration; the raw
 notes are never modified.
 
-Native App Intents (FEATURE-001/D139): `StartRecordingIntent` opens the
-existing `portavoz://record` route (`openAppWhenRun`), and `PortavozShortcuts`
-publishes bilingual phrases ("Start a recording in Portavoz" / "Graba con
-Portavoz"). The metadata Xcode would extract during its build is produced out
-of band by `scripts/build-appintents-metadata.sh` — a standalone compile of
-the SDK-only `PortavozAppIntents.swift` under the shipping module name, then
+Native App Intents (D139): `openAppWhenRun` foregrounds the bundle that owns
+`StartRecordingIntent`, which publishes a buffered process-local request
+consumed by `PortavozAppDelegate`; it does not reopen the public
+`portavoz://record` adapter through LaunchServices. Portavoz publishes no
+`AppShortcutsProvider` on macOS: the unsupported automatic shortcut duplicated
+the raw action in the picker, while reliable Spotlight and Siri invocation
+already comes from a user-created Shortcut. The metadata Xcode would extract
+during its build is produced out of band by
+`scripts/build-appintents-metadata.sh` — a standalone compile of the SDK-only
+`PortavozAppIntents.swift` under the shipping module name, then
 `appintentsmetadataprocessor`, then `Metadata.appintents` into
-`Contents/Resources` — and `make-app.sh` fails rather than ship without it.
+`Contents/Resources` — and `make-app.sh` fails rather than ship without exactly
+the native action and without automatic App Shortcuts.
 The intents file's SDK-only import diet is pinned by
 `ArchitectureDependencyTests`, because a project import would break the
 release pipeline at packaging time instead of test time.
@@ -969,7 +974,9 @@ for the unavailable SwiftUI update-cause lane.
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
 defines 49 XCUITest cases in `Tests/PortavozUITests`: Automation (the
-production `portavoz://record` route enters a visible disposable recording),
+production `portavoz://record` route enters a visible disposable recording
+whose `app.portavoz.mac.uitest-host` identity cannot shadow either installed
+app),
 Library (record button +
 chips + time grouping + full Ask and command-palette answer/citation paths +
 interrupted staging recovery + durable post-capture resume + typed recording-

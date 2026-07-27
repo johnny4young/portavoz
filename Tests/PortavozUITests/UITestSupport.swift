@@ -35,6 +35,7 @@ extension XCUIApplication {
         simulateSystemCaptureStall: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
+        simulateAppIntent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -71,11 +72,14 @@ extension XCUIApplication {
         if simulateLiveTranscriptBrowsing {
             app.launchArguments.append("-simulate-live-transcript-browsing")
         }
+        if simulateAppIntent {
+            app.launchArguments.append("-simulate-app-intent")
+        }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }
         // AppKit writes ignored-restoration state into TMPDIR. Give every
         // process a private root so back-to-back launches cannot race the same
-        // app.portavoz.mac.savedState directory after a preceding termination.
+        // bundle-scoped savedState directory after a preceding termination.
         let processTempRoot = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("portavoz-uitest-process-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(

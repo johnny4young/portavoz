@@ -158,9 +158,9 @@ final class AppServices {
     }
 
     init() {
-        // The UI-test process shares the production bundle identifier. Apply
-        // volatile per-launch preferences before any service reads defaults so
-        // deterministic tests never mutate or depend on the user's settings.
+        // The UI-test host has its own bundle identity, but volatile
+        // per-launch preferences still need to land before any service reads
+        // defaults so every case is independent from an earlier test launch.
         UITestDefaults.installIfNeeded()
         let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
         let modelStore = usesTemporaryStore

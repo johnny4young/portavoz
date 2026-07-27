@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,156 package tests passing (13 model-gated) + 49 XCUITest UI cases. CI
+Status: 1,158 package tests passing (13 model-gated) + 49 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1246,7 +1246,7 @@ remains in earlier history, retains
 `recording-live-transcript-history-paused`, then uses
 `recording-jump-to-live` and observes the latest row.
 
-The current field-reliability gate is 1,156 XCTest package cases (13 gated),
+The current field-reliability gate is 1,158 XCTest package cases (13 gated),
 zero strict-lint violations across 383 production Swift sources, a 105-case
 recording/recovery corpus passing 25 consecutive iterations, and 49 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,

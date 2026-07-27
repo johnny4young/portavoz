@@ -5,11 +5,17 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 27, 2026
+
+- **🧭 One clear recording action** — Shortcuts now shows one Portavoz “Start recording” action instead of an unsupported automatic duplicate; add the Portavoz-icon action to your own shortcut once, then run that shortcut from Shortcuts, Spotlight, or Siri.
+
+- **🎙️ “Start recording” that macOS can actually find** — Portavoz Dev now has its own system identity and handles the action inside the exact app Siri or Shortcuts launched instead of letting macOS pick another installed build.
+
 ## July 26, 2026
 
 - **⏱️ A recording clock that stays readable** — Starting from Shortcuts, Spotlight, or a compact window can no longer squeeze the live timer into a vertical stack; elapsed time remains a clear, single-line clock.
 
-- **⚡ Portavoz in your Shortcuts** — "Start recording" is now a native action: wire it into any Shortcut, launch it from Spotlight, or say "Graba con Portavoz". No more URL-scheme workarounds — though `portavoz://record` keeps working for the tools that use it.
+- **⚡ Portavoz in your Shortcuts** — "Start recording" is now a native action: wire it into any Shortcut, then launch that saved shortcut from Spotlight or Siri. No more URL-scheme workarounds — though `portavoz://record` keeps working for the tools that use it.
 
 - **🤫 Apuntador answers even when the room goes quiet** — Before, a question needed the NEXT person to speak before Portavoz could react; if everyone waited silently for your answer, no card ever came. Now two seconds of silence is enough — even when you enable Apuntador after the question is already visible — so it reacts exactly when everyone is looking at you.
 

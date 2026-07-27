@@ -1015,10 +1015,19 @@ The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
 extracts and checks the inner application rather than trusting the mounted DMG.
 The script-built app also carries native App Intents metadata extracted
-separately from one SDK-only source under the shipping module name. Packaging fails
-if the metadata declares no action. The XcodeGen-only test app registers the
-same `portavoz://record` route, and one focused XCUITest directs that URL to the
-exact disposable app bundle and proves the handoff enters a visible recording.
+separately from one SDK-only source under the shipping module name. Packaging
+fails if the metadata declares no action. `openAppWhenRun` foregrounds the
+intent-owning bundle; `perform()` therefore uses a buffered process-local
+handoff consumed by `PortavozAppDelegate`, never a LaunchServices URL lookup.
+The delegate routes through the same process-scoped pending route used by other
+external entry points. macOS publishes only that native action in the Shortcuts
+action picker: it deliberately omits `AppShortcutsProvider`, because automatic
+App Shortcuts are not a supported macOS product surface and otherwise duplicate
+the identically titled action. Spotlight and Siri use a user-created Shortcut
+containing the Portavoz-icon action. The XcodeGen-only test app registers the
+public `portavoz://record` adapter, and one focused XCUITest directs that URL to
+the exact disposable app bundle and proves the handoff enters a visible
+recording.
 App Intent source changes select only this boundary case instead of the broad
 recording-recovery suite; shared harness changes retain three bilingual
 canaries. `make-app.sh` also verifies the complete nested signature before it
@@ -1030,9 +1039,15 @@ sandbox composition.
 
 `/Applications/Portavoz.app` is the user's release installation and is never
 modified by development commands. `make install` builds, signs, verifies, and
-installs `/Applications/Portavoz Dev.app`. UI tests use disposable SQLite,
-audio, saved-state, and voice-gallery locations and never touch the real
-library or Keychain.
+installs `/Applications/Portavoz Dev.app`, rewrites both base and localized
+names, gives it the distinct `app.portavoz.mac.dev` identity, and force-registers
+that exact bundle after signature verification. The XcodeGen host uses
+`app.portavoz.mac.uitest-host`. Production, development, and disposable
+DerivedData bundles therefore cannot compete for one LaunchServices/App Intents
+record. The separate Dev identity requires its own one-time macOS permissions
+and preferences; the stable installation remains untouched. UI tests use
+disposable SQLite, audio, saved-state, and voice-gallery locations and never
+touch the real library or Keychain.
 
 ## Enforced engineering rules
 
@@ -1161,7 +1176,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,156 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,158 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

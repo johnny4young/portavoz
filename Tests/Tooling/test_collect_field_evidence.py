@@ -170,7 +170,7 @@ class CollectFieldEvidenceTests(unittest.TestCase):
         with info.open("wb") as handle:
             plistlib.dump(
                 {
-                    "CFBundleIdentifier": "app.portavoz.mac",
+                    "CFBundleIdentifier": "app.portavoz.mac.dev",
                     "CFBundleShortVersionString": "0.7.0",
                     "CFBundleVersion": "700",
                 },

@@ -121,7 +121,7 @@ if [[ -d assets/Assets.xcassets ]]; then
     --output-format human-readable-text > /dev/null
 fi
 
-# App Intents metadata (FEATURE-001/D139). SwiftPM never runs Xcode's
+# App Intents metadata (D139). SwiftPM never runs Xcode's
 # appintentsmetadataprocessor, so Shortcuts/Spotlight would not see the
 # intents. The metadata is extracted out of band: the intents file is
 # SDK-only by design (pinned by an architecture test), so one standalone

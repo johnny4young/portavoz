@@ -646,6 +646,8 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testAppIntentsStaySDKOnlySoMetadataExtractionCannotBreak() throws {
         let intents = try Self.contents(
             of: "Sources/portavoz-app/PortavozAppIntents.swift")
+        let appDelegate = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppDelegate.swift")
         let extractor = try Self.contents(
             of: "scripts/build-appintents-metadata.sh")
         let packager = try Self.contents(of: "scripts/make-app.sh")
@@ -689,7 +691,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(extractor.contains("-module-name portavoz_app"))
         XCTAssertTrue(extractor.contains("declares no actions"))
         XCTAssertTrue(packager.contains("scripts/build-appintents-metadata.sh"))
+        XCTAssertFalse(
+            intents.contains("NSWorkspace.shared.open"),
+            "the intent must route inside its owning process, not ask LaunchServices to choose a URL handler")
+        XCTAssertTrue(intents.contains(
+            "PortavozAppIntentBridge.requestStartRecording()"))
+        XCTAssertTrue(appDelegate.contains(
+            "PortavozAppIntentBridge.consumeStartRecordingRequest()"))
+        XCTAssertFalse(
+            intents.contains("AppShortcutsProvider"),
+            "macOS publishes the action only; an App Shortcut duplicates it in the picker")
+        XCTAssertFalse(
+            appDelegate.contains("updateAppShortcutParameters()"),
+            "macOS has no App Shortcut representation to refresh")
+        XCTAssertTrue(extractor.contains("must not publish unsupported App Shortcuts"))
         XCTAssertTrue(decisions.contains("## D139"))
+        XCTAssertTrue(decisions.contains("## D141"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
@@ -2196,6 +2213,18 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         let resign = try XCTUnwrap(makefile.range(
             of: "codesign --force --options runtime --timestamp"))
+        let devIdentity = try XCTUnwrap(makefile.range(
+            of: "CFBundleIdentifier -string \"app.portavoz.mac.dev\"",
+            range: makefile.startIndex..<resign.lowerBound))
+        XCTAssertNotNil(makefile.range(
+            of: "CFBundleDisplayName -string \"Portavoz Dev\"",
+            range: makefile.startIndex..<devIdentity.lowerBound))
+        XCTAssertNotNil(makefile.range(
+            of: #"s/^"CFBundleDisplayName" = ".*""#,
+            range: devIdentity.upperBound..<resign.lowerBound))
+        XCTAssertNotNil(makefile.range(
+            of: "plutil -lint \"$$plist\"",
+            range: devIdentity.upperBound..<resign.lowerBound))
         let verifyDist = try XCTUnwrap(makefile.range(
             of: "codesign --verify --deep --strict --verbose=2 dist/Portavoz.app",
             range: resign.upperBound..<makefile.endIndex))
@@ -2206,9 +2235,26 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "codesign --verify --deep --strict --verbose=2 "
                 + "\"/Applications/Portavoz Dev.app\"",
             range: copy.upperBound..<makefile.endIndex))
+        let register = try XCTUnwrap(makefile.range(
+            of: "-f \"/Applications/Portavoz Dev.app\"",
+            range: verifyInstalled.upperBound..<makefile.endIndex))
         XCTAssertNotNil(makefile.range(
             of: "open \"/Applications/Portavoz Dev.app\"",
-            range: verifyInstalled.upperBound..<makefile.endIndex))
+            range: register.upperBound..<makefile.endIndex))
+    }
+
+    func testDevelopmentAndUITestAppsCannotClaimTheReleaseIdentity() throws {
+        let makefile = try Self.contents(of: "Makefile")
+        let project = try Self.contents(of: "project.yml")
+        let collector = try Self.contents(of: "scripts/collect-field-evidence.py")
+
+        XCTAssertTrue(makefile.contains("app.portavoz.mac.dev"))
+        XCTAssertTrue(project.contains(
+            "PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac.uitest-host"))
+        XCTAssertTrue(collector.contains(
+            #"CFBundleIdentifier") != "app.portavoz.mac.dev""#))
+        XCTAssertFalse(project.contains(
+            "PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac\n"))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

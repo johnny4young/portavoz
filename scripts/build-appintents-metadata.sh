@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# App Intents metadata for the SPM-built app (FEATURE-001/D139).
+# App Intents metadata for the SPM-built app (D139).
 #
 # Xcode extracts App Intents metadata during its own build; SwiftPM has no
 # equivalent step, which is why GAPS #10 believed intents required "the
@@ -76,13 +76,18 @@ if [[ ! -f "$WORK/out/Metadata.appintents/extract.actionsdata" ]]; then
   echo "error: appintentsmetadataprocessor produced no actionsdata." >&2
   exit 70
 fi
-# The extraction must actually carry our intents — an empty actions map
-# would ship a bundle that silently offers nothing to Shortcuts.
+# The extraction must carry exactly the native action surface needed on macOS.
+# App Shortcuts are not a supported macOS product surface; emitting one beside
+# the raw action produces two identically titled rows in the action picker.
 python3 - "$WORK/out/Metadata.appintents/extract.actionsdata" <<'PY'
 import json, sys
-actions = json.load(open(sys.argv[1])).get("actions") or {}
+metadata = json.load(open(sys.argv[1]))
+actions = metadata.get("actions") or {}
 if not actions:
     raise SystemExit("error: extracted App Intents metadata declares no actions")
+if metadata.get("autoShortcuts"):
+    raise SystemExit(
+        "error: macOS metadata must not publish unsupported App Shortcuts")
 print(f"App Intents metadata: {', '.join(sorted(actions))}")
 PY
 
