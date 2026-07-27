@@ -99,6 +99,17 @@ calendar-backed attendee set. Observe `question-card-under-five-seconds`,
 `directed-ping-detected`, `calendar-suggestion-offered`, and
 `remembered-person-offered-not-auto-linked`. Record elapsed seconds to the card.
 
+### `app-intents-siri`
+
+With `/Applications/Portavoz Dev.app` installed, confirm that **Start recording**
+appears in Shortcuts and as a Spotlight action, then invoke one published Siri
+phrase in the current system language. Observe `shortcuts-action-visible`,
+`spotlight-action-visible`, `siri-phrase-started-recording`, and
+`recording-stopped-and-saved`. The automated XCUITest already proves that the
+underlying `portavoz://record` handoff reaches the exact disposable app and
+opens a visible recording; this scenario is limited to the real macOS
+Shortcuts/Spotlight/Siri registration surfaces that automation cannot certify.
+
 ## Admission rule
 
 A scenario closes a field gap only when every listed check is `pass`, the support

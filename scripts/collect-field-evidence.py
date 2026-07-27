@@ -58,6 +58,12 @@ SCENARIOS = {
         "calendar-suggestion-offered",
         "remembered-person-offered-not-auto-linked",
     ),
+    "app-intents-siri": (
+        "shortcuts-action-visible",
+        "spotlight-action-visible",
+        "siri-phrase-started-recording",
+        "recording-stopped-and-saved",
+    ),
 }
 
 CODE_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,120}$")

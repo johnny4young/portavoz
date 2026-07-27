@@ -114,13 +114,41 @@ class CollectFieldEvidenceTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("unknown check for cold-live-captions", result.stderr)
 
-    def run_collector(self, report, app, output, *extra):
+    def test_packages_complete_app_intents_siri_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "evidence"
+            result = self.run_collector(
+                self.write_report(root),
+                self.write_app(root),
+                output,
+                "--check",
+                "shortcuts-action-visible=pass",
+                "--check",
+                "spotlight-action-visible=pass",
+                "--check",
+                "siri-phrase-started-recording=pass",
+                "--check",
+                "recording-stopped-and-saved=pass",
+                scenario="app-intents-siri",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = json.loads((output / "manifest.json").read_text())
+            self.assertEqual(manifest["scenario"], "app-intents-siri")
+            self.assertEqual(manifest["outcome"], "pass")
+            self.assertEqual(
+                set(manifest["checks"].values()),
+                {"pass"},
+            )
+
+    def run_collector(self, report, app, output, *extra, scenario="cold-live-captions"):
         return subprocess.run(
             [
                 "python3",
                 str(COLLECTOR),
                 "--scenario",
-                "cold-live-captions",
+                scenario,
                 "--report",
                 str(report),
                 "--output",
