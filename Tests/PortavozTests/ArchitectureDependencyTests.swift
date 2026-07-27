@@ -656,9 +656,29 @@ final class ArchitectureDependencyTests: XCTestCase {
         // break that compile — at release time, not at test time — so the
         // SDK-only diet is enforced here.
         let allowedImports: Set<String> = ["AppIntents", "AppKit", "Foundation"]
-        let imports = intents.split(separator: "\n")
-            .filter { $0.hasPrefix("import ") }
-            .map { String($0.dropFirst("import ".count)) }
+        // Tokenize rather than prefix-match: an indented `import` (inside
+        // #if) must not slip through, and a trailing comment or a kind
+        // import (`import struct Foundation.URL`) must not mis-parse.
+        let importKinds: Set<String> = [
+            "typealias", "struct", "class", "enum", "protocol", "let", "var", "func"
+        ]
+        let imports: [String] = intents.split(separator: "\n").compactMap { rawLine in
+            var tokens = rawLine.split(whereSeparator: { $0 == " " || $0 == "\t" })
+                .map(String.init)
+            while let first = tokens.first, first.hasPrefix("@") {
+                tokens.removeFirst()
+            }
+            guard tokens.first == "import" else { return nil }
+            tokens.removeFirst()
+            if let kind = tokens.first, importKinds.contains(kind) {
+                tokens.removeFirst()
+            }
+            guard let spec = tokens.first else { return nil }
+            return spec.split(separator: ".").first.map(String.init)
+        }
+        XCTAssertFalse(
+            imports.isEmpty,
+            "the import scan must see the intents file's imports; an empty parse means the parser rotted, not that the diet holds")
         for module in imports {
             XCTAssertTrue(
                 allowedImports.contains(module),

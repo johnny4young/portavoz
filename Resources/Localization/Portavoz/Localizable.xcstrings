@@ -8240,6 +8240,16 @@
           }
         }
       }
+    },
+    "Portavoz could not open the recording screen.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo abrir la pantalla de grabación."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

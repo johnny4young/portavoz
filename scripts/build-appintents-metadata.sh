@@ -22,11 +22,15 @@ RESOURCES_DIR="${1:?usage: build-appintents-metadata.sh <resources-dir> [config]
 INTENTS_SOURCE="Sources/portavoz-app/PortavozAppIntents.swift"
 DEPLOYMENT_TARGET="14.4"
 
-TOOLCHAIN="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain"
+# Follow the active toolchain (DEVELOPER_DIR, else xcode-select) so the
+# script works with Xcode-beta or nonstandard installs; the existence check
+# below catches a Command Line Tools-only selection with a clear message.
+DEVELOPER="${DEVELOPER_DIR:-$(xcode-select -p)}"
+TOOLCHAIN="$DEVELOPER/Toolchains/XcodeDefault.xctoolchain"
 PROCESSOR="$TOOLCHAIN/usr/bin/appintentsmetadataprocessor"
 PROTOCOLS_SOURCE="$TOOLCHAIN/usr/share/swift/SwiftConstantValues/AppIntents.json"
 if [[ ! -x "$PROCESSOR" || ! -f "$PROTOCOLS_SOURCE" ]]; then
-  echo "error: Xcode toolchain is missing appintentsmetadataprocessor or its protocol list." >&2
+  echo "error: the selected developer dir ($DEVELOPER) has no appintentsmetadataprocessor or protocol list; select a full Xcode (xcode-select or DEVELOPER_DIR)." >&2
   exit 69
 fi
 

@@ -18,10 +18,22 @@ struct StartRecordingIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         // The exact path external automation already exercises (M16): the
         // URL route owns focus, permissions, and the recording screen.
-        if let url = URL(string: "portavoz://record") {
-            NSWorkspace.shared.open(url)
+        guard let url = URL(string: "portavoz://record"),
+              NSWorkspace.shared.open(url) else {
+            throw StartRecordingIntentError.recordRouteFailed
         }
         return .result()
+    }
+}
+
+/// Shortcuts/Siri report success from a clean `perform()` return, so a
+/// failed route must throw — otherwise the automation claims a recording
+/// started when nothing happened.
+enum StartRecordingIntentError: Error, CustomLocalizedStringResourceConvertible {
+    case recordRouteFailed
+
+    var localizedStringResource: LocalizedStringResource {
+        "Portavoz could not open the recording screen."
     }
 }
 
