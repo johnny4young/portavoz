@@ -272,5 +272,7 @@ if [[ "$SIGN_ENTITLEMENTS" == "packaging/portavoz.entitlements" ]]; then
   scripts/verify-cloudkit-capabilities.sh "$APP"
 fi
 
+codesign --verify --deep --strict --verbose=2 "$APP"
+
 echo "OK → $APP (signature: $SIGN_ID)"
 echo "Run it with: open $APP"

@@ -388,6 +388,7 @@ final class SettingsUITests: XCTestCase {
     }
 
     /// A macOS checkbox reports its state as "1"/1 through Accessibility.
+    @MainActor
     private static func isOn(_ toggle: XCUIElement) -> Bool {
         (toggle.value as? Int) == 1 || (toggle.value as? String) == "1"
     }

@@ -173,6 +173,18 @@ final class ModelStoreTests: XCTestCase {
         try? FileManager.default.removeItem(at: workspace)
     }
 
+    func testDefaultRootSurvivesApplicationBundleReplacement() {
+        let suffix = ["Library", "Application Support", "Portavoz", "Models"]
+        XCTAssertEqual(
+            Array(ModelStore.defaultRootDirectory.standardizedFileURL.pathComponents.suffix(4)),
+            suffix,
+            "production models must remain in stable user data, never inside the app bundle")
+        XCTAssertFalse(
+            ModelStore.defaultRootDirectory.standardizedFileURL.path
+                .hasPrefix(Bundle.main.bundleURL.standardizedFileURL.path + "/"),
+            "replacing Portavoz.app must not remove downloaded models")
+    }
+
     func testSHA256MatchesKnownVector() throws {
         let file = workspace.appendingPathComponent("abc.txt")
         try Data("abc".utf8).write(to: file)

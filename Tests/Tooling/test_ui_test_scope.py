@@ -91,10 +91,33 @@ class UITestScopeTests(unittest.TestCase):
             )
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_harness_change_selects_two_bilingual_canaries(self):
+    def test_harness_change_selects_three_bilingual_canaries(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
+
+    def test_app_intents_selects_only_the_external_recording_handoff(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/PortavozAppIntents.swift"]
+        )
+        self.assertEqual(
+            selection.tests,
+            FEATURE_TESTS["automation-entry"],
+        )
+        self.assertEqual(selection.locales, ("en",))
+
+    def test_recording_toolbar_selects_geometry_and_live_control_contracts(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/RecordingToolbar.swift"]
+        )
+        self.assertEqual(
+            selection.tests,
+            tuple(dict.fromkeys(
+                FEATURE_TESTS["automation-entry"]
+                + FEATURE_TESTS["recording-recovery"]
+            )),
+        )
+        self.assertEqual(selection.locales, ("en",))
 
     def test_changed_ui_test_file_selects_only_its_class(self):
         selection = select_paths(["Tests/PortavozUITests/InsightsUITests.swift"])

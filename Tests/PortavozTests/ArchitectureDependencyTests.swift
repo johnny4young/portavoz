@@ -2182,7 +2182,17 @@ final class ArchitectureDependencyTests: XCTestCase {
     }
 
     func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {
+        let packager = try Self.contents(of: "scripts/make-app.sh")
         let makefile = try Self.contents(of: "Makefile")
+
+        let packageSign = try XCTUnwrap(packager.range(
+            of: "--entitlements \"$SIGN_ENTITLEMENTS\" \"$APP\""))
+        let packageVerify = try XCTUnwrap(packager.range(
+            of: "codesign --verify --deep --strict --verbose=2 \"$APP\"",
+            range: packageSign.upperBound..<packager.endIndex))
+        XCTAssertNotNil(packager.range(
+            of: "echo \"OK → $APP",
+            range: packageVerify.upperBound..<packager.endIndex))
 
         let resign = try XCTUnwrap(makefile.range(
             of: "codesign --force --options runtime --timestamp"))

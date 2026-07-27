@@ -37,7 +37,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 - **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact.
 - **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, exports any span as an audio clip, and compresses every channel without removing an original until all outputs verify.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
-- **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
+- **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", native Siri/Shortcuts recording, and Shortcuts automation on meeting end.
 - **Open format.** Your meetings are SQLite you own, with Markdown, SRT, WebVTT, and portable `.portavoz` exports. No accounts, no lock-in.
 
 ## Status
@@ -91,7 +91,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 - **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
 - **Review suggestions that wait for you** — optional titles, summary structures, and chapter labels are admitted against one meeting revision, stay inert until you accept them, and never make a failed rename look saved.
-- **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
+- **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", native Siri/Shortcuts recording, and Shortcuts automation on meeting end.
 
 **Own your data**
 - **Open format** — a SQLite file you own, canonical Markdown, diarized SRT/WebVTT subtitles, and portable `.portavoz` bundles. Full-library backup reads one consistent snapshot, shows partial progress honestly, and publishes Markdown without replacing existing files; per-meeting bundles optionally include audio, and **trash** restores meetings before automatic purge after 30 days. No accounts, no lock-in.

@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 26, 2026
 
+- **⏱️ A recording clock that stays readable** — Starting from Shortcuts, Spotlight, or a compact window can no longer squeeze the live timer into a vertical stack; elapsed time remains a clear, single-line clock.
+
 - **⚡ Portavoz in your Shortcuts** — "Start recording" is now a native action: wire it into any Shortcut, launch it from Spotlight, or say "Graba con Portavoz". No more URL-scheme workarounds — though `portavoz://record` keeps working for the tools that use it.
 
 - **🤫 Apuntador answers even when the room goes quiet** — Before, a question needed the NEXT person to speak before Portavoz could react; if everyone waited silently for your answer, no card ever came. Now two seconds of silence is enough — even when you enable Apuntador after the question is already visible — so it reacts exactly when everyone is looking at you.
