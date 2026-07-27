@@ -4252,3 +4252,41 @@ structural, not statistical. A two-line policy and one timer close the
 case; a 360 MB (v2) or new-runtime (v3) dependency would have improved
 recall on a minority of turns while leaving the same hole open on Sequoia
 and non-FM Macs, where detection cannot run anyway.
+## D139 — App Intents without an Xcode app target (Jul 2026)
+
+**Context:** GAPS #10 recorded that "AppIntents/Siri metadata requires the
+future Xcode app target": Xcode extracts the metadata bundle during its own
+build, SwiftPM has no equivalent step, and D20 deliberately keeps the release
+pipeline SPM + `make-app.sh` with no checked-in project. The premise went
+untested — and it turned out to be wrong.
+
+**Decision:** the metadata is extracted OUT OF BAND, and D20 stands.
+`appintentsmetadataprocessor` (Xcode toolchain) needs only per-file
+`.swiftconstvalues` plus a source list; it does not need an Xcode build. The
+pipeline rests on one enforced contract: **the intents file is SDK-only**
+(`PortavozAppIntents.swift` imports AppIntents, AppKit, Foundation and
+nothing of the project), so `scripts/build-appintents-metadata.sh` can
+compile that single file standalone — under the SHIPPING module name
+`portavoz_app`, so the metadata's mangled type names match the SwiftPM
+binary — emit the const values (`-emit-const-values-path` with the frontend
+`-const-gather-protocols-file` fed the flattened toolchain protocol list),
+run the processor, verify the extraction actually declares actions, and copy
+`Metadata.appintents` into `Contents/Resources`. `make-app.sh` fails the
+build if any step fails: shipping without intents silently would be a feature
+regression. `ArchitectureDependencyTests` pins the SDK-only import diet —
+the one way this pipeline can rot is someone importing ApplicationKit into
+the intents file, and that must fail at test time, not at release time.
+
+Intents delegate to the existing app routes (`portavoz://record`), so the
+URL scheme remains the single automation entry point and the intents carry
+no product logic of their own. `AppShortcutsProvider` ships EN + ES phrases.
+
+**Rationale:** the blocked-by-tooling claim deserved an experiment before a
+binding-decision change. One afternoon of evidence preserved D20, unlocked
+FEATURE-001, and reduced GAPS #10 to its true remainder — Quick Look, which
+genuinely needs an extension target and stays deferred.
+
+**Limits recorded honestly:** the extraction targets arm64 only (matching
+the shipped binary); intents must stay in the one SDK-only file; and Siri
+phrase invocation on macOS remains untested field-side — Shortcuts and
+Spotlight visibility are the verified surfaces.

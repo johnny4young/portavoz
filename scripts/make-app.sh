@@ -121,6 +121,15 @@ if [[ -d assets/Assets.xcassets ]]; then
     --output-format human-readable-text > /dev/null
 fi
 
+# App Intents metadata (FEATURE-001/D139). SwiftPM never runs Xcode's
+# appintentsmetadataprocessor, so Shortcuts/Spotlight would not see the
+# intents. The metadata is extracted out of band: the intents file is
+# SDK-only by design (pinned by an architecture test), so one standalone
+# compile emits the .swiftconstvalues the processor needs, with the SAME
+# module name as the shipping binary. Failure here fails the build —
+# shipping without intents silently would be a feature regression.
+scripts/build-appintents-metadata.sh "$APP/Contents/Resources" "$CONFIG"
+
 cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

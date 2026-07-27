@@ -217,6 +217,11 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-audio"}
     if "exportdocument" in lowered:
         return {"meeting-export"}
+    if "appintents" in lowered:
+        # Intents delegate to the portavoz://record route; their only
+        # in-app surface is the library/recording flow. Shortcuts itself
+        # is another app and out of XCUITest's reach.
+        return {"library", "recording-recovery"}
     if "recap" in lowered:
         return {"meeting-recap"}
     if any(token in lowered for token in ("summary", "companion")):

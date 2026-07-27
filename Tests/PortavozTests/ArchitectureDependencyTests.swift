@@ -643,6 +643,55 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D138"))
     }
 
+    func testAppIntentsStaySDKOnlySoMetadataExtractionCannotBreak() throws {
+        let intents = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppIntents.swift")
+        let extractor = try Self.contents(
+            of: "scripts/build-appintents-metadata.sh")
+        let packager = try Self.contents(of: "scripts/make-app.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The release pipeline compiles this ONE file standalone to extract
+        // App Intents metadata (D139). An import of any project module would
+        // break that compile — at release time, not at test time — so the
+        // SDK-only diet is enforced here.
+        let allowedImports: Set<String> = ["AppIntents", "AppKit", "Foundation"]
+        // Tokenize rather than prefix-match: an indented `import` (inside
+        // #if) must not slip through, and a trailing comment or a kind
+        // import (`import struct Foundation.URL`) must not mis-parse.
+        let importKinds: Set<String> = [
+            "typealias", "struct", "class", "enum", "protocol", "let", "var", "func"
+        ]
+        let imports: [String] = intents.split(separator: "\n").compactMap { rawLine in
+            var tokens = rawLine.split(whereSeparator: { $0 == " " || $0 == "\t" })
+                .map(String.init)
+            while let first = tokens.first, first.hasPrefix("@") {
+                tokens.removeFirst()
+            }
+            guard tokens.first == "import" else { return nil }
+            tokens.removeFirst()
+            if let kind = tokens.first, importKinds.contains(kind) {
+                tokens.removeFirst()
+            }
+            guard let spec = tokens.first else { return nil }
+            return spec.split(separator: ".").first.map(String.init)
+        }
+        XCTAssertFalse(
+            imports.isEmpty,
+            "the import scan must see the intents file's imports; an empty parse means the parser rotted, not that the diet holds")
+        for module in imports {
+            XCTAssertTrue(
+                allowedImports.contains(module),
+                "PortavozAppIntents.swift must stay SDK-only; found: \(module)")
+        }
+        // The extractor uses the SHIPPING module name, and the packager
+        // fails the build rather than shipping silently without intents.
+        XCTAssertTrue(extractor.contains("-module-name portavoz_app"))
+        XCTAssertTrue(extractor.contains("declares no actions"))
+        XCTAssertTrue(packager.contains("scripts/build-appintents-metadata.sh"))
+        XCTAssertTrue(decisions.contains("## D139"))
+    }
+
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/FailureCategory.swift")
         let start = try Self.contents(of: "Sources/ApplicationKit/StartRecording.swift")

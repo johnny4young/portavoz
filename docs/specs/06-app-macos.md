@@ -433,6 +433,18 @@ regeneration's setup-issue mapping and reporting `.unchanged`/`.noNotes`
 honestly inline. Generation stays view-side like summary regeneration; the raw
 notes are never modified.
 
+Native App Intents (FEATURE-001/D139): `StartRecordingIntent` opens the
+existing `portavoz://record` route (`openAppWhenRun`), and `PortavozShortcuts`
+publishes bilingual phrases ("Start a recording in Portavoz" / "Graba con
+Portavoz"). The metadata Xcode would extract during its build is produced out
+of band by `scripts/build-appintents-metadata.sh` — a standalone compile of
+the SDK-only `PortavozAppIntents.swift` under the shipping module name, then
+`appintentsmetadataprocessor`, then `Metadata.appintents` into
+`Contents/Resources` — and `make-app.sh` fails rather than ship without it.
+The intents file's SDK-only import diet is pinned by
+`ArchitectureDependencyTests`, because a project import would break the
+release pipeline at packaging time instead of test time.
+
 D77 keeps recording lifecycle error identity stable until presentation. Core's
 `FailureCategory` and `CodedFailure` define the small shared taxonomy;
 `ApplicationKit.StartRecordingFailure` and `StopRecordingFailure` classify the
