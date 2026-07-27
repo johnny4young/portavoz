@@ -4277,16 +4277,81 @@ regression. `ArchitectureDependencyTests` pins the SDK-only import diet —
 the one way this pipeline can rot is someone importing ApplicationKit into
 the intents file, and that must fail at test time, not at release time.
 
-Intents delegate to the existing app routes (`portavoz://record`), so the
-URL scheme remains the single automation entry point and the intents carry
-no product logic of their own. `AppShortcutsProvider` ships EN + ES phrases.
+The intent carries no recording product logic. `openAppWhenRun` first
+foregrounds the exact bundle that owns the action, then `perform()` publishes
+one buffered process-local request. `PortavozAppDelegate` consumes that request
+into the same pending-route channel used by other process-external navigation.
+The public `portavoz://record` URL remains a separate adapter for generic
+automation tools; the App Intent never asks LaunchServices to choose a URL
+handler after the system already chose its app. The initial implementation also
+published an English/Spanish `AppShortcutsProvider`; D141 supersedes that
+macOS-specific part after field evidence showed the unsupported duplicate.
 
 **Rationale:** the blocked-by-tooling claim deserved an experiment before a
 binding-decision change. One afternoon of evidence preserved D20, unlocked
-FEATURE-001, and reduced GAPS #10 to its true remainder — Quick Look, which
+the native automation capability, and reduced GAPS #10 to its true remainder — Quick Look, which
 genuinely needs an extension target and stays deferred.
 
 **Limits recorded honestly:** the extraction targets arm64 only (matching
 the shipped binary); intents must stay in the one SDK-only file; and Siri
-phrase invocation on macOS remains untested field-side — Shortcuts and
-Spotlight visibility are the verified surfaces.
+phrase invocation on macOS remains untested field-side. The native action is
+verified in the Shortcuts action picker. Portavoz does not rely on direct App
+Shortcut surfacing on macOS: the reliable Spotlight/Siri path is a user-created
+Shortcut containing the native action. Metadata extraction, the process-local
+handoff, and the exact URL adapter are automated; custom Shortcut invocation
+through Spotlight and Siri was later field-verified under D141.
+
+## D140 — Installed build identities are a system boundary (Jul 2026)
+
+**Context:** field validation found no Portavoz action in Shortcuts, Spotlight,
+or Siri even though `/Applications/Portavoz Dev.app` contained nonempty
+`Metadata.appintents`. The stable app, Dev app, and every DerivedData UI-test
+host all claimed `app.portavoz.mac`; the stable app still lacked the new
+metadata, and LaunchServices had many same-identifier candidates. App Intents
+registration is bundle-identity based, so a correct metadata file inside an
+ambiguous identity is not a discoverable feature.
+
+**Decision:** each simultaneously installable build class has one identity:
+
+- shipping `/Applications/Portavoz.app`: `app.portavoz.mac`;
+- local `/Applications/Portavoz Dev.app`: `app.portavoz.mac.dev`;
+- disposable XcodeGen host: `app.portavoz.mac.uitest-host`.
+
+`make install` rewrites both base and localized Dev names before the final
+Developer ID signature, verifies the copied bundle, force-registers only that
+exact path, and then opens it. UI tests still target the public URL adapter by
+exact application URL, but their DerivedData bundles can no longer shadow the
+shipping identity. Dev's distinct identity intentionally requires its own
+one-time TCC permissions, preferences, and Keychain context; silently sharing
+those system grants with a stable installation is not worth corrupting system
+discovery.
+
+**Rationale:** path and display name are not application identity on macOS.
+Running multiple builds with one identifier turned installation order and
+version ranking into product behavior. Separate identities make registration,
+permissions, and failures deterministic while preserving the rule that
+development commands never mutate the notarized release app.
+
+## D141 — macOS publishes an App Intent, not an App Shortcut (Jul 2026)
+
+**Context:** the first real Shortcuts/Spotlight/Siri validation passed, but the
+Shortcuts action picker displayed two identically titled **Start recording**
+rows: the native `AppIntent` with the Portavoz icon and the automatic
+`AppShortcut` from D139 with a generic icon. Apple supports App Intents as
+macOS action-building blocks, but does not define automatic App Shortcuts as a
+macOS product surface. The supported workflow already uses the native action
+inside a user-created Shortcut, which Spotlight and Siri invoke by its saved
+name.
+
+**Decision:** the macOS metadata contains `StartRecordingIntent` and no
+`AppShortcutsProvider`. The app no longer refreshes automatic shortcut
+parameters at launch. Metadata packaging fails closed if it finds no action or
+any `autoShortcuts` entry. The existing user-created Shortcut remains the
+single Spotlight/Siri adapter and keeps referencing the same intent identifier.
+A future iOS target may add its own App Shortcuts provider because that platform
+supports the surface; it must not be extracted into the macOS metadata bundle.
+
+**Rationale:** publishing one supported primitive gives users one clear choice,
+preserves composability, and avoids two controls that perform the same
+operation. It also aligns implementation with the already documented macOS
+contract instead of asking users to understand an unsupported duplicate.

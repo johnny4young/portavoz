@@ -58,6 +58,12 @@ SCENARIOS = {
         "calendar-suggestion-offered",
         "remembered-person-offered-not-auto-linked",
     ),
+    "app-intents-siri": (
+        "shortcuts-action-visible",
+        "spotlight-action-visible",
+        "siri-phrase-started-recording",
+        "recording-stopped-and-saved",
+    ),
 }
 
 CODE_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,120}$")
@@ -375,8 +381,8 @@ def safe_app_metadata(app_path):
         raise EvidenceError(f"app Info.plist not found: {info_path}")
     with info_path.open("rb") as handle:
         info = plistlib.load(handle)
-    if info.get("CFBundleIdentifier") != "app.portavoz.mac":
-        raise EvidenceError("app bundle identifier is not app.portavoz.mac")
+    if info.get("CFBundleIdentifier") != "app.portavoz.mac.dev":
+        raise EvidenceError("app bundle identifier is not app.portavoz.mac.dev")
     return {
         "version": string(
             info.get("CFBundleShortVersionString"), "app.version", VERSION_PATTERN

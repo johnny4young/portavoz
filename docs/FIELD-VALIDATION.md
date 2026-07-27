@@ -99,6 +99,35 @@ calendar-backed attendee set. Observe `question-card-under-five-seconds`,
 `directed-ping-detected`, `calendar-suggestion-offered`, and
 `remembered-person-offered-not-auto-linked`. Record elapsed seconds to the card.
 
+### `app-intents-siri`
+
+With `/Applications/Portavoz Dev.app` installed, confirm that **Start recording**
+appears under Portavoz Dev in the Shortcuts **action picker** (create a Shortcut
+with `+`; it is not expected to appear as a user-created tile in **All
+Shortcuts**). Add the Portavoz-icon action to a custom Shortcut named **Start
+Portavoz recording** (or **Grabar con Portavoz**), then find that custom
+Shortcut in Spotlight and invoke the same saved name with Siri. Direct App
+Shortcut surfacing is not a supported macOS product contract, so this explicit
+Shortcut is the reliable system integration. The Dev app has its own system
+identity, so its first launch may require fresh microphone/system-audio
+permission even when the stable app was already authorized. Observe
+`shortcuts-action-visible`,
+`spotlight-action-visible`, `siri-phrase-started-recording`, and
+`recording-stopped-and-saved`. The automated XCUITest already proves that the
+public `portavoz://record` adapter reaches the exact disposable app and opens a
+visible recording; a package test proves the native intent's one-shot
+process-local handoff. This scenario is limited to the real macOS
+Shortcuts/Spotlight/Siri registration surfaces that automation cannot certify.
+
+> **Manual field result — July 27, 2026: passed.** The Portavoz-icon action was
+> visible in the Shortcuts picker, and the saved **Start Portavoz recording**
+> Shortcut successfully invoked recording from Shortcuts, Spotlight, and Siri.
+> The tested build also showed a generic duplicate produced by its
+> `AppShortcutsProvider`; D141 removes that unsupported macOS publication so
+> subsequent builds expose only the native action. After installing the D141
+> build, the existing saved Shortcut was field-tested again and started a
+> recording successfully without being recreated.
+
 ## Admission rule
 
 A scenario closes a field gap only when every listed check is `pass`, the support

@@ -970,11 +970,14 @@ Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to bilingual
 canaries; unknown production Swift paths fall back to the complete English
-suite. The local selector compares the base with committed, staged, unstaged,
-and untracked paths by default, preventing an uncommitted pre-commit smoke from
-becoming an accidental no-op. An empty selector explicitly means every test; optional selector and
-locale arguments are assembled without empty-array expansion on the system
-Bash runtime. One `build-for-testing` result is reused across selected locales.
+suite. `RecordingToolbar` maps specifically to the external-recording geometry
+case plus the live recording-control/recovery cases, without paying for
+unrelated Library grouping or Meeting Detail. The local selector compares the
+base with committed, staged, unstaged, and untracked paths by default,
+preventing an uncommitted pre-commit smoke from becoming an accidental no-op.
+An empty selector explicitly means every test; optional selector and locale
+arguments are assembled without empty-array expansion on the system Bash
+runtime. One `build-for-testing` result is reused across selected locales.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
 Xcode path only when Command Line Tools is active. Visual-only screenshot
@@ -986,9 +989,17 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 42-case English and Spanish suites remain the
+The complete 49-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
+
+The live recording command surface is isolated in `RecordingToolbar` rather
+than growing the already state-heavy `RecordingView`. It is responsive by
+construction rather than by control truncation. Its wide layout is one row; at
+the 900 pt minimum window, `ViewThatFits` moves secondary actions to an
+icon-only second row while keeping the elapsed clock horizontal and Stop
+visible beside it. The focused external-recording XCUITest enforces those
+geometric invariants in both locales.
 
 The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
@@ -1003,15 +1014,40 @@ mode uses a wider sharp zone and tighter visual bounds than playback.
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
 extracts and checks the inner application rather than trusting the mounted DMG.
+The script-built app also carries native App Intents metadata extracted
+separately from one SDK-only source under the shipping module name. Packaging
+fails if the metadata declares no action. `openAppWhenRun` foregrounds the
+intent-owning bundle; `perform()` therefore uses a buffered process-local
+handoff consumed by `PortavozAppDelegate`, never a LaunchServices URL lookup.
+The delegate routes through the same process-scoped pending route used by other
+external entry points. macOS publishes only that native action in the Shortcuts
+action picker: it deliberately omits `AppShortcutsProvider`, because automatic
+App Shortcuts are not a supported macOS product surface and otherwise duplicate
+the identically titled action. Spotlight and Siri use a user-created Shortcut
+containing the Portavoz-icon action. The XcodeGen-only test app registers the
+public `portavoz://record` adapter, and one focused XCUITest directs that URL to
+the exact disposable app bundle and proves the handoff enters a visible
+recording.
+App Intent source changes select only this boundary case instead of the broad
+recording-recovery suite; shared harness changes retain three bilingual
+canaries. `make-app.sh` also verifies the complete nested signature before it
+reports a successful package, so a malformed Sparkle component or application
+seal fails at the packaging boundary rather than during installation.
 Production remains non-sandboxed because capture, CLI/MCP visibility, custom
 folders, Sparkle, and local automation do not yet have a proven parity-preserving
 sandbox composition.
 
 `/Applications/Portavoz.app` is the user's release installation and is never
 modified by development commands. `make install` builds, signs, verifies, and
-installs `/Applications/Portavoz Dev.app`. UI tests use disposable SQLite,
-audio, saved-state, and voice-gallery locations and never touch the real
-library or Keychain.
+installs `/Applications/Portavoz Dev.app`, rewrites both base and localized
+names, gives it the distinct `app.portavoz.mac.dev` identity, and force-registers
+that exact bundle after signature verification. The XcodeGen host uses
+`app.portavoz.mac.uitest-host`. Production, development, and disposable
+DerivedData bundles therefore cannot compete for one LaunchServices/App Intents
+record. The separate Dev identity requires its own one-time macOS permissions
+and preferences; the stable installation remains untouched. UI tests use
+disposable SQLite, audio, saved-state, and voice-gallery locations and never
+touch the real library or Keychain.
 
 ## Enforced engineering rules
 
@@ -1140,14 +1176,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,154 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,158 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 105-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 379 production Swift source files;
-- 48 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 383 production Swift source files;
+- 49 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

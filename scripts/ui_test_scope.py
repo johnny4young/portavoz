@@ -28,6 +28,9 @@ def test_id(test_class: str, method: str) -> str:
 
 
 FEATURE_TESTS: dict[str, tuple[str, ...]] = {
+    "automation-entry": (
+        test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
+    ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
@@ -126,6 +129,7 @@ ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("meeting-"))
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
 HARNESS_TESTS = (
+    test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
     test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
     test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
 )
@@ -197,6 +201,11 @@ def app_features(filename: str) -> set[str]:
         return {"insights"}
     if any(token in lowered for token in ("onboarding", "firstrun", "firstlisten")):
         return {"onboarding", "settings-voice", "settings-intelligence"}
+    if "recordingtoolbar" in lowered:
+        # This component owns the external-recording geometry contract as
+        # well as the live catch-up, next-question, mute, and Stop controls.
+        # It does not affect Library grouping or unrelated detail surfaces.
+        return {"automation-entry", "recording-recovery"}
     if any(token in lowered for token in (
         "recording", "startrecording", "stoprecording", "postcapture",
         "livetranslation", "livesummary"
@@ -218,10 +227,10 @@ def app_features(filename: str) -> set[str]:
     if "exportdocument" in lowered:
         return {"meeting-export"}
     if "appintents" in lowered:
-        # Intents delegate to the portavoz://record route; their only
-        # in-app surface is the library/recording flow. Shortcuts itself
-        # is another app and out of XCUITest's reach.
-        return {"library", "recording-recovery"}
+        # Shortcuts itself is another app, but the intent's complete product
+        # handoff is the production portavoz://record route. Exercise that
+        # one boundary instead of seven unrelated recovery scenarios.
+        return {"automation-entry"}
     if "recap" in lowered:
         return {"meeting-recap"}
     if any(token in lowered for token in ("summary", "companion")):

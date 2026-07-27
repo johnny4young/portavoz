@@ -433,14 +433,19 @@ regeneration's setup-issue mapping and reporting `.unchanged`/`.noNotes`
 honestly inline. Generation stays view-side like summary regeneration; the raw
 notes are never modified.
 
-Native App Intents (FEATURE-001/D139): `StartRecordingIntent` opens the
-existing `portavoz://record` route (`openAppWhenRun`), and `PortavozShortcuts`
-publishes bilingual phrases ("Start a recording in Portavoz" / "Graba con
-Portavoz"). The metadata Xcode would extract during its build is produced out
-of band by `scripts/build-appintents-metadata.sh` — a standalone compile of
-the SDK-only `PortavozAppIntents.swift` under the shipping module name, then
+Native App Intents (D139): `openAppWhenRun` foregrounds the bundle that owns
+`StartRecordingIntent`, which publishes a buffered process-local request
+consumed by `PortavozAppDelegate`; it does not reopen the public
+`portavoz://record` adapter through LaunchServices. Portavoz publishes no
+`AppShortcutsProvider` on macOS: the unsupported automatic shortcut duplicated
+the raw action in the picker, while reliable Spotlight and Siri invocation
+already comes from a user-created Shortcut. The metadata Xcode would extract
+during its build is produced out of band by
+`scripts/build-appintents-metadata.sh` — a standalone compile of the SDK-only
+`PortavozAppIntents.swift` under the shipping module name, then
 `appintentsmetadataprocessor`, then `Metadata.appintents` into
-`Contents/Resources` — and `make-app.sh` fails rather than ship without it.
+`Contents/Resources` — and `make-app.sh` fails rather than ship without exactly
+the native action and without automatic App Shortcuts.
 The intents file's SDK-only import diet is pinned by
 `ArchitectureDependencyTests`, because a project import would break the
 release pipeline at packaging time instead of test time.
@@ -645,7 +650,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Pixel-perfect refinement (Jul 12 — user feedback: app fell short vs DS)**: (1) **Settings** (SettingsSidebar.swift): native one-line nav becomes custom — icon + title + single-line subtitle per category (SettingsCategory.subtitle), selection with indigo→violet gradient, own search field and green «Todo local» badge below, over AuroraSidebarBackground. LedgerSection: 3 rows → 4 tiles (allocated audio/live meetings/opt-in network policy/encrypted voices); exact local metrics come from D101 and the network tile makes no synthetic byte claim. (2) **Insights** (InsightsView): Swift Charts bar chart replaced by rhythm HEATMAP — LibraryStats.heatmap[week][day] (pure grid, 2 tests) rendered as 12 columns × 7 rows of day with relative indigo intensity to peak; meetings tile gains mini-waveform amber + real week-over-week delta. NO «hallazgos ✦» (no engine, no invention). (3) **Library sidebar** (LibraryView): «New recording» = gradient indigo→violet pill + mini-waveform (amber peak); Import/Ask/Insights = 3 vertical icon+label chips grid; search with keycap ⌘K; footer «100% local — nada sale de tu Mac» with green dot. `accessibilityIdentifier` preserved for XCUITest. **Refinement 2 (Jul 12 — DS screenshots): sidebar timeline + indigo selection + buttons under title.** (1) **MeetingDetail**: the 3 action buttons (refine/export/delete) MOVE from `.toolbar` (top-right) to a ROUND BUTTON ROW under title (actionRow/roundButton) — export tinted accent, delete red; matches DS (buttons live with meeting, not window chrome). (2) **Library sidebar timeline**: meetings grouped by recency (meetingGroups: Today/This week/Last week/Earlier, empty buckets dropped) instead of flat «Meetings». (3) **Indigo selection**: `.tint` does NOT override native sidebar highlight (which follows user's system accent — green on their Mac); solution: `.listRowBackground` with indigo→violet gradient when `route == .meeting(id)` + white text, which beats native highlight. Helpers moved to `extension LibraryView` (type_body_length). Menu bar and detail tabs/chapters/player-chips: DONE (see below).
 
-**Recording 4a (Jul 12)**: RecordingView restructured to DS mockup. `recordingBar` (compact top bar: red dot + timer 24pt + `compactMeter` (mic dB) on left; Translate + Apuntador (button toggle) + HUD + **Stop red** on right — previously Stop was at bottom and header was 40pt). SINGLE column (previously two): `captionsList` (lyrics, `maxHeight:.infinity`) + ScrollView bounded (260) with companion cards + notes + live summary. `micLowBanner` separated (only when level is low). Language bridge (6a-3): translation under each caption goes in `.secondary` italic (NOT amber — amber only for your voice by voices-B; 6a spec said amber but voices-B is the newer canonical rule). Verification: build/lint/tests; computer-use not applicable (view only exists during live recording with audio engines).
+**Recording 4a (Jul 12)**: RecordingView restructured to DS mockup. `RecordingToolbar` owns the live command surface and uses `ViewThatFits`: a wide window keeps red dot + single-line 24 pt timer + `compactMeter` (mic dB), Translate, Apuntador, HUD, and **Stop red** in one row; the 900 pt minimum window switches to two rows, pins Stop beside the timer, and uses icon-only secondary actions instead of clipping or wrapping the clock. The component boundary keeps rendering policy separate from `RecordingView`'s session-state composition. `recording-elapsed-time` and `recording-stop` are geometry-checked by the external-recording XCUITest. SINGLE column (previously two): `captionsList` (lyrics, `maxHeight:.infinity`) + ScrollView bounded (260) with companion cards + notes + live summary. `micLowBanner` separated (only when level is low). Language bridge (6a-3): translation under each caption goes in `.secondary` italic (NOT amber — amber only for your voice by voices-B; 6a spec said amber but voices-B is the newer canonical rule).
 
 **Recording/review polish (Jul 14)**: local mic mute in bar (zeros aligned, doesn't control call); floating HUD that grows with current utterance and returns to compact on speaker change/pause; unlimited Apuntador cards newest-first, persisted and reviewable; refine re-derives them; chapter titles with Foundation Models and literal fallback bounded to chapter. `MeetingDetailView` invalidates player/waveform and discards canceled loads when switching meetings so nothing from previous detail leaks into next.
 
@@ -968,7 +973,11 @@ for the unavailable SwiftUI update-cause lane.
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 42 XCUITest cases in `Tests/PortavozUITests`: Library (record button +
+defines 49 XCUITest cases in `Tests/PortavozUITests`: Automation (the
+production `portavoz://record` route enters a visible disposable recording
+whose `app.portavoz.mac.uitest-host` identity cannot shadow either installed
+app),
+Library (record button +
 chips + time grouping + full Ask and command-palette answer/citation paths +
 interrupted staging recovery + durable post-capture resume + typed recording-
 start recovery + visible system-callback recovery + reader-owned live-caption
@@ -1004,7 +1013,7 @@ Library, the identified command-palette panel, Insights, Meeting Detail,
 Apuntador evidence, confirmed-person memory, and post-meeting mirror checkpoints
 so unrelated desktop content is never captured. `make test-ui-en` and
 `make test-ui-es` use Xcode's explicit test language and region flags; the
-complete 42-case suite remains the bilingual release gate. **Real bug caught
+complete 49-case suite remains the bilingual release gate. **Real bug caught
 by XCUITest (not computer-use):**
 `PlaybackRanges.complement` built an inverted `ClosedRange` (`200...6`) and
 crashed when a voice segment started after audio duration; the fix clamps

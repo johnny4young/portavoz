@@ -14,6 +14,13 @@ struct PortavozApp: App {
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {
             UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
         }
+        if process.arguments.contains("-use-temp-store")
+            && process.arguments.contains("-simulate-app-intent") {
+            // XCUITest-only proof of the native intent's cold-launch race:
+            // queue the request before applicationDidFinishLaunching installs
+            // the delegate observer, then require the buffer to deliver it.
+            PortavozAppIntentBridge.requestStartRecording()
+        }
 
         // Hidden bench mode (M12): "--bench-live <file>" runs the
         // SpeechAnalyzer harness inside the bundle and exits.
