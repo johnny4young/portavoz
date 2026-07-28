@@ -105,9 +105,21 @@ extension XCUIApplication {
         }
         if simulateLiveTranscriptionAttach {
             app.launchArguments.append("-simulate-live-transcription-attach")
+            let signalID = UUID().uuidString
+            app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH"] =
+                NSTemporaryDirectory() + "portavoz-attach-preparing-\(signalID)"
+            app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH"] =
+                NSTemporaryDirectory() + "portavoz-attach-continue-\(signalID)"
         }
         if simulateLiveTranscriptBrowsing {
             app.launchArguments.append("-simulate-live-transcript-browsing")
+            let signalID = UUID().uuidString
+            app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH"] =
+                NSTemporaryDirectory() + "portavoz-live-frontier-\(signalID)"
+            app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_RESUME_PATH"] =
+                NSTemporaryDirectory() + "portavoz-live-resume-\(signalID)"
+            app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH"] =
+                NSTemporaryDirectory() + "portavoz-live-complete-\(signalID)"
         }
         if simulateAppIntent {
             app.launchArguments.append("-simulate-app-intent")
@@ -217,6 +229,57 @@ extension XCUIApplication {
             predicate: NSPredicate(format: "isHittable == true"),
             object: meeting)
         return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    func waitForLiveTranscriptionAttachPreparing(timeout: TimeInterval = 20) -> Bool {
+        waitForUITestSignal(
+            environmentKey: "PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH",
+            timeout: timeout)
+    }
+
+    @MainActor
+    func continueLiveTranscriptionAttachFixture() -> Bool {
+        markUITestSignal(environmentKey: "PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH")
+    }
+
+    @MainActor
+    func waitForLiveTranscriptFrontier(timeout: TimeInterval = 20) -> Bool {
+        waitForUITestSignal(
+            environmentKey: "PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH",
+            timeout: timeout)
+    }
+
+    @MainActor
+    func resumeLiveTranscriptFixture() -> Bool {
+        markUITestSignal(environmentKey: "PORTAVOZ_UI_TEST_LIVE_RESUME_PATH")
+    }
+
+    @MainActor
+    func waitForLiveTranscriptFixtureToFinish(timeout: TimeInterval = 20) -> Bool {
+        waitForUITestSignal(
+            environmentKey: "PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH",
+            timeout: timeout)
+    }
+
+    private func markUITestSignal(environmentKey: String) -> Bool {
+        guard let path = launchEnvironment[environmentKey] else { return false }
+        return FileManager.default.createFile(atPath: path, contents: Data())
+    }
+
+    private func waitForUITestSignal(
+        environmentKey: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        guard let path = launchEnvironment[environmentKey] else { return false }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if FileManager.default.fileExists(atPath: path) {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return false
     }
 }
 

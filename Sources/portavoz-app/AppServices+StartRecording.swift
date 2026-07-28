@@ -124,9 +124,12 @@ private struct UITestLiveTranscriptionAttachRuntime: StartRecordingRuntime {
         _ request: StartRecordingCaptureRequest
     ) async throws -> any StartRecordingSession {
         request.callbacks.liveTranscription(.preparing)
+        UITestRuntimeSignal.mark(
+            environmentKey: "PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH")
         Task {
             do {
-                try await Task.sleep(for: .seconds(2))
+                try await UITestRuntimeSignal.wait(
+                    forEnvironmentKey: "PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH")
             } catch {
                 return
             }
@@ -167,12 +170,17 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
                 for index in 1...18 {
                     try await emit(index, request: request)
                 }
-                // Give XCUITest a stable frontier to scroll away from before
-                // proving that later rows no longer steal the viewport.
-                try await Task.sleep(for: .seconds(2))
+                UITestRuntimeSignal.mark(
+                    environmentKey: "PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH")
+                // XCUITest owns this boundary: the first 18 rows remain a
+                // stable reader frontier until the test has scrolled away.
+                try await UITestRuntimeSignal.wait(
+                    forEnvironmentKey: "PORTAVOZ_UI_TEST_LIVE_RESUME_PATH")
                 for index in 19...24 {
                     try await emit(index, request: request)
                 }
+                UITestRuntimeSignal.mark(
+                    environmentKey: "PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH")
             } catch {
                 return
             }
@@ -212,6 +220,35 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
             endTime: start + 1,
             isFinal: true))
         try await Task.sleep(for: .milliseconds(90))
+    }
+}
+
+/// File-backed handshakes keep disposable UI fixtures deterministic even when
+/// a hosted runner needs several seconds to snapshot the accessibility tree.
+/// Production recording never sets these environment keys, so its scheduler
+/// and timing remain untouched.
+private enum UITestRuntimeSignal {
+    static func mark(environmentKey: String) {
+        guard let path = ProcessInfo.processInfo.environment[environmentKey] else {
+            return
+        }
+        FileManager.default.createFile(atPath: path, contents: Data())
+    }
+
+    static func wait(
+        forEnvironmentKey environmentKey: String,
+        attempts: Int = 600
+    ) async throws {
+        guard let path = ProcessInfo.processInfo.environment[environmentKey] else {
+            return
+        }
+        for _ in 0..<attempts {
+            try Task.checkCancellation()
+            if FileManager.default.fileExists(atPath: path) {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
     }
 }
 

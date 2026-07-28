@@ -125,14 +125,20 @@ final class LibraryUITests: PortavozUITestCase {
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
+        XCTAssertTrue(
+            app.waitForLiveTranscriptionAttachPreparing(),
+            "the fixture must enter the model-preparing state")
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
-        XCTAssertTrue(preparing.waitForExistence(timeout: 5))
+        XCTAssertTrue(preparing.waitForExistence(timeout: 20))
         let preparingPrefix = isSpanish
             ? "El audio sigue guardándose correctamente."
             : "Audio is safe."
         XCTAssertTrue(
             preparing.label.contains(preparingPrefix),
             "expected localized preparing copy, saw: \(preparing.label)")
+        XCTAssertTrue(
+            app.continueLiveTranscriptionAttachFixture(),
+            "the fixture must release the model-ready transition")
         XCTAssertTrue(
             app.staticTexts["Live captions are available now."].waitForExistence(
                 timeout: 8))
@@ -158,6 +164,9 @@ final class LibraryUITests: PortavozUITestCase {
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
+        XCTAssertTrue(
+            app.waitForLiveTranscriptFrontier(),
+            "the fixture must publish a stable 18-row reading frontier")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
         XCTAssertTrue(transcript.waitForExistence(timeout: 8))
         XCTAssertTrue(
@@ -188,7 +197,12 @@ final class LibraryUITests: PortavozUITestCase {
             "the user must be able to reach an earlier closed row")
         let readerOwnedY = earlierRow.frame.midY
 
-        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(
+            app.resumeLiveTranscriptFixture(),
+            "the fixture must resume only after the reader owns the viewport")
+        XCTAssertTrue(
+            app.waitForLiveTranscriptFixtureToFinish(),
+            "the fixture must publish the six incoming rows")
         XCTAssertTrue(
             jumpToLive.exists,
             "new live captions must not steal scroll ownership from the reader")
@@ -229,13 +243,11 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(record.waitForExistence(timeout: 15))
         record.click()
 
-        // Settle like the browsing test does: interacting during the
-        // preparing→recording transition finds a half-mounted hierarchy.
+        XCTAssertTrue(
+            app.waitForLiveTranscriptFrontier(),
+            "the live-assist assertions require closed captions")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
         XCTAssertTrue(transcript.waitForExistence(timeout: 8))
-        XCTAssertTrue(
-            app.staticTexts["History row 18 remains readable during live updates."]
-                .waitForExistence(timeout: 8))
 
         let panel = app.control(withIdentifier: "recording-objectives-panel")
         XCTAssertTrue(
@@ -274,6 +286,9 @@ final class LibraryUITests: PortavozUITestCase {
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
+        XCTAssertTrue(
+            app.waitForLiveTranscriptFrontier(),
+            "the translated-rail assertion requires a stable caption frontier")
         let translation = app.descendants(matching: .any)
             .matching(NSPredicate(
                 format: "identifier BEGINSWITH 'recording-live-translation-'"))
