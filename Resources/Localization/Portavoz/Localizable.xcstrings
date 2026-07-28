@@ -71,6 +71,16 @@
         }
       }
     },
+    "1 meeting · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 reunión · %@"
+          }
+        }
+      }
+    },
     "%d model(s) available.": {
       "localizations": {
         "es": {
