@@ -10,7 +10,7 @@ migration execution ledger are explicit local-only exceptions.
 1. **Current architecture and engineering rules**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes only the implemented system and migration status.
 2. **As-built technical knowledge**: [docs/specs/](docs/specs/README.md) — 8 domain specs (capture, transcription, diarization, intelligence, storage, app, interfaces, quality) written from the real code. Read the spec for the area you will touch BEFORE editing it.
 3. **Outstanding product truth**: [docs/GAPS.md](docs/GAPS.md) records unresolved limitations and field validation; [docs/IOS.md](docs/IOS.md) owns the deferred iOS phase.
-4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D119), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), and [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format).
+4. As needed: [docs/DECISIONS.md](docs/DECISIONS.md) (binding decisions D1–D145), [docs/PRODUCT.md](docs/PRODUCT.md) (vision, competitive map, FREE/PRO), and [docs/RELEASING.md](docs/RELEASING.md) (the full release recipe — build/notarize/publish steps, commands, gotchas, title format).
 
 ## At the end of a significant session
 
@@ -24,6 +24,7 @@ All explanatory tracked documentation under `docs/` is written in **English**. L
 swift build
 swift build -Xswiftc -warnings-as-errors # current-SDK first-party diagnostics
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+make test-recording-stress               # 25 repeated recording/recovery runs
 make test-ui-changed UI_BASE=origin/main  # feature-level XCUITest selected from the diff
 make test-ui-bilingual                    # explicit full EN + ES release gate
 ```

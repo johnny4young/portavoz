@@ -293,8 +293,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
         let provenance = try Self.contents(
             of: "Sources/IntelligenceKit/CompanionGenerationProvenance.swift")
+        // Live detection split into its own extension file (D138); the BYOK
+        // wiring pins apply to the pair.
         let recording = try Self.contents(
             of: "Sources/portavoz-app/RecordingController.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
         let refresh = try Self.contents(of: "Sources/portavoz-app/CompanionRefresh.swift")
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
         let appApplication = try Self.contents(
@@ -426,6 +430,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(applicationDocuments.contains("struct PrepareMeetingDocument"))
         XCTAssertTrue(cliExport.contains("application.exportMeetingDocument("))
         XCTAssertTrue(cliExport.contains("meetingID: meetingID"))
+        XCTAssertTrue(cliExport.contains("md|pdf|srt|vtt"))
+        XCTAssertTrue(cliExport.contains("MeetingDocumentFormat("))
+        XCTAssertTrue(cliExport.contains("fileExtension: gist ? \"md\" : format"))
         XCTAssertTrue(cliIssues.contains("application.publishMeetingActionItems("))
         XCTAssertTrue(cliIssues.contains("meetingID: meetingID"))
         XCTAssertTrue(cliComposition.contains(
@@ -556,11 +563,150 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Recording start must never wait for model preparation")
         XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
         XCTAssertTrue(adapter.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertTrue(adapter.contains("voiceProcessing: false"))
+        XCTAssertFalse(adapter.contains("aecEnabled"))
         XCTAssertTrue(controller.contains("receiveLiveTranscription("))
         XCTAssertFalse(controller.contains("services.store.beginRecording"))
         XCTAssertFalse(controller.contains("MicrophoneSource("))
         XCTAssertFalse(controller.contains("RecordingSession("))
         XCTAssertFalse(controller.contains("makeSystemTapSource"))
+
+        let microphone = try Self.contents(
+            of: "Sources/AudioCaptureKit/MicrophoneSource.swift")
+        XCTAssertTrue(microphone.contains(
+            "voiceProcessing: Bool = false"))
+    }
+
+    func testTurnEndpointStaysDeterministicPolicyDrivenAndCoalescerFree() throws {
+        let policy = try Self.contents(
+            of: "Sources/IntelligenceKit/TurnEndpointPolicy.swift")
+        // Detection lives in its own extension file; card-state mutation
+        // stays in the main file behind recordCompanionOutcome.
+        let mainController = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let detectionController = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
+        let controller = mainController + detectionController
+        let coalescer = try Self.contents(
+            of: "Sources/TranscriptionKit/CaptionCoalescer.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The endpointer never touches the caption model: rows still close
+        // only when the next delta appends, so presentation and dictation
+        // (which share the coalescer) are untouched.
+        XCTAssertFalse(coalescer.contains("TurnEndpoint"))
+        XCTAssertFalse(coalescer.contains("Task.sleep"))
+        // The controller consumes the policy rather than embedding thresholds,
+        // and speculation reuses the SAME dispatch as the real close — no
+        // second detection path that could drift.
+        XCTAssertTrue(controller.contains("TurnEndpointPolicy.silenceSeconds"))
+        XCTAssertTrue(controller.contains("TurnEndpointPolicy.isTurnEndCandidate("))
+        XCTAssertTrue(controller.contains("TurnEndpointPolicy.shouldDetect("))
+        XCTAssertEqual(
+            controller.components(
+                separatedBy: "TurnEndpointPolicy.isTurnEndCandidate("
+            ).count - 1,
+            1,
+            "real-close and silence paths must share one candidate gate")
+        XCTAssertTrue(controller.contains("turnEndpointTask?.cancel()"))
+        XCTAssertTrue(controller.contains("dispatchCompanionDetection(for:"))
+        let enabledStart = try XCTUnwrap(mainController.range(
+            of: "var companionEnabled"))
+        let translationStart = try XCTUnwrap(mainController.range(
+            of: "/// Live caption translations",
+            range: enabledStart.upperBound..<mainController.endIndex))
+        let enabledProperty = mainController[
+            enabledStart.lowerBound..<translationStart.lowerBound]
+        XCTAssertTrue(enabledProperty.contains("armTurnEndpointDeadline()"))
+
+        let applyStart = try XCTUnwrap(mainController.range(
+            of: "private func applyStartRecordingResult"))
+        let failureStart = try XCTUnwrap(mainController.range(
+            of: "private func presentStartFailure",
+            range: applyStart.upperBound..<mainController.endIndex))
+        let startResult = mainController[
+            applyStart.lowerBound..<failureStart.lowerBound]
+        let recordingPhase = try XCTUnwrap(startResult.range(
+            of: "phase = .recording"))
+        let lifecycleActivation = try XCTUnwrap(startResult.range(
+            of: "activateCompanionDetectionAfterRecordingStart()",
+            range: recordingPhase.upperBound..<startResult.endIndex))
+        XCTAssertLessThan(recordingPhase.lowerBound, lifecycleActivation.lowerBound)
+        XCTAssertTrue(detectionController.contains(
+            "for closed in captions.dropLast()"))
+        XCTAssertTrue(detectionController.contains(
+            "lastOpenRowID = captions.last?.id"))
+        // The policy is deterministic: no model, no scheduler, no clock.
+        XCTAssertFalse(policy.contains("LanguageModelSession"))
+        XCTAssertFalse(policy.contains("IntelligenceScheduler"))
+        XCTAssertFalse(policy.contains("Date("))
+        XCTAssertTrue(decisions.contains("## D138"))
+    }
+
+    func testAppIntentsStaySDKOnlySoMetadataExtractionCannotBreak() throws {
+        let intents = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppIntents.swift")
+        let appDelegate = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppDelegate.swift")
+        let extractor = try Self.contents(
+            of: "scripts/build-appintents-metadata.sh")
+        let packager = try Self.contents(of: "scripts/make-app.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The release pipeline compiles this ONE file standalone to extract
+        // App Intents metadata (D139). An import of any project module would
+        // break that compile — at release time, not at test time — so the
+        // SDK-only diet is enforced here.
+        let allowedImports: Set<String> = ["AppIntents", "AppKit", "Foundation"]
+        // Tokenize rather than prefix-match: an indented `import` (inside
+        // #if) must not slip through, and a trailing comment or a kind
+        // import (`import struct Foundation.URL`) must not mis-parse.
+        let importKinds: Set<String> = [
+            "typealias", "struct", "class", "enum", "protocol", "let", "var", "func"
+        ]
+        let imports: [String] = intents.split(separator: "\n").compactMap { rawLine in
+            var tokens = rawLine.split(whereSeparator: { $0 == " " || $0 == "\t" })
+                .map(String.init)
+            while let first = tokens.first, first.hasPrefix("@") {
+                tokens.removeFirst()
+            }
+            guard tokens.first == "import" else { return nil }
+            tokens.removeFirst()
+            if let kind = tokens.first, importKinds.contains(kind) {
+                tokens.removeFirst()
+            }
+            guard let spec = tokens.first else { return nil }
+            return spec.split(separator: ".").first.map(String.init)
+        }
+        XCTAssertFalse(
+            imports.isEmpty,
+            "the import scan must see the intents file's imports; an empty parse means the parser rotted, not that the diet holds")
+        for module in imports {
+            XCTAssertTrue(
+                allowedImports.contains(module),
+                "PortavozAppIntents.swift must stay SDK-only; found: \(module)")
+        }
+        // The extractor uses the SHIPPING module name, and the packager
+        // fails the build rather than shipping silently without intents.
+        XCTAssertTrue(extractor.contains("-module-name portavoz_app"))
+        XCTAssertTrue(extractor.contains("declares no actions"))
+        XCTAssertTrue(packager.contains("scripts/build-appintents-metadata.sh"))
+        XCTAssertFalse(
+            intents.contains("NSWorkspace.shared.open"),
+            "the intent must route inside its owning process, not ask LaunchServices to choose a URL handler")
+        XCTAssertTrue(intents.contains(
+            "PortavozAppIntentBridge.requestStartRecording()"))
+        XCTAssertTrue(appDelegate.contains(
+            "PortavozAppIntentBridge.consumeStartRecordingRequest()"))
+        XCTAssertFalse(
+            intents.contains("AppShortcutsProvider"),
+            "macOS publishes the action only; an App Shortcut duplicates it in the picker")
+        XCTAssertFalse(
+            appDelegate.contains("updateAppShortcutParameters()"),
+            "macOS has no App Shortcut representation to refresh")
+        XCTAssertTrue(extractor.contains("must not publish unsupported App Shortcuts"))
+        XCTAssertTrue(decisions.contains("## D139"))
+        XCTAssertTrue(decisions.contains("## D141"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
@@ -1280,6 +1426,24 @@ final class ArchitectureDependencyTests: XCTestCase {
             "ARCHITECTURE.md must describe only durable as-built technical facts")
     }
 
+    func testArchitectureDecisionIdentifiersAreUnique() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let identifiers = decisions.split(separator: "\n").compactMap { line -> String? in
+            guard line.hasPrefix("## D") else { return nil }
+            let digits = line.dropFirst(4).prefix(while: \.isNumber)
+            return digits.isEmpty ? nil : "D\(digits)"
+        }
+        let duplicates = Dictionary(grouping: identifiers, by: { $0 })
+            .filter { $0.value.count > 1 }
+            .map(\.key)
+            .sorted()
+
+        XCTAssertFalse(identifiers.isEmpty)
+        XCTAssertTrue(
+            duplicates.isEmpty,
+            "Architecture decision identifiers must be unique: \(duplicates)")
+    }
+
     func testMeetingReviewPoliciesStayInsideApplicationKit() throws {
         let policies = [
             "ChapterExtractor", "PlaybackRanges", "SummarySections", "VoiceHue",
@@ -1670,6 +1834,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(diagnostics.contains("CompanionCardEvidence"))
     }
 
+    func testShareableRecapStaysSummaryDerivedReviewedAndUnsent() throws {
+        let composer = try Self.contents(of: "Sources/ApplicationKit/MeetingRecap.swift")
+        let sheet = try Self.contents(of: "Sources/portavoz-app/MeetingRecapSheet.swift")
+        let exporter = try Self.contents(of: "Sources/IntegrationsKit/MeetingExporter.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // The transcript cannot reach a recap: the composer never receives
+        // one, which is a stronger guarantee than filtering it out later.
+        XCTAssertFalse(composer.contains("TranscriptSegment"))
+        XCTAssertFalse(sheet.contains("TranscriptSegment"))
+        XCTAssertFalse(sheet.contains("detail.segments"))
+        // Nothing is sent from the review sheet: no transport, no gateway,
+        // no credential. The destinations are the clipboard and the system
+        // share sheet, both chosen by the user.
+        for transport in ["URLSession", "DataEgress", "gateway", "secrets", "publish"] {
+            XCTAssertFalse(
+                sheet.contains(transport),
+                "the recap sheet must not reach \(transport)")
+        }
+        XCTAssertTrue(sheet.contains("ShareLink("))
+        // One channel renderer for every shared surface.
+        XCTAssertTrue(exporter.contains("public static func render("))
+        XCTAssertTrue(composer.contains("isActionItemsHeading"))
+        XCTAssertTrue(detail.contains("MeetingRecapSheet("))
+        XCTAssertTrue(decisions.contains("## D136"))
+    }
+
     func testMeetingSyncJournalStaysContentFreeGenerationFencedAndAdapterFree() throws {
         let manifest = try Self.contents(of: "Package.swift")
         let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
@@ -1726,6 +1918,44 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "portavoz-app/MeetingSyncModel.swift",
             ])
         XCTAssertTrue(decisions.contains("## D92"))
+    }
+
+    func testEnhancedNotesStayAtomicPortableAndProvenanceFenced() throws {
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let notesSchema = try Self.contents(of: "Sources/StorageKit/Schema+EnhancedNotes.swift")
+        let storage = try Self.contents(of: "Sources/StorageKit/MeetingStore+EnhancedNotes.swift")
+        let useCase = try Self.contents(of: "Sources/ApplicationKit/EnhanceMeetingNotes.swift")
+        let observation = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+
+        // v15 owns its own triggers — the registered v14 list is never edited.
+        XCTAssertTrue(schema.contains("registerMigration(\"v15\")"))
+        XCTAssertTrue(schema.contains("createEnhancedNotes(in: db)"))
+        XCTAssertTrue(schema.contains("createEnhancedNoteSyncTriggers(in: db)"))
+        // One regenerable document per meeting, replaced in place.
+        XCTAssertTrue(notesSchema.contains(
+            "t.column(\"meetingID\", .text).notNull().unique().indexed()"))
+        // Provenance stays device-local: severed on run pruning, never synced.
+        XCTAssertTrue(notesSchema.contains(
+            ".references(\"generationRun\", onDelete: .setNull)"))
+        XCTAssertTrue(notesSchema.contains(
+            "let portableColumns = [\"markdown\", \"language\", \"inputFingerprint\", \"deletedAt\"]"))
+        // The succeeded run commits atomically WITH its artifact (D62-D78),
+        // and replacement is an explicit update — never ON CONFLICT REPLACE.
+        XCTAssertTrue(storage.contains("requires a succeeded run"))
+        XCTAssertFalse(storage.contains("onConflict: .replace"))
+        // Exact fingerprint + language reuse performs no model operation, so
+        // it creates no GenerationRun (D62).
+        XCTAssertTrue(useCase.contains("existing.inputFingerprint == fingerprint"))
+        // Notes refresh independently: a notes failure degrades only its own
+        // section, never the transcript root.
+        XCTAssertTrue(observation.contains("func observeMeetingReviewNotes("))
+        XCTAssertTrue(observation.contains(
+            "regions: [\n                Table(\"meeting\"), Table(\"contextItem\"), Table(\"enhancedNote\")\n            ]"))
+        // The view reaches enhancement through the use case, never the store.
+        XCTAssertTrue(detail.contains("services.enhanceMeetingNotes.execute"))
+        XCTAssertFalse(detail.contains("saveEnhancedNote"))
     }
 
     func testMeetingSyncEnvelopeKeepsPortableReplayOutsideCloudKitCallbacks() throws {
@@ -1926,7 +2156,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("embedded.provisionprofile"))
         XCTAssertTrue(verifier.contains("security cms -D"))
         XCTAssertTrue(verifier.contains("profile.get(\"ExpirationDate\")"))
-        XCTAssertTrue(verifier.contains("actual.get(key) != value"))
+        XCTAssertTrue(verifier.contains("allow_icloud_services_wildcard=True"))
+        XCTAssertTrue(verifier.contains("actual.get(key) in (\"*\", [\"*\"])"))
         XCTAssertTrue(release.contains("PORTAVOZ_SIGN_IDENTITY:?"))
         XCTAssertTrue(release.contains("PORTAVOZ_NOTARY_PROFILE:?"))
         let preflight = try XCTUnwrap(diskImage.range(
@@ -1968,10 +2199,32 @@ final class ArchitectureDependencyTests: XCTestCase {
     }
 
     func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {
+        let packager = try Self.contents(of: "scripts/make-app.sh")
         let makefile = try Self.contents(of: "Makefile")
+
+        let packageSign = try XCTUnwrap(packager.range(
+            of: "--entitlements \"$SIGN_ENTITLEMENTS\" \"$APP\""))
+        let packageVerify = try XCTUnwrap(packager.range(
+            of: "codesign --verify --deep --strict --verbose=2 \"$APP\"",
+            range: packageSign.upperBound..<packager.endIndex))
+        XCTAssertNotNil(packager.range(
+            of: "echo \"OK → $APP",
+            range: packageVerify.upperBound..<packager.endIndex))
 
         let resign = try XCTUnwrap(makefile.range(
             of: "codesign --force --options runtime --timestamp"))
+        let devIdentity = try XCTUnwrap(makefile.range(
+            of: "CFBundleIdentifier -string \"app.portavoz.mac.dev\"",
+            range: makefile.startIndex..<resign.lowerBound))
+        XCTAssertNotNil(makefile.range(
+            of: "CFBundleDisplayName -string \"Portavoz Dev\"",
+            range: makefile.startIndex..<devIdentity.lowerBound))
+        XCTAssertNotNil(makefile.range(
+            of: #"s/^"CFBundleDisplayName" = ".*""#,
+            range: devIdentity.upperBound..<resign.lowerBound))
+        XCTAssertNotNil(makefile.range(
+            of: "plutil -lint \"$$plist\"",
+            range: devIdentity.upperBound..<resign.lowerBound))
         let verifyDist = try XCTUnwrap(makefile.range(
             of: "codesign --verify --deep --strict --verbose=2 dist/Portavoz.app",
             range: resign.upperBound..<makefile.endIndex))
@@ -1982,9 +2235,26 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "codesign --verify --deep --strict --verbose=2 "
                 + "\"/Applications/Portavoz Dev.app\"",
             range: copy.upperBound..<makefile.endIndex))
+        let register = try XCTUnwrap(makefile.range(
+            of: "-f \"/Applications/Portavoz Dev.app\"",
+            range: verifyInstalled.upperBound..<makefile.endIndex))
         XCTAssertNotNil(makefile.range(
             of: "open \"/Applications/Portavoz Dev.app\"",
-            range: verifyInstalled.upperBound..<makefile.endIndex))
+            range: register.upperBound..<makefile.endIndex))
+    }
+
+    func testDevelopmentAndUITestAppsCannotClaimTheReleaseIdentity() throws {
+        let makefile = try Self.contents(of: "Makefile")
+        let project = try Self.contents(of: "project.yml")
+        let collector = try Self.contents(of: "scripts/collect-field-evidence.py")
+
+        XCTAssertTrue(makefile.contains("app.portavoz.mac.dev"))
+        XCTAssertTrue(project.contains(
+            "PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac.uitest-host"))
+        XCTAssertTrue(collector.contains(
+            #"CFBundleIdentifier") != "app.portavoz.mac.dev""#))
+        XCTAssertFalse(project.contains(
+            "PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac\n"))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

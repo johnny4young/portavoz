@@ -6,7 +6,7 @@ import SwiftUI
 struct WhisperModelRow: View {
     let variant: AppServices.WhisperVariant
     let active: Bool
-    let downloadState: AppServices.WhisperDownloadState
+    let preparationState: AppServices.WhisperPreparationState
     let select: () -> Void
     let download: () -> Void
     let delete: () -> Void
@@ -38,22 +38,26 @@ struct WhisperModelRow: View {
 
     @ViewBuilder
     private var status: some View {
-        if case .downloading(let id, _, let percent) = downloadState,
+        if case .preparing(let id, _, let percent, let isDownloading) = preparationState,
             id == variant.id {
             VStack(alignment: .leading, spacing: 3) {
-                ProgressView(value: Double(percent), total: 100)
+                if isDownloading {
+                    ProgressView(value: Double(percent), total: 100)
+                } else {
+                    ProgressView()
+                }
+                Text(isDownloading
+                    ? L10n.format("Downloading in background… %d%%", percent)
+                    : L10n.text("Checking files already on this Mac…"))
                     .frame(width: 150)
-                Text(L10n.format(
-                    "Downloading in background… %d%%",
-                    percent))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .accessibilityIdentifier(
                 "settings-whisper-progress-\(variant.accessibilitySuffix)")
-        } else if case .failed(let id, let message) = downloadState,
+        } else if case .failed(let id, let message) = preparationState,
             id == variant.id {
-            Text(L10n.format("Download failed: %@", message))
+            Text(L10n.format("Preparation failed: %@", message))
                 .font(.caption)
                 .foregroundStyle(.red)
                 .lineLimit(2)
@@ -78,24 +82,24 @@ struct WhisperModelRow: View {
                 .help("Free disk used by the variant you do not use")
                 .accessibilityIdentifier(
                     "settings-whisper-delete-\(variant.accessibilitySuffix)")
-        } else if !variant.downloaded && !isThisVariantDownloading {
+        } else if !variant.downloaded && !isThisVariantPreparing {
             Button(action: download) {
                 Text(L10n.text(isThisVariantFailed ? "Try again" : "Download now"))
             }
                 .controlSize(.small)
-                .disabled(downloadState.isDownloading)
+                .disabled(preparationState.isPreparing)
                 .accessibilityIdentifier(
                     "settings-whisper-download-\(variant.accessibilitySuffix)")
         }
     }
 
-    private var isThisVariantDownloading: Bool {
-        guard case .downloading(let id, _, _) = downloadState else { return false }
+    private var isThisVariantPreparing: Bool {
+        guard case .preparing(let id, _, _, _) = preparationState else { return false }
         return id == variant.id
     }
 
     private var isThisVariantFailed: Bool {
-        guard case .failed(let id, _) = downloadState else { return false }
+        guard case .failed(let id, _) = preparationState else { return false }
         return id == variant.id
     }
 }

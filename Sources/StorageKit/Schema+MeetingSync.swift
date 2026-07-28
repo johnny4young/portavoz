@@ -245,7 +245,7 @@ extension StorageSchema {
         """
     }
 
-    private static func childSyncUpsert(meetingID: String, changedAt: String) -> String {
+    static func childSyncUpsert(meetingID: String, changedAt: String) -> String {
         syncUpsert(
             meetingID: meetingID,
             changedAt: changedAt,
@@ -254,7 +254,7 @@ extension StorageSchema {
             replaceDeletionState: false)
     }
 
-    private static func valuesChanged(_ columns: [String]) -> String {
+    static func valuesChanged(_ columns: [String]) -> String {
         columns
             .map { "OLD.\($0) IS NOT NEW.\($0)" }
             .joined(separator: " OR ")
@@ -282,7 +282,7 @@ extension StorageSchema {
         """
     }
 
-    private static func createTrigger(
+    static func createTrigger(
         _ name: String,
         timing: String,
         table: String,

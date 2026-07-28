@@ -118,6 +118,54 @@ final class SuggestMeetingSpeakerNamesTests: XCTestCase {
             .calendarCandidate("Pedro Gómez"),
         ])
     }
+
+    /// Field failure 2026-07-22: "John" suggested for four speakers at once —
+    /// every mention of the owner's name is "evidence" for anyone.
+    func testTheSameNameOnSeveralSpeakersIsEvidenceForNone() {
+        let proposals = [
+            MeetingNameProposal(label: "S2", name: "John"),
+            MeetingNameProposal(label: "S5", name: "John"),
+            MeetingNameProposal(label: "S8", name: "john"),
+            MeetingNameProposal(label: "S4", name: "Reinaldo"),
+        ]
+        let verified = SuggestMeetingSpeakerNames.verified(
+            proposals,
+            transcriptLines: ["John, what do you think?", "Reinaldo presentó el demo."],
+            unnamedLabels: ["S2", "S4", "S5", "S8"],
+            attendeeCandidates: [])
+        XCTAssertEqual(verified.map(\.name), ["Reinaldo"],
+            "an ambiguous name must drop every one of its instances")
+    }
+
+    func testOwnerNameAndItsShortFormsAreNeverSuggested() {
+        XCTAssertTrue(SuggestMeetingSpeakerNames.isOwnerAddressed("John", owner: "Johnny"))
+        XCTAssertTrue(SuggestMeetingSpeakerNames.isOwnerAddressed("Johnny", owner: "Johnny Young"))
+        XCTAssertTrue(SuggestMeetingSpeakerNames.isOwnerAddressed("johnny young", owner: "Johnny Young"))
+        XCTAssertFalse(SuggestMeetingSpeakerNames.isOwnerAddressed("Jon", owner: "Johnny"),
+            "three letters is too weak to claim a short form")
+        XCTAssertFalse(SuggestMeetingSpeakerNames.isOwnerAddressed("Daniel", owner: "Johnny"))
+        XCTAssertFalse(SuggestMeetingSpeakerNames.isOwnerAddressed("Ana", owner: nil))
+
+        let verified = SuggestMeetingSpeakerNames.verified(
+            [MeetingNameProposal(label: "S2", name: "John")],
+            transcriptLines: ["John, ¿qué opinas del release?"],
+            unnamedLabels: ["S2"],
+            attendeeCandidates: [],
+            ownerName: "Johnny")
+        XCTAssertTrue(verified.isEmpty,
+            "people addressing the owner must not baptize other speakers")
+    }
+
+    func testNamesAlreadyAssignedToTheCastAreNotReproposed() {
+        let verified = SuggestMeetingSpeakerNames.verified(
+            [MeetingNameProposal(label: "S2", name: "José")],
+            transcriptLines: ["Jose cerró el trato."],
+            unnamedLabels: ["S2"],
+            attendeeCandidates: [],
+            takenNames: ["Jose"])
+        XCTAssertTrue(verified.isEmpty,
+            "a name a named speaker already carries is taken, accents aside")
+    }
 }
 
 private struct SpeakerNameFixture {

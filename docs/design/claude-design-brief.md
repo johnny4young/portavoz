@@ -7,9 +7,10 @@
 
 ## The product
 
-Portavoz is a **privacy-first, 100% local** meeting assistant for
+Portavoz is a **privacy-first, local-first** meeting assistant for
 macOS (Swift 6 + SwiftUI, with iOS coming next). It records meetings, transcribes
-live, separates voices on-device, and summarizes locally. Brand personality:
+live, separates voices on-device, and summarizes locally by default; remote
+providers and private iCloud sync require explicit opt-in. Brand personality:
 **serious but warm, technical without being cold, honest** ("measured, not
 promised", "your history is never hostage"). Bilingual ES/EN from the outset.
 

@@ -6,7 +6,7 @@ import XCTest
 /// tabbed summary (with a coauthoring ▸ bullet under Decisiones), meeting
 /// health, chapters, a content-free privacy receipt in the right rail, and a
 /// player.
-final class MeetingDetailUITests: XCTestCase {
+final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
         let app = XCUIApplication.portavoz(
@@ -45,6 +45,7 @@ final class MeetingDetailUITests: XCTestCase {
         withoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         unnamedSpeaker: Bool = false,
+        aiSuggestions: Bool = false,
         summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
@@ -60,6 +61,9 @@ final class MeetingDetailUITests: XCTestCase {
         }
         if unnamedSpeaker {
             app.launchArguments.append("-seed-unnamed-speaker")
+        }
+        if aiSuggestions {
+            app.launchArguments.append("-seed-ai-suggestions")
         }
         if let summaryEngine {
             app.launchArguments += ["-summaryEngine", summaryEngine]
@@ -108,6 +112,38 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix() {
+        let app = launchOnSeededMeeting(
+            unnamedSpeaker: true,
+            aiSuggestions: true)
+        defer { app.terminate() }
+
+        let titleDismiss = app.buttons["detail-title-suggestion-dismiss"]
+        XCTAssertTrue(titleDismiss.waitForExistence(timeout: 10))
+        titleDismiss.click()
+        XCTAssertFalse(app.buttons["detail-title-suggestion"].exists)
+
+        let recipeDismiss = app.buttons["detail-recipe-suggestion-dismiss"]
+        XCTAssertTrue(recipeDismiss.waitForExistence(timeout: 10))
+        recipeDismiss.click()
+        XCTAssertFalse(app.buttons["detail-recipe-suggestion"].exists)
+
+        let suggestNames = app.control(withIdentifier: "detail-suggest-names")
+        XCTAssertTrue(suggestNames.waitForExistence(timeout: 5))
+        suggestNames.click()
+        let nameDismiss = app.buttons["detail-name-suggestion-dismiss-S1"]
+        XCTAssertTrue(nameDismiss.waitForExistence(timeout: 10))
+        nameDismiss.click()
+        XCTAssertFalse(app.buttons["detail-name-suggestion-S1"].exists)
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "player-clear-playback")
+                .waitForExistence(timeout: 10),
+            "two-channel playback must expose the reversible clear mix")
+        attachScreenshot(of: app, named: "dismissible-ai-suggestions-and-clear-playback")
+    }
+
+    @MainActor
     func testFailedDurableProcessingOffersOneRecoveryAction() {
         let app = launchOnSeededMeeting(processingFailure: true)
         defer { app.terminate() }
@@ -125,7 +161,7 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
-    func testSequoiaSummaryFailureOpensExactSetupAndExplainsCompanion() {
+    func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() {
         let app = launchOnSeededMeeting(
             withoutSummary: true,
             simulateSequoiaCapabilities: true,
@@ -166,13 +202,13 @@ final class MeetingDetailUITests: XCTestCase {
 
         app.control(withIdentifier: "settings-category-voice").click()
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-companion-status")
+            app.control(withIdentifier: "settings-apuntador-status")
                 .waitForExistence(timeout: 5),
-            "the voice pane must explain Companion's real platform requirement")
+            "the voice pane must explain Apuntador's real platform requirement")
         XCTAssertFalse(
-            app.control(withIdentifier: "settings-companion-enabled").exists,
+            app.control(withIdentifier: "settings-apuntador-enabled").exists,
             "Sequoia must not expose a toggle that cannot work")
-        attachScreenshot(of: app, named: "sequoia-companion-requirements")
+        attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
     }
 
     @MainActor
@@ -217,6 +253,28 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
+    func testMyNotesSectionShowsRawNotesAndOffersEnhancement() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        // Presence-only scope: clicking Enhance would invoke a real model
+        // provider, which is not deterministic on a runner. The seeded raw
+        // note and the section's stable controls are.
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-notes-title")
+                .waitForExistence(timeout: 10),
+            "a meeting with notes must surface the My notes section")
+        XCTAssertTrue(
+            app.staticTexts["revisar budget Q3"].exists,
+            "the raw seeded note is shown verbatim before any enhancement")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-enhance-notes")
+                .waitForExistence(timeout: 5),
+            "a meeting with transcript and notes must offer the enhance menu")
+        attachScreenshot(of: app, named: "meeting-detail-my-notes")
+    }
+
+    @MainActor
     func testSummarySourceJumpsToItsTranscriptAndAudio() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
@@ -229,6 +287,9 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertEqual(
             source.value as? String,
             "El rollout del modelo queda para el viernes.")
+        XCTAssertTrue(
+            app.prepareForInteraction(),
+            "Portavoz must be foreground before activating a summary source")
         XCTAssertTrue(
             source.waitForStableFrame(),
             "the localized source control must finish layout before activation")
@@ -320,15 +381,15 @@ final class MeetingDetailUITests: XCTestCase {
     }
 
     @MainActor
-    func testCompanionAnswerSourceJumpsToItsTranscriptAndAudio() {
+    func testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio() {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
         let source = app.control(
             withIdentifier:
-                "companion-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
+                "apuntador-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
         guard source.waitForExistence(timeout: 10) else {
-            XCTFail("the Companion answer must expose its exact transcript source")
+            XCTFail("the Apuntador answer must expose its exact transcript source")
             return
         }
         XCTAssertEqual(
@@ -347,7 +408,7 @@ final class MeetingDetailUITests: XCTestCase {
             for: NSPredicate(format: "value == '0:03'"),
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
-        attachScreenshot(of: app, named: "band-5f-companion-evidence")
+        attachScreenshot(of: app, named: "band-5f-apuntador-evidence")
     }
 
     @MainActor
@@ -499,16 +560,16 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "chapter-200").exists,
             "a chapter must mark the later turn the seed placed at 200 s")
-        // The persisted Companion cards (D26) render in the rail: the seed
+        // The persisted Apuntador cards (D26) render in the rail: the seed
         // has an answered card (askedAt 6) and an "asked you" ping (200).
         // These WAIT: the cards are fetched separately from the meeting
         // detail, so the section lands a beat after the rest of the rail.
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-companion").waitForExistence(timeout: 5),
-            "the right rail must show the persisted Companion answers")
+            app.control(withIdentifier: "detail-apuntador").waitForExistence(timeout: 5),
+            "the right rail must show the persisted Apuntador answers")
         XCTAssertTrue(
-            app.control(withIdentifier: "companion-card-6").waitForExistence(timeout: 5),
-            "the answered Companion card must render for review")
+            app.control(withIdentifier: "apuntador-card-6").waitForExistence(timeout: 5),
+            "the answered Apuntador card must render for review")
 
         attachScreenshot(of: app, named: "band-3h-privacy-receipt")
     }
@@ -567,6 +628,99 @@ final class MeetingDetailUITests: XCTestCase {
         play.click()  // smoke: play doesn't crash
         Thread.sleep(forTimeInterval: 0.5)
         attachScreenshot(of: app, named: "band-4f-vectorized-waveform")
+    }
+
+    /// The export menu is the only path to subtitle files, so both the SRT
+    /// and VTT items must exist for a seeded diarized meeting.
+    @MainActor
+    func testExportMenuOffersSubtitleFormats() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "detail-export-menu")
+        XCTAssertTrue(
+            menu.waitForExistence(timeout: 10),
+            "the action row must offer the export menu")
+        menu.click()
+        XCTAssertTrue(
+            app.menuItems["detail-export-srt"].waitForExistence(timeout: 5),
+            "the diarized transcript must export as SRT")
+        XCTAssertTrue(
+            app.menuItems["detail-export-vtt"].waitForExistence(timeout: 5),
+            "the diarized transcript must export as VTT")
+        // Close the menu without exporting — the save panel is native UI.
+        app.typeKey(.escape, modifierFlags: [])
+    }
+
+    /// FEATURE-003: the recap opens as an editable draft the user reviews
+    /// before choosing a destination — and it never carries the transcript.
+    @MainActor
+    func testRecapSheetDraftsFromTheSummaryWithoutTheTranscript() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "detail-export-menu")
+        XCTAssertTrue(menu.waitForExistence(timeout: 10))
+        menu.click()
+        let recapItem = app.menuItems["detail-share-recap"]
+        XCTAssertTrue(
+            recapItem.waitForExistence(timeout: 5),
+            "a summarized meeting must offer the recap")
+        recapItem.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "recap-title").waitForExistence(timeout: 10),
+            "the recap opens for review instead of sending anything")
+        let editor = app.control(withIdentifier: "recap-body")
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        let draft = (editor.value as? String) ?? ""
+        XCTAssertTrue(
+            draft.contains("Pendientes"),
+            "the seeded Spanish summary produces a Spanish recap, saw: \(draft)")
+        XCTAssertTrue(
+            draft.contains("Ana"),
+            "open commitments carry their owner")
+        XCTAssertFalse(
+            draft.contains("Revisemos el presupuesto de transcripción."),
+            "the recap is summary-derived: no transcript line may appear in it")
+        XCTAssertTrue(app.control(withIdentifier: "recap-copy").exists)
+        XCTAssertTrue(app.control(withIdentifier: "recap-privacy-note").exists)
+        attachScreenshot(of: app, named: "meeting-detail-share-recap")
+        app.control(withIdentifier: "recap-done").click()
+    }
+
+    /// The Structure submenu must offer every seeded template — including
+    /// discovery, postmortem, and retro — with the sections each one
+    /// produces visible before generating.
+    @MainActor
+    func testStructureMenuOffersSeededTemplates() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "detail-regenerate-menu")
+        XCTAssertTrue(
+            menu.waitForExistence(timeout: 10),
+            "a summarized meeting must offer the regenerate menu")
+        menu.click()
+        let structure = app.menuItems["detail-structure-menu"]
+        XCTAssertTrue(
+            structure.waitForExistence(timeout: 5),
+            "the regenerate menu must offer the Structure submenu")
+        structure.click()
+        // Every built-in id, not just the new ones: the submenu renders
+        // `Recipe.all + custom()`, so a template silently dropping out of
+        // the catalog is exactly the regression this guards.
+        for id in [
+            "general", "standup", "one-on-one", "planning", "interview",
+            "discovery", "postmortem", "retro"
+        ] {
+            XCTAssertTrue(
+                app.menuItems["detail-structure-\(id)"].waitForExistence(timeout: 5),
+                "the Structure submenu must seed the \(id) template")
+        }
+        // Close without regenerating.
+        app.typeKey(.escape, modifierFlags: [])
+        app.typeKey(.escape, modifierFlags: [])
     }
 
     /// Marking in/out reveals the clip export button (M11). Advances the

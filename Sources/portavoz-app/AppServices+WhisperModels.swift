@@ -3,14 +3,18 @@ import ModelStoreKit
 import TranscriptionKit
 
 extension AppServices {
-    enum WhisperDownloadState: Equatable {
+    enum WhisperPreparationState: Equatable {
         case idle
-        case downloading(variantID: String, size: String, percent: Int)
+        case preparing(
+            variantID: String,
+            size: String,
+            percent: Int,
+            isDownloading: Bool)
         case ready(variantID: String)
         case failed(variantID: String, message: String)
 
-        var isDownloading: Bool {
-            if case .downloading = self { return true }
+        var isPreparing: Bool {
+            if case .preparing = self { return true }
             return false
         }
     }
@@ -31,14 +35,15 @@ extension AppServices {
         let task: Task<WhisperEngine.PreparedModel, Error>
     }
 
-    typealias WhisperProgressObserver = @MainActor @Sendable (String, Int) -> Void
+    typealias WhisperPreparationObserver =
+        @MainActor @Sendable (_ size: String, _ percent: Int, _ isDownloading: Bool) -> Void
 
     /// The D7 quality re-pass engine. Refine and Import join the same verified
     /// preparation that Settings can start explicitly in the background.
     func loadWhisperIfNeeded(
         descriptor requestedDescriptor: ModelDescriptor? = nil,
         progress: @escaping @MainActor (String) -> Void,
-        downloadProgress: WhisperProgressObserver? = nil
+        preparationProgress: WhisperPreparationObserver? = nil
     ) async throws -> WhisperEngine {
         let descriptor = requestedDescriptor ?? Self.preferredWhisperDescriptor()
         whisperIdleGeneration += 1
@@ -46,7 +51,7 @@ extension AppServices {
 
         let prepared = try await preparedWhisperModel(
             descriptor,
-            observer: downloadProgress)
+            observer: preparationProgress)
         progress(L10n.text("Loading Whisper…"))
         let engine = try await WhisperEngine.loadPrepared(prepared)
         whisper = engine
@@ -54,11 +59,12 @@ extension AppServices {
         return engine
     }
 
-    /// Starts an app-scoped verified download. Closing Settings or navigating
-    /// away does not cancel it; a later Refine joins the exact same task.
+    /// Starts app-scoped verification and downloads only missing/corrupt
+    /// artifacts. Closing Settings does not cancel it; a later Refine joins
+    /// the exact same task.
     func prepareWhisperVariant(_ id: String) {
         guard let descriptor = Self.whisperDescriptor(id),
-              !whisperDownloadState.isDownloading
+              !whisperPreparationState.isPreparing
         else { return }
         whisperBackgroundPreparation = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -110,7 +116,7 @@ extension AppServices {
 
     func deleteWhisperVariant(_ id: String) async {
         guard let descriptor = Self.whisperDescriptor(id) else { return }
-        if case .downloading(let activeID, _, _) = whisperDownloadState,
+        if case .preparing(let activeID, _, _, _) = whisperPreparationState,
             activeID == id { return }
         try? await modelLifecycle.remove(descriptor)
         if whisperVariantID == id {
@@ -120,11 +126,11 @@ extension AppServices {
         if whisperPreparedModel?.descriptorID == id {
             whisperPreparedModel = nil
         }
-        switch whisperDownloadState {
+        switch whisperPreparationState {
         case .ready(let variantID) where variantID == id:
-            whisperDownloadState = .idle
+            whisperPreparationState = .idle
         case .failed(let variantID, _) where variantID == id:
-            whisperDownloadState = .idle
+            whisperPreparationState = .idle
         default:
             break
         }
@@ -150,7 +156,7 @@ extension AppServices {
 extension AppServices {
     private func preparedWhisperModel(
         _ descriptor: ModelDescriptor,
-        observer: WhisperProgressObserver?
+        observer: WhisperPreparationObserver?
     ) async throws -> WhisperEngine.PreparedModel {
         if let whisperPreparedModel,
             whisperPreparedModel.descriptorID == descriptor.id {
@@ -159,9 +165,13 @@ extension AppServices {
         let observerID = observer.map { observer in
             let id = UUID()
             whisperProgressObservers[id] = observer
-            if case .downloading(let variantID, let size, let percent) = whisperDownloadState,
+            if case .preparing(
+                let variantID,
+                let size,
+                let percent,
+                let isDownloading) = whisperPreparationState,
                 variantID == descriptor.id {
-                observer(size, percent)
+                observer(size, percent, isDownloading)
             }
             return id
         }
@@ -179,10 +189,14 @@ extension AppServices {
 
         let generation = UUID()
         let size = Self.whisperSizeLabel(descriptor)
-        whisperDownloadState = .downloading(
+        whisperPreparationState = .preparing(
             variantID: descriptor.id,
             size: size,
-            percent: 0)
+            percent: 0,
+            isDownloading: false)
+        for observer in whisperProgressObservers.values {
+            observer(size, 0, false)
+        }
         let task = Task {
             try await WhisperEngine.prepare(
                 store: modelStore,
@@ -193,7 +207,8 @@ extension AppServices {
                     self?.reportWhisperProgress(
                         descriptorID: descriptor.id,
                         size: size,
-                        percent: percent)
+                        percent: percent,
+                        isDownloading: update.isDownloading)
                 }
             }
         }
@@ -213,13 +228,13 @@ extension AppServices {
             if whisperPreparation?.generation == preparation.generation {
                 whisperPreparation = nil
                 whisperPreparedModel = prepared
-                whisperDownloadState = .ready(variantID: preparation.descriptorID)
+                whisperPreparationState = .ready(variantID: preparation.descriptorID)
             }
             return prepared
         } catch {
             if whisperPreparation?.generation == preparation.generation {
                 whisperPreparation = nil
-                whisperDownloadState = error is CancellationError
+                whisperPreparationState = error is CancellationError
                     ? .idle
                     : .failed(
                         variantID: preparation.descriptorID,
@@ -232,15 +247,17 @@ extension AppServices {
     private func reportWhisperProgress(
         descriptorID: String,
         size: String,
-        percent: Int
+        percent: Int,
+        isDownloading: Bool
     ) {
         guard whisperPreparation?.descriptorID == descriptorID else { return }
-        whisperDownloadState = .downloading(
+        whisperPreparationState = .preparing(
             variantID: descriptorID,
             size: size,
-            percent: percent)
+            percent: percent,
+            isDownloading: isDownloading)
         for observer in whisperProgressObservers.values {
-            observer(size, percent)
+            observer(size, percent, isDownloading)
         }
     }
 

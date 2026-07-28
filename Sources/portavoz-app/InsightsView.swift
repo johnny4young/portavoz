@@ -301,7 +301,12 @@ struct InsightsView: View {
                     .font(.callout.weight(.medium))
                     .accessibilityIdentifier("insights-participant-\(person.id)")
                 Spacer()
-                Text(L10n.format("%d meetings · %@", person.meetings, minutes(person.theirSeconds)))
+                Text(person.meetings == 1
+                    ? L10n.format("1 meeting · %@", minutes(person.theirSeconds))
+                    : L10n.format(
+                        "%d meetings · %@",
+                        person.meetings,
+                        minutes(person.theirSeconds)))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()

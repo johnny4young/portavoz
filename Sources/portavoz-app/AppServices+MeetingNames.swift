@@ -19,11 +19,28 @@ extension AppServices {
     func meetingDetailNameSuggestions(
         _ meetingID: MeetingID
     ) async throws -> [MeetingNameSuggestion] {
-        try await SuggestMeetingSpeakerNames(
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-ai-suggestions") {
+            return [
+                MeetingNameSuggestion(
+                    label: arguments.contains("-seed-showcase") ? "S3" : "S1",
+                    name: arguments.contains("-seed-showcase") ? "Nora" : "Ana",
+                    evidence: .transcript(
+                        arguments.contains("-seed-showcase")
+                            ? PublicShowcaseFixture.speakerEvidence
+                            : "My name is Ana"))
+            ]
+        }
+        // Same owner identity the Apuntador uses: mentions of that name are
+        // people addressing the owner, never another speaker's identity.
+        return try await SuggestMeetingSpeakerNames(
             library: .local(store: store),
             candidates: AppCalendarMeetingNameCandidates(),
             proposer: AppMeetingSpeakerNameProposer())
-            .execute(.init(meetingID: meetingID))
+            .execute(.init(
+                meetingID: meetingID,
+                ownerName: RecordingController.companionOwnerName()))
     }
 }
 

@@ -18,6 +18,7 @@ public enum ChapterTitler {
         transcript, Title Case, no quotes and no trailing period. Name the TOPIC \
         being discussed — never copy a verbatim line and never generic fillers \
         like "Okay", "Introduction", "Discussion" or "Meeting".
+        \(PromptFactory.sourceMaterialGuard())
         Examples:
         - talk about which subscriber IDs the events need → Subscriber IDs
         - deciding to decommission a legacy API endpoint → Endpoint Decommission

@@ -4,7 +4,7 @@ import XCTest
 /// live "first listen" instead of a static welcome. These assert the demo
 /// step renders and that Skip is always reachable — the live capture itself
 /// needs a real microphone, so it's out of XCUITest's reach and never driven.
-final class OnboardingUITests: XCTestCase {
+final class OnboardingUITests: PortavozUITestCase {
     @MainActor
     func testOpensOnTheFirstListenStep() {
         let app = XCUIApplication.portavoz(showOnboarding: true)

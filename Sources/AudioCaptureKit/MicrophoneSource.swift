@@ -3,6 +3,16 @@ import AVFAudio
 import Foundation
 import PortavozCore
 
+enum AudioInputFormatPolicy {
+    static func isUsable(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
+        sampleRate.isFinite && sampleRate > 0 && channelCount > 0
+    }
+
+    static func isUsable(_ format: AVAudioFormat) -> Bool {
+        isUsable(sampleRate: format.sampleRate, channelCount: format.channelCount)
+    }
+}
+
 /// Captures the local microphone through AVAudioEngine at the device's
 /// native format, downmixed to mono. Recording keeps native quality;
 /// resampling for STT is TranscriptionKit's job.
@@ -14,9 +24,10 @@ import PortavozCore
 ///   different rate its audio is resampled to the stream's original rate,
 ///   and the capture gap is padded with silence so the file stays aligned
 ///   with the system channel.
-/// - **Acoustic echo**: with speakers, the mic hears the meeting audio and
-///   every remote participant becomes a phantom "Me". Voice processing
-///   (Apple's AEC) subtracts the system output from the mic signal.
+///
+/// Raw capture is the default. Apple's voice-processing IO changes both the
+/// input and output graph and may duck other audio, so meeting and dictation
+/// surfaces must opt in only when they explicitly own that trade-off.
 ///
 /// `@unchecked Sendable`: the engine and continuation are mutated only from
 /// `start()`/`stop()` and the serial `restartQueue`; the tap block runs
@@ -62,67 +73,76 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// - Parameters:
     ///   - deviceIdentifier: UID or name of the input device to use (macOS).
     ///     Nil uses the system default input.
-    ///   - voiceProcessing: enables Apple's echo cancellation so the mic
-    ///     channel carries only the local voice even on speakers. On by
-    ///     default; disable for raw capture.
-    public init(deviceIdentifier: String? = nil, voiceProcessing: Bool = true) {
+    ///   - voiceProcessing: explicitly enables Apple's echo cancellation.
+    ///     It is off by default because voice-processing IO also changes the
+    ///     output path and can interfere with an active call.
+    public init(deviceIdentifier: String? = nil, voiceProcessing: Bool = false) {
         self.deviceIdentifier = deviceIdentifier
         self.voiceProcessing = voiceProcessing
     }
 
-    /// Starts the engine (and the echo canceller) WITHOUT a tap, so the
-    /// AEC's adaptive filter converges while the app is still preparing
-    /// models. Without it, the first seconds of a recording leak echo
-    /// (measured: mic/system RMS ratio 0.38 in the first 2 s, 0.03–0.11
-    /// once converged). Yields no chunks and the session clock still
-    /// anchors at the first real tap callback. Safe to skip — `start()`
-    /// does the full setup itself when the engine isn't warm.
+    /// Starts the engine WITHOUT a tap while the caller prepares the rest of
+    /// its pipeline. Yields no chunks and the session clock still anchors at
+    /// the first real tap callback. Explicit voice-processing clients also
+    /// use this time for their adaptive filter to converge. Safe to skip —
+    /// `start()` does the full setup itself when the engine isn't warm.
     public func warmUp() async {
         restartQueue.sync {
             guard continuation == nil, !engine.isRunning else { return }
             try? applyPinnedDeviceIfNeeded(required: false)
             applyVoiceProcessingIfEnabled()
+            // AVAudioEngine.prepare() can raise an Objective-C exception
+            // instead of a Swift error when the current input route has no
+            // hardware format. Fail closed and let start() surface the typed
+            // no-input-device failure once the user actually starts capture.
+            guard AudioInputFormatPolicy.isUsable(
+                engine.inputNode.outputFormat(forBus: 0)
+            ) else {
+                return
+            }
             engine.prepare()
             try? engine.start()
         }
     }
 
     public func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
-        let input = engine.inputNode
-        if !engine.isRunning {
-            // Cold start; a warm engine already has device + AEC applied.
-            try applyPinnedDeviceIfNeeded(required: true)
-            applyVoiceProcessingIfEnabled()
-        }
-
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else {
-            throw AudioCaptureError.noInputDevice
-        }
-
-        let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
-        self.continuation = continuation
-        streamSampleRate = format.sampleRate
-        installTap()
-
-        observer = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine,
-            queue: nil
-        ) { [weak self] _ in
-            self?.scheduleRestart()
-        }
-
-        if !engine.isRunning {
-            engine.prepare()
-            do {
-                try engine.start()
-            } catch {
-                teardown()
-                throw error
+        try restartQueue.sync {
+            let input = engine.inputNode
+            if !engine.isRunning {
+                // Cold start; a warm engine already has device policy applied.
+                try applyPinnedDeviceIfNeeded(required: true)
+                applyVoiceProcessingIfEnabled()
             }
+
+            let format = input.outputFormat(forBus: 0)
+            guard AudioInputFormatPolicy.isUsable(format) else {
+                throw AudioCaptureError.noInputDevice
+            }
+
+            let (stream, continuation) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
+            self.continuation = continuation
+            streamSampleRate = format.sampleRate
+            installTap()
+
+            observer = NotificationCenter.default.addObserver(
+                forName: .AVAudioEngineConfigurationChange,
+                object: engine,
+                queue: nil
+            ) { [weak self] _ in
+                self?.scheduleRestart()
+            }
+
+            if !engine.isRunning {
+                engine.prepare()
+                do {
+                    try engine.start()
+                } catch {
+                    teardown()
+                    throw error
+                }
+            }
+            return stream
         }
-        return stream
     }
 
     private func applyVoiceProcessingIfEnabled() {
@@ -165,7 +185,14 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
         let format = input.outputFormat(forBus: 0)
         let native = format.sampleRate
         let target = streamSampleRate
-        guard native > 0, target > 0, let continuation else { return }
+        guard
+            AudioInputFormatPolicy.isUsable(format),
+            target.isFinite,
+            target > 0,
+            let continuation
+        else {
+            return
+        }
 
         let clock = clock
         input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, when in
@@ -213,7 +240,7 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
             let input = self.engine.inputNode
             input.removeTap(onBus: 0)
             try? self.applyPinnedDeviceIfNeeded(required: false)
-            guard input.outputFormat(forBus: 0).sampleRate > 0 else {
+            guard AudioInputFormatPolicy.isUsable(input.outputFormat(forBus: 0)) else {
                 self.scheduleRestart(delay: 0.5)
                 return
             }

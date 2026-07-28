@@ -44,14 +44,14 @@ struct BYOKSettingsSection: View {
                 }
             }
             Toggle(
-                "Answer Companion knowledge questions with this provider",
+                "Answer Apuntador knowledge questions with this provider",
                 isOn: $isEnabled
             )
             .disabled(!isReady || !companionAvailable)
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model."
+                "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Apuntador sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -81,7 +81,7 @@ struct BYOKSettingsSection: View {
             hasStoredKey = false
             isEnabled = false
             message = L10n.text(
-                "Key deleted. Companion goes back to answering only on-device.")
+                "Key deleted. Apuntador goes back to answering only on-device.")
         }
     }
 }

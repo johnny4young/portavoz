@@ -50,13 +50,27 @@ targets:
       - path: Resources/Localization/Portavoz/InfoPlist.xcstrings
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac
+        # Never register disposable DerivedData builds as the shipping app.
+        # Duplicate identities poison LaunchServices/App Intents discovery.
+        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac.uitest-host
         CODE_SIGN_ENTITLEMENTS: packaging/portavoz-local.entitlements
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."
-        INFOPLIST_KEY_NSAudioCaptureUsageDescription: "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac."
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
-        GENERATE_INFOPLIST_FILE: YES
+    # XCUITest must exercise the same external recording handoff as the
+    # shipping script-built bundle. XcodeGen writes this ignored plist from
+    # tracked properties; the release Info.plist remains owned by make-app.sh.
+    info:
+      path: dist/PortavozUITest-Info.plist
+      properties:
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations:
+          - en
+          - es
+        CFBundleURLTypes:
+          - CFBundleURLName: app.portavoz.mac.uitest-host
+            CFBundleURLSchemes:
+              - portavoz
+        LSApplicationCategoryType: public.app-category.productivity
+        NSMicrophoneUsageDescription: "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."
+        NSAudioCaptureUsageDescription: "Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac."
     dependencies:
       - package: Portavoz
         products:

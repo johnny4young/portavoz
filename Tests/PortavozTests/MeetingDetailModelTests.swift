@@ -34,7 +34,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .failed(.summary),
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
-            .processingJobs([]),
+            .processingJobs([]), .notes(MeetingReviewNotes()),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -50,7 +50,7 @@ final class MeetingDetailModelTests: XCTestCase {
         let fixture = MeetingDetailModelFixture()
         let missingClient = MeetingDetailModelClientFake(updates: [
             .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
-            .processingJobs([]),
+            .processingJobs([]), .notes(MeetingReviewNotes()),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -91,7 +91,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 6)
+        XCTAssertEqual(model.state.revision, 7)
     }
 
     func testMutationActionsOwnPersistenceEffectsAndSearchInvalidation() async {
@@ -183,7 +183,11 @@ final class MeetingDetailModelTests: XCTestCase {
         guard case .nameSuggestionsLoaded = names else {
             return XCTFail("name generation must return a typed loaded effect")
         }
-        XCTAssertEqual(model.state.nameSuggestions.map(\.name), ["Ana"])
+        // Voice evidence outranks the text proposal for the same label (the
+        // text chip is suppressed), and the accepted voice suggestion above
+        // consumed its own chip — both arrays end empty.
+        XCTAssertEqual(model.state.nameSuggestions.map(\.name), [])
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.name), [])
         XCTAssertFalse(model.state.isSuggestingNames)
         guard case .voiceMemoryOfferChecked(true) = offer else {
             return XCTFail("the feature owner must preserve duplicate-offer admission")
@@ -201,6 +205,61 @@ final class MeetingDetailModelTests: XCTestCase {
             .rememberVoice(fixture.meeting.id, fixture.speaker.id),
             .renameSpeaker("Ana"),
         ])
+    }
+
+    func testVoiceSuggestionKeepsNameLookupSuccessfulWhenItSuppressesText() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.send(.loadVoiceSuggestions)
+        let effect = await model.send(.loadNameSuggestions)
+
+        guard case .nameSuggestionsLoaded = effect else {
+            return XCTFail(
+                "verified voice evidence must keep the suggestion action successful")
+        }
+        XCTAssertTrue(model.state.nameSuggestions.isEmpty)
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
+        XCTAssertNil(model.state.lastActionError)
+        XCTAssertEqual(client.calls, [
+            .loadVoiceSuggestions(fixture.meeting.id),
+            .loadNameSuggestions(fixture.meeting.id),
+        ])
+    }
+
+    func testOptionalSuggestionsCanBeDismissedWithoutMutatingMeetingContent() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(
+            updates: metadataUpdates(
+                fixture,
+                title: "2026-07-18 Meeting",
+                segments: [fixture.segment]))
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S2", name: "Bea", distance: 0),
+        ]
+        client.metadataSuggestionsResult = MeetingReviewMetadataSuggestions(
+            meetingTitle: "Plan del trimestre",
+            recipe: .planning)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.observe()
+        await model.send(.loadNameSuggestions)
+        await model.send(.loadVoiceSuggestions)
+        await model.send(.loadMetadataSuggestions)
+
+        model.dismissNameSuggestion(label: "S1")
+        model.dismissVoiceSuggestion(speakerLabel: "S2")
+        model.dismissSuggestedTitle()
+        model.dismissSuggestedRecipe()
+        model.dismissThinSummarySuggestion(version: 4)
+
+        XCTAssertTrue(model.state.nameSuggestions.isEmpty)
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+        XCTAssertNil(model.state.suggestedTitle)
+        XCTAssertNil(model.state.suggestedRecipe)
+        XCTAssertEqual(model.state.dismissedThinSummaryVersion, 4)
+        XCTAssertEqual(client.searchReindexRequests, 0)
     }
 
     func testDocumentNameAndVoiceEffectsPreserveFailureAndDegradationPolicy() async {
@@ -255,7 +314,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .summary(fixture.summary),
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
-            .processingJobs([]),
+            .processingJobs([]), .notes(MeetingReviewNotes()),
         ])
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
         let destination = FileManager.default.temporaryDirectory
@@ -296,7 +355,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .summary(fixture.summary),
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
-            .processingJobs([]),
+            .processingJobs([]), .notes(MeetingReviewNotes()),
         ])
         client.playbackCancellationsRemaining = 1
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
@@ -338,7 +397,8 @@ final class MeetingDetailModelTests: XCTestCase {
             return XCTFail("a failed voice confirmation must stay visible")
         }
         XCTAssertEqual(voiceMessage, L10n.text("Could not apply this voice suggestion."))
-        XCTAssertEqual(model.state.nameSuggestions.map(\.name), ["Ana"])
+        // Same voice-wins policy: only the voice chip remains for S1.
+        XCTAssertEqual(model.state.nameSuggestions.map(\.name), [])
         XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
         guard case .meetingDeleted = deleteEffect else {
             return XCTFail("best-effort delete must preserve its navigation effect")
@@ -541,7 +601,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .summary(fixture.summary),
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
-            .processingJobs([]),
+            .processingJobs([]), .notes(MeetingReviewNotes()),
         ]
     }
 
@@ -608,7 +668,8 @@ private struct MeetingDetailModelFixture {
     var updates: [MeetingReviewUpdate] {
         [
             .core(core), .summary(summary), .companionCards([card]),
-            .privacyReceipt(receipt), .processingJobs([])
+            .privacyReceipt(receipt), .processingJobs([]),
+            .notes(MeetingReviewNotes())
         ]
     }
 
@@ -644,6 +705,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             label: "S1",
             name: "Ana",
             evidence: .transcript("soy Ana")),
+    ]
+    var voiceSuggestionsResult: [MeetingVoiceSuggestion] = [
+        MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0),
     ]
     private let person: Person
 
@@ -765,7 +829,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     ) throws -> [MeetingVoiceSuggestion] {
         calls.append(.loadVoiceSuggestions(meetingID))
         try fail(.loadVoiceSuggestions)
-        return [MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0)]
+        return voiceSuggestionsResult
     }
 
     func meetingDetailMetadataSuggestions(

@@ -39,24 +39,43 @@ public struct MeetingReviewReadModel: Sendable {
     public let companionCards: [CompanionCard]
     public let privacyReceipt: PrivacyReceipt?
     public let processingJobs: [ProcessingJob]
+    public let notes: MeetingReviewNotes
 
     public init(
         core: MeetingReviewCore,
         summary: MeetingReviewSummary?,
         companionCards: [CompanionCard],
         privacyReceipt: PrivacyReceipt?,
-        processingJobs: [ProcessingJob]
+        processingJobs: [ProcessingJob],
+        notes: MeetingReviewNotes = MeetingReviewNotes()
     ) {
         self.core = core
         self.summary = summary
         self.companionCards = companionCards
         self.privacyReceipt = privacyReceipt
         self.processingJobs = processingJobs
+        self.notes = notes
     }
 
     public var meeting: Meeting { core.meeting }
     public var speakers: [Speaker] { core.speakers }
     public var segments: [TranscriptSegment] { core.segments }
+}
+
+/// The user's own notes for one meeting: the raw timestamped context items
+/// plus the optional LLM-enhanced document (NOTES-001). Independent from
+/// the transcript root like every other degradable section.
+public struct MeetingReviewNotes: Sendable {
+    public let contextItems: [ContextItem]
+    public let enhanced: EnhancedNote?
+
+    public init(
+        contextItems: [ContextItem] = [],
+        enhanced: EnhancedNote? = nil
+    ) {
+        self.contextItems = contextItems
+        self.enhanced = enhanced
+    }
 }
 
 public enum MeetingReviewSection: CaseIterable, Hashable, Sendable {
@@ -65,6 +84,7 @@ public enum MeetingReviewSection: CaseIterable, Hashable, Sendable {
     case companion
     case privacy
     case processing
+    case notes
 }
 
 /// Independent updates emitted by the Meeting Detail read side.
@@ -75,5 +95,6 @@ public enum MeetingReviewUpdate: Sendable {
     case companionCards([CompanionCard])
     case privacyReceipt(PrivacyReceipt?)
     case processingJobs([ProcessingJob])
+    case notes(MeetingReviewNotes)
     case failed(MeetingReviewSection)
 }

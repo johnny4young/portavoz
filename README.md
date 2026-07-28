@@ -2,7 +2,7 @@
 
 **The meeting assistant that knows who said what — without your audio ever leaving your Mac.**
 
-Portavoz records your meetings, transcribes them live, and tells apart every voice — including yours. Built natively in Swift for Apple platforms, running entirely on-device: Neural Engine transcription, local diarization, local summaries.
+Portavoz records your meetings, transcribes them live, and tells apart every voice — including yours. Built natively in Swift for Apple platforms, its default path stays on-device: Neural Engine transcription, local diarization, local search, and local summaries. Optional remote providers and private sync are explicit choices with visible receipts.
 
 **[portavoz.app](https://portavoz.app)** · `brew install --cask johnny4young/tap/portavoz`
 
@@ -11,20 +11,20 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-![A meeting in Portavoz: colored speaker pills with one-click name suggestions, a tabbed summary (decisions, open questions, to-dos), a who-said-what transcript, a docked player with waveform, and a right rail with per-speaker meeting health and ✦ chapters](assets/screenshots/meeting-detail.png)
+![A current Portavoz meeting: dismissible AI suggestions, colored speaker pills, a tabbed summary, transcript, clear playback, privacy receipt, meeting health, chapters, and Apuntador](assets/screenshots/meeting-detail.png)
 
 <table>
 <tr>
-<td width="50%"><img alt="Live recording: lyrics-style captions with your voice glowing amber, and the Companion answering a factual question the room just asked — entirely on-device" src="assets/screenshots/recording-companion.png"></td>
+<td width="50%"><img alt="A current Portavoz recording: multilingual source captions remain visible while English translations render in a separate labeled indigo rail" src="assets/screenshots/recording-live-translation.png"></td>
 <td width="50%"><img alt="Insights: meetings, talk time, decisions and questions with month-over-month deltas; a two-tone bar per person for who you talk with; ✦ findings; and a 12-week rhythm heatmap" src="assets/screenshots/insights.png"></td>
 </tr>
 <tr>
-<td align="center"><sub><b>Live recording</b> — lyrics captions + the on-device Companion</sub></td>
+<td align="center"><sub><b>Live recording</b> — original speech + a distinct translation rail</sub></td>
 <td align="center"><sub><b>Insights</b> — your meeting life, computed on your Mac</sub></td>
 </tr>
 </table>
 
-<sub>Representative data, English UI. Everything shown is computed and rendered on-device.</sub>
+<sub>Fictional data, English UI. These app-window screenshots are regenerated from a disposable XCUITest showcase with <code>make public-screenshots</code>; no user library or desktop content is captured.</sub>
 
 > *Portavoz* (Spanish): the one who carries the voice — a spokesperson.
 
@@ -34,11 +34,11 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 - **Local-first, with receipts.** Transcription, diarization, and summaries run on-device by default. Remote providers require explicit configuration or confirmation, and each meeting shows a content-free privacy receipt for tracked on-device processing and remote-transfer attempts. Local Ollama remains visibly local.
 - **Private when support is needed.** Export a redacted local support file without meeting text, generated output, prompts, secrets, full URLs, or paths. Stalled background work is visible in Meeting Detail and can be retried without replacing its durable safety evidence.
 - **Failures tell you what to do.** Recording Start/Stop failures keep a stable support reference and route you to retry, your preserved Library audio, or private local diagnostics instead of exposing a dependency error or ending at a generic alert.
-- **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact.
-- **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, exports any span as an audio clip, and compresses every channel without removing an original until all outputs verify.
+- **Bilingual by design.** Every speaker keeps the language they actually used, while summaries can independently follow the meeting or always use English or Spanish — with technical terms kept intact. Library search folds Latin accents, pairs common English/Spanish meeting terms, and can append private cross-language semantic matches when Apple's local language assets are ready.
+- **Listen back, not just read.** A synchronized player scrolls the transcript like song lyrics, colors your turns apart from theirs on the waveform, and defaults to a reversible clear mix that removes the loudspeaker copy from your mic without rewriting the recording. Export any span or compress every channel without removing an original until all outputs verify.
 - **A companion while you talk.** Opt-in live cards answer a factual question the room just asked, or nudge you when someone addressed you by name — on-device by default.
-- **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
-- **Open format.** Your meetings are Markdown + SQLite you own. No accounts, no lock-in.
+- **Built for developers.** Action items that become GitHub/Linear issues, decision records, a local MCP server so your AI tools can ask "what did I agree to yesterday?", native Siri/Shortcuts recording, and Shortcuts automation on meeting end.
+- **Open format.** Your meetings are SQLite you own, with Markdown, SRT, WebVTT, and portable `.portavoz` exports. No accounts, no lock-in.
 
 ## Status
 
@@ -59,42 +59,42 @@ Capture, live + refine transcription, on-device diarization, bilingual summaries
 Everything below runs on your Mac. Grouped by what you're doing:
 
 **Capture & transcribe**
-- **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Echo cancellation, device-change resilience, a low-mic nudge, and a heads-up when the incoming channel goes silent. A channel that captured nothing stays empty — never filled with invented text.
-- **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. A fresh install records immediately instead of waiting for local speech-model downloads; verified models prepare in the background, and Stop admits an exact durable recovery job when live captions were unavailable or a lane failed. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. On launch, staging-only or final-only files are revalidated and restored; ambiguous copies are preserved rather than guessed at.
+- **Dual-channel recording** — your mic and the call are captured as separate channels, so *you* are known by hardware truth, not by guesswork. Call-safe raw microphone capture leaves voice processing to the meeting app; post-capture bleed filtering, device-change resilience, a low-mic nudge, and a heads-up when the incoming channel goes silent keep the recording useful without taking over the call. A channel that captured nothing stays empty — never filled with invented text.
+- **Durable before the first byte** — the meeting and its channel reservations exist before capture starts. A fresh install records immediately instead of waiting for local speech-model downloads; verified models prepare in the background, and Stop admits an exact durable recovery job when live captions were unavailable or a lane failed. Each channel records behind a recovery filename, verifies its CAF metadata, checksum, and signal health, then publishes atomically for playback. If optional live or Apuntador content is rejected, Stop retries once and then preserves the strongest valid transcript, notes, and finalized audio through a bounded recovery path. On launch, staging-only or final-only files are revalidated and restored; ambiguous copies are preserved rather than guessed at.
 - **Recording failures stay actionable** — Start and Stop retain exact typed outcomes instead of forwarding raw system text. Recoverable cases offer retry or the Library; uncertain local state opens private support diagnostics and includes a stable reference you can copy.
 - **Every voice stays itself** — auto-detect preserves each speaker's real language, including mixed Spanish/English meetings. Pin one transcript language only as a recovery tool for quiet or noisy audio.
-- **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big, your voice glows amber, older lines fade away. Optional **live translation** of captions as they arrive — and the one-time language download never interrupts your meeting.
-- **Whisper refine** — prepare Turbo or Compact proactively in Settings; the verified download continues after Settings closes and Refine/Import reuse it. The cancellable maximum-quality re-pass becomes a draft you approve (never a silent overwrite), at 23–42× realtime. Accepted drafts install language, speakers, and transcript atomically and are rejected if the meeting changed while you reviewed them. Force a language per meeting only to recover one that came out wrong.
-- **Import any audio** — drag in a recording or a `.portavoz` bundle. Recordings are transcribed, diarized, and summarized like a live capture; bundles restore the remapped transcript, summary, notes, Companion, and validated optional audio as one all-or-nothing meeting. Large files stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
+- **Live captions, lyrics-style** — sub-second partials on the Neural Engine; the newest line reads big and your voice glows amber. Matching speaker bleed is collapsed into the stronger direct-system row. Scroll up and history stays sharp and still until you choose **Jump to live**. Optional **live translation** routes each turn by its own language, refreshes a long sentence while it is still growing, and renders the result in a labeled indigo rail; an unsupported pair stays original without blocking later supported turns.
+- **Whisper refine** — prepare Turbo or Compact proactively in Settings; preparation continues after Settings closes and Refine/Import reuse the verified result. Progress says when verification may download missing artifacts, and models live in Application Support so reinstalling or updating the app bundle does not erase them. If Core ML cannot load the verified model on the preferred accelerator, Portavoz retries once on CPU before failing with both causes preserved. The cancellable maximum-quality re-pass becomes a draft you approve (never a silent overwrite), at 23–42× realtime. Automatic Refine never forces one language across the complete channel; force English or Spanish per meeting only as an explicit recovery tool.
+- **Import any audio** — drag in a recording or a `.portavoz` bundle. Recordings are transcribed, diarized, and summarized like a live capture; bundles restore the remapped transcript, summary, notes, Apuntador, and validated optional audio as one all-or-nothing meeting. Large files stay off the UI thread, and failed imports clean up their staged audio instead of leaving invisible files behind.
 
 **Understand the meeting**
 - **Every voice, told apart** — on-device diarization gives each meeting speaker a stable color. Name suggestions use transcript, calendar, or encrypted voice evidence but are never applied automatically. After naming someone, an explicit second action can remember the person locally; exact-name collisions open a chooser instead of merging identities.
 - **Three local summary engines** — Apple Intelligence on macOS 26, Ollama, or a built-in model. A clean install recommends a path that can run on that Mac; a running Ollama process counts only when it exposes a chat-capable model. Portavoz never silently substitutes a different provider when setup is incomplete. Generate Summary opens the exact setup pane when a model still needs attention. A separate Summary language setting follows the meeting or consistently writes English/Spanish, without changing the transcript. **Tabbed** so a long summary is skimmable.
-- **Summaries you can inspect and correct** — an overview can link to the exact transcript/audio moments that support it. Add a private correction or mark it unsupported without rewriting the generated text; clear erases the correction, and it travels only when you explicitly export the `.portavoz` meeting.
+- **Summaries you can inspect and correct** — an overview can link to the exact transcript/audio moments that support it, and a generated to-do names an owner only when that identity uniquely matches the meeting cast (an exact speaker label wins). Add a private correction or mark a claim unsupported without rewriting the generated text; clear erases the correction, and it travels only when you explicitly export the `.portavoz` meeting.
 - **Custom structures** — beyond the five built-in shapes (standup, 1:1, planning…), author your own — a Hangout, a Retro — with the sections you want. They appear in every meeting's Structure menu.
 - **✦ Chapters** — Portavoz finds the turning points (a long pause, a stretch that ran long) and lets you jump to them, each labeled with the line that opens it.
 - **Meeting health** — talk-time, interruptions and questions per speaker, computed locally.
 - **Co-authoring notes** — jot raw notes while recording; the summary weaves them in and marks the co-authored lines (▸).
 
 **Listen back**
-- **Synced player** — the transcript scrolls like song lyrics, per-channel colored waveform, **"only my voice"** to replay just your turns, skip-silence, and any span exported as an audio clip or compressed to AAC in one click. Compression verifies every channel before removing raw audio and never replaces an existing AAC file.
+- **Synced player** — the transcript scrolls like song lyrics, per-channel colored waveform, **Clear playback** to suppress delayed loudspeaker bleed while preserving the original mix, **"only my voice"** to replay just your turns, skip-silence, and any span exported as an audio clip or compressed to AAC in one click. Compression verifies every channel before removing raw audio and never replaces an existing AAC file.
 
 **Reflect & review**
 - **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, violet = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
 - **🪞 Post-meeting mirror** (opt-in) — a private card at the end of a real meeting: your numbers next to your usual average, measured, never judged.
 - **Actionable recovery** — Meeting Detail tells you when local processing is active or exhausted, preserves the audio/transcript already saved, and offers one safe retry. Settings can save a redacted diagnostics JSON locally; Portavoz never uploads it.
-- **⌘K — ask your week** — a Spotlight-style palette over any view: instant results as you type, a full on-device answer with citation chips that jump to the exact moment.
+- **⌘K — ask your week** — a Spotlight-style palette over any view: instant accent-insensitive English/Spanish results as you type, optional local semantic recall, and a full on-device answer with citation chips that jump to the exact moment.
 
 **Fits your workflow**
-- **Companion while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. In review, each saved card separates the exact question moment from the transcript passages cited by a context answer. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
-- **Dictate anywhere** — a global hotkey (⌥⌘D) transcribes straight into any app, tap-to-toggle or hold-to-talk.
+- **Apuntador while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. In review, each saved card separates the exact question moment from the transcript passages cited by a context answer. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
+- **Dictate anywhere** — use the configurable global hotkey or a middle/additional mouse button to transcribe straight into any app. Exact-spelling replacements, an optional ES/EN filler filter, and a dedicated dictation-language choice polish only the delivered dictation; meeting transcripts remain verbatim.
 - **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
-- **Review suggestions that wait for you** — optional titles, summary structures, and chapter labels are admitted against one meeting revision, stay inert until you accept them, and never make a failed rename look saved.
-- **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", and Shortcuts automation on meeting end.
+- **Review suggestions that wait for you** — optional titles, speaker names, summary structures, and summary retries are admitted against one meeting revision, stay inert until you accept them, expose a tiny dismiss action, and never make a failed rename look saved.
+- **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", a native **Start recording** action in the Shortcuts action picker (add it once to a custom Shortcut for reliable Spotlight/Siri invocation on macOS), plus Shortcuts automation on meeting end.
 
 **Own your data**
-- **Open format** — Markdown + a SQLite file you own. Full-library backup reads one consistent snapshot, shows partial progress honestly, and publishes portable Markdown without replacing existing files; per-meeting `.portavoz` bundles optionally include audio, and **trash** restores meetings before automatic purge after 30 days. No accounts, no lock-in.
+- **Open format** — a SQLite file you own, canonical Markdown, diarized SRT/WebVTT subtitles, and portable `.portavoz` bundles. Full-library backup reads one consistent snapshot, shows partial progress honestly, and publishes Markdown without replacing existing files; per-meeting bundles optionally include audio, and **trash** restores meetings before automatic purge after 30 days. No accounts, no lock-in.
 - **iCloud sync that asks first** *(next release; production field validation pending)* — optionally sync encrypted meeting text and portable metadata through your private iCloud database. Future changes and the existing library are separate choices; Settings always shows this Mac's real state. Audio, local paths, voiceprints, secrets, and embeddings never sync, and Pause/Remove never delete your local meetings or remote records. Public enablement waits for the documented production-container and two-Mac release matrix.
 - **Privacy receipt** — every meeting explains whether tracked processing stayed on your Mac, a remote transfer was attempted, or iCloud acknowledged an encrypted private copy. It shows purpose, destination host, and time but no copied transcript, prompt, notes, summary, or action-item text. Upgraded libraries state the exact date tracking began instead of guessing about older activity.
 
@@ -152,16 +152,16 @@ the architecture source of truth.
 | Module | Responsibility |
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
-| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Companion generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, Meeting Detail playback/waveform/filter preparation plus failure-safe compression and clip export, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence and privacy-safe management, local summary-provider discovery and clean-install selection, microphone discovery, resumable recording-root changes, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
+| `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Apuntador generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, Meeting Detail playback/waveform/clear-mix preparation plus failure-safe compression and clip export, exact-first local Library semantic augmentation, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence and privacy-safe management, local summary-provider discovery and clean-install selection, microphone discovery, resumable recording-root changes, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
 | `ModelStoreKit` | Curated model registry; exact-revision SHA-256 downloads, atomic repair, verified-installation evidence, and a serialized shared process lifecycle |
-| `AudioCaptureKit` | Mic capture (AEC) + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
-| `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine), exact privacy-safe initial/Refine operation fingerprints, scheduler |
+| `AudioCaptureKit` | Call-safe raw mic capture + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
+| `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine with one-shot CPU load fallback), exact privacy-safe initial/Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
-| `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Companion, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Companion clients |
-| `AudioPlaybackKit` | Synchronized player, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite schema v14, FTS5 search, additive canonical people/aliases, typed source-revision-fenced overview, decision, action-item, and role-separated Companion evidence with separate reversible overview feedback, a content-free generation-fenced per-meeting mutation journal plus exact-generation text-first aggregate projection/atomic remote replay (the separate CloudKit adapter cannot redefine these rules), scoped Library/Insights/Meeting Detail observations, one-read Spotlight and whole-library backup projections, versioned snapshots, atomic recovered/accepted transcripts, summary and Companion-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
-| `IntegrationsKit` | Gateway-only GitHub/Linear/Gist publishers, EventKit calendar, bundle/export formats, MCP protocol handling, deterministic meeting-sync envelopes, and the private-zone CloudKit boundary: encrypted inline/private-asset records, capability-probed protection metadata over mandatory owner-only durable atomic publication for account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
+| `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Apuntador, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Apuntador clients |
+| `AudioPlaybackKit` | Synchronized player, reversible role-aware clear mix, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
+| `StorageKit` | GRDB/SQLite schema v14, FTS5 search, additive canonical people/aliases, typed source-revision-fenced overview, decision, action-item, and role-separated Apuntador evidence with separate reversible overview feedback, a content-free generation-fenced per-meeting mutation journal plus exact-generation text-first aggregate projection/atomic remote replay (the separate CloudKit adapter cannot redefine these rules), scoped Library/Insights/Meeting Detail observations, one-read Spotlight and whole-library backup projections, versioned snapshots, atomic recovered/accepted transcripts, summary and Apuntador-card provenance, immutable content-free egress attempts and receipt-coverage boundary, atomic support-safe snapshots, durable leased job queue with bounded manual retry, local vector index |
+| `IntegrationsKit` | Canonical Markdown/PDF and identity-preserving SRT/WebVTT exporters; gateway-only GitHub/Linear/Gist publishers; EventKit calendar; bundle formats; MCP protocol handling; deterministic meeting-sync envelopes; and the private-zone CloudKit boundary: encrypted inline/private-asset records, capability-probed protection metadata over mandatory owner-only durable atomic publication for account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
 
 The macOS app owns per-window `LibraryModel`, `InsightsModel`, and `AskModel`
 state owners plus process-scoped command-palette, first-run, and local-data
@@ -171,7 +171,7 @@ independent GRDB observations to storage-independent ApplicationKit updates.
 Library observes meeting rows/voice mix, open items, trash, and active FTS;
 Insights observes meeting chronology, participant/commitment facts, talk
 balance, and scope-bounded finding evidence; Meeting Detail observes its
-transcript/cast, newest immutable summary, Companion cards, privacy receipt,
+transcript/cast, newest immutable summary, Apuntador cards, privacy receipt,
 and durable processing independently. Whole-library backup uses a process-scoped
 model and private document/filesystem adapters, so closing Settings does not
 cancel it and SwiftUI never coordinates Store or export-format work. Full Ask,
@@ -183,7 +183,7 @@ source-indexed optional synthesis.
 CLI list/detail/search/open-item and MCP library reads also enter through one
 bounded ApplicationKit query boundary; detail and its latest General summary
 come from one read-consistent SQLite snapshot. Transcription, diarization,
-summarization, persisted Refine, Markdown/PDF/Gist export, GitHub/Linear action
+summarization, persisted Refine, Markdown/PDF/SRT/WebVTT/Gist export, GitHub/Linear action
 publication, local voice identity, and pinned-model commands enter matching
 ApplicationKit workflows; command files retain parsing and terminal output,
 while CLI composition adapters own concrete files, models, Store, providers,
@@ -196,11 +196,13 @@ cancellations, and terminal action timing. The macOS process supervisor only
 coalesces kicks and schedules the next persisted wake; its adapter retains
 recording paths, concrete engines/providers, preferences, Shortcuts, and
 content-free telemetry.
-Meeting Detail Markdown/PDF preparation and secret-Gist publication also load
-one coherent snapshot through ApplicationKit. The macOS adapter owns canonical
-rendering, post-admission credentials, and gateway-backed publication while
-SwiftUI retains the explicit confirmation, native save panel, and localized
-result.
+Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist publication
+also load one coherent snapshot through ApplicationKit. Subtitle rendering
+uses the diarized transcript directly and preserves the requested extension;
+it does not build an unrelated Markdown document. The macOS adapter owns
+canonical rendering, post-admission credentials, and gateway-backed
+publication while SwiftUI retains the explicit confirmation, native save
+panel, and localized result.
 Participant voice-memory suggestions and explicit persistence enter a separate
 ApplicationKit workflow; the macOS adapter owns encrypted gallery access,
 recording paths, transient embedding extraction, and model construction while
@@ -278,7 +280,7 @@ Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask
 
 ## Privacy
 
-Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Companion BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. The gateway validates metadata, persists an immutable content-free attempt, blocks redirects, and only then hands bytes to URLSession; if the receipt cannot be stored, the transfer does not start. Meeting Detail renders those attempts beside generation provenance and marks pre-v7 history as only partially covered. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
+Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Apuntador BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. The gateway validates metadata, persists an immutable content-free attempt, blocks redirects, and only then hands bytes to URLSession; if the receipt cannot be stored, the transfer does not start. Meeting Detail renders those attempts beside generation provenance and marks pre-v7 history as only partially covered. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
 
 The current Developer ID distribution uses Hardened Runtime and notarization,
 but **does not claim App Sandbox**. A signed sandbox/control probe showed that a

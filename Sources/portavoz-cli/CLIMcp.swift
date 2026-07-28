@@ -38,9 +38,11 @@ enum McpCommand {
             return
         }
 
-        let server = MCPServer(tools: MeetingToolbox.tools(
-            library: application.library,
-            ask: application.ask))
+        let server = MCPServer(
+            instructions: MeetingToolbox.serverInstructions,
+            tools: MeetingToolbox.tools(
+                library: application.library,
+                ask: application.ask))
         while let line = readLine(strippingNewline: true) {
             if let response = await server.handleLine(line) {
                 print(response)
@@ -53,6 +55,28 @@ enum McpCommand {
 /// Application-backed MCP tools. IntegrationsKit owns JSON-RPC transport while
 /// this executable retains protocol presentation and localized-free strings.
 enum MeetingToolbox {
+    /// Transcript pagination bounds: a 200-segment page keeps even a dense
+    /// hour readable in a few calls, and the cap stops a client from asking
+    /// the library for one multi-megabyte response.
+    static let transcriptPageDefault = 200
+    static let transcriptPageMaximum = 500
+    /// Search results are snippets; beyond this the agent should refine the
+    /// query instead of scrolling.
+    static let searchLimitDefault = 20
+    static let searchLimitMaximum = 50
+
+    /// Sent to clients in the `initialize` response (MCP `instructions`).
+    static let serverInstructions = """
+        Portavoz is a read-only window into the user's local meeting library. \
+        Every tool only reads; nothing here can create, modify, or delete \
+        meetings, and all processing stays on this machine. \
+        For questions, prefer `ask` (local RAG with citations). Use \
+        `get_transcript` for verbatim reading — it is paginated by segment \
+        (`offset`/`limit`) and tells you when more remains. \
+        `search_meetings` finds moments across all meetings; `list_meetings`, \
+        `get_summary`, and `get_action_items` cover the rest.
+        """
+
     // MCP tool catalog: one long literal array of definitions,
     // one per tool; splitting it would not improve clarity.
     // swiftlint:disable:next function_body_length
@@ -85,12 +109,16 @@ enum MeetingToolbox {
                 name: "search_meetings",
                 description: "Full-text search across every meeting transcript. Returns matching snippets with meeting ids and timestamps.",
                 inputSchema: """
-                    {"type":"object","properties":{"query":{"type":"string","description":"Words to search for"}},"required":["query"]}
+                    {"type":"object","properties":{"query":{"type":"string","description":"Words to search for"},"limit":{"type":"integer","description":"Max snippets to return (default 20, max 50)"}},"required":["query"]}
                     """
             ) { data in
-                struct Args: Decodable { var query: String }
+                struct Args: Decodable {
+                    var query: String
+                    var limit: Int?
+                }
                 let args = try JSONDecoder().decode(Args.self, from: data)
-                let hits = try await library.search(args.query)
+                let limit = min(args.limit ?? searchLimitDefault, searchLimitMaximum)
+                let hits = try await library.search(args.query, limit: limit)
                 guard !hits.isEmpty else { return "No matches for: \(args.query)" }
                 return hits.map {
                     "[\(timestamp($0.startTime))] \($0.meetingTitle) (\($0.meetingID.rawValue.uuidString)): \($0.snippet)"
@@ -99,15 +127,21 @@ enum MeetingToolbox {
 
             MCPTool(
                 name: "get_transcript",
-                description: "Full speaker-attributed transcript of one meeting.",
+                description: "Speaker-attributed transcript of one meeting, paginated by segment. The first line reports the covered range and the offset to continue from.",
                 inputSchema: """
-                    {"type":"object","properties":{"meeting_id":{"type":"string","description":"Meeting UUID"}},"required":["meeting_id"]}
+                    {"type":"object","properties":{"meeting_id":{"type":"string","description":"Meeting UUID"},"offset":{"type":"integer","description":"First segment index to return (default 0)"},"limit":{"type":"integer","description":"Max segments to return (default 200, max 500)"}},"required":["meeting_id"]}
                     """
             ) { data in
+                struct Page: Decodable {
+                    var offset: Int?
+                    var limit: Int?
+                }
                 let detail = try await detail(from: data, library: library)
-                let transcript = TranscriptFormatter.format(
-                    segments: detail.segments, speakers: detail.speakers)
-                return transcript.isEmpty ? "The meeting has no transcript." : transcript
+                let page = (try? JSONDecoder().decode(Page.self, from: data)) ?? Page()
+                return transcriptPage(
+                    detail: detail,
+                    offset: page.offset ?? 0,
+                    limit: page.limit ?? transcriptPageDefault)
             },
 
             MCPTool(
@@ -183,6 +217,32 @@ enum MeetingToolbox {
             case .meetingNotFound: return "no such meeting"
             }
         }
+    }
+
+    /// One transcript page. The header makes the pagination self-describing
+    /// so an agent never has to guess whether more remains: it names the
+    /// covered segment range, the total, and the exact offset to continue
+    /// from (or that the transcript is complete).
+    static func transcriptPage(
+        detail: MeetingLibraryDetail,
+        offset: Int,
+        limit: Int
+    ) -> String {
+        let total = detail.segments.count
+        guard total > 0 else { return "The meeting has no transcript." }
+        let start = max(0, offset)
+        guard start < total else {
+            return "Segments \(total) total; offset \(offset) is past the end."
+        }
+        let size = min(max(1, limit), transcriptPageMaximum)
+        let end = min(start + size, total)
+        let body = TranscriptFormatter.format(
+            segments: Array(detail.segments[start..<end]),
+            speakers: detail.speakers)
+        let header = end < total
+            ? "Segments \(start + 1)-\(end) of \(total). Pass offset=\(end) for the next page."
+            : "Segments \(start + 1)-\(end) of \(total). Transcript complete."
+        return header + "\n\n" + body
     }
 
     private static func detail(

@@ -41,6 +41,11 @@ final class LiveSpeakerLabelerTests: XCTestCase {
         XCTAssertEqual(result.captions.count, 3, "closed row splits, last row rides along")
         XCTAssertEqual(result.labels[result.captions[0].id], "S1")
         XCTAssertEqual(result.labels[result.captions[1].id], "S2")
+        XCTAssertEqual(
+            result.captions[0].id,
+            captions[0].id,
+            "the first split piece must preserve evidence and translation identity")
+        XCTAssertNotEqual(result.captions[1].id, captions[0].id)
         XCTAssertFalse(result.captions[0].text.isEmpty)
         XCTAssertFalse(result.captions[1].text.isEmpty)
         // Words are dealt, never duplicated or dropped.

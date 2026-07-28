@@ -32,17 +32,34 @@ public final class MeetingPlayer {
     public var onlyMyVoice = false
     private var nonVoiceRanges: [ClosedRange<TimeInterval>] = []
 
+    /// Removes the delayed copy of remote speech picked up by the microphone.
+    /// The original flat channel mix remains one click away for unusual
+    /// recordings whose transcript did not identify the local turns.
+    public var clearPlayback = true {
+        didSet { player.currentItem?.audioMix = clearPlayback ? cleanAudioMix : nil }
+    }
+    public let canClearPlayback: Bool
+
     /// The channel files this player mixed — the clip exporter trims these.
     public let channelFiles: [URL]
 
     private let player: AVPlayer
+    private let cleanAudioMix: AVAudioMix?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
 
-    private init(item: AVPlayerItem, duration: TimeInterval, channelFiles: [URL]) {
+    private init(
+        item: AVPlayerItem,
+        duration: TimeInterval,
+        channelFiles: [URL],
+        cleanAudioMix: AVAudioMix?
+    ) {
         self.player = AVPlayer(playerItem: item)
+        self.cleanAudioMix = cleanAudioMix
+        self.canClearPlayback = cleanAudioMix != nil
         self.duration = duration
         self.channelFiles = channelFiles
+        item.audioMix = cleanAudioMix
 
         // 5 fps: smooth enough for a highlight + scrubber, cheap enough not
         // to churn a long transcript's rows.
@@ -83,26 +100,35 @@ public final class MeetingPlayer {
     public static func make(channelFiles: [URL]) async -> MeetingPlayer? {
         let existing = channelFiles.filter { FileManager.default.fileExists(atPath: $0.path) }
         guard !existing.isEmpty else { return nil }
-
-        let composition = AVMutableComposition()
-        var maxDuration = CMTime.zero
-        for url in existing {
-            let asset = AVURLAsset(url: url)
-            guard
-                let assetTrack = try? await asset.loadTracks(withMediaType: .audio).first,
-                let assetDuration = try? await asset.load(.duration),
-                let track = composition.addMutableTrack(
-                    withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
-            else { continue }
-            try? track.insertTimeRange(
-                CMTimeRange(start: .zero, duration: assetDuration), of: assetTrack, at: .zero)
-            maxDuration = CMTimeMaximum(maxDuration, assetDuration)
+        guard let mixed = await MeetingAudioComposition.make(channelFiles: existing) else {
+            return nil
         }
-        guard maxDuration > .zero else { return nil }
 
         return MeetingPlayer(
-            item: AVPlayerItem(asset: composition), duration: maxDuration.seconds,
-            channelFiles: existing)
+            item: AVPlayerItem(asset: mixed.composition),
+            duration: mixed.duration.seconds,
+            channelFiles: existing,
+            cleanAudioMix: nil)
+    }
+
+    /// Builds the default clear meeting mix. Direct system audio stays intact;
+    /// the microphone is full-volume only around transcript-confirmed local
+    /// turns and quiet elsewhere so speaker bleed does not become an echo.
+    public static func make(
+        systemFile: URL?,
+        microphoneFile: URL?,
+        microphoneAudibleRanges: [ClosedRange<TimeInterval>]
+    ) async -> MeetingPlayer? {
+        guard let mixed = await MeetingAudioComposition.make(
+            systemFile: systemFile,
+            microphoneFile: microphoneFile,
+            microphoneAudibleRanges: microphoneAudibleRanges)
+        else { return nil }
+        return MeetingPlayer(
+            item: AVPlayerItem(asset: mixed.composition),
+            duration: mixed.duration.seconds,
+            channelFiles: [systemFile, microphoneFile].compactMap { $0 },
+            cleanAudioMix: mixed.cleanAudioMix)
     }
 
     // MARK: - Clip marks (M11)

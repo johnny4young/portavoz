@@ -28,9 +28,13 @@ def test_id(test_class: str, method: str) -> str:
 
 
 FEATURE_TESTS: dict[str, tuple[str, ...]] = {
+    "automation-entry": (
+        test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
+    ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
+        test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     ),
     "meeting-brief": (
         test_id("LibraryUITests", "testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment"),
@@ -39,6 +43,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
         test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
+        test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
+        test_id("LibraryUITests", "testLiveTranslationUsesADistinctLabeledRail"),
+        test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
         test_id("LibraryUITests", "testLaunchResumesDurablePostCaptureProcessing"),
     ),
@@ -58,24 +65,37 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
     ),
+    "meeting-export": (
+        test_id("MeetingDetailUITests", "testExportMenuOffersSubtitleFormats"),
+    ),
+    "meeting-recap": (
+        test_id(
+            "MeetingDetailUITests",
+            "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript"),
+    ),
     "meeting-naming": (
         test_id("MeetingDetailUITests", "testUnnamedSpeakerOffersExplicitNameSuggestions"),
+        test_id(
+            "MeetingDetailUITests",
+            "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
         test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
     ),
     "meeting-processing": (
         test_id("MeetingDetailUITests", "testFailedDurableProcessingOffersOneRecoveryAction"),
-        test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsCompanion"),
+        test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"),
         test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
     ),
     "meeting-summary": (
         test_id("MeetingDetailUITests", "testTabbedSummaryRevealsTheCoauthoringBullet"),
         test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
+        test_id("MeetingDetailUITests", "testStructureMenuOffersSeededTemplates"),
+        test_id("MeetingDetailUITests", "testMyNotesSectionShowsRawNotesAndOffersEnhancement"),
     ),
     "meeting-evidence": (
         test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testDecisionSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testActionItemSourceJumpsToItsTranscriptAndAudio"),
-        test_id("MeetingDetailUITests", "testCompanionAnswerSourceJumpsToItsTranscriptAndAudio"),
+        test_id("MeetingDetailUITests", "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testSummaryFeedbackIsExplicitReversibleAndLocal"),
     ),
     "meeting-health": (
@@ -83,6 +103,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testFreshQualifyingMeetingShowsThePostMeetingMirror"),
     ),
     "meeting-audio": (
+        test_id(
+            "MeetingDetailUITests",
+            "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
         test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
@@ -102,9 +125,15 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
+        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
     ),
     "settings-voice": (
         test_id("SettingsUITests", "testVoicePaneOffersTheMirrorOptIn"),
+    ),
+    "public-showcase": (
+        test_id("PublicShowcaseUITests", "testMeetingDetailShowcase"),
+        test_id("PublicShowcaseUITests", "testLiveTranslationShowcase"),
+        test_id("PublicShowcaseUITests", "testInsightsShowcase"),
     ),
 }
 
@@ -113,6 +142,7 @@ ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("meeting-"))
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
 HARNESS_TESTS = (
+    test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
     test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
     test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
 )
@@ -170,20 +200,54 @@ def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
+    if "showcase" in lowered:
+        return {"public-showcase"}
+    # Before the generic "section"/"settings" buckets: dictation UI lives in
+    # the Audio pane, and its system-wide surface (triggers, paste) has no
+    # other XCUITest-reachable evidence.
+    if any(
+        token in lowered
+        for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
+    ):
+        return {"settings-audio"}
     if any(token in lowered for token in ("ask", "commandpalette")):
         return {"ask", "library"}
     if any(token in lowered for token in ("insight",)):
         return {"insights"}
     if any(token in lowered for token in ("onboarding", "firstrun", "firstlisten")):
         return {"onboarding", "settings-voice", "settings-intelligence"}
-    if any(token in lowered for token in ("recording", "startrecording", "stoprecording", "postcapture")):
+    if "recordingtoolbar" in lowered:
+        # This component owns the external-recording geometry contract as
+        # well as the live catch-up, next-question, mute, and Stop controls.
+        # It does not affect Library grouping or unrelated detail surfaces.
+        return {"automation-entry", "recording-recovery"}
+    if any(token in lowered for token in (
+        "recording", "startrecording", "stoprecording", "postcapture",
+        "livetranslation", "livesummary"
+    )):
         return {"library", "recording-recovery"}
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
     if any(token in lowered for token in ("meetingbrief", "meetingreminder")):
         return {"meeting-brief", "library"}
-    if any(token in lowered for token in ("focusedtranscript", "meetingplayer", "audioworkflow", "meetingaudio")):
+    if "legacyscrollinteractiontracker" in lowered:
+        # This AppKit escape exists only for reader-owned live transcript
+        # history on macOS 14. Keep a new focused bridge from silently
+        # expanding one interaction fix to the complete bilingual suite.
+        return {"recording-recovery"}
+    if "focusedtranscript" in lowered:
+        return {"meeting-audio", "recording-recovery"}
+    if any(token in lowered for token in ("meetingplayer", "audioworkflow", "meetingaudio")):
         return {"meeting-audio"}
+    if "exportdocument" in lowered:
+        return {"meeting-export"}
+    if "appintents" in lowered:
+        # Shortcuts itself is another app, but the intent's complete product
+        # handoff is the production portavoz://record route. Exercise that
+        # one boundary instead of seven unrelated recovery scenarios.
+        return {"automation-entry"}
+    if "recap" in lowered:
+        return {"meeting-recap"}
     if any(token in lowered for token in ("summary", "companion")):
         return {"meeting-summary", "meeting-evidence", "meeting-processing", "settings-intelligence"}
     if any(token in lowered for token in ("speaker", "meetingname", "voicememory")):
@@ -197,6 +261,18 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "micbleed" in lowered:
+        # Bleed admission affects live captions and the reviewed Refine
+        # replacement, not every unrelated screen in the application.
+        return {"recording-recovery", "meeting-processing"}
+    if "stoprecording" in lowered or "startrecording" in lowered:
+        return {"library", "recording-recovery"}
+    if any(token in lowered for token in ("dictation", "mouseptt")):
+        return {"settings-audio"}
+    if "subtitle" in lowered:
+        return {"meeting-export"}
+    if "recap" in lowered:
+        return {"meeting-recap"}
     if "insight" in lowered:
         return {"insights"}
     if any(token in lowered for token in ("ask", "brief")):
@@ -205,8 +281,21 @@ def lower_layer_features(path: str) -> set[str]:
         return {"library", "recording-recovery", "settings-audio"}
     if any(token in lowered for token in ("playback", "waveform", "audio")):
         return {"meeting-audio", "settings-audio"}
-    if any(token in lowered for token in ("summary", "companion", "intelligence")):
-        return {"meeting-summary", "meeting-evidence", "meeting-processing", "settings-intelligence"}
+    if any(
+        token in lowered
+        for token in ("summary", "summaries", "companion", "intelligence")
+    ):
+        return {
+            "ask",
+            "insights",
+            "library",
+            "meeting-brief",
+            "meeting-summary",
+            "meeting-evidence",
+            "meeting-processing",
+            "public-showcase",
+            "settings-intelligence",
+        }
     if any(token in lowered for token in ("voice", "speaker", "person")):
         return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
     if "sync" in lowered:

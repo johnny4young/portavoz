@@ -13,7 +13,7 @@ extension AppServices {
 
         let audioDirectory = Self.prepareSeedAudio()
         let meeting = Meeting(
-            title: "Test meeting",
+            title: seedDemoMeetingTitle,
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_001_800),
             language: "es",
@@ -70,10 +70,16 @@ extension AppServices {
         requestSpotlightReindex()
     }
 
+    private var seedDemoMeetingTitle: String {
+        ProcessInfo.processInfo.arguments.contains("-seed-ai-suggestions")
+            ? "2026-07-27 Meeting"
+            : "Test meeting"
+    }
+
     /// XCUITest waits for the complete aggregate rather than racing the first
     /// meeting-row write while summary, evidence, and receipts are still being
     /// inserted. Production launches never provide this scratch path.
-    private func markUITestSeedReady() {
+    func markUITestSeedReady() {
         guard ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
               let path = ProcessInfo.processInfo.environment[
                   "PORTAVOZ_UI_TEST_SEED_READY_PATH"]
@@ -191,7 +197,7 @@ extension AppServices {
 
     /// Adopts isolated real audio when supplied; otherwise creates a short
     /// deterministic two-channel waveform for UI coverage.
-    private static func prepareSeedAudio() -> String? {
+    static func prepareSeedAudio() -> String? {
         let manager = FileManager.default
         let audioBase = audioRoot.appendingPathComponent("Audio", isDirectory: true)
         if let existing = try? manager.contentsOfDirectory(

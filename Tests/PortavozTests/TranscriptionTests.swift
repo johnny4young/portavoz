@@ -125,6 +125,12 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(WhisperEngine.cleanSegmentText("<|es|><|transcribe|>"), "")
     }
 
+    func testWhisperAutomaticModeExplicitlyEnablesLanguageDetection() {
+        XCTAssertTrue(WhisperEngine.shouldDetectLanguage(for: TranscriptionHints()))
+        XCTAssertFalse(WhisperEngine.shouldDetectLanguage(
+            for: TranscriptionHints(language: "es")))
+    }
+
     func testWhisperPostprocessDropsRepeatedMicrophoneThankYouHallucinations() {
         let meeting = MeetingID()
         let segments = [
@@ -165,6 +171,18 @@ final class ModelStoreTests: XCTestCase {
 
     override func tearDownWithError() throws {
         try? FileManager.default.removeItem(at: workspace)
+    }
+
+    func testDefaultRootSurvivesApplicationBundleReplacement() {
+        let suffix = ["Library", "Application Support", "Portavoz", "Models"]
+        XCTAssertEqual(
+            Array(ModelStore.defaultRootDirectory.standardizedFileURL.pathComponents.suffix(4)),
+            suffix,
+            "production models must remain in stable user data, never inside the app bundle")
+        XCTAssertFalse(
+            ModelStore.defaultRootDirectory.standardizedFileURL.path
+                .hasPrefix(Bundle.main.bundleURL.standardizedFileURL.path + "/"),
+            "replacing Portavoz.app must not remove downloaded models")
     }
 
     func testSHA256MatchesKnownVector() throws {
@@ -779,32 +797,11 @@ final class VocabularyPromptTests: XCTestCase {
 }
 
 final class SpokenLanguageDetectorTests: XCTestCase {
-    func testUsesMeetingLanguageOnlyWhenThereAreNoSegments() {
-        let meeting = Meeting(
-            title: "Customer call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            language: "es-CO")
-
-        XCTAssertEqual(
-            SpokenLanguageDetector.transcriptionLanguageHint(
-                for: meeting,
-                segments: []),
-            "es")
+    func testAutomaticRefineDoesNotPinOneLanguage() {
+        XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint())
     }
 
-    func testSegmentEvidenceOverridesMeetingLanguageForRefineHint() {
-        let meeting = Meeting(
-            title: "Customer call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            language: "es")
-        let segments = [languageSegment("This meeting was actually in English.", language: "en")]
-
-        XCTAssertEqual(
-            SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments),
-            "en")
-    }
-
-    func testHomogeneousSegmentLanguageTagsBecomeRefineHint() {
+    func testHomogeneousSegmentLanguageTagsBecomeMeetingMetadata() {
         let segments = [
             languageSegment("This text was already refined in English.", language: "es-CO"),
             languageSegment("Another contaminated line after a refine pass.", language: "es"),
@@ -813,33 +810,18 @@ final class SpokenLanguageDetectorTests: XCTestCase {
         XCTAssertEqual(SpokenLanguageDetector.homogeneousLanguage(in: segments), "es")
     }
 
-    func testMixedSegmentLanguageTagsDoNotForceRefineHint() {
-        let meeting = Meeting(
-            title: "Mixed call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            language: "es")
+    func testMixedSegmentLanguageTagsDoNotForceMeetingMetadata() {
         let segments = [
             languageSegment("uno dos tres", language: "es"),
             languageSegment("one two three", language: "en"),
         ]
 
         XCTAssertNil(SpokenLanguageDetector.homogeneousLanguage(in: segments))
-        XCTAssertNil(SpokenLanguageDetector.transcriptionLanguageHint(for: meeting, segments: segments))
     }
 
-    func testExplicitTranscriptPolicyOverridesMixedAutoDetection() {
-        let meeting = Meeting(
-            title: "Mixed call",
-            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
-        let segments = [
-            languageSegment("uno dos tres", language: "es"),
-            languageSegment("one two three", language: "en"),
-        ]
-
+    func testExplicitTranscriptPolicyPinsRecoveryLanguage() {
         XCTAssertEqual(
             SpokenLanguageDetector.transcriptionLanguageHint(
-                for: meeting,
-                segments: segments,
                 policy: .fixed(.spanish)),
             "es")
     }
@@ -978,10 +960,72 @@ final class MicBleedFilterTests: XCTestCase {
         XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
     }
 
-    func testShortUtterancesAreLeftForOtherFilters() {
+    func testSingleWordUtterancesRemainVisible() {
         let system = [segment("yeah exactly", channel: .system, start: 100, end: 102)]
         let mic = [segment("Yeah.", channel: .microphone, start: 100, end: 101)]
         XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testExactTwoWordCopyAtTheSameInstantIsDropped() {
+        let system = [segment(
+            "okay perfect", channel: .system, start: 100, end: 101.2)]
+        let mic = [segment(
+            "Okay perfect", channel: .microphone, start: 100.1, end: 101.3)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
+    }
+
+    func testSequentialTwoWordReplySurvives() {
+        let system = [segment(
+            "thank you", channel: .system, start: 100, end: 101)]
+        let mic = [segment(
+            "Thank you", channel: .microphone, start: 101.2, end: 102)]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testCrossTalkSharingMostOfAnEdgeSurvives() {
+        // Both pairs share enough words to exceed the broad 60% containment
+        // fallback, but the differing edge is real, contradictory speech.
+        // Neither a shared opener nor a shared conclusion may erase it.
+        let system = [
+            segment(
+                "we should ship the new build on friday after review",
+                channel: .system, start: 100, end: 106),
+            segment(
+                "carla approved the release after security review",
+                channel: .system, start: 110, end: 116),
+        ]
+        let mic = [
+            segment(
+                "we should ship the new build on monday after testing",
+                channel: .microphone, start: 100, end: 106),
+            segment(
+                "diego rejected the release after security review",
+                channel: .microphone, start: 110, end: 116),
+        ]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 2)
+    }
+
+    func testTruncatedLeadingWindowCopyIsStillDropped() {
+        // A system row that is entirely the leading window of the mic copy
+        // remains bleed via the directional edges: the whole shorter row is
+        // its own suffix, so suffix→prefix continuation covers containment.
+        let system = [segment(
+            "we updated all", channel: .system, start: 100, end: 101.5)]
+        let mic = [segment(
+            "we updated all of the node asset ids",
+            channel: .microphone, start: 100, end: 104)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
+    }
+
+    func testContiguousRollingSuffixAtTheSameInstantIsDropped() {
+        let system = [segment(
+            "it right now", channel: .system, start: 101.8, end: 103)]
+        let mic = [segment(
+            "we can we can do it right now",
+            channel: .microphone,
+            start: 100,
+            end: 103)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
     }
 
     func testDistantSystemTextDoesNotMatch() {

@@ -12,12 +12,25 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ui test-ui-en test-ui-es test-ui-bilingual test-ui-scoped \
-	test-ui-changed test-ui-preflight project app install
+.PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
+	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
+	perf-ledger public-screenshots
 
 ## Unit tests (the package suite).
 test:
 	$(XCODE) swift test
+
+## Release performance ledger (PERF-001/PERF-008): run the unattended
+## benchmark harnesses, evaluate every journey against its declared budget and
+## the committed baseline, and write one scorecard. Fails on a budget miss.
+## PORTAVOZ_PERF_STRICT=1 also fails on regression candidates.
+perf-ledger:
+	scripts/run-perf-ledger.sh
+
+## Repeat the focused recording/recovery corpus without rebuilding between
+## iterations. Override the default with PORTAVOZ_STRESS_ITERATIONS=N.
+test-recording-stress:
+	$(XCODE) scripts/run-recording-reliability-stress.sh
 
 build:
 	swift build
@@ -82,21 +95,35 @@ test-ui-preflight:
 	fi
 	@sleep 1
 
+## Regenerate the three public README/website screenshots from a fictional,
+## disposable XCUITest library. The exporter captures only the Portavoz window.
+public-screenshots:
+	scripts/update-public-screenshots.sh
+
 ## Build the release app bundle only (see scripts/make-app.sh).
 app:
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
 
 ## Build the dev app and install it as "Portavoz Dev" — NEVER touching
 ## /Applications/Portavoz.app, which is the user's notarized release copy
-## (it updates via Sparkle/Homebrew only). Same bundle id, so TCC grants
-## and Keychain items keep working; different name and path so both
-## coexist. Need real recordings/data for a test? COPY them — never
-## operate on the release app's live folders.
+## (it updates via Sparkle/Homebrew only). Dev has a separate bundle identity
+## so LaunchServices, Shortcuts, Spotlight, and Siri never confuse it with the
+## stable app. A fresh dev identity needs its own one-time TCC grants. Need real
+## recordings/data for a test? COPY them — never operate on the release app's
+## live folders.
 install:
 	-osascript -e 'tell application "Portavoz Dev" to quit' 2>/dev/null; sleep 1
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
 	plutil -replace CFBundleDisplayName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist
 	plutil -replace CFBundleName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist
+	plutil -replace CFBundleIdentifier -string "app.portavoz.mac.dev" dist/Portavoz.app/Contents/Info.plist
+	@for plist in dist/Portavoz.app/Contents/Resources/*.lproj/InfoPlist.strings; do \
+		sed -i '' \
+			-e 's/^"CFBundleDisplayName" = ".*";$$/"CFBundleDisplayName" = "Portavoz Dev";/' \
+			-e 's/^"CFBundleName" = ".*";$$/"CFBundleName" = "Portavoz Dev";/' \
+			"$$plist"; \
+		plutil -lint "$$plist"; \
+	done
 	# Editing Info.plist invalidates the signature; re-sign or TCC grants
 	# (mic, screen recording) will not stick to the dev app.
 	codesign --force --options runtime --timestamp --sign "$(PORTAVOZ_SIGN_IDENTITY)" \
@@ -107,5 +134,7 @@ install:
 	rm -rf "/Applications/Portavoz Dev.app"
 	cp -R dist/Portavoz.app "/Applications/Portavoz Dev.app"
 	codesign --verify --deep --strict --verbose=2 "/Applications/Portavoz Dev.app"
+	/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+		-f "/Applications/Portavoz Dev.app"
 	open "/Applications/Portavoz Dev.app"
 	@echo "✅ Portavoz Dev reinstalled (release copy untouched)."

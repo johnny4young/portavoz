@@ -51,6 +51,20 @@ struct MeetingPlayerBar: View {
                 .tint(VoicePalette.me)
                 .help("Play only your own turns — skips everyone else")
                 .accessibilityIdentifier("player-only-my-voice")
+                if player.canClearPlayback {
+                    Toggle(
+                        isOn: Binding(
+                            get: { player.clearPlayback },
+                            set: { player.clearPlayback = $0 })
+                    ) {
+                        Label("Clear playback", systemImage: "waveform.badge.minus")
+                    }
+                    .toggleStyle(.button)
+                    .controlSize(.small)
+                    .help(
+                        "Reduce loudspeaker echo by lowering the microphone outside your turns")
+                    .accessibilityIdentifier("player-clear-playback")
+                }
                 Text(clock(player.duration))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)

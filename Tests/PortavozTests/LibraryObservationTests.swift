@@ -75,6 +75,28 @@ final class LibraryObservationTests: XCTestCase {
         XCTAssertTrue(trashAfterRestore.isEmpty)
     }
 
+    func testOpenItemsClampNonpositiveLimitsInsteadOfStreamingEverything() async throws {
+        // SQLite treats a negative LIMIT as "no limit": without the clamp a
+        // nonpositive caller value would stream every open action item.
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: "# Resumen",
+            actionItems: [ActionItem(text: "Enviar propuesta")]))
+
+        var zero = store.observeLibraryOpenItems(limit: 0).makeAsyncIterator()
+        var negative = store.observeLibraryOpenItems(limit: -5).makeAsyncIterator()
+        let zeroItems = try await nextOpenItems(&zero)
+        let negativeItems = try await nextOpenItems(&negative)
+
+        XCTAssertTrue(zeroItems.isEmpty)
+        XCTAssertTrue(negativeItems.isEmpty)
+    }
+
     func testSearchObservationRefreshesFromBaseSegmentAndMeetingWrites() async throws {
         let store = try MeetingStore.inMemory()
         var iterator = store.observeLibrarySearch("presupuesto").makeAsyncIterator()
@@ -108,6 +130,54 @@ final class LibraryObservationTests: XCTestCase {
         try await store.save([segment])
         let removed = try await nextSearch(&iterator) { $0.isEmpty }
         XCTAssertTrue(removed.isEmpty)
+    }
+
+    func testSearchObservationMatchesEitherBilingualQueryAsACompleteVariant() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        let spanish = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "La hoja de ruta queda lista en agosto",
+            startTime: 3,
+            endTime: 5,
+            isFinal: true)
+        let partial = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "La hoja de ruta no tiene fecha",
+            startTime: 8,
+            endTime: 10,
+            isFinal: true)
+        try await store.save([spanish, partial])
+
+        var iterator = store.observeLibrarySearch(
+            ["august roadmap", "agosto hoja de ruta"]
+        ).makeAsyncIterator()
+        let hits = try await nextSearch(&iterator)
+
+        XCTAssertEqual(hits.map(\.segmentID), [spanish.id])
+    }
+
+    func testSearchObservationFoldsLatinAccentsWithoutChangingStoredText() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        let accented = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "La reunión definió la migración del próximo trimestre.",
+            startTime: 3,
+            endTime: 5,
+            isFinal: true)
+        try await store.save([accented])
+
+        var iterator = store.observeLibrarySearch("reunion").makeAsyncIterator()
+        let hits = try await nextSearch(&iterator)
+
+        XCTAssertEqual(hits.map(\.segmentID), [accented.id])
+        XCTAssertEqual(hits.first?.text, accented.text)
     }
 
     func testCorruptMeetingRowsDoNotStopIndependentLibraryQueries() async throws {

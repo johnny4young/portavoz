@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
+    FEATURE_TESTS,
     HARNESS_TESTS,
     select_paths,
     validate_catalog,
@@ -36,7 +37,7 @@ class UITestScopeTests(unittest.TestCase):
     def test_audio_view_selects_only_audio_detail_evidence(self):
         selection = select_paths(["Sources/portavoz-app/MeetingPlayerBar.swift"])
         self.assertEqual(selection.locales, ("en",))
-        self.assertEqual(len(selection.tests), 3)
+        self.assertEqual(selection.tests, FEATURE_TESTS["meeting-audio"])
         self.assertTrue(all("MeetingDetailUITests" in test for test in selection.tests))
 
     def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):
@@ -51,10 +52,110 @@ class UITestScopeTests(unittest.TestCase):
             selection.tests,
         )
 
-    def test_harness_change_selects_two_bilingual_canaries(self):
+    def test_recording_use_cases_skip_unrelated_settings_surfaces(self):
+        for path in (
+            "Sources/ApplicationKit/StartRecording.swift",
+            "Sources/ApplicationKit/StopRecording.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(
+                selection.tests,
+                tuple(dict.fromkeys(
+                    FEATURE_TESTS["library"]
+                    + FEATURE_TESTS["recording-recovery"]
+                )),
+                path,
+            )
+
+    def test_mic_bleed_selects_live_and_refine_evidence_without_full_fallback(self):
+        selection = select_paths(["Sources/TranscriptionKit/MicBleedFilter.swift"])
+        self.assertEqual(
+            selection.tests,
+            tuple(dict.fromkeys(
+                FEATURE_TESTS["recording-recovery"]
+                + FEATURE_TESTS["meeting-processing"]
+            )),
+        )
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
+    def test_summary_storage_selects_its_consumers_without_full_fallback(self):
+        selection = select_paths(["Sources/StorageKit/MeetingStore+Summaries.swift"])
+        self.assertIn(
+            "PortavozUITests/MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload",
+            selection.tests,
+        )
+        self.assertIn(
+            "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency",
+            selection.tests,
+        )
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
+    def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/LegacyScrollInteractionTracker.swift"]
+        )
+        self.assertEqual(selection.tests, FEATURE_TESTS["recording-recovery"])
+        self.assertEqual(selection.locales, ("en",))
+
+    def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
+        selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
+        self.assertEqual(
+            selection.tests,
+            (
+                "PortavozUITests/MeetingDetailUITests/"
+                "testExportMenuOffersSubtitleFormats",
+            ),
+        )
+        self.assertEqual(selection.locales, ("en",))
+
+    def test_dictation_surfaces_select_only_the_audio_pane_evidence(self):
+        for path in [
+            "Sources/portavoz-app/DictationSection.swift",
+            "Sources/portavoz-app/MouseButtonPTT.swift",
+            "Sources/portavoz-app/MousePTTGesture.swift",
+            "Sources/portavoz-app/DictationController.swift",
+            "Sources/TranscriptionKit/DictationTextRules.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(
+                selection.tests,
+                (
+                    "PortavozUITests/SettingsUITests/"
+                    "testAudioPaneOffersCaptureSourceControls",
+                    "PortavozUITests/SettingsUITests/"
+                    "testDictationOffersTriggersLanguageAndDictionary",
+                ),
+                path,
+            )
+            self.assertEqual(selection.locales, ("en",), path)
+
+    def test_harness_change_selects_three_bilingual_canaries(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
+
+    def test_app_intents_selects_only_the_external_recording_handoff(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/PortavozAppIntents.swift"]
+        )
+        self.assertEqual(
+            selection.tests,
+            FEATURE_TESTS["automation-entry"],
+        )
+        self.assertEqual(selection.locales, ("en",))
+
+    def test_recording_toolbar_selects_geometry_and_live_control_contracts(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/RecordingToolbar.swift"]
+        )
+        self.assertEqual(
+            selection.tests,
+            tuple(dict.fromkeys(
+                FEATURE_TESTS["automation-entry"]
+                + FEATURE_TESTS["recording-recovery"]
+            )),
+        )
+        self.assertEqual(selection.locales, ("en",))
 
     def test_changed_ui_test_file_selects_only_its_class(self):
         selection = select_paths(["Tests/PortavozUITests/InsightsUITests.swift"])

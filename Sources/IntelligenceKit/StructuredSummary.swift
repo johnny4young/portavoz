@@ -59,8 +59,14 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
 }
 
 extension StructuredSummary {
-    /// Renders the canonical markdown snapshot for a `SummaryDraft`.
-    public func markdown(recipe: Recipe) -> String {
+    /// Renders the canonical markdown snapshot for a `SummaryDraft`. The
+    /// output language localizes the one heading WE write (the canonical
+    /// action-items block) — every other heading arrives already translated
+    /// by the model. `parse` reads back exactly the two headings written
+    /// here; `isActionItemsHeading` below is the deliberately broader set
+    /// used only to drop a model-narrated duplicate section while
+    /// rendering.
+    public func markdown(recipe: Recipe, language: String? = nil) -> String {
         var parts: [String] = []
         let trimmedOverview = overview.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedOverview.isEmpty {
@@ -78,7 +84,9 @@ extension StructuredSummary {
             parts.append(block)
         }
         if !actionItems.isEmpty {
-            var block = "## Action Items"
+            let heading = language?.lowercased().hasPrefix("es") == true
+                ? "Pendientes" : "Action Items"
+            var block = "## \(heading)"
             for item in actionItems {
                 let owner = item.owner.isEmpty ? "" : " — \(item.owner)"
                 block += "\n- [ ] \(item.text)\(owner)"
@@ -89,8 +97,10 @@ extension StructuredSummary {
     }
 
     /// Headings that mean "action items" in the languages the app ships:
-    /// those sections duplicate the canonical block and are skipped.
-    static func isActionItemsHeading(_ heading: String) -> Bool {
+    /// those sections duplicate the canonical block and are skipped. Public
+    /// because the recap composer drops the same sections for the same
+    /// reason — it re-renders commitments from the library's real done state.
+    public static func isActionItemsHeading(_ heading: String) -> Bool {
         let normalized = heading.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return [
             "action items", "action item", "pendientes", "next steps",
@@ -98,10 +108,11 @@ extension StructuredSummary {
         ].contains(normalized)
     }
 
-    /// Inverse of `markdown(recipe:)` for snapshots WE rendered (every
-    /// stored summary goes through that renderer, so the format is ours).
-    /// The "## Action Items" block parses into `actionItems` — text and
-    /// owner label split on the renderer's " — " — never into a section.
+    /// Inverse of `markdown(recipe:language:)` for snapshots WE rendered
+    /// (every stored summary goes through that renderer, so the format is
+    /// ours). The canonical block — "## Action Items" or its Spanish
+    /// "## Pendientes" — parses into `actionItems`, text and owner label
+    /// split on the renderer's " — ", never into a section.
     /// Returns nil only when the text has none of the renderer's shape.
     public static func parse(markdown: String) -> StructuredSummary? {
         var overviewLines: [String] = []
@@ -115,7 +126,11 @@ extension StructuredSummary {
             if line.hasPrefix("## ") {
                 if let current { sections.append(current) }
                 let heading = String(line.dropFirst(3))
+                // Only the two headings OUR renderer emits for the canonical
+                // block — the broader isActionItemsHeading set would swallow
+                // a real "Next Steps" section on re-parse.
                 inActionItems = heading.caseInsensitiveCompare("Action Items") == .orderedSame
+                    || heading.caseInsensitiveCompare("Pendientes") == .orderedSame
                 current = inActionItems ? nil : Section(heading: heading, bullets: [])
             } else if inActionItems, line.hasPrefix("- ") {
                 var text = String(line.dropFirst(2))
@@ -150,16 +165,14 @@ extension StructuredSummary {
         includeEvidence: Bool = true
     ) -> SummaryDraft {
         var admitted = self
-        admitted.actionItems = SummaryActionAdmission.admittedItems(
+        let groundedActions = SummaryActionAdmission.admittedItems(
             actionItems,
             sections: sections,
             recipe: request.recipe)
-        let items = admitted.actionItems.map { item -> ActionItem in
-            let owner = request.speakers.first { speaker in
-                speaker.label.caseInsensitiveCompare(item.owner) == .orderedSame
-                    || speaker.displayName?.caseInsensitiveCompare(item.owner) == .orderedSame
-            }
-            return ActionItem(text: item.text, ownerSpeakerID: owner?.id)
+            .compactMap { Self.groundedAction($0, speakers: request.speakers) }
+        admitted.actionItems = groundedActions.map(\.item)
+        let items = groundedActions.map {
+            ActionItem(text: $0.item.text, ownerSpeakerID: $0.ownerSpeakerID)
         }
         let evidence = TranscriptFormatter.formatWithEvidence(
             segments: request.segments,
@@ -193,12 +206,76 @@ extension StructuredSummary {
             meetingID: request.meetingID,
             recipeID: request.recipe.id,
             language: request.targetLanguage,
-            markdown: admitted.markdown(recipe: request.recipe),
+            markdown: admitted.markdown(
+                recipe: request.recipe, language: request.targetLanguage),
             actionItems: items,
             claims: claims,
             decisionEvidence: decisions,
             actionItemEvidence: actionEvidence
         )
+    }
+
+    private struct GroundedAction {
+        let item: Item
+        let ownerSpeakerID: SpeakerID?
+    }
+
+    /// Generated owner strings are untrusted. Exact labels take precedence;
+    /// a display name is admitted only when it uniquely identifies one cast
+    /// member. Carry the resolved ID beside the rendered value so typed
+    /// projection never re-resolves an ambiguous canonical name.
+    private static func groundedAction(
+        _ item: Item,
+        speakers: [Speaker]
+    ) -> GroundedAction? {
+        let rawOwner = item.owner.trimmingCharacters(in: .whitespacesAndNewlines)
+        let speaker = matchedSpeaker(for: rawOwner, speakers: speakers)
+        var admitted = item
+        admitted.text = strippingOwnerPrefix(from: item.text, owner: rawOwner)
+        admitted.owner = speaker.map { speaker in
+            if let displayName = speaker.displayName?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !displayName.isEmpty {
+                return displayName
+            }
+            return speaker.label
+        } ?? ""
+        guard !admitted.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        return GroundedAction(item: admitted, ownerSpeakerID: speaker?.id)
+    }
+
+    private static func matchedSpeaker(
+        for owner: String,
+        speakers: [Speaker]
+    ) -> Speaker? {
+        guard !owner.isEmpty else { return nil }
+        let labelMatches = speakers.filter {
+            $0.label.caseInsensitiveCompare(owner) == .orderedSame
+        }
+        if labelMatches.count == 1 {
+            return labelMatches[0]
+        }
+        guard labelMatches.isEmpty else { return nil }
+        let nameMatches = speakers.filter {
+            $0.displayName?.caseInsensitiveCompare(owner) == .orderedSame
+        }
+        return nameMatches.count == 1 ? nameMatches[0] : nil
+    }
+
+    private static func strippingOwnerPrefix(from text: String, owner: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !owner.isEmpty else { return trimmed }
+        for separator in [":", " —", " -"] {
+            let prefix = owner + separator
+            guard trimmed.range(
+                of: prefix,
+                options: [.anchored, .caseInsensitive]) != nil
+            else { continue }
+            return trimmed.dropFirst(prefix.count)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return trimmed
     }
 
     private func typedActionItemEvidence(

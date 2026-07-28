@@ -7,7 +7,6 @@ import SwiftUI
 /// until the meeting lands in the library.
 struct RecordingView: View {
     @Environment(AppServices.self) private var services
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openSettings) private var openSettings
     @Binding var route: Route?
     /// Calendar event this recording came from (brief's "Record this
@@ -66,11 +65,20 @@ struct RecordingView: View {
                 ) {
                     translationStatusBanner
                 }
-                captionsList
+                LiveRecordingCaptionsView(controller: controller)
                     .frame(maxHeight: .infinity)
                     .padding(.horizontal, 20)
                 ScrollView {
                     VStack(spacing: 10) {
+                        if let state = controller.catchUp.state {
+                            catchUpPanel(state)
+                        }
+                        if let state = controller.nextQuestion.state {
+                            RecordingNextQuestionCard(state: state) {
+                                controller.nextQuestion.dismiss()
+                            }
+                        }
+                        RecordingObjectivesPanel(controller: controller)
                         companionCardsPanel
                         notesPanel
                         if let live = controller.liveSummary {
@@ -128,137 +136,13 @@ struct RecordingView: View {
         .onDisappear { hud.close() }
     }
 
-    @ViewBuilder
-    private var recordingFailureActions: some View {
-        if let context = controller.failureContext {
-            switch context.recovery {
-            case .retry:
-                Button("Try again") {
-                    Task { await controller.start(services: services, event: event) }
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("recording-retry")
-            case .library:
-                Button("Open Library") { route = nil }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("recording-open-library")
-            case .supportDiagnostics:
-                Button("Open support diagnostics") {
-                    services.pendingSettingsCategory = .data
-                    openSettings()
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("recording-open-support-diagnostics")
-            }
-        }
-        Button("Back") { route = nil }
-            .accessibilityIdentifier("recording-back")
-    }
-
-    private var preparingText: String {
-        if case .downloading(let status) = services.modelsState {
-            return status
-        }
-        return "Preparing…"
-    }
-
-    /// The 4a top bar: recording dot + timer + mic meter on the left; the
-    /// live controls (Translate, Companion, HUD) and the red Stop on the
-    /// right — all in one compact row, so the words below own the space.
     private var recordingBar: some View {
-        HStack(spacing: 12) {
-            TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
-                let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(.red)
-                        .frame(width: 10, height: 10)
-                        .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
-                        .animation(.easeInOut(duration: 0.6), value: elapsed)
-                    Text(String(format: "%02d:%02d", max(0, elapsed) / 60, max(0, elapsed) % 60))
-                        .font(.system(size: 24, weight: .medium).monospacedDigit())
-                }
-            }
-            compactMeter
-            Spacer()
-            if #available(macOS 15.0, *) {
-                Picker("Translate", selection: translationBinding) {
-                    Text("No translation").tag(String?.none)
-                    Text("→ Spanish").tag(String?.some("es"))
-                    Text("→ English").tag(String?.some("en"))
-                }
-                .pickerStyle(.menu)
-                .fixedSize()
-                .controlSize(.small)
-            }
-            if services.companionAvailable {
-                Toggle(isOn: companionBinding) {
-                    Label("Companion", systemImage: "questionmark.bubble")
-                }
-                .toggleStyle(.button)
-                .controlSize(.small)
-                .help(L10n.text("Detects questions and suggests on-device answers. It never answers for you."))
-            }
-            Button(action: enterCompactMode) {
-                Label("HUD", systemImage: "arrow.down.right.and.arrow.up.left")
-            }
-            .controlSize(.small)
-            .help(L10n.text(
-                "Floating mini panel with the timer and captions — records without covering your meeting"))
-            Button {
-                Task { await controller.stop(services: services) }
-            } label: {
-                Label("Stop", systemImage: "stop.circle.fill")
-            }
-            .controlSize(.small)
-            .tint(.red)
-            .keyboardShortcut(".")
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-    }
-
-    /// The compact mic meter for the top bar: icon + a short dB bar. The
-    /// full "move closer" nudge lives in its own banner when the level
-    /// stays low.
-    private var compactMeter: some View {
-        HStack(spacing: 6) {
-            Button {
-                controller.setMicMuted(!controller.micMuted)
-            } label: {
-                Image(
-                    systemName: controller.micMuted
-                        ? "mic.slash.fill" : (controller.micLevelLow ? "mic.fill" : "mic")
-                )
-                .foregroundStyle(
-                    controller.micMuted ? .red : (controller.micLevelLow ? .orange : .secondary)
-                )
-                .font(.caption)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("recording-mute-mic")
-            .help(L10n.text(controller.micMuted
-                    ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz"))
-            ZStack(alignment: .leading) {
-                Capsule().fill(.quaternary)
-                GeometryReader { geometry in
-                    Capsule()
-                        .fill(controller.micLevelLow ? Color.orange : Color.green)
-                        .frame(width: geometry.size.width * (controller.micMuted ? 0 : meterFraction))
-                }
-            }
-            .frame(width: 90, height: 5)
-            .opacity(controller.micMuted ? 0.4 : 1)
-            .animation(.easeOut(duration: 0.15), value: controller.micLevel)
-        }
-    }
-
-    /// Maps the linear mic level onto a −60…0 dBFS bar (0…1).
-    private var meterFraction: CGFloat {
-        let level = controller.micLevel
-        guard level > 0.0001 else { return 0 }
-        let decibels = 20 * log10(level)
-        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+        RecordingToolbar(
+            controller: controller,
+            companionAvailable: services.companionAvailable,
+            onStop: { Task { await controller.stop(services: services) } },
+            onCompact: enterCompactMode
+        )
     }
 
     /// Shrinks the recording to the floating HUD and miniaturizes the main
@@ -280,20 +164,6 @@ struct RecordingView: View {
             window.deminiaturize(nil)
         }
         NSApp.activate(ignoringOtherApps: true)
-    }
-
-    private var companionBinding: Binding<Bool> {
-        Binding(
-            get: { controller.companionEnabled },
-            set: { controller.companionEnabled = $0 }
-        )
-    }
-
-    private var translationBinding: Binding<String?> {
-        Binding(
-            get: { controller.translationTarget },
-            set: { controller.translationTarget = $0 }
-        )
     }
 
     /// The coauthoring input (D28): jot notes while the meeting happens.
@@ -367,42 +237,44 @@ struct RecordingView: View {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
-    private func liveSummaryPanel(_ markdown: String) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Live summary", systemImage: "sparkles")
-                    .font(.headline)
-                MarkdownText(text: markdown)
-                    .font(.callout)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-    }
+}
 
-    /// Live captions as a Spotify-lyrics carousel (M11): the newest line
-    /// sits low in the viewport (the frontier), older ones rise and fade
-    /// above it. A bounded window keeps long recordings responsive.
-    private var captionsList: some View {
+/// High-frequency caption projection has its own observation boundary. Mic
+/// meter updates and capture-health counters can now refresh the toolbar or a
+/// banner without rebuilding the bounded transcript carousel.
+private struct LiveRecordingCaptionsView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Bindable var controller: RecordingController
+
+    var body: some View {
+        let projection = LiveCaptionParagraphProjector.project(
+            captions: Array(controller.captions.suffix(150)),
+            liveSpeakerLabels: controller.liveSpeakerLabels,
+            translations: controller.translations)
         GeometryReader { geo in
             FocusedTranscriptView(
-                segments: Array(controller.captions.suffix(150)),
-                activeID: controller.captions.last?.id,
+                segments: projection.segments,
+                activeID: projection.segments.last?.id,
                 height: geo.size.height,
                 anchor: UnitPoint(x: 0.5, y: 0.82),
-                followSignal: controller.captions.last?.endTime ?? 0
+                followSignal: projection.segments.last?.endTime ?? 0,
+                mode: .live,
+                scrollAccessibilityIdentifier: "recording-live-transcript"
             ) { segment, active in
-                captionRow(segment, active: active)
+                captionRow(
+                    segment,
+                    active: active,
+                    translation: projection.translations[segment.id])
             }
         }
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    /// One lyrics line (4a): a voice-colored pill + the words. The active
-    /// (newest) line reads bigger; when it's YOURS it sits in an
-    /// amber-tinted card — your voice is the only color with meaning.
-    private func captionRow(_ segment: TranscriptSegment, active: Bool) -> some View {
+    private func captionRow(
+        _ segment: TranscriptSegment,
+        active: Bool,
+        translation: String?
+    ) -> some View {
         let voice = liveVoice(for: segment)
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(voice.label)
@@ -415,13 +287,8 @@ struct RecordingView: View {
                 Text(segment.text)
                     .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
-                if let translated = controller.translations[segment.id] {
-                    // The language bridge (6a-3): a secondary rail under the
-                    // real line. Not amber — amber is reserved for YOUR voice
-                    // (voices B); this reads as a quiet translation.
-                    Text(translated)
-                        .font(.callout.italic())
-                        .foregroundStyle(.secondary)
+                if let translated = translation {
+                    translatedCaption(translated, segmentID: segment.id)
                 }
             }
         }
@@ -438,9 +305,48 @@ struct RecordingView: View {
         .padding(.horizontal, 8)
     }
 
-    /// Ink for a non-me live pill: the speaker's stable voice hue once the
-    /// diarizer names them (S1/S2 or a remembered voice), neutral for the
-    /// generic "Them".
+    private func translatedCaption(
+        _ translated: String,
+        segmentID: UUID
+    ) -> some View {
+        HStack(alignment: .top, spacing: 7) {
+            Capsule()
+                .fill(Color.indigo)
+                .frame(width: 3)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: "character.bubble")
+                        .accessibilityHidden(true)
+                    Text(liveTranslationLabel)
+                        .accessibilityLabel(liveTranslationLabel)
+                        .accessibilityIdentifier(
+                            "recording-live-translation-\(segmentID.uuidString)")
+                }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.indigo)
+                Text(translated)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            Color.indigo.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 7))
+    }
+
+    private var liveTranslationLabel: String {
+        switch LanguageCode(controller.translationTarget)?.identifier {
+        case "es":
+            L10n.text("Spanish translation")
+        case "en":
+            L10n.text("English translation")
+        default:
+            L10n.text("Translation")
+        }
+    }
+
     private func pillInk(_ voice: (label: String, isMe: Bool)) -> Color {
         guard voice.label != L10n.text("Them") else { return .secondary }
         return VoicePalette.color(
@@ -456,11 +362,9 @@ struct RecordingView: View {
         return pillInk(voice).opacity(0.22)
     }
 
-    /// The live speaker pill for a caption row. Mic rows are the user by
-    /// hardware truth; system rows show the live diarizer's voice hint
-    /// (S1/S2, or the user through the voiceprint) once a window covers
-    /// them, and the generic "Them" until then.
-    private func liveVoice(for segment: TranscriptSegment) -> (label: String, isMe: Bool) {
+    private func liveVoice(
+        for segment: TranscriptSegment
+    ) -> (label: String, isMe: Bool) {
         if segment.channel == .microphone { return (L10n.text("Me"), true) }
         if let voice = controller.liveSpeakerLabels[segment.id] {
             return voice == "Me" ? (L10n.text("Me"), true) : (voice, false)
@@ -736,5 +640,101 @@ extension RecordingView {
             return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
         }
         return base
+    }
+}
+
+private extension RecordingView {
+    @ViewBuilder
+    private var recordingFailureActions: some View {
+        if let context = controller.failureContext {
+            switch context.recovery {
+            case .retry:
+                Button("Try again") {
+                    Task { await controller.start(services: services, event: event) }
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("recording-retry")
+            case .library:
+                Button("Open Library") { route = nil }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("recording-open-library")
+            case .supportDiagnostics:
+                Button("Open support diagnostics") {
+                    services.pendingSettingsCategory = .data
+                    openSettings()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("recording-open-support-diagnostics")
+            }
+        }
+        Button("Back") { route = nil }
+            .accessibilityIdentifier("recording-back")
+    }
+
+    private var preparingText: String {
+        if case .downloading(let status) = services.modelsState {
+            return status
+        }
+        return "Preparing…"
+    }
+
+}
+
+// Recap panels live outside the already-large view body.
+private extension RecordingView {
+    /// The pull-based recap card: generating, the recap itself, or the
+    /// honest capability/insufficient-content explanation. Dismiss is the
+    /// only other action — this card never persists anywhere.
+    private func catchUpPanel(_ state: RecordingCatchUpModel.State) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(L10n.text("Catch me up"), systemImage: "clock.arrow.circlepath")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    controller.catchUp.dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.text("Dismiss catch-up"))
+                .accessibilityIdentifier("recording-catch-up-dismiss")
+            }
+            switch state {
+            case .generating:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(L10n.text("Catching you up…"))
+                        .foregroundStyle(.secondary)
+                }
+            case .ready(let recap):
+                MarkdownText(text: recap)
+                    .font(.callout)
+            case .unavailable(let reason):
+                Text(reason)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("recording-catch-up-panel")
+    }
+
+    private func liveSummaryPanel(_ markdown: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Live summary", systemImage: "sparkles")
+                    .font(.headline)
+                MarkdownText(text: markdown)
+                    .font(.callout)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 }

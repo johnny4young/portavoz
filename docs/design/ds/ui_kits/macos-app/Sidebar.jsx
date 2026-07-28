@@ -133,7 +133,7 @@ function PVSidebar({ route, onRoute, todos, onToggleTodo }) {
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", borderTop: "0.5px solid rgba(255,255,255,0.08)" }}>
         <span className="pv-pulse" style={{ width: 7, height: 7, borderRadius: 999, background: "#30d158", animation: "pv-pulse 3.6s ease-in-out infinite" }}></span>
-        <span style={{ font: "400 10px/1.4 var(--font-app)", color: "rgba(255,255,255,0.45)" }}>100% local · <b style={{ color: "#30d158", fontWeight: 600 }}>0 B</b> a la red hoy</span>
+        <span style={{ font: "400 10px/1.4 var(--font-app)", color: "rgba(255,255,255,0.45)" }}>Local-first · transferencias con opt-in</span>
         <span style={{ flex: 1 }}></span>
         <span style={{ font: "500 8.5px/1 var(--font-mono)", color: "rgba(255,255,255,0.3)" }}>tu barra ámbar =<br />cuánto hablaste</span>
       </div>

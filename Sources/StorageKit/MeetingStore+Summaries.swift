@@ -700,6 +700,9 @@ extension MeetingStore {
         in database: Database,
         limit: Int
     ) throws -> [OpenActionItem] {
+        // SQLite treats a negative LIMIT as "no limit"; clamp like fetchSearch
+        // so no caller can accidentally stream the whole library.
+        guard limit > 0 else { return [] }
         let rows = try Row.fetchAll(
             database,
             sql: """

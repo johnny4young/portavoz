@@ -148,6 +148,7 @@ let package = Package(
             name: "PortavozTests",
             dependencies: [
                 "portavoz-app",
+                "portavoz-cli",
                 "ApplicationKit",
                 "PortavozCore",
                 "PlatformKit",

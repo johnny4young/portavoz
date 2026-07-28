@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portavoz — Cada voz tiene dueño, y tú tienes todas</title>
-  <meta name="description" content="Asistente de reuniones privacy-first para Mac: transcripción en vivo, cada voz separada on-device y resúmenes 100% locales. Sin nube, sin bots, sin cuentas.">
+  <meta name="description" content="Asistente de reuniones local-first para Mac: transcripción multilingüe, traducción en vivo, voces separadas, búsqueda privada y resúmenes on-device.">
   <link rel="icon" href="assets/portavoz-icon-p.svg" type="image/svg+xml">
   <link rel="canonical" href="https://portavoz.app/">
   <meta property="og:title" content="Portavoz — Every voice has an owner, and you own them all">
-  <meta property="og:description" content="Privacy-first meeting assistant for Mac. Live transcription, on-device voices, local summaries.">
+  <meta property="og:description" content="Local-first meeting assistant for Mac. Multilingual live transcription, private search, clear playback, and on-device summaries.">
   <meta property="og:image" content="https://portavoz.app/assets/og.png">
   <meta property="og:url" content="https://portavoz.app/">
   <meta property="og:type" content="website">
@@ -47,12 +47,12 @@
         <span class="en">Every voice has an owner<em> — and you own them all.</em></span>
       </h1>
       <p class="lede">
-        <span class="es">Graba, transcribe y separa cada voz de la reunión — 100% en tu Mac. La constelación es tu sala: cada punto una voz, la ámbar eres tú.</span>
-        <span class="en">Records, transcribes and tells apart every voice in the meeting — 100% on your Mac. The constellation is your room: every dot a voice, the amber one is you.</span>
+        <span class="es">Graba, transcribe y separa cada voz de la reunión — local por defecto, sin bots ni cuentas. La constelación es tu sala: cada punto una voz, la ámbar eres tú.</span>
+        <span class="en">Records, transcribes and tells apart every voice in the meeting — local by default, with no bots or accounts. The constellation is your room: every dot a voice, the amber one is you.</span>
       </p>
       <div class="cta-row">
         <button type="button" class="brew" id="brew" aria-live="polite">
-          <code>brew install --cask portavoz</code>
+          <code>brew install --cask johnny4young/tap/portavoz</code>
           <span class="brew-hint"><span class="es">copiar</span><span class="en">copy</span></span>
         </button>
         <a class="ghost" href="https://github.com/johnny4young/portavoz/releases/latest">
@@ -62,7 +62,7 @@
       <div class="stats">
         <span><b>0.68 s</b> <span class="es">lag p95</span><span class="en">p95 lag</span></span>
         <span><b>7.6%</b> DER</span>
-        <span><b>0</b> <span class="es">bytes a la nube</span><span class="en">bytes to the cloud</span></span>
+        <span><b>0</b> <span class="es">subidas silenciosas</span><span class="en">silent uploads</span></span>
       </div>
       <p class="platform">
         <span class="es">macOS 14.4+ · Apple Silicon · código abierto MIT</span>
@@ -109,17 +109,17 @@
     </p>
     <div class="thumbs">
       <button class="thumb" type="button" data-full="assets/screenshots/meeting-detail.png">
-        <img src="assets/screenshots/meeting-detail.png" width="1360" height="850" loading="lazy"
-          alt="A meeting in Portavoz: colored speaker pills, a tabbed summary, a who-said-what transcript, a docked player with waveform, and a right rail with meeting health and chapters">
-        <span class="thumb-cap"><span class="es">Detalle de reunión</span><span class="en">Meeting detail</span></span>
+        <img src="assets/screenshots/meeting-detail.png" width="1112" height="885" loading="lazy"
+          alt="A current Portavoz meeting: dismissible AI suggestions, colored speaker pills, a tabbed summary, transcript, clear playback, privacy receipt, meeting health, chapters, and Apuntador">
+        <span class="thumb-cap"><span class="es">Revisión + audio claro</span><span class="en">Review + clear playback</span></span>
       </button>
-      <button class="thumb" type="button" data-full="assets/screenshots/recording-companion.png">
-        <img src="assets/screenshots/recording-companion.png" width="1360" height="850" loading="lazy"
-          alt="Live recording: lyrics-style captions with your voice glowing amber, and the Companion answering a factual question the room just asked, on-device">
-        <span class="thumb-cap"><span class="es">Grabación + Companion</span><span class="en">Live + Companion</span></span>
+      <button class="thumb" type="button" data-full="assets/screenshots/recording-live-translation.png">
+        <img src="assets/screenshots/recording-live-translation.png" width="1112" height="885" loading="lazy"
+          alt="A current Portavoz recording: multilingual source captions remain visible while English translations render in a separate labeled indigo rail">
+        <span class="thumb-cap"><span class="es">Grabación + traducción</span><span class="en">Live + translation</span></span>
       </button>
       <button class="thumb" type="button" data-full="assets/screenshots/insights.png">
-        <img src="assets/screenshots/insights.png" width="1360" height="850" loading="lazy"
+        <img src="assets/screenshots/insights.png" width="1112" height="885" loading="lazy"
           alt="Insights: meetings, talk time, decisions and questions with deltas; a two-tone bar per person; findings; and a 12-week rhythm heatmap">
         <span class="thumb-cap"><span class="es">Insights</span><span class="en">Insights</span></span>
       </button>
@@ -136,7 +136,7 @@
     <div class="cards">
       <article>
         <h3><span class="es">Transcripción en vivo</span><span class="en">Live transcription</span></h3>
-        <p><span class="es">Subtítulos en menos de un segundo sobre el Neural Engine, y un re-pase Whisper de máxima calidad que apruebas como borrador. Fija tu idioma para que una grabación con ruido nunca salga en el idioma equivocado.</span><span class="en">Captions in under a second on the Neural Engine, plus a maximum-quality Whisper re-pass you approve as a draft. Pin your language so a noisy recording never comes out in the wrong one.</span></p>
+        <p><span class="es">Subtítulos en menos de un segundo sobre el Neural Engine. Cada actor conserva el idioma que habló; la traducción opcional aparece en un riel índigo separado, sin reemplazar el original.</span><span class="en">Captions in under a second on the Neural Engine. Every speaker keeps the language they used; optional live translation appears in a separate indigo rail without replacing the source.</span></p>
       </article>
       <article>
         <h3><span class="es">Cada voz, separada</span><span class="en">Every voice, told apart</span></h3>
@@ -152,11 +152,19 @@
       </article>
       <article>
         <h3><span class="es">Audio de primera clase</span><span class="en">First-class audio</span></h3>
-        <p><span class="es">Player sincronizado estilo letras, waveform por canal, clips exportables y compresión AAC con un click.</span><span class="en">Lyrics-style synced player, per-channel waveform, exportable clips and one-click AAC compression.</span></p>
+        <p><span class="es">Player sincronizado, waveform por canal, clips exportables y compresión AAC. <b>Audio claro</b> atenúa el eco del altavoz de forma reversible sin reescribir tu grabación original.</span><span class="en">Synced player, per-channel waveform, exportable clips and AAC compression. <b>Clear playback</b> reversibly suppresses speaker echo without rewriting the original recording.</span></p>
       </article>
       <article>
         <h3><span class="es">Pregúntale a tu historial</span><span class="en">Ask your history</span></h3>
-        <p><span class="es">Chat RAG local con citas que saltan al momento exacto, y un servidor MCP para tus herramientas de IA. Y ⌘K sobre cualquier vista para preguntarle a tu semana.</span><span class="en">Local RAG chat with citations that jump to the exact moment, and an MCP server for your AI tools. Plus ⌘K over any view to ask your week.</span></p>
+        <p><span class="es">Búsqueda local que entiende tildes, términos equivalentes en español/inglés y similitud semántica. Ask y ⌘K responden con citas que saltan al segundo exacto; MCP abre la misma biblioteca a tus herramientas.</span><span class="en">Local search understands accents, equivalent Spanish/English terms, and semantic similarity. Ask and ⌘K answer with citations that jump to the exact second; MCP opens the same library to your tools.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Recuperación sin perder audio</span><span class="en">Recovery without lost audio</span></h3>
+        <p><span class="es">La reunión y sus canales existen antes del primer byte. Si falla el procesamiento, Portavoz conserva el audio finalizado, explica qué pasó y ofrece un único reintento seguro.</span><span class="en">The meeting and its channels exist before the first byte. If processing fails, Portavoz preserves finalized audio, explains what happened, and offers one safe retry.</span></p>
+      </article>
+      <article>
+        <h3><span class="es">Sugerencias, nunca órdenes</span><span class="en">Suggestions, never commands</span></h3>
+        <p><span class="es">Títulos, estructuras y nombres aparecen como preguntas con aplicar o ignorar. Nada cambia solo, y una sugerencia descartada deja de ocupar tu revisión.</span><span class="en">Titles, structures, and names appear as questions you can apply or dismiss. Nothing changes on its own, and an ignored suggestion leaves your review.</span></p>
       </article>
       <article>
         <h3><span class="es">Estadísticas que te reflejan</span><span class="en">Insights that reflect you</span></h3>
@@ -182,15 +190,16 @@
       <div><dt><span class="es">Re-pase Whisper</span><span class="en">Whisper refine</span></dt><dd>23–42×</dd></div>
       <div><dt><span class="es">Diarización (muestra AMI)</span><span class="en">Diarization (AMI sample)</span></dt><dd>DER 7.6%</dd></div>
       <div><dt><span class="es">Drift entre canales · 30 min</span><span class="en">Dual-channel drift · 30 min</span></dt><dd>4 ms</dd></div>
-      <div><dt><span class="es">Búsqueda en 1,000 reuniones</span><span class="en">Search across 1,000 meetings</span></dt><dd>22.8 ms</dd></div>
+      <div><dt><span class="es">Búsqueda exacta · 100k segmentos</span><span class="en">Exact search · 100k segments</span></dt><dd>p95 30.99 ms</dd></div>
+      <div><dt><span class="es">Búsqueda semántica · 100k segmentos</span><span class="en">Semantic search · 100k segments</span></dt><dd>p95 90.22 ms</dd></div>
     </dl>
   </section>
 
   <section id="privacy">
     <h2><span class="es">Tu historial jamás es rehén.</span><span class="en">Your history is never hostage.</span></h2>
     <p class="privacy-body">
-      <span class="es">Sin telemetría por defecto. Sin cuentas. Tus reuniones viven en un SQLite tuyo, exportables completas a Markdown o PDF cuando quieras. La nube solo existe si tú traes tu propia llave — visible y etiquetada, nunca un default silencioso. Código abierto bajo MIT: compílalo tú mismo si no quieres creernos.</span>
-      <span class="en">No telemetry by default. No accounts. Your meetings live in a SQLite file you own, fully exportable to Markdown or PDF anytime. The cloud only exists if you bring your own key — visible and labeled, never a silent default. MIT open source: build it yourself if you'd rather not take our word.</span>
+      <span class="es">Sin telemetría por defecto. Sin cuentas. Tus reuniones viven en un SQLite tuyo y salen como Markdown, PDF, SRT, WebVTT o un bundle <code>.portavoz</code>. Los proveedores remotos y la sincronización requieren una decisión explícita; cada reunión conserva un recibo sin contenido de lo que ocurrió. Código abierto MIT: compílalo si no quieres creernos.</span>
+      <span class="en">No telemetry by default. No accounts. Your meetings live in a SQLite file you own and export as Markdown, PDF, SRT, WebVTT, or a <code>.portavoz</code> bundle. Remote providers and sync require an explicit choice; every meeting keeps a content-free receipt of what happened. MIT open source: build it yourself if you'd rather not take our word.</span>
     </p>
   </section>
 </main>
@@ -229,7 +238,11 @@
     var brew = document.getElementById("brew");
     var hint = brew.querySelector(".brew-hint");
     brew.addEventListener("click", function () {
-      try { navigator.clipboard.writeText("brew install --cask portavoz"); } catch (e) {}
+      try {
+        navigator.clipboard.writeText(
+          "brew install --cask johnny4young/tap/portavoz"
+        );
+      } catch (e) {}
       hint.innerHTML = '<span class="es">copiado ✓</span><span class="en">copied ✓</span>';
       brew.classList.add("copied");
       clearTimeout(brew._t);

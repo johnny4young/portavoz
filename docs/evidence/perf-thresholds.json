@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "description": "PERF-001 release performance contract. Every budget here is the Target column of the measured-numbers table in docs/specs/08-quality.md; nothing is invented. A metric without a budget is tracked for regression only, exactly as that table marks it diagnostic.",
+  "authority": {
+    "requiredArchitecture": "arm64",
+    "note": "A stable Apple Silicon Mac is the release authority. A run from another machine, from mixed hosts, or from a non-release build stays informational."
+  },
+  "regression": {
+    "latencyToleranceFraction": 0.15,
+    "footprintToleranceFraction": 0.2,
+    "confirmationRuns": 3,
+    "note": "PERF-008 needs three stable runs before a p95 regression is real, so a single run reports candidates rather than failures."
+  },
+  "stability": {
+    "maximumDispersionRatio": 1.25,
+    "minimumMedianForDispersion": 1.0,
+    "minimumSamplesForDispersion": 10,
+    "note": "A timed metric whose p95 exceeds its own p50 by more than this ran on a busy machine: the samples disagree with each other, so the number is not evidence for or against a budget. Only timed units qualify — byte deltas are lumpy by page granularity, not by contention — and only distributions with enough samples for p95 to differ from the maximum. PERF-001 names a stable machine as the release authority, and identity alone does not make one stable."
+  },
+  "baselines": {
+    "note": "The committed evidence each harness is compared against, relative to docs/evidence/. Moving a baseline forward is a deliberate, reviewable edit of this file. The July 2026 files stay tracked as the D79-D85 record; they are simply no longer the reference.",
+    "scale": "scale-baseline-20260726.json",
+    "semantic": "semantic-scale-20260726.json",
+    "spotlight": "spotlight-scale-20260726.json",
+    "waveform": "waveform-scale-after-accelerate-20260717.json",
+    "detail-ui": "detail-ui-baseline-20260716-after-health.json"
+  },
+  "metrics": [
+    {
+      "id": "search.exact.100k.p95",
+      "journey": "Search",
+      "title": "Exact FTS at 100k segments",
+      "harness": "scale",
+      "unit": "ms",
+      "budgetMaximum": 50,
+      "select": {
+        "list": "library",
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "exactSearch",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "search.lexical-ask.100k.p95",
+      "journey": "Search",
+      "title": "Lexical Ask at 100k segments",
+      "harness": "scale",
+      "unit": "ms",
+      "budgetMaximum": 100,
+      "select": {
+        "list": "library",
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "questionRetrieval",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "detail.core-read.2h.p95",
+      "journey": "Meeting Detail",
+      "title": "Detail core read, 2 h / 5k segments",
+      "harness": "scale",
+      "unit": "ms",
+      "select": {
+        "list": "longMeetings",
+        "where": {
+          "durationMinutes": 120
+        },
+        "path": [
+          "detailInitialObservation",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "detail.health.2h.p95",
+      "journey": "Meeting Detail",
+      "title": "Meeting health, 2 h / 5k segments",
+      "harness": "scale",
+      "unit": "ms",
+      "select": {
+        "list": "longMeetings",
+        "where": {
+          "durationMinutes": 120
+        },
+        "path": [
+          "meetingHealth",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "detail.health.8h.p95",
+      "journey": "Meeting Detail",
+      "title": "Meeting health, 8 h / 20k segments",
+      "harness": "scale",
+      "unit": "ms",
+      "select": {
+        "list": "longMeetings",
+        "where": {
+          "durationMinutes": 480
+        },
+        "path": [
+          "meetingHealth",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "semantic.wall.100k.p95",
+      "journey": "Search",
+      "title": "Semantic cosine wall at 100k x 512d",
+      "harness": "semantic",
+      "unit": "ms",
+      "budgetMaximum": 100,
+      "select": {
+        "list": "checkpoints",
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "wallTime",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "semantic.cpu.100k.p95",
+      "journey": "Search",
+      "title": "Semantic cosine CPU at 100k x 512d",
+      "harness": "semantic",
+      "unit": "ms",
+      "budgetMaximum": 100,
+      "select": {
+        "list": "checkpoints",
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "processCPUTime",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "semantic.incremental-footprint.100k.p95",
+      "journey": "Search",
+      "title": "Semantic incremental footprint at 100k",
+      "harness": "semantic",
+      "unit": "bytes",
+      "select": {
+        "list": "checkpoints",
+        "where": {
+          "totalSegments": 100000
+        },
+        "path": [
+          "incrementalPeakPhysicalFootprint",
+          "p95Bytes"
+        ]
+      }
+    },
+    {
+      "id": "spotlight.wall.100k.p95",
+      "journey": "Spotlight",
+      "title": "Spotlight projection wall at 100k meetings",
+      "harness": "spotlight",
+      "unit": "ms",
+      "budgetMaximum": 500,
+      "select": {
+        "list": "snapshotCheckpoints",
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "wallTime",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "spotlight.cpu.100k.p95",
+      "journey": "Spotlight",
+      "title": "Spotlight projection CPU at 100k meetings",
+      "harness": "spotlight",
+      "unit": "ms",
+      "budgetMaximum": 500,
+      "select": {
+        "list": "snapshotCheckpoints",
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "processCPUTime",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "spotlight.peak-footprint.100k.p95",
+      "journey": "Spotlight",
+      "title": "Spotlight peak footprint at 100k meetings",
+      "harness": "spotlight",
+      "unit": "bytes",
+      "budgetMaximum": 167772160,
+      "select": {
+        "list": "snapshotCheckpoints",
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "peakPhysicalFootprint",
+          "p95Bytes"
+        ]
+      }
+    },
+    {
+      "id": "spotlight.incremental-footprint.100k.p95",
+      "journey": "Spotlight",
+      "title": "Spotlight incremental footprint at 100k meetings",
+      "harness": "spotlight",
+      "unit": "bytes",
+      "budgetMaximum": 100663296,
+      "select": {
+        "list": "snapshotCheckpoints",
+        "where": {
+          "meetingCount": 100000
+        },
+        "path": [
+          "projection",
+          "incrementalPeakPhysicalFootprint",
+          "p95Bytes"
+        ]
+      }
+    },
+    {
+      "id": "waveform.first.wall",
+      "journey": "Audio",
+      "title": "Waveform first generation, 56 min dual channel",
+      "harness": "waveform",
+      "unit": "ms",
+      "budgetMaximum": 150,
+      "source": "portavoz-cli bench-waveform over a long dual-channel recording copied to scratch",
+      "select": {
+        "path": [
+          "firstGeneration",
+          "wallMilliseconds"
+        ]
+      }
+    },
+    {
+      "id": "waveform.repeat.wall.p95",
+      "journey": "Audio",
+      "title": "Waveform repeat wall p95",
+      "harness": "waveform",
+      "unit": "ms",
+      "budgetMaximum": 100,
+      "source": "portavoz-cli bench-waveform over a long dual-channel recording copied to scratch",
+      "select": {
+        "path": [
+          "repeatedGeneration",
+          "wallTime",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "waveform.repeat.cpu.p95",
+      "journey": "Audio",
+      "title": "Waveform repeat CPU p95",
+      "harness": "waveform",
+      "unit": "ms",
+      "budgetMaximum": 100,
+      "source": "portavoz-cli bench-waveform over a long dual-channel recording copied to scratch",
+      "select": {
+        "path": [
+          "repeatedGeneration",
+          "processCPUTime",
+          "p95Milliseconds"
+        ]
+      }
+    },
+    {
+      "id": "detail.first-content",
+      "journey": "Meeting Detail",
+      "title": "Detail first content, 2 h / 5k segments",
+      "harness": "detail-ui",
+      "unit": "ms",
+      "budgetMaximum": 300,
+      "source": "make install && scripts/run-detail-ui-baseline.sh (Instruments, Portavoz Dev only)",
+      "select": {
+        "path": [
+          "firstContent",
+          "durationMilliseconds"
+        ]
+      }
+    },
+    {
+      "id": "detail.potential-hangs",
+      "journey": "Meeting Detail",
+      "title": "Detail potential hangs over 250 ms",
+      "harness": "detail-ui",
+      "unit": "count",
+      "budgetMaximum": 0,
+      "source": "make install && scripts/run-detail-ui-baseline.sh (Instruments, Portavoz Dev only)",
+      "select": {
+        "path": [
+          "responsiveness",
+          "potentialHangCount"
+        ]
+      }
+    },
+    {
+      "id": "startup.cold-first-frame",
+      "journey": "Launch",
+      "title": "Cold start to first frame",
+      "harness": "manual",
+      "unit": "ms",
+      "budgetMaximum": 1500,
+      "source": "Portavoz.app --bench-startup --bench-log <file>"
+    },
+    {
+      "id": "recording.peak-footprint",
+      "journey": "Recording",
+      "title": "Peak footprint while recording",
+      "harness": "manual",
+      "unit": "bytes",
+      "budgetMaximum": 838860800,
+      "source": "Portavoz.app --bench-record 60 --bench-log <file>"
+    },
+    {
+      "id": "recording.idle-footprint",
+      "journey": "Recording",
+      "title": "Idle footprint after the meeting",
+      "harness": "manual",
+      "unit": "bytes",
+      "budgetMaximum": 209715200,
+      "source": "Portavoz.app --bench-record 60 --bench-log <file>"
+    },
+    {
+      "id": "live.transcript-lag.p95",
+      "journey": "Live transcription",
+      "title": "Live transcript lag under batch load",
+      "harness": "manual",
+      "unit": "ms",
+      "budgetMaximum": 2000,
+      "source": "portavoz-cli bench-m2 --batch-file <wav>"
+    },
+    {
+      "id": "capture.drift-30min",
+      "journey": "Capture",
+      "title": "Mic/system drift over 30 minutes",
+      "harness": "manual",
+      "unit": "ms",
+      "budgetMaximum": 50,
+      "source": "python3 scripts/verify_drift.py microphone.wav system.wav"
+    },
+    {
+      "id": "diarization.der",
+      "journey": "Diarization",
+      "title": "Diarization error rate on the AMI sample",
+      "harness": "manual",
+      "unit": "fraction",
+      "budgetMaximum": 0.15,
+      "source": "portavoz-cli der --file <wav> --reference <rttm>"
+    },
+    {
+      "id": "summary.generation",
+      "journey": "Intelligence",
+      "title": "Summary after the meeting ends",
+      "harness": "manual",
+      "unit": "s",
+      "budgetMaximum": 30,
+      "source": "portavoz-cli summarize over a real meeting"
+    },
+    {
+      "id": "refine.speed-factor",
+      "journey": "Intelligence",
+      "title": "Refine speed against real time",
+      "harness": "manual",
+      "unit": "factor",
+      "budgetMinimum": 15,
+      "source": "portavoz-cli transcribe over a real recording"
+    }
+  ]
+}

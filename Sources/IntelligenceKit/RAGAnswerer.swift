@@ -56,6 +56,14 @@ import FoundationModels
 /// not in the passages is "no lo encuentro".
 @available(macOS 26.0, iOS 26.0, *)
 public struct RAGAnswerer: Sendable {
+    static let answerInstructions = """
+        You answer questions about the user's own meetings using ONLY the numbered context passages.
+        \(PromptFactory.sourceMaterialGuard())
+        Write a direct answer of one to three full sentences — never output a bare citation.
+        After each claim, add the marker of the passage that supports it, e.g. "… media hora de latencia [2]."
+        If the context does not contain the answer, say so plainly — never guess.
+        """
+
     public init() {}
 
     public func answer(question: String, passages: [RAGPassage]) async throws -> String {
@@ -70,13 +78,7 @@ public struct RAGAnswerer: Sendable {
             "[\(index + 1)] (\(passage.meetingTitle), \(Self.timestamp(passage.timestamp))) \(passage.text)"
         }.joined(separator: "\n")
 
-        let session = LanguageModelSession(
-            instructions: """
-                You answer questions about the user's own meetings using ONLY the numbered context passages.
-                Write a direct answer of one to three full sentences — never output a bare citation.
-                After each claim, add the marker of the passage that supports it, e.g. "… media hora de latencia [2]."
-                If the context does not contain the answer, say so plainly — never guess.
-                """)
+        let session = LanguageModelSession(instructions: Self.answerInstructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: "Context:\n\(context)\n\nQuestion: \(question)\n\n"

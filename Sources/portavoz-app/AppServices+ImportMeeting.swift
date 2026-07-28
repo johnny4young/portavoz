@@ -55,11 +55,12 @@ extension AppServices {
         switch phase {
         case .preparingModels:
             L10n.text("Preparing models…")
-        case .downloadingWhisper(let size, let percent):
-            L10n.format(
-                "Downloading Whisper (%@, one time only)… %d%%",
-                size,
-                percent)
+        case .preparingWhisper(let size, let percent, let isDownloading):
+            if isDownloading {
+                L10n.format("Downloading Whisper (%@)… %d%%", size, percent)
+            } else {
+                L10n.text("Checking Whisper already on this Mac…")
+            }
         case .transcribing:
             L10n.text("Transcribing audio (Whisper)…")
         case .identifyingSpeakers:
@@ -135,8 +136,13 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
         _ = try await services.loadWhisperIfNeeded(
             progress: { _ in },
-            downloadProgress: { size, percent in
-                Task { await progress(.downloadingWhisper(size: size, percent: percent)) }
+            preparationProgress: { size, percent, isDownloading in
+                Task {
+                    await progress(.preparingWhisper(
+                        size: size,
+                        percent: percent,
+                        isDownloading: isDownloading))
+                }
             })
     }
 

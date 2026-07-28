@@ -68,6 +68,9 @@ final class AppServices {
     let localDataLedger: LocalDataLedgerModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
+    /// One shared local embedding lane augments Library FTS without loading a
+    /// model per keystroke or downloading assets from the search field.
+    @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
     @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
@@ -89,11 +92,11 @@ final class AppServices {
     var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
     var whisperVariantID: String?
-    var whisperDownloadState: WhisperDownloadState = .idle
+    var whisperPreparationState: WhisperPreparationState = .idle
     @ObservationIgnored var whisperPreparedModel: WhisperEngine.PreparedModel?
     @ObservationIgnored var whisperPreparation: WhisperPreparation?
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
-    @ObservationIgnored var whisperProgressObservers: [UUID: WhisperProgressObserver] = [:]
+    @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     var whisperIdleGeneration = 0
     private(set) var mlxDownloaded = false
 
@@ -138,9 +141,18 @@ final class AppServices {
     var justRecorded: MeetingID?
 
     func requestMeetingSeek(for citation: AskCitation) {
-        pendingMeetingSeek = MeetingSeekRequest(
+        requestMeetingSeek(
             meetingID: citation.meetingID,
             timestamp: citation.timestamp)
+    }
+
+    func requestMeetingSeek(
+        meetingID: MeetingID,
+        timestamp: TimeInterval
+    ) {
+        pendingMeetingSeek = MeetingSeekRequest(
+            meetingID: meetingID,
+            timestamp: timestamp)
     }
 
     /// The user's average talk-share over their recent meetings (excluding
@@ -158,13 +170,12 @@ final class AppServices {
     }
 
     init() {
+        // The UI-test host has its own bundle identity, but volatile
+        // per-launch preferences still need to land before any service reads
+        // defaults so every case is independent from an earlier test launch.
+        UITestDefaults.installIfNeeded()
         let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
-        let modelStore = usesTemporaryStore
-            ? ModelStore(rootDirectory: FileManager.default.temporaryDirectory
-                .appendingPathComponent(
-                    "portavoz-uitest-models-\(UUID().uuidString)",
-                    isDirectory: true))
-            : ModelStore()
+        let modelStore = Self.makeModelStore(usesTemporaryStore: usesTemporaryStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
         let secretStorage = KeychainSecretStore()
@@ -174,15 +185,7 @@ final class AppServices {
         voiceprintStore = VoiceprintStore(secrets: secretStorage)
         voiceGallery = VoiceGallery(secrets: secretStorage)
         do {
-            if usesTemporaryStore {
-                // UI testing (`make test-ui`): a throwaway DB so a test run
-                // never touches the real library.
-                let url = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
-                store = try MeetingStore(databaseURL: url)
-            } else {
-                store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
-            }
+            store = try Self.makeMeetingStore(usesTemporaryStore: usesTemporaryStore)
         } catch {
             // No database, no app — surfacing a broken half-UI would be
             // worse than failing loudly at launch.
@@ -191,6 +194,7 @@ final class AppServices {
         let askUseCase = Self.makeAskUseCase(
             store: store,
             usesTemporaryStore: usesTemporaryStore)
+        librarySemanticSearch = LocalLibrarySemanticSearch(store: store)
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
             useCase: ResolveFirstRunExperience(
                 library: AppFirstRunLibraryReader(store: store))))
@@ -221,6 +225,25 @@ final class AppServices {
         Task { @MainActor [weak self] in
             await self?.refreshMLXReadiness()
         }
+    }
+
+    private static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
+        guard usesTemporaryStore else { return ModelStore() }
+        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "portavoz-uitest-models-\(UUID().uuidString)",
+            isDirectory: true)
+        return ModelStore(rootDirectory: rootDirectory)
+    }
+
+    private static func makeMeetingStore(usesTemporaryStore: Bool) throws -> MeetingStore {
+        guard usesTemporaryStore else {
+            return try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
+        }
+        // UI testing (`make test-ui`): a throwaway DB so a test run never
+        // touches the real library.
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
+        return try MeetingStore(databaseURL: url)
     }
 
     /// Searchable mutations request eventual reconciliation. The actor owns

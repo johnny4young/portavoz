@@ -107,11 +107,18 @@ public enum MeetingExporter {
                 markdown += "- [\(mark)] \(item.text)\(owner)\n"
             }
         }
-        markdown = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        return render(markdown, format: format)
+    }
+
+    /// Shapes any Portavoz-authored Markdown — a summary, a recap — for one
+    /// channel. One renderer keeps every shared surface using the same
+    /// conventions instead of each growing its own Slack dialect.
+    public static func render(_ markdown: String, format: SummaryFormat) -> String {
+        let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
         switch format {
-        case .markdown: return markdown + "\n"
-        case .plainText: return renderLines(markdown, slack: false)
-        case .slack: return renderLines(markdown, slack: true)
+        case .markdown: return trimmed + "\n"
+        case .plainText: return renderLines(trimmed, slack: false)
+        case .slack: return renderLines(trimmed, slack: true)
         }
     }
 

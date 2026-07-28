@@ -13,18 +13,31 @@ extension AppServices {
     var meetingPurge: MeetingPurgeUseCases {
         .init(store: store, audioFiles: AppMeetingAudioFiles())
     }
+    /// One resolver literal shared by every generation use case, so a new
+    /// consumer inherits FM/Ollama/MLX/BYOK routing without duplication.
+    var summaryProviderResolver: AppSummaryRegenerationProviderResolver {
+        AppSummaryRegenerationProviderResolver(
+            defaultEngine: summaryEngine,
+            ollamaModel: ollamaModel,
+            mlxModelDirectory: { [modelLifecycle] in
+                await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
+            },
+            foundationModelsCapability: foundationModelsCapability,
+            gateway: dataEgressGateway)
+    }
+
     var regenerateSummary: RegenerateSummary {
         RegenerateSummary(
             store: store,
             preferences: AppSummaryRegenerationPreferences(),
-            providers: AppSummaryRegenerationProviderResolver(
-                defaultEngine: summaryEngine,
-                ollamaModel: ollamaModel,
-                mlxModelDirectory: { [modelLifecycle] in
-                    await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
-                },
-                foundationModelsCapability: foundationModelsCapability,
-                gateway: dataEgressGateway))
+            providers: summaryProviderResolver)
+    }
+
+    var enhanceMeetingNotes: EnhanceMeetingNotes {
+        EnhanceMeetingNotes(
+            store: store,
+            preferences: AppSummaryRegenerationPreferences(),
+            providers: summaryProviderResolver)
     }
 
     /// Resolves the opt-in Companion client from app preferences plus the

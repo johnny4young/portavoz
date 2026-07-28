@@ -46,6 +46,11 @@ public final class MeetingPlaybackSession {
         didSet { player.onlyMyVoice = onlyMyVoice }
     }
 
+    public let canClearPlayback: Bool
+    public var clearPlayback: Bool {
+        didSet { player.clearPlayback = clearPlayback }
+    }
+
     init(player: MeetingPlayer) {
         self.player = player
         currentTime = player.currentTime
@@ -54,6 +59,8 @@ public final class MeetingPlaybackSession {
         clipRange = player.clipRange
         skipSilence = player.skipSilence
         onlyMyVoice = player.onlyMyVoice
+        canClearPlayback = player.canClearPlayback
+        clearPlayback = player.clearPlayback
         synchronizationTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
@@ -178,7 +185,16 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
         guard !relative.isEmpty else { return nil }
         let channels = try resolver.resolve(relativeAudioDirectory: relative)
         guard !channels.files.isEmpty else { return nil }
-        guard let player = await MeetingPlayer.make(channelFiles: channels.files) else {
+        let localVoiceRanges = PlaybackRanges.merge(
+            request.segments
+                .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
+                .map { $0.startTime...$0.endTime },
+            margin: 0.12)
+        guard let player = await MeetingPlayer.make(
+            systemFile: channels.system,
+            microphoneFile: channels.microphone,
+            microphoneAudibleRanges: localVoiceRanges)
+        else {
             return nil
         }
 
@@ -194,11 +210,8 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
             let duration = await player.duration
             await player.setSilentRanges(
                 Waveform.silentRanges(capabilityBuckets, duration: duration))
-            let voiceRanges = request.segments
-                .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
-                .map { $0.startTime...$0.endTime }
             await player.setNonVoiceRanges(
-                PlaybackRanges.complement(of: voiceRanges, within: duration))
+                PlaybackRanges.complement(of: localVoiceRanges, within: duration))
             let session = await MeetingPlaybackSession(player: player)
             return PreparedMeetingPlayback(
                 session: session,
@@ -278,15 +291,21 @@ public struct ExportMeetingAudioClipRequest: Sendable {
     public let relativeAudioDirectory: String
     public let range: ClosedRange<TimeInterval>
     public let destination: URL
+    public let segments: [TranscriptSegment]
+    public let clearPlayback: Bool
 
     public init(
         relativeAudioDirectory: String,
         range: ClosedRange<TimeInterval>,
-        destination: URL
+        destination: URL,
+        segments: [TranscriptSegment] = [],
+        clearPlayback: Bool = true
     ) {
         self.relativeAudioDirectory = relativeAudioDirectory
         self.range = range
         self.destination = destination
+        self.segments = segments
+        self.clearPlayback = clearPlayback
     }
 }
 
@@ -303,8 +322,16 @@ public struct ExportMeetingAudioClip: ApplicationUseCase {
         try Task.checkCancellation()
         let channels = try resolver.resolve(
             relativeAudioDirectory: request.relativeAudioDirectory)
+        let localVoiceRanges = PlaybackRanges.merge(
+            request.segments
+                .filter { $0.channel == .microphone && $0.endTime > $0.startTime }
+                .map { $0.startTime...$0.endTime },
+            margin: 0.12)
         try await AudioClipExporter.export(
-            channelFiles: channels.files,
+            systemFile: channels.system,
+            microphoneFile: channels.microphone,
+            microphoneAudibleRanges: localVoiceRanges,
+            clearPlayback: request.clearPlayback,
             range: request.range,
             to: request.destination)
     }

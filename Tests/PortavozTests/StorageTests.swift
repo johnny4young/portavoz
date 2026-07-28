@@ -88,7 +88,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 14)
+            XCTAssertEqual(StorageSchema.version, 15)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -1090,7 +1090,7 @@ final class MeetingStoreTests: XCTestCase {
         try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
 
-        var eager = Meeting(
+        let eager = Meeting(
             title: "Sin transcript",
             startedAt: Date(),
             audioDirectory: "meetings/sin-transcript",
@@ -1109,7 +1109,6 @@ final class MeetingStoreTests: XCTestCase {
         ])
         let after = try await store.enforceAudioRetention(audioRoot: root)
         XCTAssertEqual(after.count, 1)
-        _ = eager
     }
 }
 

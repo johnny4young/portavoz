@@ -28,6 +28,7 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         XCTAssertTrue(playback.waveform.contains { $0.amplitude > 0 })
         XCTAssertTrue(playback.canCompressAudio)
         XCTAssertGreaterThan(playback.session.duration, 0.5)
+        XCTAssertTrue(playback.session.canClearPlayback)
         playback.session.seek(to: 0.5)
         XCTAssertEqual(playback.session.currentTime, 0.5, accuracy: 0.001)
         playback.session.markClipStart()
@@ -36,6 +37,25 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         XCTAssertEqual(playback.session.clipRange, 0.5...0.8)
         playback.session.onlyMyVoice = true
         XCTAssertTrue(playback.session.onlyMyVoice)
+        playback.session.invalidate()
+    }
+
+    func testMicOnlyPlaybackNeverOffersChannelAttenuation() async throws {
+        let fixture = try MeetingAudioWorkflowFixture()
+        defer { fixture.remove() }
+        let resolver = MeetingAudioResolverFake(channels: MeetingAudioChannels(
+            system: nil,
+            microphone: fixture.resolver.channels.microphone))
+
+        let prepared = try await PrepareMeetingPlayback(resolver: resolver).execute(
+            PrepareMeetingPlaybackRequest(
+                relativeAudioDirectory: "Audio/meeting",
+                segments: []))
+
+        let playback = try XCTUnwrap(prepared)
+        XCTAssertFalse(
+            playback.session.canClearPlayback,
+            "mic-only and in-person recordings must preserve their complete source")
         playback.session.invalidate()
     }
 

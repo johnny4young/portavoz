@@ -192,7 +192,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             meetingID: pivot.meetingID,
             recipeID: pivot.recipeID,
             language: targetLanguage,
-            markdown: complete.markdown(recipe: .general),
+            markdown: complete.markdown(recipe: .general, language: targetLanguage),
             actionItems: items,
             fingerprint: pivot.fingerprint,
             claims: pivot.claims.map { claim in
@@ -261,6 +261,68 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// Collapses an oversized pile of accumulated notes back under the
     /// reduce budget (the live summary calls this occasionally so its notes
     /// never grow unbounded).
+    /// One-shot "catch me up" recap over an already-clipped recent window
+    /// (CatchUpPolicy). When the formatted clip exceeds the chunk budget the
+    /// TAIL survives — in a catch-up, newest speech always wins.
+    /// On-demand next-question suggestion (APUN-004). Same shape as
+    /// `catchUp`: recent excerpt in, short text out, interactive priority
+    /// because a human is waiting mid-conversation. Pending objectives ride
+    /// along so a suggestion can bridge back to what the meeting set out
+    /// to do.
+    public func suggestNextQuestion(
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        pendingObjectives: [String],
+        targetLanguage: String,
+        glossary: [String] = [],
+        priority: IntelligenceScheduler.Priority = .interactive
+    ) async throws -> String {
+        if let reason = Self.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let transcript = TranscriptFormatter.format(segments: segments, speakers: speakers)
+        let clipped = String(transcript.suffix(TranscriptFormatter.onDeviceChunkBudget))
+        let objectivesBlock = pendingObjectives.isEmpty
+            ? ""
+            : "\n\nStill-open objectives:\n" + pendingObjectives
+                .map { "- " + TranscriptFormatter.escapeEvidenceTags(in: $0) }
+                .joined(separator: "\n")
+        let prompt = "Excerpt of the conversation so far:\n\n\(clipped)"
+            + objectivesBlock
+        let session = LanguageModelSession(
+            instructions: PromptFactory.nextQuestionInstructions(
+                targetLanguage: targetLanguage, glossary: glossary))
+        return try await IntelligenceScheduler.shared.run(priority) {
+            try await session.respond(
+                to: prompt,
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 120)
+            ).content
+        }
+    }
+
+    public func catchUp(
+        segments: [TranscriptSegment],
+        speakers: [Speaker],
+        targetLanguage: String,
+        glossary: [String] = [],
+        priority: IntelligenceScheduler.Priority = .interactive
+    ) async throws -> String {
+        if let reason = Self.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let transcript = TranscriptFormatter.format(segments: segments, speakers: speakers)
+        let clipped = String(transcript.suffix(TranscriptFormatter.onDeviceChunkBudget))
+        let session = LanguageModelSession(
+            instructions: PromptFactory.catchUpInstructions(
+                targetLanguage: targetLanguage, glossary: glossary))
+        return try await IntelligenceScheduler.shared.run(priority) {
+            try await session.respond(
+                to: "Excerpt of the last few minutes:\n\n\(clipped)",
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 200)
+            ).content
+        }
+    }
+
     public func condenseNotes(
         _ notes: String,
         targetLanguage: String,

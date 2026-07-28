@@ -153,6 +153,10 @@ confirms every suggestion.
 
 ## D24 — Echo cancellation (AEC) by default on the mic channel
 
+> **Superseded by D125 (23 Jul 2026).** The original implementation passed its
+> CLI smoke but failed the more important call-coexistence invariant in real
+> Sequoia and Tahoe meetings.
+
 **Context:** in a real meeting played through speakers, the mic captured system audio through the air: ~100% of the "Me" channel was echo from the other participants, duplicating the transcript and breaking the mic→Me premise (D5). Suppressing it by text alone detects only ~57% (the echo arrives degraded and is transcribed differently). The user explicitly rejects being forced to use headphones (the reference Rust app handles this well).
 **Decision:** `MicrophoneSource` enables **Apple voice processing** (`setVoiceProcessingEnabled(true)`, system AEC against the default output) **by default**, with `voiceProcessingOtherAudioDuckingConfiguration` set to `.min` to avoid attenuating meeting audio. Opt-out: "Cancelación de eco" toggle in Settings (`aecEnabled`) and `record --no-aec`. If the device rejects voice processing, it degrades to raw capture without failing. In the same layer: resilience to `AVAudioEngineConfigurationChange` (mid-recording device change) by reinstalling the tap, linearly resampling to the stream's original rate, and filling the gap with silence — the channel never silently dies or misaligns the timeline.
 **Verified (2026-07-07):** CLI smoke test (engine starts with VPIO, WAV written). Field test pending: real meeting with speakers ("Me" must not duplicate others) and switching headphones mid-recording.
@@ -190,11 +194,15 @@ confirms every suggestion.
 - **Waveform** per meeting: channel peak envelope downsampled to the requested bucket count and colored by source. The original persisted `waveform.bin` proposal is superseded by D84: measured stateless vectorized generation is fast enough and cannot become stale.
 - **Clips**: mark a range in the waveform/transcript → export `.m4a` (AVAssetExportSession) + attributed MD snippet; "mark" is FREE, "export" is PRO (already in the matrix).
 - **Master + economics**: WAV remains the master (the pipeline requires it); optional AAC transcode after refine as an additional retention policy (D4 already models retention).
-- **Signal conditioning** (reference-app pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate RNNoise-style denoise (Apple already provides AEC+NS through voice processing, D24) and ~80 Hz high-pass for voice.
+- **Signal conditioning** (reference-app pattern): normalization to −23 LUFS (voice broadcast standard) as the pipeline target — our `normalizePeak` is the first step; evaluate offline denoise/echo cancellation and ~80 Hz high-pass for voice without changing the live call graph (D125).
 - **Import external audio as a meeting** (drag an .m4a/.wav into the library → transcribe+diarize+summarize): the refine pipeline already does everything; only the UI entry point is missing.
 - **Recording crash safety** (MacParakeet pattern, verified in its spec): its M4A files fragmented at 1 s survive `kill -9`. Our WAV files through AVAudioFile probably DO NOT (incomplete RIFF header on crash) — verify and migrate the container to **CAF** (append-safe by design, same AVAudioFile) or fragmented M4A. A 1 h recording cannot die with the app.
 - **Storage economics**: 22 min = 126 MB/channel in WAV; MacParakeet stores 64 kbps AAC (~10 MB). Keeping PCM until refine and transcoding afterward is the balance (refine wants the intact signal).
-- **⚠️ Verified risk to monitor**: MacParakeet DISCARDED process taps because they "do not coexist reliably with VPIO in-process" — exactly our D6+D24 combination. Our evidence (1 real meeting with both active) is insufficient. Documented Plan B: OFFLINE post-recording echo cancellation (derive mic-cleaned with delay estimation), which is what they do.
+- **Resolved live-graph risk**: MacParakeet discarded process taps because they
+  do not coexist reliably with VPIO in-process. Real Sequoia and Tahoe calls
+  later showed call ducking and microphone degradation with that exact
+  combination. D125 removes VPIO from meeting and dictation capture; echo
+  cleanup stays after capture.
 **Rationale:** audio is the product's source of truth; treating it as a dead file gives the differentiated experience away to Otter. Everything is pure AVFoundation — zero new dependencies.
 
 ## D28 — Co-authored notes: Granola's loop over timestamped context
@@ -843,7 +851,7 @@ all schedule the existing idle release; successful capture transfers ownership
 to an opaque `StartRecordingSession` instead.
 
 The private macOS runtime owns `MicrophoneSource`, app/global
-`ProcessTapSource` selection, AEC warm-up, preferred-input fallback,
+`ProcessTapSource` selection, raw input warm-up (D125), preferred-input fallback,
 `RecordingSession`, direct per-channel Parakeet streams, their teardown, and
 one recording-scoped voiceprint future shared by live diarization and durable
 Stop. Direct live streams preserve the released D7 live lane; the serial batch
@@ -3759,3 +3767,678 @@ work remains bounded and durability-critical but should not occupy Swift's
 cooperative executor. Content-free channel shape turns the exact field failure
 into support evidence while preserving Portavoz's privacy boundary and avoiding
 a second sensitive corpus.
+
+## D124 — The live copilot's user-facing name is "Apuntador" in every locale
+
+**Context:** the feature shipped as "Companion" (itself renamed from
+"Copiloto" to avoid Microsoft Copilot collision). By mid-2026 the market moved
+under it: Zoom retired its "AI Companion" brand (June 2026), the term "AI
+companion" drifted toward parasocial chatbots, and the live-assistant category
+split between collapsing "undetectable" tools and assistive coaches. Naming
+research (2026-07-22, STRATEGY §16.4) found "Apuntador" — the theater prompter
+who whispers lines from the concha — collision-free as an AI product name,
+evocative and ownable, Spanish-first like "Portavoz" itself, and structurally
+assistive in framing: a prompter helps the performer deliver their own
+performance.
+
+**Decision:** every user-facing surface says "Apuntador" in BOTH locales
+(catalog keys, Settings, Meeting Detail, recording toolbar, docs prose,
+accessibility identifiers `settings-apuntador-*`, `detail-apuntador`,
+`apuntador-card-*`). Three identity classes deliberately keep the old name:
+persisted storage identifiers (tables `companionCard`,
+`companionCardEvidence`, `companionCardEvidenceSegment`; the
+`companion-knowledge-answer` egress operation and related raw values),
+UserDefaults keys (`companionEnabled`, `companionUserName`, the BYOK key), and
+internal Swift symbols/files (`CompanionCard`, `LiveCompanion`,
+`CompanionSessionCoordinator`, …). Storage and preference names are identity —
+renaming them is a migration with zero user value and real risk. The symbol
+rename is deferred as a mechanical follow-up for a quiet tree, because the
+concurrent working tree actively edits those symbols today.
+
+**Rationale:** the user-visible name is marketing surface and must move with
+the market; persisted identity must not move at all; and a symbols-only rename
+can wait without any user-facing inconsistency.
+
+## D125 — Recording is observational: no live voice-processing takeover (Jul 2026)
+
+**Context:** two real calls on macOS 15 Sequoia and macOS 26 Tahoe showed that
+starting Portavoz reduced participant playback and made the user's microphone in
+the meeting app mute or become extremely quiet. The shared field shape matched
+the implementation: meeting capture enabled `AVAudioEngine` voice processing by
+default. Apple voice-processing IO changes both the input and output nodes, and
+its “minimum” other-audio ducking level is still ducking. It also competes with
+the meeting application's own echo cancellation and microphone processing. The
+before/after support snapshots retained healthy dual-channel files, but only 8
+of 242 live segments and 3 of 175 refined segments came from the microphone,
+which corroborates the weak local signal without exposing meeting content.
+
+**Decision:** meeting recording and global dictation always construct
+`MicrophoneSource` in raw mode. Raw is also the source's default and the CLI
+default; `--aec` is an explicit diagnostic-only opt-in, while the former
+`--no-aec` spelling remains a compatibility no-op. The application no longer
+stores or exposes an AEC recording preference, so an old `aecEnabled=true`
+default cannot reactivate VPIO. Settings presents the invariant as “Call-safe
+capture — Always on.” The process tap remains unmuted and independent, and
+post-capture `MicBleedFilter` continues removing remote speech duplicated
+through speakers. Explicit short voice-enrollment capture may still request
+voice processing because it is not a meeting recorder and already owns that
+bounded action.
+
+**Verification:** source-level architecture tests require raw production
+composition and reject the retired preference; focused unit, localization, and
+Audio Settings XCUITest cover the policy and its visible status. A real-call A/B
+on Sequoia and Tahoe remains the final field gate: playback and uplink must sound
+identical immediately before and after Portavoz starts, while both Portavoz
+channels advance.
+
+**Rationale:** a meeting assistant must never alter the meeting it observes.
+Preventing call interference outranks live acoustic echo cancellation.
+Transcript-level bleed rejection is degradable and reviewable; changing the
+shared hardware graph is neither.
+
+## D126 — Separate dictation input ownership from authoritative text delivery (Jul 2026)
+
+**Context:** system-wide dictation now accepts both a Carbon hotkey and an
+explicitly configured mouse button, then optionally removes bilingual
+hesitation fillers and applies user spelling corrections. Treating the mouse
+gesture as speech-engine behavior would reverse the input boundary. Applying
+corrections sequentially also allowed one rule's output to become another
+rule's input, contradicting the promise that the matched preferred spelling is
+authoritative. A session event tap additionally cannot be created before
+Accessibility is granted and macOS exposes no direct permission-granted
+callback.
+
+**Decision:** the app target owns Carbon, `CGEventTap`, Settings recorders,
+permission prompts, and the pure `MousePTTGesture` ownership table. CGEvent
+indices 0/1 are permanently ineligible; index 2 is vendor-facing Button 3
+(middle click), and every higher index is an additional button. Stored invalid
+values normalize to Off. Registration is idempotent, retries when the app
+becomes active after System Settings, and cancels a mouse-owned capture before
+rebinding can discard its consumed release. Local event monitors are removed
+when their Settings rows disappear.
+
+TranscriptionKit owns the content-only `DictationTextRules`. It canonicalizes
+one rule snapshot, removes only the conservative bilingual filler set when
+enabled, and matches every replacement against the original final dictation in
+one longest-trigger-first pass. Replacement output is never re-matched. These
+rules run only at dictation delivery; recording, live captions, durable
+transcription, and Refine remain verbatim inputs to their existing hygiene
+policies.
+
+**Rationale:** hardware-event ownership and permission lifecycle are macOS app
+concerns, while deterministic post-ASR text policy is reusable speech behavior.
+One-pass matching makes exact spelling predictable, avoids rule-order cascades,
+and is linear in the dictated text apart from the small user-managed rule
+lookup. Keeping meeting transcripts outside this boundary preserves Portavoz's
+source-of-truth contract.
+
+## D127 — Let finalized audio outrank optional live payloads at Stop (Jul 2026)
+
+**Context:** a real call finalized healthy microphone and system CAF files, but
+the captured-snapshot transaction rejected its provisional payload and left the
+meeting as a recording shell. The former fallback retried the same rejected
+snapshot and could also persist an error code that StorageKit did not admit.
+Launch recovery could reconcile published files only after the shell was
+already content-free or marked `needsAttention`; a shell that already carried
+recovered transcript content required another launch and remained alarming in
+the meantime.
+
+**Decision:** `ApplicationKit.StopRecording` first retries the exact full
+snapshot once, because a transient Store failure must not discard a released
+feature. If the same payload is structurally rejected, Stop follows one bounded
+degradation ladder: retain transcript, cast, notes, and only valid Apuntador
+cards; then retain finalized audio plus notes and enqueue exact complete
+transcription; finally retain the strongest canonical `capture.*`
+`needsAttention` projection that StorageKit accepts. Generated Apuntador cards
+without their successful run provenance are omitted rather than relabeled as
+manual or legacy content. Every accepted projection remains atomic and carries
+the durable next action. Launch recovery may mark a stale content-bearing
+recording shell `needsAttention` and install only validated published assets in
+the same pass; StorageKit promotes it directly when the existing transcript and
+asset evidence satisfy the ready invariant.
+
+**Rationale:** healthy finalized audio is the irreplaceable primary artifact;
+optional live and generated projections must not prevent its durable
+publication. One exact retry preserves parity for transient failures, while a
+finite ordered ladder avoids repeating an invalid transaction or inventing
+provenance. Canonical lifecycle codes keep Store invariants and user recovery
+copy aligned, and same-pass launch repair removes a restart-dependent recovery
+gap without weakening aggregate validation.
+
+## D128 — Route live translation through explicit per-turn language lanes (Jul 2026)
+
+**Context:** Apple Translation configured with an unknown source may ask the
+user to choose a language. In a mixed Spanish/English call, repeating that
+framework auto-detection for successive turns produced recurrent modal pickers
+and unstable output after the target changed. Meeting-level language cannot be
+used because different participants may speak different languages.
+
+**Decision:** live translation resolves every closed transcript row to an
+explicit source-to-target pair. Persisted segment language is authoritative;
+when it is absent, a conservative local recognizer may classify only lexical
+text with sufficient length and confidence. Rows already spoken in the target
+language and short or uncertain rows remain exactly as spoken. The app groups
+work by one explicit language pair, configures `TranslationSession` with both
+source and target, and never requests framework source auto-detection. Download
+consent is scoped to the pair. Switching target clears translated rows, active
+source, consent, unsupported-passthrough rows, and in-flight publication through
+the existing target fence. If Apple reports one pair unsupported, every pending
+row in that lane remains exactly as spoken but is marked handled, routing
+continues to later supported lanes, and the UI retains a partial-support state
+instead of presenting a terminal failure.
+
+**Rationale:** the transcript is a multilingual sequence, not a monolingual
+document. Explicit lanes remove a framework-owned language prompt from the live
+meeting, prevent same-language rows from being needlessly rewritten, and make
+download consent and cancellation deterministic without translating or
+normalizing the source transcript. Treating unsupported work as passthrough
+prevents one minority language from starving every translatable turn that
+follows.
+
+## D129 — Give the reader ownership of live-transcript position (Jul 2026)
+
+**Context:** the lyrics-style live transcript automatically followed each new
+row. A user who scrolled up to reread an earlier turn was immediately returned
+to the latest caption, and the playback-oriented fade/blur cylinder made
+rapidly moving live text lose readability before it left the center.
+
+**Decision:** live transcript presentation has an explicit follow state.
+Direct user scroll interaction pauses follow indefinitely; programmatic scrolls
+do not. macOS 15+ uses SwiftUI scroll-phase events. On the minimum macOS 14.4
+runtime, a zero-size AppKit bridge lives in the scroll document and observes
+`NSScrollView.didLiveScrollNotification` only for its enclosing scroll view;
+that user-only event includes legacy mouse-wheel scrolling without a start/end
+pair, while `ScrollViewProxy.scrollTo` does not generate it.
+While browsing history, every visible row is full-opacity, full-scale, and
+unblurred, and incoming rows never change the reader's position. An
+identified **Jump to live** control is the only action that resumes following.
+While following, live captions use a wider sharp zone and tightly bounded
+fade/scale/blur values than playback. Playback keeps its existing focused-lyrics
+treatment. The visual policy and AppKit observer scope are unit tested; a
+disposable XCUITest fixture proves new rows arrive while the reader remains in
+history and that the explicit action restores the latest row.
+
+**Rationale:** live captions are both an ambient display and a short-term
+record. User interaction is stronger intent than animation, so no timer should
+steal the scroll position. Separating live and playback visual policy preserves
+the designed review experience while keeping active conversation readable and
+accessible.
+
+## D130 — Keep automatic Refine unhinted across the complete channel (Jul 2026)
+
+**Context:** a Stop publication failure left an empty recording shell whose
+stale meeting language was English. Refine reused that aggregate value as a
+Whisper hint and translated Spanish speech into English. Even a homogeneous
+provisional transcript cannot prove that every actor or a later turn uses the
+same language.
+
+**Decision:** automatic Refine never supplies a full-channel language hint.
+WhisperKit language detection is explicitly enabled whenever that hint is nil;
+nil by itself is not automatic because WhisperKit disables detection while
+decoder prefill is enabled and otherwise falls back to English. VAD results
+retain their detected language, and the decoder remains in `.transcribe` mode
+so it never intentionally translates speech. Only the user's explicit
+per-meeting fixed English or Spanish recovery choice may constrain recognition.
+The meeting-level language remains derived metadata installed only when the
+completed attributed transcript is homogeneous.
+
+**Rationale:** a recording is a sequence of multilingual turns, not one
+language slot. Avoiding an aggregate hint prevents stale metadata and one
+speaker's language from translating another speaker's words. Explicit fixed
+recovery remains available when acoustic ambiguity is more important than
+mixed-language fidelity.
+
+## D131 — Prefer direct system captions over matching microphone bleed (Jul 2026)
+
+**Context:** speaker playback can re-enter the microphone during a live call.
+Because microphone and system callbacks arrive independently, the same phrase
+appeared as alternating `Me` and `Them` fragments before post-capture cleanup.
+Callback order is not stable, and legitimate overlapping speech must remain.
+
+**Decision:** a new lexical microphone row is compared only with the newest
+twelve system/room rows and is dropped when it matches direct remote evidence.
+A delayed matching system/room row may replace the microphone copy only while
+that copy is the newest still-open row. Older rows are immutable once
+translation and rolling-summary cursors can observe them. The existing
+conservative bleed threshold remains authoritative, so short acknowledgements
+and distinct overlapping text survive. Finalized audio and per-channel raw
+transcription remain untouched; this policy changes only the live merged
+projection.
+
+**Rationale:** direct system capture is stronger evidence for remote speech than
+acoustic microphone spill. A bounded deterministic admission window corrects
+both adjacent callback orders without an unbounded transcript scan, changing
+the call's audio graph, deleting genuine local participation, or invalidating
+IDs and indexes already consumed downstream.
+
+## D132 — Treat generated summary owners as untrusted cast claims (Jul 2026)
+
+**Context:** a summary provider assigned actions to people whose names were
+merely mentioned in the meeting. Typed action storage later cleared unknown
+owners, but Markdown had already rendered the raw generated name, producing
+visible invented assignments and duplicated forms such as
+`Daniel: task — Daniel`.
+
+**Decision:** structured summary drafting admits an action owner only when it
+case-insensitively resolves to exactly one cast member. A unique exact speaker
+label has priority; a display name is accepted only when it is unique in the
+meeting cast. Drafting resolves once, carries that `SpeakerID` beside the
+canonical rendered owner into typed projection, and never performs a second
+ambiguous name lookup. Unknown and duplicate display names become unassigned. A
+matching leading owner prefix is removed from the action text, and an empty
+remainder is discarded. Prompts reinforce this rule but deterministic
+post-generation admission remains authoritative.
+
+**Rationale:** names inside speech are meeting content, not identity evidence.
+One cast-grounded resolution keeps rendered and typed projections consistent,
+prevents model obedience or array order from becoming a trust requirement, and
+still preserves actions whose ownership is genuinely known.
+
+## D133 — Preserve source identity through live diarization splits (Jul 2026)
+
+**Context:** live diarization can split one closed caption after translation,
+rolling summary, or Apuntador has already referenced its ID. Replacing every
+piece with a fresh ID invalidated Apuntador evidence at Stop and made a valid
+captured-snapshot transaction fail. The rolling summary also used an array
+offset, so inserting a split piece before that offset could skip new speech or
+replay the wrong window.
+
+**Decision:** `SpeakerAttributor` preserves the source segment ID on the first
+non-empty split child and assigns fresh IDs only to additional children.
+Unsplit segments retain their existing identity as before. The rolling live
+summary tracks the IDs of admitted closed captions rather than one mutable array
+offset, so every additional split child remains eligible without destabilizing
+already consumed turns. Stop still retains D127's bounded fallback for any
+other optional provenance rejection.
+
+**Rationale:** a split refines one observation; it does not erase its lineage.
+Keeping one stable anchor preserves foreign-key evidence and translation state,
+while fresh sibling IDs accurately represent newly visible turns. Identity-
+based cursors are robust to insertion, splitting, and callback reordering and
+therefore keep live intelligence independent from presentation-array shape.
+
+## D134 — Live assist stays measured, conservative, and schema-free (Jul 2026)
+
+**Context:** APUN-003/004 add pre-meeting objectives with live check-off, an
+on-demand next-question suggestion, and a rolling talk-time cue. Each could
+have justified new tables, new toggles, or an eager model loop; the live
+surface's rules (D26 opt-in, D29 priorities, measured-not-judged mirror
+philosophy) already answer most of those questions.
+
+**Decision:** Objectives persist as `ContextItem` rows with the new
+`objective` kind — no schema migration; the check-off state folds into the
+content ("✓ " prefix) and the check-off moment into the timestamp, so the D28
+notes block carries what was covered and what stayed open into every summary.
+The automatic check-off rides the existing 40-second rolling tick at
+`.background`, is gated by the same Apuntador opt-in (it is a model judgment
+about the conversation), holds a deliberately high bar (announced topics are
+NOT covered; doubt leaves an objective pending), and can only check — never
+uncheck — from the offered pending list. The next-question suggestion clones
+the catch-up concern exactly (pull-based, `.interactive`, capability-honest,
+stale-fenced) and carries still-open objectives so suggestions can steer back
+to them. The talk-time cue is pure channel math (microphone = the user) with
+no model call, so it does NOT ride the Apuntador opt-in; it renders only once
+closed captions exist and emphasizes only past 60 seconds of speech and a
+two-thirds share — measured, not judged. Seeding objectives from the
+pre-meeting brief is deferred: the brief dies at the recording route boundary
+today, and widening that boundary belongs to its own change.
+## D135 — Enhanced notes as a separate regenerable artifact (Jul 2026)
+
+**Context:** the notes→summary weave (D28) expands the user's notes INSIDE the
+general summary. Granola's core loop is different: your own notes become the
+document, enhanced with transcript facts. Users wanted both — the summary and
+"my notes, expanded" — without the model ever rewriting what they typed.
+
+**Decision:** NOTES-001 adds `enhancedNote` (schema v15): ONE regenerable
+document per meeting, generated by `ApplicationKit.EnhanceMeetingNotes` through
+the shared summary provider resolver (FM/Ollama/MLX/BYOK) from an internal
+`enhanced-notes` recipe that repeats each raw note verbatim in bold, expands it
+with one to three transcript-grounded sentences, states contradictions plainly,
+and never invents or reorders. The raw `contextItem` rows are never modified.
+The artifact follows the D62–D78 provenance regime exactly: an exact
+fingerprint + language hit performs no model operation and creates no
+`GenerationRun`; a succeeded run commits atomically WITH the document;
+failed/cancelled runs persist best-effort; replacement is an explicit in-place
+update preserving `createdAt` — never `ON CONFLICT REPLACE`. The document is
+meeting-owned portable content (D92 journal via v15-registered triggers);
+`generationRunID` stays device-local. Meeting Detail shows the raw notes until
+an enhanced document exists and observes both through an independent sixth
+degradable read, so a notes failure can never blank the transcript.
+
+**Rationale:** the user's words are testimony; the model is an annotator.
+Keeping enhancement OUT of the summary artifact keeps both regenerable
+independently, keeps the summary cache honest, and gives the "your notes,
+expanded" loop its own provenance and sync story at the cost of one table.
+
+## D136 — The shareable recap is summary-derived and never sent by us (Jul 2026)
+
+**Context:** the meeting ends and the real job begins: telling people what
+happened. Exporting Markdown or a PDF hands over a document; it does not
+write the message. Competitors close this loop by generating a recap and
+wiring an outbound integration (mail credentials, a Slack token, a share
+link on their servers) — each one a standing key and a new place meeting
+content can leak from.
+
+**Decision:** FEATURE-003 adds a recap that Portavoz DRAFTS and the user
+SENDS. Three properties are binding:
+
+1. **Summary-derived.** `RecapComposer` (ApplicationKit, pure) receives the
+   meeting, the cast, and the summary — never `TranscriptSegment`s. A recap
+   therefore cannot leak raw speech even if the user forwards it widely, and
+   the guarantee is structural rather than a filter that could regress.
+2. **Reviewed before it moves.** The composed draft opens in an editable
+   sheet. Changing audience or channel never overwrites text the user has
+   already edited: the new choices are held and a `Redraft` action applies
+   them explicitly. Nothing is transmitted from the sheet — the destinations
+   are the clipboard and the system share sheet (D12's L0 share step), both
+   chosen by the user, so no credential, no gateway, and no egress receipt
+   is involved.
+3. **It speaks the meeting's language.** Section labels come from a
+   bilingual content table keyed on the summary's language, not from `L10n`:
+   the recap is addressed to the people who were in the room, whatever
+   language the reader's interface happens to be in.
+
+Commitments are re-rendered from the library's real done state — open items
+only, with owners resolved from the cast — so a stale action-items section
+narrated inside the summary snapshot never contradicts the current truth.
+An audience of one participant leads with that person's own commitments.
+Channel shaping reuses `MeetingExporter.render(_:format:)`, the same
+renderer as the summary copy, so no channel grows its own Slack dialect.
+
+**Rationale:** the honest boundary for a local-first product is to make the
+message excellent and stop at the user's own send button. Refusing outbound
+integrations costs one click and removes an entire class of standing
+credentials, silent background sends, and server-side copies. The provenance
+line the recap carries claims only what is always true — that the transcript
+is not included — and deliberately does NOT claim the material never left
+the device, because a BYOK or remote engine may have produced the summary.
+## D137 — Performance numbers are a contract, not a memory (Jul 2026)
+
+**Context:** Portavoz measures itself well — eight harnesses cover search,
+detail, semantic retrieval, waveform, Spotlight, drift, DER, and memory. What
+it did not do is RETAIN. Every published number lived as prose in a spec, no
+Makefile target invoked a benchmark, `RELEASING.md` never ran one, and the only
+tracked evidence came from a single five-hour session. Nothing in the release
+recipe would have noticed a ten-fold regression.
+
+**Decision:** PERF-001 lands as a declared contract plus a gate.
+`docs/evidence/perf-thresholds.json` states every release-relevant metric: its
+journey, its budget, and the exact selector that pulls it out of a harness
+report. Budgets are copied from the Target column of spec 08's measured-numbers
+table — the contract records the promise the product already made, it does not
+invent a new one. `make perf-ledger` runs the unattended harnesses, resolves
+every metric, compares it against its budget and against the baseline the
+contract names, and answers with one scorecard and one exit code.
+
+Three rules make the answer trustworthy:
+
+1. **Absolute misses fail; regressions are candidates.** PERF-008 fails a
+   release on a budget miss, but only counts a p95 regression after three
+   stable runs — so one run reports a candidate (exit 2) and `--strict` is how
+   a release decides to treat candidates as blockers.
+2. **A journey that was not measured says so.** Cold start, recording memory,
+   live lag, drift, DER, refine, and summary need a microphone, a real
+   recording, or Instruments. They stay declared in the contract and are
+   printed as `not measured` with the exact command that produces them. A
+   partial run can never read as a green one.
+3. **Authority is earned by the machine.** The scorecard claims
+   `authoritative` only when every report comes from one release build on one
+   Apple Silicon Mac that matches the baseline machine; mixed hosts, a debug
+   build, or another Mac make it `informational`. That is PERF-001's "a stable
+   Apple Silicon machine is the release authority; noisy hosted CI is
+   informational only", enforced rather than remembered. The macOS version is
+   deliberately excluded from machine identity: upgrading the OS must surface
+   as whatever it does to the numbers, not silently discard the baseline.
+
+**Rationale:** the numbers were never the hard part; keeping them true across
+releases is. Encoding them where a script can check them converts a claim that
+decays into one that fails loudly, and it costs one tracked JSON file plus a
+gate that reuses every harness already written. Moving a baseline forward stays
+a reviewable edit of that file, so an accepted regression is always someone's
+explicit decision.
+## D138 — Silence is an endpoint: the deterministic stage-0 turn detector (Jul 2026)
+
+**Context:** closing a caption row is delta-driven — a row closes only when
+the NEXT Parakeet delta appends a new one. Silence therefore never closed a
+row, and an Apuntador candidate only existed once a row closed. The
+consequence went beyond latency: when a remote participant asked a question
+and the room went quiet waiting for the user's answer, no card could be
+produced during the meeting at all. The one moment the prompter is most
+needed was the one moment it structurally could not act. (APUN-005's research
+framing — "remove the 300–800 ms silence-endpointing tax" — understated the
+problem: there was no endpointing to tax.)
+
+**Decision:** a deterministic turn endpointer, not a model.
+`TurnEndpointPolicy` (IntelligenceKit, pure) plus one deadline task in
+`RecordingController`: every live delta re-arms a 2.0 s deadline; when it
+fires, the still-open remote row is treated as a finished turn and runs the
+SAME detection dispatch a real close runs — same channel/noise/question
+gates, same scheduler key, same card admission. Recording activation first
+drains rows that closed while Start was preparing and then arms the open tail;
+enabling Apuntador mid-recording arms the already-open remote row, while
+disabling it cancels the deadline. Three properties are binding:
+
+1. **The caption model is untouched.** The coalescer keeps its delta-driven
+   closing; the open row stays open for presentation, dictation, translation,
+   and the summary. Only Apuntador detection consumes it early.
+2. **Speculation can never out-detect the close.** The policy's gates mirror
+   the real-close gates exactly because both paths share one dispatch method
+   and that method is the only caller of the candidate gate.
+3. **One detection per (row, text length).** A `SpeculativeTurnMark` makes
+   the eventual real close free when the text did not change, and a late
+   delta that grows the text is a genuinely new candidate that re-detects;
+   the existing per-question card dedup absorbs the overlap.
+
+The 2.0 s constant is derived from the pipeline's own numbers: the live
+window's worst-case structural latency is 1.4 s (1.0 s chunk + 0.4 s right
+context), so two seconds of delta silence implies the speaker stopped at
+least 0.6 s ago — the same sentence pause that would have closed the row had
+anyone kept talking.
+
+**The model this stage was researched around stays out, with a revisit
+trigger.** pipecat smart-turn v3 (8.7 MB int8, BSD-2, ~12 ms, 23 languages
+incl. ES, sha256-pinnable from HF) is a real candidate for the cases a
+transcript heuristic cannot see — intonation-only turn ends without
+punctuation. But it ships ONNX-only: adopting it today means either an
+onnxruntime dependency (a heavyweight binary xcframework to serve an 8 MB
+model) or converting and self-hosting a CoreML artifact with weaker
+provenance. Neither is worth it while the deterministic stage covers the
+transcribable cases; GAPS records the trigger (an official CoreML artifact,
+or an onnxruntime decision made for its own sake).
+
+**Rationale:** the honest reading of APUN-005 was that the product gap was
+structural, not statistical. A two-line policy and one timer close the
+"question, then silence" hole entirely and cut several seconds in the common
+case; a 360 MB (v2) or new-runtime (v3) dependency would have improved
+recall on a minority of turns while leaving the same hole open on Sequoia
+and non-FM Macs, where detection cannot run anyway.
+## D139 — App Intents without an Xcode app target (Jul 2026)
+
+**Context:** GAPS #10 recorded that "AppIntents/Siri metadata requires the
+future Xcode app target": Xcode extracts the metadata bundle during its own
+build, SwiftPM has no equivalent step, and D20 deliberately keeps the release
+pipeline SPM + `make-app.sh` with no checked-in project. The premise went
+untested — and it turned out to be wrong.
+
+**Decision:** the metadata is extracted OUT OF BAND, and D20 stands.
+`appintentsmetadataprocessor` (Xcode toolchain) needs only per-file
+`.swiftconstvalues` plus a source list; it does not need an Xcode build. The
+pipeline rests on one enforced contract: **the intents file is SDK-only**
+(`PortavozAppIntents.swift` imports AppIntents, AppKit, Foundation and
+nothing of the project), so `scripts/build-appintents-metadata.sh` can
+compile that single file standalone — under the SHIPPING module name
+`portavoz_app`, so the metadata's mangled type names match the SwiftPM
+binary — emit the const values (`-emit-const-values-path` with the frontend
+`-const-gather-protocols-file` fed the flattened toolchain protocol list),
+run the processor, verify the extraction actually declares actions, and copy
+`Metadata.appintents` into `Contents/Resources`. `make-app.sh` fails the
+build if any step fails: shipping without intents silently would be a feature
+regression. `ArchitectureDependencyTests` pins the SDK-only import diet —
+the one way this pipeline can rot is someone importing ApplicationKit into
+the intents file, and that must fail at test time, not at release time.
+
+The intent carries no recording product logic. `openAppWhenRun` first
+foregrounds the exact bundle that owns the action, then `perform()` publishes
+one buffered process-local request. `PortavozAppDelegate` consumes that request
+into the same pending-route channel used by other process-external navigation.
+The public `portavoz://record` URL remains a separate adapter for generic
+automation tools; the App Intent never asks LaunchServices to choose a URL
+handler after the system already chose its app. The initial implementation also
+published an English/Spanish `AppShortcutsProvider`; D141 supersedes that
+macOS-specific part after field evidence showed the unsupported duplicate.
+
+**Rationale:** the blocked-by-tooling claim deserved an experiment before a
+binding-decision change. One afternoon of evidence preserved D20, unlocked
+the native automation capability, and reduced GAPS #10 to its true remainder — Quick Look, which
+genuinely needs an extension target and stays deferred.
+
+**Limits recorded honestly:** the extraction targets arm64 only (matching
+the shipped binary); intents must stay in the one SDK-only file; and Siri
+phrase invocation on macOS remains untested field-side. The native action is
+verified in the Shortcuts action picker. Portavoz does not rely on direct App
+Shortcut surfacing on macOS: the reliable Spotlight/Siri path is a user-created
+Shortcut containing the native action. Metadata extraction, the process-local
+handoff, and the exact URL adapter are automated; custom Shortcut invocation
+through Spotlight and Siri was later field-verified under D141.
+
+## D140 — Installed build identities are a system boundary (Jul 2026)
+
+**Context:** field validation found no Portavoz action in Shortcuts, Spotlight,
+or Siri even though `/Applications/Portavoz Dev.app` contained nonempty
+`Metadata.appintents`. The stable app, Dev app, and every DerivedData UI-test
+host all claimed `app.portavoz.mac`; the stable app still lacked the new
+metadata, and LaunchServices had many same-identifier candidates. App Intents
+registration is bundle-identity based, so a correct metadata file inside an
+ambiguous identity is not a discoverable feature.
+
+**Decision:** each simultaneously installable build class has one identity:
+
+- shipping `/Applications/Portavoz.app`: `app.portavoz.mac`;
+- local `/Applications/Portavoz Dev.app`: `app.portavoz.mac.dev`;
+- disposable XcodeGen host: `app.portavoz.mac.uitest-host`.
+
+`make install` rewrites both base and localized Dev names before the final
+Developer ID signature, verifies the copied bundle, force-registers only that
+exact path, and then opens it. UI tests still target the public URL adapter by
+exact application URL, but their DerivedData bundles can no longer shadow the
+shipping identity. Dev's distinct identity intentionally requires its own
+one-time TCC permissions, preferences, and Keychain context; silently sharing
+those system grants with a stable installation is not worth corrupting system
+discovery.
+
+**Rationale:** path and display name are not application identity on macOS.
+Running multiple builds with one identifier turned installation order and
+version ranking into product behavior. Separate identities make registration,
+permissions, and failures deterministic while preserving the rule that
+development commands never mutate the notarized release app.
+
+## D141 — macOS publishes an App Intent, not an App Shortcut (Jul 2026)
+
+**Context:** the first real Shortcuts/Spotlight/Siri validation passed, but the
+Shortcuts action picker displayed two identically titled **Start recording**
+rows: the native `AppIntent` with the Portavoz icon and the automatic
+`AppShortcut` from D139 with a generic icon. Apple supports App Intents as
+macOS action-building blocks, but does not define automatic App Shortcuts as a
+macOS product surface. The supported workflow already uses the native action
+inside a user-created Shortcut, which Spotlight and Siri invoke by its saved
+name.
+
+**Decision:** the macOS metadata contains `StartRecordingIntent` and no
+`AppShortcutsProvider`. The app no longer refreshes automatic shortcut
+parameters at launch. Metadata packaging fails closed if it finds no action or
+any `autoShortcuts` entry. The existing user-created Shortcut remains the
+single Spotlight/Siri adapter and keeps referencing the same intent identifier.
+A future iOS target may add its own App Shortcuts provider because that platform
+supports the surface; it must not be extracted into the macOS metadata bundle.
+
+**Rationale:** publishing one supported primitive gives users one clear choice,
+preserves composability, and avoids two controls that perform the same
+operation. It also aligns implementation with the already documented macOS
+contract instead of asking users to understand an unsupported duplicate.
+
+## D142 — Separate live bleed admission from readable paragraph projection (Jul 2026)
+
+**Context:** field calls through Mac speakers still showed exact two-word and
+rolling partial copies as alternating `Me`/`Them` rows. The earlier
+three-word bag-of-words threshold intentionally preserved them. At the same
+time, genuine consecutive rows from one person looked fragmented, but generic
+`Them` may still represent two back-to-back people before live diarization
+resolves their voices.
+
+**Decision:** direct system/room audio may suppress an exact two-word
+microphone copy only when both channel timelines truly overlap. A contiguous
+three-word rolling edge may also suppress the longer noisy copy. One-word
+speech, sequential acknowledgements, distinct overlap, finalized audio, and
+raw per-channel transcription remain unchanged. Readable paragraph grouping is
+a separate bounded view projection: it groups microphone rows or rows with the
+same stable live voice, carries their translations, keeps the first ID for
+diffing, and never groups generic `Them`.
+
+**Rationale:** direct capture is stronger evidence than acoustic spill, but
+short language alone is not enough to erase speech. Temporal evidence makes
+the admission rule safer, while a presentation-only paragraph projection
+improves readability without invalidating translation, Apuntador, rolling
+summary, persistence, or speaker-lineage consumers.
+
+## D143 — Expand Library search bilingually without an LLM or broad token OR (Jul 2026)
+
+**Context:** a user searching `august` expected meetings that contain `agosto`,
+and a selected Library hit opened the right meeting but not its exact transcript
+moment. Semantic or generative expansion would add model readiness, latency,
+non-determinism, and privacy surface to the instant sidebar path.
+
+**Decision:** ApplicationKit expands a compact, explicit English/Spanish
+meeting lexicon in both directions. StorageKit treats each complete expanded
+query as one conjunctive FTS5 variant and ORs the variants; unknown product and
+technical terms remain exact. Selecting a hit publishes its meeting ID and
+timestamp through the existing one-shot seek channel before route navigation.
+
+**Rationale:** deterministic local expansion covers high-value bilingual
+calendar and meeting vocabulary on every supported Mac, keeps FTS ranking and
+tests reproducible, and reuses the proven source-jump contract instead of
+creating a second navigation mechanism.
+
+## D144 — Clear playback is reversible channel admission, not destructive DSP (Jul 2026)
+
+**Context:** dual-channel recordings made through Mac speakers contain a clean
+remote copy in the system track and a delayed acoustic copy in the microphone
+track. Flat full-gain playback makes that capture truth sound like echo or
+double speech. Enabling voice processing during capture would modify the live
+call, while destructive post-processing would remove the original evidence and
+could erase speech when transcript attribution is incomplete.
+
+**Decision:** when both system and microphone tracks load successfully,
+AudioPlaybackKit keeps the direct system track unchanged and admits microphone
+audio only around merged transcript-confirmed local turns, with short
+click-free ramps. Meeting Detail enables this `Clear playback` mix by default,
+exposes the original flat mix as a reversible toggle, and exports the currently
+selected mix. Mic-only recordings never receive channel attenuation. The
+stored recording is never rewritten.
+
+**Rationale:** channel roles provide stronger evidence than generic echo
+cancellation after capture. A non-destructive mix solves the common
+loudspeaker-bleed case without touching the call, preserves forensic source
+audio, and gives incomplete transcripts an immediate escape hatch.
+
+## D145 — Instant Library search is exact-first and opportunistically semantic (Jul 2026)
+
+**Context:** the D143 lexicon covers common meeting vocabulary but cannot
+enumerate paraphrases or every English/Spanish equivalent. Portavoz already has
+an Apple Latin contextual embedder and exact cosine storage for Ask. Adding a
+second vector database would duplicate model/storage policy, while requesting
+OS assets when a user types would turn an instant local control into a surprise
+download.
+
+**Decision:** Library search always publishes bounded FTS5 results first,
+including `unicode61` case and Latin-diacritic folding plus D143 complete-query
+variants. When the Apple Latin embedding assets are already installed and no
+recording is active, one process-shared ApplicationKit actor incrementally
+embeds at most 512 missing non-micro segments and appends unique exact-cosine
+hits after lexical rank. Search-field typing never requests assets. Semantic
+failure or cancellation becomes an empty augmentation and cannot fail exact
+search. No sqlite-vec or other vector dependency is added.
+
+**Rationale:** exact-first behavior keeps names, identifiers, ranking, startup,
+and failure semantics deterministic on every supported Mac. Reusing the
+existing device-local representation adds paraphrase and cross-language recall
+with no new privacy boundary, dependency, or required setup.

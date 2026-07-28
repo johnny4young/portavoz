@@ -46,7 +46,7 @@ receipts, audio, model state, keys, and voiceprints do not. Acknowledging an
 in-flight generation cannot hide a newer edit. StorageKit can now join only
 the current pending generation to a complete text-first aggregate containing
 the cast, bilingual transcript, every summary/action/evidence version, notes,
-and Companion cards/evidence. IntegrationsKit deterministically encodes that
+and Apuntador cards/evidence. IntegrationsKit deterministically encodes that
 envelope; StorageKit validates and atomically replays it while preserving
 matching device-local derivations, deferring live remote work behind unsent
 local work, making remote deletion privacy-dominant, and suppressing accepted
@@ -117,7 +117,7 @@ a field gate, not a unit-test claim.
 - **Audio:** never part of initial sync. A later per-meeting CKAsset opt-in has
   its own size, retry, deletion, and consent contract.
 - **Voiceprint, canonical person links, secrets, and keys: never** (D8/D21/D92–D97).
-- **Later Companion control:** an ephemeral CloudKit command record may control
+- **Later Apuntador control:** an ephemeral CloudKit command record may control
   Mac recording only after private data sync is field-proven; it is not part of
   6B and requires explicit device trust and replay protection.
 

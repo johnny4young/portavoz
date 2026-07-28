@@ -111,6 +111,11 @@ final class EnglishSourceTests: XCTestCase {
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
+        if relative == "Sources/ApplicationKit/BilingualSearchQueryExpander.swift" {
+            // The explicit EN/ES search lexicon is runtime data, not public
+            // source prose. Its comments and API documentation remain English.
+            return line.contains("pair(")
+        }
         if relative == "Sources/IntelligenceKit/SummaryOutputAdmission.swift" {
             // This exact line is a bilingual stop-word lexicon used as data by
             // evidence admission; all explanatory source prose remains English.
@@ -126,6 +131,13 @@ final class EnglishSourceTests: XCTestCase {
         }
         if relative == "Sources/portavoz-app/MeetingDetailView.swift", line.contains("Español") {
             return true
+        }
+        if relative == "Sources/ApplicationKit/MeetingRecap.swift" {
+            // The recap speaks the MEETING's language (D136), so its section
+            // labels are a bilingual content table rather than UI prose.
+            // Explanatory source prose in this file stays English.
+            return line.contains("reunión") || line.contains("transcripción")
+                || line.contains("título")
         }
         if relative == "Sources/portavoz-app/AppServices+Showcase.swift" {
             // The -seed-showcase library is deliberately Spanish fictional

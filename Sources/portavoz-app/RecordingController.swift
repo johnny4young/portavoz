@@ -9,39 +9,40 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
+enum RecordingMeterPublicationPolicy {
+    static let minimumInterval = 0.05
+
+    static func shouldPublish(now: TimeInterval, last: TimeInterval) -> Bool {
+        now - last >= minimumInterval
+    }
+}
+
 /// Drives one recording end to end: capture (mic + system tap) → live
 /// captions → on stop, diarization + attribution + persistence + summary.
 /// The whole meeting pipeline, in the order the Kits were built.
 @MainActor
 @Observable
 final class RecordingController {
-    enum FailureRecovery: Equatable {
-        case retry
-        case library
-        case supportDiagnostics
-    }
-
-    struct FailureContext: Equatable {
-        let code: String
-        let category: FailureCategory
-        let recovery: FailureRecovery
-    }
-
-    enum Phase: Equatable {
-        case idle
-        case preparing
-        case recording
-        case processing(String)
-        case done(MeetingID)
-        case failed(String)
-    }
-
-    private(set) var phase: Phase = .idle
-    private(set) var failureContext: FailureContext?
+    private(set) var phase: RecordingPhase = .idle
+    private(set) var failureContext: RecordingFailureContext?
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()
     /// Rolling on-device summary, refreshed every ~40 s while recording.
     private(set) var liveSummary: String?
+    /// On-demand "catch me up" recap of the last few minutes (pull, never
+    /// pushed). Distinct from the rolling summary: it answers "what did I
+    /// just miss", not "what is this meeting about". Owns its own state.
+    let catchUp = RecordingCatchUpModel()
+
+    /// Pre-meeting objectives with live check-off (APUN-003). The checklist
+    /// is plain UI state; only the automatic pass on the rolling tick is
+    /// Apuntador work and respects that opt-in.
+    let objectives = RecordingObjectivesModel()
+
+    /// On-demand next-question suggestion (APUN-004): sibling of catch-up,
+    /// with the still-pending objectives riding along so a suggestion can
+    /// steer back to what the meeting set out to do.
+    let nextQuestion = RecordingNextQuestionModel()
     /// The user's notes during the meeting (D28): intent for the summary.
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
@@ -51,26 +52,50 @@ final class RecordingController {
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
     var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
-        didSet { UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled") }
+        didSet {
+            UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled")
+            // The toggle is available during a recording. Enabling it while a
+            // remote row is already open must start that row's silence clock;
+            // disabling it must cancel any pending speculative detection.
+            armTurnEndpointDeadline()
+        }
     }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
+    /// Exact source revision that produced each visible translation. The last
+    /// caption keeps a stable ID while it grows, so ID-only bookkeeping would
+    /// strand a stale partial translation until another speaker started.
+    var translatedSourceTexts: [UUID: String] = [:]
     /// BCP-47 target for live translation; nil = off. Changing it clears the
     /// download-gate flags so the new pair is re-checked from scratch.
     var translationTarget: String? {
         didSet {
             guard translationTarget != oldValue else { return }
             translations.removeAll()
+            translatedSourceTexts.removeAll()
+            unsupportedTranslationRowIDs.removeAll()
+            hasUnsupportedTranslationRows = false
+            translationSource = nil
             translationDownloadApproved = false
-            translationState = translationTarget == nil
-                ? .off
+            translationState = translationTarget == nil ? .off
                 : (liveTranscriptState == .available ? .ready : .waitingForTranscript)
         }
     }
     /// The selected translation pair isn't installed yet — set by the live
     /// translation loop when it declines to auto-trigger Apple's download
     /// sheet mid-meeting. Drives the dismissable "download to translate" banner.
-    private(set) var translationState = LiveTranslationState.off
+    var translationState = LiveTranslationState.off
+    /// Explicit source lane currently owned by Apple Translation. A concrete
+    /// source prevents the framework from presenting its repeated
+    /// auto-detection sheet for short or mixed-language turns.
+    var translationSource: String?
+    /// Closed rows whose explicit pair is unsupported remain in their spoken
+    /// language but count as handled so they cannot starve later lanes.
+    var unsupportedTranslationRowIDs: Set<UUID> = []
+    var hasUnsupportedTranslationRows = false
+    var liveTranslationHandledIDs: Set<UUID> {
+        Set(translations.keys).union(unsupportedTranslationRowIDs)
+    }
     /// The user tapped "Download" on that banner: only then does the loop
     /// call `prepareTranslation()` (the deliberate, expected download sheet)
     /// so the assets are fetched without ever interrupting the meeting on its own.
@@ -81,9 +106,11 @@ final class RecordingController {
     /// shows the level is weak (the far-field built-in mic), not just silence.
     /// Field finding jul 2026: the built-in mic captured the user at ≤ -45 dBFS.
     private(set) var micLevel: Float = 0
+    private var smoothedMicLevel: Float = 0
+    private var lastMicLevelPublication = 0.0
     private var voicedLevel: Float = 0
     private var voicedChunks = 0
-    var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
+    private(set) var micLevelLow = false
 
     /// Whether YOUR mic is muted FOR PORTAVOZ (not the system input) — the
     /// meeting app keeps its own mic; Portavoz records silence on your channel.
@@ -97,7 +124,7 @@ final class RecordingController {
     /// Sustained near-silence on the system channel — likely a call whose
     /// incoming audio isn't reaching the tap (or an in-person meeting, which
     /// the dismissable banner lets you wave off).
-    var systemAudioMissing: Bool { systemChunks > 500 && systemRMS < 0.003 }
+    private(set) var systemAudioMissing = false
     /// Non-empty when this recording taps meeting apps by process (Bluetooth
     /// output) instead of the global device output — the AirPods-HFP workaround.
     /// Names the apps being captured for the on-screen note.
@@ -125,12 +152,17 @@ final class RecordingController {
     private let coalescer = CaptionCoalescer()
     private var session: (any StartRecordingSession)?
     private var rollingTask: Task<Void, Never>?
-    private var summarizedCount = 0
+    /// Identity cursor rather than an array offset: live diarization can split
+    /// one closed row into several stable rows. An offset can then skip a new
+    /// piece or replay unrelated content, while IDs admit exactly unseen rows.
+    private var summarizedCaptionIDs: Set<UUID> = []
     /// Dense notes accumulated window by window; the live summary re-renders
     /// from these so each tick only pays for the NEW transcript.
     private var liveNotes: [String] = []
-    private var meetingID = MeetingID()
-    private weak var services: AppServices?
+    private(set) var meetingID = MeetingID()
+    // Internal (not private) so the companion-detection extension file
+    // can read it; still write-protected by convention.
+    private(set) weak var services: AppServices?
     private var audioRelative = ""
     /// Durable aggregate created before capture starts. It remains the source
     /// of lifecycle truth while the existing controller is incrementally
@@ -139,13 +171,20 @@ final class RecordingController {
     /// Asset reservations written with the shell. Playback still reads the
     /// legacy meeting directory; later Band 1 slices finalize this metadata.
     private var reservedAssets: [AudioAsset] = []
+    // Open-row tracking and the D138 endpointer state are driven from the
+    // companion-detection extension file, so they stay internal rather than
+    // private.
     /// id of the newest caption row — when it changes, the PREVIOUS row
     /// just closed and becomes a companion candidate.
-    private var lastOpenRowID: UUID?
+    var lastOpenRowID: UUID?
+    /// D138: the silence deadline that treats the open remote row as a
+    /// finished turn, and the receipt of the last speculative detection.
+    var turnEndpointTask: Task<Void, Never>?
+    var speculativeTurnMark: SpeculativeTurnMark?
 
     /// User-defined domain terms reused by the optional rolling summary.
     /// StartRecording samples the same setting for transcription hints.
-    private var vocabulary: [String] {
+    var vocabulary: [String] {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
@@ -162,12 +201,19 @@ final class RecordingController {
         phase = .idle
         captions = []
         translations = [:]
+        translatedSourceTexts = [:]
+        unsupportedTranslationRowIDs = []
+        hasUnsupportedTranslationRows = false
         liveSummary = nil
         companionCards = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         contextItems = []
         liveNotes = []
+        lastOpenRowID = nil
+        turnEndpointTask?.cancel()
+        turnEndpointTask = nil
+        speculativeTurnMark = nil
         recordingShell = nil
         reservedAssets = []
         failureContext = nil
@@ -228,6 +274,9 @@ final class RecordingController {
 
     private func resetForRecordingStart() {
         rollingTask?.cancel()
+        catchUp.dismiss()
+        nextQuestion.dismiss()
+        objectives.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
         liveDiarizerFeed = nil
@@ -238,19 +287,29 @@ final class RecordingController {
         reservedAssets = []
         captions = []
         translations = [:]
+        translatedSourceTexts = [:]
+        unsupportedTranslationRowIDs = []
+        hasUnsupportedTranslationRows = false
         liveSummary = nil
         liveNotes = []
-        summarizedCount = 0
+        summarizedCaptionIDs = []
         companionCards = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         contextItems = []
         lastOpenRowID = nil
+        turnEndpointTask?.cancel()
+        turnEndpointTask = nil
+        speculativeTurnMark = nil
         micLevel = 0
+        smoothedMicLevel = 0
+        lastMicLevelPublication = 0
         voicedLevel = 0
         voicedChunks = 0
+        micLevelLow = false
         systemRMS = 0
         systemChunks = 0
+        systemAudioMissing = false
         systemCaptureHealth = .healthy
         systemRecoveryNoticeTask?.cancel()
         systemRecoveryNoticeTask = nil
@@ -258,6 +317,8 @@ final class RecordingController {
         liveSpeakerLabels = [:]
         tappedMeetingApps = []
         liveTranscriptState = .idle
+        translationSource = nil
+        translationDownloadApproved = false
         translationState = translationTarget == nil ? .off : .waitingForTranscript
         micMuted = false
         failureContext = nil
@@ -273,7 +334,25 @@ final class RecordingController {
                 text: segment.text,
                 confidence: segment.confidence) { return }
         coalescer.apply(segment, to: &captions)
+        seedLiveTranslationUIIfRequested()
         detectClosedRow()
+        armTurnEndpointDeadline()
+    }
+
+    /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
+    /// covered by unit tests; this branch proves the rendered language rail
+    /// without requiring a runner to own Apple's downloadable language pack.
+    private func seedLiveTranslationUIIfRequested() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-live-translation-ui"),
+            let row = captions.last
+        else { return }
+        if translationTarget == nil { translationTarget = "en" }
+        translations[row.id] = arguments.contains("-seed-showcase")
+            ? PublicShowcaseFixture.translation(for: row.text)
+            : "Clearly separated test translation."
+        translatedSourceTexts[row.id] = row.text
     }
 
     private func applyStartRecordingResult(
@@ -305,6 +384,7 @@ final class RecordingController {
                 liveDiarizerFeed?.finish()
             }
             phase = .recording
+            activateCompanionDetectionAfterRecordingStart()
             startRollingSummaryIfAvailable()
         case .preparationFailed(let failure):
             diarizerFeed.finish()
@@ -320,7 +400,7 @@ final class RecordingController {
 
     private func presentStartFailure(_ failure: StartRecordingFailure) {
         let message: String
-        let recovery: FailureRecovery
+        let recovery: RecordingFailureRecovery
         // Catalog keys stay intact so extraction and lookup remain exact.
         // swiftlint:disable line_length
         switch failure {
@@ -362,6 +442,13 @@ final class RecordingController {
                     try? await Task.sleep(for: .seconds(40))
                     guard let self, self.phase == .recording else { return }
                     await self.refreshLiveSummary()
+                    // Objective check-off shares the tick but stays
+                    // Apuntador-gated — it is a model judgment about the
+                    // conversation, exactly what the opt-in covers.
+                    guard self.phase == .recording, self.companionEnabled else { continue }
+                    await self.objectives.runAutomaticCheck(
+                        captions: self.captions,
+                        elapsed: Date().timeIntervalSince(self.startedAt))
                 }
             }
         }
@@ -414,100 +501,44 @@ final class RecordingController {
     /// (above a low gate) so the "low mic" flag reflects weak SPEECH, not
     /// silence — the far-field built-in mic sits well below a close mic.
     private func updateMicLevel(_ peak: Float) {
-        micLevel = max(peak, micLevel * 0.8)
+        smoothedMicLevel = max(peak, smoothedMicLevel * 0.8)
+        let now = ProcessInfo.processInfo.systemUptime
+        if RecordingMeterPublicationPolicy.shouldPublish(
+            now: now,
+            last: lastMicLevelPublication
+        ) {
+            micLevel = smoothedMicLevel
+            lastMicLevelPublication = now
+        }
         if peak > 0.004 {
             voicedLevel = voicedLevel * 0.97 + peak * 0.03
             voicedChunks += 1
         }
+        let isLow = voicedChunks > 150 && voicedLevel < 0.03
+        if micLevelLow != isLow { micLevelLow = isLow }
     }
 
     // MARK: - Companion (D26)
 
-    /// The coalescer only ever grows the NEWEST row; when the newest row's
-    /// id changes, the previous one closed for good — that's the moment a
-    /// caption becomes a companion candidate (never re-processed, never
-    /// partial).
-    private func detectClosedRow() {
-        guard captions.last?.id != lastOpenRowID else { return }
-        let previousOpen = lastOpenRowID
-        lastOpenRowID = captions.last?.id
-        guard companionEnabled, phase == .recording else { return }
-        guard FoundationModelsCapability.current().isAvailable else { return }
-        guard #available(macOS 26.0, *) else { return }
-        // "Asked you" (D26): a mention of your name opens the gate
-        // even when the sentence does not look like a question ("Johnny, tell us about the deploy").
-        let ownerName = Self.companionOwnerName()
-        guard
-            let closed = captions.last(where: { $0.id == previousOpen }),
-            closed.channel == .system,
-            // Don't burn a model call on a garbled/low-confidence caption.
-            !TranscriptNoiseFilter.isLikelyNoise(text: closed.text, confidence: closed.confidence),
-            QuestionHeuristic.looksLikeQuestion(closed.text)
-                || ownerName.map({ QuestionHeuristic.mentions($0, in: closed.text) }) == true
-        else { return }
-
-        let passages = recentPassages()
-        let candidate = closed.text
-        let askedAt = closed.startTime
-        guard let services else { return }
-        let language = closed.language.flatMap { LanguageCode($0)?.identifier }
-        let sourceMeetingID = meetingID
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            // BYOK exists only after explicit Settings opt-in; otherwise the
-            // injected client is nil and Companion remains on-device.
-            let companion = ProvenanceCompanion(
-                byok: await services.companionBYOKClient(),
-                egressConsentSource: .companionBYOKSettings)
-            let result = await companion.generate(CompanionGenerationRequest(
-                meetingID: sourceMeetingID,
-                sourceTranscriptRevision: 0,
-                workflow: .liveRecording,
-                candidate: candidate,
-                questionSegmentIDs: [closed.id],
-                recentTranscript: passages,
-                ownerName: ownerName,
-                outputLanguage: language,
-                askedAt: askedAt))
-            guard self.phase == .recording,
-                  self.meetingID == sourceMeetingID
-            else { return }
-            switch result {
-            case .artifact(let artifact):
-                guard !self.companionCards.contains(where: {
-                    $0.question == artifact.card.question
-                }) else { return }
-                self.companionCards.append(artifact.card)
-                self.companionArtifactsByCardID[artifact.card.id] = artifact
-            case .terminal(let run):
-                self.companionTerminalRuns.append(run)
-            case .noAttempt, .noArtifact, .unavailable:
-                break
-            }
+    /// Card state stays private to this file; the detection extension hands
+    /// its outcome here.
+    func recordCompanionOutcome(
+        _ result: CompanionGenerationResult,
+        sourceMeetingID: MeetingID
+    ) {
+        guard phase == .recording, meetingID == sourceMeetingID else { return }
+        switch result {
+        case .artifact(let artifact):
+            guard !companionCards.contains(where: {
+                $0.question == artifact.card.question
+            }) else { return }
+            companionCards.append(artifact.card)
+            companionArtifactsByCardID[artifact.card.id] = artifact
+        case .terminal(let run):
+            companionTerminalRuns.append(run)
+        case .noAttempt, .noArtifact, .unavailable:
+            break
         }
-    }
-
-    /// The live meeting's recent closed rows as RAG passages, so a
-    /// "context" question ("what did we say about the budget?") answers
-    /// from what was JUST said.
-    private func recentPassages() -> [RAGPassage] {
-        captions.suffix(14).dropLast().map { row in
-            RAGPassage(
-                segmentID: row.id,
-                meetingID: meetingID,
-                meetingTitle: "This meeting",
-                timestamp: row.startTime,
-                text: (row.channel == .microphone ? "Me: " : "Them: ") + row.text)
-        }
-    }
-
-    /// The name the meeting uses to address you: Settings if it
-    /// was configured, otherwise your macOS account name. nil = detector off.
-    static func companionOwnerName() -> String? {
-        let custom = (UserDefaults.standard.string(forKey: "companionUserName") ?? "")
-            .trimmingCharacters(in: .whitespaces)
-        let name = custom.isEmpty ? NSFullUserName() : custom
-        return name.isEmpty ? nil : name
     }
 
     private var isFailed: Bool {
@@ -524,15 +555,18 @@ extension RecordingController {
     /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        catchUp.dismiss()
+        nextQuestion.dismiss()
         rollingTask?.cancel()
+        turnEndpointTask?.cancel()
+        turnEndpointTask = nil
         phase = .processing(L10n.text("Closing the recording…"))
 
         let capture = await session.stop()
         micMuted = false
         // Live hints end here — the durable workflow re-attributes everything.
         liveDiarizerFeed?.finish()
-        liveDiarizerFeed = nil
-        liveDiarizerStream = nil
+        (liveDiarizerFeed, liveDiarizerStream) = (nil, nil)
         liveDiarizerTask?.cancel()
         liveDiarizerTask = nil
         self.session = nil
@@ -547,7 +581,8 @@ extension RecordingController {
             recordingShell: recordingShell,
             reservedAssets: reservedAssets,
             captions: captions,
-            contextItems: contextItems,
+            contextItems: contextItems
+                + objectives.contextItems(meetingID: meetingID),
             companionCards: companionCards,
             companionArtifacts: companionCards.compactMap {
                 companionArtifactsByCardID[$0.id]
@@ -618,7 +653,7 @@ extension RecordingController {
         fallbackPreserved: Bool
     ) {
         let message: String
-        let recovery: FailureRecovery
+        let recovery: RecordingFailureRecovery
         // Catalog keys stay intact so extraction and lookup remain exact.
         // swiftlint:disable line_length
         switch failure {
@@ -659,9 +694,9 @@ extension RecordingController {
         _ message: String,
         code: String,
         category: FailureCategory,
-        recovery: FailureRecovery
+        recovery: RecordingFailureRecovery
     ) {
-        failureContext = FailureContext(
+        failureContext = RecordingFailureContext(
             code: code,
             category: category,
             recovery: recovery)
@@ -685,6 +720,8 @@ private extension RecordingController {
     func updateSystemLevel(_ rms: Float) {
         systemChunks += 1
         systemRMS = systemRMS * 0.98 + rms * 0.02
+        let isMissing = systemChunks > 500 && systemRMS < 0.003
+        if systemAudioMissing != isMissing { systemAudioMissing = isMissing }
         if liveTranscriptState == .available {
             startLiveDiarizationIfReady()
         }
@@ -748,37 +785,6 @@ private extension RecordingController {
     }
 }
 
-extension RecordingController {
-    /// LiveTranslation can publish only finite user-facing state, never
-    /// framework errors or transcript content as diagnostics.
-    func updateLiveTranslationState(_ state: LiveTranslationState) {
-        guard translationTarget != nil || state == .off else { return }
-        translationState = state
-    }
-
-    /// Old Translation tasks can complete after SwiftUI cancels them. Admit a
-    /// state transition only when it still belongs to the selected language.
-    func updateLiveTranslationState(
-        _ state: LiveTranslationState,
-        forTarget target: String
-    ) {
-        guard translationTarget == target else { return }
-        translationState = state
-    }
-
-    /// Prevents a canceled old-language task from repopulating rendered rows
-    /// after the user has selected a different translation target.
-    @discardableResult
-    func storeLiveTranslations(
-        _ values: [UUID: String],
-        forTarget target: String
-    ) -> Bool {
-        guard translationTarget == target else { return false }
-        translations.merge(values) { _, new in new }
-        return !values.isEmpty
-    }
-}
-
 // The rolling-summary pipeline is a cohesive concern and lives outside the
 // already-large capture/persistence controller body.
 private extension RecordingController {
@@ -786,9 +792,11 @@ private extension RecordingController {
     func refreshLiveSummary() async {
         // The newest row is still growing (coalescer); note only CLOSED rows,
         // and only when there are new ones — silence costs nothing.
-        let closed = max(captions.count - 1, 0)
-        guard closed >= 3, closed > summarizedCount else { return }
-        let window = Array(captions[summarizedCount..<closed])
+        let closedCount = max(captions.count - 1, 0)
+        let window = LiveSummaryWindowPolicy.unsummarizedClosedRows(
+            captions,
+            summarizedIDs: summarizedCaptionIDs)
+        guard closedCount >= 3, !window.isEmpty else { return }
 
         // Attribution runs at stop; live labels are structural: channel.
         let me = Speaker(meetingID: meetingID, label: "Me", isMe: true)
@@ -808,7 +816,7 @@ private extension RecordingController {
                 segments: labeled, speakers: [me, them], targetLanguage: language,
                 glossary: vocabulary, priority: .background)
             liveNotes.append(note)
-            summarizedCount = closed  // only once the window is safely noted
+            summarizedCaptionIDs.formUnion(window.map(\.id))
 
             // Keep the pile bounded so long meetings don't slow the ticks.
             var joined = liveNotes.joined(separator: "\n")

@@ -1,10 +1,10 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Companion implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Companion-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Companion and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Companion evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
-Single-flight actor that serializes EVERY FM call in the process with priorities `interactive > live > background`, FIFO per class, latest-wins by `key` (for discardable Companion ticks), and caller cancellation. Granularity = one call: map-reduce chains release the slot between steps → an interactive job's wait is bounded by the in-flight call (~1–4 s). No FM dependency (7 pure tests, run on any platform). The provider's public methods accept `priority:` (default `.interactive`); the app's rolling summary passes `.background`. Swift 6: `Response<T>` is not Sendable → closures return payloads built inside the slot.
+Single-flight actor that serializes EVERY FM call in the process with priorities `interactive > live > background`, FIFO per class, latest-wins by `key` (for discardable Apuntador ticks), and caller cancellation. Granularity = one call: map-reduce chains release the slot between steps → an interactive job's wait is bounded by the in-flight call (~1–4 s). No FM dependency (7 pure tests, run on any platform). The provider's public methods accept `priority:` (default `.interactive`); the app's rolling summary passes `.background`. Swift 6: `Response<T>` is not Sendable → closures return payloads built inside the slot.
 
 ## On-device summaries — `FoundationModelSummaryProvider`
 
@@ -19,10 +19,15 @@ Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides
 **Guided generation**: `GeneratedSummary` (@Generable) → overview + up to four
 exact `overviewEvidence` E-tags + sections (instructed headings, bullets, and
 one `bulletEvidence` E-tag array per bullet) + actionItems
-(owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)` resolves owners against
-Speakers by label/displayName (case-insensitive) and admits only tags emitted
-for that request. Unknown, altered, repeated, or excess tags disappear; no
-valid tag, no distinctive lexical overlap, or an empty overview produces no claim. Tag-shaped literals in
+(owner by label and optional exact evidence tags). `StructuredSummary.draft(for:)`
+resolves owners once against the cast: a unique exact label wins, while a
+display name is admitted only when unique. The resolved `SpeakerID` travels
+beside the canonical rendered owner into typed action projection; unknown and
+ambiguous generated names are cleared rather than re-resolved by array order. A
+matching leading owner prefix is removed from the task text so
+`Daniel: task — Daniel` cannot render. It also admits only tags
+emitted for that request. Unknown, altered, repeated, or excess tags disappear;
+no valid tag, no distinctive lexical overlap, or an empty overview produces no claim. Tag-shaped literals in
 transcript text, speaker names, and user notes are escaped before prompting,
 so content cannot impersonate the provider-owned namespace.
 
@@ -49,7 +54,8 @@ typed links with fresh claim IDs; Storage owns revision validation/stamping.
 ## Typed decision evidence (D89)
 
 `Recipe.decisionSectionIndexes` classifies semantics explicitly: General and
-Planning index 1, and 1:1 index 2. Standup, Interview, and custom structures
+Planning index 1, and 1:1 and Retrospective index 2 (the "Agreements"
+section). Standup, Interview, Discovery, Postmortem, and custom structures
 classify none; headings are never inferred across languages. A provider result
 must contain exactly the recipe's section count, and a classified section must
 contain exactly one evidence array per bullet. `StructuredSummary` then maps
@@ -74,14 +80,17 @@ separate `SummaryActionItemEvidence` keyed to that new task ID. Unknown,
 duplicate, altered, empty, lexically unrelated, or rolling-note tags produce
 no evidence. `SummaryActionAdmission` also removes empty/duplicate tasks and an
 action copied verbatim from a recipe's typed decision section before Markdown,
-action identity, or evidence is created. Provider prompts independently state
+action identity, or evidence is created. `groundedOwner` then treats generated
+identity as a cast claim: only an existing speaker label or confirmed display
+name survives, and both Markdown and storage consume that same admitted value.
+Provider prompts independently state
 that decisions are not tasks; the deterministic gate remains authoritative.
 
 Translation creates fresh action-item IDs and carries matching evidence by
 task position with fresh evidence IDs; bullet/Markdown coordinates are not
 involved. The source revision and ordered segment IDs remain intact until
 Storage validates them. Completing a task never invokes a provider and never
-changes its generated evidence. Companion-card provenance remains independent
+changes its generated evidence. Apuntador-card provenance remains independent
 and is not inferred from this contract.
 
 ## Human claim feedback is not model material (D88)
@@ -95,7 +104,32 @@ telemetry, privacy receipts, and support diagnostics. This prevents a private
 correction from becoming an implicit prompt or being misrepresented as model
 output.
 
-**Incremental APIs** (for the rolling summary): `condenseWindow(segments…)` (one map pass over ONLY new content), `condenseNotes(text…)` (collapses the stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app uses them as follows (spec 06): note per 40 s tick over new closed rows → note stack → collapse at > 6000 chars → render; `LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one (visible monotonicity).
+**Incremental APIs** (for the rolling summary): `condenseWindow(segments…)`
+(one map pass over ONLY new content), `condenseNotes(text…)` (collapses the
+stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app
+uses them as follows (spec 06): note per 40 s tick over closed row IDs not yet
+admitted → note stack → collapse at > 6000 chars → render;
+`LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one
+(visible monotonicity). The cursor is an identity set, not an array offset, so
+a late live-diarization split cannot skip its fresh child (D133).
+
+## Prompt-injection guard (Jul 2026, pure, tested)
+
+Every model prompt that carries meeting-derived material states that it is
+untrusted quoted source: embedded requests, commands, and formatting orders are
+content to report or transform, never instructions to follow.
+`PromptFactory.sourceMaterialGuard()` is shared by summary, map-phase notes,
+finished-summary translation, speaker naming, chapter titles, pre-meeting
+briefs, meeting-type detection, RAG answers, and title suggestions; Apuntador
+keeps equivalent classifier and knowledge rules because its trusted user
+question is distinct from retrieved meeting passages. One coverage test
+enumerates the current Foundation Models entry points and fails if any listed
+prompt loses the shared boundary; reviewers must add each new meeting-derived
+prompt to that inventory. On the output side, `CompanionAnswer.usable` strips
+assistant preambles ("Sure, here's the answer:", "Claro, ...") and drops
+role-drift responses ("as an AI ...") alongside the existing hedges — no card
+beats a drifted card. Accented Spanish vowels in those patterns ride as ICU
+escapes so the file stays inside the English-source gate.
 
 ## Language and glossary — `PromptFactory` (pure, tested)
 
@@ -112,9 +146,9 @@ output.
 - Verbatim glossary (terms that are never translated) — comes from the user's vocabulary and/or `--glossary`.
 - The real FoundationModels API is verified in the local SDK's `.swiftinterface` — a better source than any documentation.
 
-## BYOK (D8/D67/D68) — gateway-backed summary and Companion clients
+## BYOK (D8/D67/D68) — gateway-backed summary and Apuntador clients
 
-- **`OpenAICompatibleChatCodec`**: internal, transport-free request/response codec shared by the summary and Companion clients for `/chat/completions` endpoints (OpenAI/OpenRouter/Groq/Ollama/LM Studio). One system + one user message go in and text comes out; no URLSession dependency is reachable through this type.
+- **`OpenAICompatibleChatCodec`**: internal, transport-free request/response codec shared by the summary and Apuntador clients for `/chat/completions` endpoints (OpenAI/OpenRouter/Groq/Ollama/LM Studio). One system + one user message go in and text comes out; no URLSession dependency is reachable through this type.
 - **`OpenAICompatibleSummaryClient`**: public summary transport facade that cannot send without an injected `DataEgressGateway`. It declares full meeting-summary material, source meeting identity, exact destination/scope, provider/model, and operation-specific consent separately from the encoded body. Cloud calls do NOT pass through `IntelligenceScheduler` — single-flight exists because of ANE contention and does not apply to the network.
 - **`CompanionBYOKClient`**: accepts the same endpoint/model/key shape and also requires a gateway. Its separate operation declares question-only material so recent transcript context can never be smuggled through summary metadata.
 - **Receipt semantics (D75)**: the production gateway validates those declarations, persists one immutable content-free attempt, and only then exposes the body to URLSession. Receipt failure prevents the call; HTTP failure retains the attempt; redirects are rejected. Intelligence providers never create or interpret receipt rows themselves.
@@ -128,6 +162,30 @@ output.
 The durable post-capture worker selects Ollama through `OllamaService.summaryProvider(model:gateway:consent:)` (an `OpenAICompatibleSummaryProvider` against `localhost:11434/v1`, **without an API key** — Ollama ignores it, nothing leaves the device), verified embedded MLX, or available Apple FM. Ollama summary generation still crosses the gateway with `local-device` scope and Settings consent; its content-free health and model-discovery requests remain direct because they contain no meeting material. ApplicationKit's regeneration and import adapters consume explicit availability without constructing providers inside the use cases. The **live rolling summary remains FM-only** (it uses the incremental `condenseWindow`/`summarizeNotes` APIs that Ollama/MLX do not have). `OllamaService`: `isRunning()` (GET `/api/version`), `models()` (GET `/api/tags`, pure/tested `parseModels`). Settings retains the engine picker, detection, model list, localized typed reasons, and prominent Apply action. `LocalSummaryProviderPolicy` is pure and tested against Apple availability, name-screened Ollama models, MLX hardware eligibility, and low-memory/disk guidance. **Closes GAPS #7** (a Mac without Apple Intelligence summarizes 100% locally); verified E2E with gpt-oss:20b (ES summary in 24 s) + UITest of the Settings section. Every provider stamps its own material fingerprint, but the released Meeting Detail path performs cache lookup and translation pivot only for Apple FM; configured Ollama/MLX regenerates directly. **Per-meeting override (M12)**: the `RegenerateSummary` provider resolver forces an engine for one meeting without changing the global default; the detail menu offers language (es/en) and, when there is a real choice, the **alternative engine** (Apple↔Ollama — only the one that is not the default and only if it is usable here: Ollama with a configured model, or Apple with `appleSummaryAvailable`). An Apple override preserves its cache and pivot path.
 
 **Embedded MLX (D32, Jul 2026)**: third engine `summaryEngine = "mlx"` — `MLXSummaryProvider` (IntelligenceKit) runs **Qwen3.5-4B 4-bit** (Apache-2.0, sha256-pinned in `ModelCatalog.mlxQwen35`, 3 GB; `mlxQwen3` remains in the catalog for A/B) in-process on the GPU via `mlx-swift-lm` (exact 3.31.4 — successor to mlx-swift-examples; the tokenizer is provided by `swift-transformers` through the `MLXHuggingFace` macros). **Field A/B (Jul 10, refined 56 min / 852-segment sprint demo)**: Qwen3-4B collapsed into a degenerate loop twice (34k and 68k chars truncated); Qwen3.5-4B with `enable_thinking: false` (additionalContext — the 3.5 family reasons by default and loses the JSON prompt) produced decisions + open questions + 11 action items with owners in clean Spanish in 89 s. `maxTokens` 16384 as a pure anti-runaway safeguard. Reuses the prompt and JSON contract from `OpenAICompatibleSummaryProvider.prompt/parseStructured` — same `StructuredSummary`, same fingerprint. `MLXModelCache` (actor) keeps ONE `ModelContainer` loaded and serializes generation (`container.perform`, temperature 0); it does not pass through `IntelligenceScheduler` (GPU, not ANE). Settings → "Built-in (MLX)": `MLXModelRow` row with verified download/status/delete (`AppServices.mlxDownloaded/downloadMLX/deleteMLXModel`); `LocalSummaryProviderPolicy` suggests it with RAM ≥ 8 GB when Apple Intelligence is unavailable and Ollama has no eligible name-screened model. **Shipping**: SwiftPM does not compile Metal shaders → `scripts/build-mlx-metallib.sh` caches `mlx-swift_Cmlx.bundle` (one-time xcodebuild, keyed by mlx-swift version), and `make-app.sh` copies it to `Contents/Resources`. **E2E verification**: `portavoz-app --mlx-smoke [real]` — synthetic ES in 3 s; with `real`, summarizes the most recent meeting in the library (read-only). Verified with a real meeting of 40 min / 686 segments: 44 s, coherent decisions and action items. There is no test under `swift test` because the CLI runner cannot have a metallib. **Memory (critical)**: without `MLX.Memory.cacheLimit`, MLX's buffer cache grows without limit on long prompts — 31 GB of RSS was observed on that same meeting before macOS suspended the process. `MLXModelCache` sets the supported API to 20 MB (the LLMEval value) and `maxTokens: 16384` as the generation cap; with that, the real peak is ~4.5 GB (2.3 GB weights + KV + runtime) (D118).
+
+## Seeded summary templates (TMPL, Jul 2026)
+
+`Recipe.all` seeds eight templates: General, Standup, 1:1, Planning,
+Interview, Discovery, Postmortem, Retrospective — each with fixed sections
+and one anti-invention instruction line. `MeetingTypeDetector` carries the
+same label set in BOTH its few-shot instructions and the `@Guide` string
+(adding a template means touching both, or the classifier never emits it);
+its gate still collapses unknown ids and `general` to nil. Presentation is
+Spanish-first: built-in names and section titles are catalog keys rendered
+through `Recipe.localizedDisplayName`/`localizedSectionSummary` (app-side
+`RecipeDisplay.swift`); custom structures stay verbatim because their text
+belongs to the user. The Meeting Detail Structure submenu
+(`detail-structure-menu`, items `detail-structure-<id>`) shows each
+template's section list under its name so the user sees what a structure
+produces BEFORE generating; the "Summarize as X?" chip
+(`detail-recipe-suggestion`) localizes the suggested name. Section headings
+inside a generated summary are translated by the model (prompt rule); the
+one heading WE render — the canonical action-items block — now follows the
+output language ("Pendientes" for `es`), passed as
+`markdown(recipe:language:)`. `parse` reads back exactly those two
+headings and no others: the broader `isActionItemsHeading` set stays
+confined to dropping a model-narrated duplicate section while rendering,
+so a genuine "Next Steps" section survives the round trip.
 
 ## Fingerprint cache + translation pivot (D25) — `SummaryFingerprint` + `translate`
 
@@ -214,9 +272,9 @@ the released path. The app adapter reuses configured summary-engine selection
 while exposing provider/model metadata through an import-specific port
 (D46/D64).
 
-Slice 2G routes post-refine Companion work through
+Slice 2G routes post-refine Apuntador work through
 `ApplicationKit.ApplyRefinedMeeting` and an app-owned availability/model
-adapter. Companion runs only after the revision-fenced transcript transaction
+adapter. Apuntador runs only after the revision-fenced transcript transaction
 commits. An unavailable provider skips refresh, and an incomplete or canceled
 refresh preserves the prior cards; a complete pass replaces the snapshot,
 including with an empty set when the refined transcript contains no
@@ -270,6 +328,20 @@ meeting-content HTTP receipt boundary.
 - **Hybrid retrieval**: lexical candidates + brute-force semantic candidates are fused again with RRF (`k=60`). Multi-query still asks FM for bilingual paraphrases (`expandQuery`), and term deduplication spans those variants.
 - **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
 
+### Instant Library semantic augmentation (D145)
+
+Library typing stays independent from model setup and generated query
+expansion. Its query-specific FTS5 observation publishes exact, accent-folded
+English/Spanish results first. `LocalLibrarySemanticSearch` then reuses
+`SentenceEmbedder` and the existing StorageKit exact-cosine adapter only when
+the OS-managed Latin assets are already present. It never calls
+`requestAssets()` from the search field, skips work during active capture, and
+indexes at most 512 missing segments per query so a large archive becomes
+semantic incrementally. Segments under 20 characters are marked intentionally
+unindexed. Cancellation is checked between preparation, embedding, and storage;
+any semantic failure degrades to no appended hits rather than failing lexical
+search. Exact hits keep their order and duplicate semantic IDs are discarded.
+
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 
 - `SummaryRequest.contextItems`: user notes travel to the FINAL pass as intent. `PromptFactory.notesBlock` formats them with timestamps (`[mm:ss] nota`), chronologically, with a hard budget (120 chars/note, 800 for the block — tested).
@@ -277,16 +349,52 @@ meeting-content HTTP receipt boundary.
 - Instructions (`notesBehavior`): each note is a topic the summary MUST cover, expanded with facts, never contradicted; bullets originating from a note are prefixed with **"▸ "** — a cheap token instead of inflating the guided-generation schema; the renderer can display Granola-style coauthorship (black/gray) without changing types. The language instruction still closes the prompt (D18).
 - Full flow wired: **notes panel in `RecordingView`** (TextField + timestamped list with remove, right column, always visible during recording) → `RecordingController.addContextNote()` (anchors to the current moment) → rolling and final summaries see them → persisted at stop (`contextItem` table, v3 migration) → regeneration in the detail reloads them from the store. **Coauthorship rendering** in `MarkdownText`: bullets prefixed with "▸ " are drawn with an accent mark (Granola style — content originating from your note is distinguishable from the pure AI summary). M10 complete except for field verification (5 real notes → summary that expands them).
 
-## Live Companion (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
+## Enhanced notes (NOTES-001/D135) — the notes→document expansion (implemented)
 
-3-stage pipeline over closed coalescer rows (a row closes when the next one is created — never partial, never reprocessed):
+`ApplicationKit.EnhanceMeetingNotes` is the Granola-pattern complement to the
+D28 weave: instead of covering notes inside the summary, it produces ONE
+separate regenerable document FROM them. It reuses the summary machinery
+wholesale — `SummaryRegenerationProviderResolver` (FM/Ollama/MLX/BYOK, per-call
+engine override), `SummaryFingerprint` (its internal `enhanced-notes` recipe id
+keeps these fingerprints disjoint from every summary cache row), and the
+D62–D78 provenance regime (`GenerationRunKind.enhancedNotes`; exact
+fingerprint + language hit → `.unchanged`, no model call, no run; succeeded run
+commits atomically with the `EnhancedNote`; failed/cancelled runs persist
+best-effort with content-free sorted-keys config/metrics JSON). The recipe's
+contract: each raw note repeated verbatim in bold, in order, expanded with one
+to three sentences of what the transcript shows around that note's moment;
+contradictions stated plainly; only the notes covered; nothing invented.
+Whitespace-only notes are dropped before fingerprinting; a meeting with no
+usable notes answers `.noNotes` before resolving any provider.
+
+## On-demand catch-up
+
+`CatchUpPolicy.clip` is a pure admission boundary over closed live-caption
+rows. It excludes the coalescer's mutable tail, requires at least two admitted
+rows, keeps only the last five minutes, and preserves the newest material when
+prompt formatting reaches its budget. The app maps microphone/system channels
+to local/remote speaker identities and asks
+`FoundationModelSummaryProvider.catchUp` for a 2-4 bullet recap at interactive
+priority. The prompt uses the shared source-material guard and follows the
+homogeneous spoken language when one exists.
+
+Generation is recording-scoped and ephemeral: one task owns one visible card,
+and neither request nor result enters StorageKit. Dismiss cancels and clears
+the task. Stop performs the same cancellation before durable capture handling;
+completion and failure paths independently fence publication on the recording
+still being active. Unsupported platforms return a truthful local capability
+message without attempting provider fallback.
+
+## Live Apuntador (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
+
+3-stage pipeline over coalescer rows. A row closes when the next one is created; since D138 a silence endpointer also treats the still-OPEN remote row as a finished turn after 2.0 s without any new delta (`TurnEndpointPolicy` — one shared channel/noise/question gate for silence and real close, one detection per row+text-length, the row itself stays open for presentation). Every accepted delta re-arms the deadline; entering the recording phase first drains rows that closed while Start was preparing and then arms the open tail. Enabling Apuntador mid-recording arms an already-open remote row, while disabling Apuntador cancels it. Without this synchronization, a question followed by silence produced no card until someone spoke again — or ever, if the meeting stayed quiet:
 1. **Pure gate** (tested, es/en): `looksLikeQuestion` (`?`/`¿`, initial interrogatives, minimum 12 chars) **OR `mentions(ownerName)`** — the "te preguntaron" detector: whole-word, case/diacritic-insensitive match of the first name or full name ("John" does NOT trigger inside "Johnny"). The name comes from Ajustes ("Tu nombre") with default `NSFullUserName()`. The common case (nobody asked) costs zero.
 2. **FM classifier** (`DetectedQuestion` @Generable: isQuestion/question/kind) sent to the scheduler with `.live` + key `companion-detect` (latest-wins: ticks never stack up). `logistics` → no card (the classic failure mode for this class of features), **unless the caption names you**: then the card is a PING ("te preguntaron", question without an invented answer, orange tint). Two lessons from the 3B caught by the gated test: (a) `directed` is ALWAYS the deterministic name gate, never the model's opinion (requesting it as a field → it stripped "Johnny," from the question and reported false); (b) the logistics filter needs literal few-shot examples ("¿nos acompañas mañana…?" is logistics, NOT context) — with only the abstract rule, it leaked through.
 3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (app composition injects the resolved `CompanionBYOKClient`; same instructions as on-device, 400 tokens max, `source` = provider host; if the provider or egress-policy call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8/D67). Explicit cancellation never falls through to the local answer.
 
-App: per-recording opt-in ("Companion" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Companion BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
+App: per-recording opt-in ("Apuntador" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Apuntador BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
 
-### Companion transcript evidence (D91)
+### Apuntador transcript evidence (D91)
 
 `CompanionGenerationRequest` carries exact question segment identities and
 `RAGPassage` may carry its source segment identity. Live generation uses the
@@ -305,7 +413,7 @@ resulting `CompanionCardEvidence` is card-identity-keyed, revision-fenced, and
 role-separated. It is attached to the card before the generated artifact
 crosses StorageKit, but generation-run JSON remains content-free.
 
-### Companion-card generation provenance (D66)
+### Apuntador-card generation provenance (D66)
 
 `ProvenanceCompanion` wraps the released pipeline without changing its card
 policy. After the deterministic question/name gate and model availability
@@ -338,7 +446,7 @@ directed ping is still a generated card and identifies Foundation Models even
 when no answer stage was needed. Live and post-Refine persistence boundaries are
 specified in specs 01, 05, and 06.
 
-### Companion egress enforcement (D67)
+### Apuntador egress enforcement (D67)
 
 The production live and post-Refine paths inject IntegrationsKit's
 `URLSessionDataEgressGateway` into `CompanionBYOKClient`. The request carries a
@@ -349,14 +457,14 @@ from its body. The adapter validates those facts before URLSession sees the
 payload and rejects missing-host or non-HTTP(S) destinations. Only provable
 loopback (`localhost`, `*.localhost`, valid `127/8`, or
 `::1`) is local-device; private LAN, `.local`, malformed, and unknown hosts are
-remote. A directly constructed public Companion client uses an explicit-client
+remote. A directly constructed public Apuntador client uses an explicit-client
 consent marker and remains gateway-mandatory.
 
-The body contains static Companion instructions and the classified knowledge
+The body contains static Apuntador instructions and the classified knowledge
 question only. No `RAGPassage`, transcript window, owner identity, or stored
 card content enters the transport metadata or body. Offline tests capture and
 decode the exact request, validate loopback classification and metadata
-rejection, and an architecture test prevents Companion, provenance, or app
+rejection, and an architecture test prevents Apuntador, provenance, or app
 composition from restoring a direct network call.
 
 ### Summary egress enforcement (D68)
@@ -370,7 +478,7 @@ explicit-provider consent. Every call carries its source `MeetingID`,
 and a conservative local-device/remote scope separately from the request body.
 The adapter requires a non-empty POST and rejects absent meeting identity,
 forged destination/provider/model, wrong material classification, and any
-Companion consent marker used for a summary (or vice versa) before transport.
+Apuntador consent marker used for a summary (or vice versa) before transport.
 
 The terminal `summarize` command enters
 `ApplicationKit.SummarizeAudioFile`. ApplicationKit owns file admission,

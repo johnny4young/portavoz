@@ -6,13 +6,47 @@ import XCTest
 
 final class RecipeCatalogTests: XCTestCase {
     func testEveryRecipeResolvesByIDAndIsUnique() {
-        XCTAssertEqual(Recipe.all.count, 5)
-        XCTAssertEqual(Set(Recipe.all.map(\.id)).count, 5)
+        // Uniqueness derives from the catalog itself; the membership list is
+        // the contract seeded templates must keep.
+        XCTAssertEqual(Set(Recipe.all.map(\.id)).count, Recipe.all.count)
+        XCTAssertEqual(
+            Set(Recipe.all.map(\.id)),
+            [
+                "general", "standup", "one-on-one", "planning", "interview",
+                "discovery", "postmortem", "retro"
+            ])
         for recipe in Recipe.all {
             XCTAssertEqual(Recipe.byID(recipe.id)?.displayName, recipe.displayName)
             XCTAssertFalse(recipe.sections.isEmpty)
         }
         XCTAssertNil(Recipe.byID("nope"))
+    }
+
+    func testActionItemsBlockHeadingFollowsTheOutputLanguage() {
+        let summary = StructuredSummary(
+            overview: "Se acordaron los siguientes puntos.",
+            sections: [.init(heading: "Decisiones", bullets: ["Usar la propuesta B."])],
+            actionItems: [.init(text: "Enviar el borrador", owner: "Ana")])
+        let spanish = summary.markdown(recipe: .general, language: "es")
+        XCTAssertTrue(spanish.contains("## Pendientes"))
+        XCTAssertFalse(spanish.contains("## Action Items"))
+        XCTAssertTrue(
+            summary.markdown(recipe: .general, language: "en")
+                .contains("## Action Items"))
+        // The localized heading must round-trip: re-parsing the Spanish
+        // snapshot recognizes the block as canonical action items.
+        let reparsed = StructuredSummary.parse(markdown: spanish)
+        XCTAssertEqual(reparsed?.actionItems.map(\.text), ["Enviar el borrador"])
+    }
+
+    func testSeededTemplatesKeepTypedDecisionSemantics() {
+        // The retro's "Agreements" section carries decisions like the 1:1's;
+        // discovery and postmortem flow through untyped narrative + action
+        // items instead.
+        XCTAssertEqual(Recipe.retro.decisionSectionIndexes, [2])
+        XCTAssertEqual(Recipe.retro.sections[2], "Agreements")
+        XCTAssertEqual(Recipe.discovery.decisionSectionIndexes, [])
+        XCTAssertEqual(Recipe.postmortem.decisionSectionIndexes, [])
     }
 
     func testExcerptCapsLengthAndLeadsWithSpeakerCount() throws {

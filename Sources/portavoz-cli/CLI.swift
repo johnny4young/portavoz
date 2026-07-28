@@ -91,7 +91,7 @@ struct PortavozCLI {
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
               portavoz-cli meetings <list|show <id>|search <query>> [--db <path>]
-              portavoz-cli export --meeting <uuid> [--format md|pdf] [--out <path>] [--gist [--public]]
+              portavoz-cli export --meeting <uuid> [--format md|pdf|srt|vtt] [--out <path>] [--gist [--public]]
               portavoz-cli secrets <set-github-token <token>|clear-github-token>
               portavoz-cli voice <enroll --file <wav>|status|delete>
               portavoz-cli der --file <wav> --reference <rttm> [--threshold t]

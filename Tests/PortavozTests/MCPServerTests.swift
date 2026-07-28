@@ -42,6 +42,24 @@ final class MCPServerTests: XCTestCase {
         XCTAssertNotNil((result?["capabilities"] as? [String: Any])?["tools"])
     }
 
+    func testInitializeCarriesInstructionsOnlyWhenProvided() async {
+        let bare = await send(
+            #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#)
+        XCTAssertNil(
+            (bare?["result"] as? [String: Any])?["instructions"],
+            "a server without instructions must not emit an empty field")
+
+        let guided = MCPServer(instructions: "Read-only server.", tools: [])
+        let line = await guided.handleLine(
+            #"{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}"#)
+        let decoded = line
+            .flatMap { $0.data(using: .utf8) }
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        XCTAssertEqual(
+            ((decoded?["result"] as? [String: Any])?["instructions"]) as? String,
+            "Read-only server.")
+    }
+
     func testNotificationsGetNoResponse() async {
         let response = await makeServer().handleLine(
             #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#)

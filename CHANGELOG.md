@@ -5,6 +5,83 @@ the order things shipped; entries will fold into versions with the first
 public release. (Contributors: any user-visible change adds one short, catchy
 entry here — feature name + what it gives you.)
 
+## July 27, 2026
+
+- **🔤 Insights speaks naturally** — One conversation now appears as “1 meeting,” while larger counts keep the plural in both English and Spanish.
+
+- **🎧 Clear playback, original recording** — Finished calls now default to a reversible channel-aware mix that removes the delayed loudspeaker copy from your microphone while keeping the untouched original one click away; mic-only recordings are never filtered.
+
+- **✕ AI suggestions can take no for an answer** — Titles, speaker names, meeting structures, and summary retries now have a tiny dismiss action, so an irrelevant idea leaves without changing the meeting.
+
+- **⚡ Live translation catches the current sentence** — Long turns can translate before the next speaker arrives, refresh as they grow, and stream into a labeled indigo rail that cannot be mistaken for what was actually spoken.
+
+- **🔎 Search by language, accents, and meaning** — Exact Library search ignores Latin accents and keeps bilingual meeting terms; when Apple's local language assets are ready, private semantic matches are appended without pushing precise hits down.
+
+- **🪶 A calmer recording screen** — Mic meters and live captions now refresh inside narrow UI boundaries, keeping Stop, translation, Apuntador, and notes responsive during busy calls.
+
+- **🛟 Recovery that explains what is safe** — “Recording needs recovery” now says the saved audio is intact and that Refine creates a reviewable draft before anything can replace the current transcript.
+
+- **🌎 One search, both languages** — Library search now pairs common English and Spanish terms on-device, so `august` can find `agosto`; clicking a result opens the exact transcript moment instead of the start of the meeting.
+
+- **🔴 Your live recording is never lost behind the Library** — Browse an older meeting while Portavoz records and the main sidebar action becomes **Return to recording**, taking you back to the active timer and Stop control without starting a second session.
+
+- **🗣️ Live captions that read like people, not audio channels** — Tightly timed two-word and rolling speaker echoes no longer alternate between Me and Them, while consecutive rows from the same known voice form one readable paragraph without merging two still-unknown speakers.
+
+- **🧭 Recording controls that explain themselves** — Apuntador, Catch me up, question suggestions, translation, and the HUD keep their labels when space allows and expose native hover help when the window is narrow.
+
+- **⬇️ Whisper tells you what it is really doing** — Portavoz now distinguishes checking verified files already on your Mac from downloading missing model data; Dev reinstalls and ordinary updates continue using the stable model store outside the app bundle.
+
+- **🧭 One clear recording action** — Shortcuts now shows one Portavoz “Start recording” action instead of an unsupported automatic duplicate; add the Portavoz-icon action to your own shortcut once, then run that shortcut from Shortcuts, Spotlight, or Siri.
+
+- **🎙️ “Start recording” that macOS can actually find** — Portavoz Dev now has its own system identity and handles the action inside the exact app Siri or Shortcuts launched instead of letting macOS pick another installed build.
+
+## July 26, 2026
+
+- **⏱️ A recording clock that stays readable** — Starting from Shortcuts, Spotlight, or a compact window can no longer squeeze the live timer into a vertical stack; elapsed time remains a clear, single-line clock.
+
+- **⚡ Portavoz in your Shortcuts** — "Start recording" is now a native action: wire it into any Shortcut, then launch that saved shortcut from Spotlight or Siri. No more URL-scheme workarounds — though `portavoz://record` keeps working for the tools that use it.
+
+- **🤫 Apuntador answers even when the room goes quiet** — Before, a question needed the NEXT person to speak before Portavoz could react; if everyone waited silently for your answer, no card ever came. Now two seconds of silence is enough — even when you enable Apuntador after the question is already visible — so it reacts exactly when everyone is looking at you.
+
+## July 25, 2026
+
+- **📨 The recap you actually send** — After a meeting, Portavoz drafts the message: what was decided and who owes what, in the meeting's language. Pick a person and it leads with their commitments; pick Email, Slack or Markdown and it arrives shaped for that. Edit anything, then copy it or use the share sheet — Portavoz never sends it for you, and the transcript is never included.
+- **📝 Your notes, enhanced** — A new "My notes" section in every meeting shows exactly what you typed, and one click expands each note with what the transcript says around that moment — your words stay verbatim in bold, the AI only adds the facts. Regenerate it in Spanish or English anytime; your raw notes are never touched.
+- **🎯 Objectives that check themselves off** — Write what the meeting should achieve before it starts; as the conversation genuinely covers each objective, Apuntador ticks it (with a spark so you know it was him), and the summary reports what stayed open. You can always check or uncheck by hand.
+- **💡 "What should I ask next?"** — One click and Apuntador suggests one or two questions worth asking right now — grounded in what was just said and in your still-open objectives, in the meeting's language.
+- **⚖️ A talk-balance meter that keeps you honest** — A small bar next to the mic meter shows your share of the last five minutes; it turns amber only when you have really been carrying the conversation. Measured, never judged.
+- **🧭 An MCP server your agent can trust blind** — Portavoz's local MCP server now introduces itself with its contract: strictly read-only, everything on your Mac. Long transcripts arrive in tidy pages that say exactly how to ask for the next one, and search accepts a result limit — no more one-shot megabyte walls.
+
+## July 24, 2026
+
+- **🛟 Stop always saves the recording** — If optional live or Apuntador content cannot be stored, Portavoz retries the complete handoff once and then preserves the strongest valid transcript, notes, and finalized audio with an explicit recovery path instead of leaving the call unfinished.
+- **🌐 Refine keeps every speaker's language** — Automatic Refine no longer forces one meeting-wide language, so Spanish, English, and mixed-language turns remain in the language each person actually spoke; fixed English or Spanish stays available as an explicit recovery choice.
+- **🧹 Live captions without speaker echo** — When speaker output returns through the microphone, Portavoz now keeps the direct system caption and removes the matching mic duplicate while preserving short acknowledgements and genuinely overlapping speech.
+- **🪪 To-dos name only confirmed speakers** — Generated actions can use an owner only when it uniquely matches the meeting cast; duplicate display names stay unassigned, while an exact speaker label keeps the correct identity.
+- **⬇️ Whisper that stays ready** — Refine and Import now say when they are preparing and verifying Whisper, download only when a model is actually missing, and keep verified models outside the app bundle across Dev reinstalls and normal updates.
+- **🌍 Translation without language pop-ups** — Mixed-language calls now translate each completed turn from its own detected language, leave same-language or uncertain text untouched, and let an unsupported language stay original without blocking later supported turns.
+- **📖 Read live captions at your pace** — On every supported macOS version, scroll up and new captions no longer pull you back or blur the history; text stays sharp until you choose **Jump to live**.
+- **🎙️ Recording starts without taking the app down** — If macOS temporarily exposes no usable microphone route, Portavoz now stays open and shows its recoverable recording error instead of crashing while preparing audio.
+
+- **📋 Meeting templates that show their cards** — Three new summary structures join the deck: Discovery, Postmortem, and Retrospective. Every template now lists the sections it produces right in the picker — in Spanish — so you know what you'll get before regenerating, and Spanish summaries finally title their task list "Pendientes".
+
+## July 23, 2026
+
+- **🖱️ Dictate with a mouse button** — Hold the middle or an additional mouse button anywhere on your Mac, speak, release: your words land where your cursor is. The click stays with Portavoz — the app under the pointer never sees it — and the keyboard hotkey keeps working exactly as before.
+- **📔 A dictation dictionary that types it your way** — Teach Portavoz exact spellings ("k8s" → "Kubernetes") that apply every time you dictate, let it drop filler words in Spanish and English, and pin dictation to one language when a mixed room confuses auto-detect.
+- **🎬 Subtitles from any meeting** — Export a diarized SRT or WebVTT straight from the meeting: caption-sized cues with speaker names, exact millisecond timing, ready for video editors and players.
+- **🧯 Refine that survives a busy GPU** — If the speech model cannot load on the accelerator (another app hogging the GPU, a stale graphics context), Portavoz now retries once on the CPU instead of failing the refine — slower, but your transcript still arrives.
+- **🛡️ Recording that leaves your call alone** — Portavoz no longer takes over macOS voice processing when a meeting or dictation starts, so participant playback is not ducked and the meeting app keeps control of your microphone; duplicate speaker bleed is cleaned from the transcript afterward.
+
+## July 22, 2026
+- **🪪 Name suggestions that stop guessing you** — Your own name (and its short forms) can no longer be proposed for other speakers, a name claimed by several speakers at once is treated as no evidence at all, voice matches now outrank text guesses for the same person, and the cast row wraps cleanly instead of squeezing chips into slivers.
+- **⏪ "Catch me up" during the meeting** — Zoned out or joined late? One click recaps the last five minutes in 2-4 bullets, on-device, without touching the recording — and on Macs without Apple Intelligence it says so honestly instead of hiding.
+- **🎭 Companion is now Apuntador** — The live meeting copilot takes its definitive name: the theater prompter who whispers your line from the wings. Same feature, same privacy, a name that says exactly what it does — in both languages.
+- **🛡️ AI that can't be talked into misbehaving** — Spoken "ignore your instructions" stays quoted meeting content across summaries, translations, naming, chapters, briefs, Ask, and Companion; a drifted answer ("As an AI...") is dropped instead of shown on a card.
+- **🔐 Dictation stays out of password fields** — Portavoz checks the focused field at the last possible moment and refuses to type when macOS cannot verify it, so a focus change or Accessibility hiccup cannot turn spoken words into a visible secret.
+- **🎙️ Dictation keeps your last word** — Capture timing now begins with the real microphone stream, keeps a beat past release, and cancels safely during a cold model start; accidental taps, duplicate stops, and stale sessions cannot paste or leave the mic listening.
+- **📋 Dictation that respects your clipboard** — Images, files, and styled text are restored without advertising empty formats or overwriting a clipboard manager; layout-aware paste waits for every hotkey finger and visibly refuses instead of triggering a different shortcut.
+
 ## July 21, 2026
 
 - **🗣️ One clear live-caption failure** — If live captions cannot start, Portavoz now shows that terminal explanation once instead of also promising that translation will begin when captions arrive.

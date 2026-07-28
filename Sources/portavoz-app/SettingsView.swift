@@ -162,7 +162,7 @@ struct SettingsView: View {
                     showOllamaStatus: summaryEngine == SummaryEngine.ollama.rawValue)
             }
         }
-        .onChange(of: services.whisperDownloadState) { _, state in
+        .onChange(of: services.whisperPreparationState) { _, state in
             if case .ready = state {
                 Task {
                     whisperVariants = await services.whisperVariants()
@@ -700,7 +700,7 @@ extension SettingsView {
                 WhisperModelRow(
                     variant: variant,
                     active: variant.compact == whisperCompact,
-                    downloadState: services.whisperDownloadState,
+                    preparationState: services.whisperPreparationState,
                     select: { whisperCompact = variant.compact },
                     download: { services.prepareWhisperVariant(variant.id) },
                     delete: {

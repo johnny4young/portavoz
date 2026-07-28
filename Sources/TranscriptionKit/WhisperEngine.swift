@@ -27,6 +27,10 @@ public actor WhisperEngine {
         public let completedBytes: Int
         public let totalBytes: Int
         public let currentPath: String
+        /// True only when ModelStore found missing or corrupt artifacts that
+        /// are actively being fetched. Re-hashing files already on disk is
+        /// verification, not a download.
+        public let isDownloading: Bool
 
         public var fraction: Double {
             totalBytes > 0 ? Double(completedBytes) / Double(totalBytes) : 0
@@ -70,34 +74,59 @@ public actor WhisperEngine {
             progress?(PreparationProgress(
                 completedBytes: Int(Double(modelBytes) * update.fraction),
                 totalBytes: totalBytes,
-                currentPath: update.currentPath))
+                currentPath: update.currentPath,
+                isDownloading: update.totalBytes > 0))
         }
         progress?(PreparationProgress(
             completedBytes: modelBytes,
             totalBytes: totalBytes,
-            currentPath: ""))
+            currentPath: "",
+            isDownloading: false))
         let tokenizerDirectory = try await store.ensureAvailable(tokenizer) { update in
             progress?(PreparationProgress(
                 completedBytes: modelBytes
                     + Int(Double(tokenizerBytes) * update.fraction),
                 totalBytes: totalBytes,
-                currentPath: update.currentPath))
+                currentPath: update.currentPath,
+                isDownloading: update.totalBytes > 0))
         }
         progress?(PreparationProgress(
             completedBytes: totalBytes,
             totalBytes: totalBytes,
-            currentPath: ""))
+            currentPath: "",
+            isDownloading: false))
         return PreparedModel(
             descriptorID: descriptor.id,
             modelDirectory: modelDirectory,
             tokenizerDirectory: tokenizerDirectory)
     }
 
-    /// Loads only from opaque verified preparation evidence.
+    /// Loads only from opaque verified preparation evidence. A failed load
+    /// retries exactly once on CPU-only compute — accelerator context
+    /// creation is the recurring field failure class (ANE/GPU contention,
+    /// stale Metal contexts), and slow refine beats no refine. A cancel
+    /// never triggers the second load.
     public static func loadPrepared(_ prepared: PreparedModel) async throws -> WhisperEngine {
+        try await AcceleratorFallback.run {
+            try await load(prepared, computeOptions: nil)
+        } cpuFallback: {
+            try await load(
+                prepared,
+                computeOptions: ModelComputeOptions(
+                    melCompute: .cpuOnly,
+                    audioEncoderCompute: .cpuOnly,
+                    textDecoderCompute: .cpuOnly))
+        }
+    }
+
+    private static func load(
+        _ prepared: PreparedModel,
+        computeOptions: ModelComputeOptions?
+    ) async throws -> WhisperEngine {
         let config = WhisperKitConfig(
             modelFolder: prepared.modelDirectory.path,
             tokenizerFolder: prepared.tokenizerDirectory,
+            computeOptions: computeOptions,
             verbose: false,
             load: true,
             download: false
@@ -125,6 +154,12 @@ public actor WhisperEngine {
             task: .transcribe,
             language: hints.language,
             temperature: 0,
+            // WhisperKit defaults `detectLanguage` to false while prefill is
+            // enabled. With a nil language that silently prefills English,
+            // which can turn Spanish turns into English-looking output.
+            // Explicit automatic detection makes each VAD chunk choose its
+            // spoken language while `.transcribe` preserves that language.
+            detectLanguage: Self.shouldDetectLanguage(for: hints),
             promptTokens: promptTokens,
             // The default (16!) races the workers over shared decoder state
             // and chunks vanish SILENTLY: a real 482 s meeting collapsed to
@@ -187,6 +222,10 @@ public actor WhisperEngine {
             audioDuration: duration,
             processingTime: processingTime
         )
+    }
+
+    static func shouldDetectLanguage(for hints: TranscriptionHints) -> Bool {
+        hints.language == nil
     }
 
     static func buildSegments(

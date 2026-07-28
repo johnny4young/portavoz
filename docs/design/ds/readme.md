@@ -1,13 +1,15 @@
 # Portavoz Design System
 
-Portavoz is a **privacy-first, 100% local meeting assistant for macOS** (Swift 6 + SwiftUI, iOS next). It records meetings, transcribes live on the Neural Engine, separates voices on-device, and summarizes locally. Two products share one identity:
+Portavoz is a **privacy-first, local-first meeting assistant for macOS** (Swift 6 + SwiftUI, iOS next). It records meetings, transcribes live on the Neural Engine, separates voices on-device, and summarizes locally by default; remote providers and private iCloud sync require explicit opt-in. Two products share one identity:
 
 1. **The macOS app** — native, system-font, indigo-accented, quiet.
 2. **portavoz.app** — the marketing site, "the icon's world": dark slate, violet radials, one amber accent, Fraunces display serif.
 
 **Sources** (explore these to design better against the real product):
 - GitHub: https://github.com/johnny4young/portavoz — SwiftUI app in `Sources/portavoz-app/`, real site in `site/`, design brief in `docs/design/claude-design-brief.md`, product docs in `docs/`.
-- Reference screenshot: `assets/reference/meeting-detail.png` (the repo's showcase seed).
+- Reference screenshots: `assets/screenshots/` (the repository's fictional
+  `-seed-showcase` library, regenerated from app-window-only XCUITest evidence
+  with `make public-screenshots`).
 
 Brand personality: **serious but warm, technical without being cold, honest**. Bilingual ES/EN from the outset.
 

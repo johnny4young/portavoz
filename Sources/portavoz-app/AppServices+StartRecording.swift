@@ -15,6 +15,8 @@ extension AppServices {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {
             runtime = UITestSystemCaptureStallRuntime()
+        } else if isLiveTranscriptBrowsingFixture {
+            runtime = UITestLiveTranscriptBrowsingRuntime()
         } else if isLiveTranscriptionAttachFixture {
             runtime = UITestLiveTranscriptionAttachRuntime()
         } else {
@@ -45,6 +47,12 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
             && arguments.contains("-simulate-live-transcription-attach")
+    }
+
+    private var isLiveTranscriptBrowsingFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-live-transcript-browsing")
     }
 }
 
@@ -116,9 +124,12 @@ private struct UITestLiveTranscriptionAttachRuntime: StartRecordingRuntime {
         _ request: StartRecordingCaptureRequest
     ) async throws -> any StartRecordingSession {
         request.callbacks.liveTranscription(.preparing)
+        UITestRuntimeSignal.mark(
+            environmentKey: "PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH")
         Task {
             do {
-                try await Task.sleep(for: .seconds(2))
+                try await UITestRuntimeSignal.wait(
+                    forEnvironmentKey: "PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH")
             } catch {
                 return
             }
@@ -137,6 +148,114 @@ private struct UITestLiveTranscriptionAttachRuntime: StartRecordingRuntime {
 
     func cancelPreparation() async {}
     func scheduleIdleRelease() async {}
+}
+
+private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        request.callbacks.liveTranscription(.available)
+        Task {
+            do {
+                try await Task.sleep(for: .milliseconds(400))
+                for index in 1...18 {
+                    try await emit(index, request: request)
+                }
+                UITestRuntimeSignal.mark(
+                    environmentKey: "PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH")
+                // XCUITest owns this boundary: the first 18 rows remain a
+                // stable reader frontier until the test has scrolled away.
+                try await UITestRuntimeSignal.wait(
+                    forEnvironmentKey: "PORTAVOZ_UI_TEST_LIVE_RESUME_PATH")
+                for index in 19...24 {
+                    try await emit(index, request: request)
+                }
+                UITestRuntimeSignal.mark(
+                    environmentKey: "PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH")
+            } catch {
+                return
+            }
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
+
+    private func emit(
+        _ index: Int,
+        request: StartRecordingCaptureRequest
+    ) async throws {
+        let start = TimeInterval(index * 2)
+        let isRemote = index.isMultiple(of: 2)
+        let text: String
+        if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
+            text = PublicShowcaseFixture.liveTranscriptLines[index - 1]
+        } else {
+            text = isRemote
+                ? String(
+                    format: "History row %02d remains readable during live updates.",
+                    index)
+                : String(
+                    format: "My local update %02d stays distinct while I browse earlier captions.",
+                    index)
+        }
+        await request.callbacks.caption(TranscriptSegment(
+            meetingID: request.meetingID,
+            channel: isRemote ? .system : .microphone,
+            text: text,
+            language: ProcessInfo.processInfo.arguments.contains("-seed-showcase")
+                ? "es"
+                : "en",
+            startTime: start,
+            endTime: start + 1,
+            isFinal: true))
+        try await Task.sleep(for: .milliseconds(90))
+    }
+}
+
+/// File-backed handshakes keep disposable UI fixtures deterministic even when
+/// a hosted runner needs several seconds to snapshot the accessibility tree.
+/// Production recording never sets these environment keys, so its scheduler
+/// and timing remain untouched.
+private enum UITestRuntimeSignal {
+    /// An exhausted handshake throws so the fixture stops emitting instead of
+    /// resuming on a timer — a silent fallback would reintroduce the exact
+    /// race this handshake removes, just 30 seconds later.
+    struct HandshakeTimedOut: Error {}
+
+    static func mark(environmentKey: String) {
+        guard let path = ProcessInfo.processInfo.environment[environmentKey] else {
+            return
+        }
+        FileManager.default.createFile(atPath: path, contents: Data())
+    }
+
+    static func wait(
+        forEnvironmentKey environmentKey: String,
+        attempts: Int = 600
+    ) async throws {
+        guard let path = ProcessInfo.processInfo.environment[environmentKey] else {
+            return
+        }
+        for _ in 0..<attempts {
+            try Task.checkCancellation()
+            if FileManager.default.fileExists(atPath: path) {
+                return
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        throw HandshakeTimedOut()
+    }
 }
 
 @MainActor
@@ -158,7 +277,6 @@ private struct AppStartRecordingPreferences: StartRecordingPreferences {
             transcriptLanguage: MeetingLanguagePreferences.transcript(),
             vocabulary: VocabularyPrompt.parse(
                 defaults.string(forKey: "customVocabulary") ?? ""),
-            voiceProcessingEnabled: defaults.object(forKey: "aecEnabled") as? Bool ?? true,
             preferredInputDeviceID: preferredInput,
             captureMode: mode)
     }
@@ -203,7 +321,10 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         }
         let microphone = MicrophoneSource(
             deviceIdentifier: microphoneID,
-            voiceProcessing: preferences.voiceProcessingEnabled)
+            // A meeting recorder must be observational. Enabling AVAudioEngine
+            // voice processing also changes the output node and can duck the
+            // call or contend with the meeting app's own microphone processing.
+            voiceProcessing: false)
         let warmup = Task { await microphone.warmUp() }
 
         var sources: [any AudioCaptureSource] = [microphone]
@@ -251,6 +372,10 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
                 try? voiceprintStore.load()
             })
         do {
+            // Warm-up owns the same AVAudioEngine and restart queue as
+            // capture. Do not install a tap while it may still be preparing
+            // the graph on another task.
+            await prepared.warmup.value
             try await active.start(request)
             return active
         } catch {

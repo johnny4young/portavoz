@@ -71,6 +71,16 @@
         }
       }
     },
+    "1 meeting · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 reunión · %@"
+          }
+        }
+      }
+    },
     "%d model(s) available.": {
       "localizations": {
         "es": {
@@ -361,12 +371,12 @@
         }
       }
     },
-    "Answer Companion knowledge questions with this provider": {
+    "Answer Apuntador knowledge questions with this provider": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Responder preguntas de conocimiento del Companion con este proveedor"
+            "value": "Responder preguntas de conocimiento del Apuntador con este proveedor"
           }
         }
       }
@@ -381,12 +391,12 @@
         }
       }
     },
-    "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Companion sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model.": {
+    "Any /chat/completions endpoint works: OpenAI, OpenRouter, Groq, or a local Ollama/LM Studio server (http://localhost:11434/v1 — there, nothing leaves your device). When the switch is on, Apuntador sends ONLY the detected question text — never audio or the rest of the meeting — and each card says who answered. If the provider fails, the answer falls back to the local model.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, Companion envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
+            "value": "Sirve cualquier endpoint /chat/completions: OpenAI, OpenRouter, Groq, o un Ollama/LM Studio local (http://localhost:11434/v1 — ahí nada sale de tu equipo). Con el interruptor activo, Apuntador envía SOLO el texto de la pregunta detectada — nunca audio ni el resto de la reunión — y cada tarjeta dice quién respondió. Si el proveedor falla, la respuesta cae al modelo local."
           }
         }
       }
@@ -791,6 +801,26 @@
         }
       }
     },
+    "Checking files already on this Mac…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando los archivos que ya están en esta Mac…"
+          }
+        }
+      }
+    },
+    "Checking Whisper already on this Mac…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Whisper, que ya está en esta Mac…"
+          }
+        }
+      }
+    },
     "Choose": {
       "localizations": {
         "es": {
@@ -901,12 +931,12 @@
         }
       }
     },
-    "Companion": {
+    "Apuntador": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion"
+            "value": "Apuntador"
           }
         }
       }
@@ -1621,12 +1651,32 @@
         }
       }
     },
-    "Download failed: %@": {
+    "Downloading in background… %d%%": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La descarga falló: %@"
+            "value": "Descargando en segundo plano… %d%%"
+          }
+        }
+      }
+    },
+    "Downloading Whisper (%@)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper (%@)… %d%%"
+          }
+        }
+      }
+    },
+    "Preparation failed: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La preparación falló: %@"
           }
         }
       }
@@ -1641,22 +1691,22 @@
         }
       }
     },
-    "Downloading in background… %d%%": {
+    "Preparing in background; downloads only if needed… %d%%": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descargando en segundo plano… %d%%"
+            "value": "Preparando en segundo plano; descarga solo si hace falta… %d%%"
           }
         }
       }
     },
-    "Downloading Whisper (%@, one time only)… %d%%": {
+    "Preparing Whisper (%@; downloads only if needed)… %d%%": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Descargando Whisper (%@, solo una vez)… %d%%"
+            "value": "Preparando Whisper (%@; descarga solo si hace falta)… %d%%"
           }
         }
       }
@@ -1811,12 +1861,12 @@
         }
       }
     },
-    "Enrolled voice · your name · Companion": {
+    "Enrolled voice · your name · Apuntador": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voz enrolada · tu nombre · Companion"
+            "value": "Voz enrolada · tu nombre · Apuntador"
           }
         }
       }
@@ -2251,6 +2301,16 @@
         }
       }
     },
+    "Jump to live": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ir al texto en vivo"
+          }
+        }
+      }
+    },
     "Jump to this moment": {
       "localizations": {
         "es": {
@@ -2271,12 +2331,12 @@
         }
       }
     },
-    "Key deleted. Companion goes back to answering only on-device.": {
+    "Key deleted. Apuntador goes back to answering only on-device.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clave eliminada. Companion vuelve a responder solo en el dispositivo."
+            "value": "Clave eliminada. Apuntador vuelve a responder solo en el dispositivo."
           }
         }
       }
@@ -2631,12 +2691,12 @@
         }
       }
     },
-    "My voice & Companion": {
+    "My voice & Apuntador": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mi voz y Companion"
+            "value": "Mi voz y Apuntador"
           }
         }
       }
@@ -3251,12 +3311,12 @@
         }
       }
     },
-    "Re-checking the Companion's answers…": {
+    "Re-checking the Apuntador's answers…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revisando las respuestas del Companion…"
+            "value": "Revisando las respuestas del Apuntador…"
           }
         }
       }
@@ -4501,12 +4561,12 @@
         }
       }
     },
-    "The transcript was refined, but Companion cards could not be refreshed.": {
+    "The transcript was refined, but Apuntador cards could not be refreshed.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Companion."
+            "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Apuntador."
           }
         }
       }
@@ -4971,12 +5031,12 @@
         }
       }
     },
-    "When someone asks for you by name (\"%@\", what do you think?), Companion highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.": {
+    "When someone asks for you by name (\"%@\", what do you think?), Apuntador highlights the card as “asked you” even when it is not a technical question. Empty = use your macOS account name.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuando alguien te pregunta por tu nombre (\"%@\", ¿qué opinas?), Companion resalta la tarjeta como “te preguntaron” aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
+            "value": "Cuando alguien te pregunta por tu nombre (\"%@\", ¿qué opinas?), Apuntador resalta la tarjeta como “te preguntaron” aunque no sea una pregunta técnica. Vacío = usa el nombre de tu cuenta de macOS."
           }
         }
       }
@@ -5461,12 +5521,12 @@
         }
       }
     },
-    "voice enroll companion name remembered": {
+    "voice enroll apuntador name remembered": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "voz enrolar companion nombre recordadas"
+            "value": "voz enrolar apuntador nombre recordado"
           }
         }
       }
@@ -5651,72 +5711,72 @@
         }
       }
     },
-    "Enable Companion for recordings": {
+    "Enable Apuntador for recordings": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activar Companion para las grabaciones"
+            "value": "Activar Apuntador para las grabaciones"
           }
         }
       }
     },
-    "Turn it on here or from the recording toolbar. Companion detects questions and suggests private answer cards; it never speaks or answers for you.": {
+    "Turn it on here or from the recording toolbar. Apuntador detects questions and suggests private answer cards; it never speaks or answers for you.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actívalo aquí o desde la barra de grabación. Companion detecta preguntas y sugiere tarjetas privadas con respuestas; nunca habla ni responde por ti."
+            "value": "Actívalo aquí o desde la barra de grabación. Apuntador detecta preguntas y sugiere tarjetas privadas con respuestas; nunca habla ni responde por ti."
           }
         }
       }
     },
-    "Companion is ready on this Mac.": {
+    "Apuntador is ready on this Mac.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion está listo en este Mac."
+            "value": "Apuntador está listo en este Mac."
           }
         }
       }
     },
-    "Live Companion requires macOS 26 and Apple Intelligence.": {
+    "Live Apuntador requires macOS 26 and Apple Intelligence.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion en vivo requiere macOS 26 y Apple Intelligence."
+            "value": "Apuntador en vivo requiere macOS 26 y Apple Intelligence."
           }
         }
       }
     },
-    "On macOS Sequoia, summaries and Refine still work with Ollama, Built-in (MLX), and Whisper. An external BYOK provider cannot enable Companion yet because question detection still uses Apple's on-device model.": {
+    "On macOS Sequoia, summaries and Refine still work with Ollama, Built-in (MLX), and Whisper. An external BYOK provider cannot enable Apuntador yet because question detection still uses Apple's on-device model.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En macOS Sequoia, los resúmenes y Refine siguen funcionando con Ollama, Integrado (MLX) y Whisper. Un proveedor BYOK externo todavía no puede activar Companion porque la detección de preguntas sigue usando el modelo en el dispositivo de Apple."
+            "value": "En macOS Sequoia, los resúmenes y Refine siguen funcionando con Ollama, Integrado (MLX) y Whisper. Un proveedor BYOK externo todavía no puede activar Apuntador porque la detección de preguntas sigue usando el modelo en el dispositivo de Apple."
           }
         }
       }
     },
-    "Live Companion needs Apple Intelligence.": {
+    "Live Apuntador needs Apple Intelligence.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Companion en vivo necesita Apple Intelligence."
+            "value": "Apuntador en vivo necesita Apple Intelligence."
           }
         }
       }
     },
-    "Apple's on-device model is unavailable: %@. Choose another summary engine if needed; BYOK cannot replace Companion's question detector yet.": {
+    "Apple's on-device model is unavailable: %@. Choose another summary engine if needed; BYOK cannot replace Apuntador's question detector yet.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El modelo en el dispositivo de Apple no está disponible: %@. Elige otro motor de resúmenes si lo necesitas; BYOK todavía no puede reemplazar el detector de preguntas de Companion."
+            "value": "El modelo en el dispositivo de Apple no está disponible: %@. Elige otro motor de resúmenes si lo necesitas; BYOK todavía no puede reemplazar el detector de preguntas de Apuntador."
           }
         }
       }
@@ -5971,12 +6031,12 @@
         }
       }
     },
-    "Companion question only": {
+    "Apuntador question only": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo la pregunta para Companion"
+            "value": "Solo la pregunta para Apuntador"
           }
         }
       }
@@ -7131,6 +7191,16 @@
         }
       }
     },
+    "Some captions stay in their original language because Apple Translation does not support their language pair on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos subtítulos permanecen en su idioma original porque la función Traducción de Apple no admite ese par de idiomas en este Mac."
+          }
+        }
+      }
+    },
     "Live translation paused after an error. Retrying automatically…": {
       "localizations": {
         "es": {
@@ -7177,6 +7247,1176 @@
           "stringUnit": {
             "state": "translated",
             "value": "Incluye el estado de la app, macOS, modelos, salud y duración de los canales de audio, conteos de transcripción, procesamiento, procedencia y recibos de privacidad. Nunca incluye texto de reuniones, contenido generado, instrucciones, secretos, sumas de verificación, URL completas ni rutas de archivos. Nada se envía automáticamente."
+          }
+        }
+      }
+    },
+    "Dictation never types into password fields.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado nunca escribe en campos de contraseña."
+          }
+        }
+      }
+    },
+    "Dictation couldn't verify the focused field, so it didn't type anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no pudo verificar el campo seleccionado, así que no escribió nada."
+          }
+        }
+      }
+    },
+    "Release Command, Option, Control, and Shift, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suelta Comando, Opción, Control y Mayúsculas e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Dictation couldn't type into the focused app. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no pudo escribir en la app seleccionada. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Catch me up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponme al día"
+          }
+        }
+      }
+    },
+    "Catching you up…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poniéndote al día…"
+          }
+        }
+      }
+    },
+    "A quick recap of the last few minutes — for when you zoned out or just joined.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un repaso rápido de los últimos minutos — para cuando te desconectaste o acabas de llegar."
+          }
+        }
+      }
+    },
+    "Not enough conversation yet — try again in a minute.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay suficiente conversación — intenta de nuevo en un minuto."
+          }
+        }
+      }
+    },
+    "Catch-up needs Apple Intelligence on macOS 26. Summaries at Stop still work with your configured engine.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponerte al día necesita Apple Intelligence en macOS 26. Los resúmenes al detener siguen funcionando con tu motor configurado."
+          }
+        }
+      }
+    },
+    "The catch-up could not be generated. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo generar el repaso. La grabación continúa intacta."
+          }
+        }
+      }
+    },
+    "Dismiss catch-up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar repaso"
+          }
+        }
+      }
+    },
+    "Always on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siempre activa"
+          }
+        }
+      }
+    },
+    "Call-safe capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura segura para llamadas"
+          }
+        }
+      }
+    },
+    "Call-safe capture · dictate anywhere · ⌥⌘D": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura segura · dicta donde sea · ⌥⌘D"
+          }
+        }
+      }
+    },
+    "Portavoz leaves macOS voice processing to your meeting app and never enables call-audio ducking while it records. Duplicate speaker bleed is removed from the transcript after capture.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz deja el procesamiento de voz de macOS en manos de tu app de reuniones y nunca atenúa el audio de la llamada mientras graba. Las voces remotas duplicadas se eliminan del transcript después de la captura."
+          }
+        }
+      }
+    },
+    "Export subtitles (SRT)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar subtítulos (SRT)…"
+          }
+        }
+      }
+    },
+    "Export subtitles (VTT)…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar subtítulos (VTT)…"
+          }
+        }
+      }
+    },
+    "Push-to-talk mouse button": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón del mouse para dictar"
+          }
+        }
+      }
+    },
+    "Click a mouse button…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic con un botón del mouse…"
+          }
+        }
+      }
+    },
+    "Button %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón %d"
+          }
+        }
+      }
+    },
+    "Remove the push-to-talk mouse button": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar el botón del mouse para dictar"
+          }
+        }
+      }
+    },
+    "Dictation language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma del dictado"
+          }
+        }
+      }
+    },
+    "Automatic (Spanish + English)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automático (español + inglés)"
+          }
+        }
+      }
+    },
+    "Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Español"
+          }
+        }
+      }
+    },
+    "Filter out filler words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrar muletillas"
+          }
+        }
+      }
+    },
+    "Text replacements": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazos de texto"
+          }
+        }
+      }
+    },
+    "Heard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchado"
+          }
+        }
+      }
+    },
+    "Type instead": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir esto"
+          }
+        }
+      }
+    },
+    "Add replacement": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar reemplazo"
+          }
+        }
+      }
+    },
+    "Remove replacement": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar reemplazo"
+          }
+        }
+      }
+    },
+    "General meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reunión general"
+          }
+        }
+      }
+    },
+    "Standup": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standup"
+          }
+        }
+      }
+    },
+    "1:1": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1:1"
+          }
+        }
+      }
+    },
+    "Planning": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planeación"
+          }
+        }
+      }
+    },
+    "Interview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista"
+          }
+        }
+      }
+    },
+    "Discovery": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descubrimiento"
+          }
+        }
+      }
+    },
+    "Postmortem": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Postmortem"
+          }
+        }
+      }
+    },
+    "Retrospective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retrospectiva"
+          }
+        }
+      }
+    },
+    "Overview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumen"
+          }
+        }
+      }
+    },
+    "Decisions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decisiones"
+          }
+        }
+      }
+    },
+    "Action Items": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes"
+          }
+        }
+      }
+    },
+    "Open Questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas abiertas"
+          }
+        }
+      }
+    },
+    "Progress": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avances"
+          }
+        }
+      }
+    },
+    "Blockers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloqueos"
+          }
+        }
+      }
+    },
+    "Next Up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo que sigue"
+          }
+        }
+      }
+    },
+    "Topics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temas"
+          }
+        }
+      }
+    },
+    "Feedback": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feedback"
+          }
+        }
+      }
+    },
+    "Agreements": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acuerdos"
+          }
+        }
+      }
+    },
+    "Goals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivos"
+          }
+        }
+      }
+    },
+    "Scope Decisions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decisiones de alcance"
+          }
+        }
+      }
+    },
+    "Risks": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riesgos"
+          }
+        }
+      }
+    },
+    "Next Steps": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximos pasos"
+          }
+        }
+      }
+    },
+    "Background": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trayectoria"
+          }
+        }
+      }
+    },
+    "Strengths": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fortalezas"
+          }
+        }
+      }
+    },
+    "Concerns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reservas"
+          }
+        }
+      }
+    },
+    "Context": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contexto"
+          }
+        }
+      }
+    },
+    "Problems Uncovered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Problemas detectados"
+          }
+        }
+      }
+    },
+    "Needs & Constraints": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesidades y restricciones"
+          }
+        }
+      }
+    },
+    "What Happened": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué pasó"
+          }
+        }
+      }
+    },
+    "Root Causes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Causas raíz"
+          }
+        }
+      }
+    },
+    "What Went Well": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué funcionó"
+          }
+        }
+      }
+    },
+    "Follow-ups": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguimientos"
+          }
+        }
+      }
+    },
+    "Went Well": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo que funcionó"
+          }
+        }
+      }
+    },
+    "Needs Improvement": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por mejorar"
+          }
+        }
+      }
+    },
+    "Objectives": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivos"
+          }
+        }
+      }
+    },
+    "Add an objective…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega un objetivo…"
+          }
+        }
+      }
+    },
+    "Add objective (⏎)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar objetivo (⏎)"
+          }
+        }
+      }
+    },
+    "Toggle objective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar o desmarcar objetivo"
+          }
+        }
+      }
+    },
+    "Checked off by Apuntador": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcado por el Apuntador"
+          }
+        }
+      }
+    },
+    "Remove objective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar objetivo"
+          }
+        }
+      }
+    },
+    "What should this meeting achieve? Objectives get checked off as the conversation covers them, and the summary reports what stayed open.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué debería lograr esta reunión? Los objetivos se van marcando cuando la conversación los cubre, y el resumen reporta lo que quedó abierto."
+          }
+        }
+      }
+    },
+    "Suggest a question": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerir una pregunta"
+          }
+        }
+      }
+    },
+    "One or two questions worth asking next, grounded in the conversation and your open objectives.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una o dos preguntas que vale la pena hacer ahora, basadas en la conversación y tus objetivos abiertos."
+          }
+        }
+      }
+    },
+    "Thinking of a good question…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pensando una buena pregunta…"
+          }
+        }
+      }
+    },
+    "Dismiss suggestion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar sugerencia"
+          }
+        }
+      }
+    },
+    "Question suggestions need Apple Intelligence on macOS 26. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las sugerencias de preguntas necesitan Apple Intelligence en macOS 26. La grabación continúa sin cambios."
+          }
+        }
+      }
+    },
+    "No suggestion this time. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hubo sugerencia esta vez. La grabación continúa sin cambios."
+          }
+        }
+      }
+    },
+    "You spoke %d%% of the last five minutes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablaste el %d%% de los últimos cinco minutos."
+          }
+        }
+      }
+    },
+    "My notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mis notas"
+          }
+        }
+      }
+    },
+    "Enhance in Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar en español"
+          }
+        }
+      }
+    },
+    "Enhance in English": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar en inglés"
+          }
+        }
+      }
+    },
+    "Enhance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejorar"
+          }
+        }
+      }
+    },
+    "Expand each note with what the transcript shows around its moment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amplía cada nota con lo que la transcripción muestra alrededor de ese momento"
+          }
+        }
+      }
+    },
+    "The enhanced notes could not be saved. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron guardar las notas mejoradas. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Your enhanced notes already match this material — change the transcript or your notes to produce new ones.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus notas mejoradas ya corresponden a este material — cambia la transcripción o tus notas para producir unas nuevas."
+          }
+        }
+      }
+    },
+    "Add notes during the recording to enhance them here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega notas durante la grabación para mejorarlas aquí."
+          }
+        }
+      }
+    },
+    "Enhancing didn't work this time. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La mejora no funcionó esta vez. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
+    },
+    "Share a recap": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir un resumen"
+          }
+        }
+      }
+    },
+    "Share a recap…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir un resumen…"
+          }
+        }
+      }
+    },
+    "Read it, edit anything, then choose where it goes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Léelo, edita lo que quieras y luego elige a dónde va."
+          }
+        }
+      }
+    },
+    "For": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para"
+          }
+        }
+      }
+    },
+    "Everyone": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo el equipo"
+          }
+        }
+      }
+    },
+    "As": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como"
+          }
+        }
+      }
+    },
+    "Your edits are kept — the new choices are not applied yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus cambios se conservan — las opciones nuevas aún no se aplican."
+          }
+        }
+      }
+    },
+    "Redraft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rehacer borrador"
+          }
+        }
+      }
+    },
+    "Subject": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asunto"
+          }
+        }
+      }
+    },
+    "Portavoz sends nothing. The transcript is never included.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no envía nada. La transcripción nunca se incluye."
+          }
+        }
+      }
+    },
+    "Copy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        }
+      }
+    },
+    "Share…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir…"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        }
+      }
+    },
+    "Email": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        }
+      }
+    },
+    "Slack": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slack"
+          }
+        }
+      }
+    },
+    "Markdown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown"
+          }
+        }
+      }
+    },
+    "Starts a new Portavoz meeting recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia una nueva grabación de reunión en Portavoz."
+          }
+        }
+      }
+    },
+    "Portavoz could not open the recording screen.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo abrir la pantalla de grabación."
+          }
+        }
+      }
+    },
+    "Return to recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la grabación"
+          }
+        }
+      }
+    },
+    "Return to the recording in progress": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la grabación en curso"
+          }
+        }
+      }
+    },
+    "Start a new recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar una nueva grabación"
+          }
+        }
+      }
+    },
+    "Clear playback": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción clara"
+          }
+        }
+      }
+    },
+    "English translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción al inglés"
+          }
+        }
+      }
+    },
+    "Reduce loudspeaker echo by lowering the microphone outside your turns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce el eco del altavoz bajando el micrófono fuera de tus turnos"
+          }
+        }
+      }
+    },
+    "Refine saved audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refinar audio guardado"
+          }
+        }
+      }
+    },
+    "Re-transcribe the saved audio with Whisper, then review the result before applying it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a transcribir el audio guardado con Whisper y revisa el resultado antes de aplicarlo."
+          }
+        }
+      }
+    },
+    "Spanish translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción al español"
+          }
+        }
+      }
+    },
+    "Translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción"
+          }
+        }
+      }
+    },
+    "Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu audio está a salvo. La pasada automática no encontró voz confiable. Refinar vuelve a transcribir el audio guardado con Whisper y te permite revisar el resultado antes de reemplazar nada."
+          }
+        }
+      }
+    },
+    "Show an English or Spanish translation below each spoken caption.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar una traducción al inglés o español debajo de cada frase hablada."
           }
         }
       }

@@ -47,10 +47,13 @@ struct MeetingDetailView: View {
     @State private var exportName = "reunion"
     @State private var regenerating = false
     @State private var showGistConfirm = false
+    @State private var showingRecap = false
     @State private var gistResult: URL?
     @State private var gistError: String?
     @State private var summaryNotice: String?
     @State private var summarySetupIssue: SummarySetupIssue?
+    @State private var enhancingNotes = false
+    @State private var notesNotice: String?
     /// Refine state lives in RefineService (keyed by meeting) so the work
     /// and its draft survive navigating away from this view.
     private var refinePhase: RefineService.Phase? { services.refines.phase(for: meetingID) }
@@ -143,6 +146,7 @@ struct MeetingDetailView: View {
             .navigationTitle("Portavoz")
             .sheet(isPresented: refineDraftBinding) { refineSheet }
             .sheet(isPresented: mirrorBinding(detail)) { mirrorSheet(detail) }
+            .sheet(isPresented: $showingRecap) { recapSheet(detail) }
             .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
             .fileExporter(
                 isPresented: exportBinding,
@@ -236,6 +240,7 @@ extension MeetingDetailView {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     summaryOrGenerate(detail)
+                    notesSection(detail)
                     transcriptHeader
                     transcriptArea(detail)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -430,10 +435,12 @@ extension MeetingDetailView {
     @ViewBuilder
     private func processingRecoveryAction(_ detail: MeetingReviewReadModel) -> some View {
         if detail.meeting.audioDirectory != nil {
-            Button("Refine transcript") { refine(detail) }
+            Button("Refine saved audio") { refine(detail) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .accessibilityIdentifier("detail-recover-with-refine")
+                .help(L10n.text(
+                    "Re-transcribe the saved audio with Whisper, then review the result before applying it."))
         } else {
             Button("Open support diagnostics") {
                 services.pendingSettingsCategory = .data
@@ -485,7 +492,8 @@ extension MeetingDetailView {
     private func recoveryExplanation(_ code: String?) -> String {
         switch code {
         case "transcription.empty":
-            L10n.text("No reliable speech was found. Run Refine to review the saved audio again.")
+            // swiftlint:disable:next line_length
+            L10n.text("Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
         case "capture.publication.failed":
             L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
         default:
@@ -623,7 +631,7 @@ extension MeetingDetailView {
 
     private func privacyReceiptOperation(_ operation: DataEgressOperation) -> String {
         switch operation {
-        case .companionKnowledgeAnswer: L10n.text("Companion question only")
+        case .companionKnowledgeAnswer: L10n.text("Apuntador question only")
         case .summaryGeneration: L10n.text("Summary material")
         case .publishGitHubGist: L10n.text("Meeting export")
         case .createGitHubIssue: L10n.text("GitHub action item")
@@ -876,15 +884,18 @@ extension MeetingDetailView {
                 .buttonStyle(.plain)
                 .help("Rename the meeting")
                 if let suggestion = model.state.suggestedTitle {
-                    Button {
-                        Task {
-                            await model.send(
-                                .renameMeeting(detail.meeting, title: suggestion))
-                        }
-                    } label: {
-                        ChipLabel(kind: .ai, text: "“\(suggestion)”?")
-                    }
-                    .buttonStyle(.plain)
+                    DismissibleSuggestionChip(
+                        kind: .ai,
+                        text: "“\(suggestion)”?",
+                        acceptAccessibilityIdentifier: "detail-title-suggestion",
+                        dismissAccessibilityIdentifier: "detail-title-suggestion-dismiss",
+                        accept: {
+                            Task {
+                                await model.send(
+                                    .renameMeeting(detail.meeting, title: suggestion))
+                            }
+                        },
+                        dismiss: model.dismissSuggestedTitle)
                     .help("Suggested title from the summary — one click renames, nothing changes on its own")
                 }
                 Spacer(minLength: 0)
@@ -912,8 +923,19 @@ extension MeetingDetailView {
             refineMenu(detail)
 
             Menu {
+                // First: the thing you actually do after a meeting. The raw
+                // formats below are for archiving, not for telling people
+                // what happened.
+                Button("Share a recap…") { showingRecap = true }
+                    .accessibilityIdentifier("detail-share-recap")
+                    .disabled(summary == nil)
+                Divider()
                 Button("Export Markdown…") { export(as: .markdown) }
                 Button("Export PDF…") { export(as: .pdf) }
+                Button("Export subtitles (SRT)…") { export(as: .srt) }
+                .accessibilityIdentifier("detail-export-srt")
+                Button("Export subtitles (VTT)…") { export(as: .vtt) }
+                .accessibilityIdentifier("detail-export-vtt")
                 Button("Export meeting file (.portavoz)…") {
                     Task { await exportBundle(detail, includeAudio: false) }
                 }
@@ -932,6 +954,7 @@ extension MeetingDetailView {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .accessibilityIdentifier("detail-export-menu")
             .help(L10n.text("Export or share this meeting"))
 
             roundButton(
@@ -976,7 +999,7 @@ extension MeetingDetailView {
     @ViewBuilder
     private func speakersRow(_ detail: MeetingReviewReadModel) -> some View {
         let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
-        HStack(spacing: 8) {
+        FlowLayout(spacing: 8, rowSpacing: 8) {
             ForEach(detail.speakers) { speaker in
                 SpeakerPill(
                     speaker: speaker,
@@ -1002,30 +1025,51 @@ extension MeetingDetailView {
                     .accessibilityIdentifier("detail-suggest-names")
                 }
             }
-            ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
-                Button {
-                    Task { await apply(suggestion, in: detail) }
-                } label: {
-                    ChipLabel(kind: .ai, text: "\(suggestion.label) → \(suggestion.name)?")
-                }
-                .buttonStyle(.plain)
-                .help(nameSuggestionHelp(suggestion))
-                .accessibilityIdentifier("detail-name-suggestion-\(suggestion.label)")
-            }
-            // Cross-meeting voice matches: same chip contract, waveform icon
-            // marks the evidence as "their voice", not the transcript.
-            ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
-                Button {
-                    Task { await apply(match, in: detail) }
-                } label: {
-                    ChipLabel(kind: .voice, text: "\(match.speakerLabel) → \(match.name)?")
-                }
-                .buttonStyle(.plain)
-                .help(L10n.format(
-                    "Voice match: sounds like “%@” from your remembered voices.", match.name))
-            }
+            nameSuggestionChips(in: detail)
+            voiceSuggestionChips(in: detail)
             personOfferChip
             rememberOfferChip
+        }
+    }
+
+    @ViewBuilder
+    private func nameSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
+        ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: "\(suggestion.label) → \(suggestion.name)?",
+                acceptAccessibilityIdentifier:
+                    "detail-name-suggestion-\(suggestion.label)",
+                dismissAccessibilityIdentifier:
+                    "detail-name-suggestion-dismiss-\(suggestion.label)",
+                accept: { Task { await apply(suggestion, in: detail) } },
+                dismiss: {
+                    model.dismissNameSuggestion(label: suggestion.label)
+                })
+            .fixedSize()
+            .help(nameSuggestionHelp(suggestion))
+        }
+    }
+
+    @ViewBuilder
+    private func voiceSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
+        // Cross-meeting voice matches use a waveform icon because their
+        // evidence is the remembered voice, not transcript text.
+        ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
+            DismissibleSuggestionChip(
+                kind: .voice,
+                text: "\(match.speakerLabel) → \(match.name)?",
+                acceptAccessibilityIdentifier:
+                    "detail-voice-suggestion-\(match.speakerLabel)",
+                dismissAccessibilityIdentifier:
+                    "detail-voice-suggestion-dismiss-\(match.speakerLabel)",
+                accept: { Task { await apply(match, in: detail) } },
+                dismiss: {
+                    model.dismissVoiceSuggestion(speakerLabel: match.speakerLabel)
+                })
+            .fixedSize()
+            .help(L10n.format(
+                "Voice match: sounds like “%@” from your remembered voices.", match.name))
         }
     }
 
@@ -1282,17 +1326,7 @@ extension MeetingDetailView {
                     Menu {
                         Button("Regenerate in Spanish") { regenerate(language: .spanish) }
                         Button("Regenerate in English") { regenerate(language: .english) }
-                        Menu("Structure") {
-                            ForEach(CustomRecipeStore.all()) { recipe in
-                                Button(recipe.displayName) {
-                                    regenerate(
-                                        language: summaryLanguage(summary.draft.language),
-                                        recipe: recipe)
-                                }
-                            }
-                            Divider()
-                            Button("New structure…") { showingNewStructure = true }
-                        }
+                        structureSubmenu(summary)
                         if let alt = alternateEngine {
                             Divider()
                             Menu(alt.label) {
@@ -1309,6 +1343,7 @@ extension MeetingDetailView {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
+                    .accessibilityIdentifier("detail-regenerate-menu")
                 }
             }
             summaryTabs(summary)
@@ -1316,6 +1351,27 @@ extension MeetingDetailView {
         }
         .padding(14)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// Every seeded and custom structure, with the sections each one
+    /// produces visible under its name BEFORE generating.
+    private func structureSubmenu(_ summary: MeetingReviewSummary) -> some View {
+        Menu("Structure") {
+            ForEach(CustomRecipeStore.all()) { recipe in
+                Button {
+                    regenerate(
+                        language: summaryLanguage(summary.draft.language),
+                        recipe: recipe)
+                } label: {
+                    Text(recipe.localizedDisplayName)
+                    Text(recipe.localizedSectionSummary)
+                }
+                .accessibilityIdentifier("detail-structure-\(recipe.id)")
+            }
+            Divider()
+            Button("New structure…") { showingNewStructure = true }
+        }
+        .accessibilityIdentifier("detail-structure-menu")
     }
 
     /// The tab strip (design system): Resumen · each `##` section (with its
@@ -1529,12 +1585,17 @@ extension MeetingDetailView {
         return String(format: "%d:%02d", total / 60, total % 60)
     }
 
-    private enum ExportFormat { case markdown, pdf }
+    private enum ExportFormat { case markdown, pdf, srt, vtt }
 
     private func export(as format: ExportFormat) {
         Task {
-            let effect = await model.send(.prepareDocument(
-                format == .markdown ? .markdown : .pdf))
+            let documentFormat: MeetingDocumentFormat = switch format {
+            case .markdown: .markdown
+            case .pdf: .pdf
+            case .srt: .srt
+            case .vtt: .vtt
+            }
+            let effect = await model.send(.prepareDocument(documentFormat))
             switch effect {
             case .documentPrepared(let document):
                 switch format {
@@ -1542,6 +1603,10 @@ extension MeetingDetailView {
                     exportType = .plainText
                 case .pdf:
                     exportType = .pdf
+                case .srt:
+                    exportType = .portavozSRT
+                case .vtt:
+                    exportType = .portavozVTT
                 }
                 exportName = document.filename
                 exportDocument = ExportDocument(data: document.data)
@@ -1632,6 +1697,157 @@ extension MeetingDetailView {
             case .generationFailed(.silent):
                 break
             }
+        }
+    }
+}
+
+// MARK: - Enhanced notes (NOTES-001/D135)
+
+extension MeetingDetailView {
+    /// The user's own notes: the raw timestamped items until enhanced, then
+    /// the one regenerable enhanced document. The raw notes are never
+    /// modified — the enhanced doc repeats each note verbatim in bold.
+    @ViewBuilder
+    private func notesSection(_ detail: MeetingReviewReadModel) -> some View {
+        let notes = detail.notes
+        if !notes.contextItems.isEmpty || notes.enhanced != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                notesHeader(detail)
+                notesContent(notes)
+                if let notesNotice {
+                    Text(notesNotice).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(14)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private func notesHeader(_ detail: MeetingReviewReadModel) -> some View {
+        HStack {
+            Text("My notes")
+                .font(.headline)
+                .accessibilityIdentifier("detail-notes-title")
+            Spacer()
+            if enhancingNotes {
+                ProgressView().controlSize(.small)
+            } else if !detail.segments.isEmpty {
+                Menu {
+                    Button("Enhance in Spanish") { enhanceNotes(language: .spanish) }
+                    Button("Enhance in English") { enhanceNotes(language: .english) }
+                    if let alt = alternateEngine {
+                        Divider()
+                        Menu(alt.label) {
+                            Button("Español") {
+                                enhanceNotes(language: .spanish, engine: alt.engine)
+                            }
+                            Button("English") {
+                                enhanceNotes(language: .english, engine: alt.engine)
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Enhance", systemImage: "sparkles")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityIdentifier("detail-enhance-notes")
+                .help("Expand each note with what the transcript shows around its moment")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func notesContent(_ notes: MeetingReviewNotes) -> some View {
+        if let enhanced = notes.enhanced {
+            ScrollView {
+                MarkdownText(text: enhanced.markdown)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 220)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(notes.contextItems) { item in
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(Self.noteTimestamp(item.timestamp))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.tertiary)
+                            Text(item.content)
+                                .font(.callout)
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 140)
+        }
+    }
+
+    private static func noteTimestamp(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded())
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    private func enhanceNotes(language: LanguageCode, engine: SummaryEngine? = nil) {
+        guard let detail, !enhancingNotes else { return }
+        enhancingNotes = true
+        notesNotice = nil
+        Task {
+            defer { enhancingNotes = false }
+            let request = EnhanceMeetingNotesRequest(
+                meetingID: meetingID,
+                segments: detail.segments,
+                speakers: detail.speakers,
+                targetLanguage: language.identifier,
+                providerOverride: engine)
+            applyEnhanceNotesResult(await services.enhanceMeetingNotes.execute(request))
+        }
+    }
+
+    private func applyEnhanceNotesResult(_ result: EnhanceMeetingNotesResult) {
+        switch result {
+        case .completed(persisted: true):
+            break  // The notes observation refreshes the section.
+        case .completed(persisted: false):
+            notesNotice = L10n.text("The enhanced notes could not be saved. Try again.")
+        case .unchanged:
+            // swiftlint:disable:next line_length
+            notesNotice = L10n.text("Your enhanced notes already match this material — change the transcript or your notes to produce new ones.")
+        case .noNotes:
+            notesNotice = L10n.text("Add notes during the recording to enhance them here.")
+        case .unavailable(.requiresMacOS26):
+            summarySetupIssue = .appleRequiresMacOS26
+        case .unavailable(.appleOnDevice(let reason)):
+            summarySetupIssue = .appleUnavailable(reason)
+        case .unavailable(.ollamaModelNotSelected):
+            summarySetupIssue = .ollamaModelNotSelected
+        case .unavailable(.mlxModelNotDownloaded):
+            summarySetupIssue = .mlxModelNotDownloaded
+        case .generationFailed(.localModelNotice):
+            summarySetupIssue = .localEngineFailed
+        case .generationFailed(.silent):
+            // Unlike the summary's silent path, this is a click-driven
+            // action: an honest one-liner beats a spinner that just stops.
+            notesNotice = L10n.text("Enhancing didn't work this time. Try again in a moment.")
+        }
+    }
+}
+
+// MARK: - Share recap (FEATURE-003/D136)
+
+extension MeetingDetailView {
+    /// Reachable only with a summary: the recap is summary-derived, so
+    /// without one there is nothing honest to draft.
+    @ViewBuilder
+    private func recapSheet(_ detail: MeetingReviewReadModel) -> some View {
+        if let summary {
+            MeetingRecapSheet(
+                meeting: detail.meeting,
+                speakers: detail.speakers,
+                summary: summary.draft,
+                dismiss: { showingRecap = false })
         }
     }
 }
@@ -1727,13 +1943,13 @@ extension MeetingDetailView {
                         if phase == .refreshingCompanion {
                             await MainActor.run {
                                 applying = L10n.text(
-                                    "Re-checking the Companion's answers…")
+                                    "Re-checking the Apuntador's answers…")
                             }
                         }
                     })
                 if result.companion == .persistenceFailed {
                     actionError = L10n.text(
-                        "The transcript was refined, but Companion cards could not be refreshed.")
+                        "The transcript was refined, but Apuntador cards could not be refreshed.")
                 }
                 await model.send(.searchableContentChanged)
                 regenerate(
@@ -1961,17 +2177,20 @@ extension MeetingDetailView {
         _ summary: MeetingReviewSummary
     ) -> some View {
         if let suggested = model.state.suggestedRecipe, !regenerating {
-            Button {
-                regenerate(
-                    language: summaryLanguage(summary.draft.language),
-                    recipe: suggested)
-            } label: {
-                ChipLabel(
-                    kind: .ai,
-                    text: L10n.format("Summarize as %@?", suggested.displayName))
-            }
-            .buttonStyle(.plain)
-            .help("This meeting looks like a \(suggested.displayName) — restructure the summary with one click. Nothing changes unless you accept.")
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: L10n.format(
+                    "Summarize as %@?",
+                    suggested.localizedDisplayName),
+                acceptAccessibilityIdentifier: "detail-recipe-suggestion",
+                dismissAccessibilityIdentifier: "detail-recipe-suggestion-dismiss",
+                accept: {
+                    regenerate(
+                        language: summaryLanguage(summary.draft.language),
+                        recipe: suggested)
+                },
+                dismiss: model.dismissSuggestedRecipe)
+            .help("This meeting looks like a \(suggested.localizedDisplayName) — restructure the summary with one click. Nothing changes unless you accept.")
         }
     }
 
@@ -1987,18 +2206,26 @@ extension MeetingDetailView {
         if !regenerating,
             services.summaryEngine != .mlx,
             services.mlxDownloaded,
+            model.state.dismissedThinSummaryVersion != summary.version,
             let detail,
             let ended = detail.meeting.endedAt,
             ThinSummaryPolicy.isThin(
                 summaryCharacters: summary.draft.markdown.count,
                 actionItems: summary.draft.actionItems.count,
                 meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt)) {
-            Button {
-                regenerate(language: summaryLanguage(summary.draft.language), engine: .mlx)
-            } label: {
-                Label("Summary looks thin — retry with Built-in?", systemImage: "sparkles")
-            }
-            .controlSize(.small)
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: L10n.text("Summary looks thin — retry with Built-in?"),
+                acceptAccessibilityIdentifier: "detail-thin-summary-suggestion",
+                dismissAccessibilityIdentifier: "detail-thin-summary-suggestion-dismiss",
+                accept: {
+                    regenerate(
+                        language: summaryLanguage(summary.draft.language),
+                        engine: .mlx)
+                },
+                dismiss: {
+                    model.dismissThinSummarySuggestion(version: summary.version)
+                })
             .help(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
@@ -2100,10 +2327,10 @@ extension MeetingDetailView {
     private var companionCardsSection: some View {
         if !companionCards.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Companion", systemImage: "sparkles")
+                Label("Apuntador", systemImage: "sparkles")
                     .font(.headline)
                     .foregroundStyle(PVDesign.accent)
-                    .accessibilityIdentifier("detail-companion")
+                    .accessibilityIdentifier("detail-apuntador")
                 ForEach(companionCards) { card in
                     companionCardRow(card)
                 }
@@ -2128,7 +2355,7 @@ extension MeetingDetailView {
                 }
                 .buttonStyle(.plain)
                 .disabled(player == nil)
-                .accessibilityIdentifier("companion-card-\(Int(card.askedAt))")
+                .accessibilityIdentifier("apuntador-card-\(Int(card.askedAt))")
                 Text(card.question)
                     .font(.callout.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
@@ -2185,14 +2412,14 @@ extension MeetingDetailView {
                 companionEvidenceRole(
                     L10n.text("Question source"),
                     resolution: question,
-                    identifier: "companion-card-\(card.id.uuidString)-question")
+                    identifier: "apuntador-card-\(card.id.uuidString)-question")
                 if let answer = evidence.resolveAnswer(
                     currentTranscriptRevision: detail.meeting.transcriptRevision,
                     segments: detail.segments) {
                     companionEvidenceRole(
                         L10n.text("Answer sources"),
                         resolution: answer,
-                        identifier: "companion-card-\(card.id.uuidString)-answer")
+                        identifier: "apuntador-card-\(card.id.uuidString)-answer")
                 }
             }
         }

@@ -1,5 +1,32 @@
 import XCTest
 
+class PortavozUITestCase: XCTestCase {
+    private var notificationCenterInterruptionMonitor: NSObjectProtocol?
+
+    override func setUp() {
+        super.setUp()
+        notificationCenterInterruptionMonitor = addUIInterruptionMonitor(
+            withDescription: "Dismiss external Notification Center banners"
+        ) { _ in
+            let notificationCenter = XCUIApplication(
+                bundleIdentifier: "com.apple.UserNotificationCenter")
+            guard notificationCenter.dialogs.firstMatch.exists else {
+                return false
+            }
+            notificationCenter.typeKey(.escape, modifierFlags: [])
+            return true
+        }
+    }
+
+    override func tearDown() {
+        if let notificationCenterInterruptionMonitor {
+            removeUIInterruptionMonitor(notificationCenterInterruptionMonitor)
+        }
+        notificationCenterInterruptionMonitor = nil
+        super.tearDown()
+    }
+}
+
 enum UITestLocale {
     static var environmentLocale: String? {
         let value = ProcessInfo.processInfo.environment["PORTAVOZ_UI_TEST_LOCALE"]
@@ -20,6 +47,7 @@ extension XCUIApplication {
     @MainActor
     static func portavoz(
         seedDemo: Bool = false,
+        seedShowcase: Bool = false,
         seedScale: Bool = false,
         scaleAutoSummaryUpdate: Bool = false,
         seedLatestRecipe: Bool = false,
@@ -34,6 +62,8 @@ extension XCUIApplication {
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
+        simulateLiveTranscriptBrowsing: Bool = false,
+        simulateAppIntent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -45,13 +75,22 @@ extension XCUIApplication {
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
                 NSTemporaryDirectory() + "portavoz-seed-ready-\(UUID().uuidString)"
         }
+        if seedShowcase {
+            app.launchArguments.append("-seed-showcase")
+            app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
+                NSTemporaryDirectory() + "portavoz-showcase-ready-\(UUID().uuidString)"
+        }
         if seedScale { app.launchArguments.append("-seed-scale") }
         if scaleAutoSummaryUpdate { app.launchArguments.append("-scale-auto-summary-update") }
         if seedLatestRecipe { app.launchArguments.append("-seed-latest-recipe") }
         if seedBrief { app.launchArguments.append("-seed-brief") }
         if seedRefineRunning { app.launchArguments.append("-seed-refine-running") }
         if seedJustRecorded { app.launchArguments.append("-seed-just-recorded") }
-        if seedRecovery { app.launchArguments.append("-seed-recovery") }
+        if seedRecovery {
+            app.launchArguments.append("-seed-recovery")
+            app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
+                NSTemporaryDirectory() + "portavoz-recovery-ready-\(UUID().uuidString)"
+        }
         if seedProcessing { app.launchArguments.append("-seed-processing") }
         if seedProcessingFailure { app.launchArguments.append("-seed-processing-failure") }
         if seedWithoutSummary { app.launchArguments.append("-seed-without-summary") }
@@ -66,12 +105,30 @@ extension XCUIApplication {
         }
         if simulateLiveTranscriptionAttach {
             app.launchArguments.append("-simulate-live-transcription-attach")
+            let signalID = UUID().uuidString
+            app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH"] =
+                NSTemporaryDirectory() + "portavoz-attach-preparing-\(signalID)"
+            app.launchEnvironment["PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH"] =
+                NSTemporaryDirectory() + "portavoz-attach-continue-\(signalID)"
+        }
+        if simulateLiveTranscriptBrowsing {
+            app.launchArguments.append("-simulate-live-transcript-browsing")
+            let signalID = UUID().uuidString
+            app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH"] =
+                NSTemporaryDirectory() + "portavoz-live-frontier-\(signalID)"
+            app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_RESUME_PATH"] =
+                NSTemporaryDirectory() + "portavoz-live-resume-\(signalID)"
+            app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH"] =
+                NSTemporaryDirectory() + "portavoz-live-complete-\(signalID)"
+        }
+        if simulateAppIntent {
+            app.launchArguments.append("-simulate-app-intent")
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }
         // AppKit writes ignored-restoration state into TMPDIR. Give every
         // process a private root so back-to-back launches cannot race the same
-        // app.portavoz.mac.savedState directory after a preceding termination.
+        // bundle-scoped savedState directory after a preceding termination.
         let processTempRoot = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("portavoz-uitest-process-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(
@@ -117,15 +174,34 @@ extension XCUIApplication {
         // first-frame adjustment finish before a test caches a control.
         Thread.sleep(forTimeInterval: 0.2)
         if shouldOpenSettings {
+            XCTAssertTrue(
+                buttons["library-new-recording-button"]
+                    .waitForStableFrame(timeout: 20),
+                "the library must finish its cold-start layout before opening Settings")
             typeKey(",", modifierFlags: .command)
-            _ = descendants(matching: .any)["settings-category-general"]
-                .waitForExistence(timeout: 10)
+            XCTAssertTrue(
+                descendants(matching: .any)["settings-category-general"]
+                    .waitForExistence(timeout: 10),
+                "the Settings command must open the settings window")
         }
     }
 
     @MainActor
     func control(withIdentifier identifier: String) -> XCUIElement {
         descendants(matching: .any)[identifier]
+    }
+
+    /// Reassert Portavoz as the foreground app before a critical interaction.
+    ///
+    /// Full-suite runs can overlap with unrelated apps that legitimately raise
+    /// their own windows. XCUITest then reports Portavoz controls as not
+    /// hittable even though their layout is valid. Reactivating the app is
+    /// non-destructive and avoids teaching the harness to dismiss or terminate
+    /// arbitrary third-party windows.
+    @MainActor
+    func prepareForInteraction(timeout: TimeInterval = 10) -> Bool {
+        activate()
+        return wait(for: .runningForeground, timeout: timeout)
     }
 
     /// Seeded-library launches mutate the sidebar once after the first frame.
@@ -143,6 +219,7 @@ extension XCUIApplication {
         }
         guard FileManager.default.fileExists(atPath: readyPath) else { return false }
         try? FileManager.default.removeItem(atPath: readyPath)
+        guard prepareForInteraction(timeout: timeout) else { return false }
 
         let meeting = descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
@@ -152,6 +229,57 @@ extension XCUIApplication {
             predicate: NSPredicate(format: "isHittable == true"),
             object: meeting)
         return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    func waitForLiveTranscriptionAttachPreparing(timeout: TimeInterval = 20) -> Bool {
+        waitForUITestSignal(
+            environmentKey: "PORTAVOZ_UI_TEST_ATTACH_PREPARING_PATH",
+            timeout: timeout)
+    }
+
+    @MainActor
+    func continueLiveTranscriptionAttachFixture() -> Bool {
+        markUITestSignal(environmentKey: "PORTAVOZ_UI_TEST_ATTACH_CONTINUE_PATH")
+    }
+
+    @MainActor
+    func waitForLiveTranscriptFrontier(timeout: TimeInterval = 20) -> Bool {
+        waitForUITestSignal(
+            environmentKey: "PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH",
+            timeout: timeout)
+    }
+
+    @MainActor
+    func resumeLiveTranscriptFixture() -> Bool {
+        markUITestSignal(environmentKey: "PORTAVOZ_UI_TEST_LIVE_RESUME_PATH")
+    }
+
+    @MainActor
+    func waitForLiveTranscriptFixtureToFinish(timeout: TimeInterval = 20) -> Bool {
+        waitForUITestSignal(
+            environmentKey: "PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH",
+            timeout: timeout)
+    }
+
+    private func markUITestSignal(environmentKey: String) -> Bool {
+        guard let path = launchEnvironment[environmentKey] else { return false }
+        return FileManager.default.createFile(atPath: path, contents: Data())
+    }
+
+    private func waitForUITestSignal(
+        environmentKey: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        guard let path = launchEnvironment[environmentKey] else { return false }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if FileManager.default.fileExists(atPath: path) {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return false
     }
 }
 

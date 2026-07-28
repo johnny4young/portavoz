@@ -70,8 +70,8 @@ extension AppServices {
 
     private func whisperState(for variant: WhisperVariant?) -> SupportModelReadinessState {
         guard let variant else { return .notInstalled }
-        switch whisperDownloadState {
-        case .downloading(let id, _, _) where id == variant.id:
+        switch whisperPreparationState {
+        case .preparing(let id, _, _, _) where id == variant.id:
             return .preparing
         case .ready(let id) where id == variant.id:
             return .installed

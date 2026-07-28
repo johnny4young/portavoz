@@ -31,6 +31,7 @@ final class MeetingDetailModel {
         fileprivate(set) var chapterTitles: [TimeInterval: String] = [:]
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
+        fileprivate(set) var dismissedThinSummaryVersion: Int?
         fileprivate(set) var playback: PreparedMeetingPlayback?
         fileprivate(set) var isCompressingAudio = false
         fileprivate(set) var audioCompressionMessage: String?
@@ -186,6 +187,7 @@ final class MeetingDetailModel {
     private var companionCards: [CompanionCard] = []
     private var privacyReceipt: PrivacyReceipt?
     private var processingJobs: [ProcessingJob] = []
+    private var notes = MeetingReviewNotes()
     private var didLoadVoiceSuggestions = false
     private var didCompleteTitleSuggestion = false
     private var didCompleteRecipeSuggestion = false
@@ -212,6 +214,22 @@ final class MeetingDetailModel {
     /// Any explicit summary regeneration supersedes the optional recipe chip.
     func dismissSuggestedRecipe() {
         state.suggestedRecipe = nil
+    }
+
+    func dismissSuggestedTitle() {
+        state.suggestedTitle = nil
+    }
+
+    func dismissNameSuggestion(label: String) {
+        state.nameSuggestions.removeAll { $0.label == label }
+    }
+
+    func dismissVoiceSuggestion(speakerLabel: String) {
+        state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
+    }
+
+    func dismissThinSummarySuggestion(version: Int) {
+        state.dismissedThinSummaryVersion = version
     }
 
     /// The route owns the AVFoundation observer lifetime. Leaving the detail
@@ -485,7 +503,8 @@ private extension MeetingDetailModel {
         defer { state.isSuggestingNames = false }
         do {
             state.nameSuggestions = try await client.meetingDetailNameSuggestions(meetingID)
-            guard !state.nameSuggestions.isEmpty else {
+            reconcileSuggestionSources()
+            guard !state.nameSuggestions.isEmpty || !state.voiceSuggestions.isEmpty else {
                 return .operationFailed(L10n.text(
                     "No verified name suggestions were found — you can rename the pills manually."))
             }
@@ -501,6 +520,17 @@ private extension MeetingDetailModel {
         didLoadVoiceSuggestions = true
         state.voiceSuggestions = (try? await client.meetingDetailVoiceSuggestions(
             meetingID)) ?? []
+        reconcileSuggestionSources()
+    }
+
+    /// Voice evidence outranks a text proposal for the same speaker: the
+    /// voiceprint match is deterministic, thresholded, and cross-meeting,
+    /// while the text path crossed a language model. Two chips proposing
+    /// different names for one speaker must never render together.
+    private func reconcileSuggestionSources() {
+        guard !state.voiceSuggestions.isEmpty else { return }
+        let voiceLabels = Set(state.voiceSuggestions.map(\.speakerLabel))
+        state.nameSuggestions.removeAll { voiceLabels.contains($0.label) }
     }
 
     func loadMetadataSuggestions() async {
@@ -622,7 +652,9 @@ private extension MeetingDetailModel {
                 ExportMeetingAudioClipRequest(
                     relativeAudioDirectory: relative,
                     range: range,
-                    destination: destination))
+                    destination: destination,
+                    segments: state.readModel?.segments ?? [],
+                    clearPlayback: state.playback?.session.clearPlayback ?? true))
             return .audioClipExported(destination)
         } catch {
             return .operationFailed(error.localizedDescription)
@@ -670,6 +702,9 @@ private extension MeetingDetailModel {
         case .processingJobs(let value):
             processingJobs = value
             markObserved(.processing)
+        case .notes(let value):
+            notes = value
+            markObserved(.notes)
         case .failed(let section):
             failedSections.insert(section)
             observedSections.remove(section)
@@ -704,7 +739,8 @@ private extension MeetingDetailModel {
             summary: summary,
             companionCards: companionCards,
             privacyReceipt: privacyReceipt,
-            processingJobs: processingJobs)
+            processingJobs: processingJobs,
+            notes: notes)
     }
 
     func refreshPhase() {

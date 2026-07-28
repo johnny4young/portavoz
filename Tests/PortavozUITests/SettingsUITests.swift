@@ -3,7 +3,7 @@ import XCTest
 /// The redesigned Settings (design system 2a): a category sidebar with the
 /// panes behind it. These verify the navigation works and that the
 /// app-only language override updates SwiftUI text live.
-final class SettingsUITests: XCTestCase {
+final class SettingsUITests: PortavozUITestCase {
     @MainActor
     func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
         let app = XCUIApplication.portavoz(seedDemo: true)
@@ -280,12 +280,68 @@ final class SettingsUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-capture-mode").waitForExistence(timeout: 5),
             "the Audio pane must offer a capture-source picker")
+        let callSafePolicy = app.control(withIdentifier: "settings-call-safe-capture")
+        XCTAssertTrue(
+            callSafePolicy.waitForStableFrame(),
+            "the Audio pane must expose a stable always-on call-safe capture policy")
+        attachScreenshot(of: app, named: "call-safe-audio-settings")
+    }
+
+    /// Enabling dictation must reveal both physical triggers (hotkey +
+    /// push-to-talk mouse button), the {es,en}-constrained language picker,
+    /// the filler filter, and the deterministic dictionary quick-add.
+    @MainActor
+    func testDictationOffersTriggersLanguageAndDictionary() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        // AppServices merges these values into the process's volatile
+        // NSArgumentDomain under -use-temp-store. The real preference domain
+        // is neither read for these keys nor mutated by the test.
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationReplacements":"[{\"trigger\":\"codex fixture\",\"replacement\":\"Codex Fixture\"}]"}"#
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let audio = app.control(withIdentifier: "settings-category-audio")
+        XCTAssertTrue(audio.waitForExistence(timeout: 10))
+        audio.click()
+
+        let toggle = app.control(withIdentifier: "settings-dictation-toggle")
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: 5),
+            "the Audio pane must offer the dictation enable toggle")
+        XCTAssertTrue(Self.isOn(toggle), "the isolated launch must enable dictation")
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-hotkey-recorder")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the hotkey recorder")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-mouse-recorder")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the push-to-talk mouse-button recorder")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-language")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the constrained language picker")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-filler")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the filler-word filter toggle")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-dict-add")
+                .waitForExistence(timeout: 5),
+            "enabling dictation must reveal the dictionary quick-add")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-dictation-dict-remove")
+                .waitForExistence(timeout: 5),
+            "a seeded replacement must expose its removal control")
+        attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 
     @MainActor
     func testVoicePaneOffersTheMirrorOptIn() {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
-        // switch lives in the "My voice & Companion" pane.
+        // switch lives in the "My voice & Apuntador" pane.
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { app.terminate() }
@@ -329,5 +385,11 @@ final class SettingsUITests: XCTestCase {
         systemToggle.click()  // back to launch/system English
         XCTAssertTrue(app.staticTexts["Use system language"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["General & language"].exists)
+    }
+
+    /// A macOS checkbox reports its state as "1"/1 through Accessibility.
+    @MainActor
+    private static func isOn(_ toggle: XCUIElement) -> Bool {
+        (toggle.value as? Int) == 1 || (toggle.value as? String) == "1"
     }
 }

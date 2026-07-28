@@ -1,17 +1,19 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 998 package tests passing (13 model-gated) + 41 XCUITest UI cases. CI
+Status: 1,193 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
 gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
-affected. The latest full English
-and Spanish release gates each cover all 41 cases and retain app-only
+affected. The recording-toolbar mapping selects its external-route geometry
+contract plus live-control/recovery cases rather than unrelated Library and
+Meeting Detail tests. The latest full English and Spanish release gates each
+cover all 49 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim
-review, overview/decision/action-item/Companion source navigation, confirmed-
+review, overview/decision/action-item/Apuntador source navigation, confirmed-
 person memory, 5k-segment scale detail, full Ask and command-palette
 answer/citation navigation, source-grounded meeting preparation, exact local-
 data receipts, Library/search, Insights, post-meeting mirror, proactive Whisper
@@ -21,13 +23,14 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 352 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 383 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
-| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Companion evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
+| StorageUpgradeTests | Disposable clean-install and exact v0.6.0 (`v1`–`v5`) file-library upgrade to the latest schema; bilingual transcript/cast, summary/action, note, Apuntador, and relative-audio-reference conservation; migration order, integrity, foreign keys, no implicit sync seed, and idempotent reopen |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, explicit live/deleted initial seed, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
 | MeetingSyncAggregateTests | Exact-current-generation envelope, deterministic codec, idempotent full-history replay, millisecond-tied summary-version ordering, device-local path/person/embedding preservation, trigger-echo suppression, deferred live/live local-pending conflict, recoverable privacy-dominant remote deletion, invalid-relation rollback, and immutable summary-root/child collision rejection |
 | CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, capability-probed private CKAsset fallback, exact `EINVAL`/`ENOTSUP` metadata downgrade classification, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
@@ -41,7 +44,7 @@ documented below.
 | LocalDataLedgerTests / PresentationReadStorageTests | Concurrent exact meeting/audio/voice metrics, per-source unavailable-versus-zero behavior, cancellation, live-root counting, and one batched latest-live-General-summary projection with tombstone, recipe, superseded-version, and duplicate-ID filtering |
 | PrepareMeetingBriefTests | Shared Ask evidence ranking, batched current-summary admission, related-only bounded commitments, source-indexed navigable synthesis, weak/missing evidence, independent failure degradation, and cancellation propagation |
 | MeetingLibraryQueryTests / ManageSecretsTests | Empty and invalid request short circuits, normalized bounded list/search/open-item delegation, and async secret round-trip/delete behavior over deterministic injected ports |
-| AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/Gist export; pending-only owner-resolved action publication; typed missing/empty states; and zero concrete model, Keychain, filesystem, or network dependency |
+| AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
 | ExportLibraryMarkdownBackupUseCaseTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, one newest-first live SQLite snapshot with corrupt-aggregate isolation and General-summary parity, atomic non-replacing file publication, and process-scoped progress/terminal state |
 | AskMeetingsUseCaseTests | Shared trimming/search/evidence/answer behavior, no-evidence generation skip, evidence-preserving ordinary generation failure, honest cancellation propagation, and capability bypass for empty/invalid requests |
@@ -54,22 +57,26 @@ documented below.
 | LocalSummaryProvidersTests | Typed Apple/Ollama/MLX discovery, deterministic Ollama model-name admission, hardware and disk guidance, explicit-preference preservation before and after asynchronous probing, and no write when no compatible provider exists |
 | SettingsResourcesTests | Capability-neutral microphone choices, recording-root inspection and ordered resumable updates, unchanged location after failure, privacy-safe remembered-voice projections, and unsuppressed destructive failures |
 | CompanionGenerationProvenanceTests | Exact ordered private-material fingerprints including question segment identity; external-provider sensitivity; exact local-RAG citation-to-answer-source mapping; role-separated evidence construction; content-free classifier/provider/egress configuration; aggregate-only metrics; remote success, on-device fallback, and cancelled external-provider attribution |
-| DataEgressGatewayTests | Conservative loopback classification; exact remote/local Companion, summary, and explicit-publishing metadata; decoded question-only and full-summary request bodies; operation/classification/destination/provider/model/consent mismatch and non-HTTP rejection; required meeting identity; canonical publishing endpoint policy; content-free receipt-before-transport ordering; fail-closed recorder behavior; retained attempts on transport failure; redirect denial; and real gateway-backed summary response parsing |
+| DataEgressGatewayTests | Conservative loopback classification; exact remote/local Apuntador, summary, and explicit-publishing metadata; decoded question-only and full-summary request bodies; operation/classification/destination/provider/model/consent mismatch and non-HTTP rejection; required meeting identity; canonical publishing endpoint policy; content-free receipt-before-transport ordering; fail-closed recorder behavior; retained attempts on transport failure; redirect denial; and real gateway-backed summary response parsing |
 | PrivacyReceiptTests | v6→latest migration and schema constraints; honest complete-versus-since coverage; content-free local/remote attempt and generation aggregation; strict missing/unknown/forged event rejection; and zero partial writes |
 | CanonicalPeopleTests / CanonicalPeopleUseCaseTests | POSIX-stable alias normalization; real v7→v8 migration; duplicate aliases and exact candidates; explicit create-versus-existing delegation; atomic links; `Me`, missing, and already-linked rejection; and zero partial person/alias/speaker writes |
 | ImportMeetingUseCaseTests | Required preparation/transcription order, typed progress, mixed-language preservation, best-effort diarization/summary, exact idle release, staged-audio rollback, atomic imported aggregate persistence, successful/failed/cancelled/no-provider summary provenance, privacy-safe metadata, and real MeetingStore summary linkage/rollback adaptation |
-| ImportMeetingBundleUseCaseTests | Canonical attachment validation, duplicate rejection, text/audio ordering, machine-path clearing, early-failure isolation, compensation without error masking, full relational conservation including Companion evidence, foreign-child/evidence rejection, and rollback after an injected final evidence-link failure |
+| ImportMeetingBundleUseCaseTests | Canonical attachment validation, duplicate rejection, text/audio ordering, machine-path clearing, early-failure isolation, compensation without error masking, full relational conservation including Apuntador evidence, foreign-child/evidence rejection, and rollback after an injected final evidence-link failure |
 | ExportMeetingBundleUseCaseTests | Canonical attachment admission, text/audio ordering, opt-in and no-directory behavior, machine-path clearing, typed boundary failures, newest cross-recipe summary plus live-child conservation, tombstone exclusion, and degradable optional-row corruption through real MeetingStore adaptation |
-| RefineMeetingUseCaseTests | Draft order/progress/language, silence/noise/bleed hygiene, exact composite transcript provenance, content-free metadata/metrics, no-attempt/failure/cancellation outcomes, revision-fenced run/segment linkage, persisted-detail/external-audio draft-and-apply ordering, fresh-speaker canonical-person non-inheritance, invalid-run rejection, Companion outcomes, immutable summaries, stale rejection, and injected transactional rollback through real MeetingStore adaptation |
+| RefineMeetingUseCaseTests | Draft order/progress/language, silence/noise/bleed hygiene, exact composite transcript provenance, content-free metadata/metrics, no-attempt/failure/cancellation outcomes, revision-fenced run/segment linkage, persisted-detail/external-audio draft-and-apply ordering, fresh-speaker canonical-person non-inheritance, invalid-run rejection, Apuntador outcomes, immutable summaries, stale rejection, and injected transactional rollback through real MeetingStore adaptation |
 | StartRecordingUseCaseTests | Once-sampled preferences, title/sequence and event-title policy, audio-first start with no live transcriber, preparation/reservation/source order, callback forwarding, selected-channel assets, typed preparation failures, staging/published evidence preservation, guarded empty-shell discard, reconciliation failure reporting, release, and real MeetingStore atomic reservation before source invocation |
 | StopRecordingUseCaseTests | Finalized/missing asset reconciliation, provisional attribution, per-turn mixed-language preservation, exact diarization/transcription initial-job policy and order, empty/partial-lane transcript recovery, truly silent/no-audio outcomes, admission and fallback failures, unconditional engine release, and atomic real-Store snapshot/job adaptation |
-| MeetingStoreTests summary history/evidence | Per-recipe immutable versions, newest-across-recipe selection, retained history, fingerprint cache/pivots, atomic same-meeting overview/decision/action/Companion validation, canonical decision coordinates, stable task/card identity, role-separated links, evidence clear-on-overwrite, revision stamping/staleness, physical-deletion unavailability, correction/unsupported replacement, active-claim fencing, text-erasing clear, and rollback on foreign evidence |
+| MeetingStoreTests summary history/evidence | Per-recipe immutable versions, newest-across-recipe selection, retained history, fingerprint cache/pivots, atomic same-meeting overview/decision/action/Apuntador validation, canonical decision coordinates, stable task/card identity, role-separated links, evidence clear-on-overwrite, revision stamping/staleness, physical-deletion unavailability, correction/unsupported replacement, active-claim fencing, text-erasing clear, and rollback on foreign evidence |
 | AudioCaptureTests | CaptureFileWriter staging CAF, atomic no-overwrite publication, persisted-PCM recovery measurement, complete checksum/media/health evidence, drift summary, callback-liveness and two-minute Stop-nudge policy, mic-heartbeat stall/retry/recovery integration, post-close utility-queue publication with independent channel outcomes, recoverable-source invocation, Downmix, **Resample.linear**, startup cleanup |
-| LiveTranscriptionAttacherTests / LiveTranslationStateTests | Bounded newest-only hot attachment, shared cold-model join and failure cancellation, pre-attachment recovery requirement, target-fenced translation state/results, automatic failure-retry copy, and distinct recoverable-outage versus terminal-failure presentation |
-| AudioTranscoderTests / MeetingAudioWorkflowTests | Host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, bounded waveform/session preparation, and injected application codec semantics |
+| LiveTranscriptionAttacherTests / LiveTranslationStateTests | Bounded newest-only hot attachment, shared cold-model join and failure cancellation, pre-attachment recovery requirement, target-fenced translation state/results, growing-row source-revision refresh, automatic failure-retry copy, unsupported-lane passthrough with later supported-lane progress, partial-support persistence, 20 Hz meter publication policy, and distinct recoverable-outage versus terminal-failure presentation |
+| LegacyScrollInteractionTrackerTests | macOS 14.4 AppKit reader-intent observer scope, unrelated-scroll isolation, disconnect, and exact reconnect behavior |
+| AudioTranscoderTests / MeetingAudioWorkflowTests | Host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, bounded waveform/session preparation, role-aware reversible clear-mix ranges, and injected application codec semantics |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
+| AcceleratorFallbackTests / SubtitleExportTests / ExportDocumentTypesTests | One cancellation-aware CPU retry with both Whisper load failures preserved; exact SRT/VTT timestamps, lexical filtering, rendered prefix-aware cue bounds, same-name speaker identity separation, line/arrow sanitization; and extension-preserving text-conforming macOS subtitle content types |
+| DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
+| UITestDefaultsTests | Disposable XCUITest launches overlay selected preferences in volatile `NSArgumentDomain`; ordinary launches and malformed payloads are ignored |
 | TranscriptionTests | Mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak** |
-| CaptionCoalescerTests | 13 coalescer cases (merge, identity, channels, pauses, limits, loose punctuation, early split of `system` after sentence) |
+| CaptionCoalescerTests / LiveCaptionParagraphProjectorTests | 20 coalescer cases plus 5 presentation cases: merge, identity, channels, pauses, limits, punctuation, both bleed callback orders, overlapping exact-two-word and rolling-edge suppression, sequential/single-word preservation, closed-row immutability, distinct overlap, stable same-voice paragraphs, translation projection, and the generic-`Them` no-merge fence |
 | DiarizationTests | Catalog, SpeakerAttributor (multi-turn), SanitizeTurns, **MergeMicroClusters** (6), DiarizationEvaluation (units), live streaming (gated) |
 | ProcessingOperationFingerprintTests / InitialTranscriptionOperationFingerprintTests | Length-framed SHA-256 identity; diarization segment-order stability and material/revision sensitivity; finalized audio/voiceprint/model evidence; summary provider/language/revision separation; Refine channel-order stability plus material/revision/language sensitivity and invalid-evidence rejection; and deterministic first-pass recovery identity across channel order, revision/audio changes, pending/missing/silent rejection, and canonical request policy |
 | LiveSpeakerLabelerTests | 7 cases: row split with two voices, last row untouched, idempotency, mic never relabeled, "Me" by voiceprint |
@@ -81,9 +88,9 @@ documented below.
 | InsightsObservationTests | independent live-rooted meeting/fact/voice/finding observations, delete/restore conservation, and active-scope finding bounds through real `MeetingStore` adaptation |
 | MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence, canonical-person, document, transcript/calendar-name, participant-voice, and playback/clip actions and effects, route-owned suggestion/audio state, exact silent versus visible failure/degradation policy, and Spotlight reconciliation requests through a database-free client fake |
 | SuggestMeetingSpeakerNamesTests / NameSuggestionFilterTests | coherent meeting admission, eligible remote-label short circuiting, attendee forwarding, complete-token verification without substring false positives, typed locally derived transcript/calendar evidence, label deduplication, typed missing meetings, and visible generation failure without EventKit or a model |
-| MeetingDetailObservationTests | live-rooted transcript/cast, newest-summary/action-item, Companion card/evidence, and privacy-receipt observations; evidence-link-only and independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
+| MeetingDetailObservationTests | live-rooted transcript/cast, newest-summary/action-item, Apuntador card/evidence, and privacy-receipt observations; evidence-link-only and independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
 | BriefRelevanceTests / ReminderPolicyTests / MeetingReminderWorkflowTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, order-independent reminder lead window/session deduplication/off state, disabled-source short circuit, one-sampled-time countdown, failure propagation, mirror qualification/notable delta, and factual English/Spanish synthesis |
-| MeetingBundleTests | round-trip/remap of text, audio, notes, and Companion cards with role-separated evidence; malformed source-card target rejection; canonical-person link stripping; additive compatibility of format v1 |
+| MeetingBundleTests | round-trip/remap of text, audio, notes, and Apuntador cards with role-separated evidence; malformed source-card target rejection; canonical-person link stripping; additive compatibility of format v1 |
 | MeetingHealthTests | 8 cases: talk-time/share, ES/EN questions, thresholded interruptions, older-long-overlap conservation behind an ended neighbor, 200 dense timelines matched to the exhaustive reference, chained monologues, unattributed excluded |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
@@ -91,10 +98,22 @@ documented below.
 | PostCaptureSummaryGenerationAttemptTests | Content-free durable provider/model/job/revision/config metadata, aggregate-only success metrics, and distinct failed/cancelled terminal attempts without invented output metrics |
 | ProcessPostCaptureJobsUseCaseTests | Mixed-language first-pass cleanup/attribution and follow-up admission; real-Store diarization-to-summary publication; provider retry; optional-summary exhaustion; supersession; lease loss; typed diagnostics; and injected-clock no-poll scheduling |
 | RecordingsLocationTests | 9: marker, fallback, resolve, resumable migration, and safe same-root aliases |
-| CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode`, canonical person/alias normalization, independent transcript/summary policies, and backward-compatible role-separated Companion evidence resolution |
+| CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode`, canonical person/alias normalization, independent transcript/summary policies, and backward-compatible role-separated Apuntador evidence resolution |
 | SupportDiagnosticsTests / LocalizationTests / EnglishSourceTests | Path/checksum/content-free support format v2 audio-channel health and transcript-count evidence; EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
+
+`make test-recording-stress` is the deterministic reliability gate for capture
+and recovery. It runs 95 focused tests across callback liveness, start/stop,
+crash recovery, cold-model attachment, mixed-language preservation, durable
+jobs, recording persistence, and caption row separation. The first iteration
+builds normally and the remaining 24 reuse that build; every iteration must
+execute at least 90 tests so a stale filter cannot pass with an empty or
+materially incomplete corpus. Temporary logs are deleted only after success
+and preserved on failure. The complete 25-iteration gate (2,375 test
+executions) passes, as do focused Thread Sanitizer and Address Sanitizer runs.
+This deterministic evidence does not replace the real Core Audio callback-
+recovery acceptance in `docs/GAPS.md`.
 
 Band 1 slice 1A additionally ran a manual storage acceptance smoke: copy the
 real v5 database to `/tmp`, migrate only the scratch file through the current
@@ -241,7 +260,7 @@ automatic mixed-language evidence, silent-channel skipping, microphone
 noise/bleed filtering, required preparation/transcription failures,
 best-effort diarization, cancellation propagation, and exact idle release.
 Apply cases prove the source revision reaches storage, empty drafts never write,
-Companion unavailable/incomplete/complete-empty/persistence-failure outcomes
+Apuntador unavailable/incomplete/complete-empty/persistence-failure outcomes
 preserve the transcript contract, and real MeetingStore acceptance increments
 the revision while retaining immutable summaries. Stale drafts preserve the
 newer aggregate, while an injected SQLite child failure rolls language, cast,
@@ -304,7 +323,7 @@ masking the original error. Boundary tests reject path-shaped or unknown
 channels, unsupported/path-shaped extensions, and duplicate canonical
 channels. Real in-memory Store cases prove every format-v1 relational child is
 conserved as immutable summary version 1, foreign summary/note ownership is
-rejected before writes, and a trigger rejecting the final Companion card rolls
+rejected before writes, and a trigger rejecting the final Apuntador card rolls
 the whole aggregate back. The architecture rule keeps bundle import behind
 ApplicationKit and sequential Store writes out of the app adapter. Strict
 SwiftLint remains clean across 216 source files; no interactive UI or localized
@@ -315,7 +334,7 @@ rule. Port fakes prove exact load/read/encode order, path stripping, audio
 opt-in and no-directory skips, canonical channel/extension admission, complete
 content handoff, typed missing/store/document failures, and no work after an
 early failure. Real in-memory Store cases prove the newest summary across
-recipes, cast/transcript/notes/Companion conservation, tombstone exclusion,
+recipes, cast/transcript/notes/Apuntador conservation, tombstone exclusion,
 and the released degradable fallback for corrupt optional rows. The
 architecture rule keeps MeetingBundle construction and meeting-length reads
 out of Meeting Detail while preserving private IntegrationsKit and filesystem
@@ -401,7 +420,7 @@ Band 2 slice 2S adds the twentieth architecture rule, four direct
 `MeetingDetailModel` tests, and two real-Store `MeetingDetailObservationTests`.
 The source rule requires ApplicationKit-owned review contracts, one
 route-owned model, three app-mapped StorageKit streams, and no return to the
-`libraryVersion`-keyed sequential detail/summary/Companion read path. Tests
+`libraryVersion`-keyed sequential detail/summary/Apuntador read path. Tests
 prove complete/degraded/missing/failed state, section-local replacement,
 live-rooted delete/restore conservation, action-item and card refresh, and
 newest cross-recipe selection. The complete baseline is 593 package tests (13
@@ -412,7 +431,7 @@ control, localized copy, schema, or visible review behavior changed (D59).
 Band 2 slice 2T extends the twentieth rule so `MeetingDetailView` cannot reach
 Store, lifecycle, or `libraryVersion`; its route-owned model must expose the
 explicit mutation actions and the app adapter must implement their narrow
-client. Two direct model tests prove title/speaker/action-item/Companion/delete
+client. Two direct model tests prove title/speaker/action-item/Apuntador/delete
 delegation, suggestion and navigation effects, exact silent versus visible
 failure policy, and compatibility-reindex timing. The complete baseline is
 595 package tests (13 gated), strict SwiftLint is clean across 231 Swift files,
@@ -481,7 +500,7 @@ is 609 package tests (13 gated), strict SwiftLint is clean across 231 Swift
 source files, and all 20 XCUITest cases pass. Fresh Meeting Detail evidence
 confirms no visible behavior changed (D65).
 
-Band 3 slice 3E adds four direct Companion provenance cases and four
+Band 3 slice 3E adds four direct Apuntador provenance cases and four
 real-Store cases while strengthening the existing Stop persistence and
 post-Refine use-case coverage. The direct cases prove exact ordered private
 material and external-provider sensitivity, no private content in config or
@@ -499,15 +518,15 @@ XCUITest cases pass. Fresh Meeting Detail evidence confirms no visible behavior
 changed (D66).
 
 Band 3 slice 3F adds six offline `DataEgressGatewayTests`: only provable
-loopback is local-device; remote and local Companion calls expose exact
+loopback is local-device; remote and local Apuntador calls expose exact
 content-free metadata; the captured JSON body contains static instructions and
 the classified question but no transcript context; forged destination/provider
 disclosures and non-HTTP destinations are rejected before transport; and
-persisted Settings consent requires a source meeting. Companion provenance
+persisted Settings consent requires a source meeting. Apuntador provenance
 cases now retain remote scope across success, fallback, and cancellation. The
 22nd architecture test requires the
 Core port, IntegrationsKit validation/transport adapter, gateway-injected
-Companion client, production app composition, and no direct network call in the
+Apuntador client, production app composition, and no direct network call in the
 adopted path. The complete baseline is 624 package tests (13 gated), strict
 SwiftLint is clean across 235 Swift source files, and all 20 XCUITest cases pass.
 Fresh Meeting Detail evidence confirms no visible behavior changed (D67).
@@ -516,7 +535,7 @@ Band 3 slice 3G-a adds three offline `DataEgressGatewayTests` for remote and
 loopback OpenAI-compatible summaries, decoded full-summary request material,
 real gateway-backed response parsing, exact provider/model/destination/scope,
 and rejection of missing meeting identity or cross-operation consent before
-transport. Existing Companion coverage now also rejects a summary consent
+transport. Existing Apuntador coverage now also rejects a summary consent
 marker. The 23rd architecture test requires the public summary client and
 provider to depend on `DataEgressGateway`, keeps the shared chat codec internal
 and transport-free, and verifies app/CLI gateway composition. The complete
@@ -576,7 +595,7 @@ Ollama/MLX configurations cannot fall through to Apple. The UI case launches a
 meeting without a summary, selects Apple under simulated Sequoia capability,
 generates, follows the actionable alert directly into Intelligence Settings,
 verifies the unavailable explanation, and then verifies that the Voice pane
-explains Companion without exposing a dead enable toggle. It retains named
+explains Apuntador without exposing a dead enable toggle. It retains named
 `sequoia-summary-actionable-settings` and `sequoia-companion-requirements`
 screenshots; under Xcode's Spanish test locale it also asserts that the dynamic
 hardware recommendation crosses the app localization boundary. The complete
@@ -635,6 +654,17 @@ app-window screenshots and inspect a real temp JSON file without opening a save
 panel. The slice gate is 667 package tests (13 gated), strict SwiftLint is
 clean across 249 Swift source files, and all 23 XCUITest cases pass in English
 and Spanish (D76).
+
+The real-call field protocol in `docs/FIELD-VALIDATION.md` revalidates every
+format-v2 support key and bounded value before atomically publishing a new
+owner-only evidence directory. `scripts/collect-field-evidence.py` rejects unknown fields,
+content-bearing additions, malformed counts/digests/timestamps, non-Portavoz
+bundles, and `/Applications/Portavoz.app`; its manifest contains only enumerated
+scenario checks, elapsed seconds, app/macOS versions, and support-report metadata.
+Six tooling cases prove valid packaging, path-free manifests, owner-only modes,
+format rejection, unknown-key rejection, release-app refusal, and scenario-check
+scoping, including rejection of natural language smuggled through an identifier
+field. No audio, transcript text, database, or screenshot enters this workflow.
 
 Band 3 slice 3J adds typed Start and Stop unit cases for preparation,
 reservation, capture reconciliation, fallback persistence, critical recovery
@@ -746,12 +776,14 @@ UI contract per locale is unchanged. The focused player case retains a named
 app-window screenshot after playback starts so EN/ES band validation also
 proves the waveform surface renders without driving the desktop.
 
-Band 4 slice 4G adds three real-Store `SpotlightProjectionTests` and four actor
+Band 4 slice 4G adds three real-Store `SpotlightProjectionTests` and six actor
 `SpotlightIndexerTests`. Projection coverage proves newest cross-recipe
 summary selection, deterministic first-40 transcript order, tombstone scope,
 the 4,000-character cap, and the empty library. Actor coverage proves burst
-coalescing, client-state no-op plus legacy cleanup, transient retry, terminal
-failure, and recovery after a fresh request. The 32nd architecture case guards
+coalescing, client-state no-op plus durable legacy cleanup, cleanup retry after
+failure, cleanup persistence across indexer recreation, transient replacement
+retry, terminal failure, and recovery after a fresh request. The 32nd
+architecture case guards
 the one-snapshot SQL shape, process ownership, named complete-protected index,
 500-item batches, client state, retries, removal of `libraryVersion`, D85, and
 the tracked Release report. Exact fingerprints match the legacy result at
@@ -807,7 +839,7 @@ Band 5 slice 5E adds backward-compatible per-action provider tags, stable
 task-keyed Core evidence, schema-v12 one-to-one parents and ordered nullable
 links, target/revision/live-segment validation and rollback, completion-state
 stability, physical-deletion handling, translation and format-v1 bundle
-identity remapping, Companion/diagnostics isolation, and a source-level
+identity remapping, Apuntador/diagnostics isolation, and a source-level
 architecture rule. The 30th UI case opens the seeded to-do tab, selects the
 source beneath its exact checkbox, verifies the selected transcript row and
 0:03 playhead without autoplay, and retains
@@ -815,7 +847,7 @@ source beneath its exact checkbox, verifies the selected transcript row and
 tests (13 gated), zero strict-lint violations across 268 Swift source files,
 and 30 XCUITest cases per locale (D86–D90).
 
-Band 5 slice 5F adds exact question-segment identity to the Companion request
+Band 5 slice 5F adds exact question-segment identity to the Apuntador request
 fingerprint, parses only exact local-RAG citations into answer sources, and
 constructs backward-compatible card evidence with independent question and
 answer roles. Schema v13 persists one card-keyed parent plus ordered nullable
@@ -1163,10 +1195,11 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 41 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 55 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
-class; localization and shared-harness changes select bilingual evidence; and
+class; localization and shared-harness changes select bilingual evidence; the
+macOS 14 transcript-scroll bridge selects only recording-recovery evidence; and
 an unknown production Swift path selects the complete English suite. Docs,
 governance, site, CLI, and package-test-only diffs select no UI runner. Catalog
 validation fails when a test is added or renamed without a scope, and
@@ -1199,7 +1232,35 @@ package tests independently prove newest-only buffer bounds, event order,
 resident/cold/failure attachment, durable-recovery retention, and translation-
 target cache invalidation.
 
-XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. The harness treats `-portavoz-open-settings` only as a runner-side hint, removes it before launch, and opens the real production Settings scene with `⌘,`; no test-only sheet or app-owned window lifecycle can leak into the following case. Every relaunch first observes the prior process terminate, crosses a bounded LaunchServices retirement delay, and receives a UUID-scoped `TMPDIR` so AppKit saved state cannot race another case. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain, local voice identity, or CloudKit/APNs and completion does not invoke host Shortcuts), `-seed-demo` (deterministic meeting with transcript, summary, typed overview, decision, action-item, and role-separated Companion sources, coauthorship bullet "▸", action item, audio, and a content-free remote-attempt receipt), `-seed-unnamed-speaker` (leaves the disposable remote speaker unnamed so the explicit name-suggestion action can be verified without invoking a real model), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model/audio/Keychain-free durable-processing fixture, also temp-store-only), `-seed-processing-failure` (converts the disposable seed's first job into an exhausted failure), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), `-seed-just-recorded` (marks only the disposable seed as freshly captured so the opted-in mirror can be verified), `-seed-without-summary` (omits only the disposable summary), `-seed-scale` plus optional `-scale-auto-summary-update` (a temp-store-only 5k-detail fixture), `-simulate-sequoia-capabilities` (forces the app-owned Foundation Models capability unavailable), `-simulate-recording-start-failure` (injects one typed preparation failure), `-simulate-system-capture-stall` (injects a prolonged content-free stall, the two-minute Stop affordance, and recovery), and `-simulate-live-transcription-attach` (moves one active recording from preparing to a live caption); all are legal only with the temp store. The runner-only Settings hint is never visible to the app process; after the main window is ready, the harness invokes the production `⌘,` command and waits for the real Settings category control. Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The diagnostics case additionally supplies a unique `PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH`, and the backup case a unique `PORTAVOZ_UI_TEST_BACKUP_FOLDER`; production launches ignore both overrides. The throwaway main window also uses a deterministic visible frame with left clearance so agent progress panels and similar desktop overlays cannot intercept sidebar controls; production window placement remains unchanged. Localized, asynchronously populated controls that can still reflow must hold a stable hittable frame before XCUITest activates them; existence alone does not make a cached click coordinate reliable. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 41 cases in `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, and `SettingsUITests`: library and grouping, source-grounded upcoming-meeting preparation, exact local-data receipts, full Ask and command-palette answer/citation paths (the palette case begins with its destination detail already open so it proves same-route delivery), interrupted staging recovery to a playable detail, durable processing resume/retry, typed recording-start failure/retry/reference, cold-model live-caption attachment, visible prolonged system-callback outage, explicit Stop, and recovery, heatmap/interlocutors, first listen and the optional local-voice enrollment step, 5k-detail rendering plus scoped summary update, overview, decision, action-item, and Companion source-to-transcript/audio navigation, explicit correction/unsupported/clear review, summary/transcript/player/rail/privacy receipt/clip plus scoped action-item mutation, explicit transcript/calendar name-suggestion entry, confirmed-person memory, newest-recipe reload, refine cancellation, the post-meeting mirror sheet, Sequoia intelligence recovery, Settings navigation, explicit iCloud sync opt-in/existing-library separation, redacted support export, readable whole-library Markdown backup, independent transcript/summary language controls, custom structures, audio capture, local-voice enrollment, mirror opt-in, and live locale. The palette screenshot targets its identified `NSPanel`; every other retained attachment targets an app window. The scaled detail, Ask surfaces, Meeting Detail claim review and overview/decision/action-item/Companion source/player, rail/player waveform, confirmed-person memory, grouped Library, Insights heatmap, post-meeting mirror, Sequoia capability, diagnostics, recovery, recording-failure, remote-audio-recovery, live-transcript-hot-attach, transcript/calendar-name, and local-voice cases keep named app-only `XCTAttachment` screenshots, including `band-5d-decision-evidence`, `band-5e-action-item-evidence`, `band-5f-companion-evidence`, `band-6c-cloud-sync`, `band-6c4-markdown-backup`, `band-6c5-full-ask-answer`, `band-6c5-command-palette-answer`, `meeting-preparation-brief`, `durable-post-capture-recovery`, `recording-live-transcript-hot-attach`, `local-data-ledger`, `local-voice-enrollment`, `onboarding-local-voice-enrollment`, and `meeting-name-suggestions`, so feature-band runs can export and inspect deterministic visual evidence without screen driving or exposing unrelated desktop content. `make test-ui-en` and `make test-ui-es` use Xcode's `-testLanguage`/`-testRegion` contract; a shell environment variable alone is not accepted as localization evidence. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
+The field-reliability scope injects a transient full-snapshot rejection, every
+ordered Stop degradation rung, an exhausted projection path, invalid generated
+Apuntador provenance, and both probe/real-Store same-pass recovery of a
+content-bearing recording shell. Translation tests cover explicit mixed
+Spanish/English lanes, same-target and uncertain rows, pair-scoped consent,
+target switches, and stale publication fences. Caption-coalescer tests cover
+both callback orders for speaker bleed plus distinct overlap and short
+acknowledgements, including exact short copies versus sequential replies, and
+the presentation projector proves generic `Them` rows never hide two unresolved
+voices. Refine tests prove stale aggregate language never constrains
+automatic recognition. Intelligence tests prove unknown action owners cannot
+reach Markdown or typed projection. Pure visual-policy tests separate playback,
+live follow, and fully sharp history. The temp-store-only
+`-simulate-live-transcript-browsing` case appends six rows while the user
+remains in earlier history, retains
+`recording-live-transcript-history-paused`, then uses
+`recording-jump-to-live` and observes the latest row.
+
+The current field-reliability gate is 1,193 XCTest package cases (13 gated),
+zero strict-lint violations across 387 Swift files, a 105-case
+recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
+cases per locale. Package tests include real-Store Stop/recovery invariants,
+explicit Whisper language detection, split-lineage identity, full-pair
+translation fences, unsupported-lane progress, user-only macOS 14 scroll
+ownership, deterministic unique cast-grounded summary admission, the SDK-only
+App Intents packaging contract, and a model root outside the replaceable app
+bundle.
+
+XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is gitignored). `make test-ui` performs a preflight: it closes a previous Portavoz instance and warns if Gancho is running, because macOS XCUITest can fail before running tests with `Timed out while enabling automation mode` or interrupting windows. It verifies the UI through automation instead of driving the screen. The harness treats `-portavoz-open-settings` only as a runner-side hint, removes it before launch, and opens the real production Settings scene with `⌘,`; no test-only sheet or app-owned window lifecycle can leak into the following case. Every relaunch first observes the prior process terminate, crosses a bounded LaunchServices retirement delay, and receives a UUID-scoped `TMPDIR` so AppKit saved state cannot race another case. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain, local voice identity, or CloudKit/APNs and completion does not invoke host Shortcuts), `-seed-demo` (deterministic meeting with transcript, summary, typed overview, decision, action-item, and role-separated Apuntador sources, coauthorship bullet "▸", action item, audio, and a content-free remote-attempt receipt), `-seed-showcase` (fictional bilingual library used only by the public screenshot contract), `-seed-unnamed-speaker` (leaves the disposable remote speaker unnamed so the explicit name-suggestion action can be verified without invoking a real model), `-seed-ai-suggestions` (adds deterministic title, recipe, and speaker-name recommendations so each dismiss path can be verified without invoking a model), `-seed-live-translation-ui` (adds a deterministic translated row so the labeled translation rail can be verified without language assets), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model-free durable-processing fixture, also temp-store-only), `-seed-processing-failure` (converts the disposable seed's first job into an exhausted failure), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), `-seed-just-recorded` (marks only the disposable seed as freshly captured so the opted-in mirror can be verified), `-seed-without-summary` (omits only the disposable summary), `-seed-scale` plus optional `-scale-auto-summary-update` (a temp-store-only 5k-detail fixture), `-simulate-sequoia-capabilities` (forces the app-owned Foundation Models capability unavailable), `-simulate-recording-start-failure` (injects one typed preparation failure), `-simulate-system-capture-stall` (injects a prolonged content-free stall, the two-minute Stop affordance, and recovery), `-simulate-live-transcription-attach` (moves one active recording from preparing to a live caption), and `-simulate-live-transcript-browsing` (emits an initial caption history, pauses, then appends rows while the reader owns scroll position); all are legal only with the temp store. The runner-only Settings hint is never visible to the app process; after the main window is ready, the harness invokes the production `⌘,` command and waits for the real Settings category control. Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The diagnostics case additionally supplies a unique `PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH`, and the backup case a unique `PORTAVOZ_UI_TEST_BACKUP_FOLDER`; production launches ignore both overrides. The throwaway main window also uses a deterministic visible frame with left clearance so desktop overlays cannot intercept sidebar controls; production window placement remains unchanged. Localized, asynchronously populated controls that can still reflow must hold a stable hittable frame before XCUITest activates them; existence alone does not make a cached click coordinate reliable. The native recording-route case additionally proves the elapsed clock remains wider than it is tall and Stop stays hittable inside the minimum-width window, protecting the responsive two-row recording bar without screenshot pixel matching. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 55 cases in `AutomationUITests`, `LibraryUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, `PublicShowcaseUITests`, and `SettingsUITests`: the targeted production `portavoz://record` handoff into a visible disposable recording, library and grouping, exact Library result-to-timestamp seek, return from a browsed meeting to the still-active recording, source-grounded upcoming-meeting preparation, exact local-data receipts, full Ask and command-palette answer/citation paths (the palette case begins with its destination detail already open so it proves same-route delivery), interrupted staging recovery to a playable detail, durable processing resume/retry, typed recording-start failure/retry/reference, cold-model live-caption attachment, reader-owned live-caption history with an explicit Jump to live, visible prolonged system-callback outage, explicit Stop, and recovery, heatmap/interlocutors, first listen and the optional local-voice enrollment step, 5k-detail rendering plus scoped summary update, overview, decision, action-item, and Apuntador source-to-transcript/audio navigation, explicit correction/unsupported/clear review, summary/transcript/player/rail/privacy receipt/clip plus scoped action-item mutation, dismissible AI recommendations, reversible clear playback, a visually distinct live-translation rail, SRT/WebVTT export-menu availability, explicit transcript/calendar name-suggestion entry, confirmed-person memory, newest-recipe reload, refine cancellation, the post-meeting mirror sheet, Sequoia intelligence recovery, Settings navigation, explicit iCloud sync opt-in/existing-library separation, redacted support export, readable whole-library Markdown backup, independent transcript/summary language controls, custom structures, audio capture, local-voice enrollment, mirror opt-in, live locale, and the three public showcase surfaces. The palette screenshot targets its identified `NSPanel`; every other retained attachment targets an app window. The automation route retains `automation-visible-recording`; the scaled detail, Ask surfaces, Meeting Detail claim review and overview/decision/action-item/Apuntador source/player, rail/player waveform, confirmed-person memory, grouped Library, Insights heatmap, post-meeting mirror, Sequoia capability, diagnostics, recovery, recording-failure, remote-audio-recovery, live-transcript-hot-attach, live-transcript-history-paused, live-translation-rail, transcript/calendar-name, local-voice, dismissible-AI, and public showcase cases keep named app-only `XCTAttachment` screenshots, including `public-meeting-detail`, `public-live-translation`, and `public-insights`, so feature-band runs can export and inspect deterministic visual evidence without screen driving or exposing unrelated desktop content. `make public-screenshots` runs only those three showcase cases, exports their attachments, and replaces the synchronized README/site assets. `make test-ui-en` and `make test-ui-es` use Xcode's `-testLanguage`/`-testRegion` contract; a shell environment variable alone is not accepted as localization evidence. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
 
 ## Measurement harnesses
 
@@ -1211,6 +1272,17 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 - `scripts/run-detail-ui-baseline.sh`: Portavoz Dev-only 5k-detail signpost, Hangs, Time Profiler, and SwiftUI trace with a disposable store.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.
 - `scripts/run-spotlight-scale-baseline.sh`: isolated Release legacy/snapshot projection matrix at 1k/10k/100k meetings, exact fingerprint comparison, and optional synthetic-only protected-index delivery/cleanup.
+- `make perf-ledger` (`scripts/run-perf-ledger.sh` + `scripts/perf_ledger.py`): the release gate (PERF-001/PERF-008). It runs the unattended harnesses, resolves every metric declared in `docs/evidence/perf-thresholds.json` out of their reports, and answers with one JSON + Markdown scorecard and one exit code. Budgets come from the Target column below; nothing is invented in the contract. An absolute miss fails the run; a regression beyond 15% (latency) or 20% (footprint) against the committed baseline is reported as a candidate, because PERF-008 requires three stable runs before a regression counts. A metric whose harness did not run is printed as **not measured** rather than omitted, and the run claims `authoritative` only when every report comes from one release build on one Apple Silicon machine matching the baseline — hosted CI and mixed hosts stay informational. The gate also refuses to convict on a measurement that disagrees with itself: when a timed metric's p95 exceeds its own p50 by more than 1.25x, the 20 iterations did not agree, so a budget miss is reported as **verdict withheld** rather than a failure, and the run drops to informational because PERF-001's "stable machine" is a claim about the machine's state, not only its identity. The rule applies only to timed units with enough samples for p95 to differ from the maximum — byte deltas move with page granularity rather than with scheduling, and a three-run distribution has no tail to speak of. Each run also stamps the Swift/Xcode toolchain onto every report it produces, because a shift in the numbers is otherwise indistinguishable from a codegen change: when the baseline was measured with a different toolchain — or, like the July 2026 evidence, predates the stamp entirely — the scorecard prints a **Comparability** caveat. That caveat qualifies what a delta can be attributed to; it never costs the run its authority, which PERF-001 grants on the machine alone. `Tests/Tooling/test_perf_ledger.py` covers the budget, regression, honesty, authority, toolchain, selector, and contract rules.
+
+The comparison reference moved forward on 26 Jul 2026 to
+`docs/evidence/{scale-baseline,semantic-scale,spotlight-scale}-20260726.json`:
+one authoritative run of the same machine, in release, with the toolchain
+stamped and every journey inside its budget. The 16-17 Jul files remain
+tracked as the D79-D85 optimization record — they are no longer the
+reference, and the numbers below still describe what those optimizations
+achieved. Adopting a baseline never relaxes a budget: the Target column
+is the release contract regardless of which run the deltas are measured
+against.
 
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
@@ -1222,7 +1294,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | Mic/system drift | < 50 ms / 30 min | **4 ms / 22 min** (+4 ppm linear) |
 | DER (AMI 2 speakers) | < 15% | **7.6%** (collar 0.25 s) |
 | ES summary of EN meeting | < 30 s | **3.8 s** (glossary intact) |
-| AEC convergence | — | **~2 s** (hence the warm-up) |
+| Former VPIO AEC convergence | historical only | **~2 s**; D125 removes VPIO from meeting capture because call coexistence is the higher-order requirement |
 | Cold start | < 1.5 s | **0.94 s cold / ~0.26 s warm** (`--bench-startup`) |
 | FTS at 1k meetings (80k segments) | < 50 ms | **p50 22.8 ms / p95 23.9 ms** (`portavoz-cli bench-fts`) |
 | Exact FTS at 100k segments | p95 < 50 ms | **p50 30.25 ms / p95 30.99 ms** (`bench-scale`, D81) |
@@ -1245,7 +1317,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 | Silent meeting "sin voz" | WhisperKit EnergyVAD absolute threshold 0.02 | prior peak normalization |
 | Repeated `Yo: .` and `Me: Thank you.` without speaking | Loose-punctuation deltas and Whisper silence boilerplate at VAD cadence | lexical hygiene + repeated-boilerplate filter on mic |
 | Mic died when headphones connected (min 24/30) | AVAudioEngine stops on config-change, silent stream | restart + resample + silence gap |
-| Phantom "Yo" with speakers | mic captured system audio (100% echo; text-only dedup covered only 57%) | AEC VPIO by default (D24) |
+| Phantom "Yo" with speakers | mic captured system audio (100% echo; early text-only dedup covered only 57%) | Refined microphone/system overlap filtering after capture; VPIO removed from meetings by D125 after it interfered with live calls |
 | False drift of 115 ms | real offset 2.4 s outside the script's ±2 s range | ±5 s range + edge warning |
 | Speaker rename was not saved | alert-dismiss nilled the state before the Task | capture values on tap |
 | "Sugerir nombres" overflowed context | blind prefix + schema + assistants > 4096 tokens | targeted NamingExcerpt + retry at half size |

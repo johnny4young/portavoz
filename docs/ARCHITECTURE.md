@@ -118,13 +118,13 @@ self-contained over system frameworks and carries no module dependency.
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
-| `AudioCaptureKit` | Microphone capture, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, and segment mapping. |
+| `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
+| `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
-| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Companion; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
+| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
-| `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
-| `IntegrationsKit` | Canonical Markdown/PDF and issue exports, meeting bundles, EventKit mapping, MCP protocol handling, policy-checked HTTP transport, deterministic sync envelopes, protected CloudKit record/state adapters, and sync lifecycle policy. |
+| `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
+| `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
@@ -217,6 +217,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | First-run welcome | `FirstRunModel` | application process |
 | Local-data receipt | `LocalDataLedgerModel` | application process |
 | Resident menu bar | `MenuBarModel` | menu-bar scene |
+| Global dictation | `DictationController` | application process |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
@@ -226,7 +227,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,
 commitments, talk balance, and bounded finding evidence. Meeting Detail merges
-transcript/cast, newest summary, Companion, privacy receipt, and durable
+transcript/cast, newest summary, Apuntador, privacy receipt, and durable
 processing streams. A failed stream degrades only its section and preserves
 healthy state from the remaining sections.
 
@@ -250,6 +251,48 @@ The menu-bar scene receives bounded recent-meeting and open-commitment updates
 through an app adapter. EventKit access remains in the adapter and follows the
 no-prompt resident-surface rule. The SwiftUI panel owns commands and rendering,
 not Store or calendar coordination.
+
+Global dictation has one process-scoped, main-actor owner and one UUID-fenced
+session task. Microphone duration starts only after the real stream opens;
+finish-before-readiness cancels, one owned tail task drains an accepted finish,
+and cancellation closes the transcription feed immediately while fencing every
+later state mutation and delivery side effect. Audio sample reduction and feed
+delivery stay off the main actor; only the observable meter update crosses back.
+Failure-dismiss tasks are single-owner and cancelled on restart so an older
+error cannot dismiss a newer session.
+System-wide input adapters remain at the app boundary: Carbon owns the keyboard
+hotkey and a session `CGEventTap` owns one explicitly configured middle or
+additional mouse button. The pure `MousePTTGesture` table also remains in the app
+target because it decides presentation/input ownership, not speech recognition.
+The tap registration is idempotent, cancels a mouse-owned capture before
+rebinding can discard its release event, and retries after the app returns from
+the Accessibility permission flow. Invalid persisted button numbers normalize
+to disabled; CGEvent indices 0/1 (left/right) are never eligible.
+TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
+removal followed by one non-cascading, longest-trigger-first replacement pass.
+The policy reads one canonicalized rule snapshot at delivery, never mutates a
+meeting transcript, and treats the first match against the original dictation
+as the user's authoritative spelling.
+The last-mile `TextInserter` returns a typed result. It waits for physical
+modifiers without swallowing cancellation, refuses a timed-out chord, performs
+a fail-closed Accessibility inspection immediately before clipboard mutation,
+posts a complete synthetic paste pair or restores synchronously, and later
+restores only captured pasteboard representations when its change count still
+owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
+event delivery, and held modifiers become visible failures rather than false
+insertion success.
+
+Live Apuntador keeps endpoint admission split across layers: the pure,
+deterministic `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel,
+noise, question/name, and speculative-material rules, while
+`RecordingController` owns exactly one main-actor silence deadline. Both a real
+row close and a two-second silence expiry enter one shared detection dispatch;
+the app never closes or rewrites the coalescer's mutable row. Every accepted
+delta re-arms the deadline, and recording activation or an in-meeting opt-in
+also synchronizes it so an already-visible remote question cannot be stranded
+at either lifecycle boundary. Recording activation first drains every row that
+closed while Start was still preparing, then arms the open tail. Disabling
+Apuntador, stopping, or resetting the session cancels the pending deadline.
 
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
@@ -294,10 +337,14 @@ engine release, deterministic UI fixtures, and content-free signposts.
 
 Meeting Detail document actions also enter the application boundary. One
 workflow loads the selected meeting and latest General summary coherently,
-renders the canonical Markdown once, and returns either Markdown or PDF bytes
-with the released title-based suggested filename for the native save surface.
-Explicit secret-Gist publication uses the same coherent source and renderer.
-The app adapter owns utility-priority rendering, lazy credential resolution, gateway-backed
+then renders only the requested representation: canonical Markdown, PDF
+derived from that Markdown, or SRT/WebVTT directly from the diarized
+transcript. The typed subtitle port cannot receive a Markdown/PDF request,
+speaker identity—not display-name equality—controls cue merging, and the
+native save surface receives an extension-specific content type plus the
+released title-based suggested filename. Explicit secret-Gist publication
+uses the same coherent source and Markdown renderer. The app adapter owns
+utility-priority rendering, lazy credential resolution, gateway-backed
 publisher construction, and native platform presentation. The route-owned
 `MeetingDetailModel` owns document actions and typed effects; SwiftUI owns the
 user gesture, off-device confirmation, save panel state, and localized result.
@@ -417,6 +464,14 @@ expected filename, or aggregate file size as proof.
 The macOS composition root owns one store and lifecycle for Settings, summary
 provider resolution, import, durable post-capture work, support diagnostics,
 live transcription, diarization, refinement, and voice-memory extraction.
+Production model artifacts live in the stable user-domain
+`~/Library/Application Support/Portavoz/Models` root, outside both
+`Portavoz.app` and `Portavoz Dev.app`. Replacing either application bundle
+therefore does not remove a verified model; only the explicit model-delete
+workflow mutates that installation. Refine, Import, Settings, and CLI describe
+the operation as local verification until `ModelStore` reports missing or
+corrupt artifacts; only that latter activity is labeled as a download. Download
+percentage is never synthesized for a checksum-only pass.
 Disposable automation receives an isolated empty model root and never inspects
 host installations. Settings verifies in the background and renders a checking
 state until evidence exists; it never exposes a partial installation as
@@ -430,17 +485,19 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 14. It includes:
+The current schema version is 15. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
 - meeting-local speakers and explicitly confirmed canonical people/aliases;
 - transcript segments and FTS5 search;
 - immutable summary versions and action items;
-- Companion cards and role-separated source evidence;
+- Apuntador cards and role-separated source evidence;
 - generated overview, decision, and action-item evidence;
 - reversible current-claim feedback stored separately from generated output;
 - immutable generation-run provenance;
+- one regenerable enhanced-notes document per meeting (raw notes stay
+  untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;
 - owner-leased durable processing jobs;
 - a content-free per-meeting sync generation journal;
@@ -448,7 +505,7 @@ The current schema version is 14. It includes:
   persistence even where runtime delivery uses another mechanism.
 
 Aggregate writes that must remain consistent execute in one transaction.
-Summary, Companion, transcript, evidence, provenance, and durable-job commits
+Summary, Apuntador, transcript, evidence, provenance, and durable-job commits
 use source-revision or owner-lease fences where applicable. Stale work is
 discarded rather than overwriting newer truth.
 
@@ -456,6 +513,18 @@ Query-specific projections use explicit scope and ordering. Whole-library
 backup performs one newest-first database snapshot. Spotlight uses a bounded
 projection and client-state reconciliation. Library, Insights, Meeting Detail,
 and the menu bar use independent GRDB observations sized to their surface.
+Library search expands a small deterministic English/Spanish meeting lexicon
+locally, then groups each complete language variant under FTS5 `OR` rather
+than weakening every token into a broad union. FTS5 `unicode61` provides
+case- and Latin-diacritic-insensitive exact matching without changing stored
+transcript text. Exact hits publish immediately. When Apple's Latin contextual
+embedding assets are already installed and capture is inactive, one
+process-shared ApplicationKit actor incrementally embeds at most 512 missing
+non-micro rows and appends bounded cross-language semantic results by exact
+cosine. Typing never requests an asset download, semantic failure never
+invalidates exact results, and no additional vector dependency is loaded. A
+selected hit emits the same one-shot meeting/timestamp seek request used by Ask
+evidence before routing.
 
 ## Durable recording lifecycle
 
@@ -485,6 +554,16 @@ evidence, but blocking proportional file work cannot occupy Swift's cooperative
 executor. One channel's publication failure preserves its staging file and
 does not block a healthy peer from publishing.
 
+If the atomic captured snapshot is rejected, ApplicationKit retries that exact
+payload once to preserve every released feature after a transient Store
+failure. A repeated rejection enters one bounded audio-priority ladder: core
+transcript/cast/notes with only provenance-valid Apuntador cards; finalized
+audio/notes plus exact durable transcription; then canonical `capture.*`
+needs-attention projections. Every rung remains an ordinary StorageKit atomic
+request. Generated content is never downgraded into provenance-free content,
+and healthy finalized audio is never deleted because an optional projection is
+invalid.
+
 System-audio callback liveness is monitored independently from acoustic
 silence. Monitoring begins only after the first system frame, then persisted
 microphone frames provide a recording heartbeat. Eight seconds without another
@@ -509,12 +588,33 @@ retry dates; superseded work and exhausted optional summaries are cancelled
 without hiding the captured meeting. The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle
 state. Usable audio remains playable and exportable when derived work fails.
+A stale `recording` shell that already contains recovered transcript content is
+repairable in the same launch pass: recovery marks it with canonical
+`capture.publication.failed`, installs only revalidated asset evidence, and
+lets StorageKit derive `ready` when the existing content and complete assets
+satisfy the aggregate invariant. Recovery never replaces existing transcript
+children or depends on a second restart.
 
 ## Audio, transcription, and attribution
 
 Microphone and system/process audio remain separate through capture,
 transcription, diarization, playback, and refinement. The microphone channel is
 structurally the local user; system audio requires speaker attribution.
+
+Meeting capture obeys an observational passivity invariant: production
+recording and global dictation never enable AVAudioEngine voice processing,
+other-audio ducking, or a system mute/volume mutation. The conferencing app
+retains ownership of its microphone processing and playback graph. Raw
+microphone spill is handled after capture by transcript bleed filtering rather
+than by modifying the live call. `MicrophoneSource` keeps an explicit
+voice-processing option only for bounded nonmeeting tools such as local voice
+enrollment and the CLI diagnostic flag. Microphone graph preparation is also
+fail-closed: warm-up and device-restart paths validate a finite positive
+hardware sample rate and at least one input channel before calling
+`AVAudioEngine.prepare()`, while one serial queue owns warm-up, start, stop, and
+device-restart graph mutation. Capture also awaits its explicit warm-up task
+before entering that owner. An unavailable route crosses the existing typed
+recording-start boundary instead of escaping as an Objective-C exception.
 
 ```mermaid
 flowchart LR
@@ -546,7 +646,26 @@ consuming only the newest buffered context when it completes. Capture never
 awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
-Refine requires Whisper; attribution is degradable.
+The live merged projection performs bounded cross-channel admission: a new
+microphone row is compared with the newest twelve direct system/room captions,
+while a delayed direct row may replace only the newest still-open matching
+microphone row. Closed rows remain immutable for translation and rolling-summary
+cursors. Single-word acknowledgements and sequential turns remain conservative;
+exact two-word copies require real channel overlap, while three-word contiguous
+rolling edges can reject a longer noisy microphone copy. Distinct overlapping
+speech remains. A separate view-only projector groups consecutive microphone
+rows or rows from the same stable live voice within bounded gap/size limits.
+It never groups generic `Them`, never mutates raw caption IDs, and projects
+translation text alongside the visible paragraph.
+Live diarization may still project one closed source row into multiple
+speaker-labeled pieces. That transformation preserves the source ID on the
+first non-empty piece and assigns fresh IDs only to additional pieces, so
+Companion evidence retains a valid lineage anchor and translation caches do not
+lose the original turn. The rolling summary tracks admitted caption IDs rather
+than an array offset, admitting new split pieces without skipping later speech.
+Refine requires Whisper. Loading a verified model first uses the selected
+accelerator configuration; a failure triggers one cancellation-aware CPU-only
+retry before both underlying causes are surfaced. Attribution is degradable.
 Import requests its required transcriber and optional diarizer independently.
 Durable first-pass recovery and dictation request Parakeet without acquiring
 unrelated models. `ProcessPostCaptureJobs` keeps automatic recognition
@@ -555,6 +674,31 @@ preserves each segment's detected language, and sets meeting-level language
 only when the attributed transcript is homogeneous. Diarization failure
 degrades to an unattributed system channel; missing finalized audio remains a
 durable failure.
+
+On-demand live intelligence is an ephemeral sidecar, never part of capture or
+durable stop. "Catch me up" snapshots only closed caption rows, submits a
+bounded recent clip at interactive priority, and owns one replaceable task.
+Dismiss and Stop synchronously cancel and clear that task before the recording
+crosses the durable application boundary; late model output cannot become
+visible or persisted after recording ends.
+
+Live translation treats that transcript as a sequence of language-tagged
+turns, not as one meeting-level source language. Persisted segment language is
+authoritative; a conservative local recognizer may classify only sufficiently
+long, high-confidence unknown text. Closed rows already spoken in the target
+language and short or uncertain rows remain unchanged. Eligible rows run
+through an explicit source-to-target Apple Translation lane; source
+auto-detection is never delegated to the framework, and download consent
+belongs to that exact pair. Rows in an unsupported pair stay in their original
+language and are recorded as handled passthrough, so they cannot starve later
+supported language lanes; presentation retains an honest partial-support state.
+A target switch cancels and fences prior work and clears all translated and
+unsupported-passthrough state before new lanes are resolved. The newest
+still-growing row becomes eligible after enough local language evidence and is
+retranslated only after meaningful text growth or a sentence boundary. Each
+translation stores the exact source revision that produced it. Apple batch
+responses publish as their asynchronous sequence arrives, and the UI renders
+them in a labeled indigo rail rather than as another spoken transcript row.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;
@@ -567,9 +711,14 @@ noise, search material, generated facts, or navigable evidence without using a
 language-specific word list.
 
 Transcript recognition language and generated-output language are independent.
-Automatic transcript policy leaves mixed-language meetings unhinted so each
-segment can retain the language spoken. Fixed transcript language is an
-explicit recovery choice. Summary language either follows homogeneous speech
+Automatic durable transcription and Refine never pin a complete channel to an
+aggregate meeting language, even when existing metadata appears homogeneous;
+WhisperKit language detection is explicitly enabled because a nil language
+alone would keep prefill's English fallback. The decoder stays in transcription
+mode, and each segment retains the language recognized for its VAD result.
+Fixed transcript language is an explicit per-meeting recovery choice.
+Meeting-level language is derived only after attribution when the completed
+transcript is homogeneous. Summary language either follows homogeneous speech
 or uses an explicit English/Spanish setting, with app locale as the fallback
 for mixed or unknown speech.
 
@@ -587,13 +736,13 @@ generation record commit together. Provenance stores provider/model identity,
 operation fingerprint, configuration, language, timing, outcome, and aggregate
 metrics without meeting text.
 
-Summary and Companion sources are typed rather than inferred from rendered
+Summary and Apuntador sources are typed rather than inferred from rendered
 text:
 
 - overview evidence points to ordered transcript segments;
 - decision evidence uses canonical section and bullet coordinates;
 - action-item evidence follows durable task identity;
-- Companion evidence separates the triggering question from answer support;
+- Apuntador evidence separates the triggering question from answer support;
 - answer sources exist only for exact local-retrieval citations;
 - feedback remains a separate reversible human assessment and never rewrites
   generated Markdown.
@@ -610,8 +759,26 @@ cited transcript row share distinctive case/diacritic-folded lexical material;
 unsupported and cross-language-unverifiable links disappear while the summary
 text remains usable. The same admission stage removes empty/duplicate tasks and
 any normalized action item copied verbatim from the recipe's explicitly typed
-decision section. Translation pivots carry only evidence and tasks that already
-passed this source-language gate.
+decision section. An action owner is admitted only when it uniquely matches an
+existing speaker label or confirmed display name. A unique exact label takes
+precedence; display-name matches are admitted only when unique. Drafting carries
+the resolved `SpeakerID` beside the canonical rendered owner instead of
+resolving that text a second time, and removes any duplicated leading owner
+prefix. Unknown or ambiguous generated names become unassigned rather than
+visible identity claims.
+Translation pivots carry only evidence and tasks that already passed this
+source-language gate.
+
+Meeting-derived text is untrusted input at every model boundary. Summary,
+map-note, finished-summary translation, speaker naming, chapter title,
+pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
+instructions all include the same quoted-source guard: participant speech,
+retrieved passages, and generated meeting material can be reported or
+transformed but cannot redefine the model's role, output shape, or governing
+instructions. Live Apuntador applies the equivalent rule to its classifier and
+knowledge paths. Trusted user questions remain separate from untrusted
+retrieved passages, and deterministic admission still validates generated
+identity, evidence, and display output after generation.
 
 ## Search, playback, and derived indexes
 
@@ -628,34 +795,55 @@ command-palette citation seeks are meeting-scoped, identity-bearing navigation
 requests: only the matching detail consumes them, and an already-open detail
 observes a new request without depending on route reconstruction.
 
+The instant Library path is an exact-first hybrid distinct from Ask. Its FTS
+observation always publishes before optional semantic augmentation. It reuses
+the same device-local Apple embedding representation and StorageKit cosine
+adapter, skips semantic work during capture, refuses asset downloads as a
+side-effect of typing, and treats cancellation or embedding failure as an empty
+augmentation.
+
 Waveform generation is stateless and uses Accelerate over range-aligned channel
 spans. Playback supports synchronized channels, silence skipping, local-voice
-filtering, clips, and AAC compression. Meeting Detail receives only the
-application-owned playback facade and capability-neutral waveform values.
+filtering, clips, AAC compression, and a reversible clear mix. When both direct
+system and microphone tracks exist, the direct system track remains unchanged
+while microphone audio is admitted only around transcript-confirmed local
+turns with short boundary ramps. Mic-only recordings never receive that mix,
+and the original flat mix remains one click away. Meeting Detail receives only
+the application-owned playback facade and capability-neutral waveform values.
 Compression verifies every generated channel before removing raw inputs,
 refuses to overwrite an existing canonical AAC file, and reports live
 post-publication disk savings. Clip export resolves the current channel set for
-each request so a completed compression cannot leave stale URLs behind.
+each request and applies the currently selected clear/original mix, so a
+completed compression cannot leave stale URLs behind.
 
 Spotlight indexing is a process-scoped, protected, coalescing reconciler. It
 compares compact client state, publishes bounded batches to a named index,
 retries transient failures, and repairs missed work at launch without exposing
-meeting content to logs.
+meeting content to logs. Removal of the obsolete default-index domain retries
+until successful, then records a versioned local migration marker so neither
+later reconciliations nor future app launches wake Core Spotlight for the same
+one-way cleanup.
 
 ## Open-format export and backup
 
-Canonical Markdown and PDF rendering live in `IntegrationsKit`. Meeting bundles
-carry a versioned relational aggregate with canonical identity remapping and
-optional audio. Machine-local paths, canonical-person links, voiceprints,
-secrets, embeddings, and transport state are not portable.
+Canonical Markdown, PDF, and diarized SRT/WebVTT rendering live in
+`IntegrationsKit`. Subtitle cues use millisecond-accurate format-specific
+timestamps, normalize line-oriented fields, neutralize timestamp arrows, keep
+same-name speakers separate by `SpeakerID`, and merge consecutive rows only
+within the rendered six-second/84-character budget. Meeting bundles carry a
+versioned relational aggregate with canonical identity remapping and optional
+audio. Machine-local paths, canonical-person links, voiceprints, secrets,
+embeddings, and transport state are not portable.
 
 Single-meeting rendering and explicit publication enter ApplicationKit. The
 macOS detail workflow loads one coherent detail projection, renders through an
-injected document port, and returns Markdown or PDF bytes plus the released
-title-based suggested filename for the native save surface. Secret-Gist
-publication and terminal export use the same coherent projection and canonical
-renderer; terminal export may return Markdown, write Markdown/PDF through an injected filesystem
-port, or invoke an explicit publisher. Pending action-item publication
+injected document port, and returns Markdown, PDF, SRT, or WebVTT bytes plus
+the released title-based suggested filename for the native save surface.
+Subtitle rendering reads the diarized transcript directly and cannot fail
+because of unrelated Markdown preparation. Secret-Gist publication and
+terminal export use the same coherent projection and canonical renderer;
+terminal export may return Markdown, write Markdown/PDF/SRT/WebVTT through an
+injected filesystem port, or invoke an explicit publisher. Pending action-item publication
 similarly reads one current detail and summary, resolves owners from that
 snapshot, and publishes only unfinished items in stable order. Remote paths
 complete local admission and no-op checks before the publisher prepares its
@@ -714,8 +902,9 @@ CLI publishing adapters resolve a credential lazily only after ApplicationKit
 has admitted the local document or pending work, preserving local errors and
 no-op behavior before any device-secret read.
 The macOS meeting-document adapter follows the same ordering: local
-Markdown/PDF preparation never reads a credential, and secret-Gist publication
-resolves the GitHub token only after the coherent meeting document exists.
+Markdown/PDF/SRT/WebVTT preparation never reads a credential, and secret-Gist
+publication resolves the GitHub token only after the coherent meeting document
+exists.
 Encrypted voice stores receive the Core port directly; other capability clients
 receive resolved credential values, and no capability module constructs
 Keychain. SQLite and UserDefaults do not store secrets. Voiceprints are
@@ -817,11 +1006,14 @@ Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to bilingual
 canaries; unknown production Swift paths fall back to the complete English
-suite. The local selector compares the base with committed, staged, unstaged,
-and untracked paths by default, preventing an uncommitted pre-commit smoke from
-becoming an accidental no-op. An empty selector explicitly means every test; optional selector and
-locale arguments are assembled without empty-array expansion on the system
-Bash runtime. One `build-for-testing` result is reused across selected locales.
+suite. `RecordingToolbar` maps specifically to the external-recording geometry
+case plus the live recording-control/recovery cases, without paying for
+unrelated Library grouping or Meeting Detail. The local selector compares the
+base with committed, staged, unstaged, and untracked paths by default,
+preventing an uncommitted pre-commit smoke from becoming an accidental no-op.
+An empty selector explicitly means every test; optional selector and locale
+arguments are assembled without empty-array expansion on the system Bash
+runtime. One `build-for-testing` result is reused across selected locales.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
 Xcode path only when Command Line Tools is active. Visual-only screenshot
@@ -833,22 +1025,65 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 41-case English and Spanish suites remain the
+The complete 49-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
+
+The live recording command surface is isolated in `RecordingToolbar` rather
+than growing the already state-heavy `RecordingView`. It is responsive by
+construction rather than by control truncation. Its wide layout is one row; at
+the 900 pt minimum window, `ViewThatFits` moves secondary actions to an
+icon-only second row while keeping the elapsed clock horizontal and Stop
+visible beside it. The focused external-recording XCUITest enforces those
+geometric invariants in both locales.
+
+The live transcript has reader-owned scroll state independent from the
+playback lyrics treatment. Direct interaction pauses following indefinitely,
+incoming rows preserve that position, and browsing rows render without
+fade/scale/blur. Only the identified Jump to live action resumes following;
+macOS 15+ uses SwiftUI scroll phases; macOS 14.4 uses a document-scoped AppKit
+bridge that observes user-initiated live-scroll events from the enclosing
+`NSScrollView`, including legacy mouse-wheel events without a start/end pair.
+Programmatic `scrollTo` does not emit either reader-intent signal. Live-follow
+mode uses a wider sharp zone and tighter visual bounds than playback.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
 extracts and checks the inner application rather than trusting the mounted DMG.
+The script-built app also carries native App Intents metadata extracted
+separately from one SDK-only source under the shipping module name. Packaging
+fails if the metadata declares no action. `openAppWhenRun` foregrounds the
+intent-owning bundle; `perform()` therefore uses a buffered process-local
+handoff consumed by `PortavozAppDelegate`, never a LaunchServices URL lookup.
+The delegate routes through the same process-scoped pending route used by other
+external entry points. macOS publishes only that native action in the Shortcuts
+action picker: it deliberately omits `AppShortcutsProvider`, because automatic
+App Shortcuts are not a supported macOS product surface and otherwise duplicate
+the identically titled action. Spotlight and Siri use a user-created Shortcut
+containing the Portavoz-icon action. The XcodeGen-only test app registers the
+public `portavoz://record` adapter, and one focused XCUITest directs that URL to
+the exact disposable app bundle and proves the handoff enters a visible
+recording.
+App Intent source changes select only this boundary case instead of the broad
+recording-recovery suite; shared harness changes retain three bilingual
+canaries. `make-app.sh` also verifies the complete nested signature before it
+reports a successful package, so a malformed Sparkle component or application
+seal fails at the packaging boundary rather than during installation.
 Production remains non-sandboxed because capture, CLI/MCP visibility, custom
 folders, Sparkle, and local automation do not yet have a proven parity-preserving
 sandbox composition.
 
 `/Applications/Portavoz.app` is the user's release installation and is never
 modified by development commands. `make install` builds, signs, verifies, and
-installs `/Applications/Portavoz Dev.app`. UI tests use disposable SQLite,
-audio, saved-state, and voice-gallery locations and never touch the real
-library or Keychain.
+installs `/Applications/Portavoz Dev.app`, rewrites both base and localized
+names, gives it the distinct `app.portavoz.mac.dev` identity, and force-registers
+that exact bundle after signature verification. The XcodeGen host uses
+`app.portavoz.mac.uitest-host`. Production, development, and disposable
+DerivedData bundles therefore cannot compete for one LaunchServices/App Intents
+record. The separate Dev identity requires its own one-time macOS permissions
+and preferences; the stable installation remains untouched. UI tests use
+disposable SQLite, audio, saved-state, and voice-gallery locations and never
+touch the real library or Keychain.
 
 ## Enforced engineering rules
 
@@ -917,9 +1152,12 @@ behind aspirational diagrams:
   process lifetime, and maps content-free events to OSLog/signposts; it does
   not claim jobs or decide retries, fingerprints, dependencies, publication,
   or terminal outcomes.
-- Meeting Detail Markdown/PDF preparation and secret-Gist publication enter
-  ApplicationKit. The SwiftUI view does not construct the canonical renderer,
-  publisher, or network gateway and does not read the publishing credential.
+- Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
+  publication enter ApplicationKit. The SwiftUI view does not construct the
+  canonical renderer, publisher, or network gateway and does not read the
+  publishing credential. Subtitle adapters receive only the narrowed
+  `MeetingSubtitleFormat`; native presentation uses extension-specific subtitle
+  content types.
 - Meeting Detail participant-voice suggestions and explicit memory enter
   ApplicationKit. The SwiftUI view does not read the encrypted gallery,
   resolve recording files, load a diarization model, or match embeddings.
@@ -974,9 +1212,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 993 package tests pass, with 13 real-model/environment cases gated;
-- strict SwiftLint reports zero violations across 352 Swift source files;
-- 41 XCUITest cases define the English and Spanish release gate;
+- 1,193 XCTest package cases pass, with 13 real-model/environment cases gated;
+- disposable clean-install and exact v0.6.0-to-current file-library upgrade
+  rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
+  an implicit sync seed, and pass an idempotent reopen;
+- the 105-test recording/recovery corpus has a fail-closed 25-iteration stress
+  gate and passes both Thread Sanitizer and Address Sanitizer;
+- strict SwiftLint reports zero violations across 383 production Swift source files;
+- 49 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
@@ -991,6 +1234,7 @@ Run the standard gates with:
 swift build
 swift build -Xswiftc -warnings-as-errors
 swift test
+make test-recording-stress
 swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh
 make test-ui-changed UI_BASE=origin/main
