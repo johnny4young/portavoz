@@ -32,8 +32,7 @@ enum LiveCaptionParagraphProjector {
                 let voiceKey,
                 voiceKeys[index] == voiceKey,
                 caption.startTime - projected[index].endTime <= maxGapSeconds,
-                projected[index].text.count + caption.text.count + 1 <= maxCharacters
-            {
+                projected[index].text.count + caption.text.count + 1 <= maxCharacters {
                 let previous = projected[index]
                 projected[index] = TranscriptSegment(
                     id: previous.id,

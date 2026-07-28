@@ -492,8 +492,8 @@ extension MeetingDetailView {
     private func recoveryExplanation(_ code: String?) -> String {
         switch code {
         case "transcription.empty":
-            L10n.text(
-                "Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
+            // swiftlint:disable:next line_length
+            L10n.text("Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
         case "capture.publication.failed":
             L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
         default:
@@ -1025,41 +1025,51 @@ extension MeetingDetailView {
                     .accessibilityIdentifier("detail-suggest-names")
                 }
             }
-            ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
-                DismissibleSuggestionChip(
-                    kind: .ai,
-                    text: "\(suggestion.label) → \(suggestion.name)?",
-                    acceptAccessibilityIdentifier:
-                        "detail-name-suggestion-\(suggestion.label)",
-                    dismissAccessibilityIdentifier:
-                        "detail-name-suggestion-dismiss-\(suggestion.label)",
-                    accept: { Task { await apply(suggestion, in: detail) } },
-                    dismiss: {
-                        model.dismissNameSuggestion(label: suggestion.label)
-                    })
-                .fixedSize()
-                .help(nameSuggestionHelp(suggestion))
-            }
-            // Cross-meeting voice matches: same chip contract, waveform icon
-            // marks the evidence as "their voice", not the transcript.
-            ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
-                DismissibleSuggestionChip(
-                    kind: .voice,
-                    text: "\(match.speakerLabel) → \(match.name)?",
-                    acceptAccessibilityIdentifier:
-                        "detail-voice-suggestion-\(match.speakerLabel)",
-                    dismissAccessibilityIdentifier:
-                        "detail-voice-suggestion-dismiss-\(match.speakerLabel)",
-                    accept: { Task { await apply(match, in: detail) } },
-                    dismiss: {
-                        model.dismissVoiceSuggestion(speakerLabel: match.speakerLabel)
-                    })
-                .fixedSize()
-                .help(L10n.format(
-                    "Voice match: sounds like “%@” from your remembered voices.", match.name))
-            }
+            nameSuggestionChips(in: detail)
+            voiceSuggestionChips(in: detail)
             personOfferChip
             rememberOfferChip
+        }
+    }
+
+    @ViewBuilder
+    private func nameSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
+        ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: "\(suggestion.label) → \(suggestion.name)?",
+                acceptAccessibilityIdentifier:
+                    "detail-name-suggestion-\(suggestion.label)",
+                dismissAccessibilityIdentifier:
+                    "detail-name-suggestion-dismiss-\(suggestion.label)",
+                accept: { Task { await apply(suggestion, in: detail) } },
+                dismiss: {
+                    model.dismissNameSuggestion(label: suggestion.label)
+                })
+            .fixedSize()
+            .help(nameSuggestionHelp(suggestion))
+        }
+    }
+
+    @ViewBuilder
+    private func voiceSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
+        // Cross-meeting voice matches use a waveform icon because their
+        // evidence is the remembered voice, not transcript text.
+        ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
+            DismissibleSuggestionChip(
+                kind: .voice,
+                text: "\(match.speakerLabel) → \(match.name)?",
+                acceptAccessibilityIdentifier:
+                    "detail-voice-suggestion-\(match.speakerLabel)",
+                dismissAccessibilityIdentifier:
+                    "detail-voice-suggestion-dismiss-\(match.speakerLabel)",
+                accept: { Task { await apply(match, in: detail) } },
+                dismiss: {
+                    model.dismissVoiceSuggestion(speakerLabel: match.speakerLabel)
+                })
+            .fixedSize()
+            .help(L10n.format(
+                "Voice match: sounds like “%@” from your remembered voices.", match.name))
         }
     }
 

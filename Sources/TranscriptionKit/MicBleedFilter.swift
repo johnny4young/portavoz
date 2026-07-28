@@ -57,8 +57,7 @@ public enum MicBleedFilter {
             // now"). Three contiguous edge words plus real time overlap are
             // stronger evidence than bag-of-words containment alone.
             if actuallyOverlaps,
-                longestContiguousEdgeOverlap(micWords, remoteWords) >= 3
-            {
+                longestContiguousEdgeOverlap(micWords, remoteWords) >= 3 {
                 return true
             }
         }
@@ -87,8 +86,7 @@ public enum MicBleedFilter {
             if left.suffix(length).elementsEqual(right.prefix(length))
                 || right.suffix(length).elementsEqual(left.prefix(length))
                 || left.prefix(length).elementsEqual(right.prefix(length))
-                || left.suffix(length).elementsEqual(right.suffix(length))
-            {
+                || left.suffix(length).elementsEqual(right.suffix(length)) {
                 return length
             }
         }

@@ -26,7 +26,7 @@ extension AppServices {
                 MeetingNameSuggestion(
                     label: "S1",
                     name: "Ana",
-                    evidence: .transcript("My name is Ana")),
+                    evidence: .transcript("My name is Ana"))
             ]
         }
         // Same owner identity the Apuntador uses: mentions of that name are

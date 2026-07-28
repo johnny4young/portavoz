@@ -175,12 +175,7 @@ final class AppServices {
         // defaults so every case is independent from an earlier test launch.
         UITestDefaults.installIfNeeded()
         let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
-        let modelStore = usesTemporaryStore
-            ? ModelStore(rootDirectory: FileManager.default.temporaryDirectory
-                .appendingPathComponent(
-                    "portavoz-uitest-models-\(UUID().uuidString)",
-                    isDirectory: true))
-            : ModelStore()
+        let modelStore = Self.makeModelStore(usesTemporaryStore: usesTemporaryStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
         let secretStorage = KeychainSecretStore()
@@ -190,15 +185,7 @@ final class AppServices {
         voiceprintStore = VoiceprintStore(secrets: secretStorage)
         voiceGallery = VoiceGallery(secrets: secretStorage)
         do {
-            if usesTemporaryStore {
-                // UI testing (`make test-ui`): a throwaway DB so a test run
-                // never touches the real library.
-                let url = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
-                store = try MeetingStore(databaseURL: url)
-            } else {
-                store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
-            }
+            store = try Self.makeMeetingStore(usesTemporaryStore: usesTemporaryStore)
         } catch {
             // No database, no app — surfacing a broken half-UI would be
             // worse than failing loudly at launch.
@@ -238,6 +225,25 @@ final class AppServices {
         Task { @MainActor [weak self] in
             await self?.refreshMLXReadiness()
         }
+    }
+
+    private static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
+        guard usesTemporaryStore else { return ModelStore() }
+        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "portavoz-uitest-models-\(UUID().uuidString)",
+            isDirectory: true)
+        return ModelStore(rootDirectory: rootDirectory)
+    }
+
+    private static func makeMeetingStore(usesTemporaryStore: Bool) throws -> MeetingStore {
+        guard usesTemporaryStore else {
+            return try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
+        }
+        // UI testing (`make test-ui`): a throwaway DB so a test run never
+        // touches the real library.
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
+        return try MeetingStore(databaseURL: url)
     }
 
     /// Searchable mutations request eventual reconciliation. The actor owns
