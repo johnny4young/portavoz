@@ -7,7 +7,16 @@ extension AppServices {
     func meetingDetailMetadataSuggestions(
         _ request: SuggestMeetingReviewMetadataRequest
     ) async throws -> MeetingReviewMetadataSuggestions {
-        try await SuggestMeetingReviewMetadata(
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-ai-suggestions") {
+            return MeetingReviewMetadataSuggestions(
+                meetingTitle: request.suggestMeetingTitle
+                    ? "Budget planning"
+                    : nil,
+                recipe: request.suggestRecipe ? .planning : nil)
+        }
+        return try await SuggestMeetingReviewMetadata(
             generator: AppMeetingReviewMetadataGenerator(
                 isAvailable: !ProcessInfo.processInfo.arguments.contains("-seed-scale")
                     && foundationModelsCapability.isAvailable)

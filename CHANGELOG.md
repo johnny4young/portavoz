@@ -7,6 +7,18 @@ entry here — feature name + what it gives you.)
 
 ## July 27, 2026
 
+- **🎧 Clear playback, original recording** — Finished calls now default to a reversible channel-aware mix that removes the delayed loudspeaker copy from your microphone while keeping the untouched original one click away; mic-only recordings are never filtered.
+
+- **✕ AI suggestions can take no for an answer** — Titles, speaker names, meeting structures, and summary retries now have a tiny dismiss action, so an irrelevant idea leaves without changing the meeting.
+
+- **⚡ Live translation catches the current sentence** — Long turns can translate before the next speaker arrives, refresh as they grow, and stream into a labeled indigo rail that cannot be mistaken for what was actually spoken.
+
+- **🔎 Search by language, accents, and meaning** — Exact Library search ignores Latin accents and keeps bilingual meeting terms; when Apple's local language assets are ready, private semantic matches are appended without pushing precise hits down.
+
+- **🪶 A calmer recording screen** — Mic meters and live captions now refresh inside narrow UI boundaries, keeping Stop, translation, Apuntador, and notes responsive during busy calls.
+
+- **🛟 Recovery that explains what is safe** — “Recording needs recovery” now says the saved audio is intact and that Refine creates a reviewable draft before anything can replace the current transcript.
+
 - **🌎 One search, both languages** — Library search now pairs common English and Spanish terms on-device, so `august` can find `agosto`; clicking a result opens the exact transcript moment instead of the start of the meeting.
 
 - **🔴 Your live recording is never lost behind the Library** — Browse an older meeting while Portavoz records and the main sidebar action becomes **Return to recording**, taking you back to the active timer and Stop control without starting a second session.

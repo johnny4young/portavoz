@@ -70,14 +70,20 @@ enum LiveTranslationRouting {
 
     static func nextPair(
         segments: [TranscriptSegment],
-        handledIDs: Set<UUID>,
+        translatedSourceTexts: [UUID: String],
+        unsupportedIDs: Set<UUID>,
         target: String,
         detector: LanguageDetector = detectedLanguage
     ) -> LiveTranslationPair? {
         guard let normalizedTarget = LanguageCode(target)?.identifier else { return nil }
-        let openID = segments.last?.id
-        for segment in segments.suffix(60) where segment.id != openID {
-            guard !handledIDs.contains(segment.id), segment.text.count >= 4,
+        let recent = Array(segments.suffix(60))
+        let openID = recent.last?.id
+        for segment in recent {
+            guard needsTranslation(
+                segment,
+                openID: openID,
+                translatedSourceText: translatedSourceTexts[segment.id],
+                unsupportedIDs: unsupportedIDs),
                 let source = sourceLanguage(for: segment, detector: detector),
                 source != normalizedTarget
             else { continue }
@@ -88,15 +94,19 @@ enum LiveTranslationRouting {
 
     static func pendingRows(
         segments: [TranscriptSegment],
-        handledIDs: Set<UUID>,
+        translatedSourceTexts: [UUID: String],
+        unsupportedIDs: Set<UUID>,
         pair: LiveTranslationPair,
         detector: LanguageDetector = detectedLanguage
     ) -> [(id: UUID, text: String)] {
-        let openID = segments.last?.id
-        return segments.suffix(60).compactMap { segment in
-            guard segment.id != openID,
-                !handledIDs.contains(segment.id),
-                segment.text.count >= 4,
+        let recent = Array(segments.suffix(60))
+        let openID = recent.last?.id
+        return recent.compactMap { segment in
+            guard needsTranslation(
+                segment,
+                openID: openID,
+                translatedSourceText: translatedSourceTexts[segment.id],
+                unsupportedIDs: unsupportedIDs),
                 sourceLanguage(for: segment, detector: detector) == pair.source
             else { return nil }
             return (segment.id, segment.text)
@@ -132,6 +142,32 @@ enum LiveTranslationRouting {
         }
         return letterCount >= 12
     }
+
+    /// Closed rows translate on every changed revision. The single growing
+    /// row translates once it carries enough language evidence, then refreshes
+    /// after a meaningful chunk or sentence boundary. This gives long turns
+    /// near-real-time feedback without sending every partial token to Apple.
+    private static func needsTranslation(
+        _ segment: TranscriptSegment,
+        openID: UUID?,
+        translatedSourceText: String?,
+        unsupportedIDs: Set<UUID>
+    ) -> Bool {
+        guard !unsupportedIDs.contains(segment.id), segment.text.count >= 4 else {
+            return false
+        }
+        guard translatedSourceText != segment.text else { return false }
+        guard segment.id == openID else { return true }
+        guard hasEnoughLanguageEvidence(segment.text) else { return false }
+        guard let translatedSourceText else { return true }
+        let growth = segment.text.count - translatedSourceText.count
+        return growth >= 18 || endsAtSentenceBoundary(segment.text)
+    }
+
+    private static func endsAtSentenceBoundary(_ text: String) -> Bool {
+        guard let last = text.last else { return false }
+        return ".!?。！？".contains(last)
+    }
 }
 
 #if canImport(Translation)
@@ -150,7 +186,8 @@ struct LiveTranslationModifier: ViewModifier {
         guard let target = controller.translationTarget else { return nil }
         return LiveTranslationRouting.nextPair(
             segments: controller.captions,
-            handledIDs: controller.liveTranslationHandledIDs,
+            translatedSourceTexts: controller.translatedSourceTexts,
+            unsupportedIDs: controller.unsupportedTranslationRowIDs,
             target: target)
     }
 
@@ -211,7 +248,7 @@ struct LiveTranslationModifier: ViewModifier {
                 await MainActor.run {
                     controller.updateLiveTranslationState(.needsDownload, for: pair)
                 }
-                guard await Self.sleep(milliseconds: 700) else { return }
+                guard await Self.sleep(milliseconds: 300) else { return }
                 continue
             }
             if status == .supported, approved, !didPrepare {
@@ -235,7 +272,7 @@ struct LiveTranslationModifier: ViewModifier {
                 // top of the loop is what ends a lane the controller has
                 // moved on from.
                 await Self.publishIdleState(controller: controller, pair: pair)
-                guard await Self.sleep(milliseconds: 700) else { return }
+                guard await Self.sleep(milliseconds: 300) else { return }
                 continue
             }
             await MainActor.run {
@@ -289,7 +326,7 @@ struct LiveTranslationModifier: ViewModifier {
     nonisolated private static func translatedRetryDelay(
         controller: RecordingController
     ) async -> Int {
-        await MainActor.run { controller.translationState == .failed ? 3_000 : 700 }
+        await MainActor.run { controller.translationState == .failed ? 3_000 : 300 }
     }
 
     nonisolated private static func sleep(milliseconds: Int) async -> Bool {
@@ -342,8 +379,9 @@ struct LiveTranslationModifier: ViewModifier {
         }
     }
 
-    /// The closed, not-yet-translated caption rows. The newest row is still
-    /// growing (the coalescer only ever extends the last one), so it's skipped.
+    /// Not-yet-translated source revisions. The newest row can grow under a
+    /// stable ID; routing rate-limits it by text growth rather than waiting
+    /// indefinitely for a later row to close it.
     nonisolated private static func pendingRows(
         controller: RecordingController,
         pair: LiveTranslationPair
@@ -354,7 +392,8 @@ struct LiveTranslationModifier: ViewModifier {
             else { return [] }
             return LiveTranslationRouting.pendingRows(
                 segments: controller.captions,
-                handledIDs: controller.liveTranslationHandledIDs,
+                translatedSourceTexts: controller.translatedSourceTexts,
+                unsupportedIDs: controller.unsupportedTranslationRowIDs,
                 pair: pair)
         }
     }
@@ -370,22 +409,26 @@ struct LiveTranslationModifier: ViewModifier {
         let requests = ready.map {
             TranslationSession.Request(sourceText: $0.text, clientIdentifier: $0.id.uuidString)
         }
-        let responses: [TranslationSession.Response]
+        var translatedAny = false
         do {
-            responses = try await box.session.translations(from: requests)
+            for try await response in box.session.translate(batch: requests) {
+                guard
+                    let identifier = response.clientIdentifier,
+                    let id = UUID(uuidString: identifier),
+                    let sourceText = ready.first(where: { $0.id == id })?.text
+                else { continue }
+                let stored = await MainActor.run {
+                    controller.storeLiveTranslations(
+                        [id: response.targetText],
+                        sourceTexts: [id: sourceText],
+                        for: pair)
+                }
+                translatedAny = stored || translatedAny
+            }
         } catch {
-            return false
+            return translatedAny
         }
-        let translated: [UUID: String] = responses.reduce(into: [:]) { values, response in
-            guard
-                let identifier = response.clientIdentifier,
-                let id = UUID(uuidString: identifier)
-            else { return }
-            values[id] = response.targetText
-        }
-        return await MainActor.run {
-            controller.storeLiveTranslations(translated, for: pair)
-        }
+        return translatedAny
     }
 }
 #endif

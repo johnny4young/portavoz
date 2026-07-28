@@ -123,7 +123,7 @@ self-contained over system frameworks and carries no module dependency.
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
-| `AudioPlaybackKit` | Synchronized channel playback, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
+| `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
@@ -515,8 +515,16 @@ projection and client-state reconciliation. Library, Insights, Meeting Detail,
 and the menu bar use independent GRDB observations sized to their surface.
 Library search expands a small deterministic English/Spanish meeting lexicon
 locally, then groups each complete language variant under FTS5 `OR` rather
-than weakening every token into a broad union. A selected hit emits the same
-one-shot meeting/timestamp seek request used by Ask evidence before routing.
+than weakening every token into a broad union. FTS5 `unicode61` provides
+case- and Latin-diacritic-insensitive exact matching without changing stored
+transcript text. Exact hits publish immediately. When Apple's Latin contextual
+embedding assets are already installed and capture is inactive, one
+process-shared ApplicationKit actor incrementally embeds at most 512 missing
+non-micro rows and appends bounded cross-language semantic results by exact
+cosine. Typing never requests an asset download, semantic failure never
+invalidates exact results, and no additional vector dependency is loaded. A
+selected hit emits the same one-shot meeting/timestamp seek request used by Ask
+evidence before routing.
 
 ## Durable recording lifecycle
 
@@ -685,7 +693,12 @@ belongs to that exact pair. Rows in an unsupported pair stay in their original
 language and are recorded as handled passthrough, so they cannot starve later
 supported language lanes; presentation retains an honest partial-support state.
 A target switch cancels and fences prior work and clears all translated and
-unsupported-passthrough state before new lanes are resolved.
+unsupported-passthrough state before new lanes are resolved. The newest
+still-growing row becomes eligible after enough local language evidence and is
+retranslated only after meaningful text growth or a sentence boundary. Each
+translation stores the exact source revision that produced it. Apple batch
+responses publish as their asynchronous sequence arrives, and the UI renders
+them in a labeled indigo rail rather than as another spoken transcript row.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;
@@ -782,14 +795,26 @@ command-palette citation seeks are meeting-scoped, identity-bearing navigation
 requests: only the matching detail consumes them, and an already-open detail
 observes a new request without depending on route reconstruction.
 
+The instant Library path is an exact-first hybrid distinct from Ask. Its FTS
+observation always publishes before optional semantic augmentation. It reuses
+the same device-local Apple embedding representation and StorageKit cosine
+adapter, skips semantic work during capture, refuses asset downloads as a
+side-effect of typing, and treats cancellation or embedding failure as an empty
+augmentation.
+
 Waveform generation is stateless and uses Accelerate over range-aligned channel
 spans. Playback supports synchronized channels, silence skipping, local-voice
-filtering, clips, and AAC compression. Meeting Detail receives only the
-application-owned playback facade and capability-neutral waveform values.
+filtering, clips, AAC compression, and a reversible clear mix. When both direct
+system and microphone tracks exist, the direct system track remains unchanged
+while microphone audio is admitted only around transcript-confirmed local
+turns with short boundary ramps. Mic-only recordings never receive that mix,
+and the original flat mix remains one click away. Meeting Detail receives only
+the application-owned playback facade and capability-neutral waveform values.
 Compression verifies every generated channel before removing raw inputs,
 refuses to overwrite an existing canonical AAC file, and reports live
 post-publication disk savings. Clip export resolves the current channel set for
-each request so a completed compression cannot leave stale URLs behind.
+each request and applies the currently selected clear/original mix, so a
+completed compression cannot leave stale URLs behind.
 
 Spotlight indexing is a process-scoped, protected, coalescing reconciler. It
 compares compact client state, publishes bounded batches to a named index,

@@ -4397,3 +4397,48 @@ timestamp through the existing one-shot seek channel before route navigation.
 calendar and meeting vocabulary on every supported Mac, keeps FTS ranking and
 tests reproducible, and reuses the proven source-jump contract instead of
 creating a second navigation mechanism.
+
+## D144 — Clear playback is reversible channel admission, not destructive DSP (Jul 2026)
+
+**Context:** dual-channel recordings made through Mac speakers contain a clean
+remote copy in the system track and a delayed acoustic copy in the microphone
+track. Flat full-gain playback makes that capture truth sound like echo or
+double speech. Enabling voice processing during capture would modify the live
+call, while destructive post-processing would remove the original evidence and
+could erase speech when transcript attribution is incomplete.
+
+**Decision:** when both system and microphone tracks load successfully,
+AudioPlaybackKit keeps the direct system track unchanged and admits microphone
+audio only around merged transcript-confirmed local turns, with short
+click-free ramps. Meeting Detail enables this `Clear playback` mix by default,
+exposes the original flat mix as a reversible toggle, and exports the currently
+selected mix. Mic-only recordings never receive channel attenuation. The
+stored recording is never rewritten.
+
+**Rationale:** channel roles provide stronger evidence than generic echo
+cancellation after capture. A non-destructive mix solves the common
+loudspeaker-bleed case without touching the call, preserves forensic source
+audio, and gives incomplete transcripts an immediate escape hatch.
+
+## D145 — Instant Library search is exact-first and opportunistically semantic (Jul 2026)
+
+**Context:** the D143 lexicon covers common meeting vocabulary but cannot
+enumerate paraphrases or every English/Spanish equivalent. Portavoz already has
+an Apple Latin contextual embedder and exact cosine storage for Ask. Adding a
+second vector database would duplicate model/storage policy, while requesting
+OS assets when a user types would turn an instant local control into a surprise
+download.
+
+**Decision:** Library search always publishes bounded FTS5 results first,
+including `unicode61` case and Latin-diacritic folding plus D143 complete-query
+variants. When the Apple Latin embedding assets are already installed and no
+recording is active, one process-shared ApplicationKit actor incrementally
+embeds at most 512 missing non-micro segments and appends unique exact-cosine
+hits after lexical rank. Search-field typing never requests assets. Semantic
+failure or cancellation becomes an empty augmentation and cannot fail exact
+search. No sqlite-vec or other vector dependency is added.
+
+**Rationale:** exact-first behavior keeps names, identifiers, ranking, startup,
+and failure semantics deterministic on every supported Mac. Reusing the
+existing device-local representation adds paraphrase and cross-language recall
+with no new privacy boundary, dependency, or required setup.

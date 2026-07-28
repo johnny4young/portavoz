@@ -155,6 +155,7 @@ final class LibraryUITests: PortavozUITestCase {
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         let transcript = app.control(withIdentifier: "recording-live-transcript")
@@ -254,6 +255,33 @@ final class LibraryUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-talk-balance")
                 .waitForExistence(timeout: 8),
             "closed captions must surface the talk-balance cue")
+    }
+
+    @MainActor
+    func testLiveTranslationUsesADistinctLabeledRail() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        app.launchArguments.append("-seed-live-translation-ui")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
+        record.click()
+
+        let translation = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH 'recording-live-translation-'"))
+            .firstMatch
+        XCTAssertTrue(
+            translation.waitForExistence(timeout: 10),
+            "a translated row must expose its own labeled visual boundary")
+        let targetLanguageLabel =
+            isSpanish ? "Traducción al inglés" : "English translation"
+        XCTAssertTrue(
+            app.staticTexts[targetLanguageLabel].exists,
+            "translated copy must visibly say which language it represents")
+        attachScreenshot(of: app, named: "recording-live-translation-rail")
     }
 
     @MainActor

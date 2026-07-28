@@ -7,7 +7,6 @@ import SwiftUI
 /// until the meeting lands in the library.
 struct RecordingView: View {
     @Environment(AppServices.self) private var services
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openSettings) private var openSettings
     @Binding var route: Route?
     /// Calendar event this recording came from (brief's "Record this
@@ -66,7 +65,7 @@ struct RecordingView: View {
                 ) {
                     translationStatusBanner
                 }
-                captionsList
+                LiveRecordingCaptionsView(controller: controller)
                     .frame(maxHeight: .infinity)
                     .padding(.horizontal, 20)
                 ScrollView {
@@ -238,16 +237,21 @@ struct RecordingView: View {
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 
-    /// Live captions as a Spotify-lyrics carousel (M11): the newest line
-    /// sits low in the viewport until the user scrolls to read history. New
-    /// captions then stop stealing the scroll position until "Jump to live".
-    /// A bounded window keeps long recordings responsive.
-    private var captionsList: some View {
+}
+
+/// High-frequency caption projection has its own observation boundary. Mic
+/// meter updates and capture-health counters can now refresh the toolbar or a
+/// banner without rebuilding the bounded transcript carousel.
+private struct LiveRecordingCaptionsView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Bindable var controller: RecordingController
+
+    var body: some View {
         let projection = LiveCaptionParagraphProjector.project(
             captions: Array(controller.captions.suffix(150)),
             liveSpeakerLabels: controller.liveSpeakerLabels,
             translations: controller.translations)
-        return GeometryReader { geo in
+        GeometryReader { geo in
             FocusedTranscriptView(
                 segments: projection.segments,
                 activeID: projection.segments.last?.id,
@@ -266,9 +270,6 @@ struct RecordingView: View {
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    /// One lyrics line (4a): a voice-colored pill + the words. The active
-    /// (newest) line reads bigger; when it's YOURS it sits in an
-    /// amber-tinted card — your voice is the only color with meaning.
     private func captionRow(
         _ segment: TranscriptSegment,
         active: Bool,
@@ -287,12 +288,7 @@ struct RecordingView: View {
                     .font(active ? .title3.weight(.medium) : .body)
                     .foregroundStyle(segment.isFinal ? .primary : .secondary)
                 if let translated = translation {
-                    // The language bridge (6a-3): a secondary rail under the
-                    // real line. Not amber — amber is reserved for YOUR voice
-                    // (voices B); this reads as a quiet translation.
-                    Text(translated)
-                        .font(.callout.italic())
-                        .foregroundStyle(.secondary)
+                    translatedCaption(translated, segmentID: segment.id)
                 }
             }
         }
@@ -309,9 +305,48 @@ struct RecordingView: View {
         .padding(.horizontal, 8)
     }
 
-    /// Ink for a non-me live pill: the speaker's stable voice hue once the
-    /// diarizer names them (S1/S2 or a remembered voice), neutral for the
-    /// generic "Them".
+    private func translatedCaption(
+        _ translated: String,
+        segmentID: UUID
+    ) -> some View {
+        HStack(alignment: .top, spacing: 7) {
+            Capsule()
+                .fill(Color.indigo)
+                .frame(width: 3)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: "character.bubble")
+                        .accessibilityHidden(true)
+                    Text(liveTranslationLabel)
+                        .accessibilityLabel(liveTranslationLabel)
+                        .accessibilityIdentifier(
+                            "recording-live-translation-\(segmentID.uuidString)")
+                }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.indigo)
+                Text(translated)
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            Color.indigo.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 7))
+    }
+
+    private var liveTranslationLabel: String {
+        switch LanguageCode(controller.translationTarget)?.identifier {
+        case "es":
+            L10n.text("Spanish translation")
+        case "en":
+            L10n.text("English translation")
+        default:
+            L10n.text("Translation")
+        }
+    }
+
     private func pillInk(_ voice: (label: String, isMe: Bool)) -> Color {
         guard voice.label != L10n.text("Them") else { return .secondary }
         return VoicePalette.color(
@@ -327,11 +362,9 @@ struct RecordingView: View {
         return pillInk(voice).opacity(0.22)
     }
 
-    /// The live speaker pill for a caption row. Mic rows are the user by
-    /// hardware truth; system rows show the live diarizer's voice hint
-    /// (S1/S2, or the user through the voiceprint) once a window covers
-    /// them, and the generic "Them" until then.
-    private func liveVoice(for segment: TranscriptSegment) -> (label: String, isMe: Bool) {
+    private func liveVoice(
+        for segment: TranscriptSegment
+    ) -> (label: String, isMe: Bool) {
         if segment.channel == .microphone { return (L10n.text("Me"), true) }
         if let voice = controller.liveSpeakerLabels[segment.id] {
             return voice == "Me" ? (L10n.text("Me"), true) : (voice, false)

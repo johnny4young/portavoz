@@ -138,6 +138,26 @@ final class LibraryObservationTests: XCTestCase {
         XCTAssertEqual(hits.map(\.segmentID), [spanish.id])
     }
 
+    func testSearchObservationFoldsLatinAccentsWithoutChangingStoredText() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        let accented = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "La reunión definió la migración del próximo trimestre.",
+            startTime: 3,
+            endTime: 5,
+            isFinal: true)
+        try await store.save([accented])
+
+        var iterator = store.observeLibrarySearch("reunion").makeAsyncIterator()
+        let hits = try await nextSearch(&iterator)
+
+        XCTAssertEqual(hits.map(\.segmentID), [accented.id])
+        XCTAssertEqual(hits.first?.text, accented.text)
+    }
+
     func testCorruptMeetingRowsDoNotStopIndependentLibraryQueries() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Corrupt", startedAt: Date())

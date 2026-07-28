@@ -37,3 +37,25 @@ final class BilingualSearchQueryExpanderTests: XCTestCase {
         XCTAssertEqual(expander.expand("Cots2M GraphQL"), ["Cots2M GraphQL"])
     }
 }
+
+final class LibrarySearchFusionTests: XCTestCase {
+    func testExactHitsStayFirstAndSemanticHitsOnlyFillGaps() {
+        XCTAssertEqual(
+            LibrarySearchFusion.exactFirst(
+                lexical: ["exact-a", "shared"],
+                semantic: ["shared", "semantic-b"],
+                limit: 3),
+            ["exact-a", "shared", "semantic-b"])
+    }
+
+    func testFusionHonorsEmptyAndBoundedResultContracts() {
+        XCTAssertTrue(LibrarySearchFusion.exactFirst(
+            lexical: [1],
+            semantic: [2],
+            limit: 0).isEmpty)
+        XCTAssertEqual(LibrarySearchFusion.exactFirst(
+            lexical: [1, 2],
+            semantic: [3],
+            limit: 2), [1, 2])
+    }
+}

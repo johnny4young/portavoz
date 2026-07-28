@@ -57,7 +57,7 @@ struct RecordingToolbar: View {
                         .accessibilityIdentifier("recording-elapsed-time")
                 }
             }
-            compactMeter
+            RecordingLevelMeter(controller: controller)
             RecordingTalkBalanceCue(captions: controller.captions)
         }
     }
@@ -136,7 +136,28 @@ struct RecordingToolbar: View {
         .accessibilityIdentifier("recording-stop")
     }
 
-    private var compactMeter: some View {
+    private var companionBinding: Binding<Bool> {
+        Binding(
+            get: { controller.companionEnabled },
+            set: { controller.companionEnabled = $0 }
+        )
+    }
+
+    private var translationBinding: Binding<String?> {
+        Binding(
+            get: { controller.translationTarget },
+            set: { controller.translationTarget = $0 }
+        )
+    }
+}
+
+/// The meter is the only surface that needs the 20 Hz mic-level publication.
+/// Its observation boundary keeps those frames from rebuilding translation,
+/// Companion, catch-up, and window controls.
+private struct RecordingLevelMeter: View {
+    @Bindable var controller: RecordingController
+
+    var body: some View {
         HStack(spacing: 6) {
             Button {
                 controller.setMicMuted(!controller.micMuted)
@@ -173,19 +194,5 @@ struct RecordingToolbar: View {
         guard level > 0.0001 else { return 0 }
         let decibels = 20 * log10(level)
         return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
-    }
-
-    private var companionBinding: Binding<Bool> {
-        Binding(
-            get: { controller.companionEnabled },
-            set: { controller.companionEnabled = $0 }
-        )
-    }
-
-    private var translationBinding: Binding<String?> {
-        Binding(
-            get: { controller.translationTarget },
-            set: { controller.translationTarget = $0 }
-        )
     }
 }

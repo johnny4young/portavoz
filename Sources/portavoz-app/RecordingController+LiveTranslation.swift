@@ -53,12 +53,14 @@ extension RecordingController {
     @discardableResult
     func storeLiveTranslations(
         _ values: [UUID: String],
+        sourceTexts: [UUID: String] = [:],
         for pair: LiveTranslationPair
     ) -> Bool {
         guard translationTarget == pair.target,
             translationSource == pair.source
         else { return false }
         translations.merge(values) { _, new in new }
+        translatedSourceTexts.merge(sourceTexts) { _, new in new }
         return !values.isEmpty
     }
 

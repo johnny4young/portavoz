@@ -44,6 +44,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
         test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
+        test_id("LibraryUITests", "testLiveTranslationUsesADistinctLabeledRail"),
         test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
         test_id("LibraryUITests", "testLaunchResumesDurablePostCaptureProcessing"),
@@ -74,6 +75,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-naming": (
         test_id("MeetingDetailUITests", "testUnnamedSpeakerOffersExplicitNameSuggestions"),
+        test_id(
+            "MeetingDetailUITests",
+            "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
         test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
     ),
     "meeting-processing": (
@@ -99,6 +103,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testFreshQualifyingMeetingShowsThePostMeetingMirror"),
     ),
     "meeting-audio": (
+        test_id(
+            "MeetingDetailUITests",
+            "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
         test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),

@@ -37,9 +37,15 @@ public actor SentenceEmbedder {
     /// Vector dimensionality of the underlying model.
     public var dimension: Int { embedding.dimension }
 
-    /// Requests OS assets if missing, then loads the model.
-    public func prepare() async throws {
+    /// Whether Apple's one-time Latin embedding assets are already present.
+    /// Instant search checks this before semantic work so typing never opens a
+    /// download flow or starts network activity.
+    public var hasAvailableAssets: Bool { embedding.hasAvailableAssets }
+
+    /// Loads the model and optionally requests its OS-managed assets.
+    public func prepare(allowAssetDownload: Bool = true) async throws {
         if !embedding.hasAvailableAssets {
+            guard allowAssetDownload else { throw EmbedderError.assetsUnavailable }
             let result = try await embedding.requestAssets()
             guard result == .available else { throw EmbedderError.assetsUnavailable }
         }

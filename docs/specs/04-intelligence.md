@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -327,6 +327,20 @@ meeting-content HTTP receipt boundary.
 - **Lexical candidates (D81)**: `ApplicationKit.LocalAskMeetingRetrieval` owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet.
 - **Hybrid retrieval**: lexical candidates + brute-force semantic candidates are fused again with RRF (`k=60`). Multi-query still asks FM for bilingual paraphrases (`expandQuery`), and term deduplication spans those variants.
 - **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
+
+### Instant Library semantic augmentation (D145)
+
+Library typing stays independent from model setup and generated query
+expansion. Its query-specific FTS5 observation publishes exact, accent-folded
+English/Spanish results first. `LocalLibrarySemanticSearch` then reuses
+`SentenceEmbedder` and the existing StorageKit exact-cosine adapter only when
+the OS-managed Latin assets are already present. It never calls
+`requestAssets()` from the search field, skips work during active capture, and
+indexes at most 512 missing segments per query so a large archive becomes
+semantic incrementally. Segments under 20 characters are marked intentionally
+unindexed. Cancellation is checked between preparation, embedding, and storage;
+any semantic failure degrades to no appended hits rather than failing lexical
+search. Exact hits keep their order and duplicate semantic IDs are discarded.
 
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 

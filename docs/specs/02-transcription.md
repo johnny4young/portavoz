@@ -271,9 +271,16 @@ translated rows, unsupported-passthrough IDs, active source, and consent, then
 resolves the new lanes from the original transcript. An unsupported pair keeps
 its closed rows exactly as spoken and marks them handled, allowing routing to
 advance to later supported languages while the UI reports partial support.
+The newest growing row can translate before another speaker closes it once it
+has enough language evidence. Its stable ID is paired with the exact translated
+source text, so another request is admitted after at least 18 characters of
+growth or a sentence boundary rather than leaving a stale partial translation.
+The scheduler checks ready work every 300 ms and publishes
+`TranslationSession.translate(batch:)` responses as they arrive. A labeled
+indigo language rail visually separates translated text from the spoken row.
 Routing and state transitions have deterministic mixed Spanish/English,
 same-target, unknown, unsupported-then-supported, consent, cancellation, and
-stale-result tests.
+stale-result tests, including growing-row revisions.
 
 ## Vocabulary — `VocabularyPrompt`
 

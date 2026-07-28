@@ -228,6 +228,40 @@ final class MeetingDetailModelTests: XCTestCase {
         ])
     }
 
+    func testOptionalSuggestionsCanBeDismissedWithoutMutatingMeetingContent() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(
+            updates: metadataUpdates(
+                fixture,
+                title: "2026-07-18 Meeting",
+                segments: [fixture.segment]))
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S2", name: "Bea", distance: 0),
+        ]
+        client.metadataSuggestionsResult = MeetingReviewMetadataSuggestions(
+            meetingTitle: "Plan del trimestre",
+            recipe: .planning)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        await model.observe()
+        await model.send(.loadNameSuggestions)
+        await model.send(.loadVoiceSuggestions)
+        await model.send(.loadMetadataSuggestions)
+
+        model.dismissNameSuggestion(label: "S1")
+        model.dismissVoiceSuggestion(speakerLabel: "S2")
+        model.dismissSuggestedTitle()
+        model.dismissSuggestedRecipe()
+        model.dismissThinSummarySuggestion(version: 4)
+
+        XCTAssertTrue(model.state.nameSuggestions.isEmpty)
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+        XCTAssertNil(model.state.suggestedTitle)
+        XCTAssertNil(model.state.suggestedRecipe)
+        XCTAssertEqual(model.state.dismissedThinSummaryVersion, 4)
+        XCTAssertEqual(client.searchReindexRequests, 0)
+    }
+
     func testDocumentNameAndVoiceEffectsPreserveFailureAndDegradationPolicy() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -672,6 +706,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             name: "Ana",
             evidence: .transcript("soy Ana")),
     ]
+    var voiceSuggestionsResult: [MeetingVoiceSuggestion] = [
+        MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0),
+    ]
     private let person: Person
 
     init(
@@ -792,7 +829,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     ) throws -> [MeetingVoiceSuggestion] {
         calls.append(.loadVoiceSuggestions(meetingID))
         try fail(.loadVoiceSuggestions)
-        return [MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0)]
+        return voiceSuggestionsResult
     }
 
     func meetingDetailMetadataSuggestions(

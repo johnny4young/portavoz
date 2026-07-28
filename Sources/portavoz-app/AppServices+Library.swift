@@ -26,8 +26,45 @@ extension AppServices: LibraryModelClient {
         _ query: String
     ) -> AsyncThrowingStream<[LibrarySearchHit], Error> {
         let queries = BilingualSearchQueryExpander().expand(query)
-        return mapStream(store.observeLibrarySearch(queries)) { hits in
-            hits.map(makeApplicationSearchHit)
+        let lexicalStream = store.observeLibrarySearch(queries)
+        let semanticSearch = librarySemanticSearch
+        let allowSemantic: Bool
+        if case .recording = recording.phase {
+            allowSemantic = false
+        } else {
+            allowSemantic = true
+        }
+        return AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            let task = Task {
+                let semanticTask = Task {
+                    guard allowSemantic else { return [LibrarySearchHit]() }
+                    guard let hits = try? await semanticSearch.search(query) else {
+                        return []
+                    }
+                    return hits.map(makeApplicationSearchHit)
+                }
+                defer { semanticTask.cancel() }
+                do {
+                    var semanticHits: [LibrarySearchHit]?
+                    for try await lexical in lexicalStream {
+                        let lexicalHits = lexical.map(makeApplicationSearchHit)
+                        continuation.yield(lexicalHits)
+                        if semanticHits == nil {
+                            semanticHits = await semanticTask.value
+                        }
+                        continuation.yield(fuseLibrarySearch(
+                            lexical: lexicalHits,
+                            semantic: semanticHits ?? [],
+                            limit: 20))
+                    }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
@@ -188,6 +225,21 @@ private func makeApplicationSearchHit(_ hit: SearchHit) -> LibrarySearchHit {
         segmentID: hit.segmentID,
         snippet: hit.snippet,
         startTime: hit.startTime)
+}
+
+private func fuseLibrarySearch(
+    lexical: [LibrarySearchHit],
+    semantic: [LibrarySearchHit],
+    limit: Int
+) -> [LibrarySearchHit] {
+    let orderedIDs = LibrarySearchFusion.exactFirst(
+        lexical: lexical.map(\.segmentID),
+        semantic: semantic.map(\.segmentID),
+        limit: limit)
+    var hits: [UUID: LibrarySearchHit] = [:]
+    for hit in semantic { hits[hit.segmentID] = hit }
+    for hit in lexical { hits[hit.segmentID] = hit }
+    return orderedIDs.compactMap { hits[$0] }
 }
 
 private func mapStream<Input: Sendable, Output: Sendable>(

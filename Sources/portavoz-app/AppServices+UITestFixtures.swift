@@ -13,7 +13,9 @@ extension AppServices {
 
         let audioDirectory = Self.prepareSeedAudio()
         let meeting = Meeting(
-            title: "Test meeting",
+            title: ProcessInfo.processInfo.arguments.contains("-seed-ai-suggestions")
+                ? "2026-07-27 Meeting"
+                : "Test meeting",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_001_800),
             language: "es",
