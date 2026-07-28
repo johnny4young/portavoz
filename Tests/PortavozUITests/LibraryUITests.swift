@@ -164,8 +164,13 @@ final class LibraryUITests: PortavozUITestCase {
             app.staticTexts["History row 18 remains readable during live updates."]
                 .waitForExistence(timeout: 8))
 
-        transcript.scroll(byDeltaX: 0, deltaY: 8)
         let jumpToLive = app.buttons["recording-jump-to-live"]
+        // Hosted runners occasionally coalesce the first synthetic wheel
+        // event. Retry the same user gesture until SwiftUI reports reader
+        // ownership instead of turning one dropped event into a false failure.
+        for _ in 0..<4 where !jumpToLive.exists {
+            transcript.scroll(byDeltaX: 0, deltaY: 8)
+        }
         XCTAssertTrue(
             jumpToLive.waitForExistence(timeout: 5),
             "manual history browsing must pause automatic follow")

@@ -449,6 +449,21 @@ final class LiveTranslationRoutingTests: XCTestCase {
 }
 
 final class TranscriptFocusVisualPolicyTests: XCTestCase {
+    func testLiveScrollYieldsForEveryUserOwnedPhaseButNotRecentering() {
+        guard #available(macOS 15.0, *) else { return }
+
+        XCTAssertTrue(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .tracking))
+        XCTAssertTrue(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .interacting))
+        XCTAssertTrue(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .decelerating))
+        XCTAssertFalse(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .idle))
+        XCTAssertFalse(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .animating))
+    }
+
     func testLiveFollowKeepsNearbyHistorySharpLonger() {
         let style = TranscriptFocusVisualPolicy.style(
             distance: 100,
