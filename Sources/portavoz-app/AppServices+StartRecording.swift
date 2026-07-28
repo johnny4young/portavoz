@@ -189,18 +189,25 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
     ) async throws {
         let start = TimeInterval(index * 2)
         let isRemote = index.isMultiple(of: 2)
-        let text = isRemote
-            ? String(
-                format: "History row %02d remains readable during live updates.",
-                index)
-            : String(
-                format: "My local update %02d stays distinct while I browse earlier captions.",
-                index)
+        let text: String
+        if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
+            text = PublicShowcaseFixture.liveTranscriptLines[index - 1]
+        } else {
+            text = isRemote
+                ? String(
+                    format: "History row %02d remains readable during live updates.",
+                    index)
+                : String(
+                    format: "My local update %02d stays distinct while I browse earlier captions.",
+                    index)
+        }
         await request.callbacks.caption(TranscriptSegment(
             meetingID: request.meetingID,
             channel: isRemote ? .system : .microphone,
             text: text,
-            language: "en",
+            language: ProcessInfo.processInfo.arguments.contains("-seed-showcase")
+                ? "es"
+                : "en",
             startTime: start,
             endTime: start + 1,
             isFinal: true))

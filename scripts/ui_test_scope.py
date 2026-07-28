@@ -130,6 +130,11 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "settings-voice": (
         test_id("SettingsUITests", "testVoicePaneOffersTheMirrorOptIn"),
     ),
+    "public-showcase": (
+        test_id("PublicShowcaseUITests", "testMeetingDetailShowcase"),
+        test_id("PublicShowcaseUITests", "testLiveTranslationShowcase"),
+        test_id("PublicShowcaseUITests", "testInsightsShowcase"),
+    ),
 }
 
 ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
@@ -195,6 +200,8 @@ def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
+    if "showcase" in lowered:
+        return {"public-showcase"}
     # Before the generic "section"/"settings" buckets: dictation UI lives in
     # the Audio pane, and its system-wide surface (triggers, paste) has no
     # other XCUITest-reachable evidence.

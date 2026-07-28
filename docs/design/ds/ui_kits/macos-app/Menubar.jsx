@@ -50,7 +50,7 @@ function PVMenubar() {
           <PVMiniWave bars={panelWave} />
           <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
             <span style={{ font: "600 12px/1.2 var(--font-app)" }}>Portavoz en reposo</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4, font: "400 10px/1.3 var(--font-app)", color: "#30d158" }}><SFIcon name="lock.shield" size={10} color="#30d158" />100% local · 0 B a la red hoy</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4, font: "400 10px/1.3 var(--font-app)", color: "#30d158" }}><SFIcon name="lock.shield" size={10} color="#30d158" />Local-first · transferencias con opt-in</span>
           </div>
         </div>
 

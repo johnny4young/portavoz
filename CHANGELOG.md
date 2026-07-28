@@ -7,6 +7,8 @@ entry here — feature name + what it gives you.)
 
 ## July 27, 2026
 
+- **🔤 Insights speaks naturally** — One conversation now appears as “1 meeting,” while larger counts keep the plural in both English and Spanish.
+
 - **🎧 Clear playback, original recording** — Finished calls now default to a reversible channel-aware mix that removes the delayed loudspeaker copy from your microphone while keeping the untouched original one click away; mic-only recordings are never filtered.
 
 - **✕ AI suggestions can take no for an answer** — Titles, speaker names, meeting structures, and summary retries now have a tiny dismiss action, so an irrelevant idea leaves without changing the meeting.

@@ -47,6 +47,7 @@ extension XCUIApplication {
     @MainActor
     static func portavoz(
         seedDemo: Bool = false,
+        seedShowcase: Bool = false,
         seedScale: Bool = false,
         scaleAutoSummaryUpdate: Bool = false,
         seedLatestRecipe: Bool = false,
@@ -73,6 +74,11 @@ extension XCUIApplication {
             app.launchArguments.append("-seed-demo")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
                 NSTemporaryDirectory() + "portavoz-seed-ready-\(UUID().uuidString)"
+        }
+        if seedShowcase {
+            app.launchArguments.append("-seed-showcase")
+            app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
+                NSTemporaryDirectory() + "portavoz-showcase-ready-\(UUID().uuidString)"
         }
         if seedScale { app.launchArguments.append("-seed-scale") }
         if scaleAutoSummaryUpdate { app.launchArguments.append("-scale-auto-summary-update") }

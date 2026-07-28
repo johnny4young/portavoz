@@ -229,7 +229,7 @@ function PVSettings() {
         </div>
         <div style={{ marginTop: "auto", padding: "12px 10px", borderRadius: 10, background: "rgba(48,209,88,0.08)", border: "1px solid rgba(48,209,88,0.2)" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 5, font: "600 11px/1.3 var(--font-app)", color: "#30d158", marginBottom: 4 }}><SFIcon name="lock.shield" size={12} color="#30d158" />Todo local</span>
-          <span style={{ font: "400 10px/1.5 var(--font-app)", color: "rgba(255,255,255,0.5)" }}>0 bytes enviados a la nube esta semana. Verifícalo en «Tus datos».</span>
+          <span style={{ font: "400 10px/1.5 var(--font-app)", color: "rgba(255,255,255,0.5)" }}>Las transferencias requieren opt-in. Verifícalo en «Tus datos».</span>
         </div>
       </div>
 
