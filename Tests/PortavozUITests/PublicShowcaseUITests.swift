@@ -86,8 +86,12 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         let meetingCount = app.buttons["library-new-recording-button"].label == "Nueva grabación"
             ? "1 reunión · 1 min"
             : "1 meeting · 1 min"
-        XCTAssertTrue(app.staticTexts[meetingCount].exists)
-        XCTAssertTrue(app.control(withIdentifier: "insights-heatmap").exists)
+        XCTAssertTrue(
+            app.staticTexts[meetingCount]
+                .waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            app.control(withIdentifier: "insights-heatmap")
+                .waitForExistence(timeout: 10))
         attachScreenshot(of: app, named: "public-insights")
     }
 }
