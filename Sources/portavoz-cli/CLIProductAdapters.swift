@@ -593,27 +593,24 @@ actor CLIRefineMeetingProcessor: RefineMeetingProcessor {
     func prepare(progress: @escaping RefineMeetingProgressHandler) async throws {
         let store = CLISupport.modelStore(fromModelsDir: modelsDirectory)
         let descriptor = ModelCatalog.whisperLargeV3Turbo
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
-            await progress(.preparingWhisper(
-                size: "\(descriptor.totalSizeBytes / 1_000_000) MB",
-                percent: 0))
-            let relay = CLIOrderedProgressRelay<RefineMeetingProgress>(handler: progress)
-            do {
-                whisper = try await WhisperEngine.loadRecommended(store: store) { download in
-                    guard download.totalBytes > 0 else { return }
-                    relay.send(.preparingWhisper(
-                        size: "\(descriptor.totalSizeBytes / 1_000_000) MB",
-                        percent: Int(download.fraction * 100),
-                        path: download.currentPath))
-                }
-                await relay.finish()
-            } catch {
-                await relay.finish()
-                throw error
+        let size = "\(descriptor.totalSizeBytes / 1_000_000) MB"
+        await progress(.preparingWhisper(
+            size: size,
+            percent: 0,
+            isDownloading: false))
+        let relay = CLIOrderedProgressRelay<RefineMeetingProgress>(handler: progress)
+        do {
+            whisper = try await WhisperEngine.loadRecommended(store: store) { update in
+                relay.send(.preparingWhisper(
+                    size: size,
+                    percent: Int(update.fraction * 100),
+                    path: update.currentPath.isEmpty ? nil : update.currentPath,
+                    isDownloading: update.isDownloading))
             }
-        } else {
-            whisper = try await WhisperEngine.loadRecommended(store: store)
+            await relay.finish()
+        } catch {
+            await relay.finish()
+            throw error
         }
     }
 

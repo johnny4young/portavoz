@@ -791,6 +791,26 @@
         }
       }
     },
+    "Checking files already on this Mac…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando los archivos que ya están en esta Mac…"
+          }
+        }
+      }
+    },
+    "Checking Whisper already on this Mac…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Whisper, que ya está en esta Mac…"
+          }
+        }
+      }
+    },
     "Choose": {
       "localizations": {
         "es": {
@@ -1617,6 +1637,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descargar ahora"
+          }
+        }
+      }
+    },
+    "Downloading in background… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando en segundo plano… %d%%"
+          }
+        }
+      }
+    },
+    "Downloading Whisper (%@)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Whisper (%@)… %d%%"
           }
         }
       }
@@ -8247,6 +8287,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "Portavoz no pudo abrir la pantalla de grabación."
+          }
+        }
+      }
+    },
+    "Return to recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la grabación"
+          }
+        }
+      }
+    },
+    "Return to the recording in progress": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la grabación en curso"
+          }
+        }
+      }
+    },
+    "Start a new recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar una nueva grabación"
+          }
+        }
+      }
+    },
+    "Clear playback": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción clara"
+          }
+        }
+      }
+    },
+    "English translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción al inglés"
+          }
+        }
+      }
+    },
+    "Reduce loudspeaker echo by lowering the microphone outside your turns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce el eco del altavoz bajando el micrófono fuera de tus turnos"
+          }
+        }
+      }
+    },
+    "Refine saved audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refinar audio guardado"
+          }
+        }
+      }
+    },
+    "Re-transcribe the saved audio with Whisper, then review the result before applying it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a transcribir el audio guardado con Whisper y revisa el resultado antes de aplicarlo."
+          }
+        }
+      }
+    },
+    "Spanish translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción al español"
+          }
+        }
+      }
+    },
+    "Translation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción"
+          }
+        }
+      }
+    },
+    "Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu audio está a salvo. La pasada automática no encontró voz confiable. Refinar vuelve a transcribir el audio guardado con Whisper y te permite revisar el resultado antes de reemplazar nada."
+          }
+        }
+      }
+    },
+    "Show an English or Spanish translation below each spoken caption.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar una traducción al inglés o español debajo de cada frase hablada."
           }
         }
       }

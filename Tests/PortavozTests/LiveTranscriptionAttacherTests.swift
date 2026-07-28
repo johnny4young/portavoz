@@ -244,7 +244,8 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let idlePair = LiveTranslationRouting.nextPair(
             segments: [first, open],
-            handledIDs: [first.id],
+            translatedSourceTexts: [first.id: first.text],
+            unsupportedIDs: [],
             target: "en")
         XCTAssertNil(idlePair, "a fully translated lane has nothing pending")
 
@@ -254,14 +255,16 @@ final class LiveTranslationRoutingTests: XCTestCase {
             start: 4)
         let resumed = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: [first, afterLull, open],
-            handledIDs: [first.id],
+            translatedSourceTexts: [first.id: first.text],
+            unsupportedIDs: [],
             target: "en"))
 
         XCTAssertEqual(resumed, LiveTranslationPair(source: "es", target: "en"))
         XCTAssertEqual(
             LiveTranslationRouting.pendingRows(
                 segments: [first, afterLull, open],
-                handledIDs: [first.id],
+                translatedSourceTexts: [first.id: first.text],
+                unsupportedIDs: [],
                 pair: resumed
             ).map(\.id),
             [afterLull.id],
@@ -285,15 +288,17 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: segments,
-            handledIDs: [],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
             target: "en"))
         let pending = LiveTranslationRouting.pendingRows(
             segments: segments,
-            handledIDs: [],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
             pair: pair)
 
         XCTAssertEqual(pair, LiveTranslationPair(source: "es", target: "en"))
-        XCTAssertEqual(pending.map(\.id), [spanish.id])
+        XCTAssertEqual(pending.map(\.id), [spanish.id, open.id])
     }
 
     func testTargetLanguageRowsRemainOriginalWithoutBlockingTheNextSourceLane() throws {
@@ -312,7 +317,8 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: [english, french, open],
-            handledIDs: [],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
             target: "en"))
 
         XCTAssertEqual(pair, LiveTranslationPair(source: "fr", target: "en"))
@@ -327,7 +333,8 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = LiveTranslationRouting.nextPair(
             segments: [unknown, open],
-            handledIDs: [],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
             target: "es",
             detector: { _ in "en" })
 
@@ -341,7 +348,8 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let pair = LiveTranslationRouting.nextPair(
             segments: [short, open],
-            handledIDs: [],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
             target: "en",
             detector: { _ in
                 detectorCalls += 1
@@ -369,15 +377,59 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
         let first = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: segments,
-            handledIDs: [],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
             target: "en"))
         let next = try XCTUnwrap(LiveTranslationRouting.nextPair(
             segments: segments,
-            handledIDs: [unsupported.id],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [unsupported.id],
             target: "en"))
 
         XCTAssertEqual(first, LiveTranslationPair(source: "zu", target: "en"))
         XCTAssertEqual(next, LiveTranslationPair(source: "es", target: "en"))
+    }
+
+    func testGrowingOpenTurnTranslatesBeforeAnotherSpeakerClosesIt() throws {
+        let open = segment(
+            text: "Esta intervención larga debe traducirse mientras sigo hablando.",
+            language: "es",
+            start: 0)
+
+        let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: [open],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            target: "en"))
+        let pending = LiveTranslationRouting.pendingRows(
+            segments: [open],
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            pair: pair)
+
+        XCTAssertEqual(pair, LiveTranslationPair(source: "es", target: "en"))
+        XCTAssertEqual(pending.map(\.id), [open.id])
+    }
+
+    func testGrowingOpenTurnRefreshesOnlyAfterMeaningfulGrowth() throws {
+        let open = segment(
+            text: "Esta intervención larga ya tiene una traducción parcial",
+            language: "es",
+            start: 0)
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        XCTAssertTrue(LiveTranslationRouting.pendingRows(
+            segments: [open],
+            translatedSourceTexts: [open.id: "Esta intervención larga"],
+            unsupportedIDs: [],
+            pair: pair).count == 1)
+        XCTAssertTrue(LiveTranslationRouting.pendingRows(
+            segments: [open],
+            translatedSourceTexts: [
+                open.id: "Esta intervención larga ya tiene una traducción"
+            ],
+            unsupportedIDs: [],
+            pair: pair).isEmpty)
     }
 
     private func segment(
@@ -397,6 +449,21 @@ final class LiveTranslationRoutingTests: XCTestCase {
 }
 
 final class TranscriptFocusVisualPolicyTests: XCTestCase {
+    func testLiveScrollYieldsForEveryUserOwnedPhaseButNotRecentering() {
+        guard #available(macOS 15.0, *) else { return }
+
+        XCTAssertTrue(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .tracking))
+        XCTAssertTrue(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .interacting))
+        XCTAssertTrue(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .decelerating))
+        XCTAssertFalse(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .idle))
+        XCTAssertFalse(
+            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .animating))
+    }
+
     func testLiveFollowKeepsNearbyHistorySharpLonger() {
         let style = TranscriptFocusVisualPolicy.style(
             distance: 100,
@@ -463,6 +530,17 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
             summarizedIDs: [originalID])
 
         XCTAssertEqual(window.map(\.id), [newPiece.id])
+    }
+}
+
+final class RecordingMeterPublicationPolicyTests: XCTestCase {
+    func testMeterPublishesAtMostTwentyFramesPerSecond() {
+        XCTAssertFalse(RecordingMeterPublicationPolicy.shouldPublish(
+            now: 10.04,
+            last: 10))
+        XCTAssertTrue(RecordingMeterPublicationPolicy.shouldPublish(
+            now: 10.05,
+            last: 10))
     }
 }
 

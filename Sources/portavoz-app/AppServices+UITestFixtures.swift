@@ -13,7 +13,7 @@ extension AppServices {
 
         let audioDirectory = Self.prepareSeedAudio()
         let meeting = Meeting(
-            title: "Test meeting",
+            title: seedDemoMeetingTitle,
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_001_800),
             language: "es",
@@ -68,6 +68,12 @@ extension AppServices {
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSpotlightReindex()
+    }
+
+    private var seedDemoMeetingTitle: String {
+        ProcessInfo.processInfo.arguments.contains("-seed-ai-suggestions")
+            ? "2026-07-27 Meeting"
+            : "Test meeting"
     }
 
     /// XCUITest waits for the complete aggregate rather than racing the first

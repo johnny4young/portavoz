@@ -6,7 +6,7 @@ import XCTest
 /// tabbed summary (with a coauthoring ▸ bullet under Decisiones), meeting
 /// health, chapters, a content-free privacy receipt in the right rail, and a
 /// player.
-final class MeetingDetailUITests: XCTestCase {
+final class MeetingDetailUITests: PortavozUITestCase {
     @MainActor
     func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
         let app = XCUIApplication.portavoz(
@@ -45,6 +45,7 @@ final class MeetingDetailUITests: XCTestCase {
         withoutSummary: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         unnamedSpeaker: Bool = false,
+        aiSuggestions: Bool = false,
         summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
@@ -60,6 +61,9 @@ final class MeetingDetailUITests: XCTestCase {
         }
         if unnamedSpeaker {
             app.launchArguments.append("-seed-unnamed-speaker")
+        }
+        if aiSuggestions {
+            app.launchArguments.append("-seed-ai-suggestions")
         }
         if let summaryEngine {
             app.launchArguments += ["-summaryEngine", summaryEngine]
@@ -105,6 +109,38 @@ final class MeetingDetailUITests: XCTestCase {
         // evidence never captures the title/sidebar midway through transition.
         Thread.sleep(forTimeInterval: 0.5)
         attachScreenshot(of: app, named: "meeting-name-suggestions")
+    }
+
+    @MainActor
+    func testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix() {
+        let app = launchOnSeededMeeting(
+            unnamedSpeaker: true,
+            aiSuggestions: true)
+        defer { app.terminate() }
+
+        let titleDismiss = app.buttons["detail-title-suggestion-dismiss"]
+        XCTAssertTrue(titleDismiss.waitForExistence(timeout: 10))
+        titleDismiss.click()
+        XCTAssertFalse(app.buttons["detail-title-suggestion"].exists)
+
+        let recipeDismiss = app.buttons["detail-recipe-suggestion-dismiss"]
+        XCTAssertTrue(recipeDismiss.waitForExistence(timeout: 10))
+        recipeDismiss.click()
+        XCTAssertFalse(app.buttons["detail-recipe-suggestion"].exists)
+
+        let suggestNames = app.control(withIdentifier: "detail-suggest-names")
+        XCTAssertTrue(suggestNames.waitForExistence(timeout: 5))
+        suggestNames.click()
+        let nameDismiss = app.buttons["detail-name-suggestion-dismiss-S1"]
+        XCTAssertTrue(nameDismiss.waitForExistence(timeout: 10))
+        nameDismiss.click()
+        XCTAssertFalse(app.buttons["detail-name-suggestion-S1"].exists)
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "player-clear-playback")
+                .waitForExistence(timeout: 10),
+            "two-channel playback must expose the reversible clear mix")
+        attachScreenshot(of: app, named: "dismissible-ai-suggestions-and-clear-playback")
     }
 
     @MainActor
@@ -251,6 +287,9 @@ final class MeetingDetailUITests: XCTestCase {
         XCTAssertEqual(
             source.value as? String,
             "El rollout del modelo queda para el viernes.")
+        XCTAssertTrue(
+            app.prepareForInteraction(),
+            "Portavoz must be foreground before activating a summary source")
         XCTAssertTrue(
             source.waitForStableFrame(),
             "the localized source control must finish layout before activation")

@@ -435,10 +435,12 @@ extension MeetingDetailView {
     @ViewBuilder
     private func processingRecoveryAction(_ detail: MeetingReviewReadModel) -> some View {
         if detail.meeting.audioDirectory != nil {
-            Button("Refine transcript") { refine(detail) }
+            Button("Refine saved audio") { refine(detail) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .accessibilityIdentifier("detail-recover-with-refine")
+                .help(L10n.text(
+                    "Re-transcribe the saved audio with Whisper, then review the result before applying it."))
         } else {
             Button("Open support diagnostics") {
                 services.pendingSettingsCategory = .data
@@ -490,7 +492,8 @@ extension MeetingDetailView {
     private func recoveryExplanation(_ code: String?) -> String {
         switch code {
         case "transcription.empty":
-            L10n.text("No reliable speech was found. Run Refine to review the saved audio again.")
+            // swiftlint:disable:next line_length
+            L10n.text("Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
         case "capture.publication.failed":
             L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
         default:
@@ -881,15 +884,18 @@ extension MeetingDetailView {
                 .buttonStyle(.plain)
                 .help("Rename the meeting")
                 if let suggestion = model.state.suggestedTitle {
-                    Button {
-                        Task {
-                            await model.send(
-                                .renameMeeting(detail.meeting, title: suggestion))
-                        }
-                    } label: {
-                        ChipLabel(kind: .ai, text: "“\(suggestion)”?")
-                    }
-                    .buttonStyle(.plain)
+                    DismissibleSuggestionChip(
+                        kind: .ai,
+                        text: "“\(suggestion)”?",
+                        acceptAccessibilityIdentifier: "detail-title-suggestion",
+                        dismissAccessibilityIdentifier: "detail-title-suggestion-dismiss",
+                        accept: {
+                            Task {
+                                await model.send(
+                                    .renameMeeting(detail.meeting, title: suggestion))
+                            }
+                        },
+                        dismiss: model.dismissSuggestedTitle)
                     .help("Suggested title from the summary — one click renames, nothing changes on its own")
                 }
                 Spacer(minLength: 0)
@@ -1019,32 +1025,51 @@ extension MeetingDetailView {
                     .accessibilityIdentifier("detail-suggest-names")
                 }
             }
-            ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
-                Button {
-                    Task { await apply(suggestion, in: detail) }
-                } label: {
-                    ChipLabel(kind: .ai, text: "\(suggestion.label) → \(suggestion.name)?")
-                        .fixedSize()
-                }
-                .buttonStyle(.plain)
-                .help(nameSuggestionHelp(suggestion))
-                .accessibilityIdentifier("detail-name-suggestion-\(suggestion.label)")
-            }
-            // Cross-meeting voice matches: same chip contract, waveform icon
-            // marks the evidence as "their voice", not the transcript.
-            ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
-                Button {
-                    Task { await apply(match, in: detail) }
-                } label: {
-                    ChipLabel(kind: .voice, text: "\(match.speakerLabel) → \(match.name)?")
-                        .fixedSize()
-                }
-                .buttonStyle(.plain)
-                .help(L10n.format(
-                    "Voice match: sounds like “%@” from your remembered voices.", match.name))
-            }
+            nameSuggestionChips(in: detail)
+            voiceSuggestionChips(in: detail)
             personOfferChip
             rememberOfferChip
+        }
+    }
+
+    @ViewBuilder
+    private func nameSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
+        ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: "\(suggestion.label) → \(suggestion.name)?",
+                acceptAccessibilityIdentifier:
+                    "detail-name-suggestion-\(suggestion.label)",
+                dismissAccessibilityIdentifier:
+                    "detail-name-suggestion-dismiss-\(suggestion.label)",
+                accept: { Task { await apply(suggestion, in: detail) } },
+                dismiss: {
+                    model.dismissNameSuggestion(label: suggestion.label)
+                })
+            .fixedSize()
+            .help(nameSuggestionHelp(suggestion))
+        }
+    }
+
+    @ViewBuilder
+    private func voiceSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
+        // Cross-meeting voice matches use a waveform icon because their
+        // evidence is the remembered voice, not transcript text.
+        ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
+            DismissibleSuggestionChip(
+                kind: .voice,
+                text: "\(match.speakerLabel) → \(match.name)?",
+                acceptAccessibilityIdentifier:
+                    "detail-voice-suggestion-\(match.speakerLabel)",
+                dismissAccessibilityIdentifier:
+                    "detail-voice-suggestion-dismiss-\(match.speakerLabel)",
+                accept: { Task { await apply(match, in: detail) } },
+                dismiss: {
+                    model.dismissVoiceSuggestion(speakerLabel: match.speakerLabel)
+                })
+            .fixedSize()
+            .help(L10n.format(
+                "Voice match: sounds like “%@” from your remembered voices.", match.name))
         }
     }
 
@@ -2152,17 +2177,19 @@ extension MeetingDetailView {
         _ summary: MeetingReviewSummary
     ) -> some View {
         if let suggested = model.state.suggestedRecipe, !regenerating {
-            Button {
-                regenerate(
-                    language: summaryLanguage(summary.draft.language),
-                    recipe: suggested)
-            } label: {
-                ChipLabel(
-                    kind: .ai,
-                    text: L10n.format("Summarize as %@?", suggested.localizedDisplayName))
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("detail-recipe-suggestion")
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: L10n.format(
+                    "Summarize as %@?",
+                    suggested.localizedDisplayName),
+                acceptAccessibilityIdentifier: "detail-recipe-suggestion",
+                dismissAccessibilityIdentifier: "detail-recipe-suggestion-dismiss",
+                accept: {
+                    regenerate(
+                        language: summaryLanguage(summary.draft.language),
+                        recipe: suggested)
+                },
+                dismiss: model.dismissSuggestedRecipe)
             .help("This meeting looks like a \(suggested.localizedDisplayName) — restructure the summary with one click. Nothing changes unless you accept.")
         }
     }
@@ -2179,18 +2206,26 @@ extension MeetingDetailView {
         if !regenerating,
             services.summaryEngine != .mlx,
             services.mlxDownloaded,
+            model.state.dismissedThinSummaryVersion != summary.version,
             let detail,
             let ended = detail.meeting.endedAt,
             ThinSummaryPolicy.isThin(
                 summaryCharacters: summary.draft.markdown.count,
                 actionItems: summary.draft.actionItems.count,
                 meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt)) {
-            Button {
-                regenerate(language: summaryLanguage(summary.draft.language), engine: .mlx)
-            } label: {
-                Label("Summary looks thin — retry with Built-in?", systemImage: "sparkles")
-            }
-            .controlSize(.small)
+            DismissibleSuggestionChip(
+                kind: .ai,
+                text: L10n.text("Summary looks thin — retry with Built-in?"),
+                acceptAccessibilityIdentifier: "detail-thin-summary-suggestion",
+                dismissAccessibilityIdentifier: "detail-thin-summary-suggestion-dismiss",
+                accept: {
+                    regenerate(
+                        language: summaryLanguage(summary.draft.language),
+                        engine: .mlx)
+                },
+                dismiss: {
+                    model.dismissThinSummarySuggestion(version: summary.version)
+                })
             .help(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length

@@ -9,6 +9,14 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
+enum RecordingMeterPublicationPolicy {
+    static let minimumInterval = 0.05
+
+    static func shouldPublish(now: TimeInterval, last: TimeInterval) -> Bool {
+        now - last >= minimumInterval
+    }
+}
+
 /// Drives one recording end to end: capture (mic + system tap) → live
 /// captions → on stop, diarization + attribution + persistence + summary.
 /// The whole meeting pipeline, in the order the Kits were built.
@@ -54,12 +62,17 @@ final class RecordingController {
     }
     /// Live caption translations by segment id (M6, Translation framework).
     var translations: [UUID: String] = [:]
+    /// Exact source revision that produced each visible translation. The last
+    /// caption keeps a stable ID while it grows, so ID-only bookkeeping would
+    /// strand a stale partial translation until another speaker started.
+    var translatedSourceTexts: [UUID: String] = [:]
     /// BCP-47 target for live translation; nil = off. Changing it clears the
     /// download-gate flags so the new pair is re-checked from scratch.
     var translationTarget: String? {
         didSet {
             guard translationTarget != oldValue else { return }
             translations.removeAll()
+            translatedSourceTexts.removeAll()
             unsupportedTranslationRowIDs.removeAll()
             hasUnsupportedTranslationRows = false
             translationSource = nil
@@ -93,9 +106,11 @@ final class RecordingController {
     /// shows the level is weak (the far-field built-in mic), not just silence.
     /// Field finding jul 2026: the built-in mic captured the user at ≤ -45 dBFS.
     private(set) var micLevel: Float = 0
+    private var smoothedMicLevel: Float = 0
+    private var lastMicLevelPublication = 0.0
     private var voicedLevel: Float = 0
     private var voicedChunks = 0
-    var micLevelLow: Bool { voicedChunks > 150 && voicedLevel < 0.03 }
+    private(set) var micLevelLow = false
 
     /// Whether YOUR mic is muted FOR PORTAVOZ (not the system input) — the
     /// meeting app keeps its own mic; Portavoz records silence on your channel.
@@ -109,7 +124,7 @@ final class RecordingController {
     /// Sustained near-silence on the system channel — likely a call whose
     /// incoming audio isn't reaching the tap (or an in-person meeting, which
     /// the dismissable banner lets you wave off).
-    var systemAudioMissing: Bool { systemChunks > 500 && systemRMS < 0.003 }
+    private(set) var systemAudioMissing = false
     /// Non-empty when this recording taps meeting apps by process (Bluetooth
     /// output) instead of the global device output — the AirPods-HFP workaround.
     /// Names the apps being captured for the on-screen note.
@@ -186,6 +201,7 @@ final class RecordingController {
         phase = .idle
         captions = []
         translations = [:]
+        translatedSourceTexts = [:]
         unsupportedTranslationRowIDs = []
         hasUnsupportedTranslationRows = false
         liveSummary = nil
@@ -271,6 +287,7 @@ final class RecordingController {
         reservedAssets = []
         captions = []
         translations = [:]
+        translatedSourceTexts = [:]
         unsupportedTranslationRowIDs = []
         hasUnsupportedTranslationRows = false
         liveSummary = nil
@@ -285,10 +302,14 @@ final class RecordingController {
         turnEndpointTask = nil
         speculativeTurnMark = nil
         micLevel = 0
+        smoothedMicLevel = 0
+        lastMicLevelPublication = 0
         voicedLevel = 0
         voicedChunks = 0
+        micLevelLow = false
         systemRMS = 0
         systemChunks = 0
+        systemAudioMissing = false
         systemCaptureHealth = .healthy
         systemRecoveryNoticeTask?.cancel()
         systemRecoveryNoticeTask = nil
@@ -313,8 +334,23 @@ final class RecordingController {
                 text: segment.text,
                 confidence: segment.confidence) { return }
         coalescer.apply(segment, to: &captions)
+        seedLiveTranslationUIIfRequested()
         detectClosedRow()
         armTurnEndpointDeadline()
+    }
+
+    /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
+    /// covered by unit tests; this branch proves the rendered language rail
+    /// without requiring a runner to own Apple's downloadable language pack.
+    private func seedLiveTranslationUIIfRequested() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+            arguments.contains("-seed-live-translation-ui"),
+            let row = captions.last
+        else { return }
+        if translationTarget == nil { translationTarget = "en" }
+        translations[row.id] = "Clearly separated test translation."
+        translatedSourceTexts[row.id] = row.text
     }
 
     private func applyStartRecordingResult(
@@ -463,11 +499,21 @@ final class RecordingController {
     /// (above a low gate) so the "low mic" flag reflects weak SPEECH, not
     /// silence — the far-field built-in mic sits well below a close mic.
     private func updateMicLevel(_ peak: Float) {
-        micLevel = max(peak, micLevel * 0.8)
+        smoothedMicLevel = max(peak, smoothedMicLevel * 0.8)
+        let now = ProcessInfo.processInfo.systemUptime
+        if RecordingMeterPublicationPolicy.shouldPublish(
+            now: now,
+            last: lastMicLevelPublication
+        ) {
+            micLevel = smoothedMicLevel
+            lastMicLevelPublication = now
+        }
         if peak > 0.004 {
             voicedLevel = voicedLevel * 0.97 + peak * 0.03
             voicedChunks += 1
         }
+        let isLow = voicedChunks > 150 && voicedLevel < 0.03
+        if micLevelLow != isLow { micLevelLow = isLow }
     }
 
     // MARK: - Companion (D26)
@@ -672,6 +718,8 @@ private extension RecordingController {
     func updateSystemLevel(_ rms: Float) {
         systemChunks += 1
         systemRMS = systemRMS * 0.98 + rms * 0.02
+        let isMissing = systemChunks > 500 && systemRMS < 0.003
+        if systemAudioMissing != isMissing { systemAudioMissing = isMissing }
         if liveTranscriptState == .available {
             startLiveDiarizationIfReady()
         }

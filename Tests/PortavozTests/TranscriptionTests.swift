@@ -960,10 +960,37 @@ final class MicBleedFilterTests: XCTestCase {
         XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
     }
 
-    func testShortUtterancesAreLeftForOtherFilters() {
+    func testSingleWordUtterancesRemainVisible() {
         let system = [segment("yeah exactly", channel: .system, start: 100, end: 102)]
         let mic = [segment("Yeah.", channel: .microphone, start: 100, end: 101)]
         XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testExactTwoWordCopyAtTheSameInstantIsDropped() {
+        let system = [segment(
+            "okay perfect", channel: .system, start: 100, end: 101.2)]
+        let mic = [segment(
+            "Okay perfect", channel: .microphone, start: 100.1, end: 101.3)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
+    }
+
+    func testSequentialTwoWordReplySurvives() {
+        let system = [segment(
+            "thank you", channel: .system, start: 100, end: 101)]
+        let mic = [segment(
+            "Thank you", channel: .microphone, start: 101.2, end: 102)]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testContiguousRollingSuffixAtTheSameInstantIsDropped() {
+        let system = [segment(
+            "it right now", channel: .system, start: 101.8, end: 103)]
+        let mic = [segment(
+            "we can we can do it right now",
+            channel: .microphone,
+            start: 100,
+            end: 103)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
     }
 
     func testDistantSystemTextDoesNotMatch() {

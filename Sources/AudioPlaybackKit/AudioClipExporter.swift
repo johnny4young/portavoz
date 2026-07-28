@@ -72,4 +72,54 @@ public enum AudioClipExporter {
             }
         }
     }
+
+    /// Clear-channel export matching the default player. The complete
+    /// composition is built once, then AVFoundation trims the requested
+    /// timeline range during export.
+    public static func export(
+        systemFile: URL?,
+        microphoneFile: URL?,
+        microphoneAudibleRanges: [ClosedRange<TimeInterval>],
+        clearPlayback: Bool,
+        range: ClosedRange<TimeInterval>,
+        to output: URL
+    ) async throws {
+        guard range.upperBound > range.lowerBound, range.lowerBound >= 0 else {
+            throw ClipError.invalidRange
+        }
+        guard let mixed = await MeetingAudioComposition.make(
+            systemFile: systemFile,
+            microphoneFile: microphoneFile,
+            microphoneAudibleRanges: microphoneAudibleRanges)
+        else { throw ClipError.noAudio }
+        let start = CMTime(seconds: range.lowerBound, preferredTimescale: 600)
+        let end = CMTimeMinimum(
+            CMTime(seconds: range.upperBound, preferredTimescale: 600),
+            mixed.duration)
+        guard end > start else { throw ClipError.invalidRange }
+
+        try? FileManager.default.removeItem(at: output)
+        guard let session = AVAssetExportSession(
+            asset: mixed.composition,
+            presetName: AVAssetExportPresetAppleM4A)
+        else { throw ClipError.exportFailed("no export session") }
+        session.timeRange = CMTimeRange(start: start, end: end)
+        if clearPlayback {
+            session.audioMix = mixed.cleanAudioMix
+        }
+
+        if #available(macOS 15.0, iOS 18.0, *) {
+            try await session.export(to: output, as: .m4a)
+        } else {
+            session.outputURL = output
+            session.outputFileType = .m4a
+            await withCheckedContinuation { continuation in
+                session.exportAsynchronously { continuation.resume() }
+            }
+            guard session.status == .completed else {
+                throw ClipError.exportFailed(
+                    session.error?.localizedDescription ?? "unknown")
+            }
+        }
+    }
 }

@@ -25,6 +25,7 @@ actor SpotlightIndexer {
 
     private let store: MeetingStore
     private let backend: any SpotlightIndexBackend
+    private let legacyCleanupState: any SpotlightLegacyCleanupState
     private let enabled: Bool
     private let debounce: Duration
     private let retryDelays: [Duration]
@@ -33,12 +34,17 @@ actor SpotlightIndexer {
 
     private var generation = 0
     private var worker: Task<Void, Never>?
+    /// The v1 default index is a migration concern, not recurring library
+    /// work. Retain retry-on-failure, then stop asking Core Spotlight to scan
+    /// and delete the same legacy domain for the rest of this app process.
+    private var legacyCleanupComplete = false
     private(set) var status: Status = .idle
 
     init(
         store: MeetingStore,
         enabled: Bool,
         backend: (any SpotlightIndexBackend)? = nil,
+        legacyCleanupState: (any SpotlightLegacyCleanupState)? = nil,
         debounce: Duration = .milliseconds(250),
         retryDelays: [Duration] = [.seconds(1), .seconds(5)],
         sleep: @escaping @Sendable (Duration) async throws -> Void = {
@@ -48,6 +54,8 @@ actor SpotlightIndexer {
         self.store = store
         self.enabled = enabled
         self.backend = backend ?? CoreSpotlightIndexBackend()
+        self.legacyCleanupState =
+            legacyCleanupState ?? UserDefaultsSpotlightLegacyCleanupState()
         self.debounce = debounce
         self.retryDelays = retryDelays
         self.sleep = sleep
@@ -95,9 +103,19 @@ actor SpotlightIndexer {
                     try await backend.replace(documents, clientState: clientState)
                 }
                 // The released implementation used the default prototype
-                // index. Cleanup runs only after the protected index is ready
-                // and repeats harmlessly until it succeeds.
-                try await backend.removeLegacyDefaultItems()
+                // index. Cleanup runs only after the protected index is ready,
+                // retries after failure, and then stays complete for this
+                // process and future launches instead of waking Spotlight on
+                // every reconciliation or Dev reinstall.
+                if !legacyCleanupComplete {
+                    if await legacyCleanupState.isComplete() {
+                        legacyCleanupComplete = true
+                    } else {
+                        try await backend.removeLegacyDefaultItems()
+                        await legacyCleanupState.markComplete()
+                    }
+                    legacyCleanupComplete = true
+                }
                 attempt = 0
                 guard targetGeneration == generation else { continue }
                 finish(status: .idle)
@@ -154,6 +172,28 @@ protocol SpotlightIndexBackend: Sendable {
     func lastClientState() async throws -> Data?
     func replace(_ documents: [SpotlightDocument], clientState: Data) async throws
     func removeLegacyDefaultItems() async throws
+}
+
+protocol SpotlightLegacyCleanupState: Sendable {
+    func isComplete() async -> Bool
+    func markComplete() async
+}
+
+private actor UserDefaultsSpotlightLegacyCleanupState: SpotlightLegacyCleanupState {
+    private static let key = "spotlightLegacyDefaultCleanupV1Complete"
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func isComplete() -> Bool {
+        defaults.bool(forKey: Self.key)
+    }
+
+    func markComplete() {
+        defaults.set(true, forKey: Self.key)
+    }
 }
 
 private actor CoreSpotlightIndexBackend: SpotlightIndexBackend {

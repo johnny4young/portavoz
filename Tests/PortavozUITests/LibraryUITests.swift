@@ -4,7 +4,7 @@ import XCTest
 /// we verify the UI renders without driving the screen by hand. Run with
 /// `make test-ui`. The app honors `-use-temp-store` so a test run never
 /// touches the real library.
-final class LibraryUITests: XCTestCase {
+final class LibraryUITests: PortavozUITestCase {
     @MainActor
     func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() {
         let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
@@ -97,6 +97,7 @@ final class LibraryUITests: XCTestCase {
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         let warning = app.control(withIdentifier: "recording-system-capture-health")
@@ -106,7 +107,7 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(
             app.buttons["recording-stop-after-remote-outage"].waitForExistence(timeout: 5),
             "a prolonged outage must make Stop explicit without ending capture automatically")
-        let expected = record.label == "Nueva grabación"
+        let expected = isSpanish
             ? "El audio remoto no está disponible desde hace dos minutos. Si la llamada terminó, detén esta grabación."
             : "Remote audio has been unavailable for two minutes. If the call ended, stop this recording."
         XCTAssertTrue(app.staticTexts[expected].exists)
@@ -121,11 +122,11 @@ final class LibraryUITests: XCTestCase {
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
         XCTAssertTrue(preparing.waitForExistence(timeout: 5))
-        let isSpanish = record.label == "Nueva grabación"
         let preparingPrefix = isSpanish
             ? "El audio sigue guardándose correctamente."
             : "Audio is safe."
@@ -154,6 +155,7 @@ final class LibraryUITests: XCTestCase {
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         let transcript = app.control(withIdentifier: "recording-live-transcript")
@@ -162,8 +164,13 @@ final class LibraryUITests: XCTestCase {
             app.staticTexts["History row 18 remains readable during live updates."]
                 .waitForExistence(timeout: 8))
 
-        transcript.scroll(byDeltaX: 0, deltaY: 8)
         let jumpToLive = app.buttons["recording-jump-to-live"]
+        // Hosted runners occasionally coalesce the first synthetic wheel
+        // event. Retry the same user gesture until SwiftUI reports reader
+        // ownership instead of turning one dropped event into a false failure.
+        for _ in 0..<4 where !jumpToLive.exists {
+            transcript.scroll(byDeltaX: 0, deltaY: 8)
+        }
         XCTAssertTrue(
             jumpToLive.waitForExistence(timeout: 5),
             "manual history browsing must pause automatic follow")
@@ -247,10 +254,77 @@ final class LibraryUITests: XCTestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "recording-next-question").exists,
             "the bar must offer the next-question action")
+        XCTAssertTrue(app.control(withIdentifier: "recording-translation-picker").exists)
+        XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         XCTAssertTrue(
             app.control(withIdentifier: "recording-talk-balance")
                 .waitForExistence(timeout: 8),
             "closed captions must surface the talk-balance cue")
+    }
+
+    @MainActor
+    func testLiveTranslationUsesADistinctLabeledRail() {
+        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        app.launchArguments.append("-seed-live-translation-ui")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
+        record.click()
+
+        let translation = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH 'recording-live-translation-'"))
+            .firstMatch
+        XCTAssertTrue(
+            translation.waitForExistence(timeout: 10),
+            "a translated row must expose its own labeled visual boundary")
+        let targetLanguageLabel =
+            isSpanish ? "Traducción al inglés" : "English translation"
+        XCTAssertTrue(
+            app.staticTexts[targetLanguageLabel].exists,
+            "translated copy must visibly say which language it represents")
+        attachScreenshot(of: app, named: "recording-live-translation-rail")
+    }
+
+    @MainActor
+    func testActiveRecordingRemainsReachableAfterBrowsingTheLibrary() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            simulateLiveTranscriptBrowsing: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-new-recording-button"].click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-live-transcript")
+                .waitForExistence(timeout: 8))
+
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(
+            meeting.waitForStableFrame(timeout: 10),
+            "the historical meeting must have a stable hit target")
+        meeting.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-transcript-title")
+                .waitForExistence(timeout: 10),
+            "the historical meeting must replace the live route before returning")
+
+        let returnToRecording = app.buttons["library-return-to-recording"]
+        XCTAssertTrue(
+            returnToRecording.waitForExistence(timeout: 5),
+            "an active capture must remain reachable from every library route")
+        returnToRecording.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-stop").waitForExistence(timeout: 8))
+        XCTAssertTrue(app.control(withIdentifier: "recording-elapsed-time").exists)
+        attachScreenshot(of: app, named: "recording-return-to-live")
     }
 
     @MainActor
@@ -276,10 +350,23 @@ final class LibraryUITests: XCTestCase {
         let search = app.textFields["library-search-field"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.click()
-        search.typeText("presupuesto")
+        search.typeText("viernes")
+        let hit = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-search-hit-'"))
+            .firstMatch
         XCTAssertTrue(
-            app.staticTexts["Test meeting · 00:00"].waitForExistence(timeout: 10),
+            hit.waitForExistence(timeout: 10),
             "the feature model must publish the seeded transcript search hit")
+        XCTAssertTrue(
+            hit.label.contains("Test meeting · 00:03"),
+            "the search result must expose the meeting and exact hit timestamp")
+        hit.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
         attachScreenshot(of: app, named: "band-4c-fast-local-search")
     }
 
@@ -372,12 +459,12 @@ final class LibraryUITests: XCTestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(
-            app.staticTexts["Recovered recording"].firstMatch.waitForExistence(timeout: 15),
-            "launch recovery must return interrupted audio to the library")
+            app.waitForSeededLibraryToSettle(timeout: 30),
+            "launch recovery must complete before the recovered meeting is selected")
         let meeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        XCTAssertTrue(meeting.waitForExistence(timeout: 5))
+        XCTAssertTrue(meeting.exists, "launch recovery must return interrupted audio")
         meeting.click()
         XCTAssertTrue(
             app.control(withIdentifier: "player-play-pause").waitForExistence(timeout: 10),

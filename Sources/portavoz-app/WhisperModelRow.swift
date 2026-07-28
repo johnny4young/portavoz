@@ -38,14 +38,18 @@ struct WhisperModelRow: View {
 
     @ViewBuilder
     private var status: some View {
-        if case .preparing(let id, _, let percent) = preparationState,
+        if case .preparing(let id, _, let percent, let isDownloading) = preparationState,
             id == variant.id {
             VStack(alignment: .leading, spacing: 3) {
-                ProgressView(value: Double(percent), total: 100)
+                if isDownloading {
+                    ProgressView(value: Double(percent), total: 100)
+                } else {
+                    ProgressView()
+                }
+                Text(isDownloading
+                    ? L10n.format("Downloading in background… %d%%", percent)
+                    : L10n.text("Checking files already on this Mac…"))
                     .frame(width: 150)
-                Text(L10n.format(
-                    "Preparing in background; downloads only if needed… %d%%",
-                    percent))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -90,7 +94,7 @@ struct WhisperModelRow: View {
     }
 
     private var isThisVariantPreparing: Bool {
-        guard case .preparing(let id, _, _) = preparationState else { return false }
+        guard case .preparing(let id, _, _, _) = preparationState else { return false }
         return id == variant.id
     }
 

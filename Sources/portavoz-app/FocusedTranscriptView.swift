@@ -52,6 +52,18 @@ enum TranscriptFocusVisualPolicy {
     }
 }
 
+@available(macOS 15.0, *)
+enum LiveTranscriptScrollOwnershipPolicy {
+    static func shouldYieldFollow(for phase: ScrollPhase) -> Bool {
+        switch phase {
+        case .tracking, .interacting, .decelerating:
+            true
+        case .idle, .animating:
+            false
+        }
+    }
+}
+
 /// A Spotify-lyrics-style transcript: the active line stays centered while
 /// the others carousel past. Playback always follows its active line. Live
 /// recording follows the newest caption until the user scrolls, then yields
@@ -165,7 +177,9 @@ struct FocusedTranscriptView<Row: View>: View {
     ) -> some View {
         if #available(macOS 15.0, *) {
             content.onScrollPhaseChange { _, phase in
-                guard mode == .live, phase == .interacting else { return }
+                guard mode == .live,
+                      LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: phase)
+                else { return }
                 onUserScroll()
             }
         } else {

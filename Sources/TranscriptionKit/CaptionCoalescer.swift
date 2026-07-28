@@ -85,9 +85,9 @@ public struct CaptionCoalescer: Sendable {
     /// both channels a fraction of a second apart. Prefer the direct system
     /// row, whether it arrived before or after the microphone copy.
     ///
-    /// Short acknowledgements remain untouched because `MicBleedFilter`
-    /// requires at least three lexical words; that conservative boundary
-    /// avoids erasing a real "yes" or "thank you" spoken over another person.
+    /// One-word acknowledgements remain untouched. Exact two-word copies are
+    /// suppressed only when the channel timelines truly overlap; sequential
+    /// "thank you" turns remain separate.
     private func suppressMicrophoneBleed(
         _ incoming: TranscriptSegment,
         in captions: inout [TranscriptSegment]

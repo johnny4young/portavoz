@@ -111,6 +111,11 @@ final class EnglishSourceTests: XCTestCase {
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
+        if relative == "Sources/ApplicationKit/BilingualSearchQueryExpander.swift" {
+            // The explicit EN/ES search lexicon is runtime data, not public
+            // source prose. Its comments and API documentation remain English.
+            return line.contains("pair(")
+        }
         if relative == "Sources/IntelligenceKit/SummaryOutputAdmission.swift" {
             // This exact line is a bilingual stop-word lexicon used as data by
             // evidence admission; all explanatory source prose remains English.

@@ -4355,3 +4355,90 @@ supports the surface; it must not be extracted into the macOS metadata bundle.
 preserves composability, and avoids two controls that perform the same
 operation. It also aligns implementation with the already documented macOS
 contract instead of asking users to understand an unsupported duplicate.
+
+## D142 — Separate live bleed admission from readable paragraph projection (Jul 2026)
+
+**Context:** field calls through Mac speakers still showed exact two-word and
+rolling partial copies as alternating `Me`/`Them` rows. The earlier
+three-word bag-of-words threshold intentionally preserved them. At the same
+time, genuine consecutive rows from one person looked fragmented, but generic
+`Them` may still represent two back-to-back people before live diarization
+resolves their voices.
+
+**Decision:** direct system/room audio may suppress an exact two-word
+microphone copy only when both channel timelines truly overlap. A contiguous
+three-word rolling edge may also suppress the longer noisy copy. One-word
+speech, sequential acknowledgements, distinct overlap, finalized audio, and
+raw per-channel transcription remain unchanged. Readable paragraph grouping is
+a separate bounded view projection: it groups microphone rows or rows with the
+same stable live voice, carries their translations, keeps the first ID for
+diffing, and never groups generic `Them`.
+
+**Rationale:** direct capture is stronger evidence than acoustic spill, but
+short language alone is not enough to erase speech. Temporal evidence makes
+the admission rule safer, while a presentation-only paragraph projection
+improves readability without invalidating translation, Apuntador, rolling
+summary, persistence, or speaker-lineage consumers.
+
+## D143 — Expand Library search bilingually without an LLM or broad token OR (Jul 2026)
+
+**Context:** a user searching `august` expected meetings that contain `agosto`,
+and a selected Library hit opened the right meeting but not its exact transcript
+moment. Semantic or generative expansion would add model readiness, latency,
+non-determinism, and privacy surface to the instant sidebar path.
+
+**Decision:** ApplicationKit expands a compact, explicit English/Spanish
+meeting lexicon in both directions. StorageKit treats each complete expanded
+query as one conjunctive FTS5 variant and ORs the variants; unknown product and
+technical terms remain exact. Selecting a hit publishes its meeting ID and
+timestamp through the existing one-shot seek channel before route navigation.
+
+**Rationale:** deterministic local expansion covers high-value bilingual
+calendar and meeting vocabulary on every supported Mac, keeps FTS ranking and
+tests reproducible, and reuses the proven source-jump contract instead of
+creating a second navigation mechanism.
+
+## D144 — Clear playback is reversible channel admission, not destructive DSP (Jul 2026)
+
+**Context:** dual-channel recordings made through Mac speakers contain a clean
+remote copy in the system track and a delayed acoustic copy in the microphone
+track. Flat full-gain playback makes that capture truth sound like echo or
+double speech. Enabling voice processing during capture would modify the live
+call, while destructive post-processing would remove the original evidence and
+could erase speech when transcript attribution is incomplete.
+
+**Decision:** when both system and microphone tracks load successfully,
+AudioPlaybackKit keeps the direct system track unchanged and admits microphone
+audio only around merged transcript-confirmed local turns, with short
+click-free ramps. Meeting Detail enables this `Clear playback` mix by default,
+exposes the original flat mix as a reversible toggle, and exports the currently
+selected mix. Mic-only recordings never receive channel attenuation. The
+stored recording is never rewritten.
+
+**Rationale:** channel roles provide stronger evidence than generic echo
+cancellation after capture. A non-destructive mix solves the common
+loudspeaker-bleed case without touching the call, preserves forensic source
+audio, and gives incomplete transcripts an immediate escape hatch.
+
+## D145 — Instant Library search is exact-first and opportunistically semantic (Jul 2026)
+
+**Context:** the D143 lexicon covers common meeting vocabulary but cannot
+enumerate paraphrases or every English/Spanish equivalent. Portavoz already has
+an Apple Latin contextual embedder and exact cosine storage for Ask. Adding a
+second vector database would duplicate model/storage policy, while requesting
+OS assets when a user types would turn an instant local control into a surprise
+download.
+
+**Decision:** Library search always publishes bounded FTS5 results first,
+including `unicode61` case and Latin-diacritic folding plus D143 complete-query
+variants. When the Apple Latin embedding assets are already installed and no
+recording is active, one process-shared ApplicationKit actor incrementally
+embeds at most 512 missing non-micro segments and appends unique exact-cosine
+hits after lexical rank. Search-field typing never requests assets. Semantic
+failure or cancellation becomes an empty augmentation and cannot fail exact
+search. No sqlite-vec or other vector dependency is added.
+
+**Rationale:** exact-first behavior keeps names, identifiers, ranking, startup,
+and failure semantics deterministic on every supported Mac. Reusing the
+existing device-local representation adds paraphrase and cross-language recall
+with no new privacy boundary, dependency, or required setup.

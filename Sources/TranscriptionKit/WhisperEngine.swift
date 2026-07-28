@@ -27,6 +27,10 @@ public actor WhisperEngine {
         public let completedBytes: Int
         public let totalBytes: Int
         public let currentPath: String
+        /// True only when ModelStore found missing or corrupt artifacts that
+        /// are actively being fetched. Re-hashing files already on disk is
+        /// verification, not a download.
+        public let isDownloading: Bool
 
         public var fraction: Double {
             totalBytes > 0 ? Double(completedBytes) / Double(totalBytes) : 0
@@ -70,23 +74,27 @@ public actor WhisperEngine {
             progress?(PreparationProgress(
                 completedBytes: Int(Double(modelBytes) * update.fraction),
                 totalBytes: totalBytes,
-                currentPath: update.currentPath))
+                currentPath: update.currentPath,
+                isDownloading: update.totalBytes > 0))
         }
         progress?(PreparationProgress(
             completedBytes: modelBytes,
             totalBytes: totalBytes,
-            currentPath: ""))
+            currentPath: "",
+            isDownloading: false))
         let tokenizerDirectory = try await store.ensureAvailable(tokenizer) { update in
             progress?(PreparationProgress(
                 completedBytes: modelBytes
                     + Int(Double(tokenizerBytes) * update.fraction),
                 totalBytes: totalBytes,
-                currentPath: update.currentPath))
+                currentPath: update.currentPath,
+                isDownloading: update.totalBytes > 0))
         }
         progress?(PreparationProgress(
             completedBytes: totalBytes,
             totalBytes: totalBytes,
-            currentPath: ""))
+            currentPath: "",
+            isDownloading: false))
         return PreparedModel(
             descriptorID: descriptor.id,
             modelDirectory: modelDirectory,

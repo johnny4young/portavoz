@@ -37,7 +37,7 @@ class UITestScopeTests(unittest.TestCase):
     def test_audio_view_selects_only_audio_detail_evidence(self):
         selection = select_paths(["Sources/portavoz-app/MeetingPlayerBar.swift"])
         self.assertEqual(selection.locales, ("en",))
-        self.assertEqual(len(selection.tests), 3)
+        self.assertEqual(selection.tests, FEATURE_TESTS["meeting-audio"])
         self.assertTrue(all("MeetingDetailUITests" in test for test in selection.tests))
 
     def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):

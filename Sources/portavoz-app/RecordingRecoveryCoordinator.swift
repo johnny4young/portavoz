@@ -16,6 +16,7 @@ enum RecordingRecoveryCoordinator {
     static func runIfNeeded(services: AppServices) async {
         let arguments = ProcessInfo.processInfo.arguments
         guard !arguments.contains(where: { $0.hasPrefix("--bench") }) else { return }
+        defer { markUITestRecoveryReadyIfRequested(arguments: arguments) }
 
         do {
             try await seedFixtureIfRequested(
@@ -31,6 +32,18 @@ enum RecordingRecoveryCoordinator {
         if result.libraryInvalidationRequired {
             services.requestSpotlightReindex()
         }
+    }
+
+    /// XCUITest waits for recovery itself, rather than guessing how long the
+    /// launch-time store and file reconciliation will take under CI load.
+    /// Production launches never provide this scratch path.
+    private static func markUITestRecoveryReadyIfRequested(arguments: [String]) {
+        guard arguments.contains("-use-temp-store"),
+              arguments.contains("-seed-recovery"),
+              let path = ProcessInfo.processInfo.environment[
+                  "PORTAVOZ_UI_TEST_SEED_READY_PATH"]
+        else { return }
+        _ = FileManager.default.createFile(atPath: path, contents: Data())
     }
 
     private static func log(_ issues: [RecoverInterruptedMeetingsIssue]) {

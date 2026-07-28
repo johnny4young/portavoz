@@ -25,6 +25,15 @@ enum RecordingPhase: Equatable {
 /// state types to keep the controller file inside its size budget. Both
 /// delegate to concern models that own their own lifecycle.
 extension RecordingController {
+    var canReturnToLiveSession: Bool {
+        switch phase {
+        case .preparing, .recording, .processing:
+            true
+        case .idle, .done, .failed:
+            false
+        }
+    }
+
     func requestCatchUp() {
         catchUp.request(
             captions: captions,

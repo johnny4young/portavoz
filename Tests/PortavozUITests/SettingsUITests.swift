@@ -3,7 +3,7 @@ import XCTest
 /// The redesigned Settings (design system 2a): a category sidebar with the
 /// panes behind it. These verify the navigation works and that the
 /// app-only language override updates SwiftUI text live.
-final class SettingsUITests: XCTestCase {
+final class SettingsUITests: PortavozUITestCase {
     @MainActor
     func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
         let app = XCUIApplication.portavoz(seedDemo: true)

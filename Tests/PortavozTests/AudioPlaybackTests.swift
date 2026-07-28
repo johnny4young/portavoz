@@ -293,6 +293,22 @@ final class AudioTranscoderTests: XCTestCase {
 }
 
 final class MeetingPlayerTests: XCTestCase {
+    func testCleanPlaybackPolicyClampsSortsAndMergesRanges() {
+        XCTAssertEqual(
+            CleanPlaybackPolicy.audibleRanges(
+                [9...14, -2...2, 1.5...4, 20...25],
+                duration: 12),
+            [0...4, 9...12])
+        XCTAssertEqual(CleanPlaybackPolicy.backgroundMicrophoneGain, 0)
+    }
+
+    func testCleanPlaybackPolicyRejectsNoDurationOrEmptyRanges() {
+        XCTAssertTrue(
+            CleanPlaybackPolicy.audibleRanges([1...2], duration: 0).isEmpty)
+        XCTAssertTrue(
+            CleanPlaybackPolicy.audibleRanges([], duration: 20).isEmpty)
+    }
+
     @MainActor
     func testMakeReturnsNilWhenNoChannelFileExists() async {
         let player = await MeetingPlayer.make(

@@ -3,7 +3,7 @@ import XCTest
 /// The Insights dashboard (design system 3a): navigating to it from the
 /// library renders the redesigned view — the stat tiles and the rhythm
 /// heatmap, computed locally from the seeded library.
-final class InsightsUITests: XCTestCase {
+final class InsightsUITests: PortavozUITestCase {
     @MainActor
     func testInsightsRendersHeatmap() {
         let app = XCUIApplication.portavoz(seedDemo: true)

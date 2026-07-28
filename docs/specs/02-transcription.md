@@ -125,9 +125,11 @@ provider resolution use the shared verified lifecycle rather than separate
 filesystem probes. The production root is
 `~/Library/Application Support/Portavoz/Models`, not the application bundle, so
 `make install`, Sparkle replacement, and Homebrew application-bundle upgrades
-preserve verified models. Progress is presented as **preparing** because an
-installed descriptor still emits verification callbacks; network download
-occurs only for missing or corrupt pinned artifacts.
+preserve verified models. Preparation now carries an explicit activity bit:
+Settings, Refine, Import, and CLI say **checking local files** during a
+checksum-only pass and show **downloading** with a percentage only after
+ModelStore found missing or corrupt pinned artifacts. Integrity verification
+remains mandatory in both paths.
 
 ### Role-specific speech readiness (D73)
 
@@ -242,10 +244,15 @@ admission rule (D131). Matching microphone spill is dropped when recent direct
 system or room speech already exists; a delayed direct row replaces a matching
 microphone copy only while that mic row is still newest and open. Older rows
 stay immutable after translation or rolling-summary consumers can observe
-them. The existing three-word bleed minimum keeps short acknowledgements and
-distinct overlapping speech. Raw channels and finalized audio remain
-unchanged. 18 tests cover growth/split rules, both adjacent callback orders,
-and the closed-row immutability fence.
+them. One-word acknowledgements always survive. An exact two-word copy is
+admitted as bleed only when the microphone and direct timelines truly overlap;
+three contiguous words at either rolling edge can reject a longer noisy copy.
+Sequential acknowledgements and distinct overlapping speech remain. Raw
+channels and finalized audio stay unchanged. A separate presentation
+projection groups consecutive microphone rows or the same stable live voice
+without changing source rows, translations, Companion evidence, or rolling
+summary cursors. Generic `Them` never groups because it may still represent
+two different voices.
 
 ## Live translation lanes (D128)
 
@@ -264,9 +271,16 @@ translated rows, unsupported-passthrough IDs, active source, and consent, then
 resolves the new lanes from the original transcript. An unsupported pair keeps
 its closed rows exactly as spoken and marks them handled, allowing routing to
 advance to later supported languages while the UI reports partial support.
+The newest growing row can translate before another speaker closes it once it
+has enough language evidence. Its stable ID is paired with the exact translated
+source text, so another request is admitted after at least 18 characters of
+growth or a sentence boundary rather than leaving a stale partial translation.
+The scheduler checks ready work every 300 ms and publishes
+`TranslationSession.translate(batch:)` responses as they arrive. A labeled
+indigo language rail visually separates translated text from the spoken row.
 Routing and state transitions have deterministic mixed Spanish/English,
 same-target, unknown, unsupported-then-supported, consent, cancellation, and
-stale-result tests.
+stale-result tests, including growing-row revisions.
 
 ## Vocabulary — `VocabularyPrompt`
 

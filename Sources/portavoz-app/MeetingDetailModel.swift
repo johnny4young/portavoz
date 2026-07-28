@@ -31,6 +31,7 @@ final class MeetingDetailModel {
         fileprivate(set) var chapterTitles: [TimeInterval: String] = [:]
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
+        fileprivate(set) var dismissedThinSummaryVersion: Int?
         fileprivate(set) var playback: PreparedMeetingPlayback?
         fileprivate(set) var isCompressingAudio = false
         fileprivate(set) var audioCompressionMessage: String?
@@ -213,6 +214,22 @@ final class MeetingDetailModel {
     /// Any explicit summary regeneration supersedes the optional recipe chip.
     func dismissSuggestedRecipe() {
         state.suggestedRecipe = nil
+    }
+
+    func dismissSuggestedTitle() {
+        state.suggestedTitle = nil
+    }
+
+    func dismissNameSuggestion(label: String) {
+        state.nameSuggestions.removeAll { $0.label == label }
+    }
+
+    func dismissVoiceSuggestion(speakerLabel: String) {
+        state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
+    }
+
+    func dismissThinSummarySuggestion(version: Int) {
+        state.dismissedThinSummaryVersion = version
     }
 
     /// The route owns the AVFoundation observer lifetime. Leaving the detail
@@ -635,7 +652,9 @@ private extension MeetingDetailModel {
                 ExportMeetingAudioClipRequest(
                     relativeAudioDirectory: relative,
                     range: range,
-                    destination: destination))
+                    destination: destination,
+                    segments: state.readModel?.segments ?? [],
+                    clearPlayback: state.playback?.session.clearPlayback ?? true))
             return .audioClipExported(destination)
         } catch {
             return .operationFailed(error.localizedDescription)
