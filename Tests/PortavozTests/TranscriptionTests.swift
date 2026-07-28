@@ -982,6 +982,31 @@ final class MicBleedFilterTests: XCTestCase {
         XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
     }
 
+    func testCrossTalkSharingAnOpenerSurvives() {
+        // Both speakers talk at once and open with the same phrase; the
+        // remainders are distinct real speech. A shared opener alone must
+        // never count as bleed — dropping it would erase the user's words.
+        let system = [segment(
+            "so i think we can move forward with option a",
+            channel: .system, start: 100, end: 106)]
+        let mic = [segment(
+            "so i think that idea needs much more analysis first",
+            channel: .microphone, start: 100, end: 105)]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    }
+
+    func testTruncatedLeadingWindowCopyIsStillDropped() {
+        // A system row that is entirely the leading window of the mic copy
+        // remains bleed via the directional edges: the whole shorter row is
+        // its own suffix, so suffix→prefix continuation covers containment.
+        let system = [segment(
+            "we updated all", channel: .system, start: 100, end: 101.5)]
+        let mic = [segment(
+            "we updated all of the node asset ids",
+            channel: .microphone, start: 100, end: 104)]
+        XCTAssertTrue(MicBleedFilter.filter(microphone: mic, system: system).isEmpty)
+    }
+
     func testContiguousRollingSuffixAtTheSameInstantIsDropped() {
         let system = [segment(
             "it right now", channel: .system, start: 101.8, end: 103)]

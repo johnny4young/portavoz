@@ -75,6 +75,28 @@ final class LibraryObservationTests: XCTestCase {
         XCTAssertTrue(trashAfterRestore.isEmpty)
     }
 
+    func testOpenItemsClampNonpositiveLimitsInsteadOfStreamingEverything() async throws {
+        // SQLite treats a negative LIMIT as "no limit": without the clamp a
+        // nonpositive caller value would stream every open action item.
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        _ = try await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: "# Resumen",
+            actionItems: [ActionItem(text: "Enviar propuesta")]))
+
+        var zero = store.observeLibraryOpenItems(limit: 0).makeAsyncIterator()
+        var negative = store.observeLibraryOpenItems(limit: -5).makeAsyncIterator()
+        let zeroItems = try await nextOpenItems(&zero)
+        let negativeItems = try await nextOpenItems(&negative)
+
+        XCTAssertTrue(zeroItems.isEmpty)
+        XCTAssertTrue(negativeItems.isEmpty)
+    }
+
     func testSearchObservationRefreshesFromBaseSegmentAndMeetingWrites() async throws {
         let store = try MeetingStore.inMemory()
         var iterator = store.observeLibrarySearch("presupuesto").makeAsyncIterator()

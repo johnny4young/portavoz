@@ -231,7 +231,10 @@ struct LiveTranslationModifier: ViewModifier {
         pair: LiveTranslationPair
     ) async {
         guard let status = await Self.openLane(controller: controller, pair: pair)
-        else { return }
+        else {
+            await Self.holdUnsupportedLane(controller: controller, pair: pair)
+            return
+        }
         var didPrepare = false
 
         while !Task.isCancelled {
@@ -289,6 +292,37 @@ struct LiveTranslationModifier: ViewModifier {
             }
             let retryDelay = await Self.translatedRetryDelay(controller: controller)
             guard await Self.sleep(milliseconds: retryDelay) else { return }
+        }
+    }
+
+    /// An unsupported lane stays resident instead of returning after the
+    /// one-shot marking in `openLane`: `translationTask` only re-fires when
+    /// the CONFIGURATION changes, so a same-language row that closes after
+    /// that snapshot would keep producing the identical configuration —
+    /// never getting marked, pinning `nextPair` to this dead lane, and
+    /// starving every later supported lane for up to a full routing window
+    /// (D128). Marking each new arrival flips it to passthrough, routing
+    /// recomputes, and the framework cancels this task the moment a
+    /// different pair (or none) is selected — the same exit the supported
+    /// idle loop relies on.
+    nonisolated private static func holdUnsupportedLane(
+        controller: RecordingController,
+        pair: LiveTranslationPair
+    ) async {
+        while !Task.isCancelled {
+            let snapshot = await MainActor.run {
+                (controller.translationTarget, controller.translationSource)
+            }
+            guard snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
+            let pending = await Self.pendingRows(controller: controller, pair: pair)
+            if !pending.isEmpty {
+                await MainActor.run {
+                    controller.markUnsupportedLiveTranslationRows(
+                        Set(pending.map(\.id)),
+                        for: pair)
+                }
+            }
+            guard await Self.sleep(milliseconds: 300) else { return }
         }
     }
 

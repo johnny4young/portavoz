@@ -390,6 +390,41 @@ final class LiveTranslationRoutingTests: XCTestCase {
         XCTAssertEqual(next, LiveTranslationPair(source: "es", target: "en"))
     }
 
+    func testLateUnsupportedRowPinsRoutingUntilMarked() throws {
+        // Chronological routing pins nextPair to the oldest unmarked row.
+        // A same-language row that closes after the lane's one-shot marking
+        // would therefore starve every later supported lane — which is why
+        // the unsupported lane stays resident and keeps marking arrivals
+        // until routing moves on (D128).
+        let first = segment(
+            text: "Lokhu kungumbhalo ongasekelwa ukuhumusha.",
+            language: "zu",
+            start: 0)
+        let late = segment(
+            text: "Lo mugqa ulandela owokuqala ngolimi olufanayo.",
+            language: "zu",
+            start: 2)
+        let spanish = segment(
+            text: "Esta intervención posterior sí puede traducirse.",
+            language: "es",
+            start: 4)
+        let segments = [first, late, spanish]
+
+        let pinned = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [first.id],
+            target: "en"))
+        let advanced = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [first.id, late.id],
+            target: "en"))
+
+        XCTAssertEqual(pinned, LiveTranslationPair(source: "zu", target: "en"))
+        XCTAssertEqual(advanced, LiveTranslationPair(source: "es", target: "en"))
+    }
+
     func testGrowingOpenTurnTranslatesBeforeAnotherSpeakerClosesIt() throws {
         let open = segment(
             text: "Esta intervención larga debe traducirse mientras sigo hablando.",

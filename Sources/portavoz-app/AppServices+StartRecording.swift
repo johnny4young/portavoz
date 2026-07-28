@@ -228,6 +228,11 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
 /// Production recording never sets these environment keys, so its scheduler
 /// and timing remain untouched.
 private enum UITestRuntimeSignal {
+    /// An exhausted handshake throws so the fixture stops emitting instead of
+    /// resuming on a timer — a silent fallback would reintroduce the exact
+    /// race this handshake removes, just 30 seconds later.
+    struct HandshakeTimedOut: Error {}
+
     static func mark(environmentKey: String) {
         guard let path = ProcessInfo.processInfo.environment[environmentKey] else {
             return
@@ -249,6 +254,7 @@ private enum UITestRuntimeSignal {
             }
             try await Task.sleep(for: .milliseconds(50))
         }
+        throw HandshakeTimedOut()
     }
 }
 

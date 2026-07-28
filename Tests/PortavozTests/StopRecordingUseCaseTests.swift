@@ -119,6 +119,34 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.kickCount, 0)
     }
 
+    func testSilentCapturePersistenceFailureDegradesWithoutLosingNotes() async throws {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(
+            shell: fixture.shell,
+            installFailuresRemaining: 1)
+        let silent = StopRecordingCapture(
+            publishedFiles: [.system: fixture.publishedFile(healthStatus: .silent)])
+
+        let result = await fixture.useCase(dependencies).execute(
+            fixture.request(captions: [], capture: silent))
+
+        guard case .processingFailed(let failure, let fallback) = result else {
+            return XCTFail("a rejected empty-transcript snapshot must degrade, not vanish")
+        }
+        XCTAssertEqual(failure, .snapshotPersistenceFailed)
+        let commit = try XCTUnwrap(
+            fallback,
+            "one transient store error must not drop the only copy of the user's notes")
+        XCTAssertEqual(commit.meeting.lifecycleState, .needsAttention)
+        XCTAssertEqual(commit.meeting.lastProcessingError, "transcription.empty")
+        let state = await dependencies.state()
+        XCTAssertEqual(state.installAttempts, 2)
+        let installed = try XCTUnwrap(state.installs.first)
+        XCTAssertEqual(installed.snapshot.contextItems.map(\.content), ["Ship locally"])
+        XCTAssertEqual(installed.snapshot.companionCards.map(\.question), ["When?"])
+        XCTAssertTrue(installed.requests.isEmpty)
+    }
+
     func testUnpublishedReservationAtEitherCapturePathPreservesRecovery() async {
         let fixture = StopRecordingFixture()
         let paths = [

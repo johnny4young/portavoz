@@ -456,7 +456,18 @@ public struct StopRecording: ApplicationUseCase {
             return .transcriptEmpty(
                 StopRecordingCommit(meeting: fallback, assets: assets))
         } catch {
-            return .processingFailed(failure: .snapshotPersistenceFailed, fallback: nil)
+            // A silent capture still carries the user's notes and Companion
+            // provenance; a transient store error must degrade through the
+            // same ladder as every sibling install path instead of dropping
+            // the only copy of that payload.
+            let preserved = await preserveNeedsAttention(
+                request,
+                meeting: meeting,
+                assets: assets,
+                attribution: attribution,
+                errorCode: "transcription.empty")
+            return .processingFailed(
+                failure: .snapshotPersistenceFailed, fallback: preserved)
         }
     }
 }

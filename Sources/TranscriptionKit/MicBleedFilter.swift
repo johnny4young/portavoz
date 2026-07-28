@@ -82,11 +82,17 @@ public enum MicBleedFilter {
         let maximum = min(left.count, right.count)
         guard maximum > 0 else { return 0 }
 
+        // Only the two directional continuations are bleed evidence: one
+        // row's trailing edge is the other's leading edge (rolling windows
+        // truncating the same utterance). They also subsume full containment,
+        // because an entire shorter row equals both its own prefix and
+        // suffix. Same-edge partial matches must NOT count: cross-talk is
+        // exactly when both channels carry distinct speech at once ("so i
+        // think we can…" vs "so i think that's premature"), and matching a
+        // shared opener would erase the user's real words from the record.
         for length in stride(from: maximum, through: 1, by: -1) {
             if left.suffix(length).elementsEqual(right.prefix(length))
-                || right.suffix(length).elementsEqual(left.prefix(length))
-                || left.prefix(length).elementsEqual(right.prefix(length))
-                || left.suffix(length).elementsEqual(right.suffix(length)) {
+                || right.suffix(length).elementsEqual(left.prefix(length)) {
                 return length
             }
         }
