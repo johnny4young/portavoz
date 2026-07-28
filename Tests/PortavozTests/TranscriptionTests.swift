@@ -982,17 +982,27 @@ final class MicBleedFilterTests: XCTestCase {
         XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
     }
 
-    func testCrossTalkSharingAnOpenerSurvives() {
-        // Both speakers talk at once and open with the same phrase; the
-        // remainders are distinct real speech. A shared opener alone must
-        // never count as bleed — dropping it would erase the user's words.
-        let system = [segment(
-            "so i think we can move forward with option a",
-            channel: .system, start: 100, end: 106)]
-        let mic = [segment(
-            "so i think that idea needs much more analysis first",
-            channel: .microphone, start: 100, end: 105)]
-        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 1)
+    func testCrossTalkSharingMostOfAnEdgeSurvives() {
+        // Both pairs share enough words to exceed the broad 60% containment
+        // fallback, but the differing edge is real, contradictory speech.
+        // Neither a shared opener nor a shared conclusion may erase it.
+        let system = [
+            segment(
+                "we should ship the new build on friday after review",
+                channel: .system, start: 100, end: 106),
+            segment(
+                "carla approved the release after security review",
+                channel: .system, start: 110, end: 116),
+        ]
+        let mic = [
+            segment(
+                "we should ship the new build on monday after testing",
+                channel: .microphone, start: 100, end: 106),
+            segment(
+                "diego rejected the release after security review",
+                channel: .microphone, start: 110, end: 116),
+        ]
+        XCTAssertEqual(MicBleedFilter.filter(microphone: mic, system: system).count, 2)
     }
 
     func testTruncatedLeadingWindowCopyIsStillDropped() {

@@ -52,6 +52,44 @@ class UITestScopeTests(unittest.TestCase):
             selection.tests,
         )
 
+    def test_recording_use_cases_skip_unrelated_settings_surfaces(self):
+        for path in (
+            "Sources/ApplicationKit/StartRecording.swift",
+            "Sources/ApplicationKit/StopRecording.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(
+                selection.tests,
+                tuple(dict.fromkeys(
+                    FEATURE_TESTS["library"]
+                    + FEATURE_TESTS["recording-recovery"]
+                )),
+                path,
+            )
+
+    def test_mic_bleed_selects_live_and_refine_evidence_without_full_fallback(self):
+        selection = select_paths(["Sources/TranscriptionKit/MicBleedFilter.swift"])
+        self.assertEqual(
+            selection.tests,
+            tuple(dict.fromkeys(
+                FEATURE_TESTS["recording-recovery"]
+                + FEATURE_TESTS["meeting-processing"]
+            )),
+        )
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
+    def test_summary_storage_selects_its_consumers_without_full_fallback(self):
+        selection = select_paths(["Sources/StorageKit/MeetingStore+Summaries.swift"])
+        self.assertIn(
+            "PortavozUITests/MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload",
+            selection.tests,
+        )
+        self.assertIn(
+            "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency",
+            selection.tests,
+        )
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
     def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
         selection = select_paths(
             ["Sources/portavoz-app/LegacyScrollInteractionTracker.swift"]

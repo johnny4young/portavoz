@@ -119,16 +119,51 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.kickCount, 0)
     }
 
-    func testSilentCapturePersistenceFailureDegradesWithoutLosingNotes() async throws {
+    func testSilentCapturePersistenceFailureRetriesExactSnapshotWithoutDataLoss() async throws {
         let fixture = StopRecordingFixture()
         let dependencies = StopRecordingDependencies(
             shell: fixture.shell,
             installFailuresRemaining: 1)
         let silent = StopRecordingCapture(
             publishedFiles: [.system: fixture.publishedFile(healthStatus: .silent)])
+        let generatedCard = CompanionCard(
+            question: "What should I say?",
+            answer: "Ask about the launch date.",
+            kind: .context,
+            source: "on-device",
+            askedAt: 6)
+        let generatedRun = GenerationRun(
+            meetingID: fixture.meetingID,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "d", count: 64),
+            configJSON: #"{"workflow":"companion"}"#,
+            outputLanguage: "en",
+            startedAt: fixture.startedAt,
+            finishedAt: fixture.now,
+            outcome: .succeeded,
+            metricsJSON: #"{"answerUTF8Bytes":26}"#)
+        let terminalRun = GenerationRun(
+            meetingID: fixture.meetingID,
+            kind: .companion,
+            providerID: "foundation-models",
+            modelID: "system-language-model",
+            inputFingerprint: String(repeating: "e", count: 64),
+            configJSON: #"{"workflow":"companion"}"#,
+            outputLanguage: "en",
+            startedAt: fixture.startedAt,
+            finishedAt: fixture.now,
+            outcome: .failed)
 
         let result = await fixture.useCase(dependencies).execute(
-            fixture.request(captions: [], capture: silent))
+            fixture.request(
+                captions: [],
+                capture: silent,
+                companionArtifacts: [CompanionGenerationArtifact(
+                    card: generatedCard,
+                    generationRun: generatedRun)],
+                companionTerminalRuns: [terminalRun]))
 
         guard case .processingFailed(let failure, let fallback) = result else {
             return XCTFail("a rejected empty-transcript snapshot must degrade, not vanish")
@@ -144,6 +179,10 @@ final class StopRecordingUseCaseTests: XCTestCase {
         let installed = try XCTUnwrap(state.installs.first)
         XCTAssertEqual(installed.snapshot.contextItems.map(\.content), ["Ship locally"])
         XCTAssertEqual(installed.snapshot.companionCards.map(\.question), ["When?"])
+        XCTAssertEqual(
+            installed.snapshot.companionArtifacts.map(\.card.question),
+            ["What should I say?"])
+        XCTAssertEqual(installed.snapshot.companionTerminalRuns, [terminalRun])
         XCTAssertTrue(installed.requests.isEmpty)
     }
 

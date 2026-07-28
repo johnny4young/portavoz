@@ -261,6 +261,12 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "micbleed" in lowered:
+        # Bleed admission affects live captions and the reviewed Refine
+        # replacement, not every unrelated screen in the application.
+        return {"recording-recovery", "meeting-processing"}
+    if "stoprecording" in lowered or "startrecording" in lowered:
+        return {"library", "recording-recovery"}
     if any(token in lowered for token in ("dictation", "mouseptt")):
         return {"settings-audio"}
     if "subtitle" in lowered:
@@ -275,8 +281,21 @@ def lower_layer_features(path: str) -> set[str]:
         return {"library", "recording-recovery", "settings-audio"}
     if any(token in lowered for token in ("playback", "waveform", "audio")):
         return {"meeting-audio", "settings-audio"}
-    if any(token in lowered for token in ("summary", "companion", "intelligence")):
-        return {"meeting-summary", "meeting-evidence", "meeting-processing", "settings-intelligence"}
+    if any(
+        token in lowered
+        for token in ("summary", "summaries", "companion", "intelligence")
+    ):
+        return {
+            "ask",
+            "insights",
+            "library",
+            "meeting-brief",
+            "meeting-summary",
+            "meeting-evidence",
+            "meeting-processing",
+            "public-showcase",
+            "settings-intelligence",
+        }
     if any(token in lowered for token in ("voice", "speaker", "person")):
         return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
     if "sync" in lowered:

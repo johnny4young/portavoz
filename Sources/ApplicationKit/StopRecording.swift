@@ -457,15 +457,16 @@ public struct StopRecording: ApplicationUseCase {
                 StopRecordingCommit(meeting: fallback, assets: assets))
         } catch {
             // A silent capture still carries the user's notes and Companion
-            // provenance; a transient store error must degrade through the
-            // same ladder as every sibling install path instead of dropping
-            // the only copy of that payload.
+            // provenance; retry the complete snapshot once before entering
+            // the same bounded degradation ladder as every sibling install
+            // path instead of dropping the only copy of that payload.
             let preserved = await preserveNeedsAttention(
                 request,
                 meeting: meeting,
                 assets: assets,
                 attribution: attribution,
-                errorCode: "transcription.empty")
+                errorCode: "transcription.empty",
+                retryExactSnapshot: true)
             return .processingFailed(
                 failure: .snapshotPersistenceFailed, fallback: preserved)
         }
@@ -508,12 +509,21 @@ private extension StopRecording {
         meeting: Meeting,
         assets: [AudioAsset],
         attribution: SpeakerAttributor.Attribution,
-        errorCode: String
+        errorCode: String,
+        retryExactSnapshot: Bool = false
     ) async -> StopRecordingCommit? {
         var fallback = meeting
         fallback.lifecycleState = .needsAttention
         fallback.lastProcessingError = errorCode
-        let candidates = [
+        var candidates: [CapturedMeetingSnapshot] = []
+        if retryExactSnapshot {
+            candidates.append(capturedSnapshot(
+                request,
+                meeting: fallback,
+                assets: assets,
+                attribution: attribution))
+        }
+        candidates.append(contentsOf: [
             capturedCoreSnapshot(
                 request,
                 meeting: fallback,
@@ -529,7 +539,7 @@ private extension StopRecording {
                 meeting: fallback,
                 assets: assets,
                 includeContext: false)
-        ]
+        ])
         for snapshot in candidates {
             do {
                 try await store.installStoppedSnapshot(snapshot, enqueue: [])

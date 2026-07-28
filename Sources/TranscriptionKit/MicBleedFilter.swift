@@ -40,6 +40,7 @@ public enum MicBleedFilter {
             $0.startTime < mic.endTime + overlapSlackSeconds
                 && $0.endTime > mic.startTime - overlapSlackSeconds
         }
+        var foundDivergentCrossTalk = false
 
         for segment in nearby {
             let remoteWords = words(segment.text)
@@ -60,12 +61,23 @@ public enum MicBleedFilter {
                 longestContiguousEdgeOverlap(micWords, remoteWords) >= 3 {
                 return true
             }
+
+            // A large shared opener or conclusion can still be two people
+            // disagreeing at the same instant ("ship Friday" / "ship
+            // Monday"). Remember that evidence until every direct row has
+            // been checked for an exact or directional echo match; the broad
+            // bag-of-words fallback below must never erase the disagreement.
+            if actuallyOverlaps,
+                hasDivergentSameEdgeOverlap(micWords, remoteWords) {
+                foundDivergentCrossTalk = true
+            }
         }
 
         // The broader containment fallback is intentionally reserved for
         // three or more words. Batch ASR timestamps can drift enough that two
         // copies no longer overlap exactly.
         guard micWords.count >= 3 else { return false }
+        guard !foundDivergentCrossTalk else { return false }
         var systemWords = Set<String>()
         for segment in nearby {
             systemWords.formUnion(words(segment.text))
@@ -97,6 +109,38 @@ public enum MicBleedFilter {
             }
         }
         return 0
+    }
+
+    private static func hasDivergentSameEdgeOverlap(
+        _ left: [String],
+        _ right: [String]
+    ) -> Bool {
+        let maximum = min(left.count, right.count)
+        guard maximum > 3 else { return false }
+
+        // Exclude full containment by requiring real content on both sides of
+        // the shared edge. Compute each common edge once so this safety check
+        // remains linear even for unusually long ASR windows.
+        var sharedPrefix = 0
+        while sharedPrefix < maximum,
+            left[sharedPrefix] == right[sharedPrefix] {
+            sharedPrefix += 1
+        }
+        if sharedPrefix >= 3,
+            sharedPrefix < left.count,
+            sharedPrefix < right.count {
+            return true
+        }
+
+        var sharedSuffix = 0
+        while sharedSuffix < maximum,
+            left[left.count - sharedSuffix - 1]
+                == right[right.count - sharedSuffix - 1] {
+            sharedSuffix += 1
+        }
+        return sharedSuffix >= 3
+            && sharedSuffix < left.count
+            && sharedSuffix < right.count
     }
 
     private static func words(_ text: String) -> [String] {
