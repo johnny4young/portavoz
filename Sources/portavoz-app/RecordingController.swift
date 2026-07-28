@@ -349,7 +349,9 @@ final class RecordingController {
             let row = captions.last
         else { return }
         if translationTarget == nil { translationTarget = "en" }
-        translations[row.id] = "Clearly separated test translation."
+        translations[row.id] = arguments.contains("-seed-showcase")
+            ? PublicShowcaseFixture.translation(for: row.text)
+            : "Clearly separated test translation."
         translatedSourceTexts[row.id] = row.text
     }
 

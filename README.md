@@ -2,7 +2,7 @@
 
 **The meeting assistant that knows who said what — without your audio ever leaving your Mac.**
 
-Portavoz records your meetings, transcribes them live, and tells apart every voice — including yours. Built natively in Swift for Apple platforms, running entirely on-device: Neural Engine transcription, local diarization, local summaries.
+Portavoz records your meetings, transcribes them live, and tells apart every voice — including yours. Built natively in Swift for Apple platforms, its default path stays on-device: Neural Engine transcription, local diarization, local search, and local summaries. Optional remote providers and private sync are explicit choices with visible receipts.
 
 **[portavoz.app](https://portavoz.app)** · `brew install --cask johnny4young/tap/portavoz`
 
@@ -11,20 +11,20 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-![A meeting in Portavoz: colored speaker pills with one-click name suggestions, a tabbed summary (decisions, open questions, to-dos), a who-said-what transcript, a docked player with waveform, and a right rail with per-speaker meeting health and ✦ chapters](assets/screenshots/meeting-detail.png)
+![A current Portavoz meeting: dismissible AI suggestions, colored speaker pills, a tabbed summary, transcript, clear playback, privacy receipt, meeting health, chapters, and Apuntador](assets/screenshots/meeting-detail.png)
 
 <table>
 <tr>
-<td width="50%"><img alt="Live recording: lyrics-style captions with your voice glowing amber, and the Apuntador answering a factual question the room just asked — entirely on-device" src="assets/screenshots/recording-companion.png"></td>
+<td width="50%"><img alt="A current Portavoz recording: multilingual source captions remain visible while English translations render in a separate labeled indigo rail" src="assets/screenshots/recording-live-translation.png"></td>
 <td width="50%"><img alt="Insights: meetings, talk time, decisions and questions with month-over-month deltas; a two-tone bar per person for who you talk with; ✦ findings; and a 12-week rhythm heatmap" src="assets/screenshots/insights.png"></td>
 </tr>
 <tr>
-<td align="center"><sub><b>Live recording</b> — lyrics captions + the on-device Apuntador</sub></td>
+<td align="center"><sub><b>Live recording</b> — original speech + a distinct translation rail</sub></td>
 <td align="center"><sub><b>Insights</b> — your meeting life, computed on your Mac</sub></td>
 </tr>
 </table>
 
-<sub>Representative data, English UI. Everything shown is computed and rendered on-device.</sub>
+<sub>Fictional data, English UI. These app-window screenshots are regenerated from a disposable XCUITest showcase with <code>make public-screenshots</code>; no user library or desktop content is captured.</sub>
 
 > *Portavoz* (Spanish): the one who carries the voice — a spokesperson.
 

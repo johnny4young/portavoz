@@ -12,7 +12,9 @@ extension AppServices {
             arguments.contains("-seed-ai-suggestions") {
             return MeetingReviewMetadataSuggestions(
                 meetingTitle: request.suggestMeetingTitle
-                    ? "Budget planning"
+                    ? arguments.contains("-seed-showcase")
+                        ? "Zephyr sprint review"
+                        : "Budget planning"
                     : nil,
                 recipe: request.suggestRecipe ? .planning : nil)
         }

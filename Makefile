@@ -14,7 +14,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
-	perf-ledger
+	perf-ledger public-screenshots
 
 ## Unit tests (the package suite).
 test:
@@ -94,6 +94,11 @@ test-ui-preflight:
 		echo "⚠️  Gancho is running; if XCUITest fails because of interrupting windows, close it and retry."; \
 	fi
 	@sleep 1
+
+## Regenerate the three public README/website screenshots from a fictional,
+## disposable XCUITest library. The exporter captures only the Portavoz window.
+public-screenshots:
+	scripts/update-public-screenshots.sh
 
 ## Build the release app bundle only (see scripts/make-app.sh).
 app:

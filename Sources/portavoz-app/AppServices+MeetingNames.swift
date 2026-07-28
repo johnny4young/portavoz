@@ -24,9 +24,12 @@ extension AppServices {
             arguments.contains("-seed-ai-suggestions") {
             return [
                 MeetingNameSuggestion(
-                    label: "S1",
-                    name: "Ana",
-                    evidence: .transcript("My name is Ana"))
+                    label: arguments.contains("-seed-showcase") ? "S3" : "S1",
+                    name: arguments.contains("-seed-showcase") ? "Nora" : "Ana",
+                    evidence: .transcript(
+                        arguments.contains("-seed-showcase")
+                            ? PublicShowcaseFixture.speakerEvidence
+                            : "My name is Ana"))
             ]
         }
         // Same owner identity the Apuntador uses: mentions of that name are

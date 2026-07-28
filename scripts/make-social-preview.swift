@@ -72,8 +72,8 @@ draw(
     at: CGPoint(x: textX, y: 268))
 
 // Install command in a soft pill, monospaced.
-let command = "brew install --cask portavoz"
-let commandFont = NSFont.monospacedSystemFont(ofSize: 24, weight: .medium)
+let command = "brew install --cask johnny4young/tap/portavoz"
+let commandFont = NSFont.monospacedSystemFont(ofSize: 18, weight: .medium)
 let commandSize = NSAttributedString(
     string: command, attributes: [.font: commandFont]).size()
 let pill = CGRect(

@@ -15,13 +15,18 @@ fail() {
 [ -f site/styles.css ] || fail "site/styles.css is missing"
 [ -f site/assets/portavoz-mark.svg ] || fail "site/assets/portavoz-mark.svg is missing"
 [ -f site/assets/og.png ] || fail "site/assets/og.png is missing (social/OG card)"
+for screenshot in meeting-detail recording-live-translation insights; do
+	[ -f "site/assets/screenshots/$screenshot.png" ] \
+		|| fail "site screenshot is missing: $screenshot.png"
+done
 
 # The site is bilingual (ES default + EN toggle); it declares a lang and the
 # data-lang marker that drives the in-page switcher.
 grep -qE '<html lang="(es|en)"' site/index.html || fail "site/index.html must declare a lang"
 grep -q 'data-lang=' site/index.html || fail "site/index.html must carry the bilingual data-lang marker"
 grep -qi '<title>portavoz' site/index.html || fail "site/index.html must set a Portavoz title"
-grep -qi 'brew install --cask portavoz' site/index.html || fail "site/index.html must carry the install command"
+grep -qi 'brew install --cask johnny4young/tap/portavoz' site/index.html \
+	|| fail "site/index.html must carry the fully qualified install command"
 grep -q 'CHANGELOG.md' site/index.html || fail "site/index.html must link release notes/changelog"
 
 # No insecure URLs (SVG/XML namespace identifiers are not fetches).
