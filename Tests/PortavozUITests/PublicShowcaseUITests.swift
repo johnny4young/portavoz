@@ -54,14 +54,16 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         record.click()
 
         XCTAssertTrue(
-            app.staticTexts["Marta will review the Kepler dashboards before Friday."]
-                .waitForExistence(timeout: 12))
+            app.staticTexts["Perfecto, cerramos con responsables y fechas claras."]
+                .waitForExistence(timeout: 12),
+            "the final fictional caption must establish the screenshot frontier")
+        let translation = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH 'recording-live-translation-'"))
+            .firstMatch
         XCTAssertTrue(
-            app.descendants(matching: .any)
-                .matching(NSPredicate(
-                    format: "identifier BEGINSWITH 'recording-live-translation-'"))
-                .firstMatch
-                .waitForExistence(timeout: 10))
+            translation.waitForExistence(timeout: 10),
+            "the translated rail must remain visible at the final caption")
         attachScreenshot(of: app, named: "public-live-translation")
     }
 
