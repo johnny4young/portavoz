@@ -2,7 +2,7 @@
 
 The end-to-end recipe for cutting a public release: a notarized DMG that
 updates existing users via **Sparkle** and new users via **Homebrew**. Written
-from the real flow (v0.1.0 → v0.6.0, seven releases). Follow it top to bottom.
+from the real flow (v0.1.0 → v0.7.0, eight releases). Follow it top to bottom.
 
 Distribution is direct-download only (no App Store) — decision D10/D20.
 

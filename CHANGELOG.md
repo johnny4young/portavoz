@@ -1,9 +1,20 @@
 # What's new in Portavoz
 
-Every user-facing feature, newest first. No version numbers yet — dates mark
-the order things shipped; entries will fold into versions with the first
-public release. (Contributors: any user-visible change adds one short, catchy
-entry here — feature name + what it gives you.)
+Public releases are summarized first; the dated ledger keeps every
+user-visible change in the order it landed. Contributors: add one short,
+catchy entry for every user-visible change — feature name + what it gives you.
+
+## 0.7.0 — July 28, 2026
+
+**Live help, safer recordings.**
+
+- **Recording that protects the call and the result** — call-safe capture avoids taking over voice processing, Stop preserves the strongest valid audio and transcript state, and recovery explains exactly what is safe.
+- **Multilingual captions that remain the source of truth** — every actor keeps the language they spoke, live translation renders separately, and Refine becomes a reviewable draft instead of silently replacing the meeting.
+- **Apuntador while the room is waiting** — live answers, catch-up, suggested questions, objectives, and talk balance help during the meeting without uploading it by default.
+- **Private recall that reaches the right second** — accent-insensitive bilingual search, optional local semantic matches, Ask, Spotlight, MCP, and citations all converge on the same durable meeting evidence.
+- **A clearer review loop** — reversible clear playback, dismissible suggestions, enhanced notes, recaps, subtitles, chapters, privacy receipts, and actionable processing recovery make finished meetings easier to trust and use.
+- **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
+- **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
 ## July 27, 2026
 
