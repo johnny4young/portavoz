@@ -11,6 +11,8 @@ final class ResourceRunProbeTests: XCTestCase {
             arguments: ["Portavoz", "--bench-resource-refine", "fixture.aiff"]))
         XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
             arguments: ["Portavoz", "--bench-resource-summary"]))
+        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+            arguments: ["Portavoz", "--bench-resource-ask"]))
         XCTAssertFalse(BenchMode.runsIsolatedResourceBenchmark(
             arguments: ["Portavoz", "-use-temp-store", "-seed-demo"]))
     }
@@ -56,6 +58,28 @@ final class ResourceRunProbeTests: XCTestCase {
         ) {
             XCTAssertEqual(
                 $0 as? BenchSummaryResourceError,
+                .invalidTimeout)
+        }
+    }
+
+    func testAskResourceConfigurationBoundsTimeout() throws {
+        let configuration = try XCTUnwrap(
+            BenchAskResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-ask",
+                "--bench-resource-timeout", "480",
+            ]))
+        XCTAssertEqual(configuration.timeoutSeconds, 480)
+
+        XCTAssertThrowsError(
+            try BenchAskResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-ask",
+                "--bench-resource-timeout", "59",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchAskResourceError,
                 .invalidTimeout)
         }
     }

@@ -21,9 +21,10 @@ struct MeetingSeekRequest: Equatable {
 
 /// Storage isolation is selected once at process composition. UI automation
 /// gets an empty model root as well as a disposable meeting database. The
-/// hidden resource benchmarks keep only the database disposable and reuse the
-/// normal verified model cache so repeated Release samples do not include a
-/// fresh model installation.
+/// hidden benchmarks that need Portavoz-managed models keep only the database
+/// disposable and reuse the normal verified model cache so repeated Release
+/// samples do not include a fresh model installation. OS-model-only Ask keeps
+/// both Portavoz stores disposable.
 struct AppStorageIsolationPolicy: Equatable {
     let usesTemporaryMeetingStore: Bool
     let usesTemporaryModelStore: Bool

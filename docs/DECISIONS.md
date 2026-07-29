@@ -4618,22 +4618,30 @@ exact Release version/build/commit, copies and re-signs it under the dedicated
 Every run requires a disposable meeting database and scratch audio, lets
 launch-only work settle for five seconds, and captures a model-free idle window
 before loading recording engines. It then measures recording and Stop through
-the real windowed path and executes cold-runtime Refine and Summary operations
-in separate processes. Refine uses a fixed English AIFF generated from public
-synthetic text, requires the selected Whisper model, tokenizer, and diarization
-model to pass full installed-artifact verification before sampling, and never
-downloads a model inside the measured window. Summary verifies the pinned
-Qwen3.5 MLX descriptor, stores a fixed public English meeting/cast/transcript
-only in the disposable database, and measures the real ApplicationKit
-regeneration workflow through successful transactional persistence. Both model
-scenarios use the same unstructured first-result race, which enforces a bounded
-60–3,600 second timeout even if model work ignores cooperative cancellation.
-Refine never applies its draft or persists user-visible content.
+the real windowed path and executes cold-runtime Refine, Summary, and Ask
+operations in separate processes. Refine uses a fixed English AIFF generated
+from public synthetic text, requires the selected Whisper model, tokenizer, and
+diarization model to pass full installed-artifact verification before sampling,
+and never downloads a model inside the measured window. Summary verifies the
+pinned Qwen3.5 MLX descriptor, stores a fixed public English
+meeting/cast/transcript only in the disposable database, and measures the real
+ApplicationKit regeneration workflow through successful transactional
+persistence. Ask requires already-installed Apple Latin embedding assets and
+available Foundation Models, then measures the real `AskMeetings.local`
+workflow over the same fixed corpus. Its window intentionally includes current
+synchronous corpus backfill, bilingual query expansion, hybrid retrieval, and
+answer generation; a sample requires citations and nonempty generated text.
+All three model scenarios use the same unstructured first-result race, which
+enforces a bounded 60–3,600 second timeout even if model work ignores
+cooperative cancellation. Refine never applies its draft or persists
+user-visible content.
 
-Only these hidden resource benchmarks reuse the normal verified model cache;
-ordinary XCUITest launches retain an empty temporary model root. Partial
-fragments and the synthetic fixture stay private and are removed on failure; a
-validated owner-only host receipt is published atomically. The original
+Only the hidden recording, Refine, and Summary resource benchmarks reuse the
+normal verified Portavoz model cache; Ask relies on OS-managed assets and keeps
+the disposable model root. Ordinary XCUITest launches also retain an empty
+temporary model root. Partial fragments and the synthetic fixture stay private
+and are removed on failure; a validated owner-only host receipt is published
+atomically. The original
 `resource-recording-baseline` command remains a compatibility alias for the
 canonical `resource-baseline` runner. Once any resource benchmark dispatcher is
 armed, app initialization returns before normal sync, recovery, provider
@@ -4645,13 +4653,13 @@ notarized installed app.
 **Rationale:** native counters make receipts deterministic and testable without
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
-model-install noise. Independent idle, recording, Stop, Refine, and Summary
-windows make residency and interference attribution explicit. One reusable
+model-install noise. Independent idle, recording, Stop, Refine, Summary, and
+Ask windows make residency and interference attribution explicit. One reusable
 single-scenario probe avoids a new collector lifecycle for every later batch
 workflow, while synthetic input keeps model-heavy evidence repeatable and
-private. Fail-closed publication prevents a timeout, missing model, silent
-fixture, failed summary transaction, or partial run from looking like accepted
-hardware evidence.
+private. Fail-closed publication prevents a timeout, missing model or OS asset,
+silent fixture, failed summary transaction, missing Ask evidence, or partial
+run from looking like accepted hardware evidence.
 
 ## D151 — MLX inference has an independent explicit scheduler lane (Jul 2026)
 

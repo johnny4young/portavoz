@@ -24,6 +24,7 @@ enum BenchMode {
         arguments.contains("--bench-record")
             || arguments.contains("--bench-resource-refine")
             || arguments.contains("--bench-resource-summary")
+            || arguments.contains("--bench-resource-ask")
     }
 
     static func runIfRequested() {
@@ -529,7 +530,7 @@ extension BenchMode {
         else {
             throw BenchSummaryResourceError.modelsNotReady
         }
-        let fixture = makeSummaryBenchmarkFixture()
+        let fixture = makeIntelligenceBenchmarkFixture()
         try await services.store.saveImportedMeeting(
             fixture.meeting,
             speakers: fixture.speakers,
@@ -543,7 +544,7 @@ extension BenchMode {
             providerOverride: .mlx)
     }
 
-    private static func makeSummaryBenchmarkFixture() -> (
+    private static func makeIntelligenceBenchmarkFixture() -> (
         meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment]
@@ -591,6 +592,112 @@ extension BenchMode {
                 isFinal: true)
         }
         return (meeting, [me, teammate, reviewer], segments)
+    }
+
+    /// `portavoz-app --bench-resource-ask` measures the released deep Ask
+    /// workflow over a disposable fixed transcript. It intentionally includes
+    /// current synchronous embedding backfill, query expansion, retrieval,
+    /// and generated answer so later progressive-Ask work has an honest
+    /// before baseline.
+    @MainActor
+    static func runAskResourceBenchIfRequested(services: AppServices) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let configuration: BenchAskResourceConfiguration?
+        do {
+            configuration = try BenchAskResourceConfiguration.requested(
+                arguments: arguments)
+        } catch {
+            emit("bench-ask: setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+        guard let configuration else { return }
+        guard arguments.contains("-use-temp-store") else {
+            emit("bench-ask: -use-temp-store is required")
+            exit(1)
+        }
+        let probe: BenchResourceScenarioProbe
+        do {
+            probe = try BenchResourceScenarioProbe(arguments: arguments)
+        } catch {
+            emit("bench-ask: probe setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+
+        setbuf(stdout, nil)
+        Task { @MainActor in
+            do {
+                let benchmark = try await makeAskBenchmark(services: services)
+                let answer = try await probe.measure(scenario: "ask") {
+                    try await runAskBenchmark(
+                        useCase: benchmark.useCase,
+                        question: benchmark.question,
+                        timeoutSeconds: configuration.timeoutSeconds)
+                }
+                guard !answer.citations.isEmpty else {
+                    throw BenchAskResourceError.noCitations
+                }
+                guard let generated = answer.generatedText,
+                      !generated.trimmingCharacters(
+                        in: .whitespacesAndNewlines).isEmpty
+                else {
+                    throw BenchAskResourceError.noGeneratedAnswer
+                }
+                emit("bench-ask: resource sample complete")
+                exit(0)
+            } catch {
+                probe.cancel()
+                emit("bench-ask: FAILED: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+    }
+
+    @MainActor
+    private static func makeAskBenchmark(
+        services: AppServices
+    ) async throws -> (useCase: AskMeetings, question: String) {
+        guard #available(macOS 26.0, *),
+              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        else {
+            throw BenchAskResourceError.assetsNotReady
+        }
+        let embedder: SentenceEmbedder
+        do {
+            embedder = try SentenceEmbedder()
+        } catch {
+            throw BenchAskResourceError.assetsNotReady
+        }
+        guard await embedder.hasAvailableAssets else {
+            throw BenchAskResourceError.assetsNotReady
+        }
+        let fixture = makeIntelligenceBenchmarkFixture()
+        try await services.store.saveImportedMeeting(
+            fixture.meeting,
+            speakers: fixture.speakers,
+            segments: fixture.segments)
+        return (
+            AskMeetings.local(store: services.store),
+            "What did we decide about background indexing during active calls?"
+        )
+    }
+
+    @MainActor
+    private static func runAskBenchmark(
+        useCase: AskMeetings,
+        question: String,
+        timeoutSeconds: Int
+    ) async throws -> AskMeetingAnswer {
+        do {
+            return try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                try await useCase.answer(question, limit: 6)
+            }
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchAskResourceError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchAskResourceError.timedOut(timeoutSeconds)
+        }
     }
 
     @MainActor

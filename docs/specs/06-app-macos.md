@@ -8,7 +8,7 @@ D148 adds the process-wide content-free resource measurement described in
 Composition; it observes current work without adding governor policy.
 D149 adds the fail-closed multi-host baseline evidence boundary described in
 the same section; it remains tooling-only and does not affect app scheduling.
-D150 adds the native Release idle/recording/Stop/Refine/Summary collector and
+D150 adds the native Release idle/recording/Stop/Refine/Summary/Ask collector and
 its benchmark-only storage-isolation exception; no production launch or
 scheduler reads evidence. D151 gives MLX/GPU inference its own explicit
 single-flight lane without coupling it to Apple Foundation Models/ANE work.
@@ -166,7 +166,7 @@ for Refine and later model-heavy scenarios.
 `make resource-baseline` builds the exact Release bundle once, clones and
 re-signs a scratch app with the separate
 `app.portavoz.mac.resource-bench` identity, and runs at least three
-idle/recording/Stop/Refine/Summary samples. The original
+idle/recording/Stop/Refine/Summary/Ask samples. The original
 `make resource-recording-baseline` target delegates to this canonical command.
 A five-second launch-settling interval precedes the model-free idle window.
 Refine runs as a draft-only cold-runtime operation in a separate process against
@@ -177,13 +177,19 @@ is not part of the scenario. Summary runs in another cold process, verifies
 the pinned Qwen3.5 MLX descriptor before sampling, inserts a fixed public
 English meeting/cast/transcript into the disposable database, and measures the
 real `RegenerateSummary` ApplicationKit workflow through successful
-transactional persistence. Both model scenarios share one configurable hard
-timeout and emit no passing sample after failure or timeout. Every launch
-requires `-use-temp-store`, so the benchmark meeting database and audio stay
-disposable; `AppStorageIsolationPolicy` allows only hidden
-recording/Refine/Summary benchmarks to reuse the normal verified model cache.
-Regular `-use-temp-store` automation still receives an empty model root. The
-resource dispatcher also returns from app initialization before normal sync,
+transactional persistence. Ask runs in a third cold process, requires
+already-installed Apple Latin embedding assets and available Foundation Models,
+and measures the real `AskMeetings.local` workflow over the same fixed corpus,
+including its current synchronous embedding backfill, bilingual query
+expansion, hybrid retrieval, and generated answer. It emits no sample without
+citations and nonempty generated text. All three model scenarios share one
+configurable hard timeout and emit no passing sample after failure or timeout.
+Every launch requires `-use-temp-store`, so the benchmark meeting database and
+audio stay disposable; `AppStorageIsolationPolicy` allows only hidden
+recording/Refine/Summary benchmarks to reuse the normal verified Portavoz model
+cache. Ask uses OS-managed assets and keeps the disposable model root. Regular
+`-use-temp-store` automation still receives an empty model root. The resource
+dispatcher also returns from app initialization before normal sync,
 recovery, provider discovery, or dictation registration can start; it detaches
 the AppKit delegate from product services. The runner refuses a dirty worktree,
 never targets the notarized installed app, removes the private

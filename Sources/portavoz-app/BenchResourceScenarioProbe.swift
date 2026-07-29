@@ -50,6 +50,25 @@ struct BenchSummaryResourceConfiguration: Equatable {
     }
 }
 
+struct BenchAskResourceConfiguration: Equatable {
+    let timeoutSeconds: Int
+
+    static func requested(
+        arguments: [String]
+    ) throws -> BenchAskResourceConfiguration? {
+        guard arguments.contains("--bench-resource-ask") else {
+            return nil
+        }
+        return BenchAskResourceConfiguration(timeoutSeconds:
+            try BenchResourceArguments.integer(
+                "--bench-resource-timeout",
+                arguments: arguments,
+                defaultValue: 900,
+                allowed: 60...3_600,
+                error: BenchAskResourceError.invalidTimeout))
+    }
+}
+
 private enum BenchResourceArguments {
     static func integer<Failure: Error>(
         _ option: String,
@@ -241,6 +260,32 @@ enum BenchSummaryResourceError: Error, Equatable, LocalizedError {
             "Summary resource operation exceeded \(seconds) seconds"
         case .unexpectedResult(let result):
             "Summary resource operation returned \(result)"
+        }
+    }
+}
+
+enum BenchAskResourceError: Error, Equatable, LocalizedError {
+    case assetsNotReady
+    case invalidTimeout
+    case noCitations
+    case noGeneratedAnswer
+    case operationFailed(String)
+    case timedOut(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .assetsNotReady:
+            "Ask requires installed Apple embedding assets and available Foundation Models"
+        case .invalidTimeout:
+            "--bench-resource-timeout must be between 60 and 3600 seconds"
+        case .noCitations:
+            "Ask resource operation returned no citations"
+        case .noGeneratedAnswer:
+            "Ask resource operation returned no generated answer"
+        case .operationFailed(let message):
+            "Ask resource operation failed: \(message)"
+        case .timedOut(let seconds):
+            "Ask resource operation exceeded \(seconds) seconds"
         }
     }
 }

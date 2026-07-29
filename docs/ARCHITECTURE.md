@@ -689,7 +689,7 @@ fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
 The native Release collector covers steady idle, active recording, Stop,
-Refine, and Summary without making Instruments XML part of the evidence
+Refine, Summary, and Ask without making Instruments XML part of the evidence
 contract. A benchmark-only observer receives the same closed telemetry events
 while
 `proc_pid_rusage(RUSAGE_INFO_CURRENT)`, `ProcessInfo`, volume capacity, and
@@ -715,14 +715,19 @@ before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. The benchmark owns
 the process rather than sharing its measured operation with normal launch
 orchestration.
-Refine and Summary run in separate cold processes behind the same bounded
+Refine, Summary, and Ask run in separate cold processes behind the same bounded
 first-result timeout. Summary verifies the pinned Qwen3.5 MLX descriptor before
 sampling and executes the real ApplicationKit regeneration workflow over a
-fixed public English transcript stored only in the disposable database. The
-runner never launches or changes `/Applications/Portavoz.app`. These five
-scenarios now have reproducible collectors, but no host receipt is accepted
-and Ask, indexing, and the two concurrent scenarios remain uncollected, so
-resource-governor policy remains blocked.
+fixed public English transcript stored only in the disposable database. Ask
+requires already-installed Apple Latin embedding assets and available
+Foundation Models, then measures the real `AskMeetings.local` workflow over the
+same fixed corpus, including current synchronous embedding backfill, bilingual
+query expansion, hybrid retrieval, and generated answer. It admits a sample
+only when both citations and nonempty generated text exist. The runner never
+launches or changes `/Applications/Portavoz.app`. These six scenarios now have
+reproducible collectors, but no host receipt is accepted and indexing plus the
+two concurrent scenarios remain uncollected, so resource-governor policy
+remains blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
@@ -1272,11 +1277,11 @@ behind aspirational diagrams:
   not read receipts, choose memory tiers, aggregate baselines, or derive
   runtime policy from this evidence.
 - The macOS composition root owns benchmark-only native resource probes for
-  idle, recording, Stop, Refine, and Summary. One canonical Release runner uses
-  disposable meeting/audio state, verified installed models, and fixed public
-  synthetic speech/transcript fixtures; it publishes only exact content-free
-  fragments to the tooling evaluator. Production launches and schedulers never
-  read these fragments or the resulting receipt.
+  idle, recording, Stop, Refine, Summary, and Ask. One canonical Release runner
+  uses disposable meeting/audio state, verified installed or OS-managed model
+  assets, and fixed public synthetic speech/transcript fixtures; it publishes
+  only exact content-free fragments to the tooling evaluator. Production
+  launches and schedulers never read these fragments or the resulting receipt.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the
@@ -1337,7 +1342,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,227 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,229 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

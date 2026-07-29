@@ -195,6 +195,7 @@ for ((run = 1; run <= RUNS; run++)); do
     recording_log="$RUN_ROOT/recording-$run.log"
     refine_log="$RUN_ROOT/refine-$run.log"
     summary_log="$RUN_ROOT/summary-$run.log"
+    ask_log="$RUN_ROOT/ask-$run.log"
     mkdir -p "$audio_root"
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
@@ -259,6 +260,27 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$summary_log" ]] && cat "$summary_log" >&2
         fail "run $run did not produce the exact-shaped Summary sample"
     fi
+
+    echo "Collecting Ask resource sample $run of $RUNS…"
+    if ! "$APP/Contents/MacOS/portavoz-app" \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-ask \
+        --bench-resource-output "$fragments" \
+        --bench-resource-run "$run" \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
+        --bench-log "$ask_log"
+    then
+        [[ -f "$ask_log" ]] && cat "$ask_log" >&2
+        fail "Ask run $run failed"
+    fi
+
+    ask_sample="$fragments/ask-$run.json"
+    if [[ ! -f "$ask_sample" ]]; then
+        [[ -f "$ask_log" ]] && cat "$ask_log" >&2
+        fail "run $run did not produce the exact-shaped Ask sample"
+    fi
+    sample_arguments+=(--sample "ask=$ask_sample")
     sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
     sample_arguments+=(--sample "refine=$refine_sample")

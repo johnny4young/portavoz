@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,227 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,229 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1282,7 +1282,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,227 XCTest package cases (13 gated),
+The current field-reliability gate is 1,229 XCTest package cases (13 gated),
 zero strict-lint violations across 392 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
@@ -1308,7 +1308,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   identity and never execute from AudioCaptureKit callbacks.
 - `make resource-baseline`: requires a clean commit, builds one
   Release bundle, re-signs a uniquely identified scratch app, and captures at
-  least three steady-idle, active-recording, Stop, Refine, and Summary runs.
+  least three steady-idle, active-recording, Stop, Refine, Summary, and Ask runs.
   The original `make resource-recording-baseline` target is a compatibility
   alias. After a five-second launch-settling interval, the benchmark measures
   idle before loading models. Refine runs separately against a fixed non-silent
@@ -1317,10 +1317,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   and never downloads models inside the sample. Summary runs in another cold
   process, verifies the pinned Qwen3.5 MLX model, creates a fixed public English
   meeting/cast/transcript only in the disposable database, and measures the
-  real ApplicationKit regeneration transaction. Both model scenarios enforce
-  the same configurable hard timeout. The runner uses a disposable meeting
-  database and audio root, reuses only the verified installed model cache, and
-  never targets the notarized installed app. Resource-mode app initialization
+  real ApplicationKit regeneration transaction. Ask runs in another cold
+  process, requires already-installed Apple Latin embedding assets plus
+  available Foundation Models, and measures the real `AskMeetings.local`
+  workflow over the same fixed transcript. Its measured window includes
+  current synchronous embedding backfill, bilingual expansion, hybrid
+  retrieval, and generated answer, and requires citations plus nonempty text.
+  All three model scenarios enforce the same configurable hard timeout. The
+  runner uses a disposable meeting database and audio root, reuses the verified
+  installed Portavoz model cache only where required, and never targets the
+  notarized installed app. Resource-mode app initialization
   returns before sync, recovery, provider discovery, or dictation registration
   can contaminate a measured operation; the AppKit delegate remains detached
   from product services. Its native app probes
@@ -1343,7 +1349,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output
   permissions, source-path omission, canonical-runner delegation, and
-  synthetic Refine and Summary fixture/sample admission. This proves
+  synthetic Refine, Summary, and Ask fixture/sample admission. This proves
   measurement completeness, not a resource budget or governor decision.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.
 - `scripts/run-spotlight-scale-baseline.sh`: isolated Release legacy/snapshot projection matrix at 1k/10k/100k meetings, exact fingerprint comparison, and optional synthetic-only protected-index delivery/cleanup.

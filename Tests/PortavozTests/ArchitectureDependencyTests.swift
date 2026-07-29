@@ -331,6 +331,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchMode.contains(
             "providerOverride: .mlx"))
         XCTAssertTrue(benchMode.contains(
+            "runAskResourceBenchIfRequested"))
+        XCTAssertTrue(benchMode.contains(
+            "AskMeetings.local(store: services.store)"))
+        XCTAssertTrue(benchMode.contains(
+            "try await useCase.answer(question, limit: 6)"))
+        XCTAssertTrue(benchMode.contains(
             "runsIsolatedResourceBenchmark"))
         let benchmarkExit = try XCTUnwrap(app.range(
             of: "if runsIsolatedResourceBenchmark"))
@@ -359,6 +365,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"sample_arguments+=(--sample "refine=$refine_sample")"#))
         XCTAssertTrue(runner.contains(
             #"sample_arguments+=(--sample "summary=$summary_sample")"#))
+        XCTAssertTrue(runner.contains(
+            #"sample_arguments+=(--sample "ask=$ask_sample")"#))
         XCTAssertTrue(scheduler.contains(
             "static let mlx = IntelligenceScheduler"))
         XCTAssertTrue(mlxProvider.contains(
