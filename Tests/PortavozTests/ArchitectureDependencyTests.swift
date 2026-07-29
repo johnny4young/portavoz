@@ -352,8 +352,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources",
                 pattern: #"modelResidencyLedger\."#),
-            [],
-            "Composition owns the ledger, but runtime wiring is a later slice")
+            ["portavoz-app/AppServices+WhisperModels.swift"],
+            "Only the fully migrated Whisper adapter may report residency")
 
         XCTAssertEqual(
             try Self.sourceMatches(
@@ -393,6 +393,55 @@ final class ArchitectureDependencyTests: XCTestCase {
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
         XCTAssertTrue(decisions.contains("## D159"))
         XCTAssertTrue(appSpec.contains("#### Characterized runtime topology"))
+    }
+
+    func testWhisperRuntimePinsOneCompleteResidencyLifecycle() throws {
+        let whisper = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
+        let refine = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+RefineMeeting.swift")
+        let importAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ImportMeeting.swift")
+
+        for transition in [
+            "modelResidencyLedger.beginLoad(.qualitySpeech)",
+            "modelResidencyLedger.finishLoad(",
+            "modelResidencyLedger.failLoad(",
+            "modelResidencyLedger.beginUse(.qualitySpeech)",
+            "modelResidencyLedger.finishUse(",
+            "modelResidencyLedger.beginRelease(.qualitySpeech)",
+            "modelResidencyLedger.finishRelease(",
+            "modelResidencyLedger.cancelRelease(",
+            "struct WhisperRuntimeLoad",
+            "struct WhisperRuntimeLease",
+        ] {
+            XCTAssertTrue(
+                whisper.contains(transition),
+                "Whisper residency adapter is missing \(transition)")
+        }
+
+        for adapter in [refine, importAdapter] {
+            XCTAssertTrue(adapter.contains("private var whisperRuntime:"))
+            XCTAssertTrue(adapter.contains("services.acquireWhisperRuntime("))
+            XCTAssertTrue(adapter.contains("whisperRuntime?.engine"))
+            XCTAssertTrue(adapter.contains("services?.finishWhisperRuntime("))
+            XCTAssertFalse(
+                adapter.contains("services.whisper"),
+                "A workflow must use its pinned runtime rather than shared mutable state")
+        }
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"services\.whisper(?:\s|[,)}])"#),
+            [])
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Whisper is the first fully integrated residency family"))
+        XCTAssertTrue(decisions.contains("## D160"))
+        XCTAssertTrue(appSpec.contains("### Whisper residency adapter (D160)"))
     }
 
     func testResourceBaselineEvidenceIsCompleteFailClosedAndToolingOnly() throws {
@@ -1202,7 +1251,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "func transcribe(", range: refinePrepareStart.upperBound..<refine.endIndex))
         let refinePreparation = refine[
             refinePrepareStart.lowerBound..<refineTranscribeStart.lowerBound]
-        XCTAssertTrue(refinePreparation.contains("loadWhisperIfNeeded"))
+        XCTAssertTrue(refinePreparation.contains("acquireWhisperRuntime"))
         XCTAssertFalse(
             refinePreparation.contains("loadEnginesIfNeeded"),
             "Refine readiness requires Whisper only; diarization remains degradable")

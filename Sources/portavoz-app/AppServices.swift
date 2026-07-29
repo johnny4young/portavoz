@@ -75,7 +75,8 @@ final class AppServices {
     @ObservationIgnored let modelStore: ModelStore
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
     /// One process-owned, content-free view of heavyweight runtime lifecycle.
-    /// Concrete owners are characterized but do not submit transitions yet.
+    /// Capability owners submit complete family transitions one adapter at a
+    /// time; Whisper is the first integrated runtime.
     @ObservationIgnored var modelResidencyLedger =
         ResourceModelResidencyLedger()
     /// Content-free workload spans are installed once at the composition root.
@@ -118,6 +119,7 @@ final class AppServices {
     var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
     var whisperVariantID: String?
+    @ObservationIgnored var whisperRuntimeLoad: WhisperRuntimeLoad?
     var whisperPreparationState: WhisperPreparationState = .idle
     @ObservationIgnored var whisperPreparedModel: WhisperEngine.PreparedModel?
     @ObservationIgnored var whisperPreparation: WhisperPreparation?

@@ -732,13 +732,29 @@ finished.
 
 The ledger holds no model instance, provider identity, asset path, timer,
 scheduler, or platform observer. The macOS composition root owns exactly one
-ledger for the process. Capability owners still retain their concrete runtimes,
-and no owner currently submits transitions to the ledger, so existing model
-loading and release behavior is unchanged. The characterized migration surface
-includes the cached AppServices speech engines, two direct pyannote loads,
-Whisper, the IntelligenceKit MLX singleton, Library's retained embedder, and
-Ask's per-retrieval embedder. In particular, the ledger interprets neither
-measured footprint bytes nor elapsed idle time.
+ledger for the process. Capability owners still retain their concrete runtimes.
+Whisper is the first fully integrated residency family: `AppServices` records
+one coalesced quality-speech load, hands Refine and Import a lease containing
+that exact engine plus its active-use token, and confirms release only after
+the concrete reference has been detached. Publishing a completed load and
+claiming its first use are one synchronous MainActor step, so a competing
+variant cannot enter between residency and ownership. A load failure returns
+only the current generation to unloaded; a rejected release restores the
+retained runtime and cancels the release transition.
+
+Refine and Import hold their leases from preparation through the existing
+application-owned idle-release hook. They never re-read mutable
+`AppServices.whisper` after an asynchronous boundary, so changing the selected
+variant cannot replace an in-flight engine and an actively leased variant
+cannot be deleted or released. Verified files remain a separate asset
+lifecycle, and the existing 120-second idle fence remains unchanged until
+accepted residency evidence defines a replacement.
+
+The remaining characterized migration surface includes the cached AppServices
+live-speech and diarization engines, two direct pyannote loads, the
+IntelligenceKit MLX singleton, Library's retained embedder, and Ask's
+per-retrieval embedder. Those families do not submit transitions yet. The
+ledger interprets neither measured footprint bytes nor elapsed idle time.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
@@ -1444,7 +1460,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,291 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,292 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

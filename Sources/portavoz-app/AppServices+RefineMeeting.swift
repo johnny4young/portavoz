@@ -125,6 +125,7 @@ private struct AppRefineMeetingPreferences: RefineMeetingPreferences {
 private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
     private weak var services: AppServices?
     private let descriptor: ModelDescriptor
+    private var whisperRuntime: AppServices.WhisperRuntimeLease?
 
     init(services: AppServices) {
         self.services = services
@@ -140,7 +141,8 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
 
     func prepare(progress: @escaping RefineMeetingProgressHandler) async throws {
         guard let services else { throw AppRefineMeetingError.servicesUnavailable }
-        _ = try await services.loadWhisperIfNeeded(
+        if whisperRuntime != nil { return }
+        whisperRuntime = try await services.acquireWhisperRuntime(
             descriptor: descriptor,
             progress: { _ in },
             preparationProgress: { size, percent, isDownloading in
@@ -158,7 +160,7 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
         hints: TranscriptionHints,
         channel: AudioChannel
     ) async throws -> FileTranscription {
-        guard let services, let whisper = services.whisper else {
+        guard let services, let whisper = whisperRuntime?.engine else {
             throw AppRefineMeetingError.transcriberUnavailable
         }
         return try await services.workloadTelemetry.measure(
@@ -188,6 +190,10 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
     }
 
     func scheduleIdleRelease() {
+        if let whisperRuntime {
+            _ = services?.finishWhisperRuntime(whisperRuntime)
+            self.whisperRuntime = nil
+        }
         services?.scheduleWhisperRelease()
         services?.scheduleRecordingEnginesRelease()
     }

@@ -298,7 +298,14 @@ stale-result tests, including growing-row revisions.
 2. System-wide dictation is implemented in the macOS app (⌥⌘D by default,
    configurable, with a non-activating panel and Accessibility paste/restore;
    see spec 06). It reuses live Parakeet and does not change meeting capture.
-3. ~~Quantized Whisper models not yet in the catalog~~ — **DONE (M12)**: **626 MB** variant (`whisper-large-v3-626mb`, 17 artifacts sha256-pinned to the same argmax commit as turbo) for low disk space. `WhisperEngine.loadRecommended(descriptor:)` selects it; `AppServices.loadWhisperIfNeeded` chooses it according to the "Whisper compacto" toggle (Ajustes) and reloads if it changes; the recommender enables it if low disk space is detected. Turbo remains the default.
+3. ~~Quantized Whisper models not yet in the catalog~~ — **DONE (M12)**:
+   **626 MB** variant (`whisper-large-v3-626mb`, 17 artifacts sha256-pinned to
+   the same argmax commit as turbo) for low disk space.
+   `WhisperEngine.loadPrepared(_:)` loads the verified descriptor selected by
+   `AppServices.acquireWhisperRuntime`; the "Whisper compacto" toggle
+   (Ajustes) selects the compact descriptor, while the recommender enables it
+   when low disk space is detected. Refine freezes that selection for its whole
+   operation, and Turbo remains the default.
 4. ~~FluidAudio pinned by revision `c367a18e`~~ — **RESOLVED**:
    `Package.swift` uses `.upToNextMinor(from: "0.15.5")`, which contains the
    upstream #732 type-checker fix.

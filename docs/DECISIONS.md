@@ -4960,3 +4960,39 @@ characterization as it routes one complete family through the ledger, including
 load completion, active-use leases, cancellation/failure, and confirmed release.
 The test deliberately makes unreviewed new bypasses fail rather than silently
 escaping governor ownership.
+
+## D160 — Quality speech pins runtime residency to each operation (Jul 2026)
+
+**Context:** Refine and Import froze or sampled a Whisper descriptor during
+preparation, but later transcribed by reading the mutable
+`AppServices.whisper` cache. A concurrent operation or Settings variant change
+could therefore replace the engine behind an in-flight processor even though
+its provider fingerprint still named the original model. D158's ledger could
+not become truthful if borrowers and release remained outside the same
+lifecycle.
+
+**Decision:** quality speech is the first fully integrated residency family.
+`AppServices` coalesces same-descriptor runtime acquisition behind one load
+task and submits its exact load success or failure to the process-owned ledger.
+Each successful acquisition returns a `WhisperRuntimeLease` containing both
+the concrete engine and one active-use token. Load publication and its first
+use claim occur in one synchronous MainActor step; a different descriptor is
+rejected while that load is active, while same-descriptor joiners each claim
+their own token. Refine and Import retain the lease through every transcription
+call and end it only at their existing application-owned idle-release hook.
+They never re-read the shared mutable runtime after preparation.
+
+An actively leased runtime cannot be released, deleted, or replaced by another
+variant. Runtime release is two-phase: the ledger admits only an idle resident
+family, AppServices detaches the concrete reference, and the exact release
+ticket confirms unloaded state. Rejected confirmation restores the retained
+engine and cancels the release transition. Verified model preparation remains
+a separate asset lifecycle; the current two-minute idle generation fence is
+unchanged, and no download, verification, or release wait enters an audio
+callback.
+
+**Rationale:** binding the engine and use token makes provider identity,
+execution, and lifetime one invariant instead of three conventions. Migrating
+one complete family keeps the Strangler slice reviewable and lets the source
+ratchet reject partial or bypassed integration while live speech, diarization,
+MLX, and embeddings remain explicitly characterized for later adapters.

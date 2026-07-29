@@ -125,6 +125,7 @@ private struct AppImportMeetingAudioFiles: ImportMeetingAudioFiles {
 @MainActor
 private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     private weak var services: AppServices?
+    private var whisperRuntime: AppServices.WhisperRuntimeLease?
 
     init(services: AppServices) {
         self.services = services
@@ -134,7 +135,8 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         progress: @escaping ImportMeetingProgressHandler
     ) async throws {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
-        _ = try await services.loadWhisperIfNeeded(
+        if whisperRuntime != nil { return }
+        whisperRuntime = try await services.acquireWhisperRuntime(
             progress: { _ in },
             preparationProgress: { size, percent, isDownloading in
                 Task {
@@ -157,7 +159,7 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         languageHint: String?,
         vocabulary: [String]
     ) async throws -> FileTranscription {
-        guard let services, let whisper = services.whisper else {
+        guard let services, let whisper = whisperRuntime?.engine else {
             throw AppImportMeetingError.transcriberUnavailable
         }
         let hints = TranscriptionHints(
@@ -192,6 +194,10 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     }
 
     func scheduleIdleRelease() {
+        if let whisperRuntime {
+            _ = services?.finishWhisperRuntime(whisperRuntime)
+            self.whisperRuntime = nil
+        }
         services?.scheduleWhisperRelease()
         services?.scheduleRecordingEnginesRelease()
     }

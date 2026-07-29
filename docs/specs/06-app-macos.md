@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D145 (exact-first Library semantic augmentation).
+Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D145 (exact-first Library semantic augmentation), D157–D160 (pure resource policy, generation-fenced residency, one composition owner, and pinned Whisper runtime leases).
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -191,10 +191,10 @@ The ledger performs no loading, caching, scheduling, sleeping, model download,
 checksum verification, pressure observation, or runtime release. It stores no
 model/provider identity, file path, prompt, or transcript content and never
 enters `AudioCaptureKit`. The macOS `AppServices` composition root owns exactly
-one ledger for the process. No runtime owner submits transitions yet, so product
-behavior and existing idle-release delays are unchanged. Numeric TTL and
-memory-budget enforcement require accepted resource evidence rather than
-constants in this contract.
+one ledger for the process. Whisper now submits one complete family lifecycle;
+the other characterized owners do not. Numeric TTL and memory-budget
+enforcement require accepted resource evidence rather than constants in this
+contract.
 
 #### Characterized runtime topology
 
@@ -204,13 +204,42 @@ The migration surface is locked by an architecture test before adapter changes:
 |---|---|---|
 | Live speech | `AppServices` coalesces `ParakeetEngine.loadRecommended`; recording, dictation, durable post-capture work, and benchmarks borrow the cached instance | AppServices generation fence after 600 idle seconds |
 | Speaker diarization | `AppServices` coalesces the shared pyannote instance; voice-memory matching and recording voice enrollment also perform two explicit one-shot pyannote loads | Shared instance follows the 600-second speech release; one-shot values end with their operation |
-| Quality speech | `AppServices+WhisperModels` coalesces verified preparation and loads one selected Whisper variant | AppServices generation fence after 120 idle seconds; deleting a variant also drops its runtime |
+| Quality speech | `AppServices+WhisperModels` coalesces one runtime load and returns exact-engine active-use leases to Refine/Import | The ledger rejects release and deletion while leased; AppServices confirms concrete release after the existing 120-second generation fence |
 | Language intelligence | `IntelligenceKit.MLXModelCache.shared` owns the MLX container used by each MLX summary provider | IntelligenceKit generation fence after 120 idle seconds |
 | Semantic embedding | Library retains one `SentenceEmbedder`; Ask creates one per retrieval; benchmark-only embedders remain isolated | Library lifetime is process-scoped; Ask values end with retrieval |
 
-The ratchet also proves there is one process ledger construction and zero
-transition submissions. This is intentional characterization, not approval of
-the duplicated pyannote/embedding ownership or the current idle constants.
+The ratchet also proves there is one process ledger construction, one fully
+integrated quality-speech adapter, and no transition submissions from the
+remaining families. This is not approval of the duplicated
+pyannote/embedding ownership or the current idle constants.
+
+### Whisper residency adapter (D160)
+
+`AppServices+WhisperModels` is the first concrete residency adapter. Verified
+preparation remains app-scoped asset work. Runtime acquisition then coalesces
+concurrent callers for the same selected descriptor behind one load task and
+one `.qualitySpeech` load ticket. A current success publishes the exact
+generation as resident and claims the first use lease in the same synchronous
+MainActor step; failure returns only that generation to unloaded. A different
+descriptor never waits in the unleased publication window: it is rejected
+while the first runtime load is active.
+
+Acquisition returns `WhisperRuntimeLease`, which binds the concrete
+`WhisperEngine` to one active-use token. Refine freezes its descriptor when the
+use case is composed, and both Refine and Import transcribe only through their
+retained lease instead of reading mutable shared state after an await. Their
+existing `scheduleIdleRelease` application hook ends that lease on success,
+failure, or cancellation before arming the two-minute timer. Another caller
+may join the same runtime, but a different variant cannot replace or delete it
+while any lease is active.
+
+Release is two-phase: the ledger first admits only an idle resident family,
+AppServices detaches the concrete reference, and the exact ticket confirms the
+unloaded state. A rejected confirmation restores the retained engine and
+cancels the release transition. Model files are never deleted by runtime
+release, and no download, verification sweep, timer, or wait enters an audio
+callback. The 120-second delay is deliberately unchanged pending accepted
+per-family evidence.
 
 Recording Start is also the single authorization boundary for meeting capture.
 Its explicit user action asks `MicrophonePermissionClient` to resolve an
@@ -561,6 +590,11 @@ failed quality pass. The same per-capability coordinator keeps external-audio
 Import independent from Parakeet and keeps durable transcript recovery
 independent from pyannote.
 
+D160 makes that runtime ownership explicit. Refine and Import retain the exact
+engine returned during preparation together with a residency use lease, use it
+for every channel, and end the lease at the application-owned release hook.
+Neither workflow reads `AppServices.whisper` after an asynchronous boundary.
+
 D67 makes app composition explicit for the first migrated egress vertical.
 `RecordingController` and `CompanionRefresh` each inject IntegrationsKit's
 `URLSessionDataEgressGateway` when assembling the optional Apuntador client.
@@ -845,7 +879,7 @@ physically unavailable evidence remains explicit instead of navigating to a
 nearby guess. Stable card/role/index accessibility identifiers make both paths
 deterministic under XCUITest (D91).
 
-**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either owns the resident live engine or triggers shared preparation in the background; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome and the recovery worker refreshes that idle policy after publishing. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery calls `loadTranscriberIfNeeded()`, durable attribution and Import call `loadDiarizerIfNeeded()`, and Refine prepares Whisper then requests only its degradable diarizer. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
+**Idle release (Jul 2026)**: engines do NOT stay resident forever. Generation pattern (new use cancels scheduled release): `scheduleWhisperRelease()` (120 s after refine/import; Whisper weighs 1.6 GB) and `scheduleRecordingEnginesRelease()` (600 s after stop/refine/import; doesn't trigger if refine is running or a speech-model load is in flight). `ApplicationKit.RefineMeeting` schedules both policies on every success, failure, or cancellation after model ownership begins; its processor and Import end their pinned Whisper use leases before arming the timer. `ApplicationKit.StartRecording` schedules the recording-engine policy after every failed mic/channel/reservation/source-start attempt, while a successful audio-first start either owns the resident live engine or triggers shared preparation in the background; `ApplicationKit.StopRecording` schedules it after every accepted Stop request outcome and the recovery worker refreshes that idle policy after publishing. `MLXModelCache` (IntelligenceKit) does the same with Qwen3.5 container (2.4 GB resident measured) at 120 s. Consumers NEVER trust a shared reference after a long await: durable first-pass recovery calls `loadTranscriberIfNeeded()`, durable attribution and Import call `loadDiarizerIfNeeded()`, Refine/Import hold the exact Whisper runtime they acquired, and Refine requests only its degradable diarizer. Note measurement (bench by phases): CoreML weights are file-backed and macOS reclaims them only when no longer used — post-stop footprint drops to ~160 MB without help; explicit release guarantees floor (~140 MB) and releases non-purgeable state.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
