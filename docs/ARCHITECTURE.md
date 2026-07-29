@@ -795,11 +795,22 @@ fence, but the ledger now rejects that release while any live or batch consumer
 is active. Verified assets remain independent, and no model wait or residency
 transition enters the audio writer callback.
 
-The remaining characterized migration surface includes the cached AppServices
-diarization engine, two direct pyannote loads, the Library retained embedder,
-and the Ask per-retrieval embedder. Those families do not submit transitions
-yet. The ledger interprets neither measured footprint bytes nor elapsed idle
-time.
+Diarization is the fourth fully integrated residency family. AppServices
+coalesces one verified pyannote/WeSpeaker Core ML model-pair load and binds each
+consumer to an active-use token. The retained value contains only reusable
+weights: every live meeting, durable pass, Refine, Import, enrollment, and
+participant-memory operation creates a fresh `PyannoteDiarizer`, so its
+stateful speaker database cannot cross an operation boundary. The current
+encrypted voiceprint is sampled into that fresh session rather than cached in
+the weights; durable post-capture work carries its fingerprinted sample through
+execution instead of re-reading mutable identity. Cancellation after shared
+loading releases the newly claimed token, and the existing 600-second fence can
+detach the model pair only when all sessions have ended.
+
+The remaining characterized migration surface includes the Library retained
+embedder and the Ask per-retrieval embedder. Semantic embedding does not submit
+transitions yet. The ledger interprets neither measured footprint bytes nor
+elapsed idle time.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,

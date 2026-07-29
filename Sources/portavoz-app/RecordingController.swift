@@ -467,14 +467,20 @@ final class RecordingController {
             guard let self else { return }
             let voiceprint = await session.voiceprint()
             guard
-                let modelStore = self.services?.modelStore,
-                let diarizer = try? await PyannoteDiarizer.loadRecommended(
-                    store: modelStore,
-                    voiceprint: voiceprint)
+                let services = self.services,
+                let runtime = try? await services.acquireDiarizationRuntime(
+                    workloadClass: .liveInteractive)
             else {
                 self.liveDiarizerFeed?.finish()
                 return
             }
+            defer {
+                _ = services.finishDiarizationRuntime(runtime)
+                services.scheduleRecordingEnginesRelease()
+            }
+            let diarizer = services.makeDiarizer(
+                from: runtime,
+                voiceprint: voiceprint)
             do {
                 for try await turn in diarizer.diarize(stream) {
                     self.liveTurns.append(turn)

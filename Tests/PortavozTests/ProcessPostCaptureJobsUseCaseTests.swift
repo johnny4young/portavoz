@@ -76,6 +76,45 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         ])
     }
 
+    func testDiarizationUsesTheSameVoiceprintAsItsInputFingerprint() async throws {
+        let fixture = Fixture(now: now)
+        let systemAsset = fixture.asset(channel: .system, sha256: "system-sha")
+        let segment = fixture.segment(
+            channel: .system,
+            text: "Conserva la identidad exacta.",
+            language: "es",
+            start: 0)
+        let voiceprint = Voiceprint(
+            embedding: [0.25, 0.5, 0.75],
+            createdAt: now.addingTimeInterval(-300))
+        let fingerprint = try XCTUnwrap(DiarizationOperationFingerprint.compute(
+            meetingID: fixture.meeting.id,
+            transcriptRevision: fixture.meeting.transcriptRevision,
+            segments: [segment],
+            systemAsset: systemAsset,
+            voiceprint: voiceprint))
+        let job = fixture.job(kind: .diarization, fingerprint: fingerprint)
+        let store = WorkflowStoreFake(
+            jobs: [job],
+            details: [fixture.meeting.id: fixture.detail(segments: [segment])],
+            assets: [fixture.meeting.id: [systemAsset]])
+        let capabilities = WorkflowCapabilitiesFake(voiceprint: voiceprint)
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: capabilities,
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+
+        let result = await workflow.execute(.init(owner: "test-owner"))
+
+        XCTAssertEqual(result.processedJobCount, 1)
+        XCTAssertTrue(result.issues.isEmpty)
+        let receivedVoiceprints = await capabilities.diarizationVoiceprints()
+        let received = try XCTUnwrap(receivedVoiceprints.first ?? nil)
+        XCTAssertEqual(received.embedding, voiceprint.embedding)
+        XCTAssertEqual(received.createdAt, voiceprint.createdAt)
+    }
+
     func testRealStoreDrainsDiarizationThenSummaryWithOneAtomicProvenanceChain() async throws {
         let fixture = Fixture(now: now)
         let store = try MeetingStore.inMemory()
@@ -619,19 +658,23 @@ private actor WorkflowCapabilitiesFake:
     private let transcriptions: [AudioChannel: FileTranscription]
     private let provider: PostCaptureSummaryProviderSelection?
     private let preferences: PostCaptureSummaryPreferences
+    private let voiceprint: Voiceprint?
     private var channels: [AudioChannel] = []
+    private var diarizedVoiceprints: [Voiceprint?] = []
     private var actions: [MeetingID] = []
     private var releases = 0
 
     init(
         transcriptions: [AudioChannel: FileTranscription] = [:],
         provider: PostCaptureSummaryProviderSelection? = nil,
+        voiceprint: Voiceprint? = nil,
         preferences: PostCaptureSummaryPreferences = PostCaptureSummaryPreferences(
             outputLanguage: "en",
             vocabulary: [])
     ) {
         self.transcriptions = transcriptions
         self.provider = provider
+        self.voiceprint = voiceprint
         self.preferences = preferences
     }
 
@@ -647,8 +690,14 @@ private actor WorkflowCapabilitiesFake:
         return result
     }
 
-    func currentPostCaptureVoiceprint() -> Voiceprint? { nil }
-    func diarizePostCaptureAudio(_ asset: AudioAsset) -> [SpeakerTurn] { [] }
+    func currentPostCaptureVoiceprint() -> Voiceprint? { voiceprint }
+    func diarizePostCaptureAudio(
+        _ asset: AudioAsset,
+        voiceprint: Voiceprint?
+    ) -> [SpeakerTurn] {
+        diarizedVoiceprints.append(voiceprint)
+        return []
+    }
     func postCaptureSummaryProvider() -> PostCaptureSummaryProviderSelection? { provider }
 
     func postCaptureSummaryPreferences(
@@ -666,6 +715,7 @@ private actor WorkflowCapabilitiesFake:
     }
 
     func transcribedChannels() -> [AudioChannel] { channels }
+    func diarizationVoiceprints() -> [Voiceprint?] { diarizedVoiceprints }
     func actionMeetingIDs() -> [MeetingID] { actions }
     func releaseCount() -> Int { releases }
 }

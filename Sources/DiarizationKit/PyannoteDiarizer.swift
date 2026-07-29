@@ -6,6 +6,45 @@ import PortavozCore
 // A type named `FluidAudio` inside the module shadows module
 // qualification; the scoped import wins name resolution for `Speaker`
 // in this file (our domain Speaker is not used here).
+///
+/// Core ML weights are process-reusable, while `DiarizerManager` speaker
+/// state is not. This runtime retains only the verified model pair and creates
+/// one fresh diarizer session for every meeting or extraction operation.
+public struct PyannoteDiarizationRuntime: Sendable {
+    private let models: DiarizerModels
+
+    public static func load(
+        fromVerifiedDirectory directory: URL
+    ) throws -> PyannoteDiarizationRuntime {
+        PyannoteDiarizationRuntime(models: try DiarizerModels.load(
+            localSegmentationModel: directory.appendingPathComponent(
+                "pyannote_segmentation.mlmodelc"),
+            localEmbeddingModel: directory.appendingPathComponent(
+                "wespeaker_v2.mlmodelc")))
+    }
+
+    public static func loadRecommended(
+        store: ModelStore,
+        progress: (@Sendable (ModelStore.DownloadProgress) -> Void)? = nil
+    ) async throws -> PyannoteDiarizationRuntime {
+        let directory = try await store.ensureAvailable(
+            ModelCatalog.speakerDiarization,
+            progress: progress)
+        return try load(fromVerifiedDirectory: directory)
+    }
+
+    public func makeDiarizer(
+        clusteringThreshold: Float = PyannoteDiarizer.defaultClusteringThreshold,
+        voiceprint: Voiceprint? = nil
+    ) -> PyannoteDiarizer {
+        let sessionModels = models
+        return PyannoteDiarizer(
+            models: sessionModels,
+            clusteringThreshold: clusteringThreshold,
+            voiceprint: voiceprint)
+    }
+}
+
 public actor PyannoteDiarizer: Diarizer {
     /// Streaming window fed to the model. Matches FluidAudio's internal
     /// chunk duration; speaker continuity across windows comes from the
@@ -40,12 +79,11 @@ public actor PyannoteDiarizer: Diarizer {
         clusteringThreshold: Float = defaultClusteringThreshold,
         voiceprint: Voiceprint? = nil
     ) throws -> PyannoteDiarizer {
-        let models = try DiarizerModels.load(
-            localSegmentationModel: directory.appendingPathComponent("pyannote_segmentation.mlmodelc"),
-            localEmbeddingModel: directory.appendingPathComponent("wespeaker_v2.mlmodelc")
-        )
-        return PyannoteDiarizer(
-            models: models, clusteringThreshold: clusteringThreshold, voiceprint: voiceprint)
+        try PyannoteDiarizationRuntime.load(
+            fromVerifiedDirectory: directory
+        ).makeDiarizer(
+            clusteringThreshold: clusteringThreshold,
+            voiceprint: voiceprint)
     }
 
     /// Ensures the catalog model is downloaded + verified, then loads it.
@@ -57,8 +95,10 @@ public actor PyannoteDiarizer: Diarizer {
     ) async throws -> PyannoteDiarizer {
         let descriptor = ModelCatalog.speakerDiarization
         let directory = try await store.ensureAvailable(descriptor, progress: progress)
-        return try load(
-            fromVerifiedDirectory: directory, clusteringThreshold: clusteringThreshold,
+        return try PyannoteDiarizationRuntime.load(
+            fromVerifiedDirectory: directory
+        ).makeDiarizer(
+            clusteringThreshold: clusteringThreshold,
             voiceprint: voiceprint)
     }
 

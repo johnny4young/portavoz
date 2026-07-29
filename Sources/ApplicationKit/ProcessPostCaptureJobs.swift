@@ -102,7 +102,10 @@ public protocol PostCaptureAudioProcessing: Sendable {
         hints: TranscriptionHints
     ) async throws -> FileTranscription
     func currentPostCaptureVoiceprint() async -> Voiceprint?
-    func diarizePostCaptureAudio(_ asset: AudioAsset) async throws -> [SpeakerTurn]
+    func diarizePostCaptureAudio(
+        _ asset: AudioAsset,
+        voiceprint: Voiceprint?
+    ) async throws -> [SpeakerTurn]
     func schedulePostCaptureIdleRelease() async
 }
 
@@ -450,7 +453,9 @@ private extension ProcessPostCaptureJobs {
 
         let turns: [SpeakerTurn]
         if let systemAsset, Self.isDiarizable(systemAsset) {
-            turns = try await audio.diarizePostCaptureAudio(systemAsset)
+            turns = try await audio.diarizePostCaptureAudio(
+                systemAsset,
+                voiceprint: voiceprint)
         } else {
             turns = []
         }

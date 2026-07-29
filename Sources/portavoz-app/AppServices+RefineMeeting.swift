@@ -178,7 +178,14 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
 
     func diarize(fileURL: URL) async throws -> [SpeakerTurn] {
         guard let services else { throw AppRefineMeetingError.servicesUnavailable }
-        let diarizer = try await services.loadDiarizerIfNeeded()
+        let runtime = try await services.acquireDiarizationRuntime()
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+        }
+        let voiceprint = await services.currentDiarizationVoiceprint()
+        let diarizer = services.makeDiarizer(
+            from: runtime,
+            voiceprint: voiceprint)
         return try await services.workloadTelemetry.measure(
             ResourceWorkloadDescriptor(
                 workloadClass: .userInitiated,

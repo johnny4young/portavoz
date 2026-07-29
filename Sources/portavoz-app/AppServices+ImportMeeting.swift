@@ -134,6 +134,8 @@ private struct AppImportMeetingAudioFiles: ImportMeetingAudioFiles {
 private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     private weak var services: AppServices?
     private var whisperRuntime: AppServices.WhisperRuntimeLease?
+    private var diarizationRuntime: AppServices.DiarizationRuntimeLease?
+    private var diarizer: PyannoteDiarizer?
 
     init(services: AppServices) {
         self.services = services
@@ -158,7 +160,13 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
 
     func prepareDiarizer() async throws {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
-        _ = try await services.loadDiarizerIfNeeded()
+        if diarizationRuntime != nil { return }
+        let runtime = try await services.acquireDiarizationRuntime()
+        let voiceprint = await services.currentDiarizationVoiceprint()
+        diarizer = services.makeDiarizer(
+            from: runtime,
+            voiceprint: voiceprint)
+        diarizationRuntime = runtime
     }
 
     func transcribe(
@@ -188,7 +196,7 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     }
 
     func diarize(audio: ImportedMeetingAudio) async throws -> [SpeakerTurn] {
-        guard let services, let diarizer = services.diarizer else {
+        guard let services, let diarizer else {
             throw AppImportMeetingError.diarizerUnavailable
         }
         return try await services.workloadTelemetry.measure(
@@ -205,6 +213,11 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         if let whisperRuntime {
             _ = services?.finishWhisperRuntime(whisperRuntime)
             self.whisperRuntime = nil
+        }
+        if let diarizationRuntime {
+            _ = services?.finishDiarizationRuntime(diarizationRuntime)
+            self.diarizationRuntime = nil
+            diarizer = nil
         }
         services?.scheduleWhisperRelease()
         services?.scheduleRecordingEnginesRelease()

@@ -113,9 +113,9 @@ final class AppServices {
     }
     var modelsState: ModelsState = .unknown
     var transcriber: ParakeetEngine?
-    private(set) var diarizer: PyannoteDiarizer?
     @ObservationIgnored var liveSpeechRuntimeLoad: LiveSpeechRuntimeLoad?
-    @ObservationIgnored var diarizerLoadTask: Task<PyannoteDiarizer, Error>?
+    var diarizationRuntime: PyannoteDiarizationRuntime?
+    @ObservationIgnored var diarizationRuntimeLoad: DiarizationRuntimeLoad?
     var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
     var whisperVariantID: String?
@@ -321,79 +321,20 @@ final class AppServices {
         Task { await indexer.requestReindex() }
     }
 
-    /// Loads only speaker diarization. Refine/Import and durable diarization
-    /// share this task without requiring or duplicating Parakeet.
-    func loadDiarizerIfNeeded(
-        workloadClass: ResourceWorkloadClass = .userInitiated
-    ) async throws -> PyannoteDiarizer {
-        enginesIdleGeneration += 1
-        if let diarizer { return diarizer }
-        if let diarizerLoadTask {
-            let engine = try await diarizerLoadTask.value
-            diarizer = engine
-            return engine
-        }
-
-        modelsState = .downloading(L10n.text("Preparing models…"))
-        let voiceprint = try? voiceprintStore.load()
-        let telemetry = workloadTelemetry
-        let store = modelStore
-        let task = Task { @MainActor in
-            try await telemetry.measure(ResourceWorkloadDescriptor(
-                workloadClass: workloadClass,
-                kind: .speakerDiarization,
-                operation: .load)
-            ) {
-                try await PyannoteDiarizer.loadRecommended(
-                    store: store, voiceprint: voiceprint
-                ) { progress in
-                    let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading(
-                            L10n.format("Downloading diarization model… %d%%", percent))
-                    }
-                }
-            }
-        }
-        diarizerLoadTask = task
-        do {
-            let engine = try await task.value
-            diarizer = engine
-            diarizerLoadTask = nil
-            settleModelsState()
-            return engine
-        } catch {
-            diarizerLoadTask = nil
-            modelsState = .failed(error.localizedDescription)
-            throw error
-        }
-    }
-
     /// Explicit readiness for workflows that truly need both models.
     func loadEnginesIfNeeded() async throws {
         let liveSpeech = try await acquireLiveSpeechRuntime()
         defer { _ = finishLiveSpeechRuntime(liveSpeech) }
-        _ = try await loadDiarizerIfNeeded()
+        let diarization = try await acquireDiarizationRuntime()
+        defer { _ = finishDiarizationRuntime(diarization) }
         modelsState = .ready
-    }
-
-    /// Rebuilds diarization with the new identity state on its next use.
-    func invalidateDiarizer() {
-        diarizer = nil
     }
 
     /// Drops idle speech-model weights. In-flight preparation owns its result
     /// until the workflow schedules a later release.
     func releaseRecordingEngines() {
         _ = releaseLiveSpeechRuntime()
-        if diarizerLoadTask == nil, diarizer != nil {
-            let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
-                workloadClass: .maintenance,
-                kind: .speakerDiarization,
-                operation: .release))
-            diarizer = nil
-            workloadTelemetry.finish(span, outcome: .completed)
-        }
+        _ = releaseDiarizationRuntime()
         modelsState = .unknown
     }
 
@@ -410,9 +351,9 @@ final class AppServices {
     }
 
     func settleModelsState() {
-        if transcriber != nil, diarizer != nil {
+        if transcriber != nil, diarizationRuntime != nil {
             modelsState = .ready
-        } else if liveSpeechRuntimeLoad == nil, diarizerLoadTask == nil {
+        } else if liveSpeechRuntimeLoad == nil, diarizationRuntimeLoad == nil {
             modelsState = .unknown
         }
     }

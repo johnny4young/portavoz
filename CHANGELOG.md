@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 29, 2026
 
+- **👥 Speaker memory stays meeting-scoped** — Live captions, Refine, imports, and voice suggestions now reuse verified Core ML weights without reusing a meeting's speaker database, preventing one conversation's clusters or enrolled identity snapshot from leaking into another.
 - **🧠 Stable Whisper handoffs** — Refine and Import now keep the exact selected quality model until their work finishes, so another operation or Settings change cannot swap the engine midway through a transcript.
 - **🎧 Audio-device switches stay crash-free** — Moving between Mac speakers, the built-in mic, AirPods, and other routes now retires the old audio graphs before fresh ones take over; burst notifications cannot reinstall the same mic tap or race Stop, and Portavoz keeps the original meeting timeline.
 - **🎙️ Start asks before touching the mic** — A fresh install now resolves the one-time macOS microphone permission before Portavoz prepares the audio device, avoiding a recording screen that can remain stuck while Core Audio waits.

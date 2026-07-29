@@ -40,20 +40,14 @@ extension AppServices {
             sampleCapture: AppLocalVoiceSampleCapture(),
             identities: AppLocalVoiceIdentityStore(
                 storage: voiceprintStore,
-                disabled: ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
-                invalidate: { @MainActor [weak self] in self?.invalidateDiarizer() }),
-            sampleExtractor: AppLocalVoiceSampleExtractor(
-                loadDiarizer: { @MainActor [weak self] in
-                    guard let self else { throw CancellationError() }
-                    return try await self.loadDiarizerIfNeeded()
-                }))
+                disabled: ProcessInfo.processInfo.arguments.contains("-use-temp-store")),
+            sampleExtractor: AppLocalVoiceSampleExtractor(services: self))
     }
 }
 
 private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
     let storage: VoiceprintStore
     let disabled: Bool
-    let invalidate: @MainActor @Sendable () -> Void
 
     func loadVoiceIdentity() async throws -> Voiceprint? {
         guard !disabled else { return nil }
@@ -69,7 +63,6 @@ private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
         try await Task.detached(priority: .utility) {
             try storage.save(voiceprint)
         }.value
-        await invalidate()
     }
 
     func deleteVoiceIdentity() async throws {
@@ -78,15 +71,25 @@ private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
         try await Task.detached(priority: .utility) {
             try storage.delete()
         }.value
-        await invalidate()
     }
 }
 
-private struct AppLocalVoiceSampleExtractor: LocalVoiceSampleIdentityExtracting {
-    let loadDiarizer: @MainActor @Sendable () async throws -> PyannoteDiarizer
+@MainActor
+private final class AppLocalVoiceSampleExtractor: LocalVoiceSampleIdentityExtracting {
+    private weak var services: AppServices?
+
+    init(services: AppServices) {
+        self.services = services
+    }
 
     func extractVoiceIdentity(from sample: LocalVoiceSample) async throws -> Voiceprint {
-        let diarizer = try await loadDiarizer()
+        guard let services else { throw CancellationError() }
+        let runtime = try await services.acquireDiarizationRuntime()
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+            services.scheduleRecordingEnginesRelease()
+        }
+        let diarizer = services.makeDiarizer(from: runtime)
         return try await diarizer.extractVoiceprint(
             fromSamples: sample.samples,
             sampleRate: sample.sampleRate)

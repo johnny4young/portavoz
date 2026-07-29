@@ -335,9 +335,10 @@ struct OnboardingView: View {
         }
     }
 
-    /// Voiceprint enrollment → saved; the diarizer reloads with it on the next
-    /// recording. `reusingFirstListen` skips the second recording and derives
-    /// the print from the 10 s the user already spoke in step 0 (6a-4).
+    /// Voiceprint enrollment → saved; each fresh diarization session samples
+    /// it without reloading the reusable Core ML weights. `reusingFirstListen`
+    /// skips the second recording and derives the print from the 10 s the user
+    /// already spoke in step 0 (6a-4).
     private func enrollVoice(reusingFirstListen: Bool) {
         enrolling = true
         enrollMessage = nil

@@ -33,7 +33,9 @@ extension AppServices {
                     preparing: liveSpeechRuntimeLoad != nil)),
             SupportModelReadiness(
                 capability: "speaker-diarization-runtime",
-                state: runtimeState(loaded: diarizer != nil, preparing: diarizerLoadTask != nil)),
+                state: runtimeState(
+                    loaded: diarizationRuntime != nil,
+                    preparing: diarizationRuntimeLoad != nil)),
             SupportModelReadiness(
                 capability: "speech-runtime-preparation",
                 state: speechPreparationState),

@@ -267,7 +267,9 @@ final class DiarizationIntegrationTests: XCTestCase {
         let store = ModelStore()
         let descriptor = ModelCatalog.speakerDiarization
         let directory = try await store.ensureAvailable(descriptor)
-        let diarizer = try PyannoteDiarizer.load(fromVerifiedDirectory: directory)
+        let runtime = try PyannoteDiarizationRuntime.load(
+            fromVerifiedDirectory: directory)
+        let diarizer = runtime.makeDiarizer()
 
         let turns = try await diarizer.diarizeFile(at: URL(fileURLWithPath: wavPath))
         XCTAssertFalse(turns.isEmpty)
@@ -295,7 +297,9 @@ final class DiarizationIntegrationTests: XCTestCase {
 
         let store = ModelStore()
         let directory = try await store.ensureAvailable(ModelCatalog.speakerDiarization)
-        let diarizer = try PyannoteDiarizer.load(fromVerifiedDirectory: directory)
+        let runtime = try PyannoteDiarizationRuntime.load(
+            fromVerifiedDirectory: directory)
+        let diarizer = runtime.makeDiarizer()
 
         // Feed the file the way a recording session does: ~0.5 s chunks at
         // the file's native rate.

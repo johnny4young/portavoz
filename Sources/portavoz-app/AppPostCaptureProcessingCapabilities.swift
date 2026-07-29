@@ -48,7 +48,10 @@ final class AppPostCaptureProcessingCapabilities:
         }.value
     }
 
-    func diarizePostCaptureAudio(_ asset: AudioAsset) async throws -> [SpeakerTurn] {
+    func diarizePostCaptureAudio(
+        _ asset: AudioAsset,
+        voiceprint: Voiceprint?
+    ) async throws -> [SpeakerTurn] {
         guard let services else { throw CancellationError() }
         let url = RecordingsLocation.shared.resolve(asset.relativePath)
         guard FileManager.default.fileExists(atPath: url.path) else {
@@ -58,9 +61,15 @@ final class AppPostCaptureProcessingCapabilities:
         // Attribution remains degradable: unavailable model preparation or
         // inference yields an unattributed system channel, but missing durable
         // audio remains a workflow failure.
-        guard let diarizer = try? await services.loadDiarizerIfNeeded(
+        guard let runtime = try? await services.acquireDiarizationRuntime(
             workloadClass: .postCapture)
         else { return [] }
+        defer {
+            _ = services.finishDiarizationRuntime(runtime)
+        }
+        let diarizer = services.makeDiarizer(
+            from: runtime,
+            voiceprint: voiceprint)
         return (try? await services.workloadTelemetry.measure(
             ResourceWorkloadDescriptor(
                 workloadClass: .postCapture,

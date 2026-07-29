@@ -5118,3 +5118,43 @@ while one queue plus generation admission makes input/output bursts and Stop
 ordering deterministic. The change preserves raw call-safe capture, the
 dual-channel timeline, and the audio-first durability boundary; real AirPods
 continuity remains an explicit field validation rather than an inferred claim.
+
+## D164 — Diarization reuses model weights, never speaker-session state (Jul 2026)
+
+**Context:** AppServices cached one stateful `PyannoteDiarizer`, while live
+recording and participant voice-memory extraction loaded additional one-shot
+instances directly. The shared instance retained FluidAudio's mutable speaker
+database across operations, so a later meeting could inherit clustering or an
+enrolled-identity snapshot from an earlier one. The direct loaders also bypassed
+the resource-residency ledger. The verified segmentation and embedding Core ML
+models are process-reusable, but the manager that assigns speaker labels is
+session state.
+
+**Decision:** speaker diarization is the fourth fully integrated residency
+family. `DiarizationKit.PyannoteDiarizationRuntime` retains only the verified
+Core ML model pair. AppServices coalesces one process load behind a
+`.speakerDiarization` ticket and returns a lease that binds those exact weights
+to one active-use token. Publication and first use are one synchronous
+MainActor transition; concurrent joiners receive separate tokens and cancelled
+joiners return theirs.
+
+Every live meeting, durable post-capture pass, Refine, Import, local-voice
+enrollment, and participant-memory extraction constructs a fresh
+`PyannoteDiarizer` from the leased weights and destroys that session after the
+operation. Identity is sampled into the new session instead of the resident
+weights. Durable post-capture additionally carries the exact voiceprint used by
+its operation fingerprint into execution, so a concurrent enrollment change
+cannot alter already-admitted work. Failed optional preparation or inference
+continues to produce honest unattributed speech rather than invented speakers.
+
+Release is two-phase and begins only when active use reaches zero. AppServices
+detaches the model pair, confirms the exact release generation, and restores
+the retained runtime if confirmation fails. Verified assets remain independent,
+the standalone CLI remains short-lived composition, and the existing
+600-second release fence is unchanged pending accepted resource evidence.
+
+**Rationale:** separating immutable model residency from mutable meeting state
+makes reuse safe and observable without reloading hundreds of megabytes for
+each operation. Exact leases prevent release during inference, while fresh
+speaker managers prevent cross-meeting contamination and let identity changes
+take effect without dropping reusable weights.

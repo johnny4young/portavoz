@@ -355,6 +355,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 under: "Sources",
                 pattern: #"modelResidencyLedger\."#),
             [
+                "portavoz-app/AppServices+DiarizationModels.swift",
                 "portavoz-app/AppServices+LiveSpeechModels.swift",
                 "portavoz-app/AppServices+MLXModels.swift",
                 "portavoz-app/AppServices+WhisperModels.swift",
@@ -375,11 +376,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources/portavoz-app",
                 pattern: #"PyannoteDiarizer\.loadRecommended"#),
-            [
-                "AppServices+MeetingVoiceMemory.swift",
-                "AppServices.swift",
-                "RecordingController.swift",
-            ])
+            [])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"PyannoteDiarizationRuntime\.loadRecommended"#),
+            ["AppServices+DiarizationModels.swift"])
         XCTAssertEqual(
             try Self.sourceMatches(
                 under: "Sources/ApplicationKit",
@@ -468,6 +470,83 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Parakeet is the third fully integrated residency family"))
         XCTAssertTrue(decisions.contains("## D162"))
         XCTAssertTrue(appSpec.contains("### Live-speech residency adapter (D162)"))
+    }
+
+    func testDiarizationRuntimePinsEveryProductionBorrower() throws {
+        let capability = try Self.contents(
+            of: "Sources/DiarizationKit/PyannoteDiarizer.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+DiarizationModels.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let postCapture = try Self.contents(
+            of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
+        let refine = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+RefineMeeting.swift")
+        let importAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ImportMeeting.swift")
+        let localVoice = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LocalVoiceIdentity.swift")
+        let voiceMemory = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
+        let recording = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+
+        XCTAssertTrue(capability.contains(
+            "public struct PyannoteDiarizationRuntime: Sendable"))
+        XCTAssertTrue(capability.contains(
+            "public func makeDiarizer("))
+        XCTAssertTrue(capability.contains(
+            "let sessionModels = models"))
+
+        for transition in [
+            "modelResidencyLedger.beginLoad(.speakerDiarization)",
+            "modelResidencyLedger.finishLoad(",
+            "modelResidencyLedger.failLoad(",
+            "modelResidencyLedger.beginUse(",
+            ".speakerDiarization)",
+            "modelResidencyLedger.finishUse(",
+            "modelResidencyLedger.beginRelease(",
+            "modelResidencyLedger.finishRelease(",
+            "modelResidencyLedger.cancelRelease(",
+            "struct DiarizationRuntimeLoad",
+            "struct DiarizationRuntimeLease",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(transition),
+                "Diarization residency adapter is missing \(transition)")
+        }
+
+        for borrower in [
+            postCapture, refine, localVoice, voiceMemory, recording,
+        ] {
+            XCTAssertTrue(borrower.contains("services.acquireDiarizationRuntime("))
+            XCTAssertTrue(borrower.contains("services.finishDiarizationRuntime("))
+            XCTAssertTrue(borrower.contains("services.makeDiarizer("))
+        }
+        XCTAssertTrue(importAdapter.contains("private var diarizationRuntime:"))
+        XCTAssertTrue(importAdapter.contains("services.acquireDiarizationRuntime()"))
+        XCTAssertTrue(importAdapter.contains("services?.finishDiarizationRuntime("))
+        XCTAssertTrue(importAdapter.contains("services.makeDiarizer("))
+        XCTAssertFalse(services.contains("var diarizer: PyannoteDiarizer?"))
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"PyannoteDiarizer\.loadRecommended"#),
+            [])
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let diarizationSpec = try Self.contents(
+            of: "docs/specs/03-diarization-identity.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Diarization is the fourth fully integrated residency family"))
+        XCTAssertTrue(decisions.contains("## D164"))
+        XCTAssertTrue(diarizationSpec.contains(
+            "### Process-owned model residency (D164)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Diarization residency adapter (D164)"))
     }
 
     func testWhisperRuntimePinsOneCompleteResidencyLifecycle() throws {
@@ -1419,22 +1498,19 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(
             refinePreparation.contains("loadEnginesIfNeeded"),
             "Refine readiness requires Whisper only; diarization remains degradable")
-        XCTAssertTrue(refine.contains("services.loadDiarizerIfNeeded()"))
+        XCTAssertTrue(refine.contains("services.acquireDiarizationRuntime()"))
 
-        let diarizerStart = try XCTUnwrap(services.range(
-            of: "func loadDiarizerIfNeeded("))
-        let broadLoaderStart = try XCTUnwrap(services.range(
-            of: "func loadEnginesIfNeeded()", range: diarizerStart.upperBound..<services.endIndex))
-        let diarizerLoader = services[
-            diarizerStart.lowerBound..<broadLoaderStart.lowerBound]
+        let diarization = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+DiarizationModels.swift")
         XCTAssertTrue(liveSpeech.contains("ParakeetEngine.loadRecommended"))
         XCTAssertFalse(liveSpeech.contains("PyannoteDiarizer"))
-        XCTAssertTrue(diarizerLoader.contains("PyannoteDiarizer.loadRecommended"))
-        XCTAssertFalse(diarizerLoader.contains("ParakeetEngine"))
+        XCTAssertTrue(diarization.contains(
+            "PyannoteDiarizationRuntime.loadRecommended"))
+        XCTAssertFalse(diarization.contains("ParakeetEngine"))
         XCTAssertTrue(services.contains("liveSpeechRuntimeLoad"))
-        XCTAssertTrue(services.contains("diarizerLoadTask"))
+        XCTAssertTrue(services.contains("diarizationRuntimeLoad"))
 
-        XCTAssertTrue(importAdapter.contains("services.loadDiarizerIfNeeded()"))
+        XCTAssertTrue(importAdapter.contains("services.acquireDiarizationRuntime()"))
         XCTAssertFalse(importAdapter.contains("services.loadEnginesIfNeeded()"))
         XCTAssertTrue(recovery.contains("services.acquireLiveSpeechRuntime("))
         XCTAssertTrue(recovery.contains("services.finishLiveSpeechRuntime("))
@@ -1505,7 +1581,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(
             adapter.components(separatedBy: "await microphone.stop()").count - 1,
             2)
-        XCTAssertTrue(adapter.contains("loadDiarizerIfNeeded()"))
+        XCTAssertTrue(adapter.contains("services.acquireDiarizationRuntime()"))
+        XCTAssertTrue(adapter.contains("services.finishDiarizationRuntime("))
+        XCTAssertTrue(adapter.contains("services.makeDiarizer("))
         XCTAssertTrue(adapter.contains("Task.detached(priority: .utility)"))
         XCTAssertTrue(adapter.contains(#"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(settings.contains("services.recordAndEnrollLocalVoice("))
@@ -1520,8 +1598,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(presentation.contains("MicrophoneSource("))
             XCTAssertFalse(presentation.contains("extractVoiceprint("))
             XCTAssertFalse(presentation.contains("services.voiceprintStore"))
-            XCTAssertFalse(presentation.contains("services.loadDiarizerIfNeeded()"))
-            XCTAssertFalse(presentation.contains("services.invalidateDiarizer()"))
+            XCTAssertFalse(presentation.contains(
+                "services.acquireDiarizationRuntime()"))
             XCTAssertFalse(presentation.contains("import AudioCaptureKit"))
             XCTAssertFalse(presentation.contains("import DiarizationKit"))
         }
@@ -1671,7 +1749,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         for adapterDependency in [
             "RecordingsLocation", "FileManager", "acquireLiveSpeechRuntime",
-            "loadDiarizerIfNeeded", "PostMeetingShortcut.runIfConfigured"
+            "acquireDiarizationRuntime", "PostMeetingShortcut.runIfConfigured"
         ] {
             XCTAssertTrue(adapter.contains(adapterDependency))
         }
@@ -1719,7 +1797,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(workflow.contains("VoiceMatcher.matches("))
         XCTAssertTrue(workflow.contains("case remember(meetingID: MeetingID"))
         XCTAssertTrue(adapter.contains("ManageMeetingVoiceMemory("))
-        XCTAssertTrue(adapter.contains("PyannoteDiarizer.loadRecommended"))
+        XCTAssertTrue(adapter.contains("services.acquireDiarizationRuntime()"))
+        XCTAssertTrue(adapter.contains("services.finishDiarizationRuntime("))
+        XCTAssertTrue(adapter.contains("services.makeDiarizer("))
         XCTAssertTrue(adapter.contains("RecordingsLocation.shared.resolve"))
         XCTAssertTrue(adapter.contains("gallery.remember(voice)"))
         XCTAssertTrue(view.contains("model.send(.loadVoiceSuggestions)"))
@@ -1729,7 +1809,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("services.rememberMeetingDetailVoice("))
         for bypass in [
             "VoiceMatcher.matches(", "PyannoteDiarizer.loadRecommended",
-            "ModelStore()", "services.voiceGallery", "extractVoiceprints(",
+            "acquireDiarizationRuntime", "ModelStore()",
+            "services.voiceGallery", "extractVoiceprints(",
         ] {
             XCTAssertFalse(view.contains(bypass), bypass)
         }

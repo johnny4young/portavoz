@@ -214,10 +214,10 @@ The ledger performs no loading, caching, scheduling, sleeping, model download,
 checksum verification, pressure observation, or runtime release. It stores no
 model/provider identity, file path, prompt, or transcript content and never
 enters `AudioCaptureKit`. The macOS `AppServices` composition root owns exactly
-one ledger for the process. Live speech, Whisper, and MLX now submit complete
-family lifecycles; the other characterized owners do not. Numeric TTL and memory-budget
-enforcement require accepted resource evidence rather than constants in this
-contract.
+one ledger for the process. Live speech, Whisper, MLX, and diarization now
+submit complete family lifecycles; the remaining semantic-embedding owner does
+not. Numeric TTL and memory-budget enforcement require accepted resource
+evidence rather than constants in this contract.
 
 #### Characterized runtime topology
 
@@ -226,15 +226,15 @@ The migration surface is locked by an architecture test before adapter changes:
 | Family | Current owner and acquisition | Current release |
 |---|---|---|
 | Live speech | `AppServices+LiveSpeechModels` coalesces one verified Parakeet load; recording, Dictation, durable post-capture work, onboarding, and benchmarks retain exact-engine active-use leases | The ledger rejects release while leased; AppServices confirms concrete release after the existing 600-second generation fence |
-| Speaker diarization | `AppServices` coalesces the shared pyannote instance; voice-memory matching and recording voice enrollment also perform two explicit one-shot pyannote loads | Shared instance follows the 600-second speech release; one-shot values end with their operation |
+| Speaker diarization | `AppServices+DiarizationModels` coalesces one verified reusable Core ML model pair; every live/batch meeting and voice extraction creates a fresh stateful `PyannoteDiarizer` under an exact active-use lease | The ledger rejects release while any session is leased; AppServices confirms concrete model-pair release after the existing 600-second generation fence |
 | Quality speech | `AppServices+WhisperModels` coalesces one runtime load and returns exact-engine active-use leases to Refine/Import | The ledger rejects release and deletion while leased; AppServices confirms concrete release after the existing 120-second generation fence |
 | Language intelligence | `AppServices+MLXModels` injects one process-owned `IntelligenceKit.MLXSummaryRuntime` into every production MLX provider and returns active-use leases around exact-directory generation | The ledger rejects release and verified-file deletion while active; AppServices confirms concrete release after the existing 120-second generation fence |
 | Semantic embedding | Library retains one `SentenceEmbedder`; Ask creates one per retrieval; benchmark-only embedders remain isolated | Library lifetime is process-scoped; Ask values end with retrieval |
 
-The ratchet also proves there is one process ledger construction, three fully
-integrated runtime adapters, and no transition submissions from the remaining
-families. This is not approval of the duplicated pyannote/embedding ownership
-or the current idle constants.
+The ratchet also proves there is one process ledger construction, four fully
+integrated runtime adapters, and no transition submissions from semantic
+embedding. This is not approval of the duplicated embedding ownership or the
+current idle constants.
 
 ### Whisper residency adapter (D160)
 
@@ -314,6 +314,34 @@ families and ends the Parakeet token after readiness resolves. Concrete release
 is two-phase and restores the runtime if ledger confirmation fails. The
 existing 600-second generation fence remains unchanged, but it can no longer
 drop Parakeet while any production borrower is active.
+
+### Diarization residency adapter (D164)
+
+`DiarizationKit.PyannoteDiarizationRuntime` separates process-reusable Core ML
+weights from the stateful `DiarizerManager` speaker database. AppServices owns
+one runtime, joins concurrent verified preparation behind one
+`.speakerDiarization` load ticket, and claims the first active-use token in the
+same MainActor publication step. Each joiner receives a distinct
+`DiarizationRuntimeLease`; cancellation after a shared load ends that token
+before propagating.
+
+No meeting reuses a `PyannoteDiarizer`. Live recording, durable post-capture
+attribution, Refine, Import, local-voice enrollment, and participant-memory
+extraction create fresh sessions from the retained weights and hold their
+leases through inference. Identity is sampled separately for each operation,
+and durable post-capture execution receives the exact sample already included
+in its operation fingerprint. Saving or deleting the encrypted voiceprint does
+not require dropping the model pair, cannot alter admitted durable work, and
+cannot leave stale identity inside a later session. The CLI remains a separate
+short-lived composition.
+
+Release is two-phase and accepted only when every operation has ended.
+AppServices detaches the reusable model pair, confirms the exact ledger
+generation, and restores the retained value if confirmation fails. Verified
+assets remain installed, degradable diarization still produces honest
+unattributed transcript, live hints remain optional, and no model operation
+enters an audio callback. The shared 600-second fence is deliberately
+unchanged pending accepted per-family evidence.
 
 Recording Start is also the single authorization boundary for meeting capture.
 Its explicit user action asks `MicrophonePermissionClient` to resolve an

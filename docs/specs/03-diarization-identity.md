@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -15,6 +15,32 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
   inference, and idle release at app-owned operation boundaries. It does not
   expose meeting, speaker, voiceprint, file, model, or error identity, and it
   changes neither the 0.45 threshold nor lifecycle ownership.
+
+### Process-owned model residency (D164)
+
+`PyannoteDiarizationRuntime` retains only the verified segmentation and
+embedding `MLModel` pair. `AppServices+DiarizationModels` is its sole
+production owner and coalesces concurrent preparation through the resource
+residency ledger. Every consumer receives an exact active-use lease and must
+end it after inference; release cannot begin while any live, batch, Refine,
+Import, enrollment, or voice-memory operation remains active.
+
+The runtime is not a shared diarizer. `makeDiarizer` constructs a new
+`DiarizerManager` and speaker database for every operation while reusing the
+loaded Core ML weights. The operation samples its current optional voiceprint
+into that new session. Durable post-capture work carries the exact sampled
+voiceprint from fingerprint validation into execution instead of re-reading
+mutable enrollment state. Speaker clusters and enrolled identity therefore
+never leak from one meeting to another, and changing the encrypted voiceprint
+does not require reloading model weights. Failed optional preparation or
+inference preserves the existing honest unattributed behavior.
+
+Load publication and first-use acquisition are one MainActor transition;
+cancelled joiners return their token. Release detaches the model pair only
+after the ledger admits an idle family and restores it if exact confirmation
+fails. Verified files and the standalone CLI remain independent. The existing
+600-second idle fence remains measured policy rather than being changed in
+this migration.
 
 ## Attribution — `SpeakerAttributor` (pure functions)
 
@@ -34,16 +60,13 @@ the optional encrypted local voiceprint read, pyannote inference, and the
 Parakeet attribution pass. The command retains only argument parsing and the
 existing turn/transcript rendering (D103).
 
-For external audio, `ApplicationKit.ImportMeeting` requires the initial shared
-recording-engine preparation before transcription, preserving the released
-model-readiness contract. Immediately before attribution it asks the app
-processor to reload the diarizer because another idle-release task may have
-dropped the shared reference during the Whisper pass. The second reload is
-best-effort and does not suppress the inference attempt: if an already-loaded
-shared diarizer remains usable, attribution can still succeed. If no usable
-diarizer remains or inference fails, the workflow installs the full transcript
-with no invented speakers or speaker IDs. Storage then commits the meeting,
-any attributed cast, and all segments atomically (D46).
+For external audio, `ApplicationKit.ImportMeeting` prepares Whisper and the
+reusable diarization model pair independently. Its processor retains one
+diarization lease and one fresh session through transcription and attribution;
+the second preparation request is idempotent. If no usable runtime remains or
+inference fails, the workflow installs the full transcript with no invented
+speakers or speaker IDs. Storage then commits the meeting, any attributed
+cast, and all segments atomically (D46).
 
 For the in-app quality pass, `ApplicationKit.RefineMeeting` asks its processor
 port to diarize only a non-silent system channel after Whisper succeeds. A
@@ -69,7 +92,7 @@ prevents unstable diarization labels from becoming cross-meeting identity.
 
 Field request: two remote voices speaking one after the other were merged into a single live "Ellos" row — it was not apparent that they were two people. Pipeline:
 
-- `RecordingController` feeds the system channel to a **DEDICATED instance** of `PyannoteDiarizer` (fresh SpeakerManager per session — the durable post-capture pass remains uncontaminated) via `diarize(AsyncStream)`, in 10 s windows; inference runs on the diarizer actor (~14 MB, ms per window — it never competes with Parakeet's live lane).
+- `RecordingController` holds one diarization runtime lease and feeds the system channel to a **DEDICATED instance** of `PyannoteDiarizer` (fresh SpeakerManager per session — the durable post-capture pass remains uncontaminated) via `diarize(AsyncStream)`, in 10 s windows; inference runs on the diarizer actor while the process-owned Core ML weights remain pinned.
 - With each turn, `LiveSpeakerLabeler.relabel` (pure, idempotent, 7 tests)
   relabels CLOSED system rows: a row that crosses two voices is **split** at
   turn boundaries (reuses `SpeakerAttributor`, proportional word
@@ -93,7 +116,7 @@ batch identity cannot accidentally sample different enrollment state (D49).
 ## Voiceprint — `VoiceprintStore` (D8/D21)
 
 - 256-dim WeSpeaker embedding from ~12 s of voice alone (the source audio is NOT retained). AES-GCM encrypted; the key is ONLY in Keychain (`app.portavoz.voiceprint-key`). `VoiceprintStore` receives the Core `SecretStoring` port from app/CLI composition and never imports or constructs Keychain. `delete()` destroys the file + key in one action. It is never synchronized (reenrollment per device).
-- Enrollment: app (Settings → "Enroll my voice", 12 s) or CLI `voice enroll --file <wav>`. Every path enters `ApplicationKit.ManageLocalVoiceIdentity`. CLI enrollment admits a source file. Settings requests a fresh echo-cancelled capture; Onboarding either reuses its already captured first-listen sample or requests a fresh raw capture. The workflow bounds capture to 1...60 seconds, requires at least four seconds of finite sample data, emits typed capture/extraction/persistence progress, and writes only after extraction succeeds. App composition retains microphone lifetime, exact capture mode, guaranteed stop, verified pyannote loading, transient extraction, encrypted Keychain-backed storage, and diarizer invalidation after a successful save/delete. A failed delete remains visible and does not clear the enrolled state. Disposable UI-test composition never reads or mutates the host identity. Status and delete never load a model or read source audio (D103/D106). The diarizer loads the enrolled value with `initializeKnownSpeakers(isPermanent: true)` → reserved cross-channel "Me" label (hybrid meetings: your voice arriving through the room/system is also yours).
+- Enrollment: app (Settings → "Enroll my voice", 12 s) or CLI `voice enroll --file <wav>`. Every path enters `ApplicationKit.ManageLocalVoiceIdentity`. CLI enrollment admits a source file. Settings requests a fresh echo-cancelled capture; Onboarding either reuses its already captured first-listen sample or requests a fresh raw capture. The workflow bounds capture to 1...60 seconds, requires at least four seconds of finite sample data, emits typed capture/extraction/persistence progress, and writes only after extraction succeeds. App composition retains microphone lifetime, exact capture mode, guaranteed stop, one process-owned verified model-pair lease, transient extraction, and encrypted Keychain-backed storage. Saving or deleting identity does not invalidate weights because every future operation samples the current value into a fresh diarizer. A failed delete remains visible and does not clear the enrolled state. Disposable UI-test composition never reads or mutates the host identity. Status and delete never load a model or read source audio (D103/D106). The diarizer loads the enrolled value with `initializeKnownSpeakers(isPermanent: true)` → reserved cross-channel "Me" label (hybrid meetings: your voice arriving through the room/system is also yours).
 
 ## Remembered participant voices (Jul 2026) — cross-meeting naming
 
@@ -102,7 +125,7 @@ Field request: remember a participant's voice across meetings to autosuggest the
 - **`VoiceGallery`** (`voice-gallery.enc`, same pattern as VoiceprintStore: AES-GCM, key only in Keychain service `app.portavoz.voice-gallery-key`, never sync). It receives the same injected Core secret port. A voice is added ONLY through an explicit gesture: the "Remember X's voice?" chip that appears after confirming a name (manual rename or applied chip). Rerecording someone REPLACES their embedding (one per person, case-insensitive). Individually removable (context menu in Ajustes → "Remembered voices"), and "Forget all voices" destroys the file + key in one action. Settings list and delete actions enter `ApplicationKit.ManageRememberedVoices`; its presentation projection carries identity, name, and creation date but never an embedding. The app adapter performs gallery reads and writes on a utility executor so the encrypted file and securityd cannot block MainActor. A failed destructive action stays visible and preserves the current list; `-use-temp-store` returns an empty gallery and never inspects the host biometric file or key.
 - **`PyannoteDiarizer.extractVoiceprints(fromFile:rangesBySpeaker:minimumSeconds:maximumSeconds:)`**: one embedding per speaker from their system-channel spans — resamples the file ONCE, slices by ranges (longest first up to 20 s; < 5 s is discarded: a short embedding would match noise). Embeddings are transient: NOTHING is persisted here.
 - **`VoiceMatcher`** (pure, 5 tests): its own cosine distance (outside FluidAudio — internal clustering does not work cross-meeting), threshold `maxCosineDistance = 0.54` (the same effective yardstick as D17 clustering; pending field calibration). Each speaker receives at most their closest voice, and each gallery voice is suggested for at most one speaker (two speakers cannot both be "Marta"). Degenerate embeddings (norm 0, different dimensions) never match.
-- **Application workflow (D105):** `ManageMeetingVoiceMemory` loads one coherent detail, considers only unnamed non-user speakers, degrades gallery/extraction failure to no suggestions, and applies `VoiceMatcher` one-to-one. An explicit remember request must still identify a currently named non-user speaker; insufficient audio is typed and a gallery write failure remains visible. The app adapter owns recording-path resolution, the ephemeral diarizer (~14 MB; heavy engines are NOT loaded), transient extraction, encrypted storage, and disposable-test isolation.
+- **Application workflow (D105):** `ManageMeetingVoiceMemory` loads one coherent detail, considers only unnamed non-user speakers, degrades gallery/extraction failure to no suggestions, and applies `VoiceMatcher` one-to-one. An explicit remember request must still identify a currently named non-user speaker; insufficient audio is typed and a gallery write failure remains visible. The app adapter owns recording-path resolution, one exact process-runtime lease plus a fresh extraction session, transient embeddings, encrypted storage, and disposable-test isolation.
 - **UI (MeetingDetailView):** opening an eligible detail asks the route-owned
   `MeetingDetailModel` to load suggestions once and renders "S1 → ¿Marta?"
   chips with a waveform icon (the evidence is the voice, not the transcript —
