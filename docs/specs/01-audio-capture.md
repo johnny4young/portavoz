@@ -52,11 +52,15 @@ Actor that coordinates sources and writers by channel (created lazily with the f
 
 Startup is transactional at both levels. `ApplicationKit.StartRecording`
 samples title/language/vocabulary/capture preferences once, asks a private app
-runtime to warm the microphone, select structural channels, and report whether
-a verified live Parakeet instance is already resident. Model readiness is
-evidence, never a capture gate. Before any source starts, the use case atomically
-inserts a `recording` meeting shell and one pending `AudioAsset` reservation per
-selected channel. The runtime then starts `RecordingSession` immediately. If
+runtime to resolve microphone authorization before any `AVAudioEngine` access,
+warm the microphone, select structural channels, and report whether a verified
+live Parakeet instance is already resident. A user-initiated Start may issue
+the one-time macOS prompt; denied or restricted access fails through the typed
+preparation boundary without constructing an input graph. Model readiness is
+evidence, never a capture gate. Before any source starts, the use case
+atomically inserts a `recording` meeting shell and one pending `AudioAsset`
+reservation per selected channel. The runtime then starts `RecordingSession`
+immediately. If
 Parakeet is resident it also owns one direct stream per channel; otherwise it
 starts one deduplicated verified model-preparation task after audio is active
 and marks the session for complete transcript recovery at Stop. A failed live

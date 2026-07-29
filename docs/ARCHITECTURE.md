@@ -619,12 +619,16 @@ microphone spill is handled after capture by transcript bleed filtering rather
 than by modifying the live call. `MicrophoneSource` keeps an explicit
 voice-processing option only for bounded nonmeeting tools such as local voice
 enrollment and the CLI diagnostic flag. Microphone graph preparation is also
-fail-closed: warm-up and device-restart paths validate a finite positive
-hardware sample rate and at least one input channel before calling
-`AVAudioEngine.prepare()`, while one serial queue owns warm-up, start, stop, and
-device-restart graph mutation. Capture also awaits its explicit warm-up task
-before entering that owner. An unavailable route crosses the existing typed
-recording-start boundary instead of escaping as an Objective-C exception.
+fail-closed. The app resolves microphone authorization through `PlatformKit`
+before constructing `MicrophoneSource` or touching `AVAudioEngine`; a
+user-initiated Start may issue the one-time macOS prompt, while denied or
+restricted access returns through the typed preparation failure. Warm-up and
+device-restart paths then validate a finite positive hardware sample rate and
+at least one input channel before calling `AVAudioEngine.prepare()`, while one
+serial queue owns warm-up, start, stop, and device-restart graph mutation.
+Capture also awaits its explicit warm-up task before entering that owner. An
+unavailable route crosses the existing typed recording-start boundary instead
+of escaping as an Objective-C exception.
 
 ```mermaid
 flowchart LR
@@ -1375,7 +1379,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,243 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,247 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

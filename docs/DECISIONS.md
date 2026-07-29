@@ -4759,3 +4759,34 @@ change. Embedding residency, background admission, recording interference, and
 sqlite-vec remain separate decisions. Recording interference now has a
 reproducible collector, but it still requires accepted host baselines before
 governor policy can be derived.
+
+## D153 — Microphone authorization precedes every meeting input graph (Jul 2026)
+
+**Context:** the isolated Release resource app reached recording preparation
+with a fresh TCC identity and then remained inside
+`AVAudioEngine.inputNode`/Core Audio device binding for minutes. The app
+previously relied on onboarding to request microphone access, but onboarding
+is optional lifecycle state and disposable benchmark launches intentionally
+skip it. Task cancellation cannot interrupt a synchronous Core Audio device
+bind, and measuring a one-time permission prompt would also contaminate the
+recording baseline.
+
+**Decision:** `PlatformKit.MicrophonePermissionClient` owns one deterministic
+authorization operation. Existing authorization passes without prompting,
+an undetermined grant is requested only from the explicit user-initiated
+recording action, and denied or restricted access fails closed. The macOS
+recording runtime invokes this operation before constructing
+`MicrophoneSource`, enumerating its selected engine route, or starting warm-up.
+The isolated windowed resource runner invokes the same operation before any
+resource probe is armed, so TCC interaction is preparation rather than measured
+work. Onboarding retains its explicit permission control but is no longer a
+hidden precondition for recording.
+
+**Rationale:** permission is a platform precondition, not an audio-device
+side effect. Resolving it before AVAudioEngine keeps the application boundary
+typed, prevents a fresh installation or benchmark identity from entering an
+ambiguous hardware path, and makes baseline windows comparable. This decision
+does not claim that cooperative cancellation can interrupt a genuinely stalled
+authorized Core Audio bind; if that separate field shape reproduces, it
+requires its own bounded outer policy rather than a misleading structured-task
+timeout.

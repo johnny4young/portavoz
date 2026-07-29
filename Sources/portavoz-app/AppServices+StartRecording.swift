@@ -316,6 +316,9 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         preferences: StartRecordingPreferencesSnapshot
     ) async throws -> StartRecordingPreparedRuntime {
         guard let services else { throw StartRecordingRuntimeError.preparationUnavailable }
+        guard await services.authorizeMicrophoneForRecording() else {
+            throw StartRecordingRuntimeError.preparationUnavailable
+        }
         let microphoneID = preferences.preferredInputDeviceID.flatMap { identifier in
             (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil
                 ? identifier : nil

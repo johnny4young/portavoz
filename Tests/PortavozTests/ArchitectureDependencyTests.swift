@@ -330,6 +330,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "finishAfterStopAndWrite"))
         XCTAssertTrue(recordingRunner.contains(
             #"arguments.contains("-use-temp-store")"#))
+        let permissionPreflight = try XCTUnwrap(recordingRunner.range(
+            of: "authorizeMicrophoneForRecording()"))
+        let recordingProbeStart = try XCTUnwrap(recordingRunner.range(
+            of: "baselineProbes?.beginRecording()"))
+        XCTAssertLessThan(
+            permissionPreflight.lowerBound,
+            recordingProbeStart.lowerBound)
         XCTAssertTrue(recordingRunner.contains(
             "recording Stop exceeded 30 seconds"))
         XCTAssertTrue(recordingRunner.contains(
@@ -477,6 +484,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/OnboardingView.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices+Permissions.swift")
+        let startRuntime = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+StartRecording.swift")
         let platform = try Self.contents(
             of: "Sources/PlatformKit/MicrophonePermissionClient.swift")
 
@@ -485,6 +494,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(onboarding.contains("services.requestMicrophonePermission()"))
         XCTAssertTrue(onboarding.contains("services.requestOnboardingCalendarAccess()"))
         XCTAssertTrue(services.contains("microphonePermissions.request()"))
+        XCTAssertTrue(services.contains("microphonePermissions.authorizeIfNeeded()"))
+        let recordingAuthorization = try XCTUnwrap(startRuntime.range(
+            of: "services.authorizeMicrophoneForRecording()"))
+        let microphoneConstruction = try XCTUnwrap(startRuntime.range(
+            of: "let microphone = MicrophoneSource("))
+        XCTAssertLessThan(
+            recordingAuthorization.lowerBound,
+            microphoneConstruction.lowerBound)
         XCTAssertTrue(platform.contains("AVCaptureDevice.authorizationStatus"))
         XCTAssertTrue(platform.contains("AVCaptureDevice.requestAccess"))
     }

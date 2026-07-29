@@ -78,6 +78,9 @@ enum BenchRecordingResourceRunner {
         concurrentProbe: BenchConcurrentRecordingResourceProbe?,
         batchConfiguration: BenchBatchResourceConfiguration?
     ) async throws {
+        guard await services.authorizeMicrophoneForRecording() else {
+            throw BenchRecordingResourceRunnerError.microphonePermissionRequired
+        }
         let concurrentWorkload = try await prepareConcurrentWorkload(
             services: services,
             arguments: ProcessInfo.processInfo.arguments,
@@ -308,11 +311,14 @@ private enum BenchConcurrentRecordingWorkload {
 }
 
 private enum BenchRecordingResourceRunnerError: Error, LocalizedError {
+    case microphonePermissionRequired
     case startFailed(String)
     case stopTimedOut
 
     var errorDescription: String? {
         switch self {
+        case .microphonePermissionRequired:
+            "grant microphone access to Portavoz Resource Bench and rerun"
         case .startFailed(let reason):
             "recording start failed: \(reason)"
         case .stopTimedOut:

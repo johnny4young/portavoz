@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,243 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,247 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1345,7 +1345,10 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   never targets the notarized installed app. Resource-mode app initialization
   returns before sync, recovery, provider discovery, or dictation registration
   can contaminate a measured operation; the AppKit delegate remains detached
-  from product services. Its native app probes
+  from product services. The windowed recording runner resolves the scratch
+  bundle's one-time microphone authorization before it arms any resource
+  probe; rejection fails the run instead of entering an ambiguous Core Audio
+  bind or publishing a contaminated sample. Its native app probes
   samples process CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
   closed workload descriptors. The Stop probe atomically replays active spans

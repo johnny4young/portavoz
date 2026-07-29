@@ -15,7 +15,9 @@ benchmark-only storage-isolation exception; no production launch or scheduler
 reads evidence. D151 gives MLX/GPU inference its own explicit single-flight lane
 without coupling it to Apple Foundation Models/ANE work. D152 adds one
 ApplicationKit semantic-index operation and reuses it in both indexing resource
-cells without changing Ask or Library scheduling.
+cells without changing Ask or Library scheduling. D153 requires the
+composition root to resolve microphone authorization before any recording
+runtime constructs or warms an AVAudioEngine input graph.
 
 ## Structure
 
@@ -139,6 +141,14 @@ signpost. The existing exact `Meeting Detail First Content` interval remains
 in parallel for the established 5,000-segment baseline. No admission,
 deferral, priority, concurrency, model-residency, or eviction behavior changes
 in this measurement slice.
+
+Recording Start is also the single authorization boundary for meeting capture.
+Its explicit user action asks `MicrophonePermissionClient` to resolve an
+undetermined microphone grant before `MicrophoneSource` exists. Existing
+authorization proceeds without another prompt; denied or restricted access
+returns the localized typed preparation failure without entering Core Audio.
+The isolated resource app performs the same preflight before any measured
+window, so one-time TCC interaction is never counted as runtime workload.
 
 The tracked `docs/evidence/resource-baseline-matrix.json` contract and
 `scripts/resource_baseline.py` sit outside the executable. They require three
