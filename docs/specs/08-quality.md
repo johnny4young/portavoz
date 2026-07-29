@@ -1357,7 +1357,11 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   after counters start remains part of the sample. The probes sample process
   CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
-  closed workload descriptors. The Stop probe atomically replays active spans
+  closed workload descriptors. All seven app invocations per round use the
+  copied signed bundle through LaunchServices—never the inner SwiftUI/AppKit
+  executable—so each scenario receives the same application resource policy,
+  bundle identity, environment, and TCC boundary. The Stop probe atomically
+  replays active spans
   before recording metrics freeze, preventing a boundary finish from falling
   between collectors. A timeout or partial lifecycle emits no passing sample.
 - `scripts/resource_baseline.py assemble/evaluate`: assembles exact native

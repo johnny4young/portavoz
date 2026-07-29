@@ -692,6 +692,11 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("(( MODEL_TIMEOUT <= 3600 ))", runner)
         self.assertIn('if [[ "$OUTPUT" != /* ]]; then', runner)
         self.assertIn('OUTPUT="$ROOT/$OUTPUT"', runner)
+        self.assertEqual(runner.count("run_benchmark_app"), 8)
+        self.assertNotIn(
+            '"$APP/Contents/MacOS/portavoz-app"',
+            runner,
+        )
         self.assertIn("resource_baseline.py assemble", runner)
         self.assertNotIn("/Applications/Portavoz.app", runner)
         self.assertLess(

@@ -4837,3 +4837,26 @@ scenario and remains recorded. Centralizing the gate avoids scenario-specific
 sleep folklore, preserves cold-process and real-model behavior, and gives 8 GB,
 16 GB, and reference receipts one reproducible precondition without weakening
 the scorecard's stability threshold.
+
+## D156 — Resource evidence launches the signed app bundle (Jul 2026)
+
+**Context:** recording resource scenarios launched the copied signed `.app`
+through LaunchServices, while Refine, Summary, Ask, and indexing executed the
+SwiftUI/AppKit Mach-O directly. The exact `666d21d` collection then showed a
+correlated third-round slowdown across those independent short processes even
+though thermal state remained nominal, AC power was invariant, and Low Power
+Mode was off. A raw GUI executable does not reproduce the normal application
+launch or resource-management boundary.
+
+**Decision:** every resource scenario launches the same copied, signed,
+benchmark-identified application bundle with `open -W -n ... --args`. The
+runner retains its disposable storage, content-free evidence, and exact commit
+binding. It does not use `taskpolicy`, invent process priorities, or add a
+benchmark-only `NSProcessInfo` activity.
+
+**Rationale:** LaunchServices preserves the benchmark environment while
+applying the platform's application semantics, bundle identity, and TCC
+boundary consistently. This removes a harness asymmetry without changing the
+product workload or hiding contention. Product ownership of explicit
+user-initiated, background, and latency-critical activities belongs to GOV-1
+policy rather than to measurement scaffolding.

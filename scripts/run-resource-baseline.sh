@@ -158,6 +158,10 @@ fi
 codesign "${sign_arguments[@]}" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
+run_benchmark_app() {
+    open -W -n "$APP" --args "$@"
+}
+
 fixture_text="$RUN_ROOT/refine-fixture.txt"
 fixture_audio="$RUN_ROOT/refine-fixture.aiff"
 if ! say -v '?' | grep -Eq '^Samantha[[:space:]]'; then
@@ -208,7 +212,7 @@ for ((run = 1; run <= RUNS; run++)); do
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
     echo "Collecting idle/recording/Stop resource sample $run of ${RUNS}…"
-    if ! open -W -n "$APP" --args \
+    if ! run_benchmark_app \
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
             --bench-record "$DURATION" \
@@ -232,7 +236,7 @@ for ((run = 1; run <= RUNS; run++)); do
     echo "Collecting recording plus indexing resource sample $run of ${RUNS}…"
     mkdir -p "$recording_indexing_audio_root"
     export PORTAVOZ_AUDIO_ROOT="$recording_indexing_audio_root"
-    if ! open -W -n "$APP" --args \
+    if ! run_benchmark_app \
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
             --bench-record "$DURATION" \
@@ -257,7 +261,7 @@ for ((run = 1; run <= RUNS; run++)); do
     echo "Collecting recording plus batch resource sample $run of ${RUNS}…"
     mkdir -p "$recording_batch_audio_root"
     export PORTAVOZ_AUDIO_ROOT="$recording_batch_audio_root"
-    if ! open -W -n "$APP" --args \
+    if ! run_benchmark_app \
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
             --bench-record "$DURATION" \
@@ -280,7 +284,7 @@ for ((run = 1; run <= RUNS; run++)); do
     fi
 
     echo "Collecting Refine resource sample $run of ${RUNS}…"
-    if ! "$APP/Contents/MacOS/portavoz-app" \
+    if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
         --bench-resource-refine "$fixture_audio" \
@@ -300,7 +304,7 @@ for ((run = 1; run <= RUNS; run++)); do
     fi
 
     echo "Collecting Summary resource sample $run of ${RUNS}…"
-    if ! "$APP/Contents/MacOS/portavoz-app" \
+    if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
         --bench-resource-summary \
@@ -320,7 +324,7 @@ for ((run = 1; run <= RUNS; run++)); do
     fi
 
     echo "Collecting Ask resource sample $run of ${RUNS}…"
-    if ! "$APP/Contents/MacOS/portavoz-app" \
+    if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
         --bench-resource-ask \
@@ -340,7 +344,7 @@ for ((run = 1; run <= RUNS; run++)); do
     fi
 
     echo "Collecting semantic indexing resource sample $run of ${RUNS}…"
-    if ! "$APP/Contents/MacOS/portavoz-app" \
+    if ! run_benchmark_app \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
         --bench-resource-indexing \

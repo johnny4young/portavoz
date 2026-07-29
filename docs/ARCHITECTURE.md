@@ -744,7 +744,11 @@ observations five seconds apart and fails closed after five minutes. This
 excludes pressure inherited from an earlier scenario while preserving pressure
 created by the measured work itself. A five-second launch-settling interval
 also precedes the model-free idle gate, and ordinary XCUITest launches keep
-their existing empty temporary model root.
+their existing empty temporary model root. Every scenario launches the copied,
+signed application bundle through LaunchServices; no SwiftUI/AppKit benchmark
+executes the inner Mach-O directly. This keeps application resource policy,
+bundle identity, environment inheritance, and TCC behavior aligned across
+recording and non-recording evidence.
 Once a resource benchmark dispatcher is armed, app initialization returns
 before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. The benchmark owns

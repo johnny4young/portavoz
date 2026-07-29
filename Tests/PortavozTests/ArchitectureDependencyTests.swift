@@ -412,6 +412,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "usesTemporaryMeetingStore && !reusesVerifiedModels"))
         XCTAssertTrue(runner.contains(
             "app.portavoz.mac.resource-bench"))
+        XCTAssertEqual(
+            runner.components(separatedBy: "run_benchmark_app").count - 1,
+            8)
+        XCTAssertFalse(runner.contains(
+            #""$APP/Contents/MacOS/portavoz-app""#))
         XCTAssertTrue(runner.contains(
             "resource_baseline.py assemble"))
         XCTAssertTrue(runner.contains(
