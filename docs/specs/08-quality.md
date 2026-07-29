@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,193 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,194 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -9,7 +9,7 @@ the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
 Meeting Detail tests. The latest full English and Spanish release gates each
-cover all 49 cases and retain app-only
+cover all 55 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim
@@ -655,16 +655,24 @@ panel. The slice gate is 667 package tests (13 gated), strict SwiftLint is
 clean across 249 Swift source files, and all 23 XCUITest cases pass in English
 and Spanish (D76).
 
-The real-call field protocol in `docs/FIELD-VALIDATION.md` revalidates every
-format-v2 support key and bounded value before atomically publishing a new
-owner-only evidence directory. `scripts/collect-field-evidence.py` rejects unknown fields,
-content-bearing additions, malformed counts/digests/timestamps, non-Portavoz
-bundles, and `/Applications/Portavoz.app`; its manifest contains only enumerated
-scenario checks, elapsed seconds, app/macOS versions, and support-report metadata.
-Six tooling cases prove valid packaging, path-free manifests, owner-only modes,
-format rejection, unknown-key rejection, release-app refusal, and scenario-check
-scoping, including rejection of natural language smuggled through an identifier
-field. No audio, transcript text, database, or screenshot enters this workflow.
+The real-call protocol in `docs/FIELD-VALIDATION.md` revalidates every format-2
+support key and bounded value before atomically publishing a new owner-only
+evidence directory. `scripts/collect-field-evidence.py` rejects unknown fields,
+content-bearing additions, malformed counts/digests/timestamps, mismatched app
+versions, non-Portavoz bundles, and `/Applications/Portavoz.app`. Protocol 2
+selects one of six canonical call fixtures and projects only seven stable
+evidence IDs with fixed subsystem ownership. A paired pre/post-Refine package
+must retain the same pseudonymous meeting reference, advance export time, and
+advance the transcript revision before Refine may pass. Report-derived
+contradictions also fail closed: a recording lifecycle cannot pass Stop, a
+missing dual-channel shape cannot pass route preservation, and missing audio
+cannot pass post-capture admission. Offset-free timestamps are rejected so
+paired export ordering cannot mix timezone-naive and timezone-aware values.
+Protocol-1 scenarios keep their original manifest and filename for one release.
+Thirteen tooling cases plus a real
+StorageKit before/after-Refine export test cover both protocols, owner-only
+publication, content rejection, evidence scoping, and format-2 compatibility.
+No audio, transcript text, database, or screenshot enters this workflow.
 
 Band 3 slice 3J adds typed Start and Stop unit cases for preparation,
 reservation, capture reconciliation, fallback persistence, critical recovery
@@ -1250,7 +1258,7 @@ remains in earlier history, retains
 `recording-live-transcript-history-paused`, then uses
 `recording-jump-to-live` and observes the latest row.
 
-The current field-reliability gate is 1,193 XCTest package cases (13 gated),
+The current field-reliability gate is 1,194 XCTest package cases (13 gated),
 zero strict-lint violations across 387 Swift files, a 105-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,

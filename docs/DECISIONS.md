@@ -4442,3 +4442,37 @@ search. No sqlite-vec or other vector dependency is added.
 and failure semantics deterministic on every supported Mac. Reusing the
 existing device-local representation adds paraphrase and cross-language recall
 with no new privacy boundary, dependency, or required setup.
+
+## D146 — Field evidence has stable subsystem IDs outside support JSON (Jul 2026)
+
+**Context:** the redacted format-2 support report already described durable
+meeting, channel, transcript-shape, job, generation, and privacy state without
+content. The first field collector, however, grouped checks around evolving
+feature scenarios. A failed call could therefore require conversational context
+to decide whether recording start, the capture route, callback recovery, Stop,
+post-capture admission, translation, or Refine owned the failure. Refine
+validation also had no first-class way to bind before/after reports to one
+meeting while proving a new revision was accepted.
+
+**Decision:** support JSON remains format 2. A separate protocol-2 field
+manifest selects one of six canonical hardware/conversation fixtures and uses
+seven stable evidence IDs, each with one fixed subsystem owner. The collector
+requires one pseudonymous meeting reference, validates the application version
+against the inspected Dev bundle, and rejects report-derived contradictions.
+When Refine is evaluated, it packages independently validated before/after
+reports, requires the same meeting reference, monotonic export time, and a
+strictly newer transcript revision. Human-observed route, language, and UI
+behavior are represented only as pass/fail/not-observed; no supporting words or
+free-form notes enter the artifact.
+
+Protocol-1 `--scenario` invocations retain their original manifest shape and
+filename for one release. The tooling suite runs under the repository-hygiene
+gate, and StorageKit proves that format-2 export remains decodable before and
+after an accepted refined cast.
+
+**Rationale:** stable subsystem IDs make one failed field run actionable without
+opening meeting content. Keeping the fixture protocol outside support JSON
+avoids coupling operator observations to the application storage contract.
+Paired structural evidence proves that the same meeting changed without
+pretending aggregate counts can judge linguistic quality, while one-release
+compatibility preserves already collected evidence and automation.

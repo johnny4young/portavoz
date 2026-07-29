@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import plistlib
@@ -36,6 +37,7 @@ class CollectFieldEvidenceTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             manifest = json.loads((output / "manifest.json").read_text())
+            self.assertEqual(manifest["protocolVersion"], 1)
             self.assertEqual(manifest["outcome"], "pass")
             self.assertEqual(manifest["app"], {"version": "0.7.0", "build": "700"})
             self.assertEqual(manifest["elapsedSeconds"], 12.5)
@@ -47,6 +49,153 @@ class CollectFieldEvidenceTests(unittest.TestCase):
             )
             self.assertEqual(os.stat(output).st_mode & 0o777, 0o700)
             self.assertEqual(os.stat(output / "manifest.json").st_mode & 0o777, 0o600)
+
+    def test_packages_canonical_mixed_language_fixture_before_and_after_refine(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            before_payload = self.valid_report()
+            after_payload = copy.deepcopy(before_payload)
+            after_payload["generatedAt"] = "2026-07-21T12:05:00Z"
+            after_payload["meetings"][0]["transcriptRevision"] = 2
+            before = self.write_report(root, before_payload, "before.json")
+            after = self.write_report(root, after_payload, "after.json")
+            output = root / "evidence"
+            result = self.run_fixture(
+                before,
+                self.write_app(root),
+                output,
+                "mixed-language",
+                "--after-refine-report",
+                str(after),
+                "--evidence",
+                "recording.start.committed=pass",
+                "--evidence",
+                "recording.stop.durable=pass",
+                "--evidence",
+                "post-capture.admission.completed=pass",
+                "--evidence",
+                "translation.live.separated=pass",
+                "--evidence",
+                "refine.language.preserved=pass",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = json.loads((output / "manifest.json").read_text())
+            self.assertEqual(manifest["protocolVersion"], 2)
+            self.assertEqual(manifest["fixture"], "mixed-language")
+            self.assertEqual(manifest["meetingReference"], "meeting-0123456789ab")
+            self.assertEqual(manifest["outcome"], "pass")
+            self.assertEqual(
+                {item["id"]: item["subsystem"] for item in manifest["evidence"]},
+                {
+                    "recording.start.committed": "recording-start",
+                    "recording.stop.durable": "stop-durability",
+                    "post-capture.admission.completed": "post-capture-admission",
+                    "translation.live.separated": "live-translation",
+                    "refine.language.preserved": "refine",
+                },
+            )
+            self.assertEqual(
+                manifest["supportReports"]["beforeRefine"]["selectedMeeting"][
+                    "transcriptRevision"
+                ],
+                1,
+            )
+            self.assertEqual(
+                manifest["supportReports"]["afterRefine"]["selectedMeeting"][
+                    "transcriptRevision"
+                ],
+                2,
+            )
+            self.assertTrue((output / "support-before-refine.json").is_file())
+            self.assertTrue((output / "support-after-refine.json").is_file())
+            self.assertFalse((output / "support-diagnostics.json").exists())
+
+    def test_mixed_language_fixture_requires_after_refine_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = self.run_fixture(
+                self.write_report(root),
+                self.write_app(root),
+                root / "evidence",
+                "mixed-language",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("mixed-language requires --after-refine-report", result.stderr)
+
+    def test_fixture_rejects_evidence_owned_by_another_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = self.run_fixture(
+                self.write_report(root),
+                self.write_app(root),
+                root / "evidence",
+                "built-in-speaker-mic",
+                "--evidence",
+                "refine.language.preserved=pass",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "unknown evidence for built-in-speaker-mic",
+                result.stderr,
+            )
+
+    def test_fixture_rejects_refine_pass_without_newer_transcript_revision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            before = self.write_report(root, name="before.json")
+            after = self.write_report(root, name="after.json")
+            result = self.run_fixture(
+                before,
+                self.write_app(root),
+                root / "evidence",
+                "mixed-language",
+                "--after-refine-report",
+                str(after),
+                "--evidence",
+                "refine.language.preserved=pass",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "cannot pass without a newer transcript revision",
+                result.stderr,
+            )
+
+    def test_fixture_rejects_route_pass_without_both_capture_channels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = self.run_fixture(
+                self.write_report(root),
+                self.write_app(root),
+                root / "evidence",
+                "built-in-speaker-mic",
+                "--evidence",
+                "capture.route.preserved=pass",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "cannot pass without microphone and system assets",
+                result.stderr,
+            )
+
+    def test_rejects_timestamp_without_utc_offset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = self.valid_report()
+            payload["generatedAt"] = "2026-07-21T12:00:00"
+            result = self.run_fixture(
+                self.write_report(root, payload),
+                self.write_app(root),
+                root / "evidence",
+                "model-cold-start",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("generatedAt must include a UTC offset", result.stderr)
 
     def test_rejects_unknown_content_bearing_key(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -162,6 +311,28 @@ class CollectFieldEvidenceTests(unittest.TestCase):
             text=True,
         )
 
+    def run_fixture(self, report, app, output, fixture, *extra):
+        return subprocess.run(
+            [
+                "python3",
+                str(COLLECTOR),
+                "--fixture",
+                fixture,
+                "--report",
+                str(report),
+                "--meeting-reference",
+                "meeting-0123456789ab",
+                "--output",
+                str(output),
+                "--app",
+                str(app),
+                *extra,
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+
     @staticmethod
     def write_app(root):
         app = root / "Portavoz Dev.app"
@@ -178,8 +349,8 @@ class CollectFieldEvidenceTests(unittest.TestCase):
             )
         return app
 
-    def write_report(self, root, payload=None):
-        report = root / "portavoz-support.json"
+    def write_report(self, root, payload=None, name="portavoz-support.json"):
+        report = root / name
         report.write_text(json.dumps(payload or self.valid_report()), encoding="utf-8")
         return report
 

@@ -213,4 +213,91 @@ final class SupportDiagnosticsTests: XCTestCase {
             report.meetings[0].privacyReceipt.syncDisclosure,
             "acknowledged-by-private-cloud")
     }
+
+    func testFormatTwoExportRemainsAvailableBeforeAndAfterRefine() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Mixed-language field fixture",
+            startedAt: Date(timeIntervalSince1970: 1_700_100_000),
+            lifecycleState: .ready)
+        let originalSpeaker = Speaker(
+            meetingID: meeting.id,
+            label: "S1")
+        let originalSegment = TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: originalSpeaker.id,
+            channel: .system,
+            text: "Original text",
+            language: "en",
+            startTime: 0,
+            endTime: 2,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([originalSpeaker])
+        try await store.save([originalSegment])
+
+        let beforeData = try await ExportSupportDiagnostics(store: store).execute(
+            ExportSupportDiagnosticsRequest(
+                environment: SupportDiagnosticsEnvironment(
+                    appVersion: "0.7.0",
+                    buildVersion: "700",
+                    operatingSystem: "macOS 26",
+                    models: []),
+                generatedAt: Date(timeIntervalSince1970: 1_700_100_100)))
+        let before = try decodeSupportReport(beforeData)
+
+        let refinedSpeaker = Speaker(
+            meetingID: meeting.id,
+            label: "S1")
+        let refinedSegments = [
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: refinedSpeaker.id,
+                channel: .system,
+                text: "Refined English text",
+                language: "en",
+                startTime: 0,
+                endTime: 2,
+                isFinal: true),
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: refinedSpeaker.id,
+                channel: .system,
+                text: "Texto refinado en español",
+                language: "es",
+                startTime: 2,
+                endTime: 4,
+                isFinal: true),
+        ]
+        try await store.applyRefinedCast(
+            for: meeting.id,
+            expectedTranscriptRevision: 0,
+            language: nil,
+            speakers: [refinedSpeaker],
+            segments: refinedSegments)
+
+        let afterData = try await ExportSupportDiagnostics(store: store).execute(
+            ExportSupportDiagnosticsRequest(
+                environment: SupportDiagnosticsEnvironment(
+                    appVersion: "0.7.0",
+                    buildVersion: "700",
+                    operatingSystem: "macOS 26",
+                    models: []),
+                generatedAt: Date(timeIntervalSince1970: 1_700_100_200)))
+        let after = try decodeSupportReport(afterData)
+
+        XCTAssertEqual(before.formatVersion, 2)
+        XCTAssertEqual(after.formatVersion, 2)
+        XCTAssertEqual(before.meetings[0].reference, after.meetings[0].reference)
+        XCTAssertEqual(before.meetings[0].transcriptRevision, 0)
+        XCTAssertEqual(after.meetings[0].transcriptRevision, 1)
+        XCTAssertEqual(before.meetings[0].transcript.segmentCount, 1)
+        XCTAssertEqual(after.meetings[0].transcript.segmentCount, 2)
+    }
+
+    private func decodeSupportReport(_ data: Data) throws -> SupportDiagnosticsReport {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(SupportDiagnosticsReport.self, from: data)
+    }
 }

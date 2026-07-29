@@ -893,6 +893,17 @@ It never includes meeting text, generated output, prompts, secrets, checksums,
 full URLs, paths, stable database IDs, raw failure payloads, or reusable
 fingerprints.
 
+The field-validation adapter keeps that shipped format unchanged and packages
+it behind a separate protocol-2 manifest. Six canonical hardware/conversation
+fixtures report only seven stable evidence IDs owned by recording start,
+capture route, callback recovery, Stop durability, post-capture admission, live
+translation, and Refine. A paired Refine run carries the same pseudonymous
+meeting reference and two independently validated format-2 snapshots; the
+collector requires monotonic export time and transcript revision without
+reading spoken text. Protocol-1 scenario output remains available for one
+release, so field tooling evolves without turning support JSON into a second
+application schema or invalidating existing evidence.
+
 `PortavozCore` defines stable secret identifiers and the `SecretStoring` port.
 `PlatformKit.KeychainSecretStore` is the concrete device-only adapter and is
 constructed only by the app and CLI composition roots. `ApplicationKit` exposes
@@ -1212,7 +1223,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,193 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,194 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
