@@ -4814,3 +4814,26 @@ while retaining native capture, device-switch resampling, and dual-channel
 alignment. A pure policy test locks both the nil requested format and dynamic
 48 kHz/24 kHz source-rate observation; repeated Release collection remains the
 real hardware regression gate.
+
+## D155 — Resource probes require nominal inherited pressure (Jul 2026)
+
+**Context:** two complete 36 GB reference collections executed every contracted
+workload, but fixed-order rounds let a previous heavy scenario leave the host
+in a fair thermal state when the next probe began. Idle CPU and Ask wall time
+then crossed the 1.25 p95/p50 stability limit even though their nominal samples
+agreed. Repeating the collection cannot turn a contaminated host into accepted
+evidence.
+
+**Decision:** benchmark-only probes wait after scenario preparation and before
+opening their metric window until two consecutive thermal observations are
+nominal, five seconds apart. The same gate runs after recording engines and
+concurrent assets are prepared but before Start. It fails closed after five
+minutes. Stop remains immediate because delaying it would change the product
+lifecycle being measured.
+
+**Rationale:** inherited host pressure is not attributable to the next
+scenario, while thermal pressure created after counters start is part of that
+scenario and remains recorded. Centralizing the gate avoids scenario-specific
+sleep folklore, preserves cold-process and real-model behavior, and gives 8 GB,
+16 GB, and reference receipts one reproducible precondition without weakening
+the scorecard's stability threshold.

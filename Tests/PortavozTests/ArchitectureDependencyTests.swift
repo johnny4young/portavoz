@@ -318,10 +318,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(nativeProbe.contains(
             "IOPSGetProvidingPowerSourceType"))
         XCTAssertTrue(nativeProbe.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(nativeProbe.contains(
+            "enum ResourceProbeHostReadiness"))
+        XCTAssertTrue(nativeProbe.contains(
+            "consecutiveNominal == 2"))
         XCTAssertTrue(benchProbes.contains(
             "finishRecordingAndBeginStop"))
         XCTAssertTrue(benchProbes.contains(
             "func measureIdle()"))
+        XCTAssertTrue(benchProbes.contains(
+            "ResourceProbeHostReadiness.waitUntilNominal()"))
         XCTAssertTrue(benchProbes.contains(
             "replayingActive: true"))
         XCTAssertTrue(benchProbes.contains(
@@ -396,6 +402,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "forceVerification: true"))
         XCTAssertTrue(scenarioProbe.contains(
             "BenchResourceTimedOperation"))
+        XCTAssertTrue(scenarioProbe.contains(
+            "ResourceProbeHostReadiness.waitUntilNominal()"))
         XCTAssertTrue(scenarioProbe.contains(
             "replayingActive: true"))
         XCTAssertTrue(scenarioProbe.contains(

@@ -65,6 +65,7 @@ final class BenchRecordResourceProbes {
     @MainActor
     func measureIdle() async throws {
         try await Task.sleep(for: .seconds(5))
+        try await ResourceProbeHostReadiness.waitUntilNominal()
         let probe = try ResourceRunProbe(run: run)
         let observer = AppResourceWorkloadTelemetry.shared.addObserver(
             replayingActive: true

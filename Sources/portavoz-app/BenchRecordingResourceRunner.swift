@@ -158,6 +158,7 @@ enum BenchRecordingResourceRunner {
             emit("bench-record: idle resource sample complete")
         }
         try await services.loadEnginesIfNeeded()
+        try await ResourceProbeHostReadiness.waitUntilNominal()
         try baselineProbes?.beginRecording()
         try concurrentProbe?.begin()
         emit(String(

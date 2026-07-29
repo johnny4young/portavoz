@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,249 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,251 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1351,9 +1351,11 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   bind or publishing a contaminated sample. The repeated reference workflow
   also acts as a device-route-churn field gate: input taps do not request a
   previously read hardware format and resample from the actual buffer rate,
-  preventing a 48 kHz → 24 kHz transition from aborting AVFAudio. Its native
-  app probes
-  samples process CPU, physical footprint, energy, disk I/O/free capacity,
+  preventing a 48 kHz → 24 kHz transition from aborting AVFAudio. Native app
+  probes begin only after two nominal thermal observations five seconds apart;
+  inherited pressure fails closed after five minutes, while pressure produced
+  after counters start remains part of the sample. The probes sample process
+  CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
   closed workload descriptors. The Stop probe atomically replays active spans
   before recording metrics freeze, preventing a boundary finish from falling

@@ -738,9 +738,13 @@ root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to
 use the Keychain and its durable identity root. Resource scenarios reuse the
 normal SHA-256-verified model cache only when their measured operation requires
-it; a
-five-second launch-settling interval precedes the model-free idle window, and
-ordinary XCUITest launches keep their existing empty temporary model root.
+it. After scenario assets are prepared but before counters start, a
+benchmark-only readiness gate requires two consecutive nominal thermal
+observations five seconds apart and fails closed after five minutes. This
+excludes pressure inherited from an earlier scenario while preserving pressure
+created by the measured work itself. A five-second launch-settling interval
+also precedes the model-free idle gate, and ordinary XCUITest launches keep
+their existing empty temporary model root.
 Once a resource benchmark dispatcher is armed, app initialization returns
 before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. The benchmark owns
@@ -1386,7 +1390,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,249 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,251 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

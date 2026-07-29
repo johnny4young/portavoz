@@ -25,6 +25,50 @@ enum ResourceProbePowerSource: String, Codable, Sendable {
     case unknown
 }
 
+enum ResourceProbeHostReadinessError: Error, Equatable, LocalizedError {
+    case thermalPressureDidNotSettle
+
+    var errorDescription: String? {
+        "host thermal pressure did not settle before resource measurement"
+    }
+}
+
+/// Excludes pressure inherited from an earlier scenario without hiding
+/// pressure produced by the operation under measurement.
+enum ResourceProbeHostReadiness {
+    typealias ThermalStateProvider =
+        @Sendable () -> ResourceProbeThermalState
+    typealias Sleeper = @Sendable (Duration) async throws -> Void
+
+    static func waitUntilNominal(
+        maximumObservations: Int = 60,
+        pollInterval: Duration = .seconds(5),
+        thermalState: @escaping ThermalStateProvider = {
+            ProcessInfo.processInfo.resourceProbeThermalState
+        },
+        sleep: @escaping Sleeper = {
+            try await Task.sleep(for: $0)
+        }
+    ) async throws {
+        var consecutiveNominal = 0
+        for observation in 0..<maximumObservations {
+            if thermalState() == .nominal {
+                consecutiveNominal += 1
+                if consecutiveNominal == 2 {
+                    return
+                }
+            } else {
+                consecutiveNominal = 0
+            }
+            guard observation + 1 < maximumObservations else {
+                break
+            }
+            try await sleep(pollInterval)
+        }
+        throw ResourceProbeHostReadinessError.thermalPressureDidNotSettle
+    }
+}
+
 struct ResourceProbeUsage: Equatable, Sendable {
     let cpuAbsoluteTime: UInt64
     let physicalFootprintBytes: UInt64

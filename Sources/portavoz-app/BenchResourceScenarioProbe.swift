@@ -150,6 +150,7 @@ final class BenchResourceScenarioProbe {
         scenario: String,
         operation: () async throws -> Value
     ) async throws -> Value {
+        try await ResourceProbeHostReadiness.waitUntilNominal()
         let probe = try ResourceRunProbe(run: run)
         let observer = AppResourceWorkloadTelemetry.shared.addObserver(
             replayingActive: true

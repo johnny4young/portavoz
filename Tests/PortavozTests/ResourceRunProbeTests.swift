@@ -157,6 +157,45 @@ final class ResourceRunProbeTests: XCTestCase {
             .seconds(1))
     }
 
+    func testHostReadinessRequiresTwoConsecutiveNominalObservations() async throws {
+        let states = ThermalStateSequence([
+            .fair,
+            .nominal,
+            .fair,
+            .nominal,
+            .nominal,
+        ])
+
+        try await ResourceProbeHostReadiness.waitUntilNominal(
+            maximumObservations: 5,
+            pollInterval: .zero,
+            thermalState: states.next,
+            sleep: { _ in })
+
+        XCTAssertEqual(states.observationCount, 5)
+    }
+
+    func testHostReadinessFailsClosedWhenThermalPressurePersists() async {
+        let states = ThermalStateSequence([
+            .fair,
+            .serious,
+            .critical,
+        ])
+
+        do {
+            try await ResourceProbeHostReadiness.waitUntilNominal(
+                maximumObservations: 3,
+                pollInterval: .zero,
+                thermalState: states.next,
+                sleep: { _ in })
+            XCTFail("Expected thermal readiness to time out")
+        } catch {
+            XCTAssertEqual(
+                error as? ResourceProbeHostReadinessError,
+                .thermalPressureDidNotSettle)
+        }
+    }
+
     @MainActor
     func testSingleScenarioProbeWritesOneExactSample() async throws {
         let output = FileManager.default.temporaryDirectory.appendingPathComponent(
@@ -631,6 +670,23 @@ private final class UptimeSequence: @unchecked Sendable {
     func next() -> UInt64 {
         lock.lock()
         defer { lock.unlock() }
+        return values.removeFirst()
+    }
+}
+
+private final class ThermalStateSequence: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [ResourceProbeThermalState]
+    private(set) var observationCount = 0
+
+    init(_ values: [ResourceProbeThermalState]) {
+        self.values = values
+    }
+
+    func next() -> ResourceProbeThermalState {
+        lock.lock()
+        defer { lock.unlock() }
+        observationCount += 1
         return values.removeFirst()
     }
 }
