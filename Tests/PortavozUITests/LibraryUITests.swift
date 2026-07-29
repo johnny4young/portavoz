@@ -104,14 +104,35 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             warning.waitForExistence(timeout: 10),
             "callback death must become visible while microphone capture continues")
+        let stop = app.buttons["recording-stop-after-remote-outage"]
         XCTAssertTrue(
-            app.buttons["recording-stop-after-remote-outage"].waitForExistence(timeout: 5),
+            stop.waitForExistence(timeout: 5),
             "a prolonged outage must make Stop explicit without ending capture automatically")
         let expected = isSpanish
             ? "El audio remoto no está disponible desde hace dos minutos. Si la llamada terminó, detén esta grabación."
             : "Remote audio has been unavailable for two minutes. If the call ended, stop this recording."
         XCTAssertTrue(app.staticTexts[expected].exists)
         attachScreenshot(of: app, named: "recording-remote-audio-recovery")
+
+        stop.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-failure").waitForExistence(timeout: 10),
+            "Stop must leave active capture and surface the fixture's explicit no-audio outcome")
+        XCTAssertFalse(stop.exists, "Stop must not remain actionable after capture closes")
+        let reference = app.control(withIdentifier: "recording-failure-reference")
+        XCTAssertTrue(reference.waitForExistence(timeout: 3))
+        let expectedFailure = isSpanish
+            ? "No se capturó audio. Revisa los permisos de micrófono y grabación de audio del sistema de Portavoz."
+            : "No audio was captured. Check Portavoz microphone and system audio recording permissions."
+        XCTAssertTrue(app.staticTexts[expectedFailure].exists)
+        let expectedReference = isSpanish
+            ? "Referencia del error: recording.stop.no-audio"
+            : "Error reference: recording.stop.no-audio"
+        XCTAssertTrue(
+            app.staticTexts[expectedReference].exists,
+            "the empty fixture must use the guarded no-audio result")
+        XCTAssertTrue(app.control(withIdentifier: "recording-retry").exists)
+        attachScreenshot(of: app, named: "recording-remote-audio-stop-recovery")
     }
 
     @MainActor
