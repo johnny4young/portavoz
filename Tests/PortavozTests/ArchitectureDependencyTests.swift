@@ -285,6 +285,51 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Pure resource admission policy (D157)"))
     }
 
+    func testModelResidencyLedgerIsPureGenerationFencedAndRuntimeFree() throws {
+        let ledger = try Self.contents(
+            of: "Sources/PortavozCore/ResourceModelResidency.swift")
+        for required in [
+            "public struct ResourceModelResidencyLedger: Equatable, Sendable",
+            "public enum ResourceModelResidencyStatus: String, CaseIterable, Sendable",
+            "public let activeUseCount: Int",
+            "public mutating func beginLoad(",
+            "public mutating func beginUse(",
+            "public mutating func beginRelease(",
+            "entry.transitionGeneration == ticket.generation",
+            "entry.activeUses.remove(lease.generation)",
+            "public var residentModels: [ResourceResidentModel]",
+        ] {
+            XCTAssertTrue(
+                ledger.contains(required),
+                "Missing residency lifecycle contract: \(required)")
+        }
+        for forbidden in [
+            "import ", "Task", "Duration", "sleep(", "ProcessInfo",
+            "FileManager", "ModelStore", "Parakeet", "Whisper", "Pyannote",
+            "MLX", "SentenceEmbedder", "URL",
+        ] {
+            XCTAssertFalse(
+                ledger.contains(forbidden),
+                "Core residency state must not own runtime operation \(forbidden)")
+        }
+
+        let audioCallbackResidency = try Self.sourceMatches(
+            under: "Sources/AudioCaptureKit",
+            pattern: #"ResourceModelResidency(?:Ledger|Record|Status)"#)
+        XCTAssertTrue(
+            audioCallbackResidency.isEmpty,
+            "Model residency state must never enter capture callbacks: \(audioCallbackResidency)")
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Core additionally owns a pure model-residency lifecycle ledger"))
+        XCTAssertTrue(decisions.contains("## D158"))
+        XCTAssertTrue(appSpec.contains(
+            "### Pure model-residency lifecycle (D158)"))
+    }
+
     func testResourceBaselineEvidenceIsCompleteFailClosedAndToolingOnly() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/resource-baseline-matrix.json")

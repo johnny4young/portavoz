@@ -170,6 +170,33 @@ tier are carried for future adapters but are not compared against invented
 limits. Accepted GOV-0 evidence must define numeric budgets before application
 composition, model residency, and scheduler adapters can enforce them.
 
+### Pure model-residency lifecycle (D158)
+
+`PortavozCore.ResourceModelResidencyLedger` is the deterministic lifecycle
+contract between resource policy and concrete model owners. For each closed
+heavyweight family it records unloaded, loading, resident, or releasing state;
+an exact active-use count; and optional measured footprint bytes. Load, use,
+and release operations receive opaque generation-fenced tickets. A late load
+completion cannot publish over a newer attempt, duplicate use completion cannot
+reduce another consumer's count, and stale release completion cannot remove a
+newer resident runtime.
+
+Only an idle resident family can enter releasing. It remains in the
+`ResourceGovernorSnapshot` projection until the capability owner confirms that
+the concrete runtime is gone; a cancelled release restores resident state.
+Records and resident projections preserve the closed family order for stable
+diagnostics and tests.
+
+The ledger performs no loading, caching, scheduling, sleeping, model download,
+checksum verification, pressure observation, or runtime release. It stores no
+model/provider identity, file path, prompt, or transcript content and never
+enters `AudioCaptureKit`. AppServices still owns Parakeet, pyannote, and Whisper
+instances; IntelligenceKit still owns its MLX container; Library/Ask still own
+their current embedding lifetimes. Process composition does not yet submit
+those transitions to the ledger, so product behavior and existing idle-release
+delays are unchanged. Numeric TTL and memory-budget enforcement require
+accepted resource evidence rather than constants in this contract.
+
 Recording Start is also the single authorization boundary for meeting capture.
 Its explicit user action asks `MicrophonePermissionClient` to resolve an
 undetermined microphone grant before `MicrophoneSource` exists. Existing

@@ -721,6 +721,22 @@ workflows. Numeric memory and disk thresholds are intentionally absent until
 accepted multi-host evidence exists. No application adapter currently applies
 the decision to scheduling, residency, or concurrency.
 
+Core additionally owns a pure model-residency lifecycle ledger. It records the
+closed heavyweight families as unloaded, loading, resident, or releasing;
+tracks exact active-use counts; carries optional measured footprints; and
+projects only genuinely resident runtimes into the governor snapshot. Opaque
+load, use, and release generations reject stale asynchronous completions. A
+release transition is accepted only for an idle resident family, and a runtime
+remains in the resident projection until its owner confirms that release
+finished.
+
+The ledger holds no model instance, provider identity, asset path, timer,
+scheduler, or platform observer. Capability owners still retain their concrete
+runtimes and must serialize ledger mutations at process composition. The
+application does not currently feed runtime transitions into this ledger, so
+existing model loading and release behavior is unchanged. In particular, the
+ledger interprets neither measured footprint bytes nor elapsed idle time.
+
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,
@@ -1425,13 +1441,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,276 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,290 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 398 Swift source files;
+- strict SwiftLint reports zero violations across 399 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

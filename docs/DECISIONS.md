@@ -4900,3 +4900,38 @@ background job facing critical pressure while no recording exists would have
 no truthful result. Runtime adapters, model residency, concurrency enforcement,
 and measured numeric budgets remain later GOV slices and cannot be inferred
 from incomplete GOV-0 evidence.
+
+## D158 — Model residency has a pure lifecycle before runtime ownership (Jul 2026)
+
+**Context:** heavyweight runtime ownership is currently fragmented by
+capability. AppServices retains Parakeet, pyannote, and Whisper with independent
+load tasks and release generations; IntelligenceKit owns the MLX container and
+its timer; Library retains one Apple contextual embedder while Ask creates one
+for each retrieval. `VerifiedModelLifecycle` coordinates installation evidence,
+not loaded instances. Connecting the resource governor directly to those
+implementations would make stale async completions, active-use release, and
+resident-model projection depend on five unrelated conventions.
+
+**Decision:** `PortavozCore` owns a synchronous, deterministic, Sendable
+`ResourceModelResidencyLedger`. It models the closed heavyweight families as
+unloaded, loading, resident, or releasing; tracks active use leases; carries
+optional measured footprints; and emits the existing governor resident-model
+projection in stable family order. Opaque monotonic tickets fence every load,
+use, and release completion. Only an idle resident family may begin release,
+and it remains projected as resident until the concrete owner confirms that the
+runtime has been dropped. A failed current load returns only that family to
+unloaded, while stale or duplicate completions are inert.
+
+The ledger owns no runtime instance, task, timer, provider, model path,
+download, checksum, pressure probe, scheduler, or audio callback behavior. It
+does not interpret measured bytes or select an idle delay. Application
+composition does not yet feed concrete transitions into it, so this decision
+changes no product behavior or current cache lifetime.
+
+**Rationale:** the state machine makes coalesced ownership and safe release
+characterizable before capability-specific adapters are changed. It gives the
+resource governor a truthful, content-free residency projection without moving
+model implementations into Core or claiming that verified files equal resident
+weights. Separating lifecycle correctness from runtime integration also keeps
+arbitrary TTL and memory thresholds out of the code until the physical
+resource matrix supplies evidence.
