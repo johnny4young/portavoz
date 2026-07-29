@@ -76,7 +76,7 @@ final class AppServices {
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
     /// One process-owned, content-free view of heavyweight runtime lifecycle.
     /// Capability owners submit complete family transitions one adapter at a
-    /// time; Whisper and MLX are the currently integrated runtimes.
+    /// time; live speech, Whisper, and MLX are the currently integrated runtimes.
     @ObservationIgnored var modelResidencyLedger =
         ResourceModelResidencyLedger()
     /// Content-free workload spans are installed once at the composition root.
@@ -112,9 +112,9 @@ final class AppServices {
         URLSessionDataEgressGateway(receiptRecorder: store)
     }
     var modelsState: ModelsState = .unknown
-    private(set) var transcriber: ParakeetEngine?
+    var transcriber: ParakeetEngine?
     private(set) var diarizer: PyannoteDiarizer?
-    @ObservationIgnored var transcriberLoadTask: Task<ParakeetEngine, Error>?
+    @ObservationIgnored var liveSpeechRuntimeLoad: LiveSpeechRuntimeLoad?
     @ObservationIgnored var diarizerLoadTask: Task<PyannoteDiarizer, Error>?
     var enginesIdleGeneration = 0
     var whisper: WhisperEngine?
@@ -321,51 +321,6 @@ final class AppServices {
         Task { await indexer.requestReindex() }
     }
 
-    /// Loads only the live/batch first-pass transcriber. Offline quality
-    /// passes must not acquire this capability as a side effect.
-    func loadTranscriberIfNeeded(
-        workloadClass: ResourceWorkloadClass = .liveInteractive
-    ) async throws -> ParakeetEngine {
-        enginesIdleGeneration += 1
-        if let transcriber { return transcriber }
-        if let transcriberLoadTask {
-            let engine = try await transcriberLoadTask.value
-            transcriber = engine
-            return engine
-        }
-
-        modelsState = .downloading(L10n.text("Preparing models…"))
-        let telemetry = workloadTelemetry
-        let store = modelStore
-        let task = Task { @MainActor in
-            try await telemetry.measure(ResourceWorkloadDescriptor(
-                workloadClass: workloadClass,
-                kind: .liveTranscription,
-                operation: .load)
-            ) {
-                try await ParakeetEngine.loadRecommended(store: store) { progress in
-                    let percent = Int(progress.fraction * 100)
-                    Task { @MainActor [weak self] in
-                        self?.modelsState = .downloading(
-                            L10n.format("Downloading transcription model… %d%%", percent))
-                    }
-                }
-            }
-        }
-        transcriberLoadTask = task
-        do {
-            let engine = try await task.value
-            transcriber = engine
-            transcriberLoadTask = nil
-            settleModelsState()
-            return engine
-        } catch {
-            transcriberLoadTask = nil
-            modelsState = .failed(error.localizedDescription)
-            throw error
-        }
-    }
-
     /// Loads only speaker diarization. Refine/Import and durable diarization
     /// share this task without requiring or duplicating Parakeet.
     func loadDiarizerIfNeeded(
@@ -416,7 +371,8 @@ final class AppServices {
 
     /// Explicit readiness for workflows that truly need both models.
     func loadEnginesIfNeeded() async throws {
-        _ = try await loadTranscriberIfNeeded()
+        let liveSpeech = try await acquireLiveSpeechRuntime()
+        defer { _ = finishLiveSpeechRuntime(liveSpeech) }
         _ = try await loadDiarizerIfNeeded()
         modelsState = .ready
     }
@@ -429,16 +385,8 @@ final class AppServices {
     /// Drops idle speech-model weights. In-flight preparation owns its result
     /// until the workflow schedules a later release.
     func releaseRecordingEngines() {
-        guard transcriberLoadTask == nil, diarizerLoadTask == nil else { return }
-        if transcriber != nil {
-            let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
-                workloadClass: .maintenance,
-                kind: .liveTranscription,
-                operation: .release))
-            transcriber = nil
-            workloadTelemetry.finish(span, outcome: .completed)
-        }
-        if diarizer != nil {
+        _ = releaseLiveSpeechRuntime()
+        if diarizerLoadTask == nil, diarizer != nil {
             let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
                 workloadClass: .maintenance,
                 kind: .speakerDiarization,
@@ -461,10 +409,10 @@ final class AppServices {
         }
     }
 
-    private func settleModelsState() {
+    func settleModelsState() {
         if transcriber != nil, diarizer != nil {
             modelsState = .ready
-        } else if transcriberLoadTask == nil, diarizerLoadTask == nil {
+        } else if liveSpeechRuntimeLoad == nil, diarizerLoadTask == nil {
             modelsState = .unknown
         }
     }

@@ -29,10 +29,11 @@ final class AppPostCaptureProcessingCapabilities:
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw PostCaptureProcessingCapabilityError.audioUnavailable
         }
-        let transcriber = try await services.loadTranscriberIfNeeded(
+        let runtime = try await services.acquireLiveSpeechRuntime(
             workloadClass: .postCapture)
+        defer { _ = services.finishLiveSpeechRuntime(runtime) }
         return try await services.transcriptionScheduler.batch {
-            try await transcriber.transcribeFile(
+            try await runtime.engine.transcribeFile(
                 at: url,
                 hints: hints,
                 channel: channel)

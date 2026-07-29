@@ -767,11 +767,27 @@ remove verified MLX assets while a load or generation is active. The isolated
 IntelligenceKit's standalone idle policy; it is benchmark evidence, not
 production residency.
 
+Parakeet is the third fully integrated residency family. AppServices coalesces
+one verified live-speech load and returns a lease that binds the concrete
+engine to one active-use token. Recording preparation can claim only an
+already-resident runtime; a cold load still begins after durable capture is
+active. The recording attacher owns that lease through every live consumer and
+ends it after their streams drain. A load that completes after Stop sees the
+inactive attachment and ends its lease without delaying Stop or attaching
+captions to the closed session.
+
+Dictation, durable post-capture transcription, onboarding readiness, and the
+recording resource benchmark also hold explicit leases for their complete
+operations. Runtime release remains behind the existing 600-second generation
+fence, but the ledger now rejects that release while any live or batch consumer
+is active. Verified assets remain independent, and no model wait or residency
+transition enters the audio writer callback.
+
 The remaining characterized migration surface includes the cached AppServices
-live-speech and diarization engines, two direct pyannote loads, the
-Library retained embedder, and Ask per-retrieval embedder. Those families do
-not submit transitions yet. The ledger interprets neither measured footprint
-bytes nor elapsed idle time.
+diarization engine, two direct pyannote loads, the Library retained embedder,
+and the Ask per-retrieval embedder. Those families do not submit transitions
+yet. The ledger interprets neither measured footprint bytes nor elapsed idle
+time.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
@@ -1477,13 +1493,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,292 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,296 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 399 Swift source files;
+- strict SwiftLint reports zero violations across 401 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

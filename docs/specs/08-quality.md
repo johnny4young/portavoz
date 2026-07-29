@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,292 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,296 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,14 +23,14 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 399 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 401 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
 | File | Coverage |
 |---|---|
 | StorageUpgradeTests | Disposable clean-install and exact v0.6.0 (`v1`–`v5`) file-library upgrade to the latest schema; bilingual transcript/cast, summary/action, note, Apuntador, and relative-audio-reference conservation; migration order, integrity, foreign keys, no implicit sync seed, and idempotent reopen |
-| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with a complete pinned Whisper load/use/release adapter, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with complete pinned Whisper, MLX, and live-speech load/use/release adapters, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, explicit live/deleted initial seed, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
 | MeetingSyncAggregateTests | Exact-current-generation envelope, deterministic codec, idempotent full-history replay, millisecond-tied summary-version ordering, device-local path/person/embedding preservation, trigger-echo suppression, deferred live/live local-pending conflict, recoverable privacy-dominant remote deletion, invalid-relation rollback, and immutable summary-root/child collision rejection |
 | CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, capability-probed private CKAsset fallback, exact `EINVAL`/`ENOTSUP` metadata downgrade classification, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
@@ -104,12 +104,17 @@ documented below.
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
-The first concrete residency adapter adds one architecture case on top of the
-13 pure ledger cases. It requires every quality-speech load, failure, use, and
-two-phase release transition to pass through the composition-owned ledger;
-locks Refine and Import to their exact retained `WhisperRuntimeLease`; rejects
-direct reads from shared `services.whisper`; and keeps all remaining model
-families characterized but unwired (D158–D160).
+The first three concrete residency adapters add architecture coverage on top
+of the 13 pure ledger cases. Every quality-speech, MLX-summary, and live-speech
+load, failure, use, and two-phase release transition must pass through the
+composition-owned ledger. Refine and Import retain their exact
+`WhisperRuntimeLease`; summary generation retains its exact
+`MLXSummaryRuntimeLease`; recording transfers a hot-only
+`LiveSpeechRuntimeLease` to its attacher or joins a cold load only after audio
+capture is active. A cold Parakeet load that completes after Stop is finalized
+exactly once without attaching or delaying Stop. Direct shared-runtime reads
+and production loader bypasses are rejected, while speaker diarization and
+semantic embeddings remain characterized but unwired (D158–D162).
 
 `make test-recording-stress` is the deterministic reliability gate for capture
 and recovery. It runs 108 focused tests across callback liveness, start/stop,

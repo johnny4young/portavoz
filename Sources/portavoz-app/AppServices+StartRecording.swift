@@ -300,7 +300,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         let microphone: MicrophoneSource
         let warmup: Task<Void, Never>
         let sources: [any AudioCaptureSource]
-        let transcriber: ParakeetEngine?
+        let liveTranscriptionRuntime: LiveTranscriptionRuntime?
     }
 
     private weak var services: AppServices?
@@ -323,6 +323,10 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             (try? AudioDeviceCatalog.inputDevice(matching: identifier)) != nil
                 ? identifier : nil
         }
+        let liveSpeech = try services.acquireResidentLiveSpeechRuntime()
+        let liveTranscriptionRuntime = liveSpeech.map {
+            services.liveTranscriptionRuntime($0)
+        }
         let microphone = MicrophoneSource(
             deviceIdentifier: microphoneID,
             // A meeting recorder must be observational. Enabling AVAudioEngine
@@ -338,16 +342,15 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             sources.append(system.source)
             tappedMeetingApps = system.appNames
         }
-        let transcriber = services.transcriber
         prepared = Prepared(
             microphone: microphone,
             warmup: warmup,
             sources: sources,
-            transcriber: transcriber)
+            liveTranscriptionRuntime: liveTranscriptionRuntime)
         return StartRecordingPreparedRuntime(
             channels: sources.map(\.channel),
             tappedMeetingApps: tappedMeetingApps,
-            liveTranscriptionAvailable: transcriber != nil)
+            liveTranscriptionAvailable: liveTranscriptionRuntime != nil)
     }
 
     func startCapture(
@@ -365,12 +368,13 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
             outputDirectory: audioRoot.appendingPathComponent(request.audioDirectory),
             microphone: prepared.microphone,
             sources: prepared.sources,
-            transcriber: prepared.transcriber,
+            liveTranscriptionRuntime: prepared.liveTranscriptionRuntime,
             transcriberLoader: { @MainActor [weak services] in
                 guard let services else {
                     throw StartRecordingRuntimeError.preparationUnavailable
                 }
-                return try await services.loadTranscriberIfNeeded()
+                let runtime = try await services.acquireLiveSpeechRuntime()
+                return services.liveTranscriptionRuntime(runtime)
             },
             telemetry: services.workloadTelemetry,
             voiceprintTask: Task.detached(priority: .utility) {
@@ -392,6 +396,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
     func cancelPreparation() async {
         guard let prepared else { return }
         self.prepared = nil
+        prepared.liveTranscriptionRuntime?.finish()
         prepared.warmup.cancel()
         await prepared.microphone.stop()
     }
@@ -426,12 +431,12 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
 }
 
 private actor AppStartRecordingSession: StartRecordingSession {
-    typealias TranscriberLoader = @MainActor @Sendable () async throws -> any TranscriptionEngine
+    typealias TranscriberLoader = LiveTranscriptionAttacher.Loader
 
     private let recordingSession: RecordingSession
     private let microphone: MicrophoneSource
     private let sources: [any AudioCaptureSource]
-    private let initialTranscriber: (any TranscriptionEngine)?
+    private var initialLiveTranscriptionRuntime: LiveTranscriptionRuntime?
     private let transcriberLoader: TranscriberLoader
     private let telemetry: ResourceWorkloadTelemetry
     private let voiceprintTask: Task<Voiceprint?, Never>
@@ -442,7 +447,7 @@ private actor AppStartRecordingSession: StartRecordingSession {
         outputDirectory: URL,
         microphone: MicrophoneSource,
         sources: [any AudioCaptureSource],
-        transcriber: (any TranscriptionEngine)?,
+        liveTranscriptionRuntime: LiveTranscriptionRuntime?,
         transcriberLoader: @escaping TranscriberLoader,
         telemetry: ResourceWorkloadTelemetry,
         voiceprintTask: Task<Voiceprint?, Never>
@@ -450,13 +455,15 @@ private actor AppStartRecordingSession: StartRecordingSession {
         recordingSession = RecordingSession(outputDirectory: outputDirectory)
         self.microphone = microphone
         self.sources = sources
-        initialTranscriber = transcriber
+        initialLiveTranscriptionRuntime = liveTranscriptionRuntime
         self.transcriberLoader = transcriberLoader
         self.telemetry = telemetry
         self.voiceprintTask = voiceprintTask
     }
 
     func start(_ request: StartRecordingCaptureRequest) async throws {
+        let initialRuntime = initialLiveTranscriptionRuntime
+        initialLiveTranscriptionRuntime = nil
         let attacher = LiveTranscriptionAttacher(
             channels: sources.map(\.channel),
             hints: TranscriptionHints(
@@ -464,7 +471,7 @@ private actor AppStartRecordingSession: StartRecordingSession {
                 vocabulary: request.vocabulary,
                 meetingID: request.meetingID),
             callbacks: request.callbacks,
-            initialTranscriberAvailable: initialTranscriber != nil,
+            initialRuntime: initialRuntime,
             telemetry: telemetry)
         liveAttacher = attacher
         let liveFeeds = attacher.feeds
@@ -476,9 +483,7 @@ private actor AppStartRecordingSession: StartRecordingSession {
             } onHealthEvent: { event in
                 request.callbacks.health(event)
             }
-            await attacher.recordingDidStart(
-                initialTranscriber: initialTranscriber,
-                loader: transcriberLoader)
+            await attacher.recordingDidStart(loader: transcriberLoader)
         } catch {
             _ = await finishLiveStreams()
             throw error
@@ -515,7 +520,12 @@ private actor AppStartRecordingSession: StartRecordingSession {
     }
 
     private func finishLiveStreams() async -> Bool {
-        guard let liveAttacher else { return initialTranscriber == nil }
+        guard let liveAttacher else {
+            let runtime = initialLiveTranscriptionRuntime
+            initialLiveTranscriptionRuntime = nil
+            await runtime?.finish()
+            return runtime == nil
+        }
         self.liveAttacher = nil
         return await liveAttacher.finish()
     }

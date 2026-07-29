@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime).
 
 ## Roles and engines (D7)
 
@@ -23,7 +23,7 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
 - **Custom delta filter** (`ParakeetSegmentMapper`): upstream dedup fails with small chunks (re-emits ~all left context). Updates' `tokenTimings` use absolute stream time → filter `startTime > last emitted boundary` and reconstruct text with `joinedText` (handles SentencePiece `▁`).
 - Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
-- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` creates one bounded, non-suspending feed per selected channel before capture. A recording-scoped attacher connects direct Parakeet streams immediately when the verified engine is resident or joins the process-owned load and connects them later; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
+- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` creates one bounded, non-suspending feed per selected channel before capture. A recording-scoped attacher owns one pinned Parakeet runtime lease, connects direct streams immediately when the verified engine is resident, or joins the process-owned load and connects them later; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
 - D148 measures the live execution lane separately from batch queue wait and
   execution. The app also measures verified Parakeet and Whisper
   prepare/load/release plus actual Refine, Import, durable-recovery, and live
@@ -46,10 +46,14 @@ success (D103).
 ### Audio-first model readiness and recovery (D70)
 
 Recording does not await `ModelStore` downloads or Core ML compilation. The
-app runtime snapshots the currently resident Parakeet instance, creates bounded
-`bufferingNewest` feeds, and starts durable mic/system capture. A resident model
-attaches immediately; otherwise `LiveTranscriptionAttacher` joins the shared
-verified Parakeet task and connects the same active recording when it completes.
+app runtime claims a lease only when Parakeet is already resident, creates
+bounded `bufferingNewest` feeds, and starts durable mic/system capture. A
+resident model attaches immediately; otherwise `LiveTranscriptionAttacher`
+joins the shared verified Parakeet task and connects the same active recording
+when it completes. The attacher retains that exact engine/use token until every
+live stream drains. Stop cancels only its waiter and returns immediately; if the
+process load later completes, the inactive attacher ends the new lease without
+publishing captions.
 Only recent context and future frames enter the late live consumers, so a long
 download cannot accumulate an unbounded inference backlog. Typed preparing,
 available, and failed state keeps the recording UI honest.
@@ -141,8 +145,10 @@ remains mandatory in both paths.
 
 Parakeet, pyannote, and Whisper are independent app-scoped capabilities, not a
 single readiness bundle. Separate retained tasks deduplicate each verified
-load across concurrent callers. Durable first-pass recovery and Dictation ask
-only for Parakeet. Refine prepares only required Whisper before its composite
+load across concurrent callers. Parakeet acquisition also returns one
+active-use lease per recording, Dictation session, durable first-pass file,
+onboarding check, or measured benchmark operation. Durable first-pass recovery
+and Dictation ask only for Parakeet. Refine prepares only required Whisper before its composite
 transcription attempt and requests only pyannote when best-effort speaker
 attribution begins. External-audio Import also requests pyannote directly and
 never loads Parakeet as an incidental dependency. Explicit onboarding/model

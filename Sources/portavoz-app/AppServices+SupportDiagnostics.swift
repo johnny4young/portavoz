@@ -28,7 +28,9 @@ extension AppServices {
         return [
             SupportModelReadiness(
                 capability: "live-transcription-runtime",
-                state: runtimeState(loaded: transcriber != nil, preparing: transcriberLoadTask != nil)),
+                state: runtimeState(
+                    loaded: transcriber != nil,
+                    preparing: liveSpeechRuntimeLoad != nil)),
             SupportModelReadiness(
                 capability: "speaker-diarization-runtime",
                 state: runtimeState(loaded: diarizer != nil, preparing: diarizerLoadTask != nil)),

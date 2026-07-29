@@ -15,8 +15,11 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         }
 
         await attacher.recordingDidStart(
-            initialTranscriber: nil,
-            loader: { EchoLiveTranscriptionEngine() })
+            loader: {
+                LiveTranscriptionRuntime(
+                    engine: EchoLiveTranscriptionEngine(),
+                    completion: { probe.recordRuntimeFinish() })
+            })
 
         try await waitUntil {
             probe.events == [.preparing, .available] && probe.captionTimes.count == 2
@@ -26,6 +29,7 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         XCTAssertTrue(requiresRecovery, "audio before hot attachment still needs durable recovery")
         XCTAssertEqual(probe.events, [.preparing, .available])
         XCTAssertEqual(probe.captionTimes, [3, 4])
+        XCTAssertEqual(probe.runtimeFinishCount, 1)
     }
 
     func testResidentModelStartsAvailableWithoutRecovery() async throws {
@@ -38,7 +42,6 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
             telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
 
         await attacher.recordingDidStart(
-            initialTranscriber: EchoLiveTranscriptionEngine(),
             loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
         attacher.feeds.yield(chunk(at: 1))
 
@@ -47,6 +50,7 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
 
         XCTAssertFalse(requiresRecovery)
         XCTAssertEqual(probe.events, [.available])
+        XCTAssertEqual(probe.runtimeFinishCount, 1)
         guard case .started(let started) = recorder.events.first,
               case .finished(let finished, let outcome) = recorder.events.last
         else {
@@ -68,12 +72,32 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         let attacher = makeAttacher(probe: probe, initialAvailable: false, capacity: 2)
 
         await attacher.recordingDidStart(
-            initialTranscriber: nil,
             loader: { throw LiveTranscriptionTestFailure.loadFailed })
 
         try await waitUntil { probe.events == [.preparing, .failed] }
         let requiresRecovery = await attacher.finish()
         XCTAssertTrue(requiresRecovery)
+        XCTAssertEqual(probe.runtimeFinishCount, 0)
+    }
+
+    func testRuntimeCompletingAfterStopIsRelinquishedWithoutAttaching() async throws {
+        let probe = LiveTranscriptionProbe()
+        let loader = DeferredLiveTranscriptionLoader()
+        let attacher = makeAttacher(
+            probe: probe,
+            initialAvailable: false,
+            capacity: 2)
+
+        await attacher.recordingDidStart(loader: {
+            try await loader.runtime(probe: probe)
+        })
+        let requiresRecovery = await attacher.finish()
+        loader.complete()
+
+        try await waitUntil { probe.runtimeFinishCount == 1 }
+        XCTAssertTrue(requiresRecovery)
+        XCTAssertEqual(probe.events, [.preparing])
+        XCTAssertTrue(probe.captionTimes.isEmpty)
     }
 
     private func makeAttacher(
@@ -88,7 +112,11 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
             callbacks: StartRecordingLiveCallbacks(
                 caption: { probe.record(caption: $0) },
                 liveTranscription: { probe.record(event: $0) }),
-            initialTranscriberAvailable: initialAvailable,
+            initialRuntime: initialAvailable
+                ? LiveTranscriptionRuntime(
+                    engine: EchoLiveTranscriptionEngine(),
+                    completion: { probe.recordRuntimeFinish() })
+                : nil,
             capacityPerChannel: capacity,
             telemetry: telemetry)
     }
@@ -629,6 +657,7 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var storedEvents: [StartRecordingLiveTranscriptionEvent] = []
     private var storedCaptionTimes: [TimeInterval] = []
+    private var storedRuntimeFinishCount = 0
 
     var events: [StartRecordingLiveTranscriptionEvent] {
         lock.withLock { storedEvents }
@@ -638,12 +667,52 @@ private final class LiveTranscriptionProbe: @unchecked Sendable {
         lock.withLock { storedCaptionTimes.sorted() }
     }
 
+    var runtimeFinishCount: Int {
+        lock.withLock { storedRuntimeFinishCount }
+    }
+
     func record(event: StartRecordingLiveTranscriptionEvent) {
         lock.withLock { storedEvents.append(event) }
     }
 
     func record(caption: TranscriptSegment) {
         lock.withLock { storedCaptionTimes.append(caption.startTime) }
+    }
+
+    func recordRuntimeFinish() {
+        lock.withLock { storedRuntimeFinishCount += 1 }
+    }
+}
+
+private final class DeferredLiveTranscriptionLoader: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var completed = false
+
+    func runtime(
+        probe: LiveTranscriptionProbe
+    ) async throws -> LiveTranscriptionRuntime {
+        await withCheckedContinuation { continuation in
+            lock.withLock {
+                if completed {
+                    continuation.resume()
+                } else {
+                    self.continuation = continuation
+                }
+            }
+        }
+        return LiveTranscriptionRuntime(
+            engine: EchoLiveTranscriptionEngine(),
+            completion: { probe.recordRuntimeFinish() })
+    }
+
+    func complete() {
+        let continuation = lock.withLock {
+            completed = true
+            defer { self.continuation = nil }
+            return self.continuation
+        }
+        continuation?.resume()
     }
 }
 

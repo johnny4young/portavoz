@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery), D162 (audio-first live-speech residency).
 
 ## Channel model (D5)
 
@@ -60,13 +60,16 @@ preparation boundary without constructing an input graph. Model readiness is
 evidence, never a capture gate. Before any source starts, the use case
 atomically inserts a `recording` meeting shell and one pending `AudioAsset`
 reservation per selected channel. The runtime then starts `RecordingSession`
-immediately. If
-Parakeet is resident it also owns one direct stream per channel; otherwise it
-starts one deduplicated verified model-preparation task after audio is active
-and marks the session for complete transcript recovery at Stop. A failed live
-lane sets the same recovery marker without stopping audio or its peer. Source-
-start failure stops partially started sources, closes any live feeds, and stops
-mic warm-up. The use case inspects both reserved
+immediately. If Parakeet is resident, preparation claims one active-use lease
+and the recording-scoped attacher owns it across one direct stream per channel;
+otherwise the attacher joins one deduplicated verified model load after audio
+is active and takes the resulting lease only for that recording. Stop never
+waits for a cold process load: a late completion ends its lease without
+attaching, while the session remains marked for complete transcript recovery.
+A failed live lane sets the same recovery marker without stopping audio or its
+peer. Source-start failure stops partially started sources, closes any live
+feeds, stops mic warm-up, and ends any claimed runtime lease. The use case
+inspects both reserved
 staging paths and their published counterparts: any file retains the shell as
 `needsAttention`; only an untouched empty shell can pass D37's guarded discard.
 Every failed attempt schedules idle engine release (D49).

@@ -5039,3 +5039,44 @@ atomically prevents idle release or Settings deletion from observing an
 unleased resident container. Migrating MLX as the second complete family keeps
 live speech, diarization, and embeddings explicitly pending instead of
 claiming partial governor coverage.
+
+## D162 — Live speech uses pinned runtime leases without gating capture (Jul 2026)
+
+**Context:** AppServices coalesced and cached Parakeet, but recording,
+Dictation, durable first-pass recovery, onboarding, and resource benchmarks
+borrowed the raw engine without reporting active use. The 600-second release
+fence therefore could not distinguish an idle runtime from one executing a
+live stream or file transcription. Recording also has a stronger invariant
+than the other model families: audio must become durable before a cold model
+load can affect startup, and Stop must not wait for a process-owned download or
+Core ML compilation.
+
+**Decision:** live speech is the third fully integrated residency family.
+`AppServices+LiveSpeechModels` coalesces one verified Parakeet load behind a
+`.liveSpeech` load ticket and returns `LiveSpeechRuntimeLease`, binding the
+concrete engine to one active-use token. Publication and first-use acquisition
+occur in one synchronous MainActor continuation; each joiner receives a
+distinct token. Dictation, durable post-capture transcription, onboarding, and
+the recording resource benchmark retain and finish leases around their exact
+operations.
+
+Recording preparation may acquire only an already-resident lease. The private
+runtime starts durable audio first and asks the recording-scoped
+`LiveTranscriptionAttacher` to join a cold process load afterward. The attacher
+owns an opaque runtime handle until every live channel drains. Stop cancels its
+waiter but never awaits the shared load. If that load completes after the
+recording is inactive, the attacher ends the returned lease without attaching
+captions. Failed source start and cancelled preparation also end any hot lease.
+
+Runtime release is two-phase and accepted only when active use is zero:
+AppServices detaches the concrete engine and then confirms the exact ledger
+ticket, restoring it if confirmation fails. Verified files remain independent,
+the existing 600-second generation fence is unchanged, and no load, release,
+verification, or ledger mutation enters an audio callback.
+
+**Rationale:** one pinned engine/use pair makes process residency truthful
+without moving FluidAudio types into Core or weakening audio-first startup.
+Owning late-load cleanup at the recording attachment boundary preserves fast
+Stop while preventing a completed process load from leaking a use token or
+publishing into a closed session. Keeping the measured TTL unchanged separates
+lifecycle correctness from future resource-policy tuning.

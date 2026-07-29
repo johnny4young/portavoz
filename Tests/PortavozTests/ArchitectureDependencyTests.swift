@@ -332,6 +332,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testModelResidencyHasOneCompositionOwnerAndCharacterizedLegacyLoaders() throws {
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let liveSpeech = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")
         let whisper = try Self.contents(
             of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
         let mlx = try Self.contents(
@@ -353,6 +355,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 under: "Sources",
                 pattern: #"modelResidencyLedger\."#),
             [
+                "portavoz-app/AppServices+LiveSpeechModels.swift",
                 "portavoz-app/AppServices+MLXModels.swift",
                 "portavoz-app/AppServices+WhisperModels.swift",
             ],
@@ -362,7 +365,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources/portavoz-app",
                 pattern: #"ParakeetEngine\.loadRecommended"#),
-            ["AppServices.swift"])
+            ["AppServices+LiveSpeechModels.swift"])
         XCTAssertEqual(
             try Self.sourceMatches(
                 under: "Sources/portavoz-app",
@@ -387,6 +390,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             ])
         XCTAssertTrue(whisper.contains("Task.sleep(for: .seconds(120))"))
         XCTAssertTrue(services.contains("Task.sleep(for: .seconds(600))"))
+        XCTAssertTrue(liveSpeech.contains("modelResidencyLedger.beginUse(.liveSpeech)"))
         XCTAssertTrue(mlx.contains("private static let idleRelease: Duration = .seconds(120)"))
         XCTAssertFalse(mlx.contains("static let shared"))
         XCTAssertTrue(services.contains(
@@ -398,6 +402,72 @@ final class ArchitectureDependencyTests: XCTestCase {
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
         XCTAssertTrue(decisions.contains("## D159"))
         XCTAssertTrue(appSpec.contains("#### Characterized runtime topology"))
+    }
+
+    func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")
+        let start = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+StartRecording.swift")
+        let attacher = try Self.contents(
+            of: "Sources/portavoz-app/LiveTranscriptionAttacher.swift")
+        let dictation = try Self.contents(
+            of: "Sources/portavoz-app/DictationController.swift")
+        let recovery = try Self.contents(
+            of: "Sources/portavoz-app/AppPostCaptureProcessingCapabilities.swift")
+        let benchmark = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode+ResourceBatch.swift")
+
+        for transition in [
+            "modelResidencyLedger.beginLoad(.liveSpeech)",
+            "modelResidencyLedger.finishLoad(",
+            "modelResidencyLedger.failLoad(",
+            "modelResidencyLedger.beginUse(.liveSpeech)",
+            "modelResidencyLedger.finishUse(",
+            "modelResidencyLedger.beginRelease(.liveSpeech)",
+            "modelResidencyLedger.finishRelease(",
+            "modelResidencyLedger.cancelRelease(",
+            "struct LiveSpeechRuntimeLoad",
+            "struct LiveSpeechRuntimeLease",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(transition),
+                "Live-speech residency adapter is missing \(transition)")
+        }
+
+        XCTAssertTrue(start.contains("services.acquireResidentLiveSpeechRuntime()"))
+        XCTAssertTrue(start.contains("services.acquireLiveSpeechRuntime()"))
+        XCTAssertTrue(start.contains("services.liveTranscriptionRuntime(runtime)"))
+        XCTAssertTrue(attacher.contains("await runtime?.finish()"))
+        XCTAssertTrue(attacher.contains("await runtime.finish()"))
+        for borrower in [dictation, recovery, benchmark] {
+            XCTAssertTrue(borrower.contains("services.acquireLiveSpeechRuntime("))
+            XCTAssertTrue(borrower.contains("services.finishLiveSpeechRuntime("))
+        }
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"loadTranscriberIfNeeded"#),
+            [])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"services\.transcriber(?:\s|[,)}])"#),
+            [])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"(?m)^\s*(?:self\.)?transcriber\s*="#),
+            ["AppServices+LiveSpeechModels.swift"],
+            "Only the live-speech capability adapter may mutate the runtime")
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Parakeet is the third fully integrated residency family"))
+        XCTAssertTrue(decisions.contains("## D162"))
+        XCTAssertTrue(appSpec.contains("### Live-speech residency adapter (D162)"))
     }
 
     func testWhisperRuntimePinsOneCompleteResidencyLifecycle() throws {
@@ -1136,7 +1206,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             adapter.contains("try await services.loadEnginesIfNeeded()"),
             "Recording start must never wait for model preparation")
         XCTAssertTrue(adapter.contains("LiveTranscriptionAttacher("))
-        XCTAssertTrue(adapter.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertTrue(adapter.contains("services.acquireResidentLiveSpeechRuntime()"))
+        XCTAssertTrue(adapter.contains("services.acquireLiveSpeechRuntime()"))
         XCTAssertTrue(adapter.contains("voiceProcessing: false"))
         XCTAssertFalse(adapter.contains("aecEnabled"))
         XCTAssertTrue(controller.contains("receiveLiveTranscription("))
@@ -1309,7 +1380,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testSpeechModelReadinessIsScopedToTheWorkflowCapability() throws {
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
-        let readiness = services
+        let liveSpeech = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")
         let refine = try Self.contents(
             of: "Sources/portavoz-app/AppServices+RefineMeeting.swift")
         let importAdapter = try Self.contents(
@@ -1328,27 +1400,23 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Refine readiness requires Whisper only; diarization remains degradable")
         XCTAssertTrue(refine.contains("services.loadDiarizerIfNeeded()"))
 
-        let transcriberStart = try XCTUnwrap(readiness.range(
-            of: "func loadTranscriberIfNeeded("))
-        let diarizerStart = try XCTUnwrap(readiness.range(
-            of: "func loadDiarizerIfNeeded(",
-            range: transcriberStart.upperBound..<readiness.endIndex))
-        let broadLoaderStart = try XCTUnwrap(readiness.range(
-            of: "func loadEnginesIfNeeded()", range: diarizerStart.upperBound..<readiness.endIndex))
-        let transcriberLoader = readiness[
-            transcriberStart.lowerBound..<diarizerStart.lowerBound]
-        let diarizerLoader = readiness[
+        let diarizerStart = try XCTUnwrap(services.range(
+            of: "func loadDiarizerIfNeeded("))
+        let broadLoaderStart = try XCTUnwrap(services.range(
+            of: "func loadEnginesIfNeeded()", range: diarizerStart.upperBound..<services.endIndex))
+        let diarizerLoader = services[
             diarizerStart.lowerBound..<broadLoaderStart.lowerBound]
-        XCTAssertTrue(transcriberLoader.contains("ParakeetEngine.loadRecommended"))
-        XCTAssertFalse(transcriberLoader.contains("PyannoteDiarizer"))
+        XCTAssertTrue(liveSpeech.contains("ParakeetEngine.loadRecommended"))
+        XCTAssertFalse(liveSpeech.contains("PyannoteDiarizer"))
         XCTAssertTrue(diarizerLoader.contains("PyannoteDiarizer.loadRecommended"))
         XCTAssertFalse(diarizerLoader.contains("ParakeetEngine"))
-        XCTAssertTrue(services.contains("transcriberLoadTask"))
+        XCTAssertTrue(services.contains("liveSpeechRuntimeLoad"))
         XCTAssertTrue(services.contains("diarizerLoadTask"))
 
         XCTAssertTrue(importAdapter.contains("services.loadDiarizerIfNeeded()"))
         XCTAssertFalse(importAdapter.contains("services.loadEnginesIfNeeded()"))
-        XCTAssertTrue(recovery.contains("services.loadTranscriberIfNeeded("))
+        XCTAssertTrue(recovery.contains("services.acquireLiveSpeechRuntime("))
+        XCTAssertTrue(recovery.contains("services.finishLiveSpeechRuntime("))
         XCTAssertFalse(recovery.contains("services.loadEnginesIfNeeded()"))
     }
 
@@ -1581,7 +1649,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "Application workflow contains concrete app dependency \(concreteDependency)")
         }
         for adapterDependency in [
-            "RecordingsLocation", "FileManager", "loadTranscriberIfNeeded",
+            "RecordingsLocation", "FileManager", "acquireLiveSpeechRuntime",
             "loadDiarizerIfNeeded", "PostMeetingShortcut.runIfConfigured"
         ] {
             XCTAssertTrue(adapter.contains(adapterDependency))

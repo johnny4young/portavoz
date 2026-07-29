@@ -48,8 +48,9 @@ struct BenchBatchResourceWorkload {
         services: AppServices,
         timeoutSeconds: Int
     ) async throws -> FileTranscription {
-        let transcriber = try await services.loadTranscriberIfNeeded(
+        let runtime = try await services.acquireLiveSpeechRuntime(
             workloadClass: .postCapture)
+        defer { _ = services.finishLiveSpeechRuntime(runtime) }
         do {
             return try await BenchResourceTimedOperation.run(
                 timeout: .seconds(timeoutSeconds)
@@ -57,7 +58,7 @@ struct BenchBatchResourceWorkload {
                 try await services.transcriptionScheduler.batch(
                     workloadClass: .postCapture
                 ) {
-                    try await transcriber.transcribeFile(
+                    try await runtime.engine.transcribeFile(
                         at: configuration.fixtureURL,
                         hints: TranscriptionHints(language: "en"),
                         channel: .system)
@@ -92,8 +93,9 @@ extension BenchMode {
         // Resolve and load the same shared engine before the concurrent probe
         // starts. A missing model fails the run rather than becoming measured
         // download/setup noise.
-        _ = try await services.loadTranscriberIfNeeded(
+        let runtime = try await services.acquireLiveSpeechRuntime(
             workloadClass: .postCapture)
+        _ = services.finishLiveSpeechRuntime(runtime)
         return BenchBatchResourceWorkload(
             configuration: configuration)
     }
