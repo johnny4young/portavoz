@@ -204,7 +204,7 @@ for ((run = 1; run <= RUNS; run++)); do
     mkdir -p "$audio_root"
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
-    echo "Collecting idle/recording/Stop resource sample $run of $RUNS…"
+    echo "Collecting idle/recording/Stop resource sample $run of ${RUNS}…"
     if ! open -W -n "$APP" --args \
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
@@ -226,7 +226,7 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce all three exact-shaped samples"
     fi
 
-    echo "Collecting recording plus indexing resource sample $run of $RUNS…"
+    echo "Collecting recording plus indexing resource sample $run of ${RUNS}…"
     mkdir -p "$recording_indexing_audio_root"
     export PORTAVOZ_AUDIO_ROOT="$recording_indexing_audio_root"
     if ! open -W -n "$APP" --args \
@@ -251,7 +251,7 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce the recording plus indexing sample"
     fi
 
-    echo "Collecting recording plus batch resource sample $run of $RUNS…"
+    echo "Collecting recording plus batch resource sample $run of ${RUNS}…"
     mkdir -p "$recording_batch_audio_root"
     export PORTAVOZ_AUDIO_ROOT="$recording_batch_audio_root"
     if ! open -W -n "$APP" --args \
@@ -276,7 +276,7 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce the recording plus batch sample"
     fi
 
-    echo "Collecting Refine resource sample $run of $RUNS…"
+    echo "Collecting Refine resource sample $run of ${RUNS}…"
     if ! "$APP/Contents/MacOS/portavoz-app" \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
@@ -296,7 +296,7 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce the exact-shaped Refine sample"
     fi
 
-    echo "Collecting Summary resource sample $run of $RUNS…"
+    echo "Collecting Summary resource sample $run of ${RUNS}…"
     if ! "$APP/Contents/MacOS/portavoz-app" \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
@@ -316,7 +316,7 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce the exact-shaped Summary sample"
     fi
 
-    echo "Collecting Ask resource sample $run of $RUNS…"
+    echo "Collecting Ask resource sample $run of ${RUNS}…"
     if ! "$APP/Contents/MacOS/portavoz-app" \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
@@ -336,7 +336,7 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce the exact-shaped Ask sample"
     fi
 
-    echo "Collecting semantic indexing resource sample $run of $RUNS…"
+    echo "Collecting semantic indexing resource sample $run of ${RUNS}…"
     if ! "$APP/Contents/MacOS/portavoz-app" \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \

@@ -683,6 +683,8 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("say -v Samantha -r 170", runner)
         self.assertIn("fixture_audio_bytes", runner)
         self.assertIn("(( fixture_audio_bytes > 0 ))", runner)
+        self.assertNotIn("$RUNS…", runner)
+        self.assertEqual(runner.count("${RUNS}…"), 7)
         self.assertIn("RUNS=3", runner)
         self.assertIn("(( RUNS >= 3 ))", runner)
         self.assertIn("MODEL_TIMEOUT=900", runner)
