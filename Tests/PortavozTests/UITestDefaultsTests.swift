@@ -3,6 +3,24 @@ import XCTest
 @testable import portavoz_app
 
 final class UITestDefaultsTests: XCTestCase {
+    func testStorageIsolationKeepsAutomationModelsDisposable() {
+        let policy = AppStorageIsolationPolicy(
+            arguments: ["Portavoz", "-use-temp-store", "-seed-demo"])
+
+        XCTAssertTrue(policy.usesTemporaryMeetingStore)
+        XCTAssertTrue(policy.usesTemporaryModelStore)
+    }
+
+    func testRecordingBenchmarkReusesModelsButKeepsMeetingStoreDisposable() {
+        let policy = AppStorageIsolationPolicy(
+            arguments: [
+                "Portavoz", "-use-temp-store", "--bench-record", "60",
+            ])
+
+        XCTAssertTrue(policy.usesTemporaryMeetingStore)
+        XCTAssertFalse(policy.usesTemporaryModelStore)
+    }
+
     func testTemporaryStoreLaunchInstallsVolatileOverrides() throws {
         let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

@@ -19,6 +19,23 @@ struct MeetingSeekRequest: Equatable {
     let timestamp: TimeInterval
 }
 
+/// Storage isolation is selected once at process composition. UI automation
+/// gets an empty model root as well as a disposable meeting database. The
+/// hidden recording benchmark keeps only the database disposable and reuses
+/// the normal verified model cache so repeated Release samples do not include
+/// a fresh model installation.
+struct AppStorageIsolationPolicy: Equatable {
+    let usesTemporaryMeetingStore: Bool
+    let usesTemporaryModelStore: Bool
+
+    init(arguments: [String]) {
+        usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
+        let isRecordingBenchmark = arguments.contains("--bench-record")
+        usesTemporaryModelStore =
+            usesTemporaryMeetingStore && !isRecordingBenchmark
+    }
+}
+
 /// Composition root: the database, the ML engines (loaded once, shared by
 /// every recording), and cross-view invalidation. Lives on the main actor;
 /// the engines themselves do their work off it.
@@ -176,12 +193,15 @@ final class AppServices {
         // per-launch preferences still need to land before any service reads
         // defaults so every case is independent from an earlier test launch.
         UITestDefaults.installIfNeeded()
-        let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
+        let storagePolicy = AppStorageIsolationPolicy(
+            arguments: ProcessInfo.processInfo.arguments)
+        let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
         self.workloadTelemetry = workloadTelemetry
         IntelligenceScheduler.installSharedTelemetry(workloadTelemetry)
         transcriptionScheduler = TranscriptionScheduler(telemetry: workloadTelemetry)
-        let modelStore = Self.makeModelStore(usesTemporaryStore: usesTemporaryStore)
+        let modelStore = Self.makeModelStore(
+            usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
         let secretStorage = KeychainSecretStore()

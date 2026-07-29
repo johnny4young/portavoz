@@ -281,6 +281,46 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_resource_baseline"))
         XCTAssertTrue(decisions.contains("## D149"))
+        XCTAssertTrue(decisions.contains("## D150"))
+
+        let nativeProbe = try Self.contents(
+            of: "Sources/portavoz-app/ResourceRunProbe.swift")
+        let benchProbes = try Self.contents(
+            of: "Sources/portavoz-app/BenchRecordResourceProbes.swift")
+        let benchMode = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let runner = try Self.contents(
+            of: "scripts/run-resource-recording-baseline.sh")
+        XCTAssertTrue(nativeProbe.contains("proc_pid_rusage"))
+        XCTAssertTrue(nativeProbe.contains("ri_energy_nj"))
+        XCTAssertTrue(nativeProbe.contains(
+            "IOPSGetProvidingPowerSourceType"))
+        XCTAssertTrue(nativeProbe.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(benchProbes.contains(
+            "finishRecordingAndBeginStop"))
+        XCTAssertTrue(benchProbes.contains(
+            "replayingActive: true"))
+        XCTAssertTrue(benchMode.contains(
+            #"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(benchMode.contains(
+            "stop FAILED: exceeded 30 seconds"))
+        XCTAssertTrue(services.contains(
+            "usesTemporaryMeetingStore && !isRecordingBenchmark"))
+        XCTAssertTrue(runner.contains(
+            "app.portavoz.mac.resource-bench"))
+        XCTAssertTrue(runner.contains(
+            "resource_baseline.py assemble"))
+        XCTAssertFalse(runner.contains("/Applications/Portavoz.app"))
+        for forbidden in [
+            "meetingTitle", "transcriptText", "sourcePath", "modelName",
+            "errorMessage",
+        ] {
+            XCTAssertFalse(
+                nativeProbe.contains(forbidden),
+                "Native resource samples must not admit \(forbidden)")
+        }
 
         let appSources = try Self.sourceMatches(
             under: "Sources",

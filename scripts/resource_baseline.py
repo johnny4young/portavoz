@@ -7,7 +7,9 @@ import argparse
 import json
 import math
 import os
+import platform
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -66,6 +68,9 @@ HARDWARE_PATTERN = re.compile(
     r"[0-9]{1,2},[0-9]{1,2}$"
 )
 TIMESTAMP_PATTERN = re.compile(r"^[0-9T:.+\-Z]{10,64}$")
+SWIFT_VERSION_PATTERN = re.compile(
+    r"(?:Apple )?Swift version ([0-9]+(?:\.[0-9]+){1,2})"
+)
 
 
 class ResourceBaselineError(ValueError):
@@ -710,6 +715,147 @@ def expected_build(arguments):
     }
 
 
+def command_output(command, label):
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ResourceBaselineError(f"could not detect {label}") from error
+    value = result.stdout.strip()
+    if not value:
+        raise ResourceBaselineError(f"could not detect {label}")
+    return value
+
+
+def detect_machine_metadata(profile_id, contract):
+    if platform.system() != "Darwin":
+        raise ResourceBaselineError("resource receipts require macOS")
+    os_version = command_output(
+        ["sw_vers", "-productVersion"],
+        "macOS version",
+    )
+    os_build = command_output(
+        ["sw_vers", "-buildVersion"],
+        "macOS build",
+    )
+    architecture = platform.machine()
+    physical_memory = command_output(
+        ["sysctl", "-n", "hw.memsize"],
+        "physical memory",
+    )
+    hardware_model = command_output(
+        ["sysctl", "-n", "hw.model"],
+        "hardware model",
+    )
+    xcode_lines = command_output(
+        ["xcodebuild", "-version"],
+        "Xcode version",
+    ).splitlines()
+    if len(xcode_lines) != 2 or not xcode_lines[0].startswith("Xcode "):
+        raise ResourceBaselineError("could not parse Xcode version")
+    if not xcode_lines[1].startswith("Build version "):
+        raise ResourceBaselineError("could not parse Xcode build")
+    swift_output = command_output(["swift", "--version"], "Swift version")
+    swift_match = SWIFT_VERSION_PATTERN.search(swift_output)
+    if swift_match is None:
+        raise ResourceBaselineError("could not parse Swift version")
+    try:
+        physical_memory_bytes = int(physical_memory)
+    except ValueError as error:
+        raise ResourceBaselineError(
+            "could not parse physical memory"
+        ) from error
+    host = {
+        "profile": profile_id,
+        "osVersion": os_version,
+        "osBuild": os_build,
+        "architecture": architecture,
+        "physicalMemoryBytes": physical_memory_bytes,
+        "hardwareModel": hardware_model,
+    }
+    toolchain = {
+        "xcodeVersion": xcode_lines[0].removeprefix("Xcode ").strip(),
+        "xcodeBuild": xcode_lines[1].removeprefix("Build version ").strip(),
+        "swiftVersion": swift_match.group(1),
+    }
+    validate_host(host, "detected host", contract)
+    validate_toolchain(toolchain, "detected toolchain")
+    return host, toolchain
+
+
+def split_sample_assignment(value):
+    scenario_id, separator, raw_path = value.partition("=")
+    if not separator or not raw_path:
+        raise ResourceBaselineError(
+            "--sample must use the form scenario=/path/to/sample.json"
+        )
+    scenario_id = safe_string(
+        scenario_id,
+        "--sample scenario",
+        PROFILE_PATTERN,
+    )
+    return scenario_id, raw_path
+
+
+def assemble_namespace(arguments):
+    contract = validate_contract(load_json(arguments.contract, "resource contract"))
+    build = expected_build(arguments)
+    profile = safe_string(arguments.profile, "--profile", PROFILE_PATTERN)
+    if profile not in contract["profiles"]:
+        raise ResourceBaselineError("--profile is not in the resource contract")
+    if not arguments.sample:
+        raise ResourceBaselineError("at least one --sample is required")
+    samples_by_scenario = {}
+    for index, assignment in enumerate(arguments.sample):
+        scenario, sample_path = split_sample_assignment(assignment)
+        if scenario not in contract["scenarios"]:
+            raise ResourceBaselineError(
+                f"--sample scenario is not in the contract: {scenario}"
+            )
+        raw_sample = load_json(
+            sample_path,
+            f"resource sample {index + 1}",
+        )
+        run, _, _ = validate_sample(
+            raw_sample,
+            f"resource sample {index + 1}",
+        )
+        scenario_samples = samples_by_scenario.setdefault(scenario, {})
+        if run in scenario_samples:
+            raise ResourceBaselineError(
+                f"resource samples repeat {scenario} run: {run}"
+            )
+        scenario_samples[run] = raw_sample
+
+    host, toolchain = detect_machine_metadata(profile, contract)
+    receipt = {
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": "resource-baseline",
+        "collectedAt": utc_now(),
+        "build": build,
+        "host": host,
+        "toolchain": toolchain,
+        "scenarios": [
+            {
+                "id": scenario,
+                "state": "pass",
+                "samples": [
+                    samples[run]
+                    for run in sorted(samples)
+                ],
+            }
+            for scenario, samples in sorted(samples_by_scenario.items())
+        ],
+    }
+    validate_receipt(receipt, contract, "assembled resource receipt")
+    write_json(Path(arguments.output).expanduser(), receipt)
+    return 0
+
+
 def render_markdown(scorecard):
     build = scorecard["build"]
     lines = [
@@ -827,6 +973,26 @@ def build_parser():
         description="Evaluate privacy-safe Portavoz resource baseline receipts."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+    assemble = subparsers.add_parser(
+        "assemble",
+        help="Assemble native app samples into one exact-shaped host receipt.",
+    )
+    assemble.add_argument("--version", required=True)
+    assemble.add_argument("--build", required=True)
+    assemble.add_argument("--commit", required=True)
+    assemble.add_argument("--profile", required=True)
+    assemble.add_argument(
+        "--contract",
+        default=str(DEFAULT_CONTRACT),
+        help="Tracked resource matrix contract.",
+    )
+    assemble.add_argument(
+        "--sample",
+        action="append",
+        default=[],
+        help="Scenario/sample assignment; repeat for every measured run.",
+    )
+    assemble.add_argument("--output", required=True)
     evaluate = subparsers.add_parser(
         "evaluate",
         help="Write a complete pass/blocked resource scorecard.",
@@ -852,6 +1018,8 @@ def build_parser():
 def main_from_args(arguments):
     parser = build_parser()
     namespace = parser.parse_args(arguments)
+    if namespace.command == "assemble":
+        return assemble_namespace(namespace)
     if namespace.command == "evaluate":
         return evaluate_namespace(namespace)
     raise ResourceBaselineError(f"unsupported command: {namespace.command}")

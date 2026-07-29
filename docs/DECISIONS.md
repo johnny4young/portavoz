@@ -4589,3 +4589,42 @@ contract keeps long-call artifacts small and private, while a complete blocked
 scorecard makes missing hardware work visible without pretending it is a
 parser failure. Keeping observation, baseline acceptance, and policy as three
 separate steps prevents tooling from silently inventing product limits.
+
+## D150 — Native resource receipts are collected by an isolated Release app (Jul 2026)
+
+**Context:** Points of Interest preserve a useful Instruments view, but
+toolchain-specific trace schemas are not a stable receipt format. The existing
+recording benchmark also paired `-use-temp-store` with a fresh model directory,
+so every repetition could perform model setup instead of measuring comparable
+runtime work. Finally, its structured Stop race did not enforce the documented
+timeout because task-group scope waits for cancelled children.
+
+**Decision:** the macOS outer layer owns one benchmark-only
+`ResourceRunProbe`. It observes the same closed D148 event stream and samples
+only aggregate native process/resource state: `proc_pid_rusage` CPU,
+physical-footprint, energy, and disk counters; current volume capacity;
+`ProcessInfo` thermal and low-power state; and IOKit power source. The Stop
+probe is armed first and atomically replays workload spans already active at
+the phase boundary; the active-recording metric window then freezes before the
+product Stop begins. Boundary spans may drain into the bounded recording
+summary while Stop measures them independently. New spans enter only the Stop
+probe. A changed power source, unavailable counter,
+incomplete lifecycle, output collision, or Stop timeout fails without a
+passing sample. Instruments remains optional corroboration, not receipt input.
+
+The recording baseline runner requires a clean worktree, builds one exact
+Release version/build/commit, copies and re-signs it under the dedicated
+`app.portavoz.mac.resource-bench` identity, and performs at least three runs.
+Every run requires a disposable meeting database and scratch audio. Only this
+hidden recording benchmark reuses the normal verified model cache; ordinary
+XCUITest launches retain an empty temporary model root. Partial fragments stay
+private and are removed on failure; a validated owner-only host receipt is
+published atomically. The runner never launches or modifies the notarized
+installed app.
+
+**Rationale:** native counters make receipts deterministic and testable without
+binding policy evidence to an Instruments export schema. Separating the
+database and model isolation concerns protects user meetings while removing
+model-install noise. Independent recording and Stop windows make interference
+attribution explicit, and fail-closed publication prevents a timeout or partial
+run from looking like accepted hardware evidence.

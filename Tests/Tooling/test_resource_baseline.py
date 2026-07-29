@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -416,6 +417,188 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertNotIn("meeting", encoded.lower())
             self.assertNotIn("transcript", encoded.lower())
 
+    def test_assemble_builds_an_exact_owner_only_host_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            recording = root / "recording-1.json"
+            stop = root / "stop-1.json"
+            scenarios = dict(self.required_scenarios())
+            recording.write_text(json.dumps(
+                self.sample(1, scenarios["recording"])))
+            stop.write_text(json.dumps(
+                self.sample(1, scenarios["stop"])))
+            output = root / "receipt.json"
+
+            with mock.patch.object(
+                baseline,
+                "detect_machine_metadata",
+                return_value=self.machine_metadata("memory-8gb"),
+            ):
+                result = baseline.main_from_args([
+                    "assemble",
+                    "--version",
+                    self.version,
+                    "--build",
+                    self.build,
+                    "--commit",
+                    self.commit,
+                    "--profile",
+                    "memory-8gb",
+                    "--sample",
+                    f"recording={recording}",
+                    "--sample",
+                    f"stop={stop}",
+                    "--output",
+                    str(output),
+                ])
+
+            self.assertEqual(result, 0)
+            receipt = json.loads(output.read_text())
+            self.assertEqual(receipt["kind"], "resource-baseline")
+            self.assertEqual(receipt["host"]["profile"], "memory-8gb")
+            self.assertEqual(
+                [scenario["id"] for scenario in receipt["scenarios"]],
+                ["recording", "stop"],
+            )
+            self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
+            baseline.validate_receipt(
+                receipt,
+                baseline.validate_contract(
+                    baseline.load_json(
+                        baseline.DEFAULT_CONTRACT,
+                        "resource contract",
+                    )
+                ),
+                "assembled receipt",
+            )
+
+    def test_assemble_rejects_duplicate_scenario_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scenarios = dict(self.required_scenarios())
+            first = root / "recording-first.json"
+            second = root / "recording-second.json"
+            sample = self.sample(1, scenarios["recording"])
+            first.write_text(json.dumps(sample))
+            second.write_text(json.dumps(sample))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "repeat recording run: 1",
+            ):
+                baseline.assemble_namespace(
+                    baseline.build_parser().parse_args([
+                        "assemble",
+                        "--version",
+                        self.version,
+                        "--build",
+                        self.build,
+                        "--commit",
+                        self.commit,
+                        "--profile",
+                        "memory-8gb",
+                        "--sample",
+                        f"recording={first}",
+                        "--sample",
+                        f"recording={second}",
+                        "--output",
+                        str(root / "receipt.json"),
+                    ])
+                )
+
+    def test_assemble_rejects_sample_without_required_workload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sample = root / "recording.json"
+            sample.write_text(json.dumps(self.sample(1, [])))
+
+            with mock.patch.object(
+                baseline,
+                "detect_machine_metadata",
+                return_value=self.machine_metadata("memory-8gb"),
+            ), self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "missing workloads: .*liveTranscription.*audioCapture",
+            ):
+                baseline.assemble_namespace(
+                    baseline.build_parser().parse_args([
+                        "assemble",
+                        "--version",
+                        self.version,
+                        "--build",
+                        self.build,
+                        "--commit",
+                        self.commit,
+                        "--profile",
+                        "memory-8gb",
+                        "--sample",
+                        f"recording={sample}",
+                        "--output",
+                        str(root / "receipt.json"),
+                    ])
+                )
+
+    def test_machine_metadata_uses_native_version_and_hardware_surfaces(self):
+        outputs = {
+            ("sw_vers", "-productVersion"): "26.0",
+            ("sw_vers", "-buildVersion"): "25A5316i",
+            ("sysctl", "-n", "hw.memsize"): str(8 * 1024**3),
+            ("sysctl", "-n", "hw.model"): "Mac16,5",
+            ("xcodebuild", "-version"): "Xcode 26.0\nBuild version 17A123",
+            ("swift", "--version"): (
+                "Apple Swift version 6.2 (swiftlang-6.2.0.1 clang-1700.0.1)"
+            ),
+        }
+
+        with mock.patch.object(
+            baseline.platform,
+            "system",
+            return_value="Darwin",
+        ), mock.patch.object(
+            baseline.platform,
+            "machine",
+            return_value="arm64",
+        ), mock.patch.object(
+            baseline,
+            "command_output",
+            side_effect=lambda command, _: outputs[tuple(command)],
+        ):
+            contract = baseline.validate_contract(
+                baseline.load_json(
+                    baseline.DEFAULT_CONTRACT,
+                    "resource contract",
+                )
+            )
+            host, toolchain = baseline.detect_machine_metadata(
+                "memory-8gb",
+                contract,
+            )
+
+        self.assertEqual(host["physicalMemoryBytes"], 8 * 1024**3)
+        self.assertEqual(host["hardwareModel"], "Mac16,5")
+        self.assertEqual(toolchain["xcodeVersion"], "26.0")
+        self.assertEqual(toolchain["swiftVersion"], "6.2")
+
+    def test_recording_runner_is_release_bound_isolated_and_builds_once(self):
+        runner = (
+            REPOSITORY / "scripts" / "run-resource-recording-baseline.sh"
+        ).read_text()
+
+        self.assertIn("git status --porcelain --untracked-files=all", runner)
+        self.assertIn("scripts/make-app.sh --release", runner)
+        self.assertIn("app.portavoz.mac.resource-bench", runner)
+        self.assertIn("-use-temp-store", runner)
+        self.assertIn("--bench-resource-output", runner)
+        self.assertIn("--bench-resource-run", runner)
+        self.assertIn("RUNS=3", runner)
+        self.assertIn("(( RUNS >= 3 ))", runner)
+        self.assertIn("resource_baseline.py assemble", runner)
+        self.assertNotIn("/Applications/Portavoz.app", runner)
+        self.assertLess(
+            runner.index("scripts/make-app.sh --release"),
+            runner.index("for ((run = 1; run <= RUNS; run++))"),
+        )
+
     def evaluate_args(self, receipts, output):
         arguments = [
             "evaluate",
@@ -435,6 +618,23 @@ class ResourceBaselineTests(unittest.TestCase):
     @staticmethod
     def read_scorecard(output):
         return json.loads((output / "resource-baseline.json").read_text())
+
+    def machine_metadata(self, profile):
+        return (
+            {
+                "profile": profile,
+                "osVersion": "26.0",
+                "osBuild": "25A5316i",
+                "architecture": "arm64",
+                "physicalMemoryBytes": self.profile_memory[profile],
+                "hardwareModel": "Mac16,5",
+            },
+            {
+                "xcodeVersion": "26.0",
+                "xcodeBuild": "17A123",
+                "swiftVersion": "6.2",
+            },
+        )
 
     def write_receipt(self, root, profile, suffix=None):
         path = root / f"{profile}{'-' + suffix if suffix else ''}.json"

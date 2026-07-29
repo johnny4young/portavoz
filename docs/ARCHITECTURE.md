@@ -678,6 +678,31 @@ mismatched-build, wrong-memory-tier, non-finite, or payload-bearing evidence
 fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
+The first native Release collector covers active recording and Stop without
+making Instruments XML part of the evidence contract. A benchmark-only
+observer receives the same closed telemetry events while
+`proc_pid_rusage(RUSAGE_INFO_CURRENT)`, `ProcessInfo`, volume capacity, and
+IOKit power-source APIs sample CPU time, peak physical footprint, energy, disk
+I/O, minimum free disk, thermal state, low-power mode, and invariant power
+source. The Stop probe is armed before the active-recording metric window
+freezes and atomically replays spans already open at that boundary, so their
+later finishes cannot fall between collectors. Those spans may still drain into
+the bounded recording summary while Stop measures them independently from the
+boundary. New spans enter only the Stop probe. A power-source
+change, malformed lifecycle, timeout, duplicate output, or unavailable native
+counter fails the run without producing passing evidence.
+
+`scripts/run-resource-recording-baseline.sh` requires a clean worktree, builds
+one exact Release version/build/commit, copies it to a uniquely identified
+scratch app, and records at least three runs into owner-only fragments before
+atomically publishing a host receipt. Each run uses a disposable meeting
+database and scratch audio while reusing the normal SHA-256-verified model
+cache; ordinary XCUITest launches keep their existing empty temporary model
+root. The runner never launches or changes `/Applications/Portavoz.app`.
+Recording and Stop now have a reproducible collector, but no host receipt or
+other seven scenarios are accepted yet, so resource-governor policy remains
+blocked.
+
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
 while a delayed direct row may replace only the newest still-open matching
@@ -1284,13 +1309,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,208 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,215 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 389 production Swift source files;
+- strict SwiftLint reports zero violations across 391 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

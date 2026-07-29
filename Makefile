@@ -14,7 +14,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
-	perf-ledger public-screenshots release-reliability-deterministic \
+	perf-ledger resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability
 
 ## Unit tests (the package suite).
@@ -27,6 +27,28 @@ test:
 ## PORTAVOZ_PERF_STRICT=1 also fails on regression candidates.
 perf-ledger:
 	scripts/run-perf-ledger.sh
+
+## Collect three Release recording + Stop resource samples on this Mac and
+## assemble an exact-shaped host receipt. The worktree must be clean and the
+## profile/version/build must describe this machine and source exactly.
+PORTAVOZ_RESOURCE_RUNS ?= 3
+PORTAVOZ_RESOURCE_DURATION ?= 60
+PORTAVOZ_RESOURCE_OUTPUT ?=
+resource-recording-baseline:
+	@test -n "$(PORTAVOZ_RESOURCE_PROFILE)" || \
+		(echo "PORTAVOZ_RESOURCE_PROFILE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
+		(echo "PORTAVOZ_RELEASE_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
+		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) \
+		scripts/run-resource-recording-baseline.sh \
+			--profile "$(PORTAVOZ_RESOURCE_PROFILE)" \
+			--version "$(PORTAVOZ_RELEASE_VERSION)" \
+			--build "$(PORTAVOZ_RELEASE_BUILD)" \
+			--runs "$(PORTAVOZ_RESOURCE_RUNS)" \
+			--duration "$(PORTAVOZ_RESOURCE_DURATION)" \
+			$(if $(PORTAVOZ_RESOURCE_OUTPUT),--output "$(PORTAVOZ_RESOURCE_OUTPUT)")
 
 ## Run the deterministic release gates and write a receipt bound to the exact
 ## version, build, and current commit. Both release variables are required.
