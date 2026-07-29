@@ -7,7 +7,29 @@ public protocol SemanticTextEmbedding: Sendable {
     func vectors(for texts: [String]) async throws -> [[Float]]
 }
 
-extension SentenceEmbedder: SemanticTextEmbedding {
+public protocol SemanticEmbeddingModel: SemanticTextEmbedding {
+    var hasAvailableAssets: Bool { get async }
+
+    func prepare(allowAssetDownload: Bool) async throws
+}
+
+/// Process composition injects this boundary into every production semantic
+/// borrower. The client keeps one active-use lease around the complete
+/// indexing-and-query operation instead of exposing a shared mutable model.
+public protocol SemanticEmbeddingRuntimeClient: Sendable {
+    var hasAvailableAssets: Bool { get async }
+
+    func prepare(allowAssetDownload: Bool) async throws
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result
+}
+
+extension SentenceEmbedder: SemanticEmbeddingModel {
     public func vectors(for texts: [String]) async throws -> [[Float]] {
         try embed(texts)
     }

@@ -349,18 +349,37 @@ meeting-content HTTP receipt boundary.
 
 Library typing stays independent from model setup and generated query
 expansion. Its query-specific FTS5 observation publishes exact, accent-folded
-English/Spanish results first. `LocalLibrarySemanticSearch` then reuses
-`SentenceEmbedder` and the existing StorageKit exact-cosine adapter only when
-the OS-managed Latin assets are already present. It never calls
+English/Spanish results first. `LocalLibrarySemanticSearch` then borrows the
+process semantic runtime and the existing StorageKit exact-cosine adapter only
+when the OS-managed Latin assets are already present. It never calls
 `requestAssets()` from the search field, skips work during active capture, and
 indexes at most 512 missing segments per query so a large archive becomes
 semantic incrementally. Segments under 20 characters are marked intentionally
 unindexed. Cancellation is checked between preparation, embedding, and storage;
 any semantic failure degrades to no appended hits rather than failing lexical
 search. Exact hits keep their order and duplicate semantic IDs are discarded.
-The bounded path and Ask's full drain share `IndexSemanticCorpus`, but only the
-Library search actor owns a process-shared embedding runtime. Background
-scheduling is not yet implemented.
+The bounded path and Ask's full drain share both `IndexSemanticCorpus` behavior
+and one app runtime. Background scheduling is not yet implemented.
+
+### Governed semantic embedding runtime (D165)
+
+ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete
+NaturalLanguage model. Its generic operation closure receives only a prepared
+`SemanticTextEmbedding` and keeps the app's exact residency lease alive for the
+entire callback. Ask performs its full missing-corpus drain, bilingual query
+expansion, vector creation, and hybrid retrieval inside that callback. Library
+performs its bounded backfill, query-vector creation, and semantic lookup
+inside the same boundary.
+
+The macOS adapter owns one actor-backed `SentenceEmbedder` per process and
+coalesces preparation. Library calls it only after `hasAvailableAssets` and
+passes `allowAssetDownload: false`; Ask preserves its established
+`allowAssetDownload: true` preparation. A failed load is generation-fenced and
+retryable. Explicit release unloads only the in-process model and is rejected
+while either surface is borrowing it. The CLI composes one equivalent
+process-local runtime; isolated semantic benchmark constructors are not
+production owners. Index persistence, brute-force exact cosine, and the
+decision to defer sqlite-vec remain unchanged.
 
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 

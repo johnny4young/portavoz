@@ -76,9 +76,9 @@ final class AppServices {
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
     /// One process-owned, content-free view of heavyweight runtime lifecycle.
     /// Capability owners submit complete family transitions one adapter at a
-    /// time; live speech, Whisper, and MLX are the currently integrated runtimes.
-    @ObservationIgnored var modelResidencyLedger =
-        ResourceModelResidencyLedger()
+    /// time; all five heavyweight families now use this exact owner.
+    @ObservationIgnored let modelResidencyLedger =
+        AppModelResidencyLedger()
     /// Content-free workload spans are installed once at the composition root.
     @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
@@ -94,9 +94,11 @@ final class AppServices {
     let localDataLedger: LocalDataLedgerModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
-    /// One process-shared Library embedding lane augments exact search without
-    /// loading a model per keystroke or downloading assets from the field.
-    /// Ask and Library share the corpus-indexing operation, not its runtime.
+    /// Ask and Library share one governed Apple contextual-embedding runtime.
+    @ObservationIgnored let semanticEmbeddingRuntime:
+        AppSemanticEmbeddingRuntime
+    /// One process-shared Library lane augments exact search without
+    /// downloading assets as a side effect of typing.
     @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
@@ -208,19 +210,18 @@ final class AppServices {
         // per-launch preferences still need to land before any service reads
         // defaults so every case is independent from an earlier test launch.
         UITestDefaults.installIfNeeded()
-        let storagePolicy = AppStorageIsolationPolicy(
-            arguments: ProcessInfo.processInfo.arguments)
+        let storagePolicy = AppStorageIsolationPolicy(arguments: ProcessInfo.processInfo.arguments)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
         self.workloadTelemetry = workloadTelemetry
         IntelligenceScheduler.installSharedTelemetry(workloadTelemetry)
         transcriptionScheduler = TranscriptionScheduler(telemetry: workloadTelemetry)
-        let modelStore = Self.makeModelStore(
-            usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
+        let modelStore = Self.makeModelStore(usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
-        let sensitiveStorage = Self.makeSensitiveStorage(
-            usesTemporaryStore: storagePolicy.usesTemporarySensitiveStore)
+        semanticEmbeddingRuntime = AppSemanticEmbeddingRuntime(
+            residency: modelResidencyLedger, telemetry: workloadTelemetry)
+        let sensitiveStorage = Self.makeSensitiveStorage(usesTemporaryStore: storagePolicy.usesTemporarySensitiveStore)
         microphonePermissions = MicrophonePermissionClient()
         secrets = ManageSecrets(storage: sensitiveStorage.secrets)
         voiceprintStore = sensitiveStorage.voiceprintStore
@@ -234,9 +235,10 @@ final class AppServices {
         }
         let askUseCase = Self.makeAskUseCase(
             store: store, usesTemporaryStore: usesTemporaryStore,
-            telemetry: workloadTelemetry)
+            semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry)
         librarySemanticSearch = LocalLibrarySemanticSearch(
-            store: store, telemetry: workloadTelemetry)
+            store: store, runtime: semanticEmbeddingRuntime,
+            telemetry: workloadTelemetry)
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
             useCase: ResolveFirstRunExperience(
                 library: AppFirstRunLibraryReader(store: store))))

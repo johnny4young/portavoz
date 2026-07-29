@@ -5158,3 +5158,44 @@ makes reuse safe and observable without reloading hundreds of megabytes for
 each operation. Exact leases prevent release during inference, while fresh
 speaker managers prevent cross-meeting contamination and let identity changes
 take effect without dropping reusable weights.
+
+## D165 — Library and Ask share one leased semantic embedding runtime (Jul 2026)
+
+**Context:** Library retained one process-long `SentenceEmbedder`, while every
+Ask retrieval created and prepared another instance. Both paths already shared
+`IndexSemanticCorpus`, but their model lifetime was invisible to the process
+residency ledger. Repeated Ask setup wasted loaded state, and neither a future
+governor nor resource evidence could distinguish an idle embedding model from
+one still indexing or querying.
+
+**Decision:** semantic embedding is the fifth fully integrated residency
+family. ApplicationKit defines a narrow `SemanticEmbeddingRuntimeClient` whose
+operation closure receives an already-prepared embedding capability.
+AppServices owns one `AppSemanticEmbeddingRuntime` actor and injects it into
+Library, Ask, and the app resource benchmarks. The actor coalesces construction
+and preparation of Apple's Latin contextual model, atomically publishes a
+successful cold load and claims its first use, and holds one exact
+`.semanticEmbedding` lease across the complete corpus-indexing, query-vector,
+and retrieval operation. Load failure returns the exact generation to
+unloaded, so a later request can retry.
+
+The pure Core ledger remains platform-free. A lock-protected
+`AppModelResidencyLedger` at composition is the sole process owner and lets
+main-actor model adapters and the independent semantic actor submit atomic
+transitions safely. Library still refuses to request assets while the user is
+typing; Ask retains its explicit OS-asset preparation behavior. The CLI owns a
+separate process runtime, and standalone scale constructors remain isolated
+evidence harnesses rather than application borrowers.
+
+Release is explicit and two-phase: it begins only when active use is zero,
+drops loaded model state, and confirms the matching generation without
+removing macOS-managed assets. This slice introduces no idle timer. Immediate
+governor-requested release is the next policy adapter, and any TTL must come
+from accepted per-family evidence rather than a new constant.
+
+**Rationale:** a closure-shaped runtime contract makes preparation, execution,
+and lifetime one invariant without exposing a mutable global model. Sharing
+one process runtime removes repeated Ask setup, exact leases prevent release
+during indexing or retrieval, and the composition-only lock preserves Core's
+deterministic architecture while allowing actors with different executors to
+report to one source of residency truth.

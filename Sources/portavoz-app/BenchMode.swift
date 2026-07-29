@@ -511,13 +511,7 @@ extension BenchMode {
         else {
             throw BenchAskResourceError.assetsNotReady
         }
-        let embedder: SentenceEmbedder
-        do {
-            embedder = try SentenceEmbedder()
-        } catch {
-            throw BenchAskResourceError.assetsNotReady
-        }
-        guard await embedder.hasAvailableAssets else {
+        guard await services.semanticEmbeddingRuntime.hasAvailableAssets else {
             throw BenchAskResourceError.assetsNotReady
         }
         let fixture = makeIntelligenceBenchmarkFixture()
@@ -528,6 +522,7 @@ extension BenchMode {
         return (
             AskMeetings.local(
                 store: services.store,
+                semanticRuntime: services.semanticEmbeddingRuntime,
                 telemetry: services.workloadTelemetry),
             "What did we decide about background indexing during active calls?"
         )

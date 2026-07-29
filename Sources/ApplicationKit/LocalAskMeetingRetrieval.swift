@@ -8,15 +8,18 @@ import StorageKit
 public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let store: MeetingStore
     private let queryExpander: any AskQueryExpanding
+    private let runtime: any SemanticEmbeddingRuntimeClient
     private let corpusIndexer: IndexSemanticCorpus
 
     public init(
         store: MeetingStore,
         queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
+        runtime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.store = store
         self.queryExpander = queryExpander
+        self.runtime = runtime
         corpusIndexer = IndexSemanticCorpus(
             store: store,
             telemetry: telemetry)
@@ -34,56 +37,58 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         question: String,
         limit: Int
     ) async throws -> [AskCitation] {
-        // Index what's new, query lexically and semantically (multi-query,
-        // cross-lingual when FM is around), then fuse by reciprocal rank.
-        let embedder = try SentenceEmbedder()
-        try await embedder.prepare()
+        try await runtime.withPreparedEmbedding(
+            allowAssetDownload: true
+        ) { [corpusIndexer, queryExpander, store] embedder in
+            // Index what's new, query lexically and semantically
+            // (multi-query, cross-lingual when FM is around), then fuse by
+            // reciprocal rank.
+            _ = try await corpusIndexer.all(
+                using: embedder,
+                batchSize: 256)
 
-        // Index anything new (idempotent, batched). Micro-segments carry no
-        // retrievable meaning but drown real hits; the shared operation stores
-        // an empty marker so they remain excluded from semantic ranking.
-        _ = try await corpusIndexer.all(
-            using: embedder,
-            batchSize: 256)
+            let queries = await queryExpander.expand(question)
 
-        let queries = await queryExpander.expand(question)
+            // Lexical: term-level top-k candidates over CONTENT words only.
+            // Multi-term evidence climbs through reciprocal-rank fusion
+            // without forcing FTS5 to score the broad OR union before LIMIT.
+            let lexical = try await Self.retrieveLexical(
+                queries: queries,
+                store: store,
+                limit: 12 * queries.count)
 
-        // Lexical: term-level top-k candidates over CONTENT words only.
-        // Multi-term evidence climbs through reciprocal-rank fusion without
-        // forcing FTS5 to score the entire broad OR union before LIMIT.
-        let lexical = try await Self.retrieveLexical(
-            queries: queries,
-            store: store,
-            limit: 12 * queries.count)
-
-        // Semantic: best rank per segment across every query variant.
-        let vectors = try await embedder.embed(queries)
-        var bestRank: [UUID: Int] = [:]
-        var hitsByID: [UUID: SearchHit] = [:]
-        for vector in vectors {
-            for (rank, hit) in try await store.searchSemantic(vector, limit: 12).enumerated()
-            where bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
-                bestRank[hit.segmentID] = rank
+            // Semantic: best rank per segment across every query variant.
+            let vectors = try await embedder.vectors(for: queries)
+            var bestRank: [UUID: Int] = [:]
+            var hitsByID: [UUID: SearchHit] = [:]
+            for vector in vectors {
+                for (rank, hit) in try await store.searchSemantic(
+                    vector,
+                    limit: 12
+                ).enumerated()
+                where bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
+                    bestRank[hit.segmentID] = rank
+                    hitsByID[hit.segmentID] = hit
+                }
+            }
+            let semantic = bestRank.sorted { $0.value < $1.value }.map(\.key)
+            for hit in lexical where hitsByID[hit.segmentID] == nil {
                 hitsByID[hit.segmentID] = hit
             }
-        }
-        let semantic = bestRank.sorted { $0.value < $1.value }.map(\.key)
-        for hit in lexical where hitsByID[hit.segmentID] == nil {
-            hitsByID[hit.segmentID] = hit
-        }
 
-        let fused = RAGFusion.fuse(
-            lexical: lexical.map(\.segmentID),
-            semantic: semantic,
-            limit: limit)
+            let fused = RAGFusion.fuse(
+                lexical: lexical.map(\.segmentID),
+                semantic: semantic,
+                limit: limit)
 
-        return fused.compactMap { hitsByID[$0] }.map { hit in
-            AskCitation(
-                segmentID: hit.segmentID,
-                meetingID: hit.meetingID,
-                meetingTitle: hit.meetingTitle,
-                timestamp: hit.startTime,
-                text: hit.text)
+            return fused.compactMap { hitsByID[$0] }.map { hit in
+                AskCitation(
+                    segmentID: hit.segmentID,
+                    meetingID: hit.meetingID,
+                    meetingTitle: hit.meetingTitle,
+                    timestamp: hit.startTime,
+                    text: hit.text)
+            }
         }
     }
 

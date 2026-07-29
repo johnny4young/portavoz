@@ -330,7 +330,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Pure model-residency lifecycle (D158)"))
     }
 
-    func testModelResidencyHasOneCompositionOwnerAndCharacterizedLegacyLoaders() throws {
+    func testModelResidencyHasOneCompositionOwnerAndNoRuntimeBypasses() throws {
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
         let liveSpeech = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")
@@ -344,17 +344,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
 
         XCTAssertTrue(services.contains(
-            "@ObservationIgnored var modelResidencyLedger ="))
+            "@ObservationIgnored let modelResidencyLedger ="))
         XCTAssertEqual(
             try Self.sourceMatches(
                 under: "Sources",
                 pattern: #"ResourceModelResidencyLedger\s*\(\s*\)"#),
-            ["portavoz-app/AppServices.swift"])
+            ["portavoz-app/AppModelResidencyLedger.swift"])
         XCTAssertEqual(
             try Self.sourceMatches(
                 under: "Sources",
                 pattern: #"modelResidencyLedger\."#),
             [
+                "portavoz-app/AppSemanticEmbeddingRuntime.swift",
                 "portavoz-app/AppServices+DiarizationModels.swift",
                 "portavoz-app/AppServices+LiveSpeechModels.swift",
                 "portavoz-app/AppServices+MLXModels.swift",
@@ -386,10 +387,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources/ApplicationKit",
                 pattern: #"SentenceEmbedder\s*\("#),
-            [
-                "LocalAskMeetingRetrieval.swift",
-                "LocalLibrarySemanticSearch.swift",
-            ])
+            [],
+            "Application workflows must receive an injected embedding runtime")
         XCTAssertTrue(whisper.contains("Task.sleep(for: .seconds(120))"))
         XCTAssertTrue(services.contains("Task.sleep(for: .seconds(600))"))
         XCTAssertTrue(liveSpeech.contains("modelResidencyLedger.beginUse(.liveSpeech)"))
@@ -397,13 +396,83 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(mlx.contains("static let shared"))
         XCTAssertTrue(services.contains(
             "@ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()"))
-        XCTAssertTrue(ask.contains("let embedder = try SentenceEmbedder()"))
-        XCTAssertTrue(library.contains("private let embedder: SentenceEmbedder?"))
+        XCTAssertTrue(services.contains(
+            "@ObservationIgnored let semanticEmbeddingRuntime:"))
+        XCTAssertTrue(ask.contains(
+            "private let runtime: any SemanticEmbeddingRuntimeClient"))
+        XCTAssertTrue(library.contains(
+            "private let runtime: any SemanticEmbeddingRuntimeClient"))
 
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
         XCTAssertTrue(decisions.contains("## D159"))
         XCTAssertTrue(appSpec.contains("#### Characterized runtime topology"))
+    }
+
+    func testSemanticEmbeddingRuntimePinsAskLibraryAndResourceBenchmarks() throws {
+        let protocolSource = try Self.contents(
+            of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
+        let runtime = try Self.contents(
+            of: "Sources/portavoz-app/AppSemanticEmbeddingRuntime.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let ask = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let library = try Self.contents(
+            of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
+        let indexingBench = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
+        let askBench = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode.swift")
+
+        XCTAssertTrue(protocolSource.contains(
+            "public protocol SemanticEmbeddingRuntimeClient: Sendable"))
+        XCTAssertTrue(protocolSource.contains(
+            "func withPreparedEmbedding<Result: Sendable>("))
+        XCTAssertTrue(services.contains(
+            "runtime: semanticEmbeddingRuntime"))
+
+        for transition in [
+            "modelResidencyLedger.beginLoad(.semanticEmbedding)",
+            "modelResidencyLedger.finishLoad(",
+            "modelResidencyLedger.finishLoadAndBeginUse(",
+            "modelResidencyLedger.failLoad(",
+            "modelResidencyLedger.beginUse(.semanticEmbedding)",
+            "modelResidencyLedger.finishUse(",
+            "modelResidencyLedger.beginRelease(.semanticEmbedding)",
+            "modelResidencyLedger.finishRelease(",
+            "modelResidencyLedger.cancelRelease(",
+            "actor AppSemanticEmbeddingRuntime",
+        ] {
+            XCTAssertTrue(
+                runtime.contains(transition),
+                "Semantic residency adapter is missing \(transition)")
+        }
+        for borrower in [ask, library, indexingBench] {
+            XCTAssertTrue(borrower.contains(
+                "withPreparedEmbedding("))
+        }
+        XCTAssertTrue(askBench.contains(
+            "semanticRuntime: services.semanticEmbeddingRuntime"))
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"SentenceEmbedder\s*\("#),
+            ["AppSemanticEmbeddingRuntime.swift"],
+            "Only the app semantic adapter may construct production embeddings")
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Semantic embedding is the fifth fully integrated residency family"))
+        XCTAssertTrue(decisions.contains("## D165"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Governed semantic embedding runtime (D165)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Semantic embedding residency adapter (D165)"))
     }
 
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {

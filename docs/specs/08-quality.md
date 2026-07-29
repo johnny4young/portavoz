@@ -30,7 +30,7 @@ documented below.
 | File | Coverage |
 |---|---|
 | StorageUpgradeTests | Disposable clean-install and exact v0.6.0 (`v1`–`v5`) file-library upgrade to the latest schema; bilingual transcript/cast, summary/action, note, Apuntador, and relative-audio-reference conservation; migration order, integrity, foreign keys, no implicit sync seed, and idempotent reopen |
-| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with complete pinned Whisper, MLX, and live-speech load/use/release adapters, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
+| ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with complete pinned Whisper, MLX, live-speech, diarization, and semantic-embedding load/use/release adapters, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, explicit live/deleted initial seed, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
 | MeetingSyncAggregateTests | Exact-current-generation envelope, deterministic codec, idempotent full-history replay, millisecond-tied summary-version ordering, device-local path/person/embedding preservation, trigger-echo suppression, deferred live/live local-pending conflict, recoverable privacy-dominant remote deletion, invalid-relation rollback, and immutable summary-root/child collision rejection |
 | CloudMeetingRecordCodecTests | Encrypted inline payload/digest placement, capability-probed private CKAsset fallback, exact `EINVAL`/`ENOTSUP` metadata downgrade classification, private-zone deterministic identity, matching-record reuse, checksum tamper rejection, strict format/type validation, and deletion as a saved tombstone envelope |
@@ -104,17 +104,22 @@ documented below.
 | RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
-The first three concrete residency adapters add architecture coverage on top
-of the 13 pure ledger cases. Every quality-speech, MLX-summary, and live-speech
-load, failure, use, and two-phase release transition must pass through the
-composition-owned ledger. Refine and Import retain their exact
-`WhisperRuntimeLease`; summary generation retains its exact
-`MLXSummaryRuntimeLease`; recording transfers a hot-only
+The five concrete residency adapters add architecture coverage on top of the
+13 pure ledger cases. Every quality-speech, MLX-summary, live-speech,
+speaker-diarization, and semantic-embedding load, failure, use, and two-phase
+release transition must pass through the composition-owned ledger. Refine and
+Import retain their exact `WhisperRuntimeLease`; summary generation retains its
+exact `MLXSummaryRuntimeLease`; recording transfers a hot-only
 `LiveSpeechRuntimeLease` to its attacher or joins a cold load only after audio
 capture is active. A cold Parakeet load that completes after Stop is finalized
-exactly once without attaching or delaying Stop. Direct shared-runtime reads
-and production loader bypasses are rejected, while speaker diarization and
-semantic embeddings remain characterized but unwired (D158–D162).
+exactly once without attaching or delaying Stop. Every diarization operation
+creates a fresh speaker session from reusable leased weights. Library, Ask, and
+app indexing benchmarks share one actor-backed semantic runtime and retain a
+lease through complete indexing-and-query operations. Focused semantic tests
+prove concurrent borrowers share one load, busy release is rejected, failed
+load is retryable, and preparation can warm residency without inventing active
+use. Direct shared-runtime reads and production loader bypasses are rejected
+(D158–D165).
 
 `make test-recording-stress` is the deterministic reliability gate for capture
 and recovery. It runs 108 focused tests across callback liveness, start/stop,

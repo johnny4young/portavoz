@@ -531,10 +531,12 @@ ApplicationKit operation. Library requests one bounded batch; the released Ask
 path still drains all missing rows before hybrid retrieval. Both paths mark
 micro-segments with an empty vector, validate the embedder's result count
 before persistence, and emit one content-free maintenance/search-index
-interval. This extraction shares behavior, not model residency: Library owns
-its process-shared `SentenceEmbedder`, while Ask still creates its intelligence
-runtime per workflow. Moving the drain off the Ask request path and adding
-governor admission remain unimplemented.
+interval. They also borrow one process-owned semantic runtime through an
+injected ApplicationKit contract. The exact residency lease covers corpus
+maintenance, query embedding, and semantic retrieval as one operation, so
+Library and Ask cannot release or replace the model midway through a query.
+Moving the drain off the Ask request path and adding governor admission remain
+unimplemented.
 
 ## Durable recording lifecycle
 
@@ -745,7 +747,10 @@ finished.
 
 The ledger holds no model instance, provider identity, asset path, timer,
 scheduler, or platform observer. The macOS composition root owns exactly one
-ledger for the process. Capability owners still retain their concrete runtimes.
+ledger for the process through a lock-protected adapter. Main-actor model
+owners and the independent semantic actor therefore share one coherent ledger
+without moving synchronization or platform scheduling into Core. Capability
+owners still retain their concrete runtimes.
 Whisper is the first fully integrated residency family: `AppServices` records
 one coalesced quality-speech load, hands Refine and Import a lease containing
 that exact engine plus its active-use token, and confirms release only after
@@ -807,10 +812,22 @@ execution instead of re-reading mutable identity. Cancellation after shared
 loading releases the newly claimed token, and the existing 600-second fence can
 detach the model pair only when all sessions have ended.
 
-The remaining characterized migration surface includes the Library retained
-embedder and the Ask per-retrieval embedder. Semantic embedding does not submit
-transitions yet. The ledger interprets neither measured footprint bytes nor
-elapsed idle time.
+Semantic embedding is the fifth fully integrated residency family.
+`AppSemanticEmbeddingRuntime` is one process-owned actor shared by Library,
+Ask, and the app resource benchmarks through an injected ApplicationKit
+contract. It coalesces Apple's Latin contextual-model preparation, publishes a
+successful load and claims its first borrower atomically, and retains one exact
+use token across the complete indexing-and-query operation. Library preserves
+its no-download-on-typing rule; Ask may request the OS-managed assets as before.
+The CLI owns a separate process runtime, while standalone benchmark
+constructors remain explicitly isolated.
+
+Semantic runtime release is an explicit begin/confirm operation. It is rejected
+while a borrower is active, drops only loaded model state, and never removes
+the OS-managed assets. No speculative idle TTL is introduced: a governor
+adapter may request immediate release, and any delayed policy still
+requires accepted per-family evidence. The ledger interprets neither measured
+footprint bytes nor elapsed idle time.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,

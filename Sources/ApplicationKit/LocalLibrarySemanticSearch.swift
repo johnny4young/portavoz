@@ -1,5 +1,4 @@
 import Foundation
-import IntelligenceKit
 import PortavozCore
 import StorageKit
 
@@ -9,15 +8,16 @@ import StorageKit
 /// model is ready. It never downloads an asset as a side effect of typing.
 public actor LocalLibrarySemanticSearch {
     private let store: MeetingStore
-    private let embedder: SentenceEmbedder?
+    private let runtime: any SemanticEmbeddingRuntimeClient
     private let corpusIndexer: IndexSemanticCorpus
 
     public init(
         store: MeetingStore,
+        runtime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.store = store
-        embedder = try? SentenceEmbedder()
+        self.runtime = runtime
         corpusIndexer = IndexSemanticCorpus(
             store: store,
             telemetry: telemetry)
@@ -28,18 +28,23 @@ public actor LocalLibrarySemanticSearch {
         limit: Int = 20
     ) async throws -> [SearchHit] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard query.count >= 3, limit > 0, let embedder,
-            await embedder.hasAvailableAssets
+        guard query.count >= 3, limit > 0,
+            await runtime.hasAvailableAssets
         else { return [] }
 
         try Task.checkCancellation()
-        try await embedder.prepare(allowAssetDownload: false)
-        _ = try await corpusIndexer.nextBatch(
-            using: embedder,
-            limit: 512)
-        try Task.checkCancellation()
-        guard let vector = try await embedder.embed([query]).first else { return [] }
-        return try await store.searchSemantic(vector, limit: limit)
+        return try await runtime.withPreparedEmbedding(
+            allowAssetDownload: false
+        ) { [corpusIndexer, store] embedder in
+            _ = try await corpusIndexer.nextBatch(
+                using: embedder,
+                limit: 512)
+            try Task.checkCancellation()
+            guard let vector = try await embedder.vectors(
+                for: [query]
+            ).first else { return [] }
+            return try await store.searchSemantic(vector, limit: limit)
+        }
     }
 
 }

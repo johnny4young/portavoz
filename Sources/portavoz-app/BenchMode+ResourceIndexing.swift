@@ -6,7 +6,7 @@ import StorageKit
 
 struct BenchIndexingResourceWorkload {
     let operation: IndexSemanticCorpus
-    let embedder: SentenceEmbedder
+    let runtime: any SemanticEmbeddingRuntimeClient
     let expectedSegments: Int
 
     @MainActor
@@ -17,9 +17,13 @@ struct BenchIndexingResourceWorkload {
             return try await BenchResourceTimedOperation.run(
                 timeout: .seconds(timeoutSeconds)
             ) {
-                try await operation.all(
-                    using: embedder,
-                    batchSize: 256)
+                try await runtime.withPreparedEmbedding(
+                    allowAssetDownload: false
+                ) { embedder in
+                    try await operation.all(
+                        using: embedder,
+                        batchSize: 256)
+                }
             }
         } catch BenchResourceTimedOperationError.operationFailed(let message) {
             throw BenchIndexingResourceError.operationFailed(message)
@@ -103,17 +107,12 @@ extension BenchMode {
     static func prepareIndexingResourceWorkload(
         services: AppServices
     ) async throws -> BenchIndexingResourceWorkload {
-        let embedder: SentenceEmbedder
-        do {
-            embedder = try SentenceEmbedder()
-        } catch {
-            throw BenchIndexingResourceError.assetsNotReady
-        }
-        guard await embedder.hasAvailableAssets else {
+        let runtime = services.semanticEmbeddingRuntime
+        guard await runtime.hasAvailableAssets else {
             throw BenchIndexingResourceError.assetsNotReady
         }
         do {
-            try await embedder.prepare(allowAssetDownload: false)
+            try await runtime.prepare(allowAssetDownload: false)
         } catch {
             throw BenchIndexingResourceError.assetsNotReady
         }
@@ -126,7 +125,7 @@ extension BenchMode {
             operation: IndexSemanticCorpus(
                 store: services.store,
                 telemetry: services.workloadTelemetry),
-            embedder: embedder,
+            runtime: runtime,
             expectedSegments: fixture.segments.count)
     }
 

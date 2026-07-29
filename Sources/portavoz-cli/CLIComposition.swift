@@ -25,11 +25,54 @@ struct CLIComposition {
         } else {
             store = try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
         }
+        let semanticRuntime = CLISemanticEmbeddingRuntime()
         return Self(
             platform: platform,
             store: store,
             library: .local(store: store),
-            ask: .local(store: store))
+            ask: .local(
+                store: store,
+                semanticRuntime: semanticRuntime))
+    }
+}
+
+/// The CLI is a separate process and has no macOS app resource governor. It
+/// still shares one Apple embedding model across every Ask operation in that
+/// process instead of constructing a model per query.
+private actor CLISemanticEmbeddingRuntime:
+    SemanticEmbeddingRuntimeClient {
+    private var embedder: SentenceEmbedder?
+
+    var hasAvailableAssets: Bool {
+        get async {
+            guard let embedder = try? model() else { return false }
+            return await embedder.hasAvailableAssets
+        }
+    }
+
+    func prepare(allowAssetDownload: Bool) async throws {
+        let embedder = try model()
+        try await embedder.prepare(
+            allowAssetDownload: allowAssetDownload)
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        let embedder = try model()
+        try await embedder.prepare(
+            allowAssetDownload: allowAssetDownload)
+        return try await operation(embedder)
+    }
+
+    private func model() throws -> SentenceEmbedder {
+        if let embedder { return embedder }
+        let embedder = try SentenceEmbedder()
+        self.embedder = embedder
+        return embedder
     }
 }
 

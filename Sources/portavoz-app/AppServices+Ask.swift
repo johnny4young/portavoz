@@ -34,11 +34,13 @@ extension AppServices {
     static func makeAskUseCase(
         store: MeetingStore,
         usesTemporaryStore: Bool,
+        semanticRuntime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry
     ) -> AskMeetings {
         guard usesTemporaryStore else {
             return .local(
                 store: store,
+                semanticRuntime: semanticRuntime,
                 telemetry: telemetry)
         }
         return AskMeetings(
