@@ -190,12 +190,27 @@ diagnostics and tests.
 The ledger performs no loading, caching, scheduling, sleeping, model download,
 checksum verification, pressure observation, or runtime release. It stores no
 model/provider identity, file path, prompt, or transcript content and never
-enters `AudioCaptureKit`. AppServices still owns Parakeet, pyannote, and Whisper
-instances; IntelligenceKit still owns its MLX container; Library/Ask still own
-their current embedding lifetimes. Process composition does not yet submit
-those transitions to the ledger, so product behavior and existing idle-release
-delays are unchanged. Numeric TTL and memory-budget enforcement require
-accepted resource evidence rather than constants in this contract.
+enters `AudioCaptureKit`. The macOS `AppServices` composition root owns exactly
+one ledger for the process. No runtime owner submits transitions yet, so product
+behavior and existing idle-release delays are unchanged. Numeric TTL and
+memory-budget enforcement require accepted resource evidence rather than
+constants in this contract.
+
+#### Characterized runtime topology
+
+The migration surface is locked by an architecture test before adapter changes:
+
+| Family | Current owner and acquisition | Current release |
+|---|---|---|
+| Live speech | `AppServices` coalesces `ParakeetEngine.loadRecommended`; recording, dictation, durable post-capture work, and benchmarks borrow the cached instance | AppServices generation fence after 600 idle seconds |
+| Speaker diarization | `AppServices` coalesces the shared pyannote instance; voice-memory matching and recording voice enrollment also perform two explicit one-shot pyannote loads | Shared instance follows the 600-second speech release; one-shot values end with their operation |
+| Quality speech | `AppServices+WhisperModels` coalesces verified preparation and loads one selected Whisper variant | AppServices generation fence after 120 idle seconds; deleting a variant also drops its runtime |
+| Language intelligence | `IntelligenceKit.MLXModelCache.shared` owns the MLX container used by each MLX summary provider | IntelligenceKit generation fence after 120 idle seconds |
+| Semantic embedding | Library retains one `SentenceEmbedder`; Ask creates one per retrieval; benchmark-only embedders remain isolated | Library lifetime is process-scoped; Ask values end with retrieval |
+
+The ratchet also proves there is one process ledger construction and zero
+transition submissions. This is intentional characterization, not approval of
+the duplicated pyannote/embedding ownership or the current idle constants.
 
 Recording Start is also the single authorization boundary for meeting capture.
 Its explicit user action asks `MicrophonePermissionClient` to resolve an

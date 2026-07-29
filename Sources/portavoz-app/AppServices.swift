@@ -74,6 +74,10 @@ final class AppServices {
     /// automation receives its own empty root and never inspects host models.
     @ObservationIgnored let modelStore: ModelStore
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
+    /// One process-owned, content-free view of heavyweight runtime lifecycle.
+    /// Concrete owners are characterized but do not submit transitions yet.
+    @ObservationIgnored var modelResidencyLedger =
+        ResourceModelResidencyLedger()
     /// Content-free workload spans are installed once at the composition root.
     @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient

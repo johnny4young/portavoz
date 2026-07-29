@@ -731,11 +731,14 @@ remains in the resident projection until its owner confirms that release
 finished.
 
 The ledger holds no model instance, provider identity, asset path, timer,
-scheduler, or platform observer. Capability owners still retain their concrete
-runtimes and must serialize ledger mutations at process composition. The
-application does not currently feed runtime transitions into this ledger, so
-existing model loading and release behavior is unchanged. In particular, the
-ledger interprets neither measured footprint bytes nor elapsed idle time.
+scheduler, or platform observer. The macOS composition root owns exactly one
+ledger for the process. Capability owners still retain their concrete runtimes,
+and no owner currently submits transitions to the ledger, so existing model
+loading and release behavior is unchanged. The characterized migration surface
+includes the cached AppServices speech engines, two direct pyannote loads,
+Whisper, the IntelligenceKit MLX singleton, Library's retained embedder, and
+Ask's per-retrieval embedder. In particular, the ledger interprets neither
+measured footprint bytes nor elapsed idle time.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
@@ -1441,7 +1444,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,290 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,291 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

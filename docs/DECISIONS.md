@@ -4935,3 +4935,28 @@ model implementations into Core or claiming that verified files equal resident
 weights. Separating lifecycle correctness from runtime integration also keeps
 arbitrary TTL and memory thresholds out of the code until the physical
 resource matrix supplies evidence.
+
+## D159 — Composition owns residency before adapters report it (Jul 2026)
+
+**Context:** D158 defines lifecycle correctness, but constructing ledgers inside
+each capability would reproduce the fragmented ownership that GOV-2 is intended
+to remove. Immediately wiring the ledger is also unsafe: the shared speech
+engines have multiple borrowers, two app workflows bypass the shared pyannote
+owner, MLX owns a separate actor cache, and Library/Ask use incompatible
+embedding lifetimes. Replacing the existing generation fences before those
+paths are locked would make a release race look like a refactor regression.
+
+**Decision:** the macOS `AppServices` composition root owns exactly one
+`ResourceModelResidencyLedger` for the process. A source-level characterization
+test locks every production app loader, the two direct pyannote paths, the MLX
+singleton, both embedding lifetimes, and the existing 600/120/120-second release
+fences. It also requires zero ledger transition submissions in this slice.
+Concrete runtimes remain in their capability owners; the ledger is not exposed
+as user diagnostics while it still reports only its initial state.
+
+**Rationale:** this establishes ownership without publishing false residency or
+changing runtime lifetime. The next adapter slice must update the
+characterization as it routes one complete family through the ledger, including
+load completion, active-use leases, cancellation/failure, and confirmed release.
+The test deliberately makes unreviewed new bypasses fail rather than silently
+escaping governor ownership.

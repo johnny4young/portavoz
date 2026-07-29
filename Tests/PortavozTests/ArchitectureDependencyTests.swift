@@ -330,6 +330,71 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Pure model-residency lifecycle (D158)"))
     }
 
+    func testModelResidencyHasOneCompositionOwnerAndCharacterizedLegacyLoaders() throws {
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let whisper = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
+        let mlx = try Self.contents(
+            of: "Sources/IntelligenceKit/MLXSummaryProvider.swift")
+        let ask = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let library = try Self.contents(
+            of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
+
+        XCTAssertTrue(services.contains(
+            "@ObservationIgnored var modelResidencyLedger ="))
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources",
+                pattern: #"ResourceModelResidencyLedger\s*\(\s*\)"#),
+            ["portavoz-app/AppServices.swift"])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources",
+                pattern: #"modelResidencyLedger\."#),
+            [],
+            "Composition owns the ledger, but runtime wiring is a later slice")
+
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"ParakeetEngine\.loadRecommended"#),
+            ["AppServices.swift"])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"WhisperEngine\.loadPrepared"#),
+            ["AppServices+WhisperModels.swift"])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"PyannoteDiarizer\.loadRecommended"#),
+            [
+                "AppServices+MeetingVoiceMemory.swift",
+                "AppServices.swift",
+                "RecordingController.swift",
+            ])
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/ApplicationKit",
+                pattern: #"SentenceEmbedder\s*\("#),
+            [
+                "LocalAskMeetingRetrieval.swift",
+                "LocalLibrarySemanticSearch.swift",
+            ])
+        XCTAssertTrue(whisper.contains("Task.sleep(for: .seconds(120))"))
+        XCTAssertTrue(services.contains("Task.sleep(for: .seconds(600))"))
+        XCTAssertTrue(mlx.contains("private static let idleRelease: Duration = .seconds(120)"))
+        XCTAssertTrue(mlx.contains("static let shared = MLXModelCache()"))
+        XCTAssertTrue(ask.contains("let embedder = try SentenceEmbedder()"))
+        XCTAssertTrue(library.contains("private let embedder: SentenceEmbedder?"))
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(decisions.contains("## D159"))
+        XCTAssertTrue(appSpec.contains("#### Characterized runtime topology"))
+    }
+
     func testResourceBaselineEvidenceIsCompleteFailClosedAndToolingOnly() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/resource-baseline-matrix.json")
