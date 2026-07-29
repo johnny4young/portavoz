@@ -352,8 +352,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources",
                 pattern: #"modelResidencyLedger\."#),
-            ["portavoz-app/AppServices+WhisperModels.swift"],
-            "Only the fully migrated Whisper adapter may report residency")
+            [
+                "portavoz-app/AppServices+MLXModels.swift",
+                "portavoz-app/AppServices+WhisperModels.swift",
+            ],
+            "Only fully migrated runtime adapters may report residency")
 
         XCTAssertEqual(
             try Self.sourceMatches(
@@ -385,7 +388,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(whisper.contains("Task.sleep(for: .seconds(120))"))
         XCTAssertTrue(services.contains("Task.sleep(for: .seconds(600))"))
         XCTAssertTrue(mlx.contains("private static let idleRelease: Duration = .seconds(120)"))
-        XCTAssertTrue(mlx.contains("static let shared = MLXModelCache()"))
+        XCTAssertFalse(mlx.contains("static let shared"))
+        XCTAssertTrue(services.contains(
+            "@ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()"))
         XCTAssertTrue(ask.contains("let embedder = try SentenceEmbedder()"))
         XCTAssertTrue(library.contains("private let embedder: SentenceEmbedder?"))
 
@@ -442,6 +447,72 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Whisper is the first fully integrated residency family"))
         XCTAssertTrue(decisions.contains("## D160"))
         XCTAssertTrue(appSpec.contains("### Whisper residency adapter (D160)"))
+    }
+
+    func testMLXRuntimePinsOneCompleteResidencyLifecycle() throws {
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let mlx = try Self.contents(
+            of: "Sources/IntelligenceKit/MLXSummaryProvider.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MLXModels.swift")
+        let application = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Application.swift")
+        let postCapture = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
+        let importAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ImportMeeting.swift")
+
+        XCTAssertTrue(mlx.contains("public protocol MLXSummaryRuntimeClient: Sendable"))
+        XCTAssertTrue(mlx.contains(
+            "public actor MLXSummaryRuntime: MLXSummaryRuntimeClient"))
+        XCTAssertTrue(mlx.contains("private let runtime: any MLXSummaryRuntimeClient"))
+        XCTAssertFalse(mlx.contains("MLXModelCache.shared"))
+        XCTAssertTrue(services.contains(
+            "@ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()"))
+
+        for transition in [
+            "modelResidencyLedger.beginLoad(.languageIntelligence)",
+            "modelResidencyLedger.finishLoad(",
+            "modelResidencyLedger.failLoad(",
+            "modelResidencyLedger.beginUse(",
+            "modelResidencyLedger.finishUse(",
+            "modelResidencyLedger.beginRelease(",
+            "modelResidencyLedger.finishRelease(",
+            "struct MLXRuntimeLoad",
+            "struct MLXRuntimeLease",
+            "mlxSummaryRuntime.respondPrepared(",
+            "Task.sleep(for: .seconds(120))",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(transition),
+                "MLX residency adapter is missing \(transition)")
+        }
+
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"\bMLXSummaryProvider\s*\("#),
+            [
+                "AppServices+MLXModels.swift",
+                "BenchMode.swift",
+            ],
+            "Production MLX providers must cross the app-owned runtime client")
+        XCTAssertTrue(application.contains("mlxProvider: { [weak self]"))
+        XCTAssertTrue(importAdapter.contains("mlxProvider: { [weak self]"))
+        XCTAssertTrue(postCapture.contains("provider: makeMLXSummaryProvider("))
+        XCTAssertTrue(services.contains("await releaseMLXRuntime()"))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "MLX is the second fully integrated residency family"))
+        XCTAssertTrue(decisions.contains("## D161"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "`MLXSummaryRuntime` owns container mechanics"))
+        XCTAssertTrue(appSpec.contains("### MLX residency adapter (D161)"))
     }
 
     func testResourceBaselineEvidenceIsCompleteFailClosedAndToolingOnly() throws {

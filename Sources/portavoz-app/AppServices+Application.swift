@@ -22,6 +22,14 @@ extension AppServices {
             mlxModelDirectory: { [modelLifecycle] in
                 await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
             },
+            mlxProvider: { [weak self] directory, priority in
+                guard let self else {
+                    return AppUnavailableSummaryProvider()
+                }
+                return self.makeMLXSummaryProvider(
+                    modelDirectory: directory,
+                    priority: priority)
+            },
             foundationModelsCapability: foundationModelsCapability,
             gateway: dataEgressGateway)
     }
@@ -73,6 +81,10 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
     let defaultEngine: SummaryEngine
     let ollamaModel: String?
     let mlxModelDirectory: @Sendable () async -> URL?
+    let mlxProvider: @MainActor @Sendable (
+        _ directory: URL,
+        _ priority: IntelligenceScheduler.Priority
+    ) -> any SummaryProvider
     let foundationModelsCapability: FoundationModelsCapability
     let gateway: any DataEgressGateway
 
@@ -99,7 +111,9 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
             }
             return .available(
                 AppDirectSummaryRegenerationProvider(
-                    provider: MLXSummaryProvider(modelDirectory: mlxModelDirectory),
+                    provider: await mlxProvider(
+                        mlxModelDirectory,
+                        .interactive),
                     providerID: MLXSummaryProvider.providerID,
                     modelID: ModelCatalog.mlxQwen35.id,
                     modelRevision: ModelCatalog.mlxQwen35.revision))
@@ -124,6 +138,12 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
 
 private enum AppSummaryRegenerationProviderError: Error {
     case translationUnsupported
+}
+
+struct AppUnavailableSummaryProvider: SummaryProvider {
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        throw CancellationError()
+    }
 }
 
 private struct AppDirectSummaryRegenerationProvider: SummaryRegenerationProvider {

@@ -40,6 +40,14 @@ extension AppServices {
             mlxModelDirectory: { [modelLifecycle] in
                 await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
             },
+            mlxProvider: { [weak self] directory, priority in
+                guard let self else {
+                    return AppUnavailableSummaryProvider()
+                }
+                return self.makeMLXSummaryProvider(
+                    modelDirectory: directory,
+                    priority: priority)
+            },
             foundationModelsCapability: foundationModelsCapability,
             gateway: dataEgressGateway)
         return ImportMeeting(

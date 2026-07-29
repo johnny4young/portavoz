@@ -18,6 +18,7 @@ public struct MLXSummaryProvider: SummaryProvider {
 
     private let modelDirectory: URL
     private let priority: IntelligenceScheduler.Priority
+    private let runtime: any MLXSummaryRuntimeClient
 
     /// - Parameter modelDirectory: a ModelStore-VERIFIED directory (D7) —
     ///   this type never downloads anything by itself.
@@ -25,16 +26,18 @@ public struct MLXSummaryProvider: SummaryProvider {
     ///   background for durable post-capture work.
     public init(
         modelDirectory: URL,
-        priority: IntelligenceScheduler.Priority = .interactive
+        priority: IntelligenceScheduler.Priority = .interactive,
+        runtime: any MLXSummaryRuntimeClient
     ) {
         self.modelDirectory = modelDirectory
         self.priority = priority
+        self.runtime = runtime
     }
 
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
         let prompt = OpenAICompatibleSummaryProvider.prompt(for: request)
         let content = try await IntelligenceScheduler.mlx.run(priority) {
-            try await MLXModelCache.shared.respond(
+            try await runtime.respond(
                 system: prompt.system,
                 user: prompt.user,
                 directory: modelDirectory)
@@ -47,14 +50,27 @@ public struct MLXSummaryProvider: SummaryProvider {
     }
 }
 
-/// Owns the loaded container behind the dedicated MLX scheduler. The weights
-/// (2.3 GB resident) stay loaded only while summaries keep coming: after
-/// `idleRelease` without a request the container is dropped and the next
-/// summary reloads it (a few seconds against a generation that takes tens) —
-/// so a summary never leaves the app holding gigabytes for the rest of the
-/// day.
-actor MLXModelCache {
-    static let shared = MLXModelCache()
+/// Narrow runtime port injected by executable composition. A provider cannot
+/// construct a hidden process cache or report residency by itself.
+public protocol MLXSummaryRuntimeClient: Sendable {
+    func respond(
+        system: String,
+        user: String,
+        directory: URL
+    ) async throws -> String
+}
+
+public enum MLXSummaryRuntimeError: Error, Equatable, Sendable {
+    case notPrepared
+}
+
+/// Owns one loaded MLX container. The app composes one process instance and
+/// surrounds `prepare`/`respondPrepared`/`release` with its residency ledger.
+/// Isolated benchmark products can use the `MLXSummaryRuntimeClient`
+/// convenience directly; that path preserves the existing two-minute idle
+/// release without pretending to be application residency evidence.
+public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
+    public init() {}
 
     /// Long enough that "regenerate in the other language" reuses the hot
     /// container, short enough that the RAM comes back promptly.
@@ -62,14 +78,48 @@ actor MLXModelCache {
 
     private var container: ModelContainer?
     private var directory: URL?
-    /// Bumped per request; a scheduled release only fires if no newer
-    /// request has arrived while it slept.
-    private var generation = 0
+    private var standaloneIdleGeneration = 0
 
-    func respond(system: String, user: String, directory newDirectory: URL) async throws -> String {
-        generation += 1
-        defer { scheduleIdleRelease(after: generation) }
-        let container = try await load(newDirectory)
+    public func respond(
+        system: String,
+        user: String,
+        directory newDirectory: URL
+    ) async throws -> String {
+        standaloneIdleGeneration += 1
+        let idleGeneration = standaloneIdleGeneration
+        defer { scheduleStandaloneIdleRelease(after: idleGeneration) }
+        try await prepare(newDirectory)
+        return try await respondPrepared(
+            system: system,
+            user: user,
+            directory: newDirectory)
+    }
+
+    /// Loads or reuses the exact verified directory without beginning
+    /// generation. Application composition publishes residency only after
+    /// this method returns successfully.
+    public func prepare(_ newDirectory: URL) async throws {
+        if container != nil, directory == newDirectory { return }
+        // Without a cache limit MLX keeps every freed GPU buffer around and
+        // a long-prompt prefill balloons to tens of GB (observed: 31 GB on a
+        // 40-min meeting until macOS suspended the process). 20 MB is the
+        // value the mlx-swift-examples LLMEval app ships with.
+        MLX.Memory.cacheLimit = 20 * 1024 * 1024
+        let loaded = try await LLMModelFactory.shared.loadContainer(
+            from: newDirectory, using: #huggingFaceTokenizerLoader())
+        container = loaded
+        directory = newDirectory
+    }
+
+    /// Generates only through the exact container that composition acquired.
+    public func respondPrepared(
+        system: String,
+        user: String,
+        directory expectedDirectory: URL
+    ) async throws -> String {
+        guard let container, directory == expectedDirectory else {
+            throw MLXSummaryRuntimeError.notPrepared
+        }
         // `perform` gives isolated access to the model context inside the
         // library's own actor — the blessed pattern for strict concurrency.
         return try await container.perform { context in
@@ -96,26 +146,18 @@ actor MLXModelCache {
         }
     }
 
-    private func scheduleIdleRelease(after requestGeneration: Int) {
-        Task {
-            try? await Task.sleep(for: Self.idleRelease)
-            guard requestGeneration == generation else { return }
-            container = nil
-            directory = nil
-        }
+    /// Drops resident weights but never removes verified model files.
+    public func release() {
+        standaloneIdleGeneration += 1
+        container = nil
+        directory = nil
     }
 
-    private func load(_ newDirectory: URL) async throws -> ModelContainer {
-        if let container, directory == newDirectory { return container }
-        // Without a cache limit MLX keeps every freed GPU buffer around and
-        // a long-prompt prefill balloons to tens of GB (observed: 31 GB on a
-        // 40-min meeting until macOS suspended the process). 20 MB is the
-        // value the mlx-swift-examples LLMEval app ships with.
-        MLX.Memory.cacheLimit = 20 * 1024 * 1024
-        let loaded = try await LLMModelFactory.shared.loadContainer(
-            from: newDirectory, using: #huggingFaceTokenizerLoader())
-        container = loaded
-        directory = newDirectory
-        return loaded
+    private func scheduleStandaloneIdleRelease(after requestGeneration: Int) {
+        Task {
+            try? await Task.sleep(for: Self.idleRelease)
+            guard requestGeneration == standaloneIdleGeneration else { return }
+            release()
+        }
     }
 }

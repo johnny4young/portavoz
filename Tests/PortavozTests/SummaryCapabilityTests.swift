@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import IntelligenceKit
+import PortavozCore
 @testable import portavoz_app
 import XCTest
 
@@ -17,6 +18,7 @@ final class SummaryCapabilityTests: XCTestCase {
             defaultEngine: .ollama,
             ollamaModel: nil,
             mlxModelDirectory: { nil },
+            mlxProvider: { _, _ in SummaryCapabilityProviderStub() },
             foundationModelsCapability: .available,
             gateway: TestDataEgressGateway())
 
@@ -33,6 +35,7 @@ final class SummaryCapabilityTests: XCTestCase {
             defaultEngine: .mlx,
             ollamaModel: nil,
             mlxModelDirectory: { nil },
+            mlxProvider: { _, _ in SummaryCapabilityProviderStub() },
             foundationModelsCapability: .available,
             gateway: TestDataEgressGateway())
 
@@ -50,11 +53,18 @@ final class SummaryCapabilityTests: XCTestCase {
             defaultEngine: .mlx,
             ollamaModel: nil,
             mlxModelDirectory: { directory },
+            mlxProvider: { _, _ in SummaryCapabilityProviderStub() },
             foundationModelsCapability: .unavailable("unused"),
             gateway: TestDataEgressGateway())
 
         guard case .available = await resolver.resolve(override: nil) else {
             return XCTFail("verified MLX installation evidence should resolve the provider")
         }
+    }
+}
+
+private struct SummaryCapabilityProviderStub: SummaryProvider {
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        throw CancellationError()
     }
 }

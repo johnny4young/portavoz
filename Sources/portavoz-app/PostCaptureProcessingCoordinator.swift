@@ -225,9 +225,10 @@ extension AppServices {
                 for: ModelCatalog.mlxQwen35)
             else { return nil }
             return PostCaptureSummaryProviderSelection(
-                provider: MLXSummaryProvider(
+                provider: makeMLXSummaryProvider(
                     modelDirectory: installation.directory,
-                    priority: .background),
+                    priority: .background,
+                    workloadClass: .postCapture),
                 providerID: MLXSummaryProvider.providerID,
                 modelID: ModelCatalog.mlxQwen35.id,
                 modelRevision: ModelCatalog.mlxQwen35.revision)

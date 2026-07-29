@@ -103,7 +103,10 @@ extension BenchMode {
                 let request =
                     useRealMeeting ? try await realMeetingRequest() : syntheticRequest()
                 let start = Date()
-                let draft = try await MLXSummaryProvider(modelDirectory: directory)
+                let runtime = MLXSummaryRuntime()
+                let draft = try await MLXSummaryProvider(
+                    modelDirectory: directory,
+                    runtime: runtime)
                     .summarize(request)
                 let elapsed = Date().timeIntervalSince(start)
                 print("MLX smoke OK in \(String(format: "%.1f", elapsed)) s")

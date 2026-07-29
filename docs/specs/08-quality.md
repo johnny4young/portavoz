@@ -1426,7 +1426,7 @@ against.
 | Detail first content, 2 h / 5k segments | p95 < 300 ms | **91.87 ms** single signpost run, down from 522.30 ms; **zero hangs**, down from one 515.86 ms hang (D80) |
 | Meeting health, 2 h / 5k → 8 h / 20k | derived-policy diagnostic | **p95 9.94 ms → 41.39 ms**, down from 347.58 ms → 5,385.76 ms |
 | RAM by phase (`--bench-record 60 --bench-log <file>`, via `open -n`) | < 800 MB peak while recording / < 200 MB idle post-meeting | **20 MB without models → ~515 MB engines loaded → 569–795 MB peak while recording (LIVE diarization included) → 140–160 MB after the meeting**. The original target (500 MB) was set before adding live diarization; revised Jul 2026 |
-| Embedded summary RAM (MLX) | transient, not resident | **~2.4 GB during generation**; `MLXModelCache` releases it only after 120 s idle (previously it remained resident forever) |
+| Embedded summary RAM (MLX) | transient, not resident | **~2.4 GB during generation**; the AppServices-owned `MLXSummaryRuntime` releases it only after 120 s idle (previously it remained resident forever) |
 
 ## Real bugs found and fixed (what an agent must know)
 

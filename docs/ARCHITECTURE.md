@@ -671,9 +671,10 @@ the ANE, while a second independent lane governs embedded MLX work on the GPU.
 Both lanes use the same interactive/live/background priority policy and emit
 the same content-free queue/execution telemetry, but they never serialize each
 other. Manual and imported MLX summaries default to interactive work; durable
-post-capture MLX generation is explicitly background. `MLXModelCache` remains
-the verified model/container owner and idle-release boundary rather than
-serving as an implicit concurrency policy.
+post-capture MLX generation is explicitly background. IntelligenceKit owns
+the concrete `MLXSummaryRuntime` actor and container mechanics; AppServices
+owns its single process instance, active-use lifecycle, and idle-release
+boundary. The runtime remains separate from scheduling policy.
 
 Resource measurement preserves those owners rather than introducing another
 queue. Core defines a closed content-free descriptor with five scheduling
@@ -750,11 +751,27 @@ cannot be deleted or released. Verified files remain a separate asset
 lifecycle, and the existing 120-second idle fence remains unchanged until
 accepted residency evidence defines a replacement.
 
+MLX is the second fully integrated residency family. Every manual, imported,
+and durable MLX provider receives an injected runtime client instead of
+reaching a static cache. AppServices owns one `MLXSummaryRuntime`, coalesces an
+exact verified-directory load, publishes that load and its first active-use
+token in one MainActor continuation, and holds the token across
+`respondPrepared`. The independent GPU scheduler still owns priority and
+single-flight inference; residency does not introduce another queue.
+
+On every success, failure, or cancellation the client ends the exact use token
+before arming the unchanged 120-second idle fence. Release drops the concrete
+container before confirming the matching ledger generation. Settings cannot
+remove verified MLX assets while a load or generation is active. The isolated
+`--mlx-smoke` runner constructs its own runtime explicitly and keeps
+IntelligenceKit's standalone idle policy; it is benchmark evidence, not
+production residency.
+
 The remaining characterized migration surface includes the cached AppServices
 live-speech and diarization engines, two direct pyannote loads, the
-IntelligenceKit MLX singleton, Library's retained embedder, and Ask's
-per-retrieval embedder. Those families do not submit transitions yet. The
-ledger interprets neither measured footprint bytes nor elapsed idle time.
+Library retained embedder, and Ask per-retrieval embedder. Those families do
+not submit transitions yet. The ledger interprets neither measured footprint
+bytes nor elapsed idle time.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,

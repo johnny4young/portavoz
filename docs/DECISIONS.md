@@ -4996,3 +4996,46 @@ execution, and lifetime one invariant instead of three conventions. Migrating
 one complete family keeps the Strangler slice reviewable and lets the source
 ratchet reject partial or bypassed integration while live speech, diarization,
 MLX, and embeddings remain explicitly characterized for later adapters.
+
+## D161 — MLX container mechanics are injected into composition residency (Jul 2026)
+
+**Context:** each `MLXSummaryProvider` reached
+`IntelligenceKit.MLXModelCache.shared` directly. The actor serialized access to
+its fields, and D151 serialized GPU inference through a separate scheduler,
+but neither mechanism reported load/use/release to the process residency
+ledger. The static cache also let a future provider bypass application
+ownership, and Settings could remove verified assets while a generation still
+held their loaded container.
+
+**Decision:** IntelligenceKit replaces the singleton with an injectable
+`MLXSummaryRuntimeClient` and concrete `MLXSummaryRuntime` actor. The actor
+continues to own `ModelContainer` loading, strict-concurrency `perform`
+access, the supported 20 MB MLX buffer-cache limit, and a standalone
+two-minute idle policy for the terminating smoke runner. It does not own
+application residency truth.
+
+AppServices constructs exactly one production runtime. Its MLX adapter
+coalesces an exact standardized verified-directory load behind one
+`.languageIntelligence` ticket, publishes the successful runtime and claims
+the first use in the same synchronous MainActor continuation, and gives every
+manual, Import, and durable post-capture provider a narrow client over that
+runtime. The client holds one active-use token through `respondPrepared` and
+ends it on every terminal outcome before arming the existing 120-second idle
+fence. A competing directory, release, or verified-file deletion is rejected
+while load or use is active. Release drops the concrete container and then
+confirms the exact ledger ticket.
+
+The independent MLX scheduler remains the only GPU queue and retains
+interactive/background priority plus content-free telemetry. Model download
+and verification remain in `VerifiedModelLifecycle`; no asset operation,
+container wait, or release enters an audio callback. The adapter records no
+measured footprint and changes no TTL because those values still require
+accepted per-family evidence.
+
+**Rationale:** injected runtime access makes every production provider cross
+one reviewable ownership boundary while preserving IntelligenceKit's
+capability implementation and D151 scheduling. Publishing load and first use
+atomically prevents idle release or Settings deletion from observing an
+unleased resident container. Migrating MLX as the second complete family keeps
+live speech, diarization, and embeddings explicitly pending instead of
+claiming partial governor coverage.

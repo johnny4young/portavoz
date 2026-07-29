@@ -76,7 +76,7 @@ final class AppServices {
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
     /// One process-owned, content-free view of heavyweight runtime lifecycle.
     /// Capability owners submit complete family transitions one adapter at a
-    /// time; Whisper is the first integrated runtime.
+    /// time; Whisper and MLX are the currently integrated runtimes.
     @ObservationIgnored var modelResidencyLedger =
         ResourceModelResidencyLedger()
     /// Content-free workload spans are installed once at the composition root.
@@ -127,6 +127,12 @@ final class AppServices {
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     var whisperIdleGeneration = 0
     private(set) var mlxDownloaded = false
+    /// IntelligenceKit owns container mechanics; composition owns the one
+    /// process runtime and every residency transition around it.
+    @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
+    @ObservationIgnored var mlxRuntimeLoad: MLXRuntimeLoad?
+    var mlxRuntimeDirectoryKey: String?
+    var mlxIdleGeneration = 0
 
     /// Process-scoped, coalescing reconciliation for the protected local
     /// Spotlight index. It is deliberately not owned by a SwiftUI window.
@@ -521,6 +527,13 @@ final class AppServices {
     }
 
     func deleteMLXModel() async throws {
+        guard mlxRuntimeLoad == nil else {
+            throw MLXRuntimeError.modelInUse
+        }
+        if mlxRuntimeDirectoryKey != nil,
+           !(await releaseMLXRuntime()) {
+            throw MLXRuntimeError.modelInUse
+        }
         try await modelLifecycle.remove(ModelCatalog.mlxQwen35)
         mlxDownloaded = false
     }
