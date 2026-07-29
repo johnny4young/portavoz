@@ -647,6 +647,16 @@ awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
 
+Intelligence inference also preserves capability ownership. One process-owned
+single-flight `IntelligenceScheduler` lane governs Apple Foundation Models on
+the ANE, while a second independent lane governs embedded MLX work on the GPU.
+Both lanes use the same interactive/live/background priority policy and emit
+the same content-free queue/execution telemetry, but they never serialize each
+other. Manual and imported MLX summaries default to interactive work; durable
+post-capture MLX generation is explicitly background. `MLXModelCache` remains
+the verified model/container owner and idle-release boundary rather than
+serving as an implicit concurrency policy.
+
 Resource measurement preserves those owners rather than introducing another
 queue. Core defines a closed content-free descriptor with five scheduling
 classes, eleven resource families, five operations, and three terminal
@@ -678,10 +688,10 @@ mismatched-build, wrong-memory-tier, non-finite, or payload-bearing evidence
 fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
-The first native Release collector covers steady idle, active recording, and
-Stop without
-making Instruments XML part of the evidence contract. A benchmark-only
-observer receives the same closed telemetry events while
+The native Release collector covers steady idle, active recording, Stop,
+Refine, and Summary without making Instruments XML part of the evidence
+contract. A benchmark-only observer receives the same closed telemetry events
+while
 `proc_pid_rusage(RUSAGE_INFO_CURRENT)`, `ProcessInfo`, volume capacity, and
 IOKit power-source APIs sample CPU time, peak physical footprint, energy, disk
 I/O, minimum free disk, thermal state, low-power mode, and invariant power
@@ -693,16 +703,25 @@ boundary. New spans enter only the Stop probe. A power-source
 change, malformed lifecycle, timeout, duplicate output, or unavailable native
 counter fails the run without producing passing evidence.
 
-`scripts/run-resource-recording-baseline.sh` requires a clean worktree, builds
-one exact Release version/build/commit, copies it to a uniquely identified
-scratch app, and records at least three runs into owner-only fragments before
-atomically publishing a host receipt. Each run uses a disposable meeting
-database and scratch audio while reusing the normal SHA-256-verified model
-cache; a five-second launch-settling interval precedes the model-free idle
-window, and ordinary XCUITest launches keep their existing empty temporary
-model root. The runner never launches or changes
-`/Applications/Portavoz.app`. Idle, recording, and Stop now have a reproducible
-collector, but no host receipt or other six scenarios are accepted yet, so
+`scripts/run-resource-baseline.sh` requires a clean worktree, builds one exact
+Release version/build/commit, copies it to a uniquely identified scratch app,
+and records at least three runs into owner-only fragments before atomically
+publishing a host receipt. Each run uses a disposable meeting database and
+scratch audio while reusing the normal SHA-256-verified model cache; a
+five-second launch-settling interval precedes the model-free idle window, and
+ordinary XCUITest launches keep their existing empty temporary model root.
+Once a resource benchmark dispatcher is armed, app initialization returns
+before sync, recovery, provider discovery, or dictation registration can start;
+the AppKit delegate remains detached from product services. The benchmark owns
+the process rather than sharing its measured operation with normal launch
+orchestration.
+Refine and Summary run in separate cold processes behind the same bounded
+first-result timeout. Summary verifies the pinned Qwen3.5 MLX descriptor before
+sampling and executes the real ApplicationKit regeneration workflow over a
+fixed public English transcript stored only in the disposable database. The
+runner never launches or changes `/Applications/Portavoz.app`. These five
+scenarios now have reproducible collectors, but no host receipt is accepted
+and Ask, indexing, and the two concurrent scenarios remain uncollected, so
 resource-governor policy remains blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
@@ -1245,18 +1264,19 @@ behind aspirational diagrams:
 - One process-owned app telemetry adapter receives only Core's closed resource
   workload events and records generic Points of Interest intervals. Capability
   schedulers and ApplicationKit workflows receive the port through composition;
-  the shared intelligence scheduler uses one event-only relay. The adapter has
-  no content-bearing API, and AudioCaptureKit has no dependency on it.
+  both independent intelligence scheduler lanes use one event-only relay. The
+  adapter has no content-bearing API, and AudioCaptureKit has no dependency on
+  it.
 - One tracked resource evidence contract and a separate tooling evaluator own
   multi-host measurement completeness. Application and capability packages do
   not read receipts, choose memory tiers, aggregate baselines, or derive
   runtime policy from this evidence.
 - The macOS composition root owns benchmark-only native resource probes for
-  idle, recording, Stop, and Refine. One canonical Release runner uses
-  disposable meeting/audio state, verified installed models, and a fixed
-  synthetic speech fixture; it publishes only exact content-free fragments to
-  the tooling evaluator. Production launches and schedulers never read these
-  fragments or the resulting receipt.
+  idle, recording, Stop, Refine, and Summary. One canonical Release runner uses
+  disposable meeting/audio state, verified installed models, and fixed public
+  synthetic speech/transcript fixtures; it publishes only exact content-free
+  fragments to the tooling evaluator. Production launches and schedulers never
+  read these fragments or the resulting receipt.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the
@@ -1317,13 +1337,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,220 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,227 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 391 Swift source files;
+- strict SwiftLint reports zero violations across 392 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

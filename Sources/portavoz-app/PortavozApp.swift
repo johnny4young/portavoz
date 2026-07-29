@@ -8,8 +8,13 @@ struct PortavozApp: App {
     @State private var services = AppServices()
 
     init() {
-        PortavozAppDelegate.services = services
         let process = ProcessInfo.processInfo
+        let runsIsolatedResourceBenchmark =
+            BenchMode.runsIsolatedResourceBenchmark(
+                arguments: process.arguments)
+        if !runsIsolatedResourceBenchmark {
+            PortavozAppDelegate.services = services
+        }
         if process.arguments.contains("-reset-app-language")
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {
             UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
@@ -31,6 +36,13 @@ struct PortavozApp: App {
         // must still run.
         BenchMode.runRecordBenchIfRequested(services: services, recording: services.recording)
         BenchMode.runRefineResourceBenchIfRequested(services: services)
+        BenchMode.runSummaryResourceBenchIfRequested(services: services)
+        // Resource evidence owns this process. Do not start sync, recovery,
+        // provider discovery, or dictation registrations beside a measured
+        // window; temporary storage alone would not isolate their resource use.
+        if runsIsolatedResourceBenchmark {
+            return
+        }
         // Recovery belongs to process launch, not a window: interrupted audio
         // and expired leases are reconciled even when only the menu bar opens.
         let appServices = services

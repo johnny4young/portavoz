@@ -30,10 +30,14 @@ public actor IntelligenceScheduler {
         }
     }
 
-    /// Process-wide instance: providers are cheap structs created ad hoc,
-    /// so serialization must live somewhere shared.
+    /// Process-wide instances: providers are cheap structs created ad hoc, so
+    /// serialization must live somewhere shared. Apple/ANE and MLX/GPU keep
+    /// independent lanes because they are independent constrained resources;
+    /// both publish the same content-free telemetry vocabulary.
     private static let sharedTelemetry = ResourceWorkloadTelemetryRelay()
     public static let shared = IntelligenceScheduler(
+        telemetry: sharedTelemetry.telemetry)
+    static let mlx = IntelligenceScheduler(
         telemetry: sharedTelemetry.telemetry)
 
     private struct Waiter {

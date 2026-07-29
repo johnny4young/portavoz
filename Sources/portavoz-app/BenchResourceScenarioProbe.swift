@@ -17,24 +17,47 @@ struct BenchRefineResourceConfiguration: Equatable {
         else {
             throw BenchRefineResourceError.missingFixture
         }
-        let timeout = try integerArgument(
+        let timeout = try BenchResourceArguments.integer(
             "--bench-resource-timeout",
             arguments: arguments,
             defaultValue: 900,
-            allowed: 60...3_600)
+            allowed: 60...3_600,
+            error: BenchRefineResourceError.invalidTimeout)
         return BenchRefineResourceConfiguration(
             fixtureURL: URL(
                 fileURLWithPath: arguments[fixtureIndex + 1])
                 .standardizedFileURL,
             timeoutSeconds: timeout)
     }
+}
 
-    private static func integerArgument(
+struct BenchSummaryResourceConfiguration: Equatable {
+    let timeoutSeconds: Int
+
+    static func requested(
+        arguments: [String]
+    ) throws -> BenchSummaryResourceConfiguration? {
+        guard arguments.contains("--bench-resource-summary") else {
+            return nil
+        }
+        return BenchSummaryResourceConfiguration(timeoutSeconds:
+            try BenchResourceArguments.integer(
+                "--bench-resource-timeout",
+                arguments: arguments,
+                defaultValue: 900,
+                allowed: 60...3_600,
+                error: BenchSummaryResourceError.invalidTimeout))
+    }
+}
+
+private enum BenchResourceArguments {
+    static func integer<Failure: Error>(
         _ option: String,
         arguments: [String],
         defaultValue: Int,
-        allowed: ClosedRange<Int>
-    ) throws -> Int {
+        allowed: ClosedRange<Int>,
+        error: Failure
+    ) throws(Failure) -> Int {
         guard let index = arguments.firstIndex(of: option) else {
             return defaultValue
         }
@@ -42,7 +65,7 @@ struct BenchRefineResourceConfiguration: Equatable {
               let value = Int(arguments[index + 1]),
               allowed.contains(value)
         else {
-            throw BenchRefineResourceError.invalidTimeout
+            throw error
         }
         return value
     }
@@ -129,6 +152,62 @@ final class BenchResourceScenarioProbe {
     }
 }
 
+/// Executes one benchmark operation with a real wall-clock bound.
+///
+/// The first result wins and the caller never awaits a model task that ignores
+/// cooperative cancellation. Benchmark processes exit after publishing their
+/// exact fragment, so a late result cannot escape into product state.
+enum BenchResourceTimedOperation {
+    @MainActor
+    static func run<Value: Sendable>(
+        timeout: Duration,
+        operation: @escaping @MainActor @Sendable () async throws -> Value
+    ) async throws -> Value {
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: Result<Value>.self)
+        let operationTask = Task { @MainActor in
+            do {
+                continuation.yield(.completed(try await operation()))
+            } catch {
+                continuation.yield(.failed(error.localizedDescription))
+            }
+        }
+        let timeoutTask = Task {
+            do {
+                try await Task.sleep(for: timeout)
+            } catch {
+                return
+            }
+            continuation.yield(.timedOut)
+        }
+        var iterator = stream.makeAsyncIterator()
+        let result = await iterator.next() ?? .timedOut
+        operationTask.cancel()
+        timeoutTask.cancel()
+        continuation.finish()
+
+        switch result {
+        case .completed(let value):
+            return value
+        case .failed(let message):
+            throw BenchResourceTimedOperationError.operationFailed(message)
+        case .timedOut:
+            throw BenchResourceTimedOperationError.timedOut
+        }
+    }
+
+    private enum Result<Value: Sendable>: Sendable {
+        case completed(Value)
+        case failed(String)
+        case timedOut
+    }
+}
+
+enum BenchResourceTimedOperationError: Error, Equatable {
+    case operationFailed(String)
+    case timedOut
+}
+
 enum BenchResourceScenarioProbeError: Error, Equatable, LocalizedError {
     case invalidRun
     case missingOutput
@@ -139,6 +218,29 @@ enum BenchResourceScenarioProbeError: Error, Equatable, LocalizedError {
             "--bench-resource-run must be between 1 and 100"
         case .missingOutput:
             "--bench-resource-output requires a directory"
+        }
+    }
+}
+
+enum BenchSummaryResourceError: Error, Equatable, LocalizedError {
+    case invalidTimeout
+    case modelsNotReady
+    case operationFailed(String)
+    case timedOut(Int)
+    case unexpectedResult(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidTimeout:
+            "--bench-resource-timeout must be between 60 and 3600 seconds"
+        case .modelsNotReady:
+            "the embedded summary model must be verified before resource collection"
+        case .operationFailed(let message):
+            "Summary resource operation failed: \(message)"
+        case .timedOut(let seconds):
+            "Summary resource operation exceeded \(seconds) seconds"
+        case .unexpectedResult(let result):
+            "Summary resource operation returned \(result)"
         }
     }
 }

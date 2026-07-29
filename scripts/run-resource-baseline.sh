@@ -8,7 +8,7 @@ BUILD=""
 RUNS=3
 DURATION=60
 IDLE_DURATION=30
-REFINE_TIMEOUT=900
+MODEL_TIMEOUT=900
 OUTPUT=""
 
 usage() {
@@ -17,7 +17,7 @@ usage: scripts/run-resource-baseline.sh \
   --profile <memory-8gb|memory-16gb|reference> \
   --version <version> --build <build> \
   [--runs <count>] [--duration <seconds>] [--idle-duration <seconds>] \
-  [--refine-timeout <seconds>] \
+  [--model-timeout <seconds>] \
   [--output <directory>]
 EOF
 }
@@ -65,9 +65,9 @@ while [[ $# -gt 0 ]]; do
             IDLE_DURATION="$2"
             shift 2
             ;;
-        --refine-timeout)
+        --model-timeout)
             [[ $# -ge 2 ]] || { usage; exit 64; }
-            REFINE_TIMEOUT="$2"
+            MODEL_TIMEOUT="$2"
             shift 2
             ;;
         --output)
@@ -92,14 +92,14 @@ done
 require_unsigned_integer "$RUNS" "--runs"
 require_unsigned_integer "$DURATION" "--duration"
 require_unsigned_integer "$IDLE_DURATION" "--idle-duration"
-require_unsigned_integer "$REFINE_TIMEOUT" "--refine-timeout"
+require_unsigned_integer "$MODEL_TIMEOUT" "--model-timeout"
 (( RUNS >= 3 )) || fail "--runs must be at least 3"
 (( RUNS <= 100 )) || fail "--runs must be at most 100"
 (( DURATION >= 30 )) || fail "--duration must be at least 30 seconds"
 (( IDLE_DURATION >= 10 )) || fail "--idle-duration must be at least 10 seconds"
 (( IDLE_DURATION <= 600 )) || fail "--idle-duration must be at most 600 seconds"
-(( REFINE_TIMEOUT >= 60 )) || fail "--refine-timeout must be at least 60 seconds"
-(( REFINE_TIMEOUT <= 3600 )) || fail "--refine-timeout must be at most 3600 seconds"
+(( MODEL_TIMEOUT >= 60 )) || fail "--model-timeout must be at least 60 seconds"
+(( MODEL_TIMEOUT <= 3600 )) || fail "--model-timeout must be at most 3600 seconds"
 
 cd "$ROOT"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
@@ -194,6 +194,7 @@ for ((run = 1; run <= RUNS; run++)); do
     audio_root="$RUN_ROOT/audio-$run"
     recording_log="$RUN_ROOT/recording-$run.log"
     refine_log="$RUN_ROOT/refine-$run.log"
+    summary_log="$RUN_ROOT/summary-$run.log"
     mkdir -p "$audio_root"
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
@@ -226,7 +227,7 @@ for ((run = 1; run <= RUNS; run++)); do
         --bench-resource-refine "$fixture_audio" \
         --bench-resource-output "$fragments" \
         --bench-resource-run "$run" \
-        --bench-resource-timeout "$REFINE_TIMEOUT" \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
         --bench-log "$refine_log"
     then
         [[ -f "$refine_log" ]] && cat "$refine_log" >&2
@@ -238,9 +239,30 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$refine_log" ]] && cat "$refine_log" >&2
         fail "run $run did not produce the exact-shaped Refine sample"
     fi
+
+    echo "Collecting Summary resource sample $run of $RUNS…"
+    if ! "$APP/Contents/MacOS/portavoz-app" \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-summary \
+        --bench-resource-output "$fragments" \
+        --bench-resource-run "$run" \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
+        --bench-log "$summary_log"
+    then
+        [[ -f "$summary_log" ]] && cat "$summary_log" >&2
+        fail "Summary run $run failed"
+    fi
+
+    summary_sample="$fragments/summary-$run.json"
+    if [[ ! -f "$summary_sample" ]]; then
+        [[ -f "$summary_log" ]] && cat "$summary_log" >&2
+        fail "run $run did not produce the exact-shaped Summary sample"
+    fi
     sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
     sample_arguments+=(--sample "refine=$refine_sample")
+    sample_arguments+=(--sample "summary=$summary_sample")
     sample_arguments+=(--sample "stop=$stop_sample")
 done
 

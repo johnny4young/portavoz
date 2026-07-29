@@ -239,7 +239,7 @@ confirms every suggestion.
 
 **Context:** D25 called for a 100% local summary engine for Macs with neither Apple Intelligence NOR Ollama. The embedded provider needs the prompt/parsing stack (`PromptFactory`, `StructuredSummary`, `SummaryFingerprint`) that lives in IntelligenceKit; a separate Kit would have forced all of that into Core.
 
-**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.31.4 — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform` (serialized, one summary at a time) and does NOT pass through `IntelligenceScheduler` (that lane exists because of ANE contention). Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
+**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.31.4 — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform`; D151 later makes its single-flight policy explicit through an independent MLX scheduler lane rather than treating the async cache actor as that policy. Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
 
 **Shipping and verification:** the SwiftPM CLI cannot compile Metal shaders (limitation documented in the mlx-swift README): `swift build` never produces `default.metallib`, so no test under `swift test` can exercise generation. The metallib comes from a one-time xcodebuild pass that `scripts/build-mlx-metallib.sh` caches in `.build/mlx/` (cache keyed by the resolved mlx-swift version; requires the Xcode 26 Metal Toolchain: `xcodebuild -downloadComponent MetalToolchain`); `make-app.sh` copies `mlx-swift_Cmlx.bundle` to `Contents/Resources`, where the mlx loader resolves it through NSBundle. E2E verification is in-app — `Portavoz.app/Contents/MacOS/portavoz-app --mlx-smoke` (same pattern as `--bench-live`): synthetic ES meeting → structured summary with correct decision and action item in ~5 s (M-series, model already downloaded).
 
@@ -4618,28 +4618,64 @@ exact Release version/build/commit, copies and re-signs it under the dedicated
 Every run requires a disposable meeting database and scratch audio, lets
 launch-only work settle for five seconds, and captures a model-free idle window
 before loading recording engines. It then measures recording and Stop through
-the real windowed path and executes one cold-runtime Refine draft in a separate
-process. Refine uses a fixed English AIFF generated from public synthetic text,
-requires the selected Whisper model, tokenizer, and diarization model to pass
-full installed-artifact verification before sampling, and never downloads a
-model inside the measured window. Its unstructured first-result race enforces a
-bounded 60–3,600 second timeout even if model work ignores cooperative
-cancellation. It never applies the draft or persists user-visible content.
+the real windowed path and executes cold-runtime Refine and Summary operations
+in separate processes. Refine uses a fixed English AIFF generated from public
+synthetic text, requires the selected Whisper model, tokenizer, and diarization
+model to pass full installed-artifact verification before sampling, and never
+downloads a model inside the measured window. Summary verifies the pinned
+Qwen3.5 MLX descriptor, stores a fixed public English meeting/cast/transcript
+only in the disposable database, and measures the real ApplicationKit
+regeneration workflow through successful transactional persistence. Both model
+scenarios use the same unstructured first-result race, which enforces a bounded
+60–3,600 second timeout even if model work ignores cooperative cancellation.
+Refine never applies its draft or persists user-visible content.
 
 Only these hidden resource benchmarks reuse the normal verified model cache;
 ordinary XCUITest launches retain an empty temporary model root. Partial
 fragments and the synthetic fixture stay private and are removed on failure; a
 validated owner-only host receipt is published atomically. The original
 `resource-recording-baseline` command remains a compatibility alias for the
-canonical `resource-baseline` runner. The runner never launches or modifies the
+canonical `resource-baseline` runner. Once any resource benchmark dispatcher is
+armed, app initialization returns before normal sync, recovery, provider
+discovery, and dictation registration start. The AppKit delegate is not wired
+to product services, preventing lifecycle callbacks from starting product
+work beside the measured operation. The runner never launches or modifies the
 notarized installed app.
 
 **Rationale:** native counters make receipts deterministic and testable without
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
-model-install noise. Independent idle, recording, Stop, and Refine windows make
-residency and interference attribution explicit. One reusable single-scenario
-probe avoids a new collector lifecycle for every later batch workflow, while
-synthetic input keeps model-heavy evidence repeatable and private. Fail-closed
-publication prevents a timeout, missing model, silent fixture, or partial run
-from looking like accepted hardware evidence.
+model-install noise. Independent idle, recording, Stop, Refine, and Summary
+windows make residency and interference attribution explicit. One reusable
+single-scenario probe avoids a new collector lifecycle for every later batch
+workflow, while synthetic input keeps model-heavy evidence repeatable and
+private. Fail-closed publication prevents a timeout, missing model, silent
+fixture, failed summary transaction, or partial run from looking like accepted
+hardware evidence.
+
+## D151 — MLX inference has an independent explicit scheduler lane (Jul 2026)
+
+**Context:** `MLXModelCache` is an actor, but its generation path awaits model
+loading and `ModelContainer.perform`. Actor reentrancy across those awaits does
+not establish a single-flight queue, priority policy, or measurable queue
+boundary. Routing MLX through the existing Foundation Models scheduler would
+solve that ambiguity by coupling unrelated GPU and ANE work, contradicting the
+capability-owned scheduler architecture and potentially delaying an
+interactive Apple request behind a long MLX summary.
+
+**Decision:** `IntelligenceScheduler` owns two process-wide instances that
+share only the content-free D148 telemetry relay. The existing lane serializes
+Apple Foundation Models/ANE calls; a second lane serializes embedded MLX/GPU
+calls. Each independently applies `interactive > live > background`, FIFO,
+latest-wins, and caller-cancellation rules. `MLXSummaryProvider` defaults to
+interactive priority for user-driven regeneration and Import. The durable
+post-capture provider resolver constructs it with background priority. The MLX
+cache remains the verified model/container and idle-release owner; it is not
+treated as the queue. Apple and MLX inference never wait on each other's lane.
+
+**Rationale:** explicit, independently observable queues preserve user-facing
+priority without inventing cross-capability contention. Keeping the scheduler
+policy reusable and the cache focused on model lifetime makes both boundaries
+testable under strict concurrency. Shared payload-free telemetry gives the
+resource baseline comparable queue and execution evidence without exposing
+prompts, model identity, or scheduler keys.

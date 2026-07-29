@@ -18,6 +18,14 @@ import TranscriptionKit
 /// The process exits when the bench finishes — it never touches the UI,
 /// the library or the database.
 enum BenchMode {
+    static func runsIsolatedResourceBenchmark(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains("--bench-record")
+            || arguments.contains("--bench-resource-refine")
+            || arguments.contains("--bench-resource-summary")
+    }
+
     static func runIfRequested() {
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "--bench-live"),
@@ -436,12 +444,6 @@ extension BenchMode {
                 microphone: nil))
     }
 
-    private enum RefineBenchmarkResult: Sendable {
-        case completed(RefineDraft)
-        case failed(String)
-        case timedOut
-    }
-
     /// The first result wins without awaiting a cancelled model task. A model
     /// that ignores cooperative cancellation cannot turn the documented hard
     /// timeout into an unbounded benchmark.
@@ -451,34 +453,179 @@ extension BenchMode {
         request: RefineMeetingRequest,
         timeoutSeconds: Int
     ) async throws -> RefineDraft {
-        let (stream, continuation) = AsyncStream.makeStream(
-            of: RefineBenchmarkResult.self)
-        let refineTask = Task { @MainActor in
+        do {
+            return try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                try await services.refineMeeting.draft.execute(request)
+            }
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchRefineResourceError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchRefineResourceError.timedOut(timeoutSeconds)
+        }
+    }
+
+    /// `portavoz-app --bench-resource-summary` executes manual Summary through
+    /// the real ApplicationKit workflow, the pinned embedded MLX provider, and
+    /// a disposable fixed transcript. The summary is persisted only to the
+    /// temporary benchmark database.
+    @MainActor
+    static func runSummaryResourceBenchIfRequested(services: AppServices) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let configuration: BenchSummaryResourceConfiguration?
+        do {
+            configuration = try BenchSummaryResourceConfiguration.requested(
+                arguments: arguments)
+        } catch {
+            emit("bench-summary: setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+        guard let configuration else { return }
+        guard arguments.contains("-use-temp-store") else {
+            emit("bench-summary: -use-temp-store is required")
+            exit(1)
+        }
+        let probe: BenchResourceScenarioProbe
+        do {
+            probe = try BenchResourceScenarioProbe(arguments: arguments)
+        } catch {
+            emit("bench-summary: probe setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+
+        setbuf(stdout, nil)
+        Task { @MainActor in
             do {
-                let draft = try await services.refineMeeting.draft.execute(
-                    request)
-                continuation.yield(.completed(draft))
+                let request = try await makeSummaryBenchmarkRequest(
+                    services: services)
+                let result = try await probe.measure(scenario: "summary") {
+                    try await runSummaryBenchmark(
+                        services: services,
+                        request: request,
+                        timeoutSeconds: configuration.timeoutSeconds)
+                }
+                guard case .completed(persisted: true) = result else {
+                    throw BenchSummaryResourceError.unexpectedResult(
+                        summaryBenchmarkResultName(result))
+                }
+                emit("bench-summary: resource sample complete")
+                exit(0)
             } catch {
-                continuation.yield(.failed(error.localizedDescription))
+                probe.cancel()
+                emit("bench-summary: FAILED: \(error.localizedDescription)")
+                exit(1)
             }
         }
-        let timeoutTask = Task {
-            try? await Task.sleep(for: .seconds(timeoutSeconds))
-            continuation.yield(.timedOut)
-        }
-        var iterator = stream.makeAsyncIterator()
-        let result = await iterator.next() ?? .timedOut
-        refineTask.cancel()
-        timeoutTask.cancel()
-        continuation.finish()
+    }
 
+    @MainActor
+    private static func makeSummaryBenchmarkRequest(
+        services: AppServices
+    ) async throws -> RegenerateSummaryRequest {
+        guard await services.modelLifecycle.installation(
+            for: ModelCatalog.mlxQwen35,
+            forceVerification: true) != nil
+        else {
+            throw BenchSummaryResourceError.modelsNotReady
+        }
+        let fixture = makeSummaryBenchmarkFixture()
+        try await services.store.saveImportedMeeting(
+            fixture.meeting,
+            speakers: fixture.speakers,
+            segments: fixture.segments)
+        return RegenerateSummaryRequest(
+            meetingID: fixture.meeting.id,
+            segments: fixture.segments,
+            speakers: fixture.speakers,
+            recipe: .general,
+            targetLanguage: "en",
+            providerOverride: .mlx)
+    }
+
+    private static func makeSummaryBenchmarkFixture() -> (
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment]
+    ) {
+        let now = Date()
+        let meeting = Meeting(
+            title: "Resource benchmark",
+            startedAt: now.addingTimeInterval(-96),
+            endedAt: now,
+            language: "en")
+        let me = Speaker(
+            meetingID: meeting.id,
+            label: "Me",
+            displayName: "Jordan",
+            isMe: true)
+        let teammate = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: "Casey")
+        let reviewer = Speaker(
+            meetingID: meeting.id,
+            label: "S2",
+            displayName: "Morgan")
+        let turns: [(Speaker, String)] = [
+            (me, "We are reviewing a small local-first product release."),
+            (teammate, "The installer checks passed on the sixteen gigabyte Mac."),
+            (reviewer, "The eight gigabyte Mac still needs three stable resource runs."),
+            (me, "Recording responsiveness remains the release-blocking priority."),
+            (teammate, "I will measure startup time and memory before Friday."),
+            (reviewer, "I will verify that every evidence file contains no meeting content."),
+            (me, "We decided to defer background indexing while a call is active."),
+            (teammate, "The summary must preserve decisions and explicit owners."),
+            (reviewer, "Failed or incomplete measurements will remain visibly blocked."),
+            (me, "We will publish only after the matrix is complete and reviewed.")
+        ]
+        let segments = turns.enumerated().map { index, turn in
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: turn.0.id,
+                channel: turn.0.isMe ? .microphone : .system,
+                text: turn.1,
+                language: "en",
+                startTime: TimeInterval(index * 9),
+                endTime: TimeInterval(index * 9 + 7),
+                isFinal: true)
+        }
+        return (meeting, [me, teammate, reviewer], segments)
+    }
+
+    @MainActor
+    private static func runSummaryBenchmark(
+        services: AppServices,
+        request: RegenerateSummaryRequest,
+        timeoutSeconds: Int
+    ) async throws -> SummaryRegenerationResult {
+        do {
+            return try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                await services.regenerateSummary.execute(request)
+            }
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchSummaryResourceError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchSummaryResourceError.timedOut(timeoutSeconds)
+        }
+    }
+
+    private static func summaryBenchmarkResultName(
+        _ result: SummaryRegenerationResult
+    ) -> String {
         switch result {
-        case .completed(let draft):
-            return draft
-        case .failed(let message):
-            throw BenchRefineResourceError.operationFailed(message)
-        case .timedOut:
-            throw BenchRefineResourceError.timedOut(timeoutSeconds)
+        case .completed(persisted: false):
+            "completed without persistence"
+        case .completed(persisted: true):
+            "completed"
+        case .unchanged:
+            "unchanged"
+        case .unavailable:
+            "unavailable"
+        case .generationFailed:
+            "generation failed"
         }
     }
 

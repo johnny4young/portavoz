@@ -251,6 +251,27 @@ final class IntelligenceSchedulerTests: XCTestCase {
             recorder.events.compactMap(\.finishedOutcome),
             [.completed, .completed])
     }
+
+    func testBackgroundTelemetryUsesPostCaptureClass() async throws {
+        let recorder = ResourceWorkloadEventRecorder()
+        let scheduler = IntelligenceScheduler(telemetry: ResourceWorkloadTelemetry(
+            receiver: recorder.receive))
+
+        _ = try await scheduler.run(.background) { "summary" }
+
+        XCTAssertEqual(
+            recorder.events.compactMap(\.startedDescriptor),
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .postCapture,
+                    kind: .languageInference,
+                    operation: .queueWait),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .postCapture,
+                    kind: .languageInference,
+                    operation: .execute),
+            ])
+    }
 }
 
 private extension ResourceWorkloadEvent {

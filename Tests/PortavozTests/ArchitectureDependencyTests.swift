@@ -291,8 +291,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchResourceScenarioProbe.swift")
         let benchMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices.swift")
+        let scheduler = try Self.contents(
+            of: "Sources/IntelligenceKit/IntelligenceScheduler.swift")
+        let mlxProvider = try Self.contents(
+            of: "Sources/IntelligenceKit/MLXSummaryProvider.swift")
+        let postCapture = try Self.contents(
+            of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
         let runner = try Self.contents(
             of: "scripts/run-resource-baseline.sh")
         let compatibilityRunner = try Self.contents(
@@ -317,7 +325,24 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchMode.contains(
             "services.refineMeeting.draft.execute"))
         XCTAssertTrue(benchMode.contains(
+            "runSummaryResourceBenchIfRequested"))
+        XCTAssertTrue(benchMode.contains(
+            "services.regenerateSummary.execute"))
+        XCTAssertTrue(benchMode.contains(
+            "providerOverride: .mlx"))
+        XCTAssertTrue(benchMode.contains(
+            "runsIsolatedResourceBenchmark"))
+        let benchmarkExit = try XCTUnwrap(app.range(
+            of: "if runsIsolatedResourceBenchmark"))
+        let normalStartup = try XCTUnwrap(app.range(
+            of: "await appServices.meetingSync.start"))
+        XCTAssertLessThan(benchmarkExit.lowerBound, normalStartup.lowerBound)
+        XCTAssertTrue(app.contains(
+            "if !runsIsolatedResourceBenchmark"))
+        XCTAssertTrue(benchMode.contains(
             "forceVerification: true"))
+        XCTAssertTrue(scenarioProbe.contains(
+            "BenchResourceTimedOperation"))
         XCTAssertTrue(scenarioProbe.contains(
             "replayingActive: true"))
         XCTAssertTrue(scenarioProbe.contains(
@@ -332,6 +357,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"sample_arguments+=(--sample "idle=$idle_sample")"#))
         XCTAssertTrue(runner.contains(
             #"sample_arguments+=(--sample "refine=$refine_sample")"#))
+        XCTAssertTrue(runner.contains(
+            #"sample_arguments+=(--sample "summary=$summary_sample")"#))
+        XCTAssertTrue(scheduler.contains(
+            "static let mlx = IntelligenceScheduler"))
+        XCTAssertTrue(mlxProvider.contains(
+            "IntelligenceScheduler.mlx.run(priority)"))
+        XCTAssertTrue(postCapture.contains(
+            "priority: .background"))
         XCTAssertTrue(compatibilityRunner.contains(
             #"exec "$ROOT/scripts/run-resource-baseline.sh" "$@""#))
         XCTAssertFalse(runner.contains("/Applications/Portavoz.app"))

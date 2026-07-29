@@ -35,7 +35,7 @@ perf-ledger:
 PORTAVOZ_RESOURCE_RUNS ?= 3
 PORTAVOZ_RESOURCE_DURATION ?= 60
 PORTAVOZ_RESOURCE_IDLE_DURATION ?= 30
-PORTAVOZ_RESOURCE_REFINE_TIMEOUT ?= 900
+PORTAVOZ_RESOURCE_MODEL_TIMEOUT ?= 900
 PORTAVOZ_RESOURCE_OUTPUT ?=
 resource-baseline:
 	@test -n "$(PORTAVOZ_RESOURCE_PROFILE)" || \
@@ -52,7 +52,7 @@ resource-baseline:
 			--runs "$(PORTAVOZ_RESOURCE_RUNS)" \
 			--duration "$(PORTAVOZ_RESOURCE_DURATION)" \
 			--idle-duration "$(PORTAVOZ_RESOURCE_IDLE_DURATION)" \
-			--refine-timeout "$(PORTAVOZ_RESOURCE_REFINE_TIMEOUT)" \
+			--model-timeout "$(PORTAVOZ_RESOURCE_MODEL_TIMEOUT)" \
 			$(if $(PORTAVOZ_RESOURCE_OUTPUT),--output "$(PORTAVOZ_RESOURCE_OUTPUT)")
 
 ## Backward-compatible alias for the original recording-only command name.

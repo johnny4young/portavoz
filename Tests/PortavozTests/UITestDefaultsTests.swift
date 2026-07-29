@@ -32,6 +32,17 @@ final class UITestDefaultsTests: XCTestCase {
         XCTAssertFalse(policy.usesTemporaryModelStore)
     }
 
+    func testSummaryResourceBenchmarkReusesVerifiedModelsOnly() {
+        let policy = AppStorageIsolationPolicy(
+            arguments: [
+                "Portavoz", "-use-temp-store",
+                "--bench-resource-summary",
+            ])
+
+        XCTAssertTrue(policy.usesTemporaryMeetingStore)
+        XCTAssertFalse(policy.usesTemporaryModelStore)
+    }
+
     func testTemporaryStoreLaunchInstallsVolatileOverrides() throws {
         let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

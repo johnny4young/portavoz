@@ -422,6 +422,7 @@ class ResourceBaselineTests(unittest.TestCase):
             root = Path(directory)
             recording = root / "recording-1.json"
             refine = root / "refine-1.json"
+            summary = root / "summary-1.json"
             stop = root / "stop-1.json"
             idle = root / "idle-1.json"
             scenarios = dict(self.required_scenarios())
@@ -431,6 +432,8 @@ class ResourceBaselineTests(unittest.TestCase):
                 self.sample(1, scenarios["recording"])))
             refine.write_text(json.dumps(
                 self.sample(1, scenarios["refine"])))
+            summary.write_text(json.dumps(
+                self.sample(1, scenarios["summary"])))
             stop.write_text(json.dumps(
                 self.sample(1, scenarios["stop"])))
             output = root / "receipt.json"
@@ -457,6 +460,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     "--sample",
                     f"refine={refine}",
                     "--sample",
+                    f"summary={summary}",
+                    "--sample",
                     f"stop={stop}",
                     "--output",
                     str(output),
@@ -468,7 +473,7 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(receipt["host"]["profile"], "memory-8gb")
             self.assertEqual(
                 [scenario["id"] for scenario in receipt["scenarios"]],
-                ["idle", "recording", "refine", "stop"],
+                ["idle", "recording", "refine", "stop", "summary"],
             )
             self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
             baseline.validate_receipt(
@@ -602,6 +607,7 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("--bench-resource-run", runner)
         self.assertIn("--bench-resource-idle-duration", runner)
         self.assertIn("--bench-resource-refine", runner)
+        self.assertIn("--bench-resource-summary", runner)
         self.assertIn("--bench-resource-timeout", runner)
         self.assertIn('idle_sample="$fragments/idle-$run.json"', runner)
         self.assertIn('sample_arguments+=(--sample "idle=$idle_sample")', runner)
@@ -610,14 +616,19 @@ class ResourceBaselineTests(unittest.TestCase):
             'sample_arguments+=(--sample "refine=$refine_sample")',
             runner,
         )
+        self.assertIn('summary_sample="$fragments/summary-$run.json"', runner)
+        self.assertIn(
+            'sample_arguments+=(--sample "summary=$summary_sample")',
+            runner,
+        )
         self.assertIn("say -v Samantha -r 170", runner)
         self.assertIn("fixture_audio_bytes", runner)
         self.assertIn("(( fixture_audio_bytes > 0 ))", runner)
         self.assertIn("RUNS=3", runner)
         self.assertIn("(( RUNS >= 3 ))", runner)
-        self.assertIn("REFINE_TIMEOUT=900", runner)
-        self.assertIn("(( REFINE_TIMEOUT >= 60 ))", runner)
-        self.assertIn("(( REFINE_TIMEOUT <= 3600 ))", runner)
+        self.assertIn("MODEL_TIMEOUT=900", runner)
+        self.assertIn("(( MODEL_TIMEOUT >= 60 ))", runner)
+        self.assertIn("(( MODEL_TIMEOUT <= 3600 ))", runner)
         self.assertIn("resource_baseline.py assemble", runner)
         self.assertNotIn("/Applications/Portavoz.app", runner)
         self.assertLess(

@@ -4,6 +4,17 @@ import XCTest
 @testable import portavoz_app
 
 final class ResourceRunProbeTests: XCTestCase {
+    func testResourceBenchmarksOwnTheirProcessStartup() {
+        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+            arguments: ["Portavoz", "--bench-record", "30"]))
+        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+            arguments: ["Portavoz", "--bench-resource-refine", "fixture.aiff"]))
+        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+            arguments: ["Portavoz", "--bench-resource-summary"]))
+        XCTAssertFalse(BenchMode.runsIsolatedResourceBenchmark(
+            arguments: ["Portavoz", "-use-temp-store", "-seed-demo"]))
+    }
+
     func testRefineResourceConfigurationBoundsTimeout() throws {
         let configuration = try XCTUnwrap(
             BenchRefineResourceConfiguration.requested(arguments: [
@@ -25,6 +36,77 @@ final class ResourceRunProbeTests: XCTestCase {
                 $0 as? BenchRefineResourceError,
                 .invalidTimeout)
         }
+    }
+
+    func testSummaryResourceConfigurationBoundsTimeout() throws {
+        let configuration = try XCTUnwrap(
+            BenchSummaryResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-summary",
+                "--bench-resource-timeout", "600",
+            ]))
+        XCTAssertEqual(configuration.timeoutSeconds, 600)
+
+        XCTAssertThrowsError(
+            try BenchSummaryResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-summary",
+                "--bench-resource-timeout", "3601",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchSummaryResourceError,
+                .invalidTimeout)
+        }
+    }
+
+    @MainActor
+    func testTimedResourceOperationReturnsFirstSuccessfulValue() async throws {
+        let value = try await BenchResourceTimedOperation.run(
+            timeout: .seconds(1)
+        ) {
+            42
+        }
+
+        XCTAssertEqual(value, 42)
+    }
+
+    @MainActor
+    func testTimedResourceOperationPreservesFailureAsContentFreeText() async {
+        do {
+            let _: Int = try await BenchResourceTimedOperation.run(
+                timeout: .seconds(1)
+            ) {
+                throw BenchSummaryResourceError.modelsNotReady
+            }
+            XCTFail("Expected the operation to fail")
+        } catch {
+            XCTAssertEqual(
+                error as? BenchResourceTimedOperationError,
+                .operationFailed(
+                    BenchSummaryResourceError.modelsNotReady.localizedDescription))
+        }
+    }
+
+    @MainActor
+    func testTimedResourceOperationDoesNotAwaitCancelledWork() async {
+        let startedAt = ContinuousClock.now
+        do {
+            let _: Int = try await BenchResourceTimedOperation.run(
+                timeout: .milliseconds(20)
+            ) {
+                try await Task.sleep(for: .seconds(5))
+                return 42
+            }
+            XCTFail("Expected the operation to time out")
+        } catch {
+            XCTAssertEqual(
+                error as? BenchResourceTimedOperationError,
+                .timedOut)
+        }
+        XCTAssertLessThan(
+            startedAt.duration(to: .now),
+            .seconds(1))
     }
 
     @MainActor

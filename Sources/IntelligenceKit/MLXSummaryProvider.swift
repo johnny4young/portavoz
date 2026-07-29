@@ -17,17 +17,28 @@ public struct MLXSummaryProvider: SummaryProvider {
     public static let providerID = "mlx/qwen3.5-4b-mlx-4bit"
 
     private let modelDirectory: URL
+    private let priority: IntelligenceScheduler.Priority
 
     /// - Parameter modelDirectory: a ModelStore-VERIFIED directory (D7) —
     ///   this type never downloads anything by itself.
-    public init(modelDirectory: URL) {
+    /// - Parameter priority: Interactive for user-awaited generation and
+    ///   background for durable post-capture work.
+    public init(
+        modelDirectory: URL,
+        priority: IntelligenceScheduler.Priority = .interactive
+    ) {
         self.modelDirectory = modelDirectory
+        self.priority = priority
     }
 
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
         let prompt = OpenAICompatibleSummaryProvider.prompt(for: request)
-        let content = try await MLXModelCache.shared.respond(
-            system: prompt.system, user: prompt.user, directory: modelDirectory)
+        let content = try await IntelligenceScheduler.mlx.run(priority) {
+            try await MLXModelCache.shared.respond(
+                system: prompt.system,
+                user: prompt.user,
+                directory: modelDirectory)
+        }
         var draft = try OpenAICompatibleSummaryProvider.parseStructured(content)
             .draft(for: request)
         draft.fingerprint = SummaryFingerprint.compute(
@@ -36,12 +47,12 @@ public struct MLXSummaryProvider: SummaryProvider {
     }
 }
 
-/// Owns the loaded container and serializes generation: one summary at a
-/// time on the GPU. The weights (2.3 GB resident) stay loaded only while
-/// summaries keep coming: after `idleRelease` without a request the
-/// container is dropped and the next summary reloads it (a few seconds
-/// against a generation that takes tens) — so a summary never leaves the
-/// app holding gigabytes for the rest of the day.
+/// Owns the loaded container behind the dedicated MLX scheduler. The weights
+/// (2.3 GB resident) stay loaded only while summaries keep coming: after
+/// `idleRelease` without a request the container is dropped and the next
+/// summary reloads it (a few seconds against a generation that takes tens) —
+/// so a summary never leaves the app holding gigabytes for the rest of the
+/// day.
 actor MLXModelCache {
     static let shared = MLXModelCache()
 
