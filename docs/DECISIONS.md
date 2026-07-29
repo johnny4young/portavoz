@@ -4549,3 +4549,43 @@ ownership. Measuring application transactions rather than realtime callbacks
 keeps capture passive. Separating observation from policy allows later
 governor decisions to be justified by field data instead of intuition and
 prevents the measurement slice itself from changing product behavior.
+
+## D149 — Resource baselines require a complete multi-host evidence matrix (Jul 2026)
+
+**Context:** matched resource signposts make expensive work observable, but a
+single developer-machine trace cannot justify policy for constrained Macs.
+Ad-hoc Instruments exports also cannot prove that every scenario was measured
+against one release build, that runs were repeated, or that a convenient green
+scenario was not substituted for a missing recording-interference case.
+Persisting raw intervals, process arguments, paths, or operator notes would
+create a new content and identity surface.
+
+**Decision:** one tracked schema declares three hardware profiles—8 GB, 16 GB,
+and the reference-memory Mac—and nine required scenarios: idle, recording,
+Stop, Refine, summary, Ask, indexing, recording plus indexing, and recording
+plus batch work. Every profile receipt is exact-shaped, identifies one Release
+version/build/commit, validates installed physical memory against its declared
+tier, and contains only OS/hardware/toolchain identity, aggregate process
+metrics, and bounded summaries of D148 workload enums. It contains no meeting,
+transcript, file, model, span, process-argument, source-path, error, or
+free-form operator field.
+
+Each passing cell requires at least three stable runs and every required
+workload descriptor. Stability reuses the existing measurement rule: wall or
+CPU p95/p50 above 1.25 blocks the cell as unstable. The deterministic evaluator
+uses nearest-rank p50/p95, retains peak footprint, minimum free disk, worst
+thermal state, power source, and low-power observations, and writes owner-only
+JSON and Markdown. Missing, failed, not-observed, under-sampled, and unstable
+evidence produces a complete blocking matrix. Malformed existing receipts,
+duplicate profiles/runs or JSON keys, build or memory-tier mismatches,
+non-finite metrics, unknown enums, and extra fields fail closed. Matrix
+completion is measurement evidence, not a resource budget: admission,
+deferral, concurrency, eviction, and model-residency decisions remain absent
+until the baseline is reviewed.
+
+**Rationale:** policy for call-safe recording must be derived from comparable
+evidence across the machines that users actually run. A bounded aggregate
+contract keeps long-call artifacts small and private, while a complete blocked
+scorecard makes missing hardware work visible without pretending it is a
+parser failure. Keeping observation, baseline acceptance, and policy as three
+separate steps prevents tooling from silently inventing product limits.

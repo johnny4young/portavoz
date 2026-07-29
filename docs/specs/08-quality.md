@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,207 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,208 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1282,7 +1282,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,207 XCTest package cases (13 gated),
+The current field-reliability gate is 1,208 XCTest package cases (13 gated),
 zero strict-lint violations across 389 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
@@ -1306,6 +1306,19 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   intervals by the allowlisted class, kind, operation, and outcome fields.
   These intervals carry no meeting, transcript, path, model, span, or error
   identity and never execute from AudioCaptureKit callbacks.
+- `scripts/resource_baseline.py evaluate`: validates exact-shaped Release
+  receipts against `docs/evidence/resource-baseline-matrix.json` and always
+  projects the 3-profile × 9-scenario matrix. Each passing cell requires three
+  stable runs and its contracted workload descriptors. Output is owner-only
+  JSON/Markdown with nearest-rank p50/p95, peak footprint, energy, free-disk,
+  thermal, and power summaries. Wall or CPU p95/p50 above 1.25 marks the row
+  unstable. Missing, failed, not-observed, under-sampled, or unstable rows
+  block without disappearing; malformed or payload-bearing evidence is an
+  error. Eighteen deterministic tooling tests cover completeness, blocking
+  states, identity/memory-tier mismatches, exact privacy shape, non-finite
+  metrics, duplicate keys/runs/profiles, required workloads, contract
+  weakening, output permissions, and source-path omission. This proves
+  measurement completeness, not a resource budget or governor decision.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.
 - `scripts/run-spotlight-scale-baseline.sh`: isolated Release legacy/snapshot projection matrix at 1k/10k/100k meetings, exact fingerprint comparison, and optional synthetic-only protected-index delivery/cleanup.
 - `make perf-ledger` (`scripts/run-perf-ledger.sh` + `scripts/perf_ledger.py`): the release gate (PERF-001/PERF-008). It runs the unattended harnesses, resolves every metric declared in `docs/evidence/perf-thresholds.json` out of their reports, and answers with one JSON + Markdown scorecard and one exit code. Budgets come from the Target column below; nothing is invented in the contract. An absolute miss fails the run; a regression beyond 15% (latency) or 20% (footprint) against the committed baseline is reported as a candidate, because PERF-008 requires three stable runs before a regression counts. A metric whose harness did not run is printed as **not measured** rather than omitted, and the run claims `authoritative` only when every report comes from one release build on one Apple Silicon machine matching the baseline — hosted CI and mixed hosts stay informational. The gate also refuses to convict on a measurement that disagrees with itself: when a timed metric's p95 exceeds its own p50 by more than 1.25x, the 20 iterations did not agree, so a budget miss is reported as **verdict withheld** rather than a failure, and the run drops to informational because PERF-001's "stable machine" is a claim about the machine's state, not only its identity. The rule applies only to timed units with enough samples for p95 to differ from the maximum — byte deltas move with page granularity rather than with scheduling, and a three-run distribution has no tail to speak of. Each run also stamps the Swift/Xcode toolchain onto every report it produces, because a shift in the numbers is otherwise indistinguishable from a codegen change: when the baseline was measured with a different toolchain — or, like the July 2026 evidence, predates the stamp entirely — the scorecard prints a **Comparability** caveat. That caveat qualifies what a delta can be attributed to; it never costs the run its authority, which PERF-001 grants on the machine alone. `Tests/Tooling/test_perf_ledger.py` covers the budget, regression, honesty, authority, toolchain, selector, and contract rules.

@@ -6,6 +6,8 @@ D147 additionally binds release admission to the content-free reliability
 ledger described below.
 D148 adds the process-wide content-free resource measurement described in
 Composition; it observes current work without adding governor policy.
+D149 adds the fail-closed multi-host baseline evidence boundary described in
+the same section; it remains tooling-only and does not affect app scheduling.
 
 ## Structure
 
@@ -129,6 +131,20 @@ signpost. The existing exact `Meeting Detail First Content` interval remains
 in parallel for the established 5,000-segment baseline. No admission,
 deferral, priority, concurrency, model-residency, or eviction behavior changes
 in this measurement slice.
+
+The tracked `docs/evidence/resource-baseline-matrix.json` contract and
+`scripts/resource_baseline.py` sit outside the executable. They require three
+stable Release runs for every combination of 8 GB, 16 GB, and reference-memory
+profiles with idle, recording, Stop, Refine, summary, Ask, indexing,
+recording-plus-indexing, and recording-plus-batch scenarios. Receipts accept
+only aggregate process resource metrics and bounded summaries of the same
+closed workload enums. Wall or CPU p95/p50 above 1.25 marks a cell unstable.
+The evaluator rejects extra/content-bearing fields, unknown enums, non-finite
+values, duplicate JSON keys/runs/profiles, wrong memory tiers, and build
+mismatches. Missing, incomplete, or unstable hardware evidence still produces
+all 27 rows as a blocking owner-only scorecard. The app never reads this
+contract or scorecard, and matrix completion does not enable resource
+admission, deferral, residency, or eviction behavior.
 
 Local voice enrollment is composed in `AppServices+LocalVoiceIdentity` and
 enters `ApplicationKit.ManageLocalVoiceIdentity`. The use case bounds requested

@@ -1,0 +1,523 @@
+import importlib.util
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+
+REPOSITORY = Path(__file__).resolve().parents[2]
+SCRIPT = REPOSITORY / "scripts" / "resource_baseline.py"
+SPEC = importlib.util.spec_from_file_location("resource_baseline", SCRIPT)
+baseline = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+SPEC.loader.exec_module(baseline)
+
+
+class ResourceBaselineTests(unittest.TestCase):
+    version = "0.9.0"
+    build = "202607280002"
+    commit = "a" * 40
+    profile_memory = {
+        "memory-8gb": 8 * 1024**3,
+        "memory-16gb": 16 * 1024**3,
+        "reference": 36 * 1024**3,
+    }
+
+    def test_complete_matrix_passes_and_uses_nearest_rank_aggregates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipts = [
+                self.write_receipt(root, profile)
+                for profile in self.profile_memory
+            ]
+            output = root / "scorecard"
+
+            result = baseline.main_from_args(self.evaluate_args(receipts, output))
+
+            self.assertEqual(result, 0)
+            scorecard = self.read_scorecard(output)
+            self.assertEqual(scorecard["outcome"], "pass")
+            self.assertEqual(len(scorecard["measurements"]), 27)
+            recording = next(
+                row
+                for row in scorecard["measurements"]
+                if row["profile"] == "memory-8gb"
+                and row["scenario"] == "recording"
+            )
+            self.assertEqual(recording["sampleCount"], 3)
+            self.assertEqual(
+                recording["metrics"]["wallDurationMilliseconds"],
+                {"maximum": 1030.0, "p50": 1020.0, "p95": 1030.0},
+            )
+            self.assertEqual(
+                os.stat(output / "resource-baseline.json").st_mode & 0o777,
+                0o600,
+            )
+
+    def test_no_receipts_produces_complete_blocked_matrix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "scorecard"
+
+            result = baseline.main_from_args(self.evaluate_args([], output))
+
+            self.assertEqual(result, 1)
+            scorecard = self.read_scorecard(output)
+            self.assertEqual(scorecard["outcome"], "blocked")
+            self.assertEqual(len(scorecard["measurements"]), 27)
+            self.assertTrue(
+                all(row["state"] == "missing" for row in scorecard["measurements"])
+            )
+
+    def test_pass_with_too_few_samples_is_incomplete_not_malformed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["scenarios"][0]["samples"] = document["scenarios"][0]["samples"][:2]
+            receipt.write_text(json.dumps(document))
+
+            output = root / "scorecard"
+            result = baseline.main_from_args(self.evaluate_args([receipt], output))
+
+            self.assertEqual(result, 1)
+            scorecard = self.read_scorecard(output)
+            idle = next(
+                row
+                for row in scorecard["measurements"]
+                if row["profile"] == "memory-8gb"
+                and row["scenario"] == "idle"
+            )
+            self.assertEqual(idle["state"], "incomplete")
+            self.assertEqual(idle["sampleCount"], 2)
+
+    def test_inconsistent_timing_samples_are_unstable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["scenarios"][0]["samples"][2][
+                "wallDurationMilliseconds"
+            ] = 10_000
+            receipt.write_text(json.dumps(document))
+
+            output = root / "scorecard"
+            result = baseline.main_from_args(self.evaluate_args([receipt], output))
+
+            self.assertEqual(result, 1)
+            idle = next(
+                row
+                for row in self.read_scorecard(output)["measurements"]
+                if row["profile"] == "memory-8gb"
+                and row["scenario"] == "idle"
+            )
+            self.assertEqual(idle["state"], "unstable")
+
+    def test_failed_and_not_observed_scenarios_remain_blocking(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["scenarios"][0]["state"] = "fail"
+            document["scenarios"][1]["state"] = "not-observed"
+            document["scenarios"][1]["samples"] = []
+            receipt.write_text(json.dumps(document))
+
+            output = root / "scorecard"
+            result = baseline.main_from_args(self.evaluate_args([receipt], output))
+
+            self.assertEqual(result, 1)
+            states = {
+                row["scenario"]: row["state"]
+                for row in self.read_scorecard(output)["measurements"]
+                if row["profile"] == "memory-8gb"
+            }
+            self.assertEqual(states["idle"], "fail")
+            self.assertEqual(states["recording"], "not-observed")
+
+    def test_duplicate_profile_receipts_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = self.write_receipt(root, "memory-8gb", suffix="first")
+            second = self.write_receipt(root, "memory-8gb", suffix="second")
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "repeats profile: memory-8gb",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([first, second], root / "scorecard")
+                    )
+                )
+
+    def test_build_mismatch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["build"]["commit"] = "b" * 40
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "does not match requested build",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_memory_profile_mismatch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["host"]["physicalMemoryBytes"] = 16 * 1024**3
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "does not match profile memory-8gb",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_content_bearing_addition_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["meetingTitle"] = "private"
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "forbidden keys: meetingTitle",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_nonfinite_metric_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["scenarios"][0]["samples"][0][
+                "wallDurationMilliseconds"
+            ] = float("nan")
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "wallDurationMilliseconds must be finite",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_duplicate_run_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["scenarios"][0]["samples"][1]["run"] = 1
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "repeats run: 1",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_pass_sample_missing_required_workload_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["scenarios"][1]["samples"][0]["workloads"] = []
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "missing workloads: .*recordingCritical/audioCapture/execute",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_contract_rejects_unknown_workload_enum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract = json.loads(baseline.DEFAULT_CONTRACT.read_text())
+            contract["scenarios"][1]["requiredWorkloads"][0][
+                "workloadClass"
+            ] = "urgent"
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "workloadClass must be one of",
+            ):
+                baseline.validate_contract(
+                    baseline.load_json(contract_path, "resource contract")
+                )
+
+    def test_contract_cannot_weaken_stability_rules(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            mutations = (
+                (
+                    "minimumStableSamples",
+                    1,
+                    "minimumStableSamples must be an integer >= 3",
+                ),
+                (
+                    "maximumTimingP95ToP50Ratio",
+                    2.0,
+                    "maximumTimingP95ToP50Ratio must be <= 1.25",
+                ),
+            )
+            for key, value, message in mutations:
+                with self.subTest(key=key):
+                    contract = json.loads(baseline.DEFAULT_CONTRACT.read_text())
+                    contract[key] = value
+                    contract_path = root / f"{key}.json"
+                    contract_path.write_text(json.dumps(contract))
+
+                    with self.assertRaisesRegex(
+                        baseline.ResourceBaselineError,
+                        message,
+                    ):
+                        baseline.validate_contract(
+                            baseline.load_json(
+                                contract_path,
+                                "resource contract",
+                            )
+                        )
+
+    def test_contract_requires_every_hardware_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract = json.loads(baseline.DEFAULT_CONTRACT.read_text())
+            contract["profiles"] = contract["profiles"][:-1]
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "profiles must be exactly",
+            ):
+                baseline.validate_contract(
+                    baseline.load_json(contract_path, "resource contract")
+                )
+
+    def test_tracked_contract_pins_the_required_matrix(self):
+        contract = baseline.validate_contract(
+            baseline.load_json(baseline.DEFAULT_CONTRACT, "resource contract")
+        )
+        self.assertEqual(contract["minimumSamples"], 3)
+        self.assertEqual(contract["maximumTimingRatio"], 1.25)
+        self.assertEqual(
+            contract["profiles"],
+            {
+                "memory-8gb": {
+                    "minimum": 7 * 1024**3,
+                    "maximum": 10 * 1024**3,
+                },
+                "memory-16gb": {
+                    "minimum": 14 * 1024**3,
+                    "maximum": 18 * 1024**3,
+                },
+                "reference": {
+                    "minimum": 32 * 1024**3,
+                    "maximum": None,
+                },
+            },
+        )
+        self.assertEqual(
+            contract["scenarios"],
+            {
+                "idle": (),
+                "recording": (
+                    ("recordingCritical", "audioCapture", "execute"),
+                    ("liveInteractive", "liveTranscription", "execute"),
+                ),
+                "stop": (
+                    ("recordingCritical", "audioCapture", "execute"),
+                ),
+                "refine": (
+                    ("userInitiated", "qualityTranscription", "execute"),
+                    ("userInitiated", "speakerDiarization", "execute"),
+                ),
+                "summary": (
+                    ("userInitiated", "languageInference", "queueWait"),
+                    ("userInitiated", "languageInference", "execute"),
+                ),
+                "ask": (
+                    ("userInitiated", "languageInference", "queueWait"),
+                    ("userInitiated", "languageInference", "execute"),
+                ),
+                "indexing": (
+                    ("maintenance", "searchIndex", "execute"),
+                ),
+                "recording-indexing": (
+                    ("recordingCritical", "audioCapture", "execute"),
+                    ("liveInteractive", "liveTranscription", "execute"),
+                    ("maintenance", "searchIndex", "execute"),
+                ),
+                "recording-batch": (
+                    ("recordingCritical", "audioCapture", "execute"),
+                    ("liveInteractive", "liveTranscription", "execute"),
+                    ("postCapture", "qualityTranscription", "execute"),
+                ),
+            },
+        )
+
+    def test_duplicate_json_keys_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "duplicate.json"
+            receipt.write_text('{"schemaVersion": 1, "schemaVersion": 1}')
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "duplicate key: schemaVersion",
+            ):
+                baseline.load_json(receipt, "resource receipt")
+
+    def test_scorecard_never_contains_source_paths_or_payload_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            output = root / "private-scorecard"
+
+            baseline.main_from_args(self.evaluate_args([receipt], output))
+
+            rendered = (output / "resource-baseline.md").read_text()
+            encoded = (output / "resource-baseline.json").read_text()
+            self.assertNotIn(str(receipt), rendered)
+            self.assertNotIn(str(receipt), encoded)
+            self.assertNotIn("meeting", encoded.lower())
+            self.assertNotIn("transcript", encoded.lower())
+
+    def evaluate_args(self, receipts, output):
+        arguments = [
+            "evaluate",
+            "--version",
+            self.version,
+            "--build",
+            self.build,
+            "--commit",
+            self.commit,
+            "--output",
+            str(output),
+        ]
+        for receipt in receipts:
+            arguments += ["--receipt", str(receipt)]
+        return arguments
+
+    @staticmethod
+    def read_scorecard(output):
+        return json.loads((output / "resource-baseline.json").read_text())
+
+    def write_receipt(self, root, profile, suffix=None):
+        path = root / f"{profile}{'-' + suffix if suffix else ''}.json"
+        payload = {
+            "schemaVersion": 1,
+            "kind": "resource-baseline",
+            "collectedAt": "2026-07-28T18:00:00Z",
+            "build": {
+                "version": self.version,
+                "build": self.build,
+                "commit": self.commit,
+                "configuration": "release",
+            },
+            "host": {
+                "profile": profile,
+                "osVersion": "26.0",
+                "osBuild": "25A5316i",
+                "architecture": "arm64",
+                "physicalMemoryBytes": self.profile_memory[profile],
+                "hardwareModel": "Mac16,5",
+            },
+            "toolchain": {
+                "xcodeVersion": "26.0",
+                "xcodeBuild": "17A123",
+                "swiftVersion": "6.2",
+            },
+            "scenarios": [
+                self.scenario(identifier, required)
+                for identifier, required in self.required_scenarios()
+            ],
+        }
+        path.write_text(json.dumps(payload))
+        return path
+
+    def scenario(self, identifier, required):
+        return {
+            "id": identifier,
+            "state": "pass",
+            "samples": [
+                self.sample(run, required)
+                for run in range(1, 4)
+            ],
+        }
+
+    @staticmethod
+    def sample(run, required):
+        workload_summaries = []
+        for descriptor in required:
+            workload_summaries.append(
+                {
+                    **descriptor,
+                    "outcome": "completed",
+                    "count": 2,
+                    "durationMilliseconds": {
+                        "p50": 10.0,
+                        "p95": 20.0,
+                        "maximum": 25.0,
+                    },
+                }
+            )
+        return {
+            "run": run,
+            "wallDurationMilliseconds": 1000.0 + run * 10,
+            "cpuTimeMilliseconds": 500.0 + run,
+            "peakPhysicalFootprintBytes": 512 * 1024**2 + run,
+            "energyNanojoules": 1_000_000 + run,
+            "diskReadBytes": 2_000 + run,
+            "diskWrittenBytes": 3_000 + run,
+            "minimumAvailableDiskBytes": 40 * 1024**3 - run,
+            "maximumThermalState": "nominal",
+            "powerSource": "ac",
+            "lowPowerModeEnabled": False,
+            "workloads": workload_summaries,
+        }
+
+    @staticmethod
+    def required_scenarios():
+        contract = json.loads(baseline.DEFAULT_CONTRACT.read_text())
+        return [
+            (scenario["id"], scenario["requiredWorkloads"])
+            for scenario in contract["scenarios"]
+        ]
+
+
+if __name__ == "__main__":
+    unittest.main()

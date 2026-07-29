@@ -663,6 +663,21 @@ resource instrumentation, so capture callbacks never log, lock this telemetry,
 or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
+Resource evidence has a separate fail-closed boundary. One tracked contract
+requires idle, recording, Stop, Refine, summary, Ask, indexing,
+recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,
+and reference-memory Macs. A receipt is exact-shaped and release-build-bound;
+it may contain only host/toolchain identity, aggregate process resource
+metrics, and summaries of the closed workload enums. Three stable runs are
+required for each matrix cell; the existing measurement-stability rule marks
+wall or CPU timing with p95/p50 above 1.25 as unstable. The evaluator emits
+owner-only JSON and Markdown with nearest-rank p50/p95 and peak/thermal
+summaries. Missing, failed, not-observed, under-sampled, or unstable cells
+produce a complete blocked scorecard, while malformed, duplicate,
+mismatched-build, wrong-memory-tier, non-finite, or payload-bearing evidence
+fails validation. A complete matrix proves measurement coverage only: it does
+not define budgets or authorize governor policy.
+
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
 while a delayed direct row may replace only the newest still-open matching
@@ -1205,6 +1220,10 @@ behind aspirational diagrams:
   schedulers and ApplicationKit workflows receive the port through composition;
   the shared intelligence scheduler uses one event-only relay. The adapter has
   no content-bearing API, and AudioCaptureKit has no dependency on it.
+- One tracked resource evidence contract and a separate tooling evaluator own
+  multi-host measurement completeness. Application and capability packages do
+  not read receipts, choose memory tiers, aggregate baselines, or derive
+  runtime policy from this evidence.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the
@@ -1265,7 +1284,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,207 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,208 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

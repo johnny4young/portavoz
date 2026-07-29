@@ -241,6 +241,55 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Resource workload measurement (D148)"))
     }
 
+    func testResourceBaselineEvidenceIsCompleteFailClosedAndToolingOnly() throws {
+        let contract = try Self.jsonObject(
+            at: "docs/evidence/resource-baseline-matrix.json")
+        let profiles = try XCTUnwrap(contract["profiles"] as? [[String: Any]])
+        let scenarios = try XCTUnwrap(contract["scenarios"] as? [[String: Any]])
+        XCTAssertEqual(
+            Set(profiles.compactMap { $0["id"] as? String }),
+            Set(["memory-8gb", "memory-16gb", "reference"]))
+        XCTAssertEqual(
+            Set(scenarios.compactMap { $0["id"] as? String }),
+            Set([
+                "idle", "recording", "stop", "refine", "summary", "ask",
+                "indexing", "recording-indexing", "recording-batch",
+            ]))
+        XCTAssertEqual(contract["minimumStableSamples"] as? Int, 3)
+        XCTAssertEqual(
+            contract["maximumTimingP95ToP50Ratio"] as? Double,
+            1.25)
+
+        let evaluator = try Self.contents(of: "scripts/resource_baseline.py")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(evaluator.contains(
+            #"if all(row["state"] == "pass" for row in measurements)"#))
+        XCTAssertTrue(evaluator.contains("object_pairs_hook=reject_duplicate_keys"))
+        XCTAssertTrue(evaluator.contains("os.chmod(temporary, 0o600)"))
+        XCTAssertTrue(evaluator.contains(
+            "contract.maximumTimingP95ToP50Ratio must be <= 1.25"))
+        for forbidden in [
+            "meetingTitle", "transcriptText", "sourcePath", "modelName",
+            "errorMessage",
+        ] {
+            XCTAssertFalse(
+                evaluator.contains(forbidden),
+                "Resource evidence must not admit payload field \(forbidden)")
+        }
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_resource_baseline"))
+        XCTAssertTrue(decisions.contains("## D149"))
+
+        let appSources = try Self.sourceMatches(
+            under: "Sources",
+            pattern: #"resource-baseline(?:-matrix|-scorecard)?"#)
+        XCTAssertTrue(
+            appSources.isEmpty,
+            "Production packages must not read resource evidence: \(appSources)")
+    }
+
     func testPlatformSecurityImplementationHasOneOuterOwner() throws {
         let securityImports = try Self.imports(under: "Sources")
             .filter { $0.module == "Security" }

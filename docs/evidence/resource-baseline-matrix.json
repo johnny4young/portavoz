@@ -1,0 +1,148 @@
+{
+  "minimumStableSamples": 3,
+  "maximumTimingP95ToP50Ratio": 1.25,
+  "profiles": [
+    {
+      "id": "memory-8gb",
+      "maximumPhysicalMemoryBytes": 10737418240,
+      "minimumPhysicalMemoryBytes": 7516192768
+    },
+    {
+      "id": "memory-16gb",
+      "maximumPhysicalMemoryBytes": 19327352832,
+      "minimumPhysicalMemoryBytes": 15032385536
+    },
+    {
+      "id": "reference",
+      "maximumPhysicalMemoryBytes": null,
+      "minimumPhysicalMemoryBytes": 34359738368
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "idle",
+      "requiredWorkloads": []
+    },
+    {
+      "id": "recording",
+      "requiredWorkloads": [
+        {
+          "kind": "audioCapture",
+          "operation": "execute",
+          "workloadClass": "recordingCritical"
+        },
+        {
+          "kind": "liveTranscription",
+          "operation": "execute",
+          "workloadClass": "liveInteractive"
+        }
+      ]
+    },
+    {
+      "id": "stop",
+      "requiredWorkloads": [
+        {
+          "kind": "audioCapture",
+          "operation": "execute",
+          "workloadClass": "recordingCritical"
+        }
+      ]
+    },
+    {
+      "id": "refine",
+      "requiredWorkloads": [
+        {
+          "kind": "qualityTranscription",
+          "operation": "execute",
+          "workloadClass": "userInitiated"
+        },
+        {
+          "kind": "speakerDiarization",
+          "operation": "execute",
+          "workloadClass": "userInitiated"
+        }
+      ]
+    },
+    {
+      "id": "summary",
+      "requiredWorkloads": [
+        {
+          "kind": "languageInference",
+          "operation": "queueWait",
+          "workloadClass": "userInitiated"
+        },
+        {
+          "kind": "languageInference",
+          "operation": "execute",
+          "workloadClass": "userInitiated"
+        }
+      ]
+    },
+    {
+      "id": "ask",
+      "requiredWorkloads": [
+        {
+          "kind": "languageInference",
+          "operation": "queueWait",
+          "workloadClass": "userInitiated"
+        },
+        {
+          "kind": "languageInference",
+          "operation": "execute",
+          "workloadClass": "userInitiated"
+        }
+      ]
+    },
+    {
+      "id": "indexing",
+      "requiredWorkloads": [
+        {
+          "kind": "searchIndex",
+          "operation": "execute",
+          "workloadClass": "maintenance"
+        }
+      ]
+    },
+    {
+      "id": "recording-indexing",
+      "requiredWorkloads": [
+        {
+          "kind": "audioCapture",
+          "operation": "execute",
+          "workloadClass": "recordingCritical"
+        },
+        {
+          "kind": "liveTranscription",
+          "operation": "execute",
+          "workloadClass": "liveInteractive"
+        },
+        {
+          "kind": "searchIndex",
+          "operation": "execute",
+          "workloadClass": "maintenance"
+        }
+      ]
+    },
+    {
+      "id": "recording-batch",
+      "requiredWorkloads": [
+        {
+          "kind": "audioCapture",
+          "operation": "execute",
+          "workloadClass": "recordingCritical"
+        },
+        {
+          "kind": "liveTranscription",
+          "operation": "execute",
+          "workloadClass": "liveInteractive"
+        },
+        {
+          "kind": "qualityTranscription",
+          "operation": "execute",
+          "workloadClass": "postCapture"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}
