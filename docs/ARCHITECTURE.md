@@ -699,8 +699,9 @@ fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
 The native Release collector covers steady idle, active recording, Stop,
-Refine, Summary, Ask, and standalone semantic indexing without making
-Instruments XML part of the evidence contract. The indexing cell prepares
+Refine, Summary, Ask, standalone semantic indexing, and both concurrent
+recording scenarios without making Instruments XML part of the evidence
+contract. The indexing cell prepares
 already-installed Apple Latin embedding assets before its measured window,
 then drains 1,024 fixed public English segments in four bounded batches inside
 a disposable database. Completion requires every segment to carry an embedding
@@ -746,10 +747,14 @@ measurement, arms one probe before Start, executes `IndexSemanticCorpus` only
 after recording succeeds, and freezes process metrics before Stop. The probe
 remains subscribed until Stop closes spans that were active inside the window,
 so live-transcription finishes are retained without admitting Stop-only work.
-The runner never launches or changes `/Applications/Portavoz.app`. These eight
-scenarios now have reproducible collectors, but no host receipt is accepted and
-recording plus batch processing remains uncollected, so resource-governor policy
-remains blocked.
+Recording plus batch prepares the same fixed public non-silent audio fixture
+and shared Parakeet runtime before measurement, starts utility-priority file
+transcription through the production batch scheduler only after recording
+succeeds, and keeps capture active until a bounded nonempty result exists.
+It then uses the same freeze-before-Stop and fail-closed publication boundary.
+The runner never launches or changes `/Applications/Portavoz.app`. All nine
+scenarios now have reproducible collectors, but no host receipt is accepted,
+so resource-governor policy remains blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
@@ -1365,7 +1370,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,237 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,241 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

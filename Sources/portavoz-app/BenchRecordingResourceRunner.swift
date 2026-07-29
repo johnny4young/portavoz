@@ -25,9 +25,12 @@ enum BenchRecordingResourceRunner {
             : 60
         let baselineProbes: BenchRecordResourceProbes?
         let concurrentProbe: BenchConcurrentRecordingResourceProbe?
+        let batchConfiguration: BenchBatchResourceConfiguration?
         do {
+            batchConfiguration = try BenchBatchResourceConfiguration
+                .requested(arguments: arguments)
             concurrentProbe = try BenchConcurrentRecordingResourceProbe
-                .recordingIndexingRequested(arguments: arguments)
+                .requested(arguments: arguments)
             baselineProbes = if concurrentProbe == nil {
                 try BenchRecordResourceProbes.requested(arguments: arguments)
             } else {
@@ -48,7 +51,8 @@ enum BenchRecordingResourceRunner {
                     recording: recording,
                     seconds: seconds,
                     baselineProbes: baselineProbes,
-                    concurrentProbe: concurrentProbe)
+                    concurrentProbe: concurrentProbe,
+                    batchConfiguration: batchConfiguration)
                 exit(0)
             } catch {
                 baselineProbes?.cancel()
@@ -71,16 +75,13 @@ enum BenchRecordingResourceRunner {
         recording: RecordingController,
         seconds: Int,
         baselineProbes: BenchRecordResourceProbes?,
-        concurrentProbe: BenchConcurrentRecordingResourceProbe?
+        concurrentProbe: BenchConcurrentRecordingResourceProbe?,
+        batchConfiguration: BenchBatchResourceConfiguration?
     ) async throws {
-        let indexingWorkload: BenchIndexingResourceWorkload?
-        if concurrentProbe != nil {
-            emit("bench-record: preparing semantic indexing fixture")
-            indexingWorkload = try await BenchMode
-                .prepareIndexingResourceWorkload(services: services)
-        } else {
-            indexingWorkload = nil
-        }
+        let concurrentWorkload = try await prepareConcurrentWorkload(
+            services: services,
+            arguments: ProcessInfo.processInfo.arguments,
+            batchConfiguration: batchConfiguration)
 
         try await prepareRecording(
             services: services,
@@ -88,23 +89,20 @@ enum BenchRecordingResourceRunner {
             baselineProbes: baselineProbes,
             concurrentProbe: concurrentProbe)
 
-        let indexingTask = indexingWorkload.map { workload in
+        let concurrentTask = concurrentWorkload.map { workload in
             Task { @MainActor in
                 guard let concurrentProbe else {
                     throw BenchConcurrentProbeError
                         .incompleteLifecycle
                 }
                 return try await workload.run(
+                    services: services,
                     timeoutSeconds: concurrentProbe.timeoutSeconds)
             }
         }
         let peak = await sampleRecordingFootprint(seconds: seconds)
-        if let indexingTask, let indexingWorkload {
-            let result = try await indexingTask.value
-            try await indexingWorkload.validate(
-                result,
-                store: services.store)
-            emit("bench-record: concurrent semantic indexing complete")
+        if let concurrentTask {
+            emit(try await concurrentTask.value)
         }
         emit(String(
             format: "bench-record: peak footprint %.0f MB over %d s",
@@ -116,6 +114,27 @@ enum BenchRecordingResourceRunner {
             recording: recording,
             baselineProbes: baselineProbes,
             concurrentProbe: concurrentProbe)
+    }
+
+    @MainActor
+    private static func prepareConcurrentWorkload(
+        services: AppServices,
+        arguments: [String],
+        batchConfiguration: BenchBatchResourceConfiguration?
+    ) async throws -> BenchConcurrentRecordingWorkload? {
+        if arguments.contains("--bench-resource-recording-indexing") {
+            emit("bench-record: preparing semantic indexing fixture")
+            return .indexing(try await BenchMode
+                .prepareIndexingResourceWorkload(services: services))
+        }
+        if let batchConfiguration {
+            emit("bench-record: preparing batch transcription fixture")
+            return .batch(try await BenchMode
+                .prepareBatchTranscriptionResourceWorkload(
+                    configuration: batchConfiguration,
+                    services: services))
+        }
+        return nil
     }
 
     @MainActor
@@ -258,6 +277,33 @@ enum BenchRecordingResourceRunner {
         }
         guard result == 0 else { return 0 }
         return Double(usage.ri_phys_footprint) / 1_048_576
+    }
+}
+
+private enum BenchConcurrentRecordingWorkload {
+    case batch(BenchBatchResourceWorkload)
+    case indexing(BenchIndexingResourceWorkload)
+
+    @MainActor
+    func run(
+        services: AppServices,
+        timeoutSeconds: Int
+    ) async throws -> String {
+        switch self {
+        case .batch(let workload):
+            let result = try await workload.run(
+                services: services,
+                timeoutSeconds: timeoutSeconds)
+            try workload.validate(result)
+            return "bench-record: concurrent batch transcription complete"
+        case .indexing(let workload):
+            let result = try await workload.run(
+                timeoutSeconds: timeoutSeconds)
+            try await workload.validate(
+                result,
+                store: services.store)
+            return "bench-record: concurrent semantic indexing complete"
+        }
     }
 }
 

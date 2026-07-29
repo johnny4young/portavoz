@@ -33,6 +33,18 @@ final class UITestDefaultsTests: XCTestCase {
         XCTAssertFalse(policy.usesTemporaryModelStore)
     }
 
+    func testRecordingBatchBenchmarkReusesOnlyRecordingModels() {
+        let policy = AppStorageIsolationPolicy(
+            arguments: [
+                "Portavoz", "-use-temp-store",
+                "--bench-record", "60",
+                "--bench-resource-recording-batch", "/tmp/fixture.aiff",
+            ])
+
+        XCTAssertTrue(policy.usesTemporaryMeetingStore)
+        XCTAssertFalse(policy.usesTemporaryModelStore)
+    }
+
     func testRefineResourceBenchmarkReusesVerifiedModelsOnly() {
         let policy = AppStorageIsolationPolicy(
             arguments: [

@@ -238,11 +238,11 @@ final class ResourceRunProbeTests: XCTestCase {
         }
     }
 
-    func testRecordingIndexingProbeBoundsTimeout() throws {
+    func testConcurrentRecordingProbeBoundsTimeout() throws {
         let output = FileManager.default.temporaryDirectory.path
         let probe = try XCTUnwrap(
             BenchConcurrentRecordingResourceProbe
-                .recordingIndexingRequested(arguments: [
+                .requested(arguments: [
                     "Portavoz",
                     "--bench-resource-recording-indexing",
                     "--bench-resource-output", output,
@@ -253,7 +253,7 @@ final class ResourceRunProbeTests: XCTestCase {
 
         XCTAssertThrowsError(
             try BenchConcurrentRecordingResourceProbe
-                .recordingIndexingRequested(arguments: [
+                .requested(arguments: [
                     "Portavoz",
                     "--bench-resource-recording-indexing",
                     "--bench-resource-output", output,
@@ -267,6 +267,35 @@ final class ResourceRunProbeTests: XCTestCase {
         }
     }
 
+    func testConcurrentRecordingProbeRejectsCompetingScenarios() {
+        XCTAssertThrowsError(
+            try BenchConcurrentRecordingResourceProbe.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-recording-indexing",
+                "--bench-resource-recording-batch", "/tmp/fixture.aiff",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchConcurrentProbeError,
+                .conflictingScenarios)
+        }
+    }
+
+    func testRecordingBatchConfigurationRequiresExistingFixture() {
+        XCTAssertThrowsError(
+            try BenchBatchResourceConfiguration.requested(
+                arguments: [
+                    "Portavoz",
+                    "--bench-resource-recording-batch",
+                    "/tmp/portavoz-missing-\(UUID().uuidString).aiff",
+                ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchBatchResourceError,
+                .missingFixture)
+        }
+    }
+
     func testRecordingIndexingProbeFreezesBeforeStopAndRetainsLiveFinish() throws {
         let output = FileManager.default.temporaryDirectory.appendingPathComponent(
             "BenchRecordingIndexingProbe-\(UUID().uuidString)",
@@ -274,7 +303,7 @@ final class ResourceRunProbeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: output) }
         let probe = try XCTUnwrap(
             BenchConcurrentRecordingResourceProbe
-                .recordingIndexingRequested(arguments: [
+                .requested(arguments: [
                     "Portavoz",
                     "--bench-resource-recording-indexing",
                     "--bench-resource-output", output.path,
@@ -320,6 +349,58 @@ final class ResourceRunProbeTests: XCTestCase {
                 "recordingCritical/audioCapture/execute",
                 "liveInteractive/liveTranscription/execute",
                 "maintenance/searchIndex/execute",
+            ]))
+    }
+
+    func testRecordingBatchProbePublishesExactConcurrentWorkloads() throws {
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "BenchRecordingBatchProbe-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: output) }
+        let probe = try XCTUnwrap(
+            BenchConcurrentRecordingResourceProbe.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-recording-batch", "/tmp/fixture.aiff",
+                "--bench-resource-output", output.path,
+                "--bench-resource-run", "8",
+            ]))
+        let telemetry = AppResourceWorkloadTelemetry.shared.telemetry
+
+        try probe.begin()
+        defer { probe.cancel() }
+        for descriptor in [
+            ResourceWorkloadDescriptor(
+                workloadClass: .recordingCritical,
+                kind: .audioCapture,
+                operation: .execute),
+            ResourceWorkloadDescriptor(
+                workloadClass: .liveInteractive,
+                kind: .liveTranscription,
+                operation: .execute),
+            ResourceWorkloadDescriptor(
+                workloadClass: .postCapture,
+                kind: .qualityTranscription,
+                operation: .execute),
+        ] {
+            let span = telemetry.begin(descriptor)
+            telemetry.finish(span, outcome: .completed)
+        }
+        try probe.freezeBeforeStop()
+        try probe.finishAfterStopAndWrite()
+
+        let sample = try JSONDecoder().decode(
+            ResourceProbeSample.self,
+            from: Data(contentsOf: output.appendingPathComponent(
+                "recording-batch-8.json")))
+        XCTAssertEqual(sample.run, 8)
+        XCTAssertEqual(
+            Set(sample.workloads.map {
+                "\($0.workloadClass)/\($0.kind)/\($0.operation)"
+            }),
+            Set([
+                "recordingCritical/audioCapture/execute",
+                "liveInteractive/liveTranscription/execute",
+                "postCapture/qualityTranscription/execute",
             ]))
     }
 

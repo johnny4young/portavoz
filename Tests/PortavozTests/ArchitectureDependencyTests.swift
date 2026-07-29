@@ -295,6 +295,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchRecordingResourceRunner.swift")
         let indexingBench = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
+        let batchBench = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode+ResourceBatch.swift")
         let app = try Self.contents(
             of: "Sources/portavoz-app/PortavozApp.swift")
         let services = try Self.contents(
@@ -332,6 +334,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "prepareIndexingResourceWorkload"))
         XCTAssertTrue(recordingRunner.contains(
             "concurrent semantic indexing complete"))
+        XCTAssertTrue(recordingRunner.contains(
+            "prepareBatchTranscriptionResourceWorkload"))
+        XCTAssertTrue(recordingRunner.contains(
+            "concurrent batch transcription complete"))
+        XCTAssertTrue(batchBench.contains(
+            "services.transcriptionScheduler.batch"))
+        XCTAssertTrue(batchBench.contains(
+            "workloadClass: .postCapture"))
+        XCTAssertTrue(batchBench.contains(
+            "BenchResourceTimedOperation.run"))
         XCTAssertTrue(benchMode.contains(
             "runRefineResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(
@@ -391,6 +403,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "--bench-resource-recording-indexing"))
         XCTAssertTrue(runner.contains(
             #""recording-indexing=$recording_indexing_sample""#))
+        XCTAssertTrue(runner.contains(
+            "--bench-resource-recording-batch"))
+        XCTAssertTrue(runner.contains(
+            #""recording-batch=$recording_batch_sample""#))
         XCTAssertTrue(scheduler.contains(
             "static let mlx = IntelligenceScheduler"))
         XCTAssertTrue(mlxProvider.contains(

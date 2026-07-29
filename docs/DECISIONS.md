@@ -4648,12 +4648,22 @@ active, admitting their terminal outcomes while rejecting Stop-only work. The
 recording stays active until indexing completes or its hard timeout wins, and
 the sample is published only after the corpus validation and Stop both succeed.
 
-Only the hidden recording, recording-plus-indexing, Refine, and Summary
-resource benchmarks reuse the normal verified Portavoz model cache; Ask and
-indexing rely on OS-managed assets and keep the disposable model root. Ordinary
-XCUITest launches retain an empty temporary model root. Partial fragments and
-the synthetic fixture stay private and are removed on failure; a validated
-owner-only host receipt is published atomically. The original
+Recording plus batch runs in another real windowed recording process against
+the fixed public non-silent AIFF already used by Refine. It resolves the shared
+Parakeet runtime before measurement, starts file transcription through the
+production `TranscriptionScheduler.batch` post-capture lane only after Start
+succeeds, and keeps recording active until the bounded job returns nonempty
+speech or fails. It uses the same freeze-before-Stop boundary and publishes only
+after both batch validation and Stop succeed. It deliberately excludes
+diarization and summary so the contracted quality-transcription interference
+cell remains independently attributable.
+
+Only the hidden recording, recording-plus-indexing, recording-plus-batch,
+Refine, and Summary resource benchmarks reuse the normal verified Portavoz
+model cache; Ask and indexing rely on OS-managed assets and keep the disposable
+model root. Ordinary XCUITest launches retain an empty temporary model root.
+Partial fragments and the synthetic fixture stay private and are removed on
+failure; a validated owner-only host receipt is published atomically. The original
 `resource-recording-baseline` command remains a compatibility alias for the
 canonical `resource-baseline` runner. Once any resource benchmark dispatcher is
 armed, app initialization returns before normal sync, recovery, provider
@@ -4666,10 +4676,11 @@ notarized installed app.
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
 model-install noise. Independent idle, recording, Stop, Refine, Summary, Ask,
-indexing, and recording-plus-indexing windows make residency and interference
-attribution explicit. One reusable single-scenario probe avoids a new collector
-lifecycle for every batch workflow, while the concurrent probe makes its
-recording boundary explicit instead of merging Stop cost into the sample.
+indexing, recording-plus-indexing, and recording-plus-batch windows make
+residency and interference attribution explicit. One reusable single-scenario
+probe avoids a new collector lifecycle for every batch workflow, while the
+concurrent probe makes its recording boundary explicit instead of merging Stop
+cost into the sample.
 Synthetic input keeps model-heavy evidence repeatable and private. Fail-closed
 publication prevents a timeout, missing model or OS asset, silent fixture,
 failed summary transaction, missing Ask evidence, incomplete index, or partial

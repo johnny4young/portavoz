@@ -211,11 +211,18 @@ final class BenchConcurrentRecordingResourceProbe {
     private var probe: ResourceRunProbe?
     private var observer: UUID?
 
-    static func recordingIndexingRequested(
+    static func requested(
         arguments: [String]
     ) throws -> BenchConcurrentRecordingResourceProbe? {
-        guard arguments.contains("--bench-resource-recording-indexing") else {
+        let recordingIndexing = arguments.contains(
+            "--bench-resource-recording-indexing")
+        let recordingBatch = arguments.contains(
+            "--bench-resource-recording-batch")
+        guard recordingIndexing || recordingBatch else {
             return nil
+        }
+        guard recordingIndexing != recordingBatch else {
+            throw BenchConcurrentProbeError.conflictingScenarios
         }
         guard let outputIndex = arguments.firstIndex(
             of: "--bench-resource-output"),
@@ -238,7 +245,9 @@ final class BenchConcurrentRecordingResourceProbe {
             allowed: 60...3_600)
         return BenchConcurrentRecordingResourceProbe(
             run: run,
-            scenario: "recording-indexing",
+            scenario: recordingIndexing
+                ? "recording-indexing"
+                : "recording-batch",
             timeoutSeconds: timeoutSeconds,
             outputDirectory: URL(
                 fileURLWithPath: arguments[outputIndex + 1],
@@ -325,6 +334,7 @@ final class BenchConcurrentRecordingResourceProbe {
 }
 
 enum BenchConcurrentProbeError: Error, Equatable, LocalizedError {
+    case conflictingScenarios
     case incompleteLifecycle
     case invalidRun
     case invalidTimeout
@@ -332,6 +342,8 @@ enum BenchConcurrentProbeError: Error, Equatable, LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .conflictingScenarios:
+            "one concurrent recording resource scenario must run at a time"
         case .incompleteLifecycle:
             "concurrent recording resource probe did not complete"
         case .invalidRun:

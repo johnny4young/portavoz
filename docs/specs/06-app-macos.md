@@ -9,7 +9,8 @@ Composition; it observes current work without adding governor policy.
 D149 adds the fail-closed multi-host baseline evidence boundary described in
 the same section; it remains tooling-only and does not affect app scheduling.
 D150 adds the native Release idle/recording/Stop/Refine/Summary/Ask,
-standalone-indexing, and recording-plus-indexing collectors and their
+standalone-indexing, recording-plus-indexing, and recording-plus-batch
+collectors and their
 benchmark-only storage-isolation exception; no production launch or scheduler
 reads evidence. D151 gives MLX/GPU inference its own explicit single-flight lane
 without coupling it to Apple Foundation Models/ANE work. D152 adds one
@@ -170,7 +171,7 @@ for Refine and later model-heavy scenarios.
 re-signs a scratch app with the separate
 `app.portavoz.mac.resource-bench` identity, and runs at least three
 idle/recording/Stop/Refine/Summary/Ask/indexing/recording-plus-indexing
-samples. The original
+and recording-plus-batch samples. The original
 `make resource-recording-baseline` target delegates to this canonical command.
 A five-second launch-settling interval precedes the model-free idle window.
 Refine runs as a draft-only cold-runtime operation in a separate process against
@@ -197,13 +198,19 @@ active until indexing validates. Process metrics freeze before Stop, while the
 observer remains long enough to retain terminal outcomes for spans already
 active in the measured window and rejects Stop-only spans. Every bounded model
 operation shares one configurable hard timeout, and the concurrent sample
-requires both successful indexing validation and successful Stop.
+requires both successful indexing validation and successful Stop. Recording
+plus batch runs in another real recording process. It resolves the shared
+Parakeet runtime before measurement, starts the fixed public AIFF through the
+production post-capture batch lane only after Start, retains capture until the
+bounded file transcription returns nonempty speech, then applies the same
+freeze-before-Stop and fail-closed publication boundary. Diarization and
+summary are intentionally outside this independently attributable cell.
 Every launch requires `-use-temp-store`, so the benchmark meeting database and
 audio stay disposable; `AppStorageIsolationPolicy` allows only hidden
-recording/recording-plus-indexing/Refine/Summary benchmarks to reuse the normal
-verified Portavoz model cache. Ask and indexing use OS-managed assets and keep
-the disposable model root. Regular `-use-temp-store` automation still receives
-an empty model root.
+recording/recording-plus-indexing/recording-plus-batch/Refine/Summary
+benchmarks to reuse the normal verified Portavoz model cache. Ask and indexing
+use OS-managed assets and keep the disposable model root. Regular
+`-use-temp-store` automation still receives an empty model root.
 The resource
 dispatcher also returns from app initialization before normal sync,
 recovery, provider discovery, or dictation registration can start; it detaches
