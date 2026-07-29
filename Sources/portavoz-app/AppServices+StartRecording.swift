@@ -28,7 +28,8 @@ extension AppServices {
             preferences: AppStartRecordingPreferences(),
             audioFiles: AppStartRecordingAudioFiles(root: Self.audioRoot),
             store: store,
-            runtime: runtime)
+            runtime: runtime,
+            telemetry: workloadTelemetry)
     }
 
     private var isRecordingFailureFixture: Bool {
@@ -368,6 +369,7 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
                 }
                 return try await services.loadTranscriberIfNeeded()
             },
+            telemetry: services.workloadTelemetry,
             voiceprintTask: Task.detached(priority: .utility) {
                 try? voiceprintStore.load()
             })
@@ -428,6 +430,7 @@ private actor AppStartRecordingSession: StartRecordingSession {
     private let sources: [any AudioCaptureSource]
     private let initialTranscriber: (any TranscriptionEngine)?
     private let transcriberLoader: TranscriberLoader
+    private let telemetry: ResourceWorkloadTelemetry
     private let voiceprintTask: Task<Voiceprint?, Never>
     private var liveAttacher: LiveTranscriptionAttacher?
     private var stoppedCapture: StopRecordingCapture?
@@ -438,6 +441,7 @@ private actor AppStartRecordingSession: StartRecordingSession {
         sources: [any AudioCaptureSource],
         transcriber: (any TranscriptionEngine)?,
         transcriberLoader: @escaping TranscriberLoader,
+        telemetry: ResourceWorkloadTelemetry,
         voiceprintTask: Task<Voiceprint?, Never>
     ) {
         recordingSession = RecordingSession(outputDirectory: outputDirectory)
@@ -445,6 +449,7 @@ private actor AppStartRecordingSession: StartRecordingSession {
         self.sources = sources
         initialTranscriber = transcriber
         self.transcriberLoader = transcriberLoader
+        self.telemetry = telemetry
         self.voiceprintTask = voiceprintTask
     }
 
@@ -456,7 +461,8 @@ private actor AppStartRecordingSession: StartRecordingSession {
                 vocabulary: request.vocabulary,
                 meetingID: request.meetingID),
             callbacks: request.callbacks,
-            initialTranscriberAvailable: initialTranscriber != nil)
+            initialTranscriberAvailable: initialTranscriber != nil,
+            telemetry: telemetry)
         liveAttacher = attacher
         let liveFeeds = attacher.feeds
         let chunk = request.callbacks.chunk

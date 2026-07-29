@@ -3,6 +3,7 @@ import CloudKit
 import Foundation
 import IntegrationsKit
 import Observation
+import PortavozCore
 import StorageKit
 
 @MainActor
@@ -41,6 +42,7 @@ final class MeetingSyncModel {
 
     private let client: any MeetingSyncModelClient
     private let journalDebounce: Duration
+    private let telemetry: ResourceWorkloadTelemetry
     private var didStart = false
     private var remoteNotificationsEnabled = false
     private var synchronizationRequested = false
@@ -53,16 +55,20 @@ final class MeetingSyncModel {
 
     init(
         client: any MeetingSyncModelClient,
-        journalDebounce: Duration = .milliseconds(750)
+        journalDebounce: Duration = .milliseconds(750),
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.client = client
         self.journalDebounce = journalDebounce
+        self.telemetry = telemetry
     }
 
     func start() async {
         guard !didStart else { return }
         didStart = true
-        await perform { await self.client.resumeIfConsented() }
+        await perform(workloadClass: .maintenance) {
+            await self.client.resumeIfConsented()
+        }
     }
 
     func send(_ action: Action) async {
@@ -76,7 +82,9 @@ final class MeetingSyncModel {
     private func performAction(_ action: Action) async {
         switch action {
         case .enable:
-            await perform { await self.client.enable() }
+            await perform(workloadClass: .userInitiated) {
+                await self.client.enable()
+            }
         case .synchronize:
             // A queued Sync can become inapplicable after an earlier queued
             // Pause. Treat that as a completed no-op and keep draining; one
@@ -85,15 +93,23 @@ final class MeetingSyncModel {
                 await drainRequestedWork()
                 return
             }
-            await requestSynchronization()
+            await requestSynchronization(workloadClass: .userInitiated)
         case .retry:
-            await perform { await self.client.retryNow() }
+            await perform(workloadClass: .userInitiated) {
+                await self.client.retryNow()
+            }
         case .includeExistingLibrary:
-            await perform { await self.client.includeExistingLibrary() }
+            await perform(workloadClass: .userInitiated) {
+                await self.client.includeExistingLibrary()
+            }
         case .pause:
-            await perform { await self.client.pause() }
+            await perform(workloadClass: .userInitiated) {
+                await self.client.pause()
+            }
         case .removeThisDevice:
-            await perform { await self.client.removeThisDevice() }
+            await perform(workloadClass: .userInitiated) {
+                await self.client.removeThisDevice()
+            }
         }
     }
 
@@ -108,23 +124,33 @@ final class MeetingSyncModel {
 
 private extension MeetingSyncModel {
     func perform(
+        workloadClass: ResourceWorkloadClass,
         _ operation: @escaping @MainActor () async -> CloudMeetingSyncStatus
     ) async {
         precondition(!isBusy, "MeetingSyncModel operations must be serialized")
+        let span = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: workloadClass,
+            kind: .librarySync,
+            operation: .execute))
         isBusy = true
         status = await operation()
         isBusy = false
+        telemetry.finish(span, outcome: .completed)
         reconcileObservers()
         await drainRequestedWork()
     }
 
-    func requestSynchronization() async {
+    func requestSynchronization(
+        workloadClass: ResourceWorkloadClass = .maintenance
+    ) async {
         guard status.isEnabled else { return }
         if isBusy {
             synchronizationRequested = true
             return
         }
-        await perform { await self.client.synchronizeNow() }
+        await perform(workloadClass: workloadClass) {
+            await self.client.synchronizeNow()
+        }
     }
 
     func requestAccountRefresh() async {
@@ -133,7 +159,9 @@ private extension MeetingSyncModel {
             accountRefreshRequested = true
             return
         }
-        await perform { await self.client.accountDidChange() }
+        await perform(workloadClass: .maintenance) {
+            await self.client.accountDidChange()
+        }
     }
 
     func drainRequestedWork() async {
@@ -148,12 +176,16 @@ private extension MeetingSyncModel {
                 synchronizationRequested = false
                 return
             }
-            await perform { await self.client.accountDidChange() }
+            await perform(workloadClass: .maintenance) {
+                await self.client.accountDidChange()
+            }
             return
         }
         if synchronizationRequested, status.isEnabled {
             synchronizationRequested = false
-            await perform { await self.client.synchronizeNow() }
+            await perform(workloadClass: .maintenance) {
+                await self.client.synchronizeNow()
+            }
         } else {
             synchronizationRequested = false
         }

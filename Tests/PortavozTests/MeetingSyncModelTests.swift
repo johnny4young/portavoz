@@ -1,5 +1,6 @@
 import Foundation
 import IntegrationsKit
+import PortavozCore
 import StorageKit
 @testable import portavoz_app
 import XCTest
@@ -154,6 +155,34 @@ final class MeetingSyncModelTests: XCTestCase {
         XCTAssertEqual(client.pauseCount, 1)
         XCTAssertEqual(client.synchronizeCount, 1)
         XCTAssertEqual(model.status.phase, .synchronized)
+    }
+
+    func testTelemetryDistinguishesAutomaticResumeFromExplicitSync() async {
+        let client = TestMeetingSyncModelClient()
+        let recorder = ResourceWorkloadEventRecorder()
+        let model = MeetingSyncModel(
+            client: client,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
+
+        await model.start()
+        await model.send(.enable)
+
+        let descriptors = recorder.events.compactMap { event -> ResourceWorkloadDescriptor? in
+            guard case .started(let span) = event else { return nil }
+            return span.descriptor
+        }
+        XCTAssertEqual(
+            descriptors,
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .maintenance,
+                    kind: .librarySync,
+                    operation: .execute),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .librarySync,
+                    operation: .execute),
+            ])
     }
 
     private func waitUntil(

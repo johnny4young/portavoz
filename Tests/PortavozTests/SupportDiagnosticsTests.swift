@@ -214,6 +214,38 @@ final class SupportDiagnosticsTests: XCTestCase {
             "acknowledged-by-private-cloud")
     }
 
+    func testExportEmitsOneContentFreeUserInitiatedWorkload() async throws {
+        let store = try MeetingStore.inMemory()
+        let recorder = ResourceWorkloadEventRecorder()
+
+        _ = try await ExportSupportDiagnostics(
+            store: store,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive)
+        ).execute(
+            ExportSupportDiagnosticsRequest(
+                environment: SupportDiagnosticsEnvironment(
+                    appVersion: "development",
+                    buildVersion: "development",
+                    operatingSystem: "macOS",
+                    models: [])))
+
+        let events = recorder.events
+        guard case .started(let started) = events.first,
+              case .finished(let finished, let outcome) = events.last
+        else {
+            return XCTFail("Expected one matched support-export workload")
+        }
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(started, finished)
+        XCTAssertEqual(
+            started.descriptor,
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .supportExport,
+                operation: .execute))
+        XCTAssertEqual(outcome, .completed)
+    }
+
     func testFormatTwoExportRemainsAvailableBeforeAndAfterRefine() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(

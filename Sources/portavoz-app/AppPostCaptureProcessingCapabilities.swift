@@ -29,7 +29,8 @@ final class AppPostCaptureProcessingCapabilities:
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw PostCaptureProcessingCapabilityError.audioUnavailable
         }
-        let transcriber = try await services.loadTranscriberIfNeeded()
+        let transcriber = try await services.loadTranscriberIfNeeded(
+            workloadClass: .postCapture)
         return try await services.transcriptionScheduler.batch {
             try await transcriber.transcribeFile(
                 at: url,
@@ -56,8 +57,17 @@ final class AppPostCaptureProcessingCapabilities:
         // Attribution remains degradable: unavailable model preparation or
         // inference yields an unattributed system channel, but missing durable
         // audio remains a workflow failure.
-        guard let diarizer = try? await services.loadDiarizerIfNeeded() else { return [] }
-        return (try? await diarizer.diarizeFile(at: url)) ?? []
+        guard let diarizer = try? await services.loadDiarizerIfNeeded(
+            workloadClass: .postCapture)
+        else { return [] }
+        return (try? await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .postCapture,
+                kind: .speakerDiarization,
+                operation: .execute)
+        ) {
+            try await diarizer.diarizeFile(at: url)
+        }) ?? []
     }
 
     func postCaptureSummaryProvider() async -> PostCaptureSummaryProviderSelection? {

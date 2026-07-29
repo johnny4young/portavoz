@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Serializes every on-device language-model call of the process behind a
 /// single-flight priority queue.
@@ -31,7 +32,9 @@ public actor IntelligenceScheduler {
 
     /// Process-wide instance: providers are cheap structs created ad hoc,
     /// so serialization must live somewhere shared.
-    public static let shared = IntelligenceScheduler()
+    private static let sharedTelemetry = ResourceWorkloadTelemetryRelay()
+    public static let shared = IntelligenceScheduler(
+        telemetry: sharedTelemetry.telemetry)
 
     private struct Waiter {
         let id: UUID
@@ -47,8 +50,19 @@ public actor IntelligenceScheduler {
     /// Cancellations that arrived before their waiter was enqueued (the
     /// task-cancellation handler can fire first) — consumed on enqueue.
     private var earlyCancellations: Set<UUID> = []
+    private let telemetry: ResourceWorkloadTelemetry
 
-    public init() {}
+    public init(telemetry: ResourceWorkloadTelemetry = .disabled) {
+        self.telemetry = telemetry
+    }
+
+    /// The executable composition root installs the platform recorder before
+    /// any provider can enqueue process-wide inference.
+    nonisolated public static func installSharedTelemetry(
+        _ telemetry: ResourceWorkloadTelemetry
+    ) {
+        sharedTelemetry.install(telemetry)
+    }
 
     /// Runs `operation` — ONE model call, by convention — when the slot
     /// frees up, ordered by priority then FIFO. Jobs sharing a `key` are
@@ -60,10 +74,37 @@ public actor IntelligenceScheduler {
         key: String? = nil,
         operation: @Sendable () async throws -> T
     ) async throws -> T {
-        try await acquire(priority: priority, key: key)
+        let descriptor = ResourceWorkloadDescriptor(
+            workloadClass: priority.workloadClass,
+            kind: .languageInference,
+            operation: .queueWait)
+        let queueSpan = telemetry.begin(descriptor)
+        do {
+            try await acquire(priority: priority, key: key)
+            telemetry.finish(queueSpan, outcome: .completed)
+        } catch {
+            telemetry.finish(
+                queueSpan,
+                outcome: ResourceWorkloadOutcome(error: error))
+            throw error
+        }
+
         defer { releaseAndResumeNext() }
-        try Task.checkCancellation()
-        return try await operation()
+        let executionSpan = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: priority.workloadClass,
+            kind: .languageInference,
+            operation: .execute))
+        do {
+            try Task.checkCancellation()
+            let value = try await operation()
+            telemetry.finish(executionSpan, outcome: .completed)
+            return value
+        } catch {
+            telemetry.finish(
+                executionSpan,
+                outcome: ResourceWorkloadOutcome(error: error))
+            throw error
+        }
     }
 
     /// Queued + running work, for tests and diagnostics.
@@ -125,6 +166,16 @@ public actor IntelligenceScheduler {
             let (a, b) = (waiters[lhs], waiters[rhs])
             if a.priority != b.priority { return a.priority < b.priority }
             return a.sequence > b.sequence
+        }
+    }
+}
+
+private extension IntelligenceScheduler.Priority {
+    var workloadClass: ResourceWorkloadClass {
+        switch self {
+        case .background: .postCapture
+        case .live: .liveInteractive
+        case .interactive: .userInitiated
         }
     }
 }

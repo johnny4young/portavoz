@@ -4512,3 +4512,40 @@ overclaiming hardware behavior, while exact artifact identity prevents stale
 evidence from blessing a different build. A content-free projection preserves
 Portavoz's local-first privacy boundary and still leaves every blocked gate
 actionable.
+
+## D148 — Measure resource workloads before governing them (Jul 2026)
+
+**Context:** Portavoz already has independent live-transcription, batch-
+transcription, intelligence, indexing, sync, durable-processing, and model-
+lifecycle owners. Field reports of sluggish recording UI and competing local
+model work cannot safely be addressed by adding one global queue: doing so
+would collapse the intentional live/batch separation, and collecting meeting,
+file, model, or error identities would create a new privacy surface. A resource
+governor also cannot choose defensible memory or concurrency policy before the
+current workload boundaries are observable.
+
+**Decision:** `PortavozCore` owns one closed workload vocabulary: scheduling
+class, resource kind, operation, and terminal outcome. It exposes synchronous,
+Sendable, matched-span telemetry with no payload-bearing fields. Application
+workflows and capability schedulers classify recording Start/Stop, live and
+quality transcription, diarization, intelligence, model prepare/load/release,
+indexing, sync, waveform generation, Meeting Detail first projection, media
+export, and support export at their existing task or operation boundaries.
+`portavoz-app` is the only production recorder and maps those enums to a generic
+Points of Interest interval. It records no meeting, transcript, path, model,
+span, or error identity.
+
+The process-wide intelligence scheduler receives telemetry through a narrow
+relay because providers are created ad hoc; other owners receive it through
+normal composition. The existing exact `Meeting Detail First Content` interval
+remains available for its established benchmark. No resource instrumentation
+enters `AudioCaptureKit` callbacks. This slice observes current behavior only:
+it does not add admission, deferral, priority, eviction, residency, or
+concurrency policy, and it does not replace any existing scheduler.
+
+**Rationale:** an allowlisted measurement contract makes before/after resource
+evidence reproducible while preserving local-first privacy and scheduler
+ownership. Measuring application transactions rather than realtime callbacks
+keeps capture passive. Separating observation from policy allows later
+governor decisions to be justified by field data instead of intuition and
+prevents the measurement slice itself from changing product behavior.

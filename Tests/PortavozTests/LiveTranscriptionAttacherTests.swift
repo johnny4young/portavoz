@@ -30,7 +30,12 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
 
     func testResidentModelStartsAvailableWithoutRecovery() async throws {
         let probe = LiveTranscriptionProbe()
-        let attacher = makeAttacher(probe: probe, initialAvailable: true, capacity: 2)
+        let recorder = ResourceWorkloadEventRecorder()
+        let attacher = makeAttacher(
+            probe: probe,
+            initialAvailable: true,
+            capacity: 2,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive))
 
         await attacher.recordingDidStart(
             initialTranscriber: EchoLiveTranscriptionEngine(),
@@ -42,6 +47,20 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
 
         XCTAssertFalse(requiresRecovery)
         XCTAssertEqual(probe.events, [.available])
+        guard case .started(let started) = recorder.events.first,
+              case .finished(let finished, let outcome) = recorder.events.last
+        else {
+            return XCTFail("Expected one matched live-transcription interval")
+        }
+        XCTAssertEqual(recorder.events.count, 2)
+        XCTAssertEqual(started, finished)
+        XCTAssertEqual(
+            started.descriptor,
+            ResourceWorkloadDescriptor(
+                workloadClass: .liveInteractive,
+                kind: .liveTranscription,
+                operation: .execute))
+        XCTAssertEqual(outcome, .completed)
     }
 
     func testDeferredLoadFailureIsVisibleAndFallsBackToDurableTranscript() async throws {
@@ -60,7 +79,8 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
     private func makeAttacher(
         probe: LiveTranscriptionProbe,
         initialAvailable: Bool,
-        capacity: Int
+        capacity: Int,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) -> LiveTranscriptionAttacher {
         LiveTranscriptionAttacher(
             channels: [.microphone],
@@ -69,7 +89,8 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
                 caption: { probe.record(caption: $0) },
                 liveTranscription: { probe.record(event: $0) }),
             initialTranscriberAvailable: initialAvailable,
-            capacityPerChannel: capacity)
+            capacityPerChannel: capacity,
+            telemetry: telemetry)
     }
 
     private func chunk(at index: Int) -> AudioChunk {

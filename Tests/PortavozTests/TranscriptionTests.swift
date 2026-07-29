@@ -553,6 +553,36 @@ final class TranscriptionSchedulerTests: XCTestCase {
         let events = await log.events
         XCTAssertEqual(events, ["first-end", "second-start"])
     }
+
+    func testTelemetryClassifiesLiveAndBatchLanes() async throws {
+        let recorder = ResourceWorkloadEventRecorder()
+        let scheduler = TranscriptionScheduler(telemetry: ResourceWorkloadTelemetry(
+            receiver: recorder.receive))
+
+        _ = await scheduler.live { "live" }
+        _ = try await scheduler.batch { "batch" }
+
+        let started = recorder.events.compactMap { event -> ResourceWorkloadDescriptor? in
+            guard case .started(let span) = event else { return nil }
+            return span.descriptor
+        }
+        XCTAssertEqual(
+            started,
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .liveInteractive,
+                    kind: .liveTranscription,
+                    operation: .execute),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .postCapture,
+                    kind: .qualityTranscription,
+                    operation: .queueWait),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .postCapture,
+                    kind: .qualityTranscription,
+                    operation: .execute),
+            ])
+    }
 }
 
 private actor Gate {

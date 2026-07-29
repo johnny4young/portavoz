@@ -52,6 +52,8 @@ final class AppServices {
     /// automation receives its own empty root and never inspects host models.
     @ObservationIgnored let modelStore: ModelStore
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
+    /// Content-free workload spans are installed once at the composition root.
+    @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
     /// The only concrete Security adapter in the app process. Capability Kits
     /// receive the Core port rather than importing or constructing Keychain.
     @ObservationIgnored let secretStorage: KeychainSecretStore
@@ -116,7 +118,7 @@ final class AppServices {
     let refines = RefineService()
     /// One serial utility lane for file transcription. Live streams bypass it
     /// by design, so a new recording always wins ANE scheduling (D7).
-    let transcriptionScheduler = TranscriptionScheduler()
+    let transcriptionScheduler: TranscriptionScheduler
     /// Process-scoped ownership of the durable post-capture worker and its
     /// single scheduled retry wake. The supervisor deduplicates launch and
     /// producer kicks without polling SQLite.
@@ -175,6 +177,10 @@ final class AppServices {
         // defaults so every case is independent from an earlier test launch.
         UITestDefaults.installIfNeeded()
         let usesTemporaryStore = ProcessInfo.processInfo.arguments.contains("-use-temp-store")
+        let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
+        self.workloadTelemetry = workloadTelemetry
+        IntelligenceScheduler.installSharedTelemetry(workloadTelemetry)
+        transcriptionScheduler = TranscriptionScheduler(telemetry: workloadTelemetry)
         let modelStore = Self.makeModelStore(usesTemporaryStore: usesTemporaryStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
@@ -215,12 +221,14 @@ final class AppServices {
             model: CommandPaletteModel(client: askClient))
         meetingSync = Self.makeMeetingSyncModel(
             store: store,
-            usesTemporaryStore: usesTemporaryStore)
+            usesTemporaryStore: usesTemporaryStore,
+            telemetry: workloadTelemetry)
         libraryMarkdownBackup = LibraryMarkdownBackupModel(
             client: AppLibraryMarkdownBackupClient(store: store))
         spotlightIndexer = SpotlightIndexer(
             store: store,
-            enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable)
+            enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
+            telemetry: workloadTelemetry)
         requestSpotlightReindex()
         Task { @MainActor [weak self] in
             await self?.refreshMLXReadiness()
@@ -255,7 +263,9 @@ final class AppServices {
 
     /// Loads only the live/batch first-pass transcriber. Offline quality
     /// passes must not acquire this capability as a side effect.
-    func loadTranscriberIfNeeded() async throws -> ParakeetEngine {
+    func loadTranscriberIfNeeded(
+        workloadClass: ResourceWorkloadClass = .liveInteractive
+    ) async throws -> ParakeetEngine {
         enginesIdleGeneration += 1
         if let transcriber { return transcriber }
         if let transcriberLoadTask {
@@ -265,12 +275,20 @@ final class AppServices {
         }
 
         modelsState = .downloading(L10n.text("Preparing models…"))
+        let telemetry = workloadTelemetry
+        let store = modelStore
         let task = Task { @MainActor in
-            try await ParakeetEngine.loadRecommended(store: modelStore) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading(
-                        L10n.format("Downloading transcription model… %d%%", percent))
+            try await telemetry.measure(ResourceWorkloadDescriptor(
+                workloadClass: workloadClass,
+                kind: .liveTranscription,
+                operation: .load)
+            ) {
+                try await ParakeetEngine.loadRecommended(store: store) { progress in
+                    let percent = Int(progress.fraction * 100)
+                    Task { @MainActor [weak self] in
+                        self?.modelsState = .downloading(
+                            L10n.format("Downloading transcription model… %d%%", percent))
+                    }
                 }
             }
         }
@@ -290,7 +308,9 @@ final class AppServices {
 
     /// Loads only speaker diarization. Refine/Import and durable diarization
     /// share this task without requiring or duplicating Parakeet.
-    func loadDiarizerIfNeeded() async throws -> PyannoteDiarizer {
+    func loadDiarizerIfNeeded(
+        workloadClass: ResourceWorkloadClass = .userInitiated
+    ) async throws -> PyannoteDiarizer {
         enginesIdleGeneration += 1
         if let diarizer { return diarizer }
         if let diarizerLoadTask {
@@ -301,14 +321,22 @@ final class AppServices {
 
         modelsState = .downloading(L10n.text("Preparing models…"))
         let voiceprint = try? voiceprintStore.load()
+        let telemetry = workloadTelemetry
+        let store = modelStore
         let task = Task { @MainActor in
-            try await PyannoteDiarizer.loadRecommended(
-                store: modelStore, voiceprint: voiceprint
-            ) { progress in
-                let percent = Int(progress.fraction * 100)
-                Task { @MainActor [weak self] in
-                    self?.modelsState = .downloading(
-                        L10n.format("Downloading diarization model… %d%%", percent))
+            try await telemetry.measure(ResourceWorkloadDescriptor(
+                workloadClass: workloadClass,
+                kind: .speakerDiarization,
+                operation: .load)
+            ) {
+                try await PyannoteDiarizer.loadRecommended(
+                    store: store, voiceprint: voiceprint
+                ) { progress in
+                    let percent = Int(progress.fraction * 100)
+                    Task { @MainActor [weak self] in
+                        self?.modelsState = .downloading(
+                            L10n.format("Downloading diarization model… %d%%", percent))
+                    }
                 }
             }
         }
@@ -342,8 +370,22 @@ final class AppServices {
     /// until the workflow schedules a later release.
     func releaseRecordingEngines() {
         guard transcriberLoadTask == nil, diarizerLoadTask == nil else { return }
-        transcriber = nil
-        diarizer = nil
+        if transcriber != nil {
+            let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
+                workloadClass: .maintenance,
+                kind: .liveTranscription,
+                operation: .release))
+            transcriber = nil
+            workloadTelemetry.finish(span, outcome: .completed)
+        }
+        if diarizer != nil {
+            let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
+                workloadClass: .maintenance,
+                kind: .speakerDiarization,
+                operation: .release))
+            diarizer = nil
+            workloadTelemetry.finish(span, outcome: .completed)
+        }
         modelsState = .unknown
     }
 

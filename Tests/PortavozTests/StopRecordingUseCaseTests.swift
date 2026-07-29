@@ -419,6 +419,22 @@ final class StopRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.releaseCount, 1)
     }
 
+    func testExecutionEmitsOneRecordingCriticalWorkload() async {
+        let fixture = StopRecordingFixture()
+        let dependencies = StopRecordingDependencies(shell: fixture.shell)
+        let recorder = ResourceWorkloadEventRecorder()
+
+        let result = await fixture.useCase(
+            dependencies,
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive)
+        ).execute(fixture.request())
+
+        guard case .completed = result else {
+            return XCTFail("fixture should complete")
+        }
+        assertRecordingCriticalWorkload(recorder.events)
+    }
+
     func testRealStoreAdapterAtomicallyInstallsSnapshotAndInitialJob() async throws {
         let fixture = StopRecordingFixture()
         let store = try MeetingStore.inMemory()
@@ -662,12 +678,16 @@ private struct StopRecordingFixture {
             voiceprint: Voiceprint(embedding: [0.1, 0.2], createdAt: startedAt))
     }
 
-    func useCase(_ dependencies: StopRecordingDependencies) -> StopRecording {
+    func useCase(
+        _ dependencies: StopRecordingDependencies,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) -> StopRecording {
         StopRecording(
             audioFiles: dependencies,
             store: dependencies,
             lifecycle: dependencies,
-            now: { now })
+            now: { now },
+            telemetry: telemetry)
     }
 }
 

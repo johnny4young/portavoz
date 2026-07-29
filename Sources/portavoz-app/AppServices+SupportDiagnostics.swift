@@ -4,7 +4,9 @@ import ModelStoreKit
 
 extension AppServices {
     func exportSupportDiagnostics() async throws -> Data {
-        try await ExportSupportDiagnostics(store: store).execute(
+        try await ExportSupportDiagnostics(
+            store: store,
+            telemetry: workloadTelemetry).execute(
             ExportSupportDiagnosticsRequest(
                 environment: SupportDiagnosticsEnvironment(
                     appVersion: Bundle.main.object(

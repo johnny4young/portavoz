@@ -170,6 +170,38 @@ final class SpotlightIndexerTests: XCTestCase {
         XCTAssertEqual(snapshot.legacyRemovals, 1)
     }
 
+    func testReconciliationEmitsOnlyMaintenanceIndexBoundaries() async throws {
+        let store = try await seededStore()
+        let recorder = ResourceWorkloadEventRecorder()
+        let indexer = SpotlightIndexer(
+            store: store,
+            enabled: true,
+            backend: SpotlightBackendSpy(),
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
+            debounce: .zero,
+            retryDelays: [],
+            telemetry: ResourceWorkloadTelemetry(receiver: recorder.receive),
+            sleep: { _ in })
+
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
+
+        guard case .started(let started) = recorder.events.first,
+              case .finished(let finished, let outcome) = recorder.events.last
+        else {
+            return XCTFail("Expected one matched indexing interval")
+        }
+        XCTAssertEqual(recorder.events.count, 2)
+        XCTAssertEqual(started, finished)
+        XCTAssertEqual(
+            started.descriptor,
+            ResourceWorkloadDescriptor(
+                workloadClass: .maintenance,
+                kind: .searchIndex,
+                operation: .execute))
+        XCTAssertEqual(outcome, .completed)
+    }
+
     private func seededStore() async throws -> MeetingStore {
         let store = try MeetingStore.inMemory()
         try await store.save(Meeting(

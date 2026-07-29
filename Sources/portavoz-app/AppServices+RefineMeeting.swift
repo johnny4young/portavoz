@@ -158,19 +158,33 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
         hints: TranscriptionHints,
         channel: AudioChannel
     ) async throws -> FileTranscription {
-        guard let whisper = services?.whisper else {
+        guard let services, let whisper = services.whisper else {
             throw AppRefineMeetingError.transcriberUnavailable
         }
-        return try await whisper.transcribeFile(
-            at: fileURL,
-            hints: hints,
-            channel: channel)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .qualityTranscription,
+                operation: .execute)
+        ) {
+            try await whisper.transcribeFile(
+                at: fileURL,
+                hints: hints,
+                channel: channel)
+        }
     }
 
     func diarize(fileURL: URL) async throws -> [SpeakerTurn] {
         guard let services else { throw AppRefineMeetingError.servicesUnavailable }
         let diarizer = try await services.loadDiarizerIfNeeded()
-        return try await diarizer.diarizeFile(at: fileURL)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .speakerDiarization,
+                operation: .execute)
+        ) {
+            try await diarizer.diarizeFile(at: fileURL)
+        }
     }
 
     func scheduleIdleRelease() {

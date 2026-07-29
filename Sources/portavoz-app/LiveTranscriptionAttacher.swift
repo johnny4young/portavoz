@@ -14,6 +14,7 @@ actor LiveTranscriptionAttacher {
     private let channels: [AudioChannel]
     private let hints: TranscriptionHints
     private let callbacks: StartRecordingLiveCallbacks
+    private let telemetry: ResourceWorkloadTelemetry
     private var consumers: [Task<Void, Never>] = []
     private var attachmentTask: Task<Void, Never>?
     private var active = false
@@ -24,11 +25,13 @@ actor LiveTranscriptionAttacher {
         hints: TranscriptionHints,
         callbacks: StartRecordingLiveCallbacks,
         initialTranscriberAvailable: Bool,
-        capacityPerChannel: Int = 128
+        capacityPerChannel: Int = 128,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.channels = Array(Set(channels))
         self.hints = hints
         self.callbacks = callbacks
+        self.telemetry = telemetry
         requiresRecovery = !initialTranscriberAvailable
         feeds = BoundedLiveAudioFeeds(
             channels: channels,
@@ -92,13 +95,25 @@ actor LiveTranscriptionAttacher {
         for channel in channels {
             guard let stream = feeds.stream(for: channel) else { continue }
             let segments = transcriber.transcribe(stream, hints: hints)
+            let telemetry = telemetry
             consumers.append(Task { [weak self] in
+                let span = telemetry.begin(ResourceWorkloadDescriptor(
+                    workloadClass: .liveInteractive,
+                    kind: .liveTranscription,
+                    operation: .execute))
                 do {
                     for try await segment in segments {
-                        guard let self else { return }
+                        guard let self else {
+                            telemetry.finish(span, outcome: .cancelled)
+                            return
+                        }
                         await self.callbacks.caption(segment)
                     }
+                    telemetry.finish(span, outcome: .completed)
+                } catch is CancellationError {
+                    telemetry.finish(span, outcome: .cancelled)
                 } catch {
+                    telemetry.finish(span, outcome: .failed)
                     await self?.liveLaneFailed()
                 }
             })

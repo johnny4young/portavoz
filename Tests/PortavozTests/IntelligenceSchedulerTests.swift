@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 import XCTest
 
 @testable import IntelligenceKit
@@ -224,5 +225,42 @@ final class IntelligenceSchedulerTests: XCTestCase {
         let entries = await log.entries
         // The interactive answer lands BETWEEN the chain's steps.
         XCTAssertEqual(entries, ["step1", "answer", "step2"])
+    }
+
+    func testTelemetrySeparatesQueueWaitFromInferenceWithoutPayloads() async throws {
+        let recorder = ResourceWorkloadEventRecorder()
+        let scheduler = IntelligenceScheduler(telemetry: ResourceWorkloadTelemetry(
+            receiver: recorder.receive))
+
+        let result = try await scheduler.run(.interactive) { "answer" }
+
+        XCTAssertEqual(result, "answer")
+        XCTAssertEqual(
+            recorder.events.compactMap(\.startedDescriptor),
+            [
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .languageInference,
+                    operation: .queueWait),
+                ResourceWorkloadDescriptor(
+                    workloadClass: .userInitiated,
+                    kind: .languageInference,
+                    operation: .execute),
+            ])
+        XCTAssertEqual(
+            recorder.events.compactMap(\.finishedOutcome),
+            [.completed, .completed])
+    }
+}
+
+private extension ResourceWorkloadEvent {
+    var startedDescriptor: ResourceWorkloadDescriptor? {
+        guard case .started(let span) = self else { return nil }
+        return span.descriptor
+    }
+
+    var finishedOutcome: ResourceWorkloadOutcome? {
+        guard case .finished(_, let outcome) = self else { return nil }
+        return outcome
     }
 }

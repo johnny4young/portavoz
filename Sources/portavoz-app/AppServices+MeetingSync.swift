@@ -1,5 +1,6 @@
 import Foundation
 import IntegrationsKit
+import PortavozCore
 import StorageKit
 
 extension AppServices {
@@ -7,10 +8,13 @@ extension AppServices {
 
     static func makeMeetingSyncModel(
         store: MeetingStore,
-        usesTemporaryStore: Bool
+        usesTemporaryStore: Bool,
+        telemetry: ResourceWorkloadTelemetry
     ) -> MeetingSyncModel {
         if usesTemporaryStore {
-            return MeetingSyncModel(client: UITestMeetingSyncClient())
+            return MeetingSyncModel(
+                client: UITestMeetingSyncClient(),
+                telemetry: telemetry)
         }
 
         let transportRoot = supportRoot
@@ -27,7 +31,9 @@ extension AppServices {
                 localDeviceID: localDeviceID,
                 platform: CloudKitMeetingSyncPlatform())
         }
-        return MeetingSyncModel(client: client)
+        return MeetingSyncModel(
+            client: client,
+            telemetry: telemetry)
     }
 
     private static func persistentMeetingSyncDeviceID() -> UUID {

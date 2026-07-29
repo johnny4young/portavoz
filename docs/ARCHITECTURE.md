@@ -114,7 +114,7 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, and secret-identifier values plus capability ports and the universal lexical transcript-content policy. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports and the universal lexical transcript-content policy. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
@@ -646,6 +646,23 @@ consuming only the newest buffered context when it completes. Capture never
 awaits that load and the cold-start session retains its durable transcription
 recovery bit because earlier audio was not live-transcribed. Preparing,
 available, and failed states cross ApplicationKit without raw model errors.
+
+Resource measurement preserves those owners rather than introducing another
+queue. Core defines a closed content-free descriptor with five scheduling
+classes, eleven resource families, five operations, and three terminal
+outcomes. Recording Start and Stop, live and quality transcription,
+diarization, intelligence, verified-model preparation/load/release, Spotlight
+indexing, private-library sync, waveform generation, Meeting Detail first
+projection, media export, and support export emit matched intervals at existing
+application or async-task boundaries. The macOS composition root maps only
+those enum values and terminal outcome to one generic Points of Interest
+interval. It cannot receive meeting IDs, text, file paths, model names, raw
+errors, or other content. The established exact Meeting Detail first-content
+interval remains in parallel for its benchmark. AudioCaptureKit contains no
+resource instrumentation, so capture callbacks never log, lock this telemetry,
+or wait for it. Measurement currently changes no admission, queueing,
+priority, eviction, residency, or concurrency policy.
+
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
 while a delayed direct row may replace only the newest still-open matching
@@ -1148,6 +1165,8 @@ touch the real library or Keychain.
     remains in the reviewed `docs/` sources of truth.
 22. SDK concurrency gaps are isolated in the narrowest lock-protected bridge
     with an explicit safety proof; broad import-level suppression is forbidden.
+23. Resource policy begins from content-free matched measurements at workflow
+    boundaries; realtime audio callbacks remain outside telemetry and policy.
 
 ## Runtime composition facts
 
@@ -1155,7 +1174,7 @@ The following facts are part of the implemented architecture and are not hidden
 behind aspirational diagrams:
 
 - `PortavozCore` contains no Security, AVFoundation, EventKit, SwiftUI, AppKit,
-  GRDB, CloudKit, or CoreML import.
+  GRDB, CloudKit, CoreML, or OSLog import.
 - `PlatformKit` depends only on `PortavozCore`; its Keychain adapter is created
   only by the app and CLI composition roots.
 - `portavoz-app` combines SwiftUI presentation and concrete macOS composition
@@ -1181,6 +1200,11 @@ behind aspirational diagrams:
   process lifetime, and maps content-free events to OSLog/signposts; it does
   not claim jobs or decide retries, fingerprints, dependencies, publication,
   or terminal outcomes.
+- One process-owned app telemetry adapter receives only Core's closed resource
+  workload events and records generic Points of Interest intervals. Capability
+  schedulers and ApplicationKit workflows receive the port through composition;
+  the shared intelligence scheduler uses one event-only relay. The adapter has
+  no content-bearing API, and AudioCaptureKit has no dependency on it.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the
@@ -1241,13 +1265,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,195 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,207 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 387 production Swift source files;
+- strict SwiftLint reports zero violations across 389 production Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

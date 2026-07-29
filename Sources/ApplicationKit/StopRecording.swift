@@ -262,22 +262,30 @@ public struct StopRecording: ApplicationUseCase {
     private let store: any StopRecordingStore
     private let lifecycle: any StopRecordingLifecycle
     private let now: @Sendable () -> Date
+    private let telemetry: ResourceWorkloadTelemetry
 
     public init(
         audioFiles: any StopRecordingAudioFiles,
         store: any StopRecordingStore,
         lifecycle: any StopRecordingLifecycle,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.audioFiles = audioFiles
         self.store = store
         self.lifecycle = lifecycle
         self.now = now
+        self.telemetry = telemetry
     }
 
     public func execute(_ request: StopRecordingRequest) async -> StopRecordingResult {
+        let span = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .recordingCritical,
+            kind: .audioCapture,
+            operation: .execute))
         let result = await install(request, timestamp: now())
         await lifecycle.scheduleRecordingEngineRelease()
+        telemetry.finish(span, outcome: .completed)
         return result
     }
 

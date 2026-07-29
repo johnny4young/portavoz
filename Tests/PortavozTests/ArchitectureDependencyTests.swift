@@ -173,6 +173,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCoreForbiddenImportsRemainAtDocumentedBaseline() throws {
         let forbidden = Set([
             "AppKit", "SwiftUI", "GRDB", "Security", "Network", "FoundationNetworking",
+            "OSLog",
         ])
         let actual = try Self.imports(under: "Sources/PortavozCore")
             .filter { forbidden.contains($0.module) }
@@ -184,6 +185,60 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(
             actual.isEmpty,
             "Core must contain ports and domain values, never platform frameworks: \(actual)")
+    }
+
+    func testResourceWorkloadTelemetryRemainsContentFreeAndOutsideAudioCallbacks() throws {
+        let contract = try Self.contents(
+            of: "Sources/PortavozCore/ResourceWorkload.swift")
+        guard let descriptorStart = contract.range(
+            of: "public struct ResourceWorkloadDescriptor"),
+            let spanStart = contract.range(
+                of: "public struct ResourceWorkloadSpan",
+                range: descriptorStart.upperBound..<contract.endIndex)
+        else {
+            return XCTFail("Resource workload descriptor boundary is missing")
+        }
+        let descriptor = contract[
+            descriptorStart.lowerBound..<spanStart.lowerBound]
+        for forbidden in [
+            "String", "URL", "MeetingID", "Transcript", "modelID", "path", "Error",
+        ] {
+            XCTAssertFalse(
+                descriptor.contains(forbidden),
+                "Workload descriptors must not admit content field \(forbidden)")
+        }
+
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppResourceWorkloadTelemetry.swift")
+        for forbidden in [
+            "MeetingID", "TranscriptSegment", "URL", "localizedDescription",
+            "modelID", "relativePath", "Logger(",
+        ] {
+            XCTAssertFalse(
+                adapter.contains(forbidden),
+                "Platform telemetry must not record \(forbidden)")
+        }
+        XCTAssertTrue(adapter.contains("workloadClass.rawValue"))
+        XCTAssertTrue(adapter.contains("kind.rawValue"))
+        XCTAssertTrue(adapter.contains("operation.rawValue"))
+        XCTAssertTrue(adapter.contains("outcome.rawValue"))
+        XCTAssertFalse(adapter.contains("span.id, privacy:"))
+
+        let audioCallbackInstrumentation = try Self.sourceMatches(
+            under: "Sources/AudioCaptureKit",
+            pattern: #"ResourceWorkload(?:Telemetry|Descriptor|Event|Span)"#)
+        XCTAssertTrue(
+            audioCallbackInstrumentation.isEmpty,
+            "Measurement must never enter capture callbacks: \(audioCallbackInstrumentation)")
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Resource measurement preserves those owners"))
+        XCTAssertTrue(decisions.contains("## D148"))
+        XCTAssertTrue(appSpec.contains(
+            "### Resource workload measurement (D148)"))
     }
 
     func testPlatformSecurityImplementationHasOneOuterOwner() throws {
@@ -755,9 +810,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(refine.contains("services.loadDiarizerIfNeeded()"))
 
         let transcriberStart = try XCTUnwrap(readiness.range(
-            of: "func loadTranscriberIfNeeded()"))
+            of: "func loadTranscriberIfNeeded("))
         let diarizerStart = try XCTUnwrap(readiness.range(
-            of: "func loadDiarizerIfNeeded()", range: transcriberStart.upperBound..<readiness.endIndex))
+            of: "func loadDiarizerIfNeeded(",
+            range: transcriberStart.upperBound..<readiness.endIndex))
         let broadLoaderStart = try XCTUnwrap(readiness.range(
             of: "func loadEnginesIfNeeded()", range: diarizerStart.upperBound..<readiness.endIndex))
         let transcriberLoader = readiness[
@@ -773,7 +829,7 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(importAdapter.contains("services.loadDiarizerIfNeeded()"))
         XCTAssertFalse(importAdapter.contains("services.loadEnginesIfNeeded()"))
-        XCTAssertTrue(recovery.contains("services.loadTranscriberIfNeeded()"))
+        XCTAssertTrue(recovery.contains("services.loadTranscriberIfNeeded("))
         XCTAssertFalse(recovery.contains("services.loadEnginesIfNeeded()"))
     }
 

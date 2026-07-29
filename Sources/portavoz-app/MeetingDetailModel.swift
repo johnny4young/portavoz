@@ -177,6 +177,8 @@ final class MeetingDetailModel {
 
     private let client: any MeetingDetailModelClient
     private let firstContentInterval: OSSignpostIntervalState
+    private let firstContentWorkloadSpan: ResourceWorkloadSpan
+    private let workloadTelemetry: ResourceWorkloadTelemetry
     private var didRenderFirstContent = false
     private var observationID = UUID()
     private var observedSections: Set<MeetingReviewSection> = []
@@ -194,11 +196,21 @@ final class MeetingDetailModel {
     private var metadataRequestID = UUID()
     private var playbackDirectoryAttempt: String?
 
-    init(meetingID: MeetingID, client: any MeetingDetailModelClient) {
+    init(
+        meetingID: MeetingID,
+        client: any MeetingDetailModelClient,
+        workloadTelemetry: ResourceWorkloadTelemetry = .disabled
+    ) {
         self.meetingID = meetingID
         self.client = client
+        self.workloadTelemetry = workloadTelemetry
         firstContentInterval = Self.performanceSignposter.beginInterval(
             "Meeting Detail First Content")
+        firstContentWorkloadSpan = workloadTelemetry.begin(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .uiProjection,
+                operation: .execute))
     }
 
     /// Ends the content-free navigation interval when SwiftUI mounts the
@@ -209,6 +221,9 @@ final class MeetingDetailModel {
         Self.performanceSignposter.endInterval(
             "Meeting Detail First Content",
             firstContentInterval)
+        workloadTelemetry.finish(
+            firstContentWorkloadSpan,
+            outcome: .completed)
     }
 
     /// Any explicit summary regeneration supersedes the optional recipe chip.

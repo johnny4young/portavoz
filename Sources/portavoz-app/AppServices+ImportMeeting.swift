@@ -157,24 +157,38 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
         languageHint: String?,
         vocabulary: [String]
     ) async throws -> FileTranscription {
-        guard let whisper = services?.whisper else {
+        guard let services, let whisper = services.whisper else {
             throw AppImportMeetingError.transcriberUnavailable
         }
         let hints = TranscriptionHints(
             language: languageHint,
             vocabulary: vocabulary,
             meetingID: meetingID)
-        return try await whisper.transcribeFile(
-            at: audio.fileURL,
-            hints: hints,
-            channel: .system)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .qualityTranscription,
+                operation: .execute)
+        ) {
+            try await whisper.transcribeFile(
+                at: audio.fileURL,
+                hints: hints,
+                channel: .system)
+        }
     }
 
     func diarize(audio: ImportedMeetingAudio) async throws -> [SpeakerTurn] {
-        guard let diarizer = services?.diarizer else {
+        guard let services, let diarizer = services.diarizer else {
             throw AppImportMeetingError.diarizerUnavailable
         }
-        return try await diarizer.diarizeFile(at: audio.fileURL)
+        return try await services.workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .speakerDiarization,
+                operation: .execute)
+        ) {
+            try await diarizer.diarizeFile(at: audio.fileURL)
+        }
     }
 
     func scheduleIdleRelease() {

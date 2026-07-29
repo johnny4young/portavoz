@@ -1,6 +1,6 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
@@ -11,6 +11,10 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
 - **`mergeMicroClusters`** (batch/`diarizeFile` only): labels with < 15 s of total speech yield each turn to the temporally nearest major label. Verified: real meeting 11 → 4 speakers; AMI unchanged (7.6%). Biometric rules: "Me" never absorbs or is absorbed (a phantom Me would contaminate action item owners); with no majors available, turns remain unchanged (short meeting ≠ fragmentation). 6 tests.
 - One instance = one session (SpeakerManager accumulates the voice base): different meetings do NOT share a diarizer.
 - **Do not calibrate with TTS**: `say` voices share a vocoder and are nearly indistinguishable to WeSpeaker. Calibration fixture: `sample.wav` + `sample.rttm` from pyannote-audio (real AMI, 2 speakers, public ground truth).
+- D148 measures verified pyannote load, actual user-initiated or post-capture
+  inference, and idle release at app-owned operation boundaries. It does not
+  expose meeting, speaker, voiceprint, file, model, or error identity, and it
+  changes neither the 0.45 threshold nor lifecycle ownership.
 
 ## Attribution — `SpeakerAttributor` (pure functions)
 

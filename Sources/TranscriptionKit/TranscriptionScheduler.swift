@@ -1,4 +1,5 @@
 import Foundation
+import PortavozCore
 
 /// Two-slot work scheduler enforcing the D7 rule: *lo vivo nunca espera a
 /// lo batch*. Live jobs run immediately, always — there is no live queue.
@@ -9,8 +10,11 @@ import Foundation
 public actor TranscriptionScheduler {
     private var batchBusy = false
     private var batchWaiters: [CheckedContinuation<Void, Never>] = []
+    private let telemetry: ResourceWorkloadTelemetry
 
-    public init() {}
+    public init(telemetry: ResourceWorkloadTelemetry = .disabled) {
+        self.telemetry = telemetry
+    }
 
     /// Runs a live job right now on the caller's task. Exists as an explicit
     /// lane so call sites read as scheduler decisions, and as the seam where
@@ -18,25 +22,50 @@ public actor TranscriptionScheduler {
     public func live<Result: Sendable>(
         _ job: @Sendable () async throws -> Result
     ) async rethrows -> Result {
-        try await job()
+        try await telemetry.measure(ResourceWorkloadDescriptor(
+            workloadClass: .liveInteractive,
+            kind: .liveTranscription,
+            operation: .execute
+        )) {
+            try await job()
+        }
     }
 
     /// Waits for the single batch slot (FIFO), then runs the job in a child
     /// task at `.utility` priority so a concurrent live job wins every
     /// scheduling race.
     public func batch<Result: Sendable>(
+        workloadClass: ResourceWorkloadClass = .postCapture,
         _ job: @escaping @Sendable () async throws -> Result
     ) async throws -> Result {
+        let queueSpan = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: workloadClass,
+            kind: .qualityTranscription,
+            operation: .queueWait))
         await acquireBatchSlot()
+        telemetry.finish(queueSpan, outcome: .completed)
         defer { releaseBatchSlot() }
 
+        let executionSpan = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: workloadClass,
+            kind: .qualityTranscription,
+            operation: .execute))
         let task = Task.detached(priority: .utility) {
             try await job()
         }
-        return try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
+        do {
+            let value = try await withTaskCancellationHandler {
+                try await task.value
+            } onCancel: {
+                task.cancel()
+            }
+            telemetry.finish(executionSpan, outcome: .completed)
+            return value
+        } catch {
+            telemetry.finish(
+                executionSpan,
+                outcome: ResourceWorkloadOutcome(error: error))
+            throw error
         }
     }
 

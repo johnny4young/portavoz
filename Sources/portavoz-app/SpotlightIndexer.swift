@@ -2,6 +2,7 @@ import CoreSpotlight
 import CryptoKit
 import Foundation
 import OSLog
+import PortavozCore
 import StorageKit
 import UniformTypeIdentifiers
 
@@ -30,6 +31,7 @@ actor SpotlightIndexer {
     private let debounce: Duration
     private let retryDelays: [Duration]
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let telemetry: ResourceWorkloadTelemetry
     private let logger = Logger(subsystem: "app.portavoz", category: "Spotlight")
 
     private var generation = 0
@@ -47,6 +49,7 @@ actor SpotlightIndexer {
         legacyCleanupState: (any SpotlightLegacyCleanupState)? = nil,
         debounce: Duration = .milliseconds(250),
         retryDelays: [Duration] = [.seconds(1), .seconds(5)],
+        telemetry: ResourceWorkloadTelemetry = .disabled,
         sleep: @escaping @Sendable (Duration) async throws -> Void = {
             try await Task.sleep(for: $0)
         }
@@ -58,6 +61,7 @@ actor SpotlightIndexer {
             legacyCleanupState ?? UserDefaultsSpotlightLegacyCleanupState()
         self.debounce = debounce
         self.retryDelays = retryDelays
+        self.telemetry = telemetry
         self.sleep = sleep
     }
 
@@ -94,36 +98,23 @@ actor SpotlightIndexer {
             }
             guard targetGeneration == generation else { continue }
 
+            let span = telemetry.begin(ResourceWorkloadDescriptor(
+                workloadClass: .maintenance,
+                kind: .searchIndex,
+                operation: .execute))
             do {
-                status = .projecting
-                let documents = try await store.spotlightDocuments()
-                let clientState = Self.clientState(for: documents)
-                status = .publishing
-                if try await backend.lastClientState() != clientState {
-                    try await backend.replace(documents, clientState: clientState)
-                }
-                // The released implementation used the default prototype
-                // index. Cleanup runs only after the protected index is ready,
-                // retries after failure, and then stays complete for this
-                // process and future launches instead of waking Spotlight on
-                // every reconciliation or Dev reinstall.
-                if !legacyCleanupComplete {
-                    if await legacyCleanupState.isComplete() {
-                        legacyCleanupComplete = true
-                    } else {
-                        try await backend.removeLegacyDefaultItems()
-                        await legacyCleanupState.markComplete()
-                    }
-                    legacyCleanupComplete = true
-                }
+                try await reconcile()
                 attempt = 0
+                telemetry.finish(span, outcome: .completed)
                 guard targetGeneration == generation else { continue }
                 finish(status: .idle)
                 return
             } catch is CancellationError {
+                telemetry.finish(span, outcome: .cancelled)
                 finish(status: .idle)
                 return
             } catch {
+                telemetry.finish(span, outcome: .failed)
                 attempt += 1
                 logger.error("Spotlight reconciliation failed; attempt=\(attempt, privacy: .public)")
                 guard attempt <= retryDelays.count else {
@@ -140,6 +131,27 @@ actor SpotlightIndexer {
             }
         }
         finish(status: .idle)
+    }
+
+    private func reconcile() async throws {
+        status = .projecting
+        let documents = try await store.spotlightDocuments()
+        let clientState = Self.clientState(for: documents)
+        status = .publishing
+        if try await backend.lastClientState() != clientState {
+            try await backend.replace(documents, clientState: clientState)
+        }
+        // The released implementation used the default prototype index.
+        // Cleanup runs only after the protected index is ready and stays
+        // complete instead of waking Spotlight on every reconciliation.
+        guard !legacyCleanupComplete else { return }
+        if await legacyCleanupState.isComplete() {
+            legacyCleanupComplete = true
+        } else {
+            try await backend.removeLegacyDefaultItems()
+            await legacyCleanupState.markComplete()
+            legacyCleanupComplete = true
+        }
     }
 
     private func finish(status: Status) {

@@ -1,5 +1,6 @@
 import Foundation
 import ModelStoreKit
+import PortavozCore
 import TranscriptionKit
 
 extension AppServices {
@@ -42,6 +43,7 @@ extension AppServices {
     /// preparation that Settings can start explicitly in the background.
     func loadWhisperIfNeeded(
         descriptor requestedDescriptor: ModelDescriptor? = nil,
+        workloadClass: ResourceWorkloadClass = .userInitiated,
         progress: @escaping @MainActor (String) -> Void,
         preparationProgress: WhisperPreparationObserver? = nil
     ) async throws -> WhisperEngine {
@@ -51,9 +53,17 @@ extension AppServices {
 
         let prepared = try await preparedWhisperModel(
             descriptor,
+            workloadClass: workloadClass,
             observer: preparationProgress)
         progress(L10n.text("Loading Whisper…"))
-        let engine = try await WhisperEngine.loadPrepared(prepared)
+        let engine = try await workloadTelemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: workloadClass,
+                kind: .qualityTranscription,
+                operation: .load)
+        ) {
+            try await WhisperEngine.loadPrepared(prepared)
+        }
         whisper = engine
         whisperVariantID = descriptor.id
         return engine
@@ -69,7 +79,10 @@ extension AppServices {
         whisperBackgroundPreparation = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.whisperBackgroundPreparation = nil }
-            _ = try? await self.preparedWhisperModel(descriptor, observer: nil)
+            _ = try? await self.preparedWhisperModel(
+                descriptor,
+                workloadClass: .userInitiated,
+                observer: nil)
         }
     }
 
@@ -138,8 +151,14 @@ extension AppServices {
 
     /// Drops the loaded runtime but never removes the verified files.
     func releaseWhisper() {
+        guard whisper != nil else { return }
+        let span = workloadTelemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .maintenance,
+            kind: .qualityTranscription,
+            operation: .release))
         whisper = nil
         whisperVariantID = nil
+        workloadTelemetry.finish(span, outcome: .completed)
     }
 
     func scheduleWhisperRelease() {
@@ -156,6 +175,7 @@ extension AppServices {
 extension AppServices {
     private func preparedWhisperModel(
         _ descriptor: ModelDescriptor,
+        workloadClass: ResourceWorkloadClass,
         observer: WhisperPreparationObserver?
     ) async throws -> WhisperEngine.PreparedModel {
         if let whisperPreparedModel,
@@ -197,27 +217,46 @@ extension AppServices {
         for observer in whisperProgressObservers.values {
             observer(size, 0, false)
         }
-        let task = Task {
-            try await WhisperEngine.prepare(
-                store: modelStore,
-                descriptor: descriptor
-            ) { update in
-                let percent = min(100, max(0, Int(update.fraction * 100)))
-                Task { @MainActor [weak self] in
-                    self?.reportWhisperProgress(
-                        descriptorID: descriptor.id,
-                        size: size,
-                        percent: percent,
-                        isDownloading: update.isDownloading)
-                }
-            }
-        }
+        let task = makeWhisperPreparationTask(
+            descriptor,
+            workloadClass: workloadClass,
+            size: size)
         let preparation = WhisperPreparation(
             generation: generation,
             descriptorID: descriptor.id,
             task: task)
         whisperPreparation = preparation
         return try await finishWhisperPreparation(preparation)
+    }
+
+    private func makeWhisperPreparationTask(
+        _ descriptor: ModelDescriptor,
+        workloadClass: ResourceWorkloadClass,
+        size: String
+    ) -> Task<WhisperEngine.PreparedModel, Error> {
+        let telemetry = workloadTelemetry
+        let store = modelStore
+        return Task {
+            try await telemetry.measure(ResourceWorkloadDescriptor(
+                workloadClass: workloadClass,
+                kind: .qualityTranscription,
+                operation: .prepare)
+            ) {
+                try await WhisperEngine.prepare(
+                    store: store,
+                    descriptor: descriptor
+                ) { update in
+                    let percent = min(100, max(0, Int(update.fraction * 100)))
+                    Task { @MainActor [weak self] in
+                        self?.reportWhisperProgress(
+                            descriptorID: descriptor.id,
+                            size: size,
+                            percent: percent,
+                            isDownloading: update.isDownloading)
+                    }
+                }
+            }
+        }
     }
 
     private func finishWhisperPreparation(

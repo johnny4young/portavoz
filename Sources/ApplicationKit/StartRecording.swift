@@ -296,6 +296,7 @@ public struct StartRecording: ApplicationUseCase {
     private let makeMeetingID: @Sendable () -> MeetingID
     private let now: @Sendable () -> Date
     private let calendar: Calendar
+    private let telemetry: ResourceWorkloadTelemetry
 
     public init(
         preferences: any StartRecordingPreferences,
@@ -304,7 +305,8 @@ public struct StartRecording: ApplicationUseCase {
         runtime: any StartRecordingRuntime,
         makeMeetingID: @escaping @Sendable () -> MeetingID = { MeetingID() },
         now: @escaping @Sendable () -> Date = { Date() },
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.preferences = preferences
         self.audioFiles = audioFiles
@@ -313,19 +315,28 @@ public struct StartRecording: ApplicationUseCase {
         self.makeMeetingID = makeMeetingID
         self.now = now
         self.calendar = calendar
+        self.telemetry = telemetry
     }
 
     public func execute(_ request: StartRecordingRequest) async -> StartRecordingResult {
+        let span = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .recordingCritical,
+            kind: .audioCapture,
+            operation: .execute))
         let sampledPreferences = await preferences.startRecordingPreferences()
+        let result: StartRecordingResult
         switch await prepareRuntime(sampledPreferences) {
         case .failed(let result):
+            self.telemetry.finish(span, outcome: .completed)
             return result
         case .ready(let prepared):
-            return await reserveAndStart(
+            result = await reserveAndStart(
                 request,
                 preferences: sampledPreferences,
                 prepared: prepared)
         }
+        telemetry.finish(span, outcome: .completed)
+        return result
     }
 
     private func prepareRuntime(

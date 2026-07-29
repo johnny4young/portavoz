@@ -5,7 +5,10 @@ import StorageKit
 
 extension AppServices {
     func makeMeetingDetailModel(_ meetingID: MeetingID) -> MeetingDetailModel {
-        MeetingDetailModel(meetingID: meetingID, client: self)
+        MeetingDetailModel(
+            meetingID: meetingID,
+            client: self,
+            workloadTelemetry: workloadTelemetry)
     }
 
     func applyMeetingDetailRefine(

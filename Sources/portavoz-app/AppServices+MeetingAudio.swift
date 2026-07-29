@@ -8,7 +8,8 @@ extension AppServices {
         _ request: PrepareMeetingPlaybackRequest
     ) async throws -> PreparedMeetingPlayback? {
         try await PrepareMeetingPlayback(
-            resolver: AppMeetingAudioChannelResolver()).execute(request)
+            resolver: AppMeetingAudioChannelResolver(),
+            telemetry: workloadTelemetry).execute(request)
     }
 
     func compressMeetingDetailAudio(
@@ -16,14 +17,16 @@ extension AppServices {
     ) async throws -> MeetingAudioCompressionResult {
         try await CompressMeetingAudio(
             resolver: AppMeetingAudioChannelResolver(),
-            compressor: AppMeetingAudioCompressor()).execute(request)
+            compressor: AppMeetingAudioCompressor(),
+            telemetry: workloadTelemetry).execute(request)
     }
 
     func exportMeetingDetailAudioClip(
         _ request: ExportMeetingAudioClipRequest
     ) async throws {
         try await ExportMeetingAudioClip(
-            resolver: AppMeetingAudioChannelResolver()).execute(request)
+            resolver: AppMeetingAudioChannelResolver(),
+            telemetry: workloadTelemetry).execute(request)
     }
 }
 

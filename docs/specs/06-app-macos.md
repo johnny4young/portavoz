@@ -4,6 +4,8 @@ Status: implemented, signed with Developer ID, and used in real meetings; public
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
+D148 adds the process-wide content-free resource measurement described in
+Composition; it observes current work without adding governor policy.
 
 ## Structure
 
@@ -103,6 +105,30 @@ D97's restricted CloudKit/APNs capabilities do not change the D78 decision.
 ## Composition — `AppServices` (@MainActor @Observable)
 
 DB (`MeetingStore`) + lazy shared engines: `transcriber` (Parakeet), `diarizer` (with voiceprint if exists; `invalidateDiarizer()` after enroll/delete), and `whisper` (runtime loaded only for Refine/Import). `modelsState` drives visible live-model preparation. Parakeet and pyannote each have an independently retained, process-scoped task: concurrent callers join the exact verified capability instead of loading a bundle. Recording samples any resident transcriber and starts audio immediately through bounded per-channel live feeds; when Parakeet is cold, a recording-scoped attacher joins the process-owned verified load and connects the active session when it completes (D121). Durable first-pass recovery and Dictation request Parakeet only; Refine/Import request pyannote only at their attribution boundary and never acquire live Parakeet as a side effect. Whisper Turbo/Compact preparation has its own app-scoped serialized task and observable state. Settings can proactively start/retry/delete a variant; the task survives that window, Refine/Import join it, and successful completion retains only an opaque verified token until runtime allocation. The heavyweight runtime keeps its two-minute idle-release policy. Library, Insights, and Meeting Detail receive storage-independent updates from query-scoped Store observations; no app feature consumes a global `libraryVersion` counter.
+
+### Resource workload measurement (D148)
+
+`AppServices` owns one `AppResourceWorkloadTelemetry` adapter and injects its
+Core port into application workflows, transcription, live attachment,
+Spotlight, sync, waveform, and Meeting Detail projection. The process-shared
+intelligence scheduler receives the same port through a narrow event relay
+because provider instances are created ad hoc. The adapter begins and ends one
+generic `Resource workload` Points of Interest interval using only public,
+allowlisted class/kind/operation/outcome enum values. Its API cannot accept
+meeting IDs, transcript, speaker data, file paths, model names, error text, or
+network identity; process-local span IDs remain internal and are not logged.
+
+Recording Start and Stop are classified as recording-critical application
+transactions. Live consumers remain separate from batch queue wait and
+execution. Model prepare/load/release, diarization, intelligence, Spotlight
+reconciliation, sync cycles, waveform derivation, first-detail projection,
+audio compression/clip export, and support export are measured at their
+existing async operation boundaries. `AudioCaptureKit` contains no resource
+telemetry, so realtime callbacks never acquire this adapter's lock or emit a
+signpost. The existing exact `Meeting Detail First Content` interval remains
+in parallel for the established 5,000-segment baseline. No admission,
+deferral, priority, concurrency, model-residency, or eviction behavior changes
+in this measurement slice.
 
 Local voice enrollment is composed in `AppServices+LocalVoiceIdentity` and
 enters `ApplicationKit.ManageLocalVoiceIdentity`. The use case bounds requested

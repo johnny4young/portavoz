@@ -68,21 +68,33 @@ extension MeetingStore: SupportDiagnosticsStore {}
 /// chooses a path or sends the result anywhere.
 public struct ExportSupportDiagnostics: Sendable {
     private let store: any SupportDiagnosticsStore
+    private let telemetry: ResourceWorkloadTelemetry
 
-    public init(store: any SupportDiagnosticsStore) {
+    public init(
+        store: any SupportDiagnosticsStore,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) {
         self.store = store
+        self.telemetry = telemetry
     }
 
     public func execute(_ request: ExportSupportDiagnosticsRequest) async throws -> Data {
-        let snapshot = try await store.supportDiagnosticsSnapshot()
-        let report = SupportDiagnosticsReport(
-            generatedAt: request.generatedAt,
-            environment: request.environment,
-            snapshot: snapshot)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        return try encoder.encode(report)
+        try await telemetry.measure(
+            ResourceWorkloadDescriptor(
+                workloadClass: .userInitiated,
+                kind: .supportExport,
+                operation: .execute)
+        ) {
+            let snapshot = try await store.supportDiagnosticsSnapshot()
+            let report = SupportDiagnosticsReport(
+                generatedAt: request.generatedAt,
+                environment: request.environment,
+                snapshot: snapshot)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+            return try encoder.encode(report)
+        }
     }
 }
 
