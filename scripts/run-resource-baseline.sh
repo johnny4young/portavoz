@@ -196,6 +196,7 @@ for ((run = 1; run <= RUNS; run++)); do
     refine_log="$RUN_ROOT/refine-$run.log"
     summary_log="$RUN_ROOT/summary-$run.log"
     ask_log="$RUN_ROOT/ask-$run.log"
+    indexing_log="$RUN_ROOT/indexing-$run.log"
     mkdir -p "$audio_root"
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
@@ -280,8 +281,29 @@ for ((run = 1; run <= RUNS; run++)); do
         [[ -f "$ask_log" ]] && cat "$ask_log" >&2
         fail "run $run did not produce the exact-shaped Ask sample"
     fi
+
+    echo "Collecting semantic indexing resource sample $run of $RUNS…"
+    if ! "$APP/Contents/MacOS/portavoz-app" \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-indexing \
+        --bench-resource-output "$fragments" \
+        --bench-resource-run "$run" \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
+        --bench-log "$indexing_log"
+    then
+        [[ -f "$indexing_log" ]] && cat "$indexing_log" >&2
+        fail "indexing run $run failed"
+    fi
+
+    indexing_sample="$fragments/indexing-$run.json"
+    if [[ ! -f "$indexing_sample" ]]; then
+        [[ -f "$indexing_log" ]] && cat "$indexing_log" >&2
+        fail "run $run did not produce the exact-shaped indexing sample"
+    fi
     sample_arguments+=(--sample "ask=$ask_sample")
     sample_arguments+=(--sample "idle=$idle_sample")
+    sample_arguments+=(--sample "indexing=$indexing_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
     sample_arguments+=(--sample "refine=$refine_sample")
     sample_arguments+=(--sample "summary=$summary_sample")

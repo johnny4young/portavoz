@@ -291,6 +291,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchResourceScenarioProbe.swift")
         let benchMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode.swift")
+        let indexingBench = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
         let app = try Self.contents(
             of: "Sources/portavoz-app/PortavozApp.swift")
         let services = try Self.contents(
@@ -333,9 +335,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchMode.contains(
             "runAskResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(
-            "AskMeetings.local(store: services.store)"))
+            "telemetry: services.workloadTelemetry"))
         XCTAssertTrue(benchMode.contains(
             "try await useCase.answer(question, limit: 6)"))
+        XCTAssertTrue(indexingBench.contains(
+            "runIndexingResourceBenchIfRequested"))
+        XCTAssertTrue(indexingBench.contains(
+            "IndexSemanticCorpus("))
+        XCTAssertTrue(indexingBench.contains(
+            "try await operation.all("))
         XCTAssertTrue(benchMode.contains(
             "runsIsolatedResourceBenchmark"))
         let benchmarkExit = try XCTUnwrap(app.range(
@@ -367,6 +375,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"sample_arguments+=(--sample "summary=$summary_sample")"#))
         XCTAssertTrue(runner.contains(
             #"sample_arguments+=(--sample "ask=$ask_sample")"#))
+        XCTAssertTrue(runner.contains(
+            #"sample_arguments+=(--sample "indexing=$indexing_sample")"#))
         XCTAssertTrue(scheduler.contains(
             "static let mlx = IntelligenceScheduler"))
         XCTAssertTrue(mlxProvider.contains(
@@ -1523,6 +1533,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let workflow = try Self.contents(of: "Sources/ApplicationKit/AskMeetings.swift")
         let retrieval = try Self.contents(
             of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let indexer = try Self.contents(
+            of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
+        let librarySearch = try Self.contents(
+            of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
         let appAdapter = try Self.contents(of: "Sources/portavoz-app/AppServices+Ask.swift")
         let askModel = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
         let paletteModel = try Self.contents(
@@ -1540,6 +1554,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(workflow.contains("struct AskCitation"))
         XCTAssertTrue(workflow.contains("struct AskMeetingAnswer"))
         XCTAssertTrue(retrieval.contains("struct LocalAskMeetingRetrieval"))
+        XCTAssertTrue(indexer.contains("struct IndexSemanticCorpus"))
+        XCTAssertTrue(indexer.contains("workloadClass: .maintenance"))
+        XCTAssertTrue(indexer.contains("kind: .searchIndex"))
+        XCTAssertTrue(retrieval.contains("corpusIndexer.all("))
+        XCTAssertTrue(librarySearch.contains("corpusIndexer.nextBatch("))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
             .appendingPathComponent("Sources/IntegrationsKit/AskPipeline.swift").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot

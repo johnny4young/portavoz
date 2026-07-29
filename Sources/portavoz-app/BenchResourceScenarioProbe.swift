@@ -69,6 +69,25 @@ struct BenchAskResourceConfiguration: Equatable {
     }
 }
 
+struct BenchIndexingResourceConfiguration: Equatable {
+    let timeoutSeconds: Int
+
+    static func requested(
+        arguments: [String]
+    ) throws -> BenchIndexingResourceConfiguration? {
+        guard arguments.contains("--bench-resource-indexing") else {
+            return nil
+        }
+        return BenchIndexingResourceConfiguration(timeoutSeconds:
+            try BenchResourceArguments.integer(
+                "--bench-resource-timeout",
+                arguments: arguments,
+                defaultValue: 900,
+                allowed: 60...3_600,
+                error: BenchIndexingResourceError.invalidTimeout))
+    }
+}
+
 private enum BenchResourceArguments {
     static func integer<Failure: Error>(
         _ option: String,
@@ -286,6 +305,29 @@ enum BenchAskResourceError: Error, Equatable, LocalizedError {
             "Ask resource operation failed: \(message)"
         case .timedOut(let seconds):
             "Ask resource operation exceeded \(seconds) seconds"
+        }
+    }
+}
+
+enum BenchIndexingResourceError: Error, Equatable, LocalizedError {
+    case assetsNotReady
+    case incomplete(expected: Int, actual: Int)
+    case invalidTimeout
+    case operationFailed(String)
+    case timedOut(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .assetsNotReady:
+            "Indexing requires installed Apple Latin embedding assets"
+        case .incomplete(let expected, let actual):
+            "Indexing completed \(actual) of \(expected) fixed segments"
+        case .invalidTimeout:
+            "--bench-resource-timeout must be between 60 and 3600 seconds"
+        case .operationFailed(let message):
+            "Indexing resource operation failed: \(message)"
+        case .timedOut(let seconds):
+            "Indexing resource operation exceeded \(seconds) seconds"
         }
     }
 }

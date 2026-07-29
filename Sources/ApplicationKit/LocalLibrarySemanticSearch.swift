@@ -1,5 +1,6 @@
 import Foundation
 import IntelligenceKit
+import PortavozCore
 import StorageKit
 
 /// Process-shared semantic fallback for instant Library search. Exact FTS
@@ -9,10 +10,17 @@ import StorageKit
 public actor LocalLibrarySemanticSearch {
     private let store: MeetingStore
     private let embedder: SentenceEmbedder?
+    private let corpusIndexer: IndexSemanticCorpus
 
-    public init(store: MeetingStore) {
+    public init(
+        store: MeetingStore,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) {
         self.store = store
         embedder = try? SentenceEmbedder()
+        corpusIndexer = IndexSemanticCorpus(
+            store: store,
+            telemetry: telemetry)
     }
 
     public func search(
@@ -26,29 +34,14 @@ public actor LocalLibrarySemanticSearch {
 
         try Task.checkCancellation()
         try await embedder.prepare(allowAssetDownload: false)
-        try await indexNextBatch(using: embedder)
+        _ = try await corpusIndexer.nextBatch(
+            using: embedder,
+            limit: 512)
         try Task.checkCancellation()
         guard let vector = try await embedder.embed([query]).first else { return [] }
         return try await store.searchSemantic(vector, limit: limit)
     }
 
-    /// Indexing is deliberately bounded per query. A large library becomes
-    /// semantic incrementally rather than monopolizing CPU while the user is
-    /// trying to search; Ask's explicit deep-retrieval flow may still finish
-    /// the complete index.
-    private func indexNextBatch(using embedder: SentenceEmbedder) async throws {
-        let missing = try await store.segmentsNeedingEmbeddings(limit: 512)
-        guard !missing.isEmpty else { return }
-        try Task.checkCancellation()
-        let worthIndexing = missing.filter { $0.text.count >= 20 }
-        let vectors = try await embedder.embed(worthIndexing.map(\.text))
-        try Task.checkCancellation()
-        var update = Dictionary(uniqueKeysWithValues: zip(worthIndexing.map(\.id), vectors))
-        for skipped in missing where skipped.text.count < 20 {
-            update[skipped.id] = []
-        }
-        try await store.storeEmbeddings(update)
-    }
 }
 
 /// Library search protects precise text matches: semantic retrieval augments

@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import PortavozCore
 import StorageKit
 
 @MainActor
@@ -32,9 +33,14 @@ extension AppServices {
 
     static func makeAskUseCase(
         store: MeetingStore,
-        usesTemporaryStore: Bool
+        usesTemporaryStore: Bool,
+        telemetry: ResourceWorkloadTelemetry
     ) -> AskMeetings {
-        guard usesTemporaryStore else { return .local(store: store) }
+        guard usesTemporaryStore else {
+            return .local(
+                store: store,
+                telemetry: telemetry)
+        }
         return AskMeetings(
             retrieval: UITestAskMeetingRetrieval(store: store),
             answering: UITestAskMeetingAnswering())

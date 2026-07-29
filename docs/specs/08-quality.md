@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,229 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,234 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,7 +23,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 392 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 394 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1282,8 +1282,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,229 XCTest package cases (13 gated),
-zero strict-lint violations across 392 Swift files, a 108-case
+The current field-reliability gate is 1,234 XCTest package cases (13 gated),
+zero strict-lint violations across 394 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair
@@ -1308,7 +1308,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   identity and never execute from AudioCaptureKit callbacks.
 - `make resource-baseline`: requires a clean commit, builds one
   Release bundle, re-signs a uniquely identified scratch app, and captures at
-  least three steady-idle, active-recording, Stop, Refine, Summary, and Ask runs.
+  least three steady-idle, active-recording, Stop, Refine, Summary, Ask, and
+  standalone semantic-indexing runs.
   The original `make resource-recording-baseline` target is a compatibility
   alias. After a five-second launch-settling interval, the benchmark measures
   idle before loading models. Refine runs separately against a fixed non-silent
@@ -1349,8 +1350,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output
   permissions, source-path omission, canonical-runner delegation, and
-  synthetic Refine, Summary, and Ask fixture/sample admission. This proves
-  measurement completeness, not a resource budget or governor decision.
+  synthetic Refine, Summary, Ask, and indexing fixture/sample admission. This
+  proves measurement completeness, not a resource budget or governor decision.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.
 - `scripts/run-spotlight-scale-baseline.sh`: isolated Release legacy/snapshot projection matrix at 1k/10k/100k meetings, exact fingerprint comparison, and optional synthetic-only protected-index delivery/cleanup.
 - `make perf-ledger` (`scripts/run-perf-ledger.sh` + `scripts/perf_ledger.py`): the release gate (PERF-001/PERF-008). It runs the unattended harnesses, resolves every metric declared in `docs/evidence/perf-thresholds.json` out of their reports, and answers with one JSON + Markdown scorecard and one exit code. Budgets come from the Target column below; nothing is invented in the contract. An absolute miss fails the run; a regression beyond 15% (latency) or 20% (footprint) against the committed baseline is reported as a candidate, because PERF-008 requires three stable runs before a regression counts. A metric whose harness did not run is printed as **not measured** rather than omitted, and the run claims `authoritative` only when every report comes from one release build on one Apple Silicon machine matching the baseline — hosted CI and mixed hosts stay informational. The gate also refuses to convict on a measurement that disagrees with itself: when a timed metric's p95 exceeds its own p50 by more than 1.25x, the 20 iterations did not agree, so a budget miss is reported as **verdict withheld** rather than a failure, and the run drops to informational because PERF-001's "stable machine" is a claim about the machine's state, not only its identity. The rule applies only to timed units with enough samples for p95 to differ from the maximum — byte deltas move with page granularity rather than with scheduling, and a three-run distribution has no tail to speak of. Each run also stamps the Swift/Xcode toolchain onto every report it produces, because a shift in the numbers is otherwise indistinguishable from a codegen change: when the baseline was measured with a different toolchain — or, like the July 2026 evidence, predates the stamp entirely — the scorecard prints a **Comparability** caveat. That caveat qualifies what a delta can be attributed to; it never costs the run its authority, which PERF-001 grants on the machine alone. `Tests/Tooling/test_perf_ledger.py` covers the budget, regression, honesty, authority, toolchain, selector, and contract rules.

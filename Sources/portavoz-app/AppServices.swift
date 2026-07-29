@@ -90,8 +90,9 @@ final class AppServices {
     let localDataLedger: LocalDataLedgerModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
-    /// One shared local embedding lane augments Library FTS without loading a
-    /// model per keystroke or downloading assets from the search field.
+    /// One process-shared Library embedding lane augments exact search without
+    /// loading a model per keystroke or downloading assets from the field.
+    /// Ask and Library share the corpus-indexing operation, not its runtime.
     @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
@@ -221,9 +222,10 @@ final class AppServices {
             fatalError("cannot open the Portavoz database: \(error)")
         }
         let askUseCase = Self.makeAskUseCase(
-            store: store,
-            usesTemporaryStore: usesTemporaryStore)
-        librarySemanticSearch = LocalLibrarySemanticSearch(store: store)
+            store: store, usesTemporaryStore: usesTemporaryStore,
+            telemetry: workloadTelemetry)
+        librarySemanticSearch = LocalLibrarySemanticSearch(
+            store: store, telemetry: workloadTelemetry)
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
             useCase: ResolveFirstRunExperience(
                 library: AppFirstRunLibraryReader(store: store))))

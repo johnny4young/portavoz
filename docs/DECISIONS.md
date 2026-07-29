@@ -4618,27 +4618,30 @@ exact Release version/build/commit, copies and re-signs it under the dedicated
 Every run requires a disposable meeting database and scratch audio, lets
 launch-only work settle for five seconds, and captures a model-free idle window
 before loading recording engines. It then measures recording and Stop through
-the real windowed path and executes cold-runtime Refine, Summary, and Ask
-operations in separate processes. Refine uses a fixed English AIFF generated
-from public synthetic text, requires the selected Whisper model, tokenizer, and
-diarization model to pass full installed-artifact verification before sampling,
-and never downloads a model inside the measured window. Summary verifies the
-pinned Qwen3.5 MLX descriptor, stores a fixed public English
-meeting/cast/transcript only in the disposable database, and measures the real
-ApplicationKit regeneration workflow through successful transactional
-persistence. Ask requires already-installed Apple Latin embedding assets and
-available Foundation Models, then measures the real `AskMeetings.local`
-workflow over the same fixed corpus. Its window intentionally includes current
-synchronous corpus backfill, bilingual query expansion, hybrid retrieval, and
-answer generation; a sample requires citations and nonempty generated text.
-All three model scenarios use the same unstructured first-result race, which
-enforces a bounded 60–3,600 second timeout even if model work ignores
-cooperative cancellation. Refine never applies its draft or persists
-user-visible content.
+the real windowed path and executes cold-runtime Refine, Summary, Ask, and
+standalone semantic-indexing operations in separate processes. Refine uses a
+fixed English AIFF generated from public synthetic text, requires the selected
+Whisper model, tokenizer, and diarization model to pass full installed-artifact
+verification before sampling, and never downloads a model inside the measured
+window. Summary verifies the pinned Qwen3.5 MLX descriptor, stores a fixed
+public English meeting/cast/transcript only in the disposable database, and
+measures the real ApplicationKit regeneration workflow through successful
+transactional persistence. Ask requires already-installed Apple Latin
+embedding assets and available Foundation Models, then measures the real
+`AskMeetings.local` workflow over the same fixed corpus. Its window
+intentionally includes current synchronous corpus backfill, bilingual query
+expansion, hybrid retrieval, and answer generation; a sample requires citations
+and nonempty generated text. Standalone indexing prepares the already-installed
+embedding assets before sampling, drains 1,024 fixed public English segments
+through `IndexSemanticCorpus`, and requires every row to be embedded or
+deliberately excluded before publication. All four model scenarios use the same
+unstructured first-result race, which enforces a bounded 60–3,600 second timeout
+even if model work ignores cooperative cancellation. Refine never applies its
+draft or persists user-visible content.
 
 Only the hidden recording, Refine, and Summary resource benchmarks reuse the
-normal verified Portavoz model cache; Ask relies on OS-managed assets and keeps
-the disposable model root. Ordinary XCUITest launches also retain an empty
+normal verified Portavoz model cache; Ask and indexing rely on OS-managed
+assets and keep the disposable model root. Ordinary XCUITest launches retain an empty
 temporary model root. Partial fragments and the synthetic fixture stay private
 and are removed on failure; a validated owner-only host receipt is published
 atomically. The original
@@ -4653,13 +4656,13 @@ notarized installed app.
 **Rationale:** native counters make receipts deterministic and testable without
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
-model-install noise. Independent idle, recording, Stop, Refine, Summary, and
-Ask windows make residency and interference attribution explicit. One reusable
-single-scenario probe avoids a new collector lifecycle for every later batch
+model-install noise. Independent idle, recording, Stop, Refine, Summary, Ask,
+and indexing windows make residency and interference attribution explicit. One
+reusable single-scenario probe avoids a new collector lifecycle for every batch
 workflow, while synthetic input keeps model-heavy evidence repeatable and
 private. Fail-closed publication prevents a timeout, missing model or OS asset,
-silent fixture, failed summary transaction, missing Ask evidence, or partial
-run from looking like accepted hardware evidence.
+silent fixture, failed summary transaction, missing Ask evidence, incomplete
+index, or partial run from looking like accepted hardware evidence.
 
 ## D151 — MLX inference has an independent explicit scheduler lane (Jul 2026)
 
@@ -4687,3 +4690,38 @@ policy reusable and the cache focused on model lifetime makes both boundaries
 testable under strict concurrency. Shared payload-free telemetry gives the
 resource baseline comparable queue and execution evidence without exposing
 prompts, model identity, or scheduler keys.
+
+## D152 — Semantic corpus indexing is one ApplicationKit maintenance operation (Jul 2026)
+
+**Context:** Ask and instant Library search both embedded missing transcript
+segments, excluded micro-segments, and persisted vectors, but implemented those
+rules separately. Ask drained the complete missing corpus before retrieval,
+while Library advanced at most 512 rows per query. D149 also requires a
+standalone indexing resource cell before any background-indexing or governor
+policy can be justified. Measuring a synthetic loop would not characterize the
+released persistence and embedding path.
+
+**Decision:** `ApplicationKit.IndexSemanticCorpus` owns semantic backfill with
+two explicit entry points: one bounded batch and one complete drain. It accepts
+a Sendable embedding capability, validates that every eligible segment receives
+exactly one vector before persistence, writes an empty marker for rows shorter
+than 20 characters, checks cancellation between fetch, embedding, and storage,
+and emits one content-free `maintenance/searchIndex/execute` interval. Ask
+retains its complete synchronous drain and Library retains its bounded batch,
+so extraction changes no released retrieval behavior. Library continues to own
+its process-shared `SentenceEmbedder`; sharing the operation does not imply a
+shared model runtime.
+
+The Release indexing benchmark prepares already-installed Apple Latin
+embedding assets before measurement, inserts 1,024 fixed public English
+segments into a disposable database, runs the complete operation in batches of
+256, and publishes no sample unless every row is embedded or deliberately
+excluded. It neither downloads assets inside the measured window nor reads a
+Portavoz model cache.
+
+**Rationale:** one application-owned operation prevents Ask and Library from
+drifting while creating a deterministic, independently measurable seam for
+future background scheduling. Preserving caller-specific drain behavior keeps
+the slice a Strangler extraction rather than an unmeasured product-policy
+change. Embedding residency, background admission, recording interference, and
+sqlite-vec remain separate decisions that require their own evidence.

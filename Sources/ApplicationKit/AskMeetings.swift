@@ -109,12 +109,16 @@ public struct AskMeetings: ApplicationUseCase {
         self.answering = answering
     }
 
-    public static func local(store: MeetingStore) -> Self {
+    public static func local(
+        store: MeetingStore,
+        telemetry: ResourceWorkloadTelemetry = .disabled
+    ) -> Self {
         let intelligence = OnDeviceAskMeetingIntelligence()
         return Self(
             retrieval: LocalAskMeetingRetrieval(
                 store: store,
-                queryExpander: intelligence),
+                queryExpander: intelligence,
+                telemetry: telemetry),
             answering: intelligence)
     }
 

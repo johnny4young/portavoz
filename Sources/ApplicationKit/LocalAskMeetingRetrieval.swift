@@ -8,13 +8,18 @@ import StorageKit
 public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let store: MeetingStore
     private let queryExpander: any AskQueryExpanding
+    private let corpusIndexer: IndexSemanticCorpus
 
     public init(
         store: MeetingStore,
-        queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence()
+        queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
+        telemetry: ResourceWorkloadTelemetry = .disabled
     ) {
         self.store = store
         self.queryExpander = queryExpander
+        corpusIndexer = IndexSemanticCorpus(
+            store: store,
+            telemetry: telemetry)
     }
 
     public func search(
@@ -35,20 +40,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         try await embedder.prepare()
 
         // Index anything new (idempotent, batched). Micro-segments carry no
-        // retrievable meaning but drown real hits — empty marker excludes
-        // them from semantic ranking for good.
-        while true {
-            let missing = try await store.segmentsNeedingEmbeddings(limit: 256)
-            guard !missing.isEmpty else { break }
-            let worthIndexing = missing.filter { $0.text.count >= 20 }
-            let vectors = try await embedder.embed(worthIndexing.map(\.text))
-            var update = Dictionary(uniqueKeysWithValues: zip(worthIndexing.map(\.id), vectors))
-            for skipped in missing where skipped.text.count < 20 {
-                update[skipped.id] = []
-            }
-            try await store.storeEmbeddings(update)
-            if missing.count < 256 { break }
-        }
+        // retrievable meaning but drown real hits; the shared operation stores
+        // an empty marker so they remain excluded from semantic ranking.
+        _ = try await corpusIndexer.all(
+            using: embedder,
+            batchSize: 256)
 
         let queries = await queryExpander.expand(question)
 

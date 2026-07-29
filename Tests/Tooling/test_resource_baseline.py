@@ -424,6 +424,7 @@ class ResourceBaselineTests(unittest.TestCase):
             refine = root / "refine-1.json"
             summary = root / "summary-1.json"
             ask = root / "ask-1.json"
+            indexing = root / "indexing-1.json"
             stop = root / "stop-1.json"
             idle = root / "idle-1.json"
             scenarios = dict(self.required_scenarios())
@@ -437,6 +438,8 @@ class ResourceBaselineTests(unittest.TestCase):
                 self.sample(1, scenarios["summary"])))
             ask.write_text(json.dumps(
                 self.sample(1, scenarios["ask"])))
+            indexing.write_text(json.dumps(
+                self.sample(1, scenarios["indexing"])))
             stop.write_text(json.dumps(
                 self.sample(1, scenarios["stop"])))
             output = root / "receipt.json"
@@ -467,6 +470,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     "--sample",
                     f"ask={ask}",
                     "--sample",
+                    f"indexing={indexing}",
+                    "--sample",
                     f"stop={stop}",
                     "--output",
                     str(output),
@@ -478,7 +483,10 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(receipt["host"]["profile"], "memory-8gb")
             self.assertEqual(
                 [scenario["id"] for scenario in receipt["scenarios"]],
-                ["ask", "idle", "recording", "refine", "stop", "summary"],
+                [
+                    "ask", "idle", "indexing", "recording", "refine", "stop",
+                    "summary",
+                ],
             )
             self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
             baseline.validate_receipt(
@@ -614,6 +622,7 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("--bench-resource-refine", runner)
         self.assertIn("--bench-resource-summary", runner)
         self.assertIn("--bench-resource-ask", runner)
+        self.assertIn("--bench-resource-indexing", runner)
         self.assertIn("--bench-resource-timeout", runner)
         self.assertIn('idle_sample="$fragments/idle-$run.json"', runner)
         self.assertIn('sample_arguments+=(--sample "idle=$idle_sample")', runner)
@@ -630,6 +639,14 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn('ask_sample="$fragments/ask-$run.json"', runner)
         self.assertIn(
             'sample_arguments+=(--sample "ask=$ask_sample")',
+            runner,
+        )
+        self.assertIn(
+            'indexing_sample="$fragments/indexing-$run.json"',
+            runner,
+        )
+        self.assertIn(
+            'sample_arguments+=(--sample "indexing=$indexing_sample")',
             runner,
         )
         self.assertIn("say -v Samantha -r 170", runner)

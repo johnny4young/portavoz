@@ -25,6 +25,7 @@ enum BenchMode {
             || arguments.contains("--bench-resource-refine")
             || arguments.contains("--bench-resource-summary")
             || arguments.contains("--bench-resource-ask")
+            || arguments.contains("--bench-resource-indexing")
     }
 
     static func runIfRequested() {
@@ -676,7 +677,9 @@ extension BenchMode {
             speakers: fixture.speakers,
             segments: fixture.segments)
         return (
-            AskMeetings.local(store: services.store),
+            AskMeetings.local(
+                store: services.store,
+                telemetry: services.workloadTelemetry),
             "What did we decide about background indexing during active calls?"
         )
     }

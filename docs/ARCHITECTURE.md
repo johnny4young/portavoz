@@ -115,7 +115,7 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports and the universal lexical transcript-content policy. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
@@ -526,6 +526,16 @@ invalidates exact results, and no additional vector dependency is loaded. A
 selected hit emits the same one-shot meeting/timestamp seek request used by Ask
 evidence before routing.
 
+Ask and Library delegate corpus backfill to one `IndexSemanticCorpus`
+ApplicationKit operation. Library requests one bounded batch; the released Ask
+path still drains all missing rows before hybrid retrieval. Both paths mark
+micro-segments with an empty vector, validate the embedder's result count
+before persistence, and emit one content-free maintenance/search-index
+interval. This extraction shares behavior, not model residency: Library owns
+its process-shared `SentenceEmbedder`, while Ask still creates its intelligence
+runtime per workflow. Moving the drain off the Ask request path and adding
+governor admission remain unimplemented.
+
 ## Durable recording lifecycle
 
 The app persists a meeting shell and pending capture assets before audio
@@ -689,9 +699,13 @@ fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
 The native Release collector covers steady idle, active recording, Stop,
-Refine, Summary, and Ask without making Instruments XML part of the evidence
-contract. A benchmark-only observer receives the same closed telemetry events
-while
+Refine, Summary, Ask, and standalone semantic indexing without making
+Instruments XML part of the evidence contract. The indexing cell prepares
+already-installed Apple Latin embedding assets before its measured window,
+then drains 1,024 fixed public English segments in four bounded batches inside
+a disposable database. Completion requires every segment to carry an embedding
+or deliberate micro-segment marker. A benchmark-only observer receives the same
+closed telemetry events while
 `proc_pid_rusage(RUSAGE_INFO_CURRENT)`, `ProcessInfo`, volume capacity, and
 IOKit power-source APIs sample CPU time, peak physical footprint, energy, disk
 I/O, minimum free disk, thermal state, low-power mode, and invariant power
@@ -715,19 +729,21 @@ before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. The benchmark owns
 the process rather than sharing its measured operation with normal launch
 orchestration.
-Refine, Summary, and Ask run in separate cold processes behind the same bounded
-first-result timeout. Summary verifies the pinned Qwen3.5 MLX descriptor before
+Refine, Summary, Ask, and indexing run in separate cold processes behind the
+same bounded first-result timeout. Summary verifies the pinned Qwen3.5 MLX descriptor before
 sampling and executes the real ApplicationKit regeneration workflow over a
 fixed public English transcript stored only in the disposable database. Ask
 requires already-installed Apple Latin embedding assets and available
 Foundation Models, then measures the real `AskMeetings.local` workflow over the
 same fixed corpus, including current synchronous embedding backfill, bilingual
 query expansion, hybrid retrieval, and generated answer. It admits a sample
-only when both citations and nonempty generated text exist. The runner never
-launches or changes `/Applications/Portavoz.app`. These six scenarios now have
-reproducible collectors, but no host receipt is accepted and indexing plus the
-two concurrent scenarios remain uncollected, so resource-governor policy
-remains blocked.
+only when both citations and nonempty generated text exist. Indexing prepares
+the already-installed embedding runtime before sampling, drains 1,024 fixed
+public segments through the real ApplicationKit operation, and requires no
+missing rows afterward. The runner never launches or changes
+`/Applications/Portavoz.app`. These seven scenarios now have reproducible
+collectors, but no host receipt is accepted and the two concurrent scenarios
+remain uncollected, so resource-governor policy remains blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
@@ -1277,11 +1293,12 @@ behind aspirational diagrams:
   not read receipts, choose memory tiers, aggregate baselines, or derive
   runtime policy from this evidence.
 - The macOS composition root owns benchmark-only native resource probes for
-  idle, recording, Stop, Refine, Summary, and Ask. One canonical Release runner
-  uses disposable meeting/audio state, verified installed or OS-managed model
-  assets, and fixed public synthetic speech/transcript fixtures; it publishes
-  only exact content-free fragments to the tooling evaluator. Production
-  launches and schedulers never read these fragments or the resulting receipt.
+  idle, recording, Stop, Refine, Summary, Ask, and standalone indexing. One
+  canonical Release runner uses disposable meeting/audio state, verified
+  installed or OS-managed model assets, and fixed public synthetic
+  speech/transcript fixtures; it publishes only exact content-free fragments to
+  the tooling evaluator. Production launches and schedulers never read these
+  fragments or the resulting receipt.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the
@@ -1342,13 +1359,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,229 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,234 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 392 Swift source files;
+- strict SwiftLint reports zero violations across 394 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

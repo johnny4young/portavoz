@@ -38,6 +38,7 @@ struct PortavozApp: App {
         BenchMode.runRefineResourceBenchIfRequested(services: services)
         BenchMode.runSummaryResourceBenchIfRequested(services: services)
         BenchMode.runAskResourceBenchIfRequested(services: services)
+        BenchMode.runIndexingResourceBenchIfRequested(services: services)
         // Resource evidence owns this process. Do not start sync, recovery,
         // provider discovery, or dictation registrations beside a measured
         // window; temporary storage alone would not isolate their resource use.
