@@ -1371,7 +1371,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   blocking states, assembly, native host metadata, runner isolation,
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output
-  permissions, source-path omission, canonical-runner delegation, and
+  permissions, absolute GUI output roots, source-path omission,
+  canonical-runner delegation, and
   synthetic Refine, Summary, Ask, indexing, concurrent-indexing, and
   concurrent-batch fixture/sample admission. This proves collector completeness
   for all nine scenarios, not a resource budget or governor decision; accepted

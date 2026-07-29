@@ -729,9 +729,12 @@ counter fails the run without producing passing evidence.
 `scripts/run-resource-baseline.sh` requires a clean worktree, builds one exact
 Release version/build/commit, copies it to a uniquely identified scratch app,
 and records at least three runs into owner-only fragments before atomically
-publishing a host receipt. Each run uses a disposable meeting database,
-scratch audio, process-local secret storage, and a unique temporary
-participant-identity root. It never reads or writes the host Keychain,
+publishing a host receipt. User-supplied output roots are normalized to
+absolute repository paths before crossing into the GUI benchmark process, so
+relative Make overrides cannot escape to that process's read-only working
+volume. Each run uses a disposable meeting database, scratch audio,
+process-local secret storage, and a unique temporary participant-identity
+root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to
 use the Keychain and its durable identity root. Resource scenarios reuse the
 normal SHA-256-verified model cache only when their measured operation requires

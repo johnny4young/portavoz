@@ -108,6 +108,9 @@ fi
 COMMIT="$(git rev-parse HEAD)"
 SHORT_COMMIT="${COMMIT:0:12}"
 OUTPUT="${OUTPUT:-$ROOT/dist/resource-baseline/$PROFILE-$SHORT_COMMIT}"
+if [[ "$OUTPUT" != /* ]]; then
+    OUTPUT="$ROOT/$OUTPUT"
+fi
 if [[ -e "$OUTPUT" ]]; then
     fail "output already exists: $OUTPUT"
 fi
