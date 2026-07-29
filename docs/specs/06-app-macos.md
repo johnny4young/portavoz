@@ -206,7 +206,11 @@ bounded file transcription returns nonempty speech, then applies the same
 freeze-before-Stop and fail-closed publication boundary. Diarization and
 summary are intentionally outside this independently attributable cell.
 Every launch requires `-use-temp-store`, so the benchmark meeting database and
-audio stay disposable; `AppStorageIsolationPolicy` allows only hidden
+audio stay disposable. The same policy composes a process-local secret store
+and a unique temporary participant-identity root, so resource and UI
+automation never inspect or mutate the host Keychain, voiceprint, or
+participant-voice gallery. Production keeps the Keychain-backed store and
+durable identity root. `AppStorageIsolationPolicy` allows only hidden
 recording/recording-plus-indexing/recording-plus-batch/Refine/Summary
 benchmarks to reuse the normal verified Portavoz model cache. Ask and indexing
 use OS-managed assets and keep the disposable model root. Regular

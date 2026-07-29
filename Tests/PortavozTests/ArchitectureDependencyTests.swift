@@ -301,6 +301,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/PortavozApp.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices.swift")
+        let volatileSecrets = try Self.contents(
+            of: "Sources/PlatformKit/VolatileSecretStore.swift")
         let scheduler = try Self.contents(
             of: "Sources/IntelligenceKit/IntelligenceScheduler.swift")
         let mlxProvider = try Self.contents(
@@ -344,6 +346,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             "workloadClass: .postCapture"))
         XCTAssertTrue(batchBench.contains(
             "BenchResourceTimedOperation.run"))
+        XCTAssertTrue(services.contains(
+            "usesTemporarySensitiveStore"))
+        XCTAssertTrue(services.contains(
+            "VolatileSecretStore()"))
+        XCTAssertTrue(services.contains(
+            "voiceprintStore = sensitiveStorage.voiceprintStore"))
+        XCTAssertFalse(volatileSecrets.contains("Security"))
+        XCTAssertFalse(volatileSecrets.contains("SecItem"))
         XCTAssertTrue(benchMode.contains(
             "runRefineResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(

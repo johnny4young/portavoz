@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,241 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,243 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,7 +23,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 395 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 397 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1283,7 +1283,7 @@ contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
 The current field-reliability gate is 1,237 XCTest package cases (13 gated),
-zero strict-lint violations across 395 Swift files, a 108-case
+zero strict-lint violations across 397 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair
@@ -1337,9 +1337,12 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   nonempty result while capture remains active. It deliberately excludes
   diarization and summary from that cell. Every bounded Refine, Summary, Ask,
   indexing, and concurrent operation enforces the same configurable hard timeout. The runner
-  uses a disposable meeting database and audio root, reuses the verified
-  installed Portavoz model cache only where required, and never targets the
-  notarized installed app. Resource-mode app initialization
+  uses a disposable meeting database and audio root plus process-local secrets
+  and a unique temporary participant-identity root. It never reads or writes
+  the host Keychain, voiceprint, or participant-voice gallery; production
+  retains the Keychain-backed secret adapter and durable identity root. It
+  reuses the verified installed Portavoz model cache only where required and
+  never targets the notarized installed app. Resource-mode app initialization
   returns before sync, recovery, provider discovery, or dictation registration
   can contaminate a measured operation; the AppKit delegate remains detached
   from product services. Its native app probes

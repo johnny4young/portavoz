@@ -721,8 +721,13 @@ counter fails the run without producing passing evidence.
 `scripts/run-resource-baseline.sh` requires a clean worktree, builds one exact
 Release version/build/commit, copies it to a uniquely identified scratch app,
 and records at least three runs into owner-only fragments before atomically
-publishing a host receipt. Each run uses a disposable meeting database and
-scratch audio while reusing the normal SHA-256-verified model cache; a
+publishing a host receipt. Each run uses a disposable meeting database,
+scratch audio, process-local secret storage, and a unique temporary
+participant-identity root. It never reads or writes the host Keychain,
+voiceprint, or participant-voice gallery. Production composition continues to
+use the Keychain and its durable identity root. Resource scenarios reuse the
+normal SHA-256-verified model cache only when their measured operation requires
+it; a
 five-second launch-settling interval precedes the model-free idle window, and
 ordinary XCUITest launches keep their existing empty temporary model root.
 Once a resource benchmark dispatcher is armed, app initialization returns
@@ -1370,13 +1375,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,241 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,243 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 395 Swift source files;
+- strict SwiftLint reports zero violations across 397 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

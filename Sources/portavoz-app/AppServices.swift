@@ -28,9 +28,11 @@ struct MeetingSeekRequest: Equatable {
 struct AppStorageIsolationPolicy: Equatable {
     let usesTemporaryMeetingStore: Bool
     let usesTemporaryModelStore: Bool
+    let usesTemporarySensitiveStore: Bool
 
     init(arguments: [String]) {
         usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
+        usesTemporarySensitiveStore = usesTemporaryMeetingStore
         let reusesVerifiedModels = arguments.contains("--bench-record")
             || arguments.contains("--bench-resource-refine")
             || arguments.contains("--bench-resource-summary")
@@ -74,9 +76,6 @@ final class AppServices {
     @ObservationIgnored let modelLifecycle: VerifiedModelLifecycle
     /// Content-free workload spans are installed once at the composition root.
     @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
-    /// The only concrete Security adapter in the app process. Capability Kits
-    /// receive the Core port rather than importing or constructing Keychain.
-    @ObservationIgnored let secretStorage: KeychainSecretStore
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
     /// Shared async credential workflow for Settings and publishing surfaces.
     @ObservationIgnored let secrets: ManageSecrets
@@ -208,12 +207,12 @@ final class AppServices {
             usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
-        let secretStorage = KeychainSecretStore()
-        self.secretStorage = secretStorage
+        let sensitiveStorage = Self.makeSensitiveStorage(
+            usesTemporaryStore: storagePolicy.usesTemporarySensitiveStore)
         microphonePermissions = MicrophonePermissionClient()
-        secrets = ManageSecrets(storage: secretStorage)
-        voiceprintStore = VoiceprintStore(secrets: secretStorage)
-        voiceGallery = VoiceGallery(secrets: secretStorage)
+        secrets = ManageSecrets(storage: sensitiveStorage.secrets)
+        voiceprintStore = sensitiveStorage.voiceprintStore
+        voiceGallery = sensitiveStorage.voiceGallery
         do {
             store = try Self.makeMeetingStore(usesTemporaryStore: usesTemporaryStore)
         } catch {
@@ -266,6 +265,30 @@ final class AppServices {
             "portavoz-uitest-models-\(UUID().uuidString)",
             isDirectory: true)
         return ModelStore(rootDirectory: rootDirectory)
+    }
+
+    private static func makeSensitiveStorage(
+        usesTemporaryStore: Bool
+    ) -> (
+        secrets: any SecretStoring,
+        voiceprintStore: VoiceprintStore,
+        voiceGallery: VoiceGallery
+    ) {
+        let secrets: any SecretStoring
+        let directory: URL
+        if usesTemporaryStore {
+            secrets = VolatileSecretStore()
+            directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "portavoz-automation-sensitive-\(UUID().uuidString)",
+                isDirectory: true)
+        } else {
+            secrets = KeychainSecretStore()
+            directory = VoiceprintStore.defaultDirectory
+        }
+        return (
+            secrets,
+            VoiceprintStore(secrets: secrets, directory: directory),
+            VoiceGallery(secrets: secrets, directory: directory))
     }
 
     private static func makeMeetingStore(usesTemporaryStore: Bool) throws -> MeetingStore {

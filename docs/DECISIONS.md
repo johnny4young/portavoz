@@ -4615,29 +4615,33 @@ passing sample. Instruments remains optional corroboration, not receipt input.
 The canonical resource baseline runner requires a clean worktree, builds one
 exact Release version/build/commit, copies and re-signs it under the dedicated
 `app.portavoz.mac.resource-bench` identity, and performs at least three runs.
-Every run requires a disposable meeting database and scratch audio, lets
-launch-only work settle for five seconds, and captures a model-free idle window
-before loading recording engines. It then measures recording and Stop through
-the real windowed path and executes cold-runtime Refine, Summary, Ask, and
-standalone semantic-indexing operations in separate processes. Refine uses a
-fixed English AIFF generated from public synthetic text, requires the selected
-Whisper model, tokenizer, and diarization model to pass full installed-artifact
-verification before sampling, and never downloads a model inside the measured
-window. Summary verifies the pinned Qwen3.5 MLX descriptor, stores a fixed
-public English meeting/cast/transcript only in the disposable database, and
-measures the real ApplicationKit regeneration workflow through successful
-transactional persistence. Ask requires already-installed Apple Latin
-embedding assets and available Foundation Models, then measures the real
-`AskMeetings.local` workflow over the same fixed corpus. Its window
-intentionally includes current synchronous corpus backfill, bilingual query
-expansion, hybrid retrieval, and answer generation; a sample requires citations
-and nonempty generated text. Standalone indexing prepares the already-installed
-embedding assets before sampling, drains 1,024 fixed public English segments
-through `IndexSemanticCorpus`, and requires every row to be embedded or
-deliberately excluded before publication. Every bounded Refine, Summary, Ask,
-and indexing operation uses the same unstructured first-result race, which
-enforces a 60–3,600 second timeout even if model work ignores cooperative
-cancellation. Refine never applies its draft or persists user-visible content.
+Every run requires a disposable meeting database, scratch audio, process-local
+secret storage, and a unique temporary participant-identity root. The
+automation composition cannot inspect or mutate the host Keychain, voiceprint,
+or participant-voice gallery; production still uses `KeychainSecretStore` and
+its durable identity directory. Launch-only work settles for five seconds
+before the collector captures a model-free idle window and loads recording
+engines. It then measures recording and Stop through the real windowed path and
+executes cold-runtime Refine, Summary, Ask, and standalone semantic-indexing
+operations in separate processes. Refine uses a fixed English AIFF generated
+from public synthetic text, requires the selected Whisper model, tokenizer, and
+diarization model to pass full installed-artifact verification before sampling,
+and never downloads a model inside the measured window. Summary verifies the
+pinned Qwen3.5 MLX descriptor, stores a fixed public English
+meeting/cast/transcript only in the disposable database, and measures the real
+ApplicationKit regeneration workflow through successful transactional
+persistence. Ask requires already-installed Apple Latin embedding assets and
+available Foundation Models, then measures the real `AskMeetings.local`
+workflow over the same fixed corpus. Its window intentionally includes current
+synchronous corpus backfill, bilingual query expansion, hybrid retrieval, and
+answer generation; a sample requires citations and nonempty generated text.
+Standalone indexing prepares the already-installed embedding assets before
+sampling, drains 1,024 fixed public English segments through
+`IndexSemanticCorpus`, and requires every row to be embedded or deliberately
+excluded before publication. Every bounded Refine, Summary, Ask, and indexing
+operation uses the same unstructured first-result race, which enforces a
+60–3,600 second timeout even if model work ignores cooperative cancellation.
+Refine never applies its draft or persists user-visible content.
 
 Recording plus indexing runs in its own real windowed recording process. It
 prepares the same embedding runtime and fixed corpus before measurement, arms a
@@ -4663,24 +4667,27 @@ Refine, and Summary resource benchmarks reuse the normal verified Portavoz
 model cache; Ask and indexing rely on OS-managed assets and keep the disposable
 model root. Ordinary XCUITest launches retain an empty temporary model root.
 Partial fragments and the synthetic fixture stay private and are removed on
-failure; a validated owner-only host receipt is published atomically. The original
+failure. Temporary identity state contains no durable secret and remains under
+the system temporary root; a validated owner-only host receipt is published
+atomically. The original
 `resource-recording-baseline` command remains a compatibility alias for the
-canonical `resource-baseline` runner. Once any resource benchmark dispatcher is
-armed, app initialization returns before normal sync, recovery, provider
+canonical `resource-baseline` runner. Once any resource benchmark dispatcher
+is armed, app initialization returns before normal sync, recovery, provider
 discovery, and dictation registration start. The AppKit delegate is not wired
-to product services, preventing lifecycle callbacks from starting product
-work beside the measured operation. The runner never launches or modifies the
+to product services, preventing lifecycle callbacks from starting product work
+beside the measured operation. The runner never launches or modifies the
 notarized installed app.
 
 **Rationale:** native counters make receipts deterministic and testable without
 binding policy evidence to an Instruments export schema. Separating the
-database and model isolation concerns protects user meetings while removing
-model-install noise. Independent idle, recording, Stop, Refine, Summary, Ask,
-indexing, recording-plus-indexing, and recording-plus-batch windows make
-residency and interference attribution explicit. One reusable single-scenario
-probe avoids a new collector lifecycle for every batch workflow, while the
-concurrent probe makes its recording boundary explicit instead of merging Stop
-cost into the sample.
+database, model, secret, and voice-identity isolation concerns protects user
+meetings and enrolled identities while removing model-install noise.
+Independent idle, recording, Stop, Refine, Summary, Ask, indexing,
+recording-plus-indexing, and recording-plus-batch windows make residency and
+interference attribution explicit. One reusable single-scenario probe avoids a
+new collector lifecycle for every batch workflow, while the concurrent probe
+makes its recording boundary explicit instead of merging Stop cost into the
+sample.
 Synthetic input keeps model-heavy evidence repeatable and private. Fail-closed
 publication prevents a timeout, missing model or OS asset, silent fixture,
 failed summary transaction, missing Ask evidence, incomplete index, or partial

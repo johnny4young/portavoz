@@ -9,6 +9,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertTrue(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testRecordingBenchmarkReusesModelsButKeepsMeetingStoreDisposable() {
@@ -19,6 +20,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertFalse(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testRecordingIndexingBenchmarkReusesOnlyRecordingModels() {
@@ -31,6 +33,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertFalse(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testRecordingBatchBenchmarkReusesOnlyRecordingModels() {
@@ -43,6 +46,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertFalse(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testRefineResourceBenchmarkReusesVerifiedModelsOnly() {
@@ -54,6 +58,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertFalse(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testSummaryResourceBenchmarkReusesVerifiedModelsOnly() {
@@ -65,6 +70,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertFalse(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testAskResourceBenchmarkNeedsNoPortavozModelCache() {
@@ -76,6 +82,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertTrue(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testIndexingResourceBenchmarkNeedsNoPortavozModelCache() {
@@ -87,6 +94,7 @@ final class UITestDefaultsTests: XCTestCase {
 
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertTrue(policy.usesTemporaryModelStore)
+        XCTAssertTrue(policy.usesTemporarySensitiveStore)
     }
 
     func testTemporaryStoreLaunchInstallsVolatileOverrides() throws {
@@ -113,6 +121,12 @@ final class UITestDefaultsTests: XCTestCase {
     }
 
     func testOrdinaryLaunchAndMalformedPayloadAreIgnored() throws {
+        let storagePolicy = AppStorageIsolationPolicy(
+            arguments: ["Portavoz"])
+        XCTAssertFalse(storagePolicy.usesTemporaryMeetingStore)
+        XCTAssertFalse(storagePolicy.usesTemporaryModelStore)
+        XCTAssertFalse(storagePolicy.usesTemporarySensitiveStore)
+
         let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
