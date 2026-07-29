@@ -21,18 +21,19 @@ struct MeetingSeekRequest: Equatable {
 
 /// Storage isolation is selected once at process composition. UI automation
 /// gets an empty model root as well as a disposable meeting database. The
-/// hidden recording benchmark keeps only the database disposable and reuses
-/// the normal verified model cache so repeated Release samples do not include
-/// a fresh model installation.
+/// hidden resource benchmarks keep only the database disposable and reuse the
+/// normal verified model cache so repeated Release samples do not include a
+/// fresh model installation.
 struct AppStorageIsolationPolicy: Equatable {
     let usesTemporaryMeetingStore: Bool
     let usesTemporaryModelStore: Bool
 
     init(arguments: [String]) {
         usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
-        let isRecordingBenchmark = arguments.contains("--bench-record")
+        let reusesVerifiedModels = arguments.contains("--bench-record")
+            || arguments.contains("--bench-resource-refine")
         usesTemporaryModelStore =
-            usesTemporaryMeetingStore && !isRecordingBenchmark
+            usesTemporaryMeetingStore && !reusesVerifiedModels
     }
 }
 

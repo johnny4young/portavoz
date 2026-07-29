@@ -8,8 +8,9 @@ D148 adds the process-wide content-free resource measurement described in
 Composition; it observes current work without adding governor policy.
 D149 adds the fail-closed multi-host baseline evidence boundary described in
 the same section; it remains tooling-only and does not affect app scheduling.
-D150 adds the native Release idle/recording/Stop collector and its benchmark-only
-storage-isolation exception; no production launch or scheduler reads evidence.
+D150 adds the native Release idle/recording/Stop/Refine collector and its
+benchmark-only storage-isolation exception; no production launch or scheduler
+reads evidence.
 
 ## Structure
 
@@ -148,7 +149,7 @@ all 27 rows as a blocking owner-only scorecard. The app never reads this
 contract or scorecard, and matrix completion does not enable resource
 admission, deferral, residency, or eviction behavior.
 
-The hidden Release recording benchmark installs an observer on
+The hidden Release resource benchmarks install an observer on
 `AppResourceWorkloadTelemetry` only while evidence is being captured.
 `ResourceRunProbe` combines those closed events with native process counters
 (`proc_pid_rusage`), current volume capacity, thermal/low-power state, and
@@ -158,18 +159,26 @@ atomically replays active spans before recording metrics freeze. Boundary spans
 may finish into the recording sample while Stop measures them independently;
 new spans enter only the Stop probe. Counter failure, changed power source,
 incomplete lifecycle, Stop beyond 30 seconds, or an existing output blocks the
-run.
+run. A reusable single-scenario probe owns the same observer/sample lifecycle
+for Refine and later model-heavy scenarios.
 
-`make resource-recording-baseline` builds the exact Release bundle once, clones
-and re-signs a scratch app with the separate
+`make resource-baseline` builds the exact Release bundle once, clones and
+re-signs a scratch app with the separate
 `app.portavoz.mac.resource-bench` identity, and runs at least three
-idle/recording/Stop samples. A five-second launch-settling interval precedes the
-model-free idle window. The launch requires `-use-temp-store`, so the benchmark
-meeting database and audio stay disposable; `AppStorageIsolationPolicy` allows
-only this hidden recording benchmark to reuse the normal verified model cache.
-Regular `-use-temp-store` automation still receives an empty model root. The
-runner refuses a dirty worktree, never targets the notarized installed app, and
-publishes the receipt only after all fragments validate.
+idle/recording/Stop/Refine samples. The original
+`make resource-recording-baseline` target delegates to this canonical command.
+A five-second launch-settling interval precedes the model-free idle window.
+Refine runs as a draft-only cold-runtime operation in a separate process against
+one host-generated, non-silent English AIFF containing only fixed public text.
+The runner verifies the selected Whisper model, tokenizer, and diarization
+model before sampling and bounds execution to 60–3,600 seconds; model download
+is not part of the scenario. Every launch requires `-use-temp-store`, so the
+benchmark meeting database and audio stay disposable;
+`AppStorageIsolationPolicy` allows only hidden recording/Refine benchmarks to
+reuse the normal verified model cache. Regular `-use-temp-store` automation
+still receives an empty model root. The runner refuses a dirty worktree, never
+targets the notarized installed app, removes the private fragments/fixture on
+failure, and publishes the receipt only after all fragments validate.
 
 Local voice enrollment is composed in `AppServices+LocalVoiceIdentity` and
 enters `ApplicationKit.ManageLocalVoiceIdentity`. The use case bounds requested

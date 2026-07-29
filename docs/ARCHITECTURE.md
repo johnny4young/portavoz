@@ -1251,6 +1251,12 @@ behind aspirational diagrams:
   multi-host measurement completeness. Application and capability packages do
   not read receipts, choose memory tiers, aggregate baselines, or derive
   runtime policy from this evidence.
+- The macOS composition root owns benchmark-only native resource probes for
+  idle, recording, Stop, and Refine. One canonical Release runner uses
+  disposable meeting/audio state, verified installed models, and a fixed
+  synthetic speech fixture; it publishes only exact content-free fragments to
+  the tooling evaluator. Production launches and schedulers never read these
+  fragments or the resulting receipt.
 - Meeting Detail Markdown/PDF/SRT/WebVTT preparation and secret-Gist
   publication enter ApplicationKit. The SwiftUI view does not construct the
   canonical renderer, publisher, or network gateway and does not read the
@@ -1311,7 +1317,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,216 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,220 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

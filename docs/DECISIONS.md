@@ -4612,20 +4612,34 @@ probe. A changed power source, unavailable counter,
 incomplete lifecycle, output collision, or Stop timeout fails without a
 passing sample. Instruments remains optional corroboration, not receipt input.
 
-The recording baseline runner requires a clean worktree, builds one exact
-Release version/build/commit, copies and re-signs it under the dedicated
+The canonical resource baseline runner requires a clean worktree, builds one
+exact Release version/build/commit, copies and re-signs it under the dedicated
 `app.portavoz.mac.resource-bench` identity, and performs at least three runs.
 Every run requires a disposable meeting database and scratch audio, lets
 launch-only work settle for five seconds, and captures a model-free idle window
-before loading recording engines. Only this hidden recording benchmark reuses
-the normal verified model cache; ordinary XCUITest launches retain an empty
-temporary model root. Partial fragments stay private and are removed on
-failure; a validated owner-only host receipt is published atomically. The
-runner never launches or modifies the notarized installed app.
+before loading recording engines. It then measures recording and Stop through
+the real windowed path and executes one cold-runtime Refine draft in a separate
+process. Refine uses a fixed English AIFF generated from public synthetic text,
+requires the selected Whisper model, tokenizer, and diarization model to pass
+full installed-artifact verification before sampling, and never downloads a
+model inside the measured window. Its unstructured first-result race enforces a
+bounded 60–3,600 second timeout even if model work ignores cooperative
+cancellation. It never applies the draft or persists user-visible content.
+
+Only these hidden resource benchmarks reuse the normal verified model cache;
+ordinary XCUITest launches retain an empty temporary model root. Partial
+fragments and the synthetic fixture stay private and are removed on failure; a
+validated owner-only host receipt is published atomically. The original
+`resource-recording-baseline` command remains a compatibility alias for the
+canonical `resource-baseline` runner. The runner never launches or modifies the
+notarized installed app.
 
 **Rationale:** native counters make receipts deterministic and testable without
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
-model-install noise. Independent idle, recording, and Stop windows make
-residency and interference attribution explicit, and fail-closed publication
-prevents a timeout or partial run from looking like accepted hardware evidence.
+model-install noise. Independent idle, recording, Stop, and Refine windows make
+residency and interference attribution explicit. One reusable single-scenario
+probe avoids a new collector lifecycle for every later batch workflow, while
+synthetic input keeps model-heavy evidence repeatable and private. Fail-closed
+publication prevents a timeout, missing model, silent fixture, or partial run
+from looking like accepted hardware evidence.

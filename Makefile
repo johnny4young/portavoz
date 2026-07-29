@@ -14,7 +14,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
-	perf-ledger resource-recording-baseline public-screenshots release-reliability-deterministic \
+	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability
 
 ## Unit tests (the package suite).
@@ -28,14 +28,16 @@ test:
 perf-ledger:
 	scripts/run-perf-ledger.sh
 
-## Collect three Release recording + Stop resource samples on this Mac and
-## assemble an exact-shaped host receipt. The worktree must be clean and the
-## profile/version/build must describe this machine and source exactly.
+## Collect three Release idle, recording, Stop, and Refine resource samples on
+## this Mac and assemble an exact-shaped host receipt. The worktree must be
+## clean and the profile/version/build must describe this machine and source
+## exactly. Models required by Refine must already be verified locally.
 PORTAVOZ_RESOURCE_RUNS ?= 3
 PORTAVOZ_RESOURCE_DURATION ?= 60
 PORTAVOZ_RESOURCE_IDLE_DURATION ?= 30
+PORTAVOZ_RESOURCE_REFINE_TIMEOUT ?= 900
 PORTAVOZ_RESOURCE_OUTPUT ?=
-resource-recording-baseline:
+resource-baseline:
 	@test -n "$(PORTAVOZ_RESOURCE_PROFILE)" || \
 		(echo "PORTAVOZ_RESOURCE_PROFILE is required" >&2; exit 64)
 	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
@@ -43,14 +45,18 @@ resource-recording-baseline:
 	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
 		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) \
-		scripts/run-resource-recording-baseline.sh \
+		scripts/run-resource-baseline.sh \
 			--profile "$(PORTAVOZ_RESOURCE_PROFILE)" \
 			--version "$(PORTAVOZ_RELEASE_VERSION)" \
 			--build "$(PORTAVOZ_RELEASE_BUILD)" \
 			--runs "$(PORTAVOZ_RESOURCE_RUNS)" \
 			--duration "$(PORTAVOZ_RESOURCE_DURATION)" \
 			--idle-duration "$(PORTAVOZ_RESOURCE_IDLE_DURATION)" \
+			--refine-timeout "$(PORTAVOZ_RESOURCE_REFINE_TIMEOUT)" \
 			$(if $(PORTAVOZ_RESOURCE_OUTPUT),--output "$(PORTAVOZ_RESOURCE_OUTPUT)")
+
+## Backward-compatible alias for the original recording-only command name.
+resource-recording-baseline: resource-baseline
 
 ## Run the deterministic release gates and write a receipt bound to the exact
 ## version, build, and current commit. Both release variables are required.

@@ -30,6 +30,7 @@ struct PortavozApp: App {
         // from a script) may never mount the window, and the T4 RAM bench
         // must still run.
         BenchMode.runRecordBenchIfRequested(services: services, recording: services.recording)
+        BenchMode.runRefineResourceBenchIfRequested(services: services)
         // Recovery belongs to process launch, not a window: interrupted audio
         // and expired leases are reconciled even when only the menu bar opens.
         let appServices = services

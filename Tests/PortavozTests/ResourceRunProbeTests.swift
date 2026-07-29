@@ -4,6 +4,88 @@ import XCTest
 @testable import portavoz_app
 
 final class ResourceRunProbeTests: XCTestCase {
+    func testRefineResourceConfigurationBoundsTimeout() throws {
+        let configuration = try XCTUnwrap(
+            BenchRefineResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-refine", "/tmp/refine.aiff",
+                "--bench-resource-timeout", "1200",
+            ]))
+        XCTAssertEqual(configuration.fixtureURL.path, "/tmp/refine.aiff")
+        XCTAssertEqual(configuration.timeoutSeconds, 1_200)
+
+        XCTAssertThrowsError(
+            try BenchRefineResourceConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-refine", "/tmp/refine.aiff",
+                "--bench-resource-timeout", "59",
+            ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchRefineResourceError,
+                .invalidTimeout)
+        }
+    }
+
+    @MainActor
+    func testSingleScenarioProbeWritesOneExactSample() async throws {
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "BenchResourceScenarioProbe-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: output) }
+        let probe = try BenchResourceScenarioProbe(arguments: [
+            "Portavoz",
+            "--bench-resource-output", output.path,
+            "--bench-resource-run", "3",
+        ])
+
+        let value = try await probe.measure(scenario: "refine") {
+            try await Task.sleep(for: .milliseconds(10))
+            return 42
+        }
+
+        XCTAssertEqual(value, 42)
+        let sampleURL = output.appendingPathComponent("refine-3.json")
+        let sample = try JSONDecoder().decode(
+            ResourceProbeSample.self,
+            from: Data(contentsOf: sampleURL))
+        XCTAssertEqual(sample.run, 3)
+        XCTAssertGreaterThan(sample.wallDurationMilliseconds, 0)
+        XCTAssertTrue(sample.workloads.isEmpty)
+        let attributes = try FileManager.default.attributesOfItem(
+            atPath: sampleURL.path)
+        XCTAssertEqual(
+            (attributes[.posixPermissions] as? NSNumber)?.intValue,
+            0o600)
+    }
+
+    @MainActor
+    func testSingleScenarioProbeFailurePublishesNoPartialSample() async throws {
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "BenchResourceScenarioProbeFailure-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: output) }
+        let probe = try BenchResourceScenarioProbe(arguments: [
+            "Portavoz",
+            "--bench-resource-output", output.path,
+            "--bench-resource-run", "4",
+        ])
+
+        do {
+            let _: Int = try await probe.measure(scenario: "refine") {
+                throw BenchRefineResourceError.operationFailed("expected")
+            }
+            XCTFail("Expected the measured operation to fail")
+        } catch {
+            XCTAssertEqual(
+                error as? BenchRefineResourceError,
+                .operationFailed("expected"))
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: output.appendingPathComponent("refine-4.json").path))
+    }
+
     func testBenchResourceArgumentsBoundIdleDuration() throws {
         let output = FileManager.default.temporaryDirectory.path
         let probes = try XCTUnwrap(BenchRecordResourceProbes.requested(

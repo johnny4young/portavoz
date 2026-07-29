@@ -287,11 +287,15 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/ResourceRunProbe.swift")
         let benchProbes = try Self.contents(
             of: "Sources/portavoz-app/BenchRecordResourceProbes.swift")
+        let scenarioProbe = try Self.contents(
+            of: "Sources/portavoz-app/BenchResourceScenarioProbe.swift")
         let benchMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices.swift")
         let runner = try Self.contents(
+            of: "scripts/run-resource-baseline.sh")
+        let compatibilityRunner = try Self.contents(
             of: "scripts/run-resource-recording-baseline.sh")
         XCTAssertTrue(nativeProbe.contains("proc_pid_rusage"))
         XCTAssertTrue(nativeProbe.contains("ri_energy_nj"))
@@ -308,14 +312,28 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"arguments.contains("-use-temp-store")"#))
         XCTAssertTrue(benchMode.contains(
             "stop FAILED: exceeded 30 seconds"))
+        XCTAssertTrue(benchMode.contains(
+            "runRefineResourceBenchIfRequested"))
+        XCTAssertTrue(benchMode.contains(
+            "services.refineMeeting.draft.execute"))
+        XCTAssertTrue(benchMode.contains(
+            "forceVerification: true"))
+        XCTAssertTrue(scenarioProbe.contains(
+            "replayingActive: true"))
+        XCTAssertTrue(scenarioProbe.contains(
+            "probe.writeSample"))
         XCTAssertTrue(services.contains(
-            "usesTemporaryMeetingStore && !isRecordingBenchmark"))
+            "usesTemporaryMeetingStore && !reusesVerifiedModels"))
         XCTAssertTrue(runner.contains(
             "app.portavoz.mac.resource-bench"))
         XCTAssertTrue(runner.contains(
             "resource_baseline.py assemble"))
         XCTAssertTrue(runner.contains(
             #"sample_arguments+=(--sample "idle=$idle_sample")"#))
+        XCTAssertTrue(runner.contains(
+            #"sample_arguments+=(--sample "refine=$refine_sample")"#))
+        XCTAssertTrue(compatibilityRunner.contains(
+            #"exec "$ROOT/scripts/run-resource-baseline.sh" "$@""#))
         XCTAssertFalse(runner.contains("/Applications/Portavoz.app"))
         for forbidden in [
             "meetingTitle", "transcriptText", "sourcePath", "modelName",

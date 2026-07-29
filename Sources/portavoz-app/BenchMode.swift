@@ -1,3 +1,6 @@
+import ApplicationKit
+import AudioCaptureKit
+import CryptoKit
 import Foundation
 import IntelligenceKit
 import ModelStoreKit
@@ -326,6 +329,157 @@ extension BenchMode {
         timeoutTask.cancel()
         continuation.finish()
         return completed
+    }
+
+    /// `portavoz-app --bench-resource-refine <audio>` executes the real
+    /// app-composed Refine draft against a public synthetic fixture. It uses a
+    /// disposable meeting store, requires already-verified local models, and
+    /// writes only the exact content-free resource sample.
+    @MainActor
+    static func runRefineResourceBenchIfRequested(services: AppServices) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let configuration: BenchRefineResourceConfiguration?
+        do {
+            configuration = try BenchRefineResourceConfiguration.requested(
+                arguments: arguments)
+        } catch {
+            emit("bench-refine: setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+        guard let configuration else { return }
+        guard arguments.contains("-use-temp-store") else {
+            emit("bench-refine: -use-temp-store is required")
+            exit(1)
+        }
+        let probe: BenchResourceScenarioProbe
+        do {
+            probe = try BenchResourceScenarioProbe(arguments: arguments)
+        } catch {
+            emit("bench-refine: probe setup FAILED: \(error.localizedDescription)")
+            exit(1)
+        }
+
+        setbuf(stdout, nil)
+        Task { @MainActor in
+            do {
+                try await verifyRefineBenchmarkModels(services: services)
+                let request = try makeRefineBenchmarkRequest(
+                    fixtureURL: configuration.fixtureURL)
+                let draft = try await probe.measure(scenario: "refine") {
+                    try await runRefineBenchmark(
+                        services: services,
+                        request: request,
+                        timeoutSeconds: configuration.timeoutSeconds)
+                }
+                emit(
+                    "bench-refine: resource sample complete "
+                        + "(\(draft.segments.count) segments)")
+                exit(0)
+            } catch {
+                probe.cancel()
+                emit("bench-refine: FAILED: \(error.localizedDescription)")
+                exit(1)
+            }
+        }
+    }
+
+    @MainActor
+    private static func verifyRefineBenchmarkModels(
+        services: AppServices
+    ) async throws {
+        for descriptor in [
+            AppServices.preferredWhisperDescriptor(),
+            ModelCatalog.whisperTokenizer,
+            ModelCatalog.speakerDiarization
+        ] {
+            guard await services.modelLifecycle.installation(
+                for: descriptor,
+                forceVerification: true) != nil
+            else {
+                throw BenchRefineResourceError.modelsNotReady
+            }
+        }
+    }
+
+    private static func makeRefineBenchmarkRequest(
+        fixtureURL: URL
+    ) throws -> RefineMeetingRequest {
+        guard fixtureURL.isFileURL,
+              FileManager.default.fileExists(atPath: fixtureURL.path)
+        else {
+            throw BenchRefineResourceError.missingFixture
+        }
+        guard !AudioSilence.fileIsSilent(at: fixtureURL) else {
+            throw BenchRefineResourceError.fixtureIsSilent
+        }
+        let fingerprint = try SHA256.hash(
+            data: Data(contentsOf: fixtureURL, options: .mappedIfSafe))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        let now = Date()
+        let meeting = Meeting(
+            title: "Resource benchmark",
+            startedAt: now.addingTimeInterval(-60),
+            endedAt: now)
+        return RefineMeetingRequest(
+            detail: MeetingDetail(
+                meeting: meeting,
+                speakers: [],
+                segments: [],
+                summaries: []),
+            languagePolicy: .fixed(.english),
+            audioOverride: RefineMeetingAudio(
+                system: RefineMeetingAudioChannel(
+                    fileURL: fixtureURL,
+                    isSilent: false,
+                    contentFingerprint: fingerprint),
+                microphone: nil))
+    }
+
+    private enum RefineBenchmarkResult: Sendable {
+        case completed(RefineDraft)
+        case failed(String)
+        case timedOut
+    }
+
+    /// The first result wins without awaiting a cancelled model task. A model
+    /// that ignores cooperative cancellation cannot turn the documented hard
+    /// timeout into an unbounded benchmark.
+    @MainActor
+    private static func runRefineBenchmark(
+        services: AppServices,
+        request: RefineMeetingRequest,
+        timeoutSeconds: Int
+    ) async throws -> RefineDraft {
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: RefineBenchmarkResult.self)
+        let refineTask = Task { @MainActor in
+            do {
+                let draft = try await services.refineMeeting.draft.execute(
+                    request)
+                continuation.yield(.completed(draft))
+            } catch {
+                continuation.yield(.failed(error.localizedDescription))
+            }
+        }
+        let timeoutTask = Task {
+            try? await Task.sleep(for: .seconds(timeoutSeconds))
+            continuation.yield(.timedOut)
+        }
+        var iterator = stream.makeAsyncIterator()
+        let result = await iterator.next() ?? .timedOut
+        refineTask.cancel()
+        timeoutTask.cancel()
+        continuation.finish()
+
+        switch result {
+        case .completed(let draft):
+            return draft
+        case .failed(let message):
+            throw BenchRefineResourceError.operationFailed(message)
+        case .timedOut:
+            throw BenchRefineResourceError.timedOut(timeoutSeconds)
+        }
     }
 
     /// Prints AND appends to the `--bench-log <path>` file when given —

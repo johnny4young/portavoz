@@ -421,6 +421,7 @@ class ResourceBaselineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             recording = root / "recording-1.json"
+            refine = root / "refine-1.json"
             stop = root / "stop-1.json"
             idle = root / "idle-1.json"
             scenarios = dict(self.required_scenarios())
@@ -428,6 +429,8 @@ class ResourceBaselineTests(unittest.TestCase):
                 self.sample(1, scenarios["idle"])))
             recording.write_text(json.dumps(
                 self.sample(1, scenarios["recording"])))
+            refine.write_text(json.dumps(
+                self.sample(1, scenarios["refine"])))
             stop.write_text(json.dumps(
                 self.sample(1, scenarios["stop"])))
             output = root / "receipt.json"
@@ -452,6 +455,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     "--sample",
                     f"recording={recording}",
                     "--sample",
+                    f"refine={refine}",
+                    "--sample",
                     f"stop={stop}",
                     "--output",
                     str(output),
@@ -463,7 +468,7 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(receipt["host"]["profile"], "memory-8gb")
             self.assertEqual(
                 [scenario["id"] for scenario in receipt["scenarios"]],
-                ["idle", "recording", "stop"],
+                ["idle", "recording", "refine", "stop"],
             )
             self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
             baseline.validate_receipt(
@@ -584,9 +589,9 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertEqual(toolchain["xcodeVersion"], "26.0")
         self.assertEqual(toolchain["swiftVersion"], "6.2")
 
-    def test_recording_runner_is_release_bound_isolated_and_builds_once(self):
+    def test_resource_runner_is_release_bound_isolated_and_builds_once(self):
         runner = (
-            REPOSITORY / "scripts" / "run-resource-recording-baseline.sh"
+            REPOSITORY / "scripts" / "run-resource-baseline.sh"
         ).read_text()
 
         self.assertIn("git status --porcelain --untracked-files=all", runner)
@@ -596,16 +601,40 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("--bench-resource-output", runner)
         self.assertIn("--bench-resource-run", runner)
         self.assertIn("--bench-resource-idle-duration", runner)
+        self.assertIn("--bench-resource-refine", runner)
+        self.assertIn("--bench-resource-timeout", runner)
         self.assertIn('idle_sample="$fragments/idle-$run.json"', runner)
         self.assertIn('sample_arguments+=(--sample "idle=$idle_sample")', runner)
+        self.assertIn('refine_sample="$fragments/refine-$run.json"', runner)
+        self.assertIn(
+            'sample_arguments+=(--sample "refine=$refine_sample")',
+            runner,
+        )
+        self.assertIn("say -v Samantha -r 170", runner)
+        self.assertIn("fixture_audio_bytes", runner)
+        self.assertIn("(( fixture_audio_bytes > 0 ))", runner)
         self.assertIn("RUNS=3", runner)
         self.assertIn("(( RUNS >= 3 ))", runner)
+        self.assertIn("REFINE_TIMEOUT=900", runner)
+        self.assertIn("(( REFINE_TIMEOUT >= 60 ))", runner)
+        self.assertIn("(( REFINE_TIMEOUT <= 3600 ))", runner)
         self.assertIn("resource_baseline.py assemble", runner)
         self.assertNotIn("/Applications/Portavoz.app", runner)
         self.assertLess(
             runner.index("scripts/make-app.sh --release"),
             runner.index("for ((run = 1; run <= RUNS; run++))"),
         )
+
+    def test_recording_runner_delegates_to_canonical_resource_runner(self):
+        wrapper = (
+            REPOSITORY / "scripts" / "run-resource-recording-baseline.sh"
+        ).read_text()
+
+        self.assertIn(
+            'exec "$ROOT/scripts/run-resource-baseline.sh" "$@"',
+            wrapper,
+        )
+        self.assertNotIn("scripts/make-app.sh", wrapper)
 
     def evaluate_args(self, receipts, output):
         arguments = [
