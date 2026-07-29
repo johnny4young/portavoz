@@ -876,6 +876,27 @@ final class ArchitectureDependencyTests: XCTestCase {
             "installTap(onBus: 0, bufferSize: 4096, format: format)"))
     }
 
+    func testAudioRouteChangesCannotReuseOrRaceMutableGraphs() throws {
+        let microphone = try Self.contents(
+            of: "Sources/AudioCaptureKit/MicrophoneSource.swift")
+        let processTap = try Self.contents(
+            of: "Sources/AudioCaptureKit/ProcessTapSource.swift")
+
+        XCTAssertTrue(microphone.contains(
+            "private var routeTransitions = AudioRouteTransitionGate()"))
+        XCTAssertTrue(microphone.contains("self.engine = AVAudioEngine()"))
+        XCTAssertTrue(microphone.contains(
+            "self.routeTransitions.admits(ticket)"))
+        XCTAssertTrue(processTap.contains(
+            "private var routeTransitions = AudioRouteTransitionGate()"))
+        XCTAssertTrue(processTap.contains(
+            "private func startOnRebuildQueue() throws"))
+        XCTAssertTrue(processTap.contains(
+            "private func stopOnRebuildQueue()"))
+        XCTAssertTrue(processTap.contains(
+            "self.routeTransitions.admits(ticket)"))
+    }
+
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
         for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
             let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")

@@ -634,6 +634,18 @@ awaits its explicit warm-up task before entering that owner. An unavailable
 route crosses the existing typed recording-start boundary instead of escaping
 as an Objective-C exception.
 
+Audio-route recovery is a graph handoff, not an in-place mutation. An
+`AVAudioEngineConfigurationChange` callback only requests delayed work and
+returns from AVFAudio's internal queue. A generation gate admits only the
+newest request while capture is active, invalidates every pending request at
+Stop, retires the old microphone engine, and installs exactly one noncoercing
+tap on a fresh engine. The system-output source applies the same admission rule
+while one rebuild queue exclusively owns process-tap Start, graph replacement,
+recovery, and Stop. Burst input/output notifications therefore cannot install
+two microphone taps or let a delayed Core Audio rebuild resurrect a stopped
+session; both channels preserve their original stream and pad the bounded
+handoff gap.
+
 ```mermaid
 flowchart LR
     MIC[MicrophoneSource] --> SESSION[RecordingSession actor]

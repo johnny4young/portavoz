@@ -5080,3 +5080,41 @@ Owning late-load cleanup at the recording attachment boundary preserves fast
 Stop while preventing a completed process load from leaking a use token or
 publishing into a closed session. Keeping the measured TTL unchanged separates
 lifecycle correctness from future resource-policy tuning.
+
+## D163 — Audio-route changes hand off fresh, generation-fenced graphs (Jul 2026)
+
+**Context:** the first route-change repair stopped passing a cached input
+format to AVFAudio, but real Tahoe crash reports still showed repeated
+`SIGABRT` failures in `AVAudioEngineImpl::InstallTapOnNode` from
+`MicrophoneSource.scheduleRestart`. AVFAudio permits only one tap per bus and
+raises an Objective-C exception, not a Swift error, when that invariant is
+violated. Input/output changes can issue a burst of asynchronous notifications,
+and the system process-tap source separately allowed Stop to destroy mutable
+Core Audio identifiers while an already queued rebuild was using them.
+
+**Decision:** both capture sources use the same pure
+`AudioRouteTransitionGate`. An active capture generation issues monotonically
+newer route tickets; delayed work runs only for the newest ticket, and Stop
+invalidates all outstanding work before touching a graph.
+
+The microphone configuration callback performs no graph mutation and returns
+from AVFAudio's internal queue. After a short settlement delay, the admitted
+handoff stops and detaches the old graph, creates a fresh `AVAudioEngine`, and
+installs exactly one `format: nil` tap. Unavailable hardware and Swift start
+errors retry under the same ticket; a newer route event supersedes that retry.
+The stream continuation, original sample rate, elapsed clock, and silence-gap
+accounting survive the engine replacement.
+
+`ProcessTapSource` moves initial construction and final teardown onto the same
+serial queue that already owns route rebuilding. Output notifications and
+liveness recovery request generation-fenced replacement on that queue; a
+failed partial graph is destroyed before retry. Stop waits behind any current
+mutation, invalidates delayed work, removes the listener, destroys the graph,
+and ends the stream exactly once.
+
+**Rationale:** a process-terminating framework precondition must be prevented,
+not caught. Fresh microphone graph ownership makes one tap per bus structural,
+while one queue plus generation admission makes input/output bursts and Stop
+ordering deterministic. The change preserves raw call-safe capture, the
+dual-channel timeline, and the audio-first durability boundary; real AirPods
+continuity remains an explicit field validation rather than an inferred claim.

@@ -41,6 +41,43 @@ final class AudioInputFormatPolicyTests: XCTestCase {
     }
 }
 
+final class AudioRouteTransitionGateTests: XCTestCase {
+    func testOnlyNewestRequestMayMutateTheActiveGraph() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+
+        let stale = try XCTUnwrap(gate.request())
+        let newest = try XCTUnwrap(gate.request())
+
+        XCTAssertFalse(gate.admits(stale))
+        XCTAssertTrue(gate.admits(newest))
+    }
+
+    func testStopInvalidatesDelayedRouteWork() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+        let ticket = try XCTUnwrap(gate.request())
+
+        gate.deactivate()
+
+        XCTAssertFalse(gate.admits(ticket))
+        XCTAssertNil(gate.request())
+    }
+
+    func testNewCaptureGenerationRejectsPriorTickets() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+        let priorCapture = try XCTUnwrap(gate.request())
+
+        gate.deactivate()
+        gate.activate()
+        let currentCapture = try XCTUnwrap(gate.request())
+
+        XCTAssertFalse(gate.admits(priorCapture))
+        XCTAssertTrue(gate.admits(currentCapture))
+    }
+}
+
 final class CaptureFileWriterTests: XCTestCase {
     func testWritesMono16BitCAFReadableByAVAudioFile() throws {
         let directory = FileManager.default.temporaryDirectory

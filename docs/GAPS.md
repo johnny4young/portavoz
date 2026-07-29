@@ -119,7 +119,14 @@ visible release blocker rather than being inferred from deterministic tests.
   graph conflict. Repeat the D125 A/B with AirPods: if the process tap remains
   silent, preserve microphone mobility and report the hardware limitation
   rather than forcing the built-in mic.
-- **Device change**: connect/disconnect headphones midway — the mic channel survives (gap of silence, not termination).
+- **Device change (D163)**: during an active dual-channel call, switch built-in
+  speaker/mic → AirPods and back. The app must remain open; microphone and
+  system files must continue on their original timelines with only bounded
+  silence at each handoff. The repeated Jul 28–29
+  `AVAudioEngineImpl::InstallTapOnNode` SIGABRT signature is covered by a fresh
+  microphone graph plus generation-fenced route work, and process-tap
+  Start/rebuild/Stop are serialized in code; real hardware continuity remains
+  the field gate.
 - **Formal M3 DER**: correct the Speaker column of the draft RTTM in `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → measure with `portavoz-cli der --file system.wav --reference <rttm corregido>`.
 - **Translation pivot** (D25): regenerating a summary in another language must translate the existing snapshot (fast) instead of summarizing again; verify that it preserves structure and action items.
 - **Cold live captions, translated captions, and reader ownership (D121/D128/D129)**: release the idle speech models or use a clean install, start recording before Parakeet is ready, and prove captions begin automatically during the same call after verified preparation without an audio gap or memory growth. Then use the "Translate → …" picker across Spanish and English speakers; prove same-language and uncertain short rows remain unchanged, a long still-growing opposite-language row gains a labeled translation before the next speaker, later growth refreshes that row, no source-language modal appears, target switching cannot restore stale output, pair download is deliberate, and unsupported/failure states are visible rather than silent. Scroll into caption history while new rows arrive: the position and sharp text must remain stable until the explicit Jump to live action.

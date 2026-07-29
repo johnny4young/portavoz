@@ -12,6 +12,51 @@ public enum AudioCaptureError: Error, Sendable {
     case nonAtomicCapturePublication(String)
 }
 
+enum AudioRouteTransitionTiming {
+    /// Leaves AVFAudio/Core Audio's internal route callback and lets the new
+    /// hardware route settle before constructing its replacement graph.
+    static let settleDelay: TimeInterval = 0.15
+
+    /// Keeps the capture stream alive while a transient route has no usable
+    /// input/output yet, without spinning on the graph queue.
+    static let retryDelay: TimeInterval = 0.5
+}
+
+/// Invalidates stale audio-graph work when route notifications arrive in
+/// bursts or after capture has stopped.
+///
+/// The owner serializes mutations on its graph queue. Every new request gets a
+/// later ticket; delayed work may proceed only while its ticket is still the
+/// newest request in the active capture generation.
+struct AudioRouteTransitionGate: Sendable {
+    struct Ticket: Equatable, Sendable {
+        fileprivate let generation: UInt64
+    }
+
+    private var generation: UInt64 = 0
+    private(set) var isActive = false
+
+    mutating func activate() {
+        generation &+= 1
+        isActive = true
+    }
+
+    mutating func request() -> Ticket? {
+        guard isActive else { return nil }
+        generation &+= 1
+        return Ticket(generation: generation)
+    }
+
+    func admits(_ ticket: Ticket) -> Bool {
+        isActive && ticket.generation == generation
+    }
+
+    mutating func deactivate() {
+        generation &+= 1
+        isActive = false
+    }
+}
+
 /// Converts Core Audio host times into seconds elapsed since the first
 /// callback of a session.
 ///
