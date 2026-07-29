@@ -38,11 +38,33 @@ git status --short          # must be empty — clean any stray *.d / *.dia / *.
 swift test                  # green (DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test if "no such module")
 swift test --filter StorageUpgradeTests # clean install + v0.6.0 library upgrade/reopen
 swiftlint --strict          # 0 violations
+scripts/check-repository-hygiene.sh
 ```
 
 - **CHANGELOG.md** has every user-visible change since the last release, newest first.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
 - Stray SwiftPM artifacts (`*.d`, `*.dia`, `*.swiftdeps`) sometimes leak to the repo root from an Xcode/XCUITest build — they are **not** git-ignored, so delete them before releasing.
+
+### Reliability identity and deterministic receipt (D147)
+
+Choose the version and build once. The same values must stamp the deterministic
+receipt, release artifact, developer build used for field evidence, and final
+scorecard:
+
+```sh
+export PORTAVOZ_RELEASE_VERSION=0.8.0
+export PORTAVOZ_RELEASE_BUILD="$(date +%Y%m%d%H%M)"
+export PORTAVOZ_RELEASE_COMMIT="$(git rev-parse HEAD)"
+export PORTAVOZ_VERSION="$PORTAVOZ_RELEASE_VERSION"
+export PORTAVOZ_BUILD="$PORTAVOZ_RELEASE_BUILD"
+make release-reliability-deterministic
+```
+
+This command runs hygiene, warnings-as-errors build, the complete package
+suite, strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
+policy corpus, and six focused XCUITest journeys in English and Spanish. It
+writes `dist/release-readiness/deterministic.json` only after every command
+passes. Do not reuse a receipt after the commit, version, or build changes.
 
 ### Performance gate (PERF-001/PERF-008)
 
@@ -111,7 +133,7 @@ security cms -D -i "$PORTAVOZ_PROVISIONING_PROFILE" >/dev/null
 export PORTAVOZ_SIGN_IDENTITY="8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17"
 export PORTAVOZ_NOTARY_PROFILE="portavoz-notary"
 export PORTAVOZ_PROVISIONING_PROFILE="/absolute/path/to/Portavoz.provisionprofile"
-scripts/make-release.sh <version>      # e.g. 0.5.1
+scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
 ```
 
 `scripts/make-release.sh` (see its header) does, in order:
@@ -131,7 +153,9 @@ in the background and wait for `Release <version> ready in dist/release/`.
 ### Verify the artifacts before publishing
 
 ```sh
-scripts/verify-distribution.sh dist/release/Portavoz-<version>.dmg # DMG + extracted app both accepted/stapled
+scripts/verify-distribution.sh \
+  "dist/release/Portavoz-$PORTAVOZ_RELEASE_VERSION.dmg" \
+  --receipt dist/release-readiness/distribution.json
 grep -E 'sparkle:version|edSignature' dist/release/appcast.xml # version + signature present
 grep -E 'version |sha256 ' dist/release/portavoz.rb            # match the DMG
 ```
@@ -161,6 +185,36 @@ scripts/verify-cloudkit-capabilities.sh "/Applications/Portavoz Dev.app"
 The release and field-test profile has an expiration date and macOS evaluates
 it at launch. Refresh and re-embed it before expiry; never work around a profile
 failure by signing the restricted entitlements without one.
+
+### Assemble the fail-closed reliability scorecard
+
+Install the candidate-stamped developer build and collect the protocol-2
+packages in [`FIELD-VALIDATION.md`](FIELD-VALIDATION.md). The release contract
+requires built-in speaker/mic and AirPods on both macOS 15 and macOS 26, plus
+callback-recovery, long-call, model-cold-start, and mixed-language packages.
+Every package must report the exact release version and build above.
+
+```sh
+make release-reliability \
+  PORTAVOZ_RELEASE_VERSION="$PORTAVOZ_RELEASE_VERSION" \
+  PORTAVOZ_RELEASE_BUILD="$PORTAVOZ_RELEASE_BUILD" \
+  PORTAVOZ_RELEASE_COMMIT="$PORTAVOZ_RELEASE_COMMIT" \
+  PORTAVOZ_FIELD_EVIDENCE_ARGS='
+    --field-evidence /path/to/built-in-sequoia
+    --field-evidence /path/to/built-in-tahoe
+    --field-evidence /path/to/airpods-sequoia
+    --field-evidence /path/to/airpods-tahoe
+    --field-evidence /path/to/callback-recovery
+    --field-evidence /path/to/long-call
+    --field-evidence /path/to/model-cold-start
+    --field-evidence /path/to/mixed-language'
+```
+
+Review `dist/release-readiness/scorecard/readiness.md`. It must say **PASS**.
+Missing, failed, incomplete, not-observed, stale-version, stale-build, and
+stale-commit evidence blocks publication. The scorecard is content-free and
+owner-only; it is ignored release evidence, not a tracked substitute for
+`docs/GAPS.md`.
 
 ## 4. Publish (outward-facing — get an explicit OK first)
 

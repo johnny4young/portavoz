@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "proofs": [
+    {
+      "id": "deterministic.repository-hygiene",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "repository-hygiene"
+      }
+    },
+    {
+      "id": "deterministic.swift-gates",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "swift-gates"
+      }
+    },
+    {
+      "id": "deterministic.recording-stress",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "recording-stress"
+      }
+    },
+    {
+      "id": "deterministic.language-corpus",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "language-corpus"
+      }
+    },
+    {
+      "id": "deterministic.reliability-ui",
+      "class": "deterministic-automated",
+      "source": {
+        "kind": "deterministic-receipt",
+        "proof": "reliability-ui"
+      }
+    },
+    {
+      "id": "signed.distribution",
+      "class": "signed-build",
+      "source": {
+        "kind": "distribution-receipt",
+        "proof": "distribution"
+      }
+    },
+    {
+      "id": "hardware.built-in.sequoia",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "built-in-speaker-mic",
+        "macOSMajor": 15
+      }
+    },
+    {
+      "id": "hardware.built-in.tahoe",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "built-in-speaker-mic",
+        "macOSMajor": 26
+      }
+    },
+    {
+      "id": "hardware.airpods.sequoia",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "airpods",
+        "macOSMajor": 15
+      }
+    },
+    {
+      "id": "hardware.airpods.tahoe",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "airpods",
+        "macOSMajor": 26
+      }
+    },
+    {
+      "id": "hardware.callback-recovery",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "source-callback-interruption"
+      }
+    },
+    {
+      "id": "hardware.long-call",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "long-call"
+      }
+    },
+    {
+      "id": "hardware.model-cold-start",
+      "class": "real-hardware",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "model-cold-start"
+      }
+    },
+    {
+      "id": "field.mixed-language",
+      "class": "user-field",
+      "source": {
+        "kind": "field-fixture",
+        "fixture": "mixed-language"
+      }
+    }
+  ]
+}

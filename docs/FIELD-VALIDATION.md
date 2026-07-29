@@ -139,6 +139,52 @@ Start while the live speech model is not ready. Recording must become active
 first; Stop must remain durable; finalized audio must enter post-capture
 admission so the pre-attachment interval can be recovered.
 
+## Release scorecard
+
+D147 makes field evidence part of a durable, fail-closed release decision.
+Before collecting release evidence, choose one version and build and keep that
+identity across the deterministic gates, release artifact, and developer build
+used for real calls:
+
+```sh
+export PORTAVOZ_RELEASE_VERSION=0.8.0
+export PORTAVOZ_RELEASE_BUILD=202607280001
+export PORTAVOZ_VERSION="$PORTAVOZ_RELEASE_VERSION"
+export PORTAVOZ_BUILD="$PORTAVOZ_RELEASE_BUILD"
+```
+
+`make install` otherwise defaults the developer bundle to version `0.1.0`,
+build `1`; evidence from that identity cannot admit a differently stamped
+release. The collector reads the inspected developer bundle and embeds its
+actual identity in every protocol-2 manifest.
+
+The tracked contract requires separate built-in and AirPods fixtures on macOS
+15 Sequoia and macOS 26 Tahoe. Callback recovery, long-call, and model-cold
+fixtures provide real-hardware proof; mixed-language provides user-field
+proof. Supply each package explicitly:
+
+```sh
+make release-reliability \
+  PORTAVOZ_RELEASE_VERSION="$PORTAVOZ_RELEASE_VERSION" \
+  PORTAVOZ_RELEASE_BUILD="$PORTAVOZ_RELEASE_BUILD" \
+  PORTAVOZ_FIELD_EVIDENCE_ARGS='
+    --field-evidence /path/to/built-in-sequoia
+    --field-evidence /path/to/built-in-tahoe
+    --field-evidence /path/to/airpods-sequoia
+    --field-evidence /path/to/airpods-tahoe
+    --field-evidence /path/to/callback-recovery
+    --field-evidence /path/to/long-call
+    --field-evidence /path/to/model-cold-start
+    --field-evidence /path/to/mixed-language'
+```
+
+The command writes owner-only `readiness.json` and `readiness.md` under
+`dist/release-readiness/scorecard`. It exits successfully only when every
+contracted deterministic, distribution, real-hardware, and user-field proof is
+`pass`. Missing, failed, incomplete, or not-observed cells remain visible and
+release-blocking. The scorecard never copies the pseudonymous meeting reference
+or support reports.
+
 ## Compatibility
 
 Protocol-1 `--scenario` invocations remain accepted for one release and keep

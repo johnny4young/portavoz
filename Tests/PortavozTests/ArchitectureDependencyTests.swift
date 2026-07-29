@@ -2198,6 +2198,44 @@ final class ArchitectureDependencyTests: XCTestCase {
             "scripts/verify-cloudkit-capabilities.sh \"$APP_COPY\""))
     }
 
+    func testReleaseReliabilityLedgerIsFailClosedAndContentFree() throws {
+        let contract = try Self.jsonObject(
+            at: "docs/evidence/reliability-gates.json")
+        let proofs = try XCTUnwrap(contract["proofs"] as? [[String: Any]])
+        XCTAssertEqual(proofs.count, 14)
+        XCTAssertEqual(
+            Set(proofs.compactMap { $0["class"] as? String }),
+            Set([
+                "deterministic-automated",
+                "signed-build",
+                "real-hardware",
+                "user-field",
+            ]))
+
+        let evaluator = try Self.contents(of: "scripts/release_reliability.py")
+        let runner = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+        let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(evaluator.contains(
+            #"outcome = "pass" if all(row["state"] == "pass""#))
+        XCTAssertTrue(evaluator.contains(
+            #""not-observed" if root["outcome"] == "incomplete""#))
+        XCTAssertTrue(evaluator.contains(
+            #""The scorecard contains no meeting content.""#))
+        XCTAssertTrue(runner.contains("PORTAVOZ_RELEASE_VERSION"))
+        XCTAssertTrue(runner.contains("make test-recording-stress"))
+        XCTAssertTrue(runner.contains("make test-ui-scoped"))
+        XCTAssertTrue(verifier.contains("record-distribution"))
+        XCTAssertTrue(verifier.contains("--receipt"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_release_reliability"))
+        XCTAssertTrue(decisions.contains("## D147"))
+    }
+
     func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let makefile = try Self.contents(of: "Makefile")

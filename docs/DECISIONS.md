@@ -4476,3 +4476,39 @@ avoids coupling operator observations to the application storage contract.
 Paired structural evidence proves that the same meeting changed without
 pretending aggregate counts can judge linguistic quality, while one-release
 compatibility preserves already collected evidence and automation.
+
+## D147 — Release reliability is a fail-closed evidence ledger (Jul 2026)
+
+**Context:** deterministic tests, signed-distribution verification, and
+privacy-safe field packages existed as separate commands and documents. A
+release decision still depended on a maintainer remembering which proofs had
+run, whether they described the same version/build/commit, and which claims
+required real hardware rather than a fixture. A green test suite could
+therefore be mistaken for Sequoia, AirPods, durable-file, or real-conversation
+proof that it cannot provide.
+
+**Decision:** one tracked machine-readable contract declares every
+release-blocking reliability proof and classifies it as deterministic
+automation, signed-build verification, real-hardware validation, or user-field
+validation. The deterministic runner writes a receipt only after its complete
+gate set passes and binds that receipt to version, build, and Git commit. The
+distribution verifier writes a receipt only after the DMG and an independently
+extracted app pass signing, notarization, stapling, Gatekeeper, and production
+CloudKit checks; its receipt binds the version/build and DMG SHA-256. Real
+device and conversation claims enter only through canonical protocol-2 field
+manifests.
+
+The evaluator accepts only exact-shaped receipts and manifests for the
+requested release. It writes an owner-only JSON/Markdown scorecard containing
+proof identity and aggregate evidence metadata, never meeting references,
+support reports, paths, audio, transcript, or generated content. A release
+passes only when every contracted proof is `pass`. Missing, failed,
+`incomplete`, and `not-observed` evidence block; prose, memory, prior-version
+results, and a green adjacent proof never fill a missing cell.
+
+**Rationale:** release confidence must be reproducible from durable evidence,
+not operator memory. Separating proof classes prevents automation from
+overclaiming hardware behavior, while exact artifact identity prevents stale
+evidence from blessing a different build. A content-free projection preserves
+Portavoz's local-first privacy boundary and still leaves every blocked gate
+actionable.

@@ -904,6 +904,21 @@ reading spoken text. Protocol-1 scenario output remains available for one
 release, so field tooling evolves without turning support JSON into a second
 application schema or invalidating existing evidence.
 
+Release admission consumes this evidence through a separate, fail-closed
+ledger. `docs/evidence/reliability-gates.json` declares every required proof
+and classifies it as deterministic automation, signed-build verification,
+real-hardware validation, or user-field validation. Deterministic gates write
+one receipt bound to the exact version, build, and Git commit; distribution
+verification writes one receipt bound to the extracted app identity and DMG
+SHA-256; protocol-2 field packages remain the only source for real-device and
+conversation claims. `scripts/release_reliability.py` validates those inputs
+against the contract and writes an owner-only JSON/Markdown scorecard. A gate
+passes only when every declared proof is `pass`; missing, failed, incomplete,
+or not-observed evidence blocks release. The scorecard projects only proof
+IDs, classes, states, artifact digest prefix, macOS version, fixture, and
+collection time. It never copies meeting references, support reports, paths,
+audio, transcripts, or generated content.
+
 `PortavozCore` defines stable secret identifiers and the `SecretStoring` port.
 `PlatformKit.KeychainSecretStore` is the concrete device-only adapter and is
 constructed only by the app and CLI composition roots. `ApplicationKit` exposes
@@ -1036,7 +1051,7 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 49-case English and Spanish suites remain the
+The complete 55-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 
@@ -1061,6 +1076,9 @@ mode uses a wider sharp zone and tighter visual bounds than playback.
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
 independent signature/notarization/stapling boundary. Release verification
 extracts and checks the inner application rather than trusting the mounted DMG.
+After those checks succeed, it can atomically emit the signed-build receipt
+consumed by the reliability ledger; it never emits a receipt for a
+partially verified artifact.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
 fails if the metadata declares no action. `openAppWhenRun` foregrounds the
@@ -1223,14 +1241,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,194 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,195 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
-- the 105-test recording/recovery corpus has a fail-closed 25-iteration stress
+- the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 383 production Swift source files;
-- 49 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 387 production Swift source files;
+- 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
@@ -1250,6 +1268,8 @@ swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh
 make test-ui-changed UI_BASE=origin/main
 make test-ui-bilingual # explicit release/architecture closure
+make release-reliability-deterministic # exact version/build required
+make release-reliability # missing field or distribution evidence blocks
 make install
 ```
 

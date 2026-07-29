@@ -14,7 +14,8 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
-	perf-ledger public-screenshots
+	perf-ledger public-screenshots release-reliability-deterministic \
+	release-reliability
 
 ## Unit tests (the package suite).
 test:
@@ -26,6 +27,33 @@ test:
 ## PORTAVOZ_PERF_STRICT=1 also fails on regression candidates.
 perf-ledger:
 	scripts/run-perf-ledger.sh
+
+## Run the deterministic release gates and write a receipt bound to the exact
+## version, build, and current commit. Both release variables are required.
+release-reliability-deterministic:
+	scripts/run-release-reliability-gates.sh
+
+## Evaluate deterministic, signed-distribution, real-hardware, and user-field
+## evidence. Pass field packages as repeated arguments, for example:
+##   make release-reliability PORTAVOZ_RELEASE_VERSION=0.8.0 \
+##     PORTAVOZ_RELEASE_BUILD=800 PORTAVOZ_FIELD_EVIDENCE_ARGS='\
+##       --field-evidence evidence/built-in-15 \
+##       --field-evidence evidence/built-in-26'
+PORTAVOZ_RELIABILITY_ROOT ?= dist/release-readiness
+PORTAVOZ_RELEASE_COMMIT ?= $(shell git rev-parse HEAD)
+PORTAVOZ_FIELD_EVIDENCE_ARGS ?=
+release-reliability:
+	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
+		(echo "PORTAVOZ_RELEASE_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
+		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
+	python3 scripts/release_reliability.py evaluate \
+		--version "$(PORTAVOZ_RELEASE_VERSION)" \
+		--build "$(PORTAVOZ_RELEASE_BUILD)" \
+		--commit "$(PORTAVOZ_RELEASE_COMMIT)" \
+		--deterministic-receipt "$(PORTAVOZ_RELIABILITY_ROOT)/deterministic.json" \
+		--distribution-receipt "$(PORTAVOZ_RELIABILITY_ROOT)/distribution.json" \
+		$(PORTAVOZ_FIELD_EVIDENCE_ARGS) --output "$(PORTAVOZ_RELIABILITY_ROOT)/scorecard"
 
 ## Repeat the focused recording/recovery corpus without rebuilding between
 ## iterations. Override the default with PORTAVOZ_STRESS_ITERATIONS=N.

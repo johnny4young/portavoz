@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,194 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,195 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,7 +23,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 383 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 387 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1258,7 +1258,30 @@ remains in earlier history, retains
 `recording-live-transcript-history-paused`, then uses
 `recording-jump-to-live` and observes the latest row.
 
-The current field-reliability gate is 1,194 XCTest package cases (13 gated),
+Release reliability is evaluated separately from individual test success
+(D147). `scripts/run-release-reliability-gates.sh` runs repository hygiene,
+warnings-as-errors build, the complete package suite, strict SwiftLint, the 25-iteration
+recording/recovery stress corpus, the exact mixed-language policy corpus, and
+six focused bilingual XCUITest journeys. It writes a deterministic receipt
+only after every gate succeeds and binds it to the requested version, build,
+and Git commit. `verify-distribution.sh --receipt` writes the signed-build
+receipt only after the DMG and independently extracted app pass signature,
+notarization, stapling, Gatekeeper, and production CloudKit capability checks.
+
+`docs/evidence/reliability-gates.json` then requires 14 proofs across four
+classes: deterministic automation, signed build, real hardware, and user
+field. `scripts/release_reliability.py evaluate` accepts only exact receipts
+and protocol-2 field manifests for the same release identity. Missing,
+failed, incomplete, or not-observed evidence produces a blocking scorecard;
+only all-pass evidence exits successfully. The owner-only JSON/Markdown output
+contains no meeting reference or support payload. Ten tooling tests cover
+complete, omitted/missing-path, failed, incomplete, mismatched-commit,
+duplicate-platform, content-bearing-input, and invalid-contract behavior, and
+the repository-hygiene gate always runs them. An architecture ratchet pins the
+contract, proof classes, fail-closed predicate, distribution receipt ordering,
+and D147.
+
+The current field-reliability gate is 1,195 XCTest package cases (13 gated),
 zero strict-lint violations across 387 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
