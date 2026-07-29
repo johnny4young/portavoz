@@ -4860,3 +4860,43 @@ boundary consistently. This removes a harness asymmetry without changing the
 product workload or hiding contention. Product ownership of explicit
 user-initiated, background, and latency-critical activities belongs to GOV-1
 policy rather than to measurement scaffolding.
+
+## D157 — Resource admission is pure before it is enforced (Jul 2026)
+
+**Context:** Portavoz has a closed content-free workload taxonomy and complete
+collectors for nine resource scenarios, but accepted evidence does not yet
+exist across the required 8 GB, 16 GB, and reference hosts. Runtime schedulers,
+model caches, storage checks, and capture state also expose different platform
+types. Encoding policy directly in those owners would duplicate business
+rules, make the capture invariant difficult to test, and tempt arbitrary
+memory or disk thresholds.
+
+**Decision:** `PortavozCore` owns one synchronous, deterministic, Sendable
+`ResourceGovernorPolicy`. It evaluates the existing workload descriptor and an
+admission-versus-checkpoint phase against an immutable, content-free snapshot:
+capture state/source health, categorical memory tier and disk state, memory and
+thermal pressure, resident model families with optional measured footprints,
+foreground-action presence, durable backlog, power source, and Low Power Mode.
+Its result separates an admission disposition from a stable set of unrelated
+idle model families to evict. Deferral conditions distinguish capture,
+host-pressure, storage, external-power, and Low-Power-Mode waits; foreground
+rejection carries an exact recovery action.
+
+Recording-critical work is admitted after Start enters a protected lifecycle.
+Before that boundary only failed input or critical storage rejects capture
+preflight. Optional durable work defers or pauses during capture, live work
+continues with reduced concurrency under pressure, and heavyweight user model
+work waits on a constrained or pressured capture host. Model release remains
+admitted under pressure. The policy performs no I/O, process inspection, task
+scheduling, model operation, or audio callback work. No application workflow
+calls it in this slice, and no numeric memory/disk threshold is encoded.
+
+**Rationale:** a pure decision table makes call-safety and recovery behavior
+exhaustively testable without loading a model or probing hardware. Separating
+admission from eviction represents the real case where work can proceed only
+after unrelated idle models leave memory. A general host/storage/power
+deferral is necessary in addition to “until capture stops”; otherwise a
+background job facing critical pressure while no recording exists would have
+no truthful result. Runtime adapters, model residency, concurrency enforcement,
+and measured numeric budgets remain later GOV slices and cannot be inferred
+from incomplete GOV-0 evidence.

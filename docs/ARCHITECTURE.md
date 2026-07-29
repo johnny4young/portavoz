@@ -691,6 +691,36 @@ resource instrumentation, so capture callbacks never log, lock this telemetry,
 or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
+Core also owns one pure resource-admission policy, separate from both
+measurement and runtime scheduling. Its immutable snapshot contains the
+capture lifecycle and source health, categorical hardware memory tier, disk
+state, memory pressure, thermal state, resident heavyweight model families
+with optional measured footprints, foreground-action presence, durable
+backlog, power source, and Low Power Mode. A request adds the existing
+content-free workload descriptor plus an admission-versus-checkpoint mode.
+The deterministic result contains one disposition—admit, reduce concurrency,
+defer for a typed condition, pause at a durable checkpoint, or reject with a
+typed recovery action—and a stable list of unrelated idle model families to
+evict. Admission and eviction are deliberately orthogonal.
+
+The policy preserves recording-critical work once Start has entered its
+protected lifecycle. Before that lifecycle, a failed audio input or critical
+disk state rejects Start with an exact recovery action. While capture is
+protected, optional post-capture and maintenance work defers or pauses; live
+interactive work remains admitted and reduces concurrency under pressure.
+Heavy user-requested model work also waits on constrained or pressured capture
+hosts. Model release remains admitted because it reduces pressure. Outside
+capture, critical storage or severe host pressure defers durable work, pauses
+it only at a checkpoint, and gives heavyweight foreground work a typed
+recovery; live-interactive work remains admitted with reduced concurrency.
+Battery defers maintenance until external power is available; Low Power Mode
+has a separate disablement condition so an already plugged-in Mac never waits
+for an impossible transition. The policy performs no I/O, model operation,
+task creation, scheduling, or eviction and is not yet installed in application
+workflows. Numeric memory and disk thresholds are intentionally absent until
+accepted multi-host evidence exists. No application adapter currently applies
+the decision to scheduling, residency, or concurrency.
+
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,
@@ -777,8 +807,9 @@ transcription through the production batch scheduler only after recording
 succeeds, and keeps capture active until a bounded nonempty result exists.
 It then uses the same freeze-before-Stop and fail-closed publication boundary.
 The runner never launches or changes `/Applications/Portavoz.app`. All nine
-scenarios now have reproducible collectors, but no host receipt is accepted,
-so resource-governor policy remains blocked.
+scenarios now have reproducible collectors, but no host receipt is accepted.
+The pure categorical policy contract exists; measured thresholds and runtime
+enforcement remain blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
@@ -1394,13 +1425,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,251 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,276 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 397 Swift source files;
+- strict SwiftLint reports zero violations across 398 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

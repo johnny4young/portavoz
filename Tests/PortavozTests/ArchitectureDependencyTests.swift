@@ -241,6 +241,50 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Resource workload measurement (D148)"))
     }
 
+    func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
+        let policy = try Self.contents(
+            of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")
+        for required in [
+            "public struct ResourceGovernorPolicy: Sendable",
+            "public struct ResourceGovernorSnapshot: Equatable, Sendable",
+            "public enum ResourceAdmissionDisposition: Equatable, Sendable",
+            "case admitNow",
+            "case admitWithReducedConcurrency",
+            "case `defer`(until: ResourceDeferralCondition)",
+            "case pauseAfterCheckpoint",
+            "case reject(recovery: ResourceRecoveryAction)",
+            "public let evictIdleModels: [ResourceModelFamily]",
+            "public let measuredFootprintBytes: UInt64?"
+        ] {
+            XCTAssertTrue(policy.contains(required), "Missing GOV-1 contract: \(required)")
+        }
+        for forbidden in [
+            "import AppKit", "import Foundation", "ProcessInfo", "FileManager",
+            "DispatchQueue", "NSLock", "Task {", " async ", " await ", "sleep(",
+            "MeetingID", "TranscriptSegment", "URL"
+        ] {
+            XCTAssertFalse(
+                policy.contains(forbidden),
+                "Core resource policy must not own runtime operation \(forbidden)")
+        }
+
+        let audioCallbackPolicy = try Self.sourceMatches(
+            under: "Sources/AudioCaptureKit",
+            pattern: #"ResourceGovernor(?:Policy|Decision|Snapshot|Request)"#)
+        XCTAssertTrue(
+            audioCallbackPolicy.isEmpty,
+            "Resource policy must never enter capture callbacks: \(audioCallbackPolicy)")
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Core also owns one pure resource-admission policy"))
+        XCTAssertTrue(decisions.contains("## D157"))
+        XCTAssertTrue(appSpec.contains(
+            "### Pure resource admission policy (D157)"))
+    }
+
     func testResourceBaselineEvidenceIsCompleteFailClosedAndToolingOnly() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/resource-baseline-matrix.json")

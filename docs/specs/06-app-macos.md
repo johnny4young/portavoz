@@ -142,6 +142,34 @@ in parallel for the established 5,000-segment baseline. No admission,
 deferral, priority, concurrency, model-residency, or eviction behavior changes
 in this measurement slice.
 
+### Pure resource admission policy (D157)
+
+`PortavozCore.ResourceGovernorPolicy` is a synchronous, deterministic,
+Sendable policy with no platform imports or side effects. Its snapshot
+combines capture state/source health, categorical memory tier and disk state,
+memory and thermal pressure, resident heavyweight model families with optional
+measured footprints, foreground-action presence, durable backlog, power
+source, and Low Power Mode. The request combines the existing content-free
+workload descriptor with either admission or durable-checkpoint evaluation.
+
+The result separates one admission disposition from a deterministic set of
+unrelated idle model families to evict. It can admit immediately, admit with
+reduced concurrency, defer until capture stops, defer until host/storage/power
+conditions recover, pause after a checkpoint, or reject foreground work with
+an exact recovery action. Battery and Low Power Mode use distinct deferral
+conditions. Active recording-critical work is always admitted; only Start
+preflight can reject failed input or critical storage. Optional post-capture
+and maintenance work yields to every protected capture state, while live work
+continues and sheds concurrency under pressure. Model release is always
+admitted because it reduces pressure rather than adding a resident capability.
+
+This is a policy contract, not active enforcement. It does not read
+`ProcessInfo`, inspect storage, schedule tasks, load or release a model, or
+enter `AudioCaptureKit`. The optional footprint bytes and categorical memory
+tier are carried for future adapters but are not compared against invented
+limits. Accepted GOV-0 evidence must define numeric budgets before application
+composition, model residency, and scheduler adapters can enforce them.
+
 Recording Start is also the single authorization boundary for meeting capture.
 Its explicit user action asks `MicrophonePermissionClient` to resolve an
 undetermined microphone grant before `MicrophoneSource` exists. Existing
