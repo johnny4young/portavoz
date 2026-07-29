@@ -678,7 +678,8 @@ mismatched-build, wrong-memory-tier, non-finite, or payload-bearing evidence
 fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
 
-The first native Release collector covers active recording and Stop without
+The first native Release collector covers steady idle, active recording, and
+Stop without
 making Instruments XML part of the evidence contract. A benchmark-only
 observer receives the same closed telemetry events while
 `proc_pid_rusage(RUSAGE_INFO_CURRENT)`, `ProcessInfo`, volume capacity, and
@@ -697,11 +698,12 @@ one exact Release version/build/commit, copies it to a uniquely identified
 scratch app, and records at least three runs into owner-only fragments before
 atomically publishing a host receipt. Each run uses a disposable meeting
 database and scratch audio while reusing the normal SHA-256-verified model
-cache; ordinary XCUITest launches keep their existing empty temporary model
-root. The runner never launches or changes `/Applications/Portavoz.app`.
-Recording and Stop now have a reproducible collector, but no host receipt or
-other seven scenarios are accepted yet, so resource-governor policy remains
-blocked.
+cache; a five-second launch-settling interval precedes the model-free idle
+window, and ordinary XCUITest launches keep their existing empty temporary
+model root. The runner never launches or changes
+`/Applications/Portavoz.app`. Idle, recording, and Stop now have a reproducible
+collector, but no host receipt or other six scenarios are accepted yet, so
+resource-governor policy remains blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
@@ -1309,7 +1311,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,215 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,216 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

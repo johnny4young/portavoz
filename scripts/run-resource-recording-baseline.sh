@@ -7,6 +7,7 @@ VERSION=""
 BUILD=""
 RUNS=3
 DURATION=60
+IDLE_DURATION=30
 OUTPUT=""
 
 usage() {
@@ -14,7 +15,8 @@ usage() {
 usage: scripts/run-resource-recording-baseline.sh \
   --profile <memory-8gb|memory-16gb|reference> \
   --version <version> --build <build> \
-  [--runs <count>] [--duration <seconds>] [--output <directory>]
+  [--runs <count>] [--duration <seconds>] [--idle-duration <seconds>] \
+  [--output <directory>]
 EOF
 }
 
@@ -56,6 +58,11 @@ while [[ $# -gt 0 ]]; do
             DURATION="$2"
             shift 2
             ;;
+        --idle-duration)
+            [[ $# -ge 2 ]] || { usage; exit 64; }
+            IDLE_DURATION="$2"
+            shift 2
+            ;;
         --output)
             [[ $# -ge 2 ]] || { usage; exit 64; }
             OUTPUT="$2"
@@ -77,9 +84,12 @@ done
 [[ -n "$BUILD" ]] || fail "--build is required"
 require_unsigned_integer "$RUNS" "--runs"
 require_unsigned_integer "$DURATION" "--duration"
+require_unsigned_integer "$IDLE_DURATION" "--idle-duration"
 (( RUNS >= 3 )) || fail "--runs must be at least 3"
 (( RUNS <= 100 )) || fail "--runs must be at most 100"
 (( DURATION >= 30 )) || fail "--duration must be at least 30 seconds"
+(( IDLE_DURATION >= 10 )) || fail "--idle-duration must be at least 10 seconds"
+(( IDLE_DURATION <= 600 )) || fail "--idle-duration must be at most 600 seconds"
 
 cd "$ROOT"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
@@ -143,21 +153,24 @@ for ((run = 1; run <= RUNS; run++)); do
     mkdir -p "$audio_root"
     export PORTAVOZ_AUDIO_ROOT="$audio_root"
 
-    echo "Collecting recording/Stop resource sample $run of $RUNS…"
+    echo "Collecting idle/recording/Stop resource sample $run of $RUNS…"
     open -W -n "$APP" --args \
         -ApplePersistenceIgnoreState YES \
         -use-temp-store \
         --bench-record "$DURATION" \
         --bench-resource-output "$fragments" \
         --bench-resource-run "$run" \
+        --bench-resource-idle-duration "$IDLE_DURATION" \
         --bench-log "$log"
 
+    idle_sample="$fragments/idle-$run.json"
     recording_sample="$fragments/recording-$run.json"
     stop_sample="$fragments/stop-$run.json"
-    if [[ ! -f "$recording_sample" || ! -f "$stop_sample" ]]; then
+    if [[ ! -f "$idle_sample" || ! -f "$recording_sample" || ! -f "$stop_sample" ]]; then
         [[ -f "$log" ]] && cat "$log" >&2
-        fail "run $run did not produce both exact-shaped samples"
+        fail "run $run did not produce all three exact-shaped samples"
     fi
+    sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
     sample_arguments+=(--sample "stop=$stop_sample")
 done

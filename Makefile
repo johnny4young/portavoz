@@ -33,6 +33,7 @@ perf-ledger:
 ## profile/version/build must describe this machine and source exactly.
 PORTAVOZ_RESOURCE_RUNS ?= 3
 PORTAVOZ_RESOURCE_DURATION ?= 60
+PORTAVOZ_RESOURCE_IDLE_DURATION ?= 30
 PORTAVOZ_RESOURCE_OUTPUT ?=
 resource-recording-baseline:
 	@test -n "$(PORTAVOZ_RESOURCE_PROFILE)" || \
@@ -48,6 +49,7 @@ resource-recording-baseline:
 			--build "$(PORTAVOZ_RELEASE_BUILD)" \
 			--runs "$(PORTAVOZ_RESOURCE_RUNS)" \
 			--duration "$(PORTAVOZ_RESOURCE_DURATION)" \
+			--idle-duration "$(PORTAVOZ_RESOURCE_IDLE_DURATION)" \
 			$(if $(PORTAVOZ_RESOURCE_OUTPUT),--output "$(PORTAVOZ_RESOURCE_OUTPUT)")
 
 ## Run the deterministic release gates and write a receipt bound to the exact

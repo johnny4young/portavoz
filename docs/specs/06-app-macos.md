@@ -8,7 +8,7 @@ D148 adds the process-wide content-free resource measurement described in
 Composition; it observes current work without adding governor policy.
 D149 adds the fail-closed multi-host baseline evidence boundary described in
 the same section; it remains tooling-only and does not affect app scheduling.
-D150 adds the native Release recording/Stop collector and its benchmark-only
+D150 adds the native Release idle/recording/Stop collector and its benchmark-only
 storage-isolation exception; no production launch or scheduler reads evidence.
 
 ## Structure
@@ -163,7 +163,8 @@ run.
 `make resource-recording-baseline` builds the exact Release bundle once, clones
 and re-signs a scratch app with the separate
 `app.portavoz.mac.resource-bench` identity, and runs at least three
-recording/Stop samples. The launch requires `-use-temp-store`, so the benchmark
+idle/recording/Stop samples. A five-second launch-settling interval precedes the
+model-free idle window. The launch requires `-use-temp-store`, so the benchmark
 meeting database and audio stay disposable; `AppStorageIsolationPolicy` allows
 only this hidden recording benchmark to reuse the normal verified model cache.
 Regular `-use-temp-store` automation still receives an empty model root. The

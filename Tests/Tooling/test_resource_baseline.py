@@ -422,7 +422,10 @@ class ResourceBaselineTests(unittest.TestCase):
             root = Path(directory)
             recording = root / "recording-1.json"
             stop = root / "stop-1.json"
+            idle = root / "idle-1.json"
             scenarios = dict(self.required_scenarios())
+            idle.write_text(json.dumps(
+                self.sample(1, scenarios["idle"])))
             recording.write_text(json.dumps(
                 self.sample(1, scenarios["recording"])))
             stop.write_text(json.dumps(
@@ -445,6 +448,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     "--profile",
                     "memory-8gb",
                     "--sample",
+                    f"idle={idle}",
+                    "--sample",
                     f"recording={recording}",
                     "--sample",
                     f"stop={stop}",
@@ -458,7 +463,7 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(receipt["host"]["profile"], "memory-8gb")
             self.assertEqual(
                 [scenario["id"] for scenario in receipt["scenarios"]],
-                ["recording", "stop"],
+                ["idle", "recording", "stop"],
             )
             self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
             baseline.validate_receipt(
@@ -590,6 +595,9 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("-use-temp-store", runner)
         self.assertIn("--bench-resource-output", runner)
         self.assertIn("--bench-resource-run", runner)
+        self.assertIn("--bench-resource-idle-duration", runner)
+        self.assertIn('idle_sample="$fragments/idle-$run.json"', runner)
+        self.assertIn('sample_arguments+=(--sample "idle=$idle_sample")', runner)
         self.assertIn("RUNS=3", runner)
         self.assertIn("(( RUNS >= 3 ))", runner)
         self.assertIn("resource_baseline.py assemble", runner)

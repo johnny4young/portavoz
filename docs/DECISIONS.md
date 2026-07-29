@@ -4615,16 +4615,17 @@ passing sample. Instruments remains optional corroboration, not receipt input.
 The recording baseline runner requires a clean worktree, builds one exact
 Release version/build/commit, copies and re-signs it under the dedicated
 `app.portavoz.mac.resource-bench` identity, and performs at least three runs.
-Every run requires a disposable meeting database and scratch audio. Only this
-hidden recording benchmark reuses the normal verified model cache; ordinary
-XCUITest launches retain an empty temporary model root. Partial fragments stay
-private and are removed on failure; a validated owner-only host receipt is
-published atomically. The runner never launches or modifies the notarized
-installed app.
+Every run requires a disposable meeting database and scratch audio, lets
+launch-only work settle for five seconds, and captures a model-free idle window
+before loading recording engines. Only this hidden recording benchmark reuses
+the normal verified model cache; ordinary XCUITest launches retain an empty
+temporary model root. Partial fragments stay private and are removed on
+failure; a validated owner-only host receipt is published atomically. The
+runner never launches or modifies the notarized installed app.
 
 **Rationale:** native counters make receipts deterministic and testable without
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
-model-install noise. Independent recording and Stop windows make interference
-attribution explicit, and fail-closed publication prevents a timeout or partial
-run from looking like accepted hardware evidence.
+model-install noise. Independent idle, recording, and Stop windows make
+residency and interference attribution explicit, and fail-closed publication
+prevents a timeout or partial run from looking like accepted hardware evidence.

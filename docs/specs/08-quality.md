@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,215 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,216 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1282,7 +1282,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,215 XCTest package cases (13 gated),
+The current field-reliability gate is 1,216 XCTest package cases (13 gated),
 zero strict-lint violations across 391 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
@@ -1308,9 +1308,11 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   identity and never execute from AudioCaptureKit callbacks.
 - `make resource-recording-baseline`: requires a clean commit, builds one
   Release bundle, re-signs a uniquely identified scratch app, and captures at
-  least three active-recording and Stop runs. The benchmark uses a disposable
-  meeting database and audio root, reuses only the verified installed model
-  cache, and never targets the notarized installed app. Its native app probe
+  least three steady-idle, active-recording, and Stop runs. After a five-second
+  launch-settling interval, the benchmark measures idle before loading models.
+  It uses a disposable meeting database and audio root, reuses only the
+  verified installed model cache, and never targets the notarized installed
+  app. Its native app probe
   samples process CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
   closed workload descriptors. The Stop probe atomically replays active spans

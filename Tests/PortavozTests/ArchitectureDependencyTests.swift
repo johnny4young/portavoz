@@ -301,6 +301,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchProbes.contains(
             "finishRecordingAndBeginStop"))
         XCTAssertTrue(benchProbes.contains(
+            "func measureIdle()"))
+        XCTAssertTrue(benchProbes.contains(
             "replayingActive: true"))
         XCTAssertTrue(benchMode.contains(
             #"arguments.contains("-use-temp-store")"#))
@@ -312,6 +314,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "app.portavoz.mac.resource-bench"))
         XCTAssertTrue(runner.contains(
             "resource_baseline.py assemble"))
+        XCTAssertTrue(runner.contains(
+            #"sample_arguments+=(--sample "idle=$idle_sample")"#))
         XCTAssertFalse(runner.contains("/Applications/Portavoz.app"))
         for forbidden in [
             "meetingTitle", "transcriptText", "sourcePath", "modelName",

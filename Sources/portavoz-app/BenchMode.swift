@@ -217,6 +217,13 @@ extension BenchMode {
             format: "bench-record: baseline (no models) %.0f MB",
             physicalFootprintMB()))
         do {
+            if let resourceProbes {
+                emit(
+                    "bench-record: settling launch, then sampling idle for "
+                        + "\(resourceProbes.idleDurationSeconds) s")
+                try await resourceProbes.measureIdle()
+                emit("bench-record: idle resource sample complete")
+            }
             try await services.loadEnginesIfNeeded()
             try resourceProbes?.beginRecording()
         } catch {

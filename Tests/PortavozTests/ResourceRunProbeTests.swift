@@ -4,6 +4,28 @@ import XCTest
 @testable import portavoz_app
 
 final class ResourceRunProbeTests: XCTestCase {
+    func testBenchResourceArgumentsBoundIdleDuration() throws {
+        let output = FileManager.default.temporaryDirectory.path
+        let probes = try XCTUnwrap(BenchRecordResourceProbes.requested(
+            arguments: [
+                "Portavoz", "--bench-resource-output", output,
+                "--bench-resource-run", "4",
+                "--bench-resource-idle-duration", "45",
+            ]))
+        XCTAssertEqual(probes.idleDurationSeconds, 45)
+
+        XCTAssertThrowsError(try BenchRecordResourceProbes.requested(
+            arguments: [
+                "Portavoz", "--bench-resource-output", output,
+                "--bench-resource-run", "4",
+                "--bench-resource-idle-duration", "9",
+            ])) {
+            XCTAssertEqual(
+                $0 as? BenchRecordResourceProbeError,
+                .invalidIdleDuration)
+        }
+    }
+
     func testProbeAggregatesProcessMetricsAndNearestRankWorkloads() throws {
         let usage = UsageSequence([
             makeUsage(
