@@ -4,6 +4,49 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
+struct BenchIndexingResourceWorkload {
+    let operation: IndexSemanticCorpus
+    let embedder: SentenceEmbedder
+    let expectedSegments: Int
+
+    @MainActor
+    func run(
+        timeoutSeconds: Int
+    ) async throws -> SemanticCorpusIndexingResult {
+        do {
+            return try await BenchResourceTimedOperation.run(
+                timeout: .seconds(timeoutSeconds)
+            ) {
+                try await operation.all(
+                    using: embedder,
+                    batchSize: 256)
+            }
+        } catch BenchResourceTimedOperationError.operationFailed(let message) {
+            throw BenchIndexingResourceError.operationFailed(message)
+        } catch BenchResourceTimedOperationError.timedOut {
+            throw BenchIndexingResourceError.timedOut(timeoutSeconds)
+        }
+    }
+
+    func validate(
+        _ result: SemanticCorpusIndexingResult,
+        store: MeetingStore
+    ) async throws {
+        let completed = result.embeddedSegments + result.excludedSegments
+        guard completed == expectedSegments else {
+            throw BenchIndexingResourceError.incomplete(
+                expected: expectedSegments,
+                actual: completed)
+        }
+        let remaining = try await store.segmentsNeedingEmbeddings(limit: 1)
+        guard remaining.isEmpty else {
+            throw BenchIndexingResourceError.incomplete(
+                expected: expectedSegments,
+                actual: completed)
+        }
+    }
+}
+
 extension BenchMode {
     /// Measures the semantic corpus maintenance operation that Ask currently
     /// drains synchronously and Library search advances one batch at a time.
@@ -36,28 +79,15 @@ extension BenchMode {
         setbuf(stdout, nil)
         Task { @MainActor in
             do {
-                let benchmark = try await makeIndexingBenchmark(
+                let workload = try await prepareIndexingResourceWorkload(
                     services: services)
                 let result = try await probe.measure(scenario: "indexing") {
-                    try await runIndexingBenchmark(
-                        operation: benchmark.operation,
-                        embedder: benchmark.embedder,
+                    try await workload.run(
                         timeoutSeconds: configuration.timeoutSeconds)
                 }
-                let completed =
-                    result.embeddedSegments + result.excludedSegments
-                guard completed == benchmark.expectedSegments else {
-                    throw BenchIndexingResourceError.incomplete(
-                        expected: benchmark.expectedSegments,
-                        actual: completed)
-                }
-                let remaining = try await services.store
-                    .segmentsNeedingEmbeddings(limit: 1)
-                guard remaining.isEmpty else {
-                    throw BenchIndexingResourceError.incomplete(
-                        expected: benchmark.expectedSegments,
-                        actual: completed)
-                }
+                try await workload.validate(
+                    result,
+                    store: services.store)
                 emitIndexing("bench-indexing: resource sample complete")
                 exit(0)
             } catch {
@@ -70,13 +100,9 @@ extension BenchMode {
     }
 
     @MainActor
-    private static func makeIndexingBenchmark(
+    static func prepareIndexingResourceWorkload(
         services: AppServices
-    ) async throws -> (
-        operation: IndexSemanticCorpus,
-        embedder: SentenceEmbedder,
-        expectedSegments: Int
-    ) {
+    ) async throws -> BenchIndexingResourceWorkload {
         let embedder: SentenceEmbedder
         do {
             embedder = try SentenceEmbedder()
@@ -96,13 +122,12 @@ extension BenchMode {
             fixture.meeting,
             speakers: fixture.speakers,
             segments: fixture.segments)
-        return (
-            IndexSemanticCorpus(
+        return BenchIndexingResourceWorkload(
+            operation: IndexSemanticCorpus(
                 store: services.store,
                 telemetry: services.workloadTelemetry),
-            embedder,
-            fixture.segments.count
-        )
+            embedder: embedder,
+            expectedSegments: fixture.segments.count)
     }
 
     private static func makeIndexingBenchmarkFixture() -> (
@@ -136,27 +161,6 @@ extension BenchMode {
                 isFinal: true)
         }
         return (meeting, [speaker], segments)
-    }
-
-    @MainActor
-    private static func runIndexingBenchmark(
-        operation: IndexSemanticCorpus,
-        embedder: SentenceEmbedder,
-        timeoutSeconds: Int
-    ) async throws -> SemanticCorpusIndexingResult {
-        do {
-            return try await BenchResourceTimedOperation.run(
-                timeout: .seconds(timeoutSeconds)
-            ) {
-                try await operation.all(
-                    using: embedder,
-                    batchSize: 256)
-            }
-        } catch BenchResourceTimedOperationError.operationFailed(let message) {
-            throw BenchIndexingResourceError.operationFailed(message)
-        } catch BenchResourceTimedOperationError.timedOut {
-            throw BenchIndexingResourceError.timedOut(timeoutSeconds)
-        }
     }
 
     private static func emitIndexing(_ line: String) {

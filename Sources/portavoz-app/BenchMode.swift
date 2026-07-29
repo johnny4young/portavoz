@@ -177,168 +177,14 @@ extension BenchMode {
         exit(0)
     }
 
-    /// `portavoz-app --bench-record <seconds>` — starts a REAL recording
-    /// session (mic + system tap + live transcription) headlessly, samples
-    /// this process's physical footprint every 2 s, and prints a phase
-    /// breakdown (baseline → engines loaded → recording peak → after stop →
-    /// after releasing the engines) so RAM work targets the right component.
-    /// Combine with -use-temp-store so the bench meeting never lands in the
-    /// real library.
+    /// Runs the real recording resource harness from the app composition root.
+    /// Its lifecycle lives in a focused outer-layer runner so normal benchmark
+    /// dispatch stays readable as concurrent scenarios are added.
     @MainActor
     static func runRecordBenchIfRequested(services: AppServices, recording: RecordingController) {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard let flag = arguments.firstIndex(of: "--bench-record") else { return }
-        guard arguments.contains("-use-temp-store") else {
-            emit("bench-record: -use-temp-store is required")
-            exit(1)
-        }
-        let seconds = arguments.indices.contains(flag + 1) ? Int(arguments[flag + 1]) ?? 60 : 60
-        let resourceProbes: BenchRecordResourceProbes?
-        do {
-            resourceProbes = try BenchRecordResourceProbes.requested(
-                arguments: arguments)
-        } catch {
-            emit("bench-record: resource probe setup FAILED: \(error.localizedDescription)")
-            exit(1)
-        }
-        setbuf(stdout, nil)
-        Task { @MainActor in
-            await prepareRecordBench(
-                services: services,
-                recording: recording,
-                resourceProbes: resourceProbes)
-            let peak = await sampleRecordingFootprint(seconds: seconds)
-            emit(String(
-                format: "bench-record: peak footprint %.0f MB over %d s",
-                peak,
-                seconds))
-            await finishRecordBench(
-                services: services,
-                recording: recording,
-                resourceProbes: resourceProbes)
-            exit(0)
-        }
-    }
-
-    @MainActor
-    private static func prepareRecordBench(
-        services: AppServices,
-        recording: RecordingController,
-        resourceProbes: BenchRecordResourceProbes?
-    ) async {
-        emit(String(
-            format: "bench-record: baseline (no models) %.0f MB",
-            physicalFootprintMB()))
-        do {
-            if let resourceProbes {
-                emit(
-                    "bench-record: settling launch, then sampling idle for "
-                        + "\(resourceProbes.idleDurationSeconds) s")
-                try await resourceProbes.measureIdle()
-                emit("bench-record: idle resource sample complete")
-            }
-            try await services.loadEnginesIfNeeded()
-            try resourceProbes?.beginRecording()
-        } catch {
-            resourceProbes?.cancel()
-            emit("bench-record: preparation FAILED: \(error.localizedDescription)")
-            exit(1)
-        }
-        emit(String(
-            format: "bench-record: engines loaded (Parakeet + pyannote) %.0f MB",
-            physicalFootprintMB()))
-        await recording.start(services: services)
-        if case .failed(let reason) = recording.phase {
-            resourceProbes?.cancel()
-            emit("bench-record: start FAILED: \(reason)")
-            exit(1)
-        }
-    }
-
-    private static func sampleRecordingFootprint(seconds: Int) async -> Double {
-        emit("bench-record: recording started, sampling footprint for \(seconds) s")
-        var peak: Double = 0
-        for _ in 0..<(seconds / 2) {
-            try? await Task.sleep(for: .seconds(2))
-            peak = max(peak, physicalFootprintMB())
-        }
-        return peak
-    }
-
-    @MainActor
-    private static func finishRecordBench(
-        services: AppServices,
-        recording: RecordingController,
-        resourceProbes: BenchRecordResourceProbes?
-    ) async {
-        do {
-            try resourceProbes?.finishRecordingAndBeginStop()
-        } catch {
-            resourceProbes?.cancel()
-            emit("bench-record: resource probe transition FAILED: \(error.localizedDescription)")
-            exit(1)
-        }
-        guard await stopRecording(
-            recording,
+        BenchRecordingResourceRunner.runIfRequested(
             services: services,
-            timeout: .seconds(30)
-        ) else {
-            resourceProbes?.cancel()
-            emit("bench-record: stop FAILED: exceeded 30 seconds")
-            exit(1)
-        }
-        do {
-            try resourceProbes?.finishStopAndWrite()
-        } catch {
-            resourceProbes?.cancel()
-            emit("bench-record: resource probe export FAILED: \(error.localizedDescription)")
-            exit(1)
-        }
-        try? await Task.sleep(for: .seconds(3))
-        emit(String(
-            format: "bench-record: after stop %.0f MB",
-            physicalFootprintMB()))
-        services.releaseRecordingEngines()
-        await sampleReleasedEngineFootprint()
-    }
-
-    private static func sampleReleasedEngineFootprint() async {
-        // CoreML gives pages back lazily — sample twice so a slow reclaim is
-        // not mistaken for a leak.
-        try? await Task.sleep(for: .seconds(3))
-        emit(String(
-            format: "bench-record: after engine release (3 s) %.0f MB",
-            physicalFootprintMB()))
-        try? await Task.sleep(for: .seconds(12))
-        emit(String(
-            format: "bench-record: after engine release (15 s) %.0f MB",
-            physicalFootprintMB()))
-    }
-
-    /// An unstructured first-result stream is intentional. A task group would
-    /// wait for a cancelled Stop child before leaving scope and therefore
-    /// would not enforce the timeout. A timed-out bench exits without evidence.
-    @MainActor
-    private static func stopRecording(
-        _ recording: RecordingController,
-        services: AppServices,
-        timeout: Duration
-    ) async -> Bool {
-        let (stream, continuation) = AsyncStream.makeStream(of: Bool.self)
-        let stopTask = Task { @MainActor in
-            await recording.stop(services: services)
-            continuation.yield(true)
-        }
-        let timeoutTask = Task {
-            try? await Task.sleep(for: timeout)
-            continuation.yield(false)
-        }
-        var iterator = stream.makeAsyncIterator()
-        let completed = await iterator.next() ?? false
-        stopTask.cancel()
-        timeoutTask.cancel()
-        continuation.finish()
-        return completed
+            recording: recording)
     }
 
     /// `portavoz-app --bench-resource-refine <audio>` executes the real
@@ -758,18 +604,6 @@ extension BenchMode {
         } else {
             try? data.write(to: url)
         }
-    }
-
-    /// What Activity Monitor's "Memory" column shows for this process.
-    private static func physicalFootprintMB() -> Double {
-        var usage = rusage_info_current()
-        let result = withUnsafeMutablePointer(to: &usage) { pointer in
-            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { reboundPointer in
-                proc_pid_rusage(getpid(), RUSAGE_INFO_CURRENT, reboundPointer)
-            }
-        }
-        guard result == 0 else { return 0 }
-        return Double(usage.ri_phys_footprint) / 1_048_576
     }
 
     private static func processStartTime() -> Date {

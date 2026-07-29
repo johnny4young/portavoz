@@ -740,10 +740,16 @@ query expansion, hybrid retrieval, and generated answer. It admits a sample
 only when both citations and nonempty generated text exist. Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
 public segments through the real ApplicationKit operation, and requires no
-missing rows afterward. The runner never launches or changes
-`/Applications/Portavoz.app`. These seven scenarios now have reproducible
-collectors, but no host receipt is accepted and the two concurrent scenarios
-remain uncollected, so resource-governor policy remains blocked.
+missing rows afterward. Recording plus indexing runs in another real windowed
+recording process. It prepares the same fixture and embedding assets before
+measurement, arms one probe before Start, executes `IndexSemanticCorpus` only
+after recording succeeds, and freezes process metrics before Stop. The probe
+remains subscribed until Stop closes spans that were active inside the window,
+so live-transcription finishes are retained without admitting Stop-only work.
+The runner never launches or changes `/Applications/Portavoz.app`. These eight
+scenarios now have reproducible collectors, but no host receipt is accepted and
+recording plus batch processing remains uncollected, so resource-governor policy
+remains blocked.
 
 The live merged projection performs bounded cross-channel admission: a new
 microphone row is compared with the newest twelve direct system/room captions,
@@ -1359,13 +1365,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,234 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,237 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 394 Swift source files;
+- strict SwiftLint reports zero violations across 395 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

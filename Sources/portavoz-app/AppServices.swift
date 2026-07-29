@@ -23,8 +23,8 @@ struct MeetingSeekRequest: Equatable {
 /// gets an empty model root as well as a disposable meeting database. The
 /// hidden benchmarks that need Portavoz-managed models keep only the database
 /// disposable and reuse the normal verified model cache so repeated Release
-/// samples do not include a fresh model installation. OS-model-only Ask keeps
-/// both Portavoz stores disposable.
+/// samples do not include a fresh model installation. OS-model-only Ask and
+/// standalone indexing keep both Portavoz stores disposable.
 struct AppStorageIsolationPolicy: Equatable {
     let usesTemporaryMeetingStore: Bool
     let usesTemporaryModelStore: Bool

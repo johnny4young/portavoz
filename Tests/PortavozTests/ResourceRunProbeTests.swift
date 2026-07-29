@@ -238,6 +238,91 @@ final class ResourceRunProbeTests: XCTestCase {
         }
     }
 
+    func testRecordingIndexingProbeBoundsTimeout() throws {
+        let output = FileManager.default.temporaryDirectory.path
+        let probe = try XCTUnwrap(
+            BenchConcurrentRecordingResourceProbe
+                .recordingIndexingRequested(arguments: [
+                    "Portavoz",
+                    "--bench-resource-recording-indexing",
+                    "--bench-resource-output", output,
+                    "--bench-resource-run", "4",
+                    "--bench-resource-timeout", "480",
+                ]))
+        XCTAssertEqual(probe.timeoutSeconds, 480)
+
+        XCTAssertThrowsError(
+            try BenchConcurrentRecordingResourceProbe
+                .recordingIndexingRequested(arguments: [
+                    "Portavoz",
+                    "--bench-resource-recording-indexing",
+                    "--bench-resource-output", output,
+                    "--bench-resource-run", "4",
+                    "--bench-resource-timeout", "59",
+                ])
+        ) {
+            XCTAssertEqual(
+                $0 as? BenchConcurrentProbeError,
+                .invalidTimeout)
+        }
+    }
+
+    func testRecordingIndexingProbeFreezesBeforeStopAndRetainsLiveFinish() throws {
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "BenchRecordingIndexingProbe-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: output) }
+        let probe = try XCTUnwrap(
+            BenchConcurrentRecordingResourceProbe
+                .recordingIndexingRequested(arguments: [
+                    "Portavoz",
+                    "--bench-resource-recording-indexing",
+                    "--bench-resource-output", output.path,
+                    "--bench-resource-run", "7",
+                ]))
+        let telemetry = AppResourceWorkloadTelemetry.shared.telemetry
+
+        try probe.begin()
+        defer { probe.cancel() }
+        let capture = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .recordingCritical,
+            kind: .audioCapture,
+            operation: .execute))
+        telemetry.finish(capture, outcome: .completed)
+        let live = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .liveInteractive,
+            kind: .liveTranscription,
+            operation: .execute))
+        let indexing = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .maintenance,
+            kind: .searchIndex,
+            operation: .execute))
+        telemetry.finish(indexing, outcome: .completed)
+        try probe.freezeBeforeStop()
+        telemetry.finish(live, outcome: .completed)
+        let stopOnly = telemetry.begin(ResourceWorkloadDescriptor(
+            workloadClass: .recordingCritical,
+            kind: .audioCapture,
+            operation: .release))
+        telemetry.finish(stopOnly, outcome: .completed)
+        try probe.finishAfterStopAndWrite()
+
+        let sample = try JSONDecoder().decode(
+            ResourceProbeSample.self,
+            from: Data(contentsOf: output.appendingPathComponent(
+                "recording-indexing-7.json")))
+        XCTAssertEqual(sample.run, 7)
+        XCTAssertEqual(
+            Set(sample.workloads.map {
+                "\($0.workloadClass)/\($0.kind)/\($0.operation)"
+            }),
+            Set([
+                "recordingCritical/audioCapture/execute",
+                "liveInteractive/liveTranscription/execute",
+                "maintenance/searchIndex/execute",
+            ]))
+    }
+
     func testProbeAggregatesProcessMetricsAndNearestRankWorkloads() throws {
         let usage = UsageSequence([
             makeUsage(

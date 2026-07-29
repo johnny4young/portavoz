@@ -4634,17 +4634,26 @@ expansion, hybrid retrieval, and answer generation; a sample requires citations
 and nonempty generated text. Standalone indexing prepares the already-installed
 embedding assets before sampling, drains 1,024 fixed public English segments
 through `IndexSemanticCorpus`, and requires every row to be embedded or
-deliberately excluded before publication. All four model scenarios use the same
-unstructured first-result race, which enforces a bounded 60–3,600 second timeout
-even if model work ignores cooperative cancellation. Refine never applies its
-draft or persists user-visible content.
+deliberately excluded before publication. Every bounded Refine, Summary, Ask,
+and indexing operation uses the same unstructured first-result race, which
+enforces a 60–3,600 second timeout even if model work ignores cooperative
+cancellation. Refine never applies its draft or persists user-visible content.
 
-Only the hidden recording, Refine, and Summary resource benchmarks reuse the
-normal verified Portavoz model cache; Ask and indexing rely on OS-managed
-assets and keep the disposable model root. Ordinary XCUITest launches retain an empty
-temporary model root. Partial fragments and the synthetic fixture stay private
-and are removed on failure; a validated owner-only host receipt is published
-atomically. The original
+Recording plus indexing runs in its own real windowed recording process. It
+prepares the same embedding runtime and fixed corpus before measurement, arms a
+dedicated probe before product Start, and starts `IndexSemanticCorpus` only
+after recording succeeds. Process counters freeze before Stop; the observer
+remains installed until Stop closes live-transcription spans that were already
+active, admitting their terminal outcomes while rejecting Stop-only work. The
+recording stays active until indexing completes or its hard timeout wins, and
+the sample is published only after the corpus validation and Stop both succeed.
+
+Only the hidden recording, recording-plus-indexing, Refine, and Summary
+resource benchmarks reuse the normal verified Portavoz model cache; Ask and
+indexing rely on OS-managed assets and keep the disposable model root. Ordinary
+XCUITest launches retain an empty temporary model root. Partial fragments and
+the synthetic fixture stay private and are removed on failure; a validated
+owner-only host receipt is published atomically. The original
 `resource-recording-baseline` command remains a compatibility alias for the
 canonical `resource-baseline` runner. Once any resource benchmark dispatcher is
 armed, app initialization returns before normal sync, recovery, provider
@@ -4657,12 +4666,14 @@ notarized installed app.
 binding policy evidence to an Instruments export schema. Separating the
 database and model isolation concerns protects user meetings while removing
 model-install noise. Independent idle, recording, Stop, Refine, Summary, Ask,
-and indexing windows make residency and interference attribution explicit. One
-reusable single-scenario probe avoids a new collector lifecycle for every batch
-workflow, while synthetic input keeps model-heavy evidence repeatable and
-private. Fail-closed publication prevents a timeout, missing model or OS asset,
-silent fixture, failed summary transaction, missing Ask evidence, incomplete
-index, or partial run from looking like accepted hardware evidence.
+indexing, and recording-plus-indexing windows make residency and interference
+attribution explicit. One reusable single-scenario probe avoids a new collector
+lifecycle for every batch workflow, while the concurrent probe makes its
+recording boundary explicit instead of merging Stop cost into the sample.
+Synthetic input keeps model-heavy evidence repeatable and private. Fail-closed
+publication prevents a timeout, missing model or OS asset, silent fixture,
+failed summary transaction, missing Ask evidence, incomplete index, or partial
+run from looking like accepted hardware evidence.
 
 ## D151 — MLX inference has an independent explicit scheduler lane (Jul 2026)
 
@@ -4716,12 +4727,17 @@ The Release indexing benchmark prepares already-installed Apple Latin
 embedding assets before measurement, inserts 1,024 fixed public English
 segments into a disposable database, runs the complete operation in batches of
 256, and publishes no sample unless every row is embedded or deliberately
-excluded. It neither downloads assets inside the measured window nor reads a
-Portavoz model cache.
+excluded. The recording-plus-indexing benchmark prepares that same workload
+before measurement and then executes it concurrently with the real recording
+lifecycle. It neither downloads assets inside the measured window nor reads a
+Portavoz model cache for indexing; the recording side reuses only the normal
+verified recording models.
 
 **Rationale:** one application-owned operation prevents Ask and Library from
 drifting while creating a deterministic, independently measurable seam for
 future background scheduling. Preserving caller-specific drain behavior keeps
 the slice a Strangler extraction rather than an unmeasured product-policy
 change. Embedding residency, background admission, recording interference, and
-sqlite-vec remain separate decisions that require their own evidence.
+sqlite-vec remain separate decisions. Recording interference now has a
+reproducible collector, but it still requires accepted host baselines before
+governor policy can be derived.

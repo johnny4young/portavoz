@@ -291,6 +291,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchResourceScenarioProbe.swift")
         let benchMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode.swift")
+        let recordingRunner = try Self.contents(
+            of: "Sources/portavoz-app/BenchRecordingResourceRunner.swift")
         let indexingBench = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
         let app = try Self.contents(
@@ -318,10 +320,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "func measureIdle()"))
         XCTAssertTrue(benchProbes.contains(
             "replayingActive: true"))
-        XCTAssertTrue(benchMode.contains(
+        XCTAssertTrue(benchProbes.contains(
+            "freezeBeforeStop"))
+        XCTAssertTrue(benchProbes.contains(
+            "finishAfterStopAndWrite"))
+        XCTAssertTrue(recordingRunner.contains(
             #"arguments.contains("-use-temp-store")"#))
-        XCTAssertTrue(benchMode.contains(
-            "stop FAILED: exceeded 30 seconds"))
+        XCTAssertTrue(recordingRunner.contains(
+            "recording Stop exceeded 30 seconds"))
+        XCTAssertTrue(recordingRunner.contains(
+            "prepareIndexingResourceWorkload"))
+        XCTAssertTrue(recordingRunner.contains(
+            "concurrent semantic indexing complete"))
         XCTAssertTrue(benchMode.contains(
             "runRefineResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(
@@ -343,7 +353,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(indexingBench.contains(
             "IndexSemanticCorpus("))
         XCTAssertTrue(indexingBench.contains(
-            "try await operation.all("))
+            "try await workload.run("))
         XCTAssertTrue(benchMode.contains(
             "runsIsolatedResourceBenchmark"))
         let benchmarkExit = try XCTUnwrap(app.range(
@@ -377,6 +387,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"sample_arguments+=(--sample "ask=$ask_sample")"#))
         XCTAssertTrue(runner.contains(
             #"sample_arguments+=(--sample "indexing=$indexing_sample")"#))
+        XCTAssertTrue(runner.contains(
+            "--bench-resource-recording-indexing"))
+        XCTAssertTrue(runner.contains(
+            #""recording-indexing=$recording_indexing_sample""#))
         XCTAssertTrue(scheduler.contains(
             "static let mlx = IntelligenceScheduler"))
         XCTAssertTrue(mlxProvider.contains(

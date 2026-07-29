@@ -192,7 +192,9 @@ fragments="$COLLECTION/fragments"
 sample_arguments=()
 for ((run = 1; run <= RUNS; run++)); do
     audio_root="$RUN_ROOT/audio-$run"
+    recording_indexing_audio_root="$RUN_ROOT/audio-recording-indexing-$run"
     recording_log="$RUN_ROOT/recording-$run.log"
+    recording_indexing_log="$RUN_ROOT/recording-indexing-$run.log"
     refine_log="$RUN_ROOT/refine-$run.log"
     summary_log="$RUN_ROOT/summary-$run.log"
     ask_log="$RUN_ROOT/ask-$run.log"
@@ -220,6 +222,31 @@ for ((run = 1; run <= RUNS; run++)); do
     if [[ ! -f "$idle_sample" || ! -f "$recording_sample" || ! -f "$stop_sample" ]]; then
         [[ -f "$recording_log" ]] && cat "$recording_log" >&2
         fail "run $run did not produce all three exact-shaped samples"
+    fi
+
+    echo "Collecting recording plus indexing resource sample $run of $RUNS…"
+    mkdir -p "$recording_indexing_audio_root"
+    export PORTAVOZ_AUDIO_ROOT="$recording_indexing_audio_root"
+    if ! open -W -n "$APP" --args \
+            -ApplePersistenceIgnoreState YES \
+            -use-temp-store \
+            --bench-record "$DURATION" \
+            --bench-resource-recording-indexing \
+            --bench-resource-output "$fragments" \
+            --bench-resource-run "$run" \
+            --bench-resource-timeout "$MODEL_TIMEOUT" \
+            --bench-log "$recording_indexing_log"
+    then
+        [[ -f "$recording_indexing_log" ]] &&
+            cat "$recording_indexing_log" >&2
+        fail "recording plus indexing run $run failed"
+    fi
+
+    recording_indexing_sample="$fragments/recording-indexing-$run.json"
+    if [[ ! -f "$recording_indexing_sample" ]]; then
+        [[ -f "$recording_indexing_log" ]] &&
+            cat "$recording_indexing_log" >&2
+        fail "run $run did not produce the recording plus indexing sample"
     fi
 
     echo "Collecting Refine resource sample $run of $RUNS…"
@@ -305,6 +332,9 @@ for ((run = 1; run <= RUNS; run++)); do
     sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "indexing=$indexing_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
+    sample_arguments+=(
+        --sample "recording-indexing=$recording_indexing_sample"
+    )
     sample_arguments+=(--sample "refine=$refine_sample")
     sample_arguments+=(--sample "summary=$summary_sample")
     sample_arguments+=(--sample "stop=$stop_sample")
