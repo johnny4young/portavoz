@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 29, 2026
 
+- **🎧 Audio-device switches stay crash-free** — Moving between the built-in mic, AirPods, and other routes no longer lets a stale sample rate take down an active recording; Portavoz follows each route's real format and keeps the original meeting timeline.
 - **🎙️ Start asks before touching the mic** — A fresh install now resolves the one-time macOS microphone permission before Portavoz prepares the audio device, avoiding a recording screen that can remain stuck while Core Audio waits.
 
 ## July 27, 2026

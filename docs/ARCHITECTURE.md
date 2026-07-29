@@ -626,9 +626,13 @@ restricted access returns through the typed preparation failure. Warm-up and
 device-restart paths then validate a finite positive hardware sample rate and
 at least one input channel before calling `AVAudioEngine.prepare()`, while one
 serial queue owns warm-up, start, stop, and device-restart graph mutation.
-Capture also awaits its explicit warm-up task before entering that owner. An
-unavailable route crosses the existing typed recording-start boundary instead
-of escaping as an Objective-C exception.
+Input taps never request a cached hardware format: they leave the input bus
+unchanged and derive the resampling source rate from each delivered buffer.
+This prevents a route transition between format inspection and tap installation
+from raising AVFAudio's Objective-C format-mismatch exception. Capture also
+awaits its explicit warm-up task before entering that owner. An unavailable
+route crosses the existing typed recording-start boundary instead of escaping
+as an Objective-C exception.
 
 ```mermaid
 flowchart LR
@@ -1379,7 +1383,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,247 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,249 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

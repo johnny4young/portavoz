@@ -4790,3 +4790,27 @@ does not claim that cooperative cancellation can interrupt a genuinely stalled
 authorized Core Audio bind; if that separate field shape reproduces, it
 requires its own bounded outer policy rather than a misleading structured-task
 timeout.
+
+## D154 — Microphone taps observe route format; they never coerce it (Jul 2026)
+
+**Context:** the repeated 36 GB reference baseline changed the live microphone
+route from a 48 kHz format to a 24 kHz AirPods format. The configuration-change
+handler read the old output format, then passed it back to
+`installTap(onBus:bufferSize:format:block:)` after the hardware had changed.
+AVFAudio treats a non-nil tap format as a request to apply that format to the
+bus and raised an uncaught Objective-C format-mismatch exception, aborting the
+recording process.
+
+**Decision:** the microphone input tap passes `nil` as its requested format,
+leaving AVFAudio's current hardware bus unchanged. The callback derives its
+native sample rate from each delivered `AVAudioPCMBuffer.format`, validates it,
+and resamples to the immutable stream rate before timeline-gap accounting.
+Warm-up and restart still reject unusable routes before preparation, serialize
+graph mutation, retry absent routes, and preserve one stream and continuation.
+
+**Rationale:** format inspection and route mutation cannot be made atomic across
+Core Audio. Avoiding bus coercion removes that time-of-check/time-of-use crash
+while retaining native capture, device-switch resampling, and dual-channel
+alignment. A pure policy test locks both the nil requested format and dynamic
+48 kHz/24 kHz source-rate observation; repeated Release collection remains the
+real hardware regression gate.

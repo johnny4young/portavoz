@@ -13,6 +13,25 @@ enum AudioInputFormatPolicy {
     }
 }
 
+/// Input taps observe the hardware route instead of attempting to configure it.
+///
+/// A route can change between reading `outputFormat` and installing a tap.
+/// Passing that earlier format back to AVFAudio can therefore raise an
+/// Objective-C format-mismatch exception. A nil requested format leaves the
+/// bus untouched; each delivered buffer is then resampled from its actual rate.
+enum AudioInputTapPolicy {
+    static var requestedFormat: AVAudioFormat? {
+        nil
+    }
+
+    static func sourceSampleRate(for bufferFormat: AVAudioFormat) -> Double? {
+        guard AudioInputFormatPolicy.isUsable(bufferFormat) else {
+            return nil
+        }
+        return bufferFormat.sampleRate
+    }
+}
+
 /// Captures the local microphone through AVAudioEngine at the device's
 /// native format, downmixed to mono. Recording keeps native quality;
 /// resampling for STT is TranscriptionKit's job.
@@ -182,11 +201,8 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
     /// (device switch downtime) with silence to keep the timeline aligned.
     private func installTap() {
         let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        let native = format.sampleRate
         let target = streamSampleRate
         guard
-            AudioInputFormatPolicy.isUsable(format),
             target.isFinite,
             target > 0,
             let continuation
@@ -195,8 +211,17 @@ public final class MicrophoneSource: AudioCaptureSource, @unchecked Sendable {
         }
 
         let clock = clock
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, when in
+        input.installTap(
+            onBus: 0,
+            bufferSize: 4096,
+            format: AudioInputTapPolicy.requestedFormat
+        ) { [weak self] buffer, when in
             guard let self else { return }
+            guard let native = AudioInputTapPolicy.sourceSampleRate(
+                for: buffer.format
+            ) else {
+                return
+            }
             var samples = Downmix.mono(from: buffer)
             guard !samples.isEmpty else { return }
             // Muted for Portavoz: write silence, so YOUR voice isn't recorded

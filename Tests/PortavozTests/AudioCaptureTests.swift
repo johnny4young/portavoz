@@ -22,6 +22,23 @@ final class AudioInputFormatPolicyTests: XCTestCase {
             sampleRate: .nan,
             channelCount: 1))
     }
+
+    func testInputTapObservesEachDeliveredHardwareFormatWithoutRequestingOne() throws {
+        let builtInFormat = try XCTUnwrap(AVAudioFormat(
+            standardFormatWithSampleRate: 48_000,
+            channels: 1))
+        let bluetoothFormat = try XCTUnwrap(AVAudioFormat(
+            standardFormatWithSampleRate: 24_000,
+            channels: 1))
+
+        XCTAssertNil(AudioInputTapPolicy.requestedFormat)
+        XCTAssertEqual(
+            AudioInputTapPolicy.sourceSampleRate(for: builtInFormat),
+            48_000)
+        XCTAssertEqual(
+            AudioInputTapPolicy.sourceSampleRate(for: bluetoothFormat),
+            24_000)
+    }
 }
 
 final class CaptureFileWriterTests: XCTestCase {

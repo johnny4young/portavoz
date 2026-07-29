@@ -506,6 +506,19 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(platform.contains("AVCaptureDevice.requestAccess"))
     }
 
+    func testMicrophoneTapDoesNotCoerceAStaleHardwareFormat() throws {
+        let microphone = try Self.contents(
+            of: "Sources/AudioCaptureKit/MicrophoneSource.swift")
+
+        XCTAssertTrue(microphone.contains(
+            "format: AudioInputTapPolicy.requestedFormat"))
+        XCTAssertTrue(microphone.contains(
+            "AudioInputTapPolicy.sourceSampleRate("))
+        XCTAssertTrue(microphone.contains("for: buffer.format"))
+        XCTAssertFalse(microphone.contains(
+            "installTap(onBus: 0, bufferSize: 4096, format: format)"))
+    }
+
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
         for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
             let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")
