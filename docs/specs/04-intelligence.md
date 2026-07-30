@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -95,13 +95,18 @@ generation exposes the same per-item shape. `draft(for:)` first creates each
 durable `ActionItem`, then resolves only exact request-local E-tags into a
 separate `SummaryActionItemEvidence` keyed to that new task ID. Unknown,
 duplicate, altered, empty, lexically unrelated, or rolling-note tags produce
-no evidence. `SummaryActionAdmission` also removes empty/duplicate tasks and an
-action copied verbatim from a recipe's typed decision section before Markdown,
-action identity, or evidence is created. `groundedOwner` then treats generated
-identity as a cast claim: only an existing speaker label or confirmed display
-name survives, and both Markdown and storage consume that same admitted value.
-Provider prompts independently state
-that decisions are not tasks; the deterministic gate remains authoritative.
+no evidence. `SummaryActionAdmission` also removes empty/duplicate tasks and
+compares each action's attribution-independent statement body with the
+recipe's typed decision section before Markdown, action identity, or evidence
+is created. That catches the same claim when a decision carries a leading
+speaker prefix but the generated action carries that speaker in its separate
+owner field. `groundedOwner` then treats generated identity as a cast claim:
+only an existing speaker label or confirmed display name survives, and both
+Markdown and storage consume that same admitted value. Provider prompts
+independently require a concrete future commitment or assigned next step,
+reject current state, explanation, quotation, and decision restatement, and
+permit no task when no commitment exists; the deterministic gate remains
+authoritative.
 
 Translation creates fresh action-item IDs and carries matching evidence by
 task position with fresh evidence IDs; bullet/Markdown coordinates are not
@@ -435,6 +440,12 @@ message without attempting provider fallback.
 2. **FM classifier** (`DetectedQuestion` @Generable: isQuestion/question/kind) sent to the scheduler with `.live` + key `companion-detect` (latest-wins: ticks never stack up). `logistics` → no card (the classic failure mode for this class of features), **unless the caption names you**: then the card is a PING ("te preguntaron", question without an invented answer, orange tint). Two lessons from the 3B caught by the gated test: (a) `directed` is ALWAYS the deterministic name gate, never the model's opinion (requesting it as a field → it stripped "Johnny," from the question and reported false); (b) the logistics filter needs literal few-shot examples ("¿nos acompañas mañana…?" is logistics, NOT context) — with only the abstract rule, it leaked through.
 3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (app composition injects the resolved `CompanionBYOKClient`; same instructions as on-device, 400 tokens max, `source` = provider host; if the provider or egress-policy call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8/D67). Explicit cancellation never falls through to the local answer.
 
+The classifier is also the question-cleaning boundary. It is instructed to use
+normal sentence case, and a narrow deterministic presentation repair runs only
+when a long output overwhelmingly capitalizes every word. The repair preserves
+the configured owner's name and common technical acronyms; it never rewrites
+the source transcript.
+
 App: per-recording opt-in ("Apuntador" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Apuntador BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
 
 ### Bounded live Apuntador work (D170)
@@ -454,6 +465,24 @@ cancellation cannot create a card. A candidate submitted for a new lifecycle
 waits for the cancelled operation to unwind instead of overlapping it. This
 bound applies only to ephemeral generation work: accepted visible cards remain
 unlimited history until the user dismisses them or the recording resets.
+
+### Deterministic Apuntador card admission (D172)
+
+Bounded execution prevents a task pile-up but cannot make generated output
+idempotent. A still-growing row and its later close may both complete, and a
+split caption may carry different row identities. `CompanionCardAdmission`
+therefore runs after generation in both the live and post-Refine paths.
+Overlapping question segment IDs are authoritative evidence that two cards
+represent one source turn. A 12-second lexical fallback handles adjacent
+split-row forms only when both contain enough distinctive material, have very
+high token containment, and agree on negation polarity. Exact repeated wording
+outside that live window remains an independent later question.
+
+For one lineage, the card with the longer question, broader question evidence,
+usable answer, or directed status replaces the weaker card; otherwise the
+candidate is rejected. Replacement also replaces the card-keyed provenance
+artifact. This policy changes neither question detection nor model answers and
+never merges cards merely because their generated answers look similar.
 
 ### Bounded live-summary delivery (D171)
 

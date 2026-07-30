@@ -40,6 +40,10 @@ public enum PromptFactory {
             "A decision is not an action item: never copy a decision bullet into the "
                 + "action-items field unless the transcript states a separate commitment.")
         lines.append(
+            "An action item must be a concrete future commitment or assigned next step, "
+                + "not a quote, current-state description, explanation, or decision restatement. "
+                + "When no explicit commitment exists, return no action item.")
+        lines.append(
             "When the material has [E#] tags, cite only exact tags that directly support "
                 + "the overview, a decision-bearing bullet, or an action item; "
                 + "never invent or alter a tag.")

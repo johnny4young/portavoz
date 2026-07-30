@@ -87,11 +87,7 @@ enum CompanionRefresh {
                 askedAt: turn.startTime))
             switch result {
             case .artifact(let artifact):
-                if !artifacts.contains(where: {
-                    $0.card.question == artifact.card.question
-                }) {
-                    artifacts.append(artifact)
-                }
+                admit(artifact, into: &artifacts)
             case .terminal(let run):
                 terminalRuns.append(run)
                 completed = false
@@ -106,6 +102,23 @@ enum CompanionRefresh {
             artifacts: artifacts,
             terminalRuns: terminalRuns,
             completed: completed)
+    }
+
+    private static func admit(
+        _ artifact: CompanionGenerationArtifact,
+        into artifacts: inout [CompanionGenerationArtifact]
+    ) {
+        switch CompanionCardAdmission.decision(
+            existing: artifacts.map(\.card),
+            candidate: artifact.card
+        ) {
+        case .append:
+            artifacts.append(artifact)
+        case .replace(let index):
+            artifacts[index] = artifact
+        case .reject:
+            break
+        }
     }
 
     private static func recentPassages(

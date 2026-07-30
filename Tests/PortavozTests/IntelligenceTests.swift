@@ -24,6 +24,7 @@ final class PromptFactoryTests: XCTestCase {
         XCTAssertTrue(instructions.contains("exactly one structured section entry"))
         XCTAssertTrue(instructions.contains("every supported action item"))
         XCTAssertTrue(instructions.contains("A decision is not an action item"))
+        XCTAssertTrue(instructions.contains("concrete future commitment"))
         XCTAssertTrue(instructions.contains("only an exact speaker label"))
         XCTAssertTrue(
             PromptFactory.notesInstructions(targetLanguage: "es", glossary: [])
@@ -470,6 +471,51 @@ final class StructuredSummaryTests: XCTestCase {
         XCTAssertEqual(
             draft.actionItemEvidence.first?.actionItemID,
             draft.actionItems.first?.id)
+    }
+
+    func testDraftRejectsAttributedDecisionCopiedAsOwnerTypedActionItem() {
+        let copied = "Use a simple filter for closeness and timestamps"
+        let cited = StructuredSummary(
+            overview: "The team selected a filtering approach.",
+            sections: [
+                .init(heading: "Overview", bullets: []),
+                .init(heading: "Decisions", bullets: ["S2: '\(copied).'"]),
+                .init(heading: "Action Items", bullets: []),
+                .init(heading: "Open Questions", bullets: [])
+            ],
+            actionItems: [
+                .init(text: "'\(copied).'", owner: "S2", evidence: ["E1"]),
+                .init(
+                    text: "Prepare the rollout checklist",
+                    owner: "S2",
+                    evidence: ["E2"])
+            ])
+        let speaker = Speaker(meetingID: meeting, label: "S2")
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting,
+                speakerID: speaker.id,
+                channel: .system,
+                text: copied,
+                startTime: 0,
+                endTime: 1),
+            TranscriptSegment(
+                meetingID: meeting,
+                speakerID: speaker.id,
+                channel: .system,
+                text: "I will prepare the rollout checklist.",
+                startTime: 2,
+                endTime: 3)
+        ]
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: segments,
+            speakers: [speaker],
+            recipe: .general)
+
+        let draft = cited.draft(for: request)
+        XCTAssertEqual(draft.actionItems.map(\.text), ["Prepare the rollout checklist"])
+        XCTAssertEqual(draft.actionItems.first?.ownerSpeakerID, speaker.id)
     }
 
     func testTranslationPreservesValidDecisionCoordinatesWithFreshIdentity() throws {
@@ -1388,6 +1434,23 @@ final class ThinSummaryPolicyTests: XCTestCase {
 }
 
 final class CompanionAnswerTests: XCTestCase {
+    func testNormalizesTitleCasedQuestionWhilePreservingNamesAndAcronyms() {
+        XCTAssertEqual(
+            CompanionQuestionPresentation.normalized(
+                "How Does Johnny Use The API And SDK In This Meeting?",
+                protectedName: "Johnny Young"),
+            "How does Johnny use the API and SDK in this meeting?")
+    }
+
+    func testKeepsOrdinaryQuestionCasingUntouched() {
+        let question = "How does Marta use the API in this migration?"
+        XCTAssertEqual(
+            CompanionQuestionPresentation.normalized(
+                question,
+                protectedName: "Johnny"),
+            question)
+    }
+
     func testExtractsOnlyUniqueInRangePassageCitationsInFirstUseOrder() {
         XCTAssertEqual(
             CompanionAnswer.citedPassageIndexes(

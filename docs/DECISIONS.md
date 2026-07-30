@@ -5442,3 +5442,40 @@ batches cap tasks and model input independently of meeting duration, while
 atomic publication prevents partial progress from stranding evidence. Keeping
 durable captions and final post-capture processing outside this optional path
 preserves the audio-first contract.
+
+## D172 — Admit generated intelligence after execution, not by string shape (Jul 2026)
+
+**Context:** bounded schedulers and recording-scoped coordinators cap work, but
+they do not make model output semantically idempotent. In a July 30 field call,
+the open form and later close of one growing question produced multiple
+successful Apuntador generations and near-duplicate, sometimes contradictory
+cards. The same meeting showed decisions repeated as action items because one
+rendering carried a speaker prefix while the other carried that identity in
+the typed owner field. Foundation Models also transformed one spoken question
+into every-word title case.
+
+**Decision:** generated intelligence crosses a deterministic last-mile
+admission boundary. `PortavozCore.CompanionCardAdmission` treats overlapping
+question-segment identities as one source-turn lineage. When evidence
+identities differ because adjacent live captions split, a 12-second lexical
+fallback may establish equivalence only with enough distinctive tokens, very
+high containment, and matching negation polarity. The more complete card
+replaces the weaker card and its card-keyed artifact; a weaker candidate is
+discarded. Exact wording outside the live window remains a later independent
+question.
+
+IntelligenceKit instructs question cleanup to use normal sentence case and
+repairs only long outputs that overwhelmingly capitalize every word,
+preserving the configured owner's name and common technical acronyms. It never
+rewrites source transcript text. Summary action admission compares
+attribution-independent statement bodies, so `S2: "Use X"` and `"Use X" — S2`
+cannot become both a decision and a task. Provider instructions independently
+require concrete future commitments or assigned next steps and permit an empty
+task set.
+
+**Rationale:** execution bounds protect performance while semantic admission
+protects what users see and persist. Source lineage is stronger than generated
+wording, lexical fallback must be narrow enough not to collapse repeated later
+questions, and deterministic task semantics remain testable across every local
+or BYOK provider. Presentation repair belongs after generation, never in the
+spoken record.

@@ -114,7 +114,7 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports and the universal lexical transcript-content policy. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
@@ -303,7 +303,14 @@ pending candidate and cancels the active worker. A result may publish only
 while its worker remains uncancelled, and a new lifecycle waits behind an
 uncooperative older generator until it unwinds, preserving the one-active
 invariant. Visible cards remain unlimited user history and are independent of
-this ephemeral work bound.
+this ephemeral work bound. Generated cards cross a separate deterministic
+last-mile boundary before presentation or persistence. Overlapping question
+segment identities establish one source-turn lineage; a short time-bounded,
+negation-safe lexical fallback handles adjacent captions that were split before
+evidence identities converged. A more complete result replaces the prior card,
+while an older or weaker result is discarded. The intelligence boundary also
+repairs only pathological every-word title casing, preserving configured names
+and common technical acronyms.
 
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
@@ -1153,15 +1160,18 @@ Before a generated draft can reach persistence, IntelligenceKit retains each
 overview, decision, or action citation only when the rendered statement and
 cited transcript row share distinctive case/diacritic-folded lexical material;
 unsupported and cross-language-unverifiable links disappear while the summary
-text remains usable. The same admission stage removes empty/duplicate tasks and
-any normalized action item copied verbatim from the recipe's explicitly typed
-decision section. An action owner is admitted only when it uniquely matches an
-existing speaker label or confirmed display name. A unique exact label takes
-precedence; display-name matches are admitted only when unique. Drafting carries
-the resolved `SpeakerID` beside the canonical rendered owner instead of
-resolving that text a second time, and removes any duplicated leading owner
-prefix. Unknown or ambiguous generated names become unassigned rather than
-visible identity claims.
+text remains usable. The same admission stage removes empty/duplicate tasks
+and compares the attribution-independent claim body of every action against
+the recipe's explicitly typed decision section. A decision rendered as
+`S2: "Use X"` is therefore still the same statement as an action rendered as
+`"Use X" — S2`. Provider prompts require concrete future commitments or
+assigned next steps and allow an empty task set. An action owner is admitted
+only when it uniquely matches an existing speaker label or confirmed display
+name. A unique exact label takes precedence; display-name matches are admitted
+only when unique. Drafting carries the resolved `SpeakerID` beside the
+canonical rendered owner instead of resolving that text a second time, and
+removes any duplicated leading owner prefix. Unknown or ambiguous generated
+names become unassigned rather than visible identity claims.
 Translation pivots carry only evidence and tasks that already passed this
 source-language gate.
 

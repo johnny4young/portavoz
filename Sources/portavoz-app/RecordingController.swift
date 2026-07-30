@@ -518,11 +518,21 @@ final class RecordingController {
         guard phase == .recording, meetingID == sourceMeetingID else { return }
         switch result {
         case .artifact(let artifact):
-            guard !companionCards.contains(where: {
-                $0.question == artifact.card.question
-            }) else { return }
-            companionCards.append(artifact.card)
-            companionArtifactsByCardID[artifact.card.id] = artifact
+            switch CompanionCardAdmission.decision(
+                existing: companionCards,
+                candidate: artifact.card
+            ) {
+            case .append:
+                companionCards.append(artifact.card)
+                companionArtifactsByCardID[artifact.card.id] = artifact
+            case .replace(let index):
+                let replacedID = companionCards[index].id
+                companionCards[index] = artifact.card
+                companionArtifactsByCardID[replacedID] = nil
+                companionArtifactsByCardID[artifact.card.id] = artifact
+            case .reject:
+                break
+            }
         case .terminal(let run):
             companionTerminalRuns.append(run)
         case .noAttempt, .noArtifact, .unavailable:
