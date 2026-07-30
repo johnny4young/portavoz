@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 30, 2026
 
+- **⏸️ Semantic backfill yields to recording** — Starting, active, and finishing capture now stop new local indexing batches; an admitted batch commits before pausing, and its remaining rows resume later without losing exact search evidence.
 - **🧭 Semantic search shares the work** — Library and Ask now use one local indexing lane, avoiding duplicate background AI work while exact search stays instant.
 - **〰️ Waveforms stop when you leave** — Closing a long meeting now cancels obsolete full-audio waveform work, so repeated review navigation stays responsive without changing the recording.
 - **🪶 Long meetings keep their footing** — Live paragraphs and talk balance now do fixed recent-window work while Portavoz still keeps the complete transcript for Stop, recovery, and Refine.

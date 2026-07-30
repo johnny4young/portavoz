@@ -2625,9 +2625,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
         let indexer = try Self.contents(
             of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
+        let maintenanceGate = try Self.contents(
+            of: "Sources/ApplicationKit/DurableMaintenanceGate.swift")
         let librarySearch = try Self.contents(
             of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
         let appAdapter = try Self.contents(of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let resourceAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let askModel = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
         let paletteModel = try Self.contents(
             of: "Sources/portavoz-app/CommandPaletteModel.swift")
@@ -2638,6 +2642,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         let brief = try Self.contents(of: "Sources/ApplicationKit/PrepareMeetingBrief.swift")
         let briefView = try Self.contents(
             of: "Sources/portavoz-app/MeetingBriefView.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
 
         XCTAssertTrue(workflow.contains("struct AskMeetings: ApplicationUseCase"))
         XCTAssertTrue(workflow.contains("struct AskSearchResult"))
@@ -2647,6 +2657,21 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(indexer.contains("struct IndexSemanticCorpus"))
         XCTAssertTrue(indexer.contains("workloadClass: .maintenance"))
         XCTAssertTrue(indexer.contains("kind: .searchIndex"))
+        XCTAssertTrue(indexer.contains("guard shouldProceed(at: .admission)"))
+        XCTAssertTrue(indexer.contains("shouldProceed(at: .checkpoint)"))
+        XCTAssertTrue(indexer.contains("pausedByPolicy"))
+        XCTAssertTrue(maintenanceGate.contains(
+            "public struct DurableMaintenanceGate: Sendable"))
+        XCTAssertTrue(maintenanceGate.contains(
+            "ResourceGovernorEvaluationPhase"))
+        XCTAssertTrue(resourceAdapter.contains(
+            "enum AppResourceGovernorMaintenanceGate"))
+        XCTAssertTrue(resourceAdapter.contains(
+            "ResourceGovernorPolicy().evaluate("))
+        XCTAssertTrue(appAdapter.contains(
+            "captureState: AppResourceCaptureState"))
+        XCTAssertTrue(appAdapter.contains(
+            "maintenanceGate: maintenanceGate"))
         XCTAssertTrue(retrieval.contains("indexingCoordinator.all("))
         XCTAssertTrue(librarySearch.contains("indexingCoordinator.nextBatch("))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
@@ -2675,6 +2700,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(briefView.contains("AskMeetings.local"))
         XCTAssertTrue(askView.contains("onOpenCitation(citation)"))
         XCTAssertTrue(palette.contains("onOpenCitation?(citation)"))
+        XCTAssertTrue(architecture.contains(
+            "ApplicationKit owns one reusable `DurableMaintenanceGate`"))
+        XCTAssertTrue(decisions.contains(
+            "## D177 — Pause semantic maintenance"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Capture-prioritized semantic checkpoints (D177)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Capture-prioritized semantic maintenance (D177)"))
     }
 
     func testFirstRunLedgerAndBriefStayBehindApplicationOwners() throws {

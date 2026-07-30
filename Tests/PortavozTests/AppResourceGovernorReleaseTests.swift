@@ -1,3 +1,4 @@
+import ApplicationKit
 import Dispatch
 import Foundation
 import PortavozCore
@@ -133,6 +134,45 @@ final class AppResourceGovernorReleaseTests: XCTestCase {
         XCTAssertEqual(state.current, .stopping)
         state.update(.inactive)
         XCTAssertEqual(state.current, .inactive)
+    }
+
+    func testSemanticMaintenanceYieldsAcrossEveryProtectedCapturePhase() {
+        let descriptor = ResourceWorkloadDescriptor(
+            workloadClass: .maintenance,
+            kind: .searchIndex,
+            operation: .execute)
+
+        XCTAssertEqual(
+            AppResourceGovernorMaintenanceGate.disposition(
+                for: descriptor,
+                phase: .admission,
+                captureState: .inactive),
+            .proceed)
+        XCTAssertEqual(
+            AppResourceGovernorMaintenanceGate.disposition(
+                for: descriptor,
+                phase: .checkpoint,
+                captureState: .inactive),
+            .proceed)
+
+        for captureState in [
+            ResourceCaptureState.starting,
+            .active,
+            .stopping,
+        ] {
+            XCTAssertEqual(
+                AppResourceGovernorMaintenanceGate.disposition(
+                    for: descriptor,
+                    phase: .admission,
+                    captureState: captureState),
+                .pause)
+            XCTAssertEqual(
+                AppResourceGovernorMaintenanceGate.disposition(
+                    for: descriptor,
+                    phase: .checkpoint,
+                    captureState: captureState),
+                .pause)
+        }
     }
 
     func testPlatformPressureMappingIsClosedAndDeterministic() {

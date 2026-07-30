@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import PortavozCore
 
@@ -27,6 +28,50 @@ final class AppResourceCaptureState: @unchecked Sendable {
         lock.lock()
         self.state = state
         lock.unlock()
+    }
+}
+
+enum AppResourceGovernorMaintenanceGate {
+    static func make(
+        captureState: AppResourceCaptureState
+    ) -> DurableMaintenanceGate {
+        DurableMaintenanceGate { descriptor, phase in
+            disposition(
+                for: descriptor,
+                phase: phase,
+                captureState: captureState.current)
+        }
+    }
+
+    static func disposition(
+        for descriptor: ResourceWorkloadDescriptor,
+        phase: ResourceGovernorEvaluationPhase,
+        captureState: ResourceCaptureState
+    ) -> DurableMaintenanceDisposition {
+        let decision = ResourceGovernorPolicy().evaluate(
+            request: ResourceGovernorRequest(
+                descriptor: descriptor,
+                phase: phase),
+            snapshot: ResourceGovernorSnapshot(
+                capture: ResourceCaptureSnapshot(
+                    state: captureState,
+                    sourceHealth: .healthy),
+                memoryTier: .unknown,
+                diskState: .unknown,
+                memoryPressure: .nominal,
+                thermalState: .nominal,
+                residentModels: [],
+                hasForegroundAction: false,
+                durableBacklog: .present,
+                powerSource: .unknown,
+                isLowPowerModeEnabled: false))
+
+        switch decision.disposition {
+        case .admitNow, .admitWithReducedConcurrency:
+            return .proceed
+        case .defer, .pauseAfterCheckpoint, .reject:
+            return .pause
+        }
     }
 }
 

@@ -35,16 +35,20 @@ extension AppServices {
         store: MeetingStore,
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
-        telemetry: ResourceWorkloadTelemetry
+        telemetry: ResourceWorkloadTelemetry,
+        captureState: AppResourceCaptureState
     ) -> (
         coordinator: SemanticCorpusIndexingCoordinator,
         ask: AskMeetings,
         library: LocalLibrarySemanticSearch
     ) {
+        let maintenanceGate = AppResourceGovernorMaintenanceGate.make(
+            captureState: captureState)
         let coordinator = SemanticCorpusIndexingCoordinator(
             operation: IndexSemanticCorpus(
                 store: store,
-                telemetry: telemetry))
+                telemetry: telemetry,
+                maintenanceGate: maintenanceGate))
         let ask: AskMeetings
         if usesTemporaryStore {
             ask = AskMeetings(

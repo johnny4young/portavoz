@@ -50,6 +50,67 @@ final class SemanticCorpusIndexingTests: XCTestCase {
         XCTAssertEqual(remainingSegments.count, 1)
     }
 
+    func testPolicyPauseAtAdmissionLeavesTheDurableCursorUntouched() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "First semantic passage must remain pending during active capture.",
+            "Second semantic passage must remain pending during active capture.",
+        ])
+        let embedder = CountingSemanticEmbedder()
+        let operation = IndexSemanticCorpus(
+            store: store,
+            maintenanceGate: DurableMaintenanceGate { _, _ in .pause })
+
+        let result = try await operation.all(
+            using: embedder,
+            batchSize: 1)
+        let embedderCallCount = await embedder.callCount
+        let remainingSegments = try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(result, .paused)
+        XCTAssertEqual(embedderCallCount, 0)
+        XCTAssertEqual(remainingSegments.count, 2)
+    }
+
+    func testCheckpointPauseCommitsOneBatchAndLaterPassResumesFromMissingRows() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "First semantic passage belongs to the durable committed checkpoint.",
+            "Second semantic passage belongs to the durable committed checkpoint.",
+            "Third semantic passage remains owned by the database retry cursor.",
+        ])
+        let pausedOperation = IndexSemanticCorpus(
+            store: store,
+            maintenanceGate: DurableMaintenanceGate { _, phase in
+                phase == .admission ? .proceed : .pause
+            })
+
+        let paused = try await pausedOperation.all(
+            using: DeterministicSemanticEmbedder(),
+            batchSize: 2)
+        let remainingAfterPause =
+            try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(
+            paused,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 2,
+                excludedSegments: 0,
+                pausedByPolicy: true))
+        XCTAssertEqual(remainingAfterPause.count, 1)
+
+        let resumed = try await IndexSemanticCorpus(store: store).all(
+            using: DeterministicSemanticEmbedder(),
+            batchSize: 2)
+        let remainingAfterResume =
+            try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(
+            resumed,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 1,
+                excludedSegments: 0))
+        XCTAssertTrue(remainingAfterResume.isEmpty)
+    }
+
     func testVectorCountMismatchFailsBeforePublishingEmbeddings() async throws {
         let (store, _) = try await seededStore(texts: [
             "This complete semantic passage requires exactly one returned vector.",
@@ -129,5 +190,14 @@ private actor DeterministicSemanticEmbedder: SemanticTextEmbedding {
 private actor WrongCountSemanticEmbedder: SemanticTextEmbedding {
     func vectors(for _: [String]) -> [[Float]] {
         []
+    }
+}
+
+private actor CountingSemanticEmbedder: SemanticTextEmbedding {
+    private(set) var callCount = 0
+
+    func vectors(for texts: [String]) -> [[Float]] {
+        callCount += 1
+        return texts.map { _ in [1, 0] }
     }
 }

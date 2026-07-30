@@ -244,7 +244,7 @@ final class AppServices {
         }
         let semanticSearch = Self.makeSemanticSearchComposition(
             store: store, usesTemporaryStore: usesTemporaryStore,
-            semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry)
+            semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry, captureState: resourceCaptureState)
         semanticIndexingCoordinator = semanticSearch.coordinator
         librarySemanticSearch = semanticSearch.library
         let askUseCase = semanticSearch.ask

@@ -38,18 +38,28 @@ extension SentenceEmbedder: SemanticEmbeddingModel {
 public struct SemanticCorpusIndexingResult: Equatable, Sendable {
     public let embeddedSegments: Int
     public let excludedSegments: Int
+    /// Expected governor suspension, distinct from cancellation or failure.
+    /// Missing database rows remain the durable cursor for a later pass.
+    public let pausedByPolicy: Bool
 
     public init(
         embeddedSegments: Int,
-        excludedSegments: Int
+        excludedSegments: Int,
+        pausedByPolicy: Bool = false
     ) {
         self.embeddedSegments = embeddedSegments
         self.excludedSegments = excludedSegments
+        self.pausedByPolicy = pausedByPolicy
     }
 
     public static let empty = SemanticCorpusIndexingResult(
         embeddedSegments: 0,
         excludedSegments: 0)
+
+    public static let paused = SemanticCorpusIndexingResult(
+        embeddedSegments: 0,
+        excludedSegments: 0,
+        pausedByPolicy: true)
 
     public static func + (
         left: SemanticCorpusIndexingResult,
@@ -57,7 +67,8 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
     ) -> SemanticCorpusIndexingResult {
         SemanticCorpusIndexingResult(
             embeddedSegments: left.embeddedSegments + right.embeddedSegments,
-            excludedSegments: left.excludedSegments + right.excludedSegments)
+            excludedSegments: left.excludedSegments + right.excludedSegments,
+            pausedByPolicy: left.pausedByPolicy || right.pausedByPolicy)
     }
 
     public static func += (
@@ -65,6 +76,13 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
         right: SemanticCorpusIndexingResult
     ) {
         left = left + right
+    }
+
+    func markingPolicyPause() -> SemanticCorpusIndexingResult {
+        SemanticCorpusIndexingResult(
+            embeddedSegments: embeddedSegments,
+            excludedSegments: excludedSegments,
+            pausedByPolicy: true)
     }
 }
 
@@ -90,16 +108,23 @@ public enum SemanticCorpusIndexingError: Error, Equatable, LocalizedError {
 /// behavior while giving background indexing one tested extraction seam.
 public struct IndexSemanticCorpus: Sendable {
     private static let minimumTextLength = 20
+    private static let workload = ResourceWorkloadDescriptor(
+        workloadClass: .maintenance,
+        kind: .searchIndex,
+        operation: .execute)
 
     private let store: MeetingStore
     private let telemetry: ResourceWorkloadTelemetry
+    private let maintenanceGate: DurableMaintenanceGate
 
     public init(
         store: MeetingStore,
-        telemetry: ResourceWorkloadTelemetry = .disabled
+        telemetry: ResourceWorkloadTelemetry = .disabled,
+        maintenanceGate: DurableMaintenanceGate = .unrestricted
     ) {
         self.store = store
         self.telemetry = telemetry
+        self.maintenanceGate = maintenanceGate
     }
 
     public func nextBatch(
@@ -109,6 +134,8 @@ public struct IndexSemanticCorpus: Sendable {
         guard limit > 0 else {
             throw SemanticCorpusIndexingError.invalidBatchSize
         }
+        try Task.checkCancellation()
+        guard shouldProceed(at: .admission) else { return .paused }
         let missing = try await store.segmentsNeedingEmbeddings(limit: limit)
         guard !missing.isEmpty else { return .empty }
         return try await measure {
@@ -123,6 +150,8 @@ public struct IndexSemanticCorpus: Sendable {
         guard batchSize > 0 else {
             throw SemanticCorpusIndexingError.invalidBatchSize
         }
+        try Task.checkCancellation()
+        guard shouldProceed(at: .admission) else { return .paused }
         let initial = try await store.segmentsNeedingEmbeddings(limit: batchSize)
         guard !initial.isEmpty else { return .empty }
         return try await measure {
@@ -130,6 +159,9 @@ public struct IndexSemanticCorpus: Sendable {
             var batch = initial
             while batch.count == batchSize {
                 try Task.checkCancellation()
+                guard shouldProceed(at: .checkpoint) else {
+                    return result.markingPolicyPause()
+                }
                 batch = try await store.segmentsNeedingEmbeddings(limit: batchSize)
                 guard !batch.isEmpty else { break }
                 result += try await index(batch, using: embedder)
@@ -141,13 +173,17 @@ public struct IndexSemanticCorpus: Sendable {
     private func measure(
         operation: @Sendable () async throws -> SemanticCorpusIndexingResult
     ) async throws -> SemanticCorpusIndexingResult {
-        try await telemetry.measure(ResourceWorkloadDescriptor(
-            workloadClass: .maintenance,
-            kind: .searchIndex,
-            operation: .execute
-        )) {
+        try await telemetry.measure(Self.workload) {
             try await operation()
         }
+    }
+
+    private func shouldProceed(
+        at phase: ResourceGovernorEvaluationPhase
+    ) -> Bool {
+        maintenanceGate.disposition(
+            for: Self.workload,
+            phase: phase) == .proceed
     }
 
     private func index(

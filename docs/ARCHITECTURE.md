@@ -554,21 +554,33 @@ Ask and Library delegate corpus backfill to one `IndexSemanticCorpus`
 ApplicationKit operation behind one process-shared semantic-indexing
 coordinator. Library requests one bounded batch; redundant Library requests
 coalesce while any flight is active. The released Ask path still drains all
-missing rows before hybrid retrieval: a complete demand joins an active bounded
-flight, then drains the durable remainder while new bounded requests coalesce.
-There is no pending-request array and never more than one embedding flight.
+missing rows before hybrid retrieval while maintenance is admitted: a complete
+demand joins an active bounded flight, then drains the durable remainder while
+new bounded requests coalesce. There is no pending-request array and never more
+than one embedding flight.
 Cancelling the final waiter cancels the worker before persistence; another
 borrower keeps shared work alive. Both paths mark micro-segments with an empty
 vector, validate the embedder's result count before persistence, and emit
 content-free maintenance/search-index intervals. Missing embeddings remain
-durable `NULL` rows, so coalescing loses no corpus evidence.
+durable `NULL` rows, so coalescing or policy suspension loses no corpus
+evidence.
+
+ApplicationKit owns one reusable `DurableMaintenanceGate`. The macOS
+composition root maps its lock-protected capture mirror through the pure
+resource policy and injects the gate into semantic indexing. Starting, active,
+and stopping capture defer a new indexing pass. A pass already admitted
+finishes its current bounded database batch, publishes an explicit policy-pause
+result, and does not fetch the next batch. Ask then continues with lexical and
+already-indexed semantic evidence instead of turning expected suspension into
+an error. A later Library or Ask request resumes directly from remaining
+`NULL` rows; no timer, polling task, in-memory retry queue, or new schema is
+introduced.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
 query embedding, and semantic retrieval as one operation, so Library and Ask
 cannot release or replace the model midway through a query. Moving the drain
-off the Ask request path and adding governor checkpoint admission remain
-unimplemented.
+off the Ask request path remains unimplemented.
 
 ## Durable recording lifecycle
 
@@ -765,9 +777,11 @@ has a separate disablement condition so an already plugged-in Mac never waits
 for an impossible transition. The policy performs no I/O, model operation,
 task creation, scheduling, or eviction. Numeric memory and disk thresholds are
 intentionally absent until accepted multi-host evidence exists. Application
-composition currently applies only the policy's idle-model eviction output
-when macOS reports memory or serious thermal pressure. Admission, deferral,
-checkpoint, scheduler, and concurrency decisions remain inactive until
+composition applies the policy's idle-model eviction output when macOS reports
+memory or serious thermal pressure. It also applies one threshold-free
+capture-only adapter to semantic-index maintenance: protected capture defers
+admission or pauses after a committed batch. Host-pressure, power, storage,
+general scheduler, and reduced-concurrency outputs remain inactive until
 accepted multi-host evidence defines their adapters.
 
 Core additionally owns a pure model-residency lifecycle ledger. It records the
@@ -902,7 +916,9 @@ capture remains audio-first and releases a member only after its final borrower
 finishes. The existing constrained-tier rule remains stricter, while standard
 and large tiers retain the pure policy's existing behavior. This categorical
 protection invents no RAM threshold and does not activate broader scheduler,
-checkpoint, power, or storage admission.
+power, or storage admission. Semantic maintenance independently consumes the
+same protected-capture mirror through its ApplicationKit checkpoint gate; it
+does not change the Whisper/MLX pair rule.
 
 Whisper checks admission before verified preparation, so a blocked Refine or
 Import does not start a model download or checksum sweep. After preparation,

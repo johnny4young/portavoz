@@ -5598,3 +5598,44 @@ the retry ledger, so coalescing an opportunistic signal is safe while Ask's
 complete contract remains intact. Background indexing and resource-governor
 checkpoint admission remain separate slices rather than hidden policy inside
 the coordinator.
+
+## D177 — Pause semantic maintenance at durable capture checkpoints (Jul 2026)
+
+**Context:** D157 already states that optional maintenance defers while capture
+is protected and pauses only after a durable checkpoint. D176 bounded semantic
+backfill to one process flight, but `IndexSemanticCorpus` still started and
+drained batches without consuming that policy. Cancelling the flight on Start
+would conflate expected suspension with failure and could discard expensive
+vectors before their safe persistence boundary. Adding a retry queue or timer
+would duplicate ownership already represented by the database.
+
+**Decision:** ApplicationKit owns a reusable `DurableMaintenanceGate` that
+accepts the existing content-free workload descriptor and an
+admission/checkpoint phase. `IndexSemanticCorpus` evaluates admission before
+its first storage read. A complete drain evaluates a checkpoint after every
+persisted bounded batch and before fetching another. Policy suspension is a
+successful, explicit `pausedByPolicy` result rather than cancellation or
+failure.
+
+The macOS composition root builds the gate from
+`AppResourceCaptureState` and the pure `ResourceGovernorPolicy`. Starting,
+active, and stopping capture pause semantic maintenance; inactive capture
+admits it. This first adapter supplies neutral or unknown host dimensions and
+therefore activates no unmeasured RAM, disk, thermal, battery, concurrency, or
+scheduler threshold. CLI, isolated benchmarks, and direct use-case composition
+retain an explicit unrestricted default.
+
+An already-admitted batch completes and persists its vectors or empty
+micro-segment markers atomically before yielding. Remaining `NULL` embedding
+rows are the durable job cursor across later requests and process relaunch.
+Library exact FTS remains independent. Ask continues with lexical and
+already-indexed semantic evidence when backfill pauses instead of surfacing an
+expected resource decision as an error. No polling loop, pending request array,
+new schema, vector rollback, or audio-callback work is introduced.
+
+**Rationale:** capture receives immediate priority at the next proven durable
+boundary while semantic work retains exact ownership and resumability. The
+narrow gate makes the policy executable without coupling ApplicationKit to app
+state and is reusable for later sync, graph, and export checkpoints. Moving the
+complete drain off Ask, wake-on-capture-stop scheduling, durable leases and
+heartbeats, and non-capture host adapters remain separate GOV-4 slices.

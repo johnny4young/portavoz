@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D145 (exact-first Library semantic augmentation), D157–D176 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, and one shared bounded semantic-indexing flight).
+Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D145 (exact-first Library semantic augmentation), D157–D177 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, and capture-prioritized semantic checkpoints).
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -188,10 +188,11 @@ admitted because it reduces pressure rather than adding a resident capability.
 
 The Core policy remains pure: it does not read `ProcessInfo`, inspect storage,
 schedule tasks, load or release a model, or enter `AudioCaptureKit`. The
-application now enforces only its idle-model eviction output under platform
-memory or serious thermal pressure. Admission, deferral, checkpoint,
-concurrency, and scheduler outputs remain inactive. Optional footprint bytes
-and categorical memory tier are not compared against invented limits;
+application enforces its idle-model eviction output under platform memory or
+serious thermal pressure and its capture-only semantic-maintenance
+admission/checkpoint output (D177). Host-pressure, power, storage, general
+scheduler, and reduced-concurrency outputs remain inactive. Optional footprint
+bytes and categorical memory tier are not compared against invented limits;
 accepted GOV-0 evidence must define numeric budgets before broader adapters
 can enforce them.
 
@@ -441,6 +442,29 @@ pure-policy dispatch, concrete-owner release, and the absence of model
 lifecycle, model stores, Whisper, MLX, or their release methods from
 `AudioCaptureKit`. Verified files stay installed; capture callbacks perform no
 model download, checksum sweep, or release wait.
+
+### Capture-prioritized semantic maintenance (D177)
+
+AppServices builds one `DurableMaintenanceGate` from its content-free capture
+mirror and the pure `ResourceGovernorPolicy`, then injects it into the
+process-owned `IndexSemanticCorpus`. The gate receives only a closed workload
+descriptor and admission/checkpoint phase. Its snapshot deliberately keeps
+memory tier, disk, pressure, thermal, power, and model residency at their
+neutral or unknown values; this first adapter enforces only the
+threshold-independent protected-capture rule.
+
+Starting, active, and stopping capture prevent a new semantic pass. Work
+admitted before capture finishes its current bounded database batch and pauses
+before fetching another. The operation reports policy suspension separately
+from cancellation/failure and leaves every remaining embedding row `NULL`, so
+the next Library or Ask demand resumes from storage with no polling loop or
+ephemeral retry owner. Exact Library search continues independently. Ask may
+continue with lexical and already-indexed semantic evidence.
+
+The gate is synchronous, lock-bounded, and outside `AudioCaptureKit`; capture
+never waits for it. It does not yet wake maintenance when capture stops, move
+Ask's drain to a background owner, or activate host-pressure, power, storage,
+lease, or heartbeat policy. Those remain subsequent GOV-4 units.
 
 ### Bounded recording-level relay (D168)
 
