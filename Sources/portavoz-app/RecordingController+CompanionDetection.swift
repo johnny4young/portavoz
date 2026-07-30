@@ -102,14 +102,8 @@ extension RecordingController {
         guard let services else { return false }
         let language = closed.language.flatMap { LanguageCode($0)?.identifier }
         let sourceMeetingID = meetingID
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            // BYOK exists only after explicit Settings opt-in; otherwise the
-            // injected client is nil and Companion remains on-device.
-            let companion = ProvenanceCompanion(
-                byok: await services.companionBYOKClient(),
-                egressConsentSource: .companionBYOKSettings)
-            let result = await companion.generate(CompanionGenerationRequest(
+        companionCoordinator(services: services).submit(
+            CompanionGenerationRequest(
                 meetingID: sourceMeetingID,
                 sourceTranscriptRevision: 0,
                 workflow: .liveRecording,
@@ -119,9 +113,37 @@ extension RecordingController {
                 ownerName: ownerName,
                 outputLanguage: language,
                 askedAt: askedAt))
-            self.recordCompanionOutcome(result, sourceMeetingID: sourceMeetingID)
-        }
         return true
+    }
+
+    func cancelCompanionGeneration() {
+        companionWorkCoordinator?.cancel()
+    }
+
+    @available(macOS 26.0, *)
+    private func companionCoordinator(
+        services: AppServices
+    ) -> LiveCompanionWorkCoordinator {
+        if let companionWorkCoordinator {
+            return companionWorkCoordinator
+        }
+        let coordinator = LiveCompanionWorkCoordinator(
+            generator: { [weak services] request in
+                guard let services else { return .unavailable }
+                // BYOK exists only after explicit Settings opt-in; otherwise
+                // the injected client is nil and Companion remains on-device.
+                let companion = ProvenanceCompanion(
+                    byok: await services.companionBYOKClient(),
+                    egressConsentSource: .companionBYOKSettings)
+                return await companion.generate(request)
+            },
+            receiver: { [weak self] request, result in
+                self?.recordCompanionOutcome(
+                    result,
+                    sourceMeetingID: request.meetingID)
+            })
+        companionWorkCoordinator = coordinator
+        return coordinator
     }
 
     /// The live meeting's recent closed rows as RAG passages, so a

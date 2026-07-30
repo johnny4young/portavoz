@@ -54,6 +54,9 @@ final class RecordingController {
             // The toggle is available during a recording. Enabling it while a
             // remote row is already open must start that row's silence clock;
             // disabling it must cancel any pending speculative detection.
+            if !companionEnabled {
+                cancelCompanionGeneration()
+            }
             armTurnEndpointDeadline()
         }
     }
@@ -147,6 +150,9 @@ final class RecordingController {
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
     private var liveDiarizerStream: AsyncStream<AudioChunk>?
     private var levelRelay: RecordingLevelRelay?
+    /// One active Apuntador generation plus one latest pending candidate.
+    /// Internal so the detection extension owns submission and cancellation.
+    var companionWorkCoordinator: LiveCompanionWorkCoordinator?
 
     private let coalescer = CaptionCoalescer()
     private var session: (any StartRecordingSession)?
@@ -209,6 +215,7 @@ final class RecordingController {
         companionTerminalRuns = []
         contextItems = []
         liveNotes = []
+        cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()
         turnEndpointTask = nil
@@ -290,6 +297,7 @@ final class RecordingController {
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         contextItems = []
+        cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()
         turnEndpointTask = nil
@@ -538,6 +546,7 @@ extension RecordingController {
         catchUp.dismiss()
         nextQuestion.dismiss()
         rollingTask?.cancel()
+        cancelCompanionGeneration()
         turnEndpointTask?.cancel()
         turnEndpointTask = nil
         phase = .processing(L10n.text("Closing the recording…"))

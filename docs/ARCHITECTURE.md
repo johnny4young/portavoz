@@ -294,6 +294,17 @@ at either lifecycle boundary. Recording activation first drains every row that
 closed while Start was still preparing, then arms the open tail. Disabling
 Apuntador, stopping, or resetting the session cancels the pending deadline.
 
+Bounded recording-scoped live Apuntador owns generation separately from that
+deadline. One coordinator admits at most one active generation and one newest
+not-yet-started candidate. Additional candidates replace only that pending
+slot; they never create wrapper tasks or an unbounded queue. Disabling
+Apuntador, stopping, resetting, or advancing to another recording clears the
+pending candidate and cancels the active worker. A result may publish only
+while its worker remains uncancelled, and a new lifecycle waits behind an
+uncooperative older generator until it unwinds, preserving the one-active
+invariant. Visible cards remain unlimited user history and are independent of
+this ephemeral work bound.
+
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
 from an application workflow. The app adapter samples preferences and time once

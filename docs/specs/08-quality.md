@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,334 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
+Status: 1,338 package tests passing (13 model-gated) + 55 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,7 +23,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 408 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 409 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data, CLI arg-parser dispatchers, large SwiftUI views) — splitting those views remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -129,17 +129,20 @@ generation between pre-preparation and pre-publication checks. AudioCaptureKit
 remains free of model download, verification, runtime, and release references.
 Direct shared-runtime reads, production loader bypasses, duplicate audio-level
 PCM scans, unbounded meter publication, idle translation polling, and
-unbounded Translation framework batches are rejected (D158–D169).
+unbounded Translation framework batches, plus per-turn or unbounded live
+Apuntador generation wrappers, are rejected (D158–D170).
 
 `make test-recording-stress` is the deterministic reliability gate for capture
-and recovery. It runs 164 focused tests across real capture/writer suites,
+and recovery. It runs 177 focused tests across real capture/writer suites,
 callback liveness, bounded level delivery, start/stop, crash recovery,
 cold-model attachment, mixed-language preservation, bounded translation
-routing/wakes, durable jobs, recording persistence, and caption row separation.
+routing/wakes, pure turn-end admission, bounded complete Apuntador generation
+including overflow, cancellation, and opt-out, durable jobs, recording
+persistence, and caption row separation.
 The first iteration builds normally and the remaining 24 reuse that build;
 every iteration must execute at least 90 tests so a stale filter cannot pass
 with an empty or materially incomplete corpus. Temporary logs are deleted only
-after success and preserved on failure. The complete 25-iteration gate (4,100 test
+after success and preserved on failure. The complete 25-iteration gate (4,425 test
 executions) passes, as do focused Thread Sanitizer and Address Sanitizer runs.
 This deterministic evidence does not replace the real Core Audio callback-
 recovery acceptance in `docs/GAPS.md`.

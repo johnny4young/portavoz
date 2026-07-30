@@ -5357,3 +5357,43 @@ batches improve first-result latency and cancellation responsiveness while the
 existing source revision map provides exact idempotency. Keeping the spoken
 transcript and durable audio outside this optional lane preserves Portavoz's
 audio-first and multilingual-source contracts.
+
+## D170 — Bound complete live Apuntador generation per recording (Jul 2026)
+
+**Context:** each accepted live question created an unowned MainActor wrapper
+task around the complete Apuntador operation. The `IntelligenceScheduler`
+latest-wins key bounded only the classifier call inside that operation; BYOK
+resolution, answer generation, and result delivery remained outside one
+recording-scoped owner. A long call could therefore retain multiple obsolete
+wrappers, and opt-out, reset, or Stop prevented stale publication without
+stopping the model work that occupied shared inference capacity.
+
+**Decision:** application composition owns one
+`LiveCompanionWorkCoordinator` per `RecordingController`. It admits one active
+complete `ProvenanceCompanion.generate` request and retains one newest pending
+candidate. Submitting another candidate replaces only the not-yet-started
+request; an active answer may finish without being preempted by ordinary turn
+traffic. The existing Intelligence scheduler continues to own classifier and
+answer priority, while the coordinator owns recording lifecycle and overflow.
+
+Opt-out, reset, next-session, and Stop clear the pending slot and cancel the
+worker. The worker checks cancellation after generation and before result
+delivery, so a provider that ignores cancellation cannot publish obsolete
+content. A request submitted for a fresh lifecycle while the cancelled
+generator unwinds remains in the one pending slot and starts only after the
+old worker exits. This preserves the one-active invariant instead of hiding
+overlap behind cancellation. Accepted visible cards remain unlimited user
+history; only ephemeral in-flight work is bounded.
+
+The recording stress and deterministic release gates include the pure
+turn-endpoint policy plus coordinator overflow, cancellation, and opt-out
+integration tests. Architecture coverage rejects reintroducing a request
+array, per-turn wrapper task, lifecycle cancellation gap, or release gate that
+omits these tests.
+
+**Rationale:** one active answer plus the newest waiting question preserves
+useful conversational continuity while bounding memory, tasks, and model
+pressure independently of meeting duration. Separating deterministic endpoint
+admission, ephemeral lifecycle coordination, and scheduler execution keeps
+each policy testable and prevents optional intelligence from delaying capture
+or Stop.

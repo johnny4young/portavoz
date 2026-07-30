@@ -724,6 +724,62 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Bounded translation wake relay (D169)"))
     }
 
+    func testLiveCompanionGenerationIsRecordingScopedAndBounded() throws {
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/LiveCompanionWorkCoordinator.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let detection = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
+        let stressGate = try Self.contents(
+            of: "scripts/run-recording-reliability-stress.sh")
+        let releaseGate = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+
+        for required in [
+            "private var worker: Task<Void, Never>?",
+            "private var pending: CompanionGenerationRequest?",
+            "while !Task.isCancelled, let request = pending",
+            "guard !Task.isCancelled else { break }",
+            "worker?.cancel()",
+        ] {
+            XCTAssertTrue(
+                coordinator.contains(required),
+                "Bounded live Apuntador work is missing \(required)")
+        }
+        XCTAssertFalse(
+            coordinator.contains("[CompanionGenerationRequest]"),
+            "Live Apuntador must retain one latest pending request, not a queue")
+        XCTAssertTrue(detection.contains(
+            "companionCoordinator(services: services).submit("))
+        XCTAssertFalse(detection.contains(
+            "Task { @MainActor [weak self] in\n            guard let self"))
+        XCTAssertGreaterThanOrEqual(
+            controller.components(
+                separatedBy: "cancelCompanionGeneration()").count - 1,
+            4,
+            "Opt-out, reset, next-session, and Stop must cancel live Apuntador work")
+        for gate in [stressGate, releaseGate] {
+            XCTAssertTrue(gate.contains("TurnEndpointPolicyTests"))
+            XCTAssertTrue(gate.contains("LiveCompanionWorkCoordinatorTests"))
+        }
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Bounded recording-scoped live Apuntador"))
+        XCTAssertFalse(architecture.contains("D170"))
+        XCTAssertTrue(decisions.contains("## D170"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Bounded live Apuntador work (D170)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Recording-scoped Apuntador coordinator (D170)"))
+    }
+
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")
