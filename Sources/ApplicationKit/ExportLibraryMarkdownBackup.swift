@@ -140,6 +140,11 @@ public struct LibraryMarkdownBackupResult: Equatable, Sendable {
     public var exportedCount: Int { exportedFileNames.count }
 }
 
+public enum LibraryMarkdownBackupExecution: Equatable, Sendable {
+    case completed(LibraryMarkdownBackupResult)
+    case suspended
+}
+
 public struct LibraryMarkdownBackupProgress: Equatable, Sendable {
     public let completedMeetings: Int
     public let totalMeetings: Int
@@ -188,24 +193,35 @@ public struct ExportLibraryMarkdownBackupRequest: Sendable {
 /// Exports every healthy live meeting while preserving failures as typed,
 /// content-free partial results. Existing files are never replaced.
 public struct ExportLibraryMarkdownBackup: ApplicationUseCase {
+    private static let workload = ResourceWorkloadDescriptor(
+        workloadClass: .maintenance,
+        kind: .mediaExport,
+        operation: .execute)
+
     private let store: any LibraryMarkdownBackupStore
     private let documents: any LibraryMarkdownBackupDocuments
     private let files: any LibraryMarkdownBackupFiles
+    private let maintenanceGate: DurableMaintenanceGate
 
     public init(
         store: any LibraryMarkdownBackupStore,
         documents: any LibraryMarkdownBackupDocuments,
-        files: any LibraryMarkdownBackupFiles
+        files: any LibraryMarkdownBackupFiles,
+        maintenanceGate: DurableMaintenanceGate = .unrestricted
     ) {
         self.store = store
         self.documents = documents
         self.files = files
+        self.maintenanceGate = maintenanceGate
     }
 
     public func execute(
         _ request: ExportLibraryMarkdownBackupRequest
-    ) async throws -> LibraryMarkdownBackupResult {
+    ) async throws -> LibraryMarkdownBackupExecution {
         await request.progress(.preparing)
+        guard shouldProceed(at: .admission) else {
+            return .suspended
+        }
         let source = try await sourceSnapshot()
         var allocator = try await fileNameAllocator(in: request.directory)
         var failures = source.failures.map(Self.sourceFailure)
@@ -232,14 +248,22 @@ public struct ExportLibraryMarkdownBackup: ApplicationUseCase {
                 failures: failures.count,
                 through: request.progress)
         }
-        return LibraryMarkdownBackupResult(
+        return .completed(LibraryMarkdownBackupResult(
             totalMeetings: total,
             exportedFileNames: exportedFileNames,
-            failures: failures)
+            failures: failures))
     }
 }
 
 private extension ExportLibraryMarkdownBackup {
+    func shouldProceed(
+        at phase: ResourceGovernorEvaluationPhase
+    ) -> Bool {
+        maintenanceGate.disposition(
+            for: Self.workload,
+            phase: phase) == .proceed
+    }
+
     func sourceSnapshot() async throws -> LibraryMarkdownBackupSourceSnapshot {
         do {
             return try await store.libraryMarkdownBackupSource()

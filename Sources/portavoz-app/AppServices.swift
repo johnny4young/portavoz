@@ -275,8 +275,8 @@ final class AppServices {
             store: store,
             usesTemporaryStore: usesTemporaryStore,
             telemetry: workloadTelemetry, captureState: resourceCaptureState)
-        libraryMarkdownBackup = LibraryMarkdownBackupModel(
-            client: AppLibraryMarkdownBackupClient(store: store))
+        libraryMarkdownBackup = Self.makeLibraryMarkdownBackupModel(
+            store: store, captureState: resourceCaptureState)
         spotlightIndexer = SpotlightIndexer(
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,

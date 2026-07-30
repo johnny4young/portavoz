@@ -110,6 +110,7 @@ extension AppServices {
         guard next != .inactive else {
             semanticIndexingSupervisor.kick()
             meetingSync.maintenanceMayResume()
+            libraryMarkdownBackup.maintenanceMayResume()
             return
         }
         let pressure = resourcePressureMonitor?.current ?? .nominal

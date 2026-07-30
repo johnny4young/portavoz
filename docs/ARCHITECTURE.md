@@ -568,14 +568,24 @@ evidence.
 PortavozCore owns one reusable `DurableMaintenanceGate`. The macOS composition
 root maps its lock-protected capture mirror through the pure resource policy
 and injects the gate into both ApplicationKit semantic indexing and
-IntegrationsKit's existing-library sync seed. Starting, active, and stopping
-capture defer a new maintenance pass. A pass already admitted finishes its
-current bounded database batch, publishes an explicit policy-pause result, and
-does not fetch the next batch. Ask then continues with lexical and
-already-indexed semantic evidence instead of turning expected suspension into
-an error. Semantic indexing resumes from remaining `NULL` rows; the sync seed
-resumes from its protected opaque meeting cursor. Neither path adds a timer,
-polling task, or in-memory retry queue.
+whole-library Markdown backup plus IntegrationsKit's existing-library sync
+seed. Starting, active, and stopping capture defer a new maintenance pass.
+Semantic indexing and sync already admitted finish their current bounded
+database batch, publish an explicit policy-pause result, and do not fetch the
+next batch. Ask then continues with lexical and already-indexed semantic
+evidence instead of turning expected suspension into an error. Semantic
+indexing resumes from remaining `NULL` rows; the sync seed resumes from its
+protected opaque meeting cursor.
+
+Whole-library backup currently checkpoints only at admission: protected
+capture is checked before the single coherent SQLite snapshot, the
+process-scoped model retains the selected destination, and capture completion
+resumes the same request. This prevents a waiting backup from touching SQLite
+or rendering documents during a call. If capture begins after admission, the
+already-opened backup finishes. Pausing later would either retain the complete
+content-heavy snapshot during the call or reread different database moments; a
+future intra-export checkpoint therefore requires durable bounded staging
+rather than a volatile loop. None of these paths adds a timer or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
@@ -1323,6 +1333,13 @@ read-consistent snapshot containing every healthy live meeting, cast, ordered
 transcript, and latest General summary. Corrupt required aggregates become
 typed per-meeting failures while healthy meetings continue; corrupt optional
 summaries degrade to absent.
+
+After the user chooses a destination, the expensive process-owned backup is a
+maintenance/media-export workload. A protected recording returns an explicit
+suspension before the source snapshot; `LibraryMarkdownBackupModel` keeps the
+request in its preparing state and resumes it from the capture-stop signal.
+The destination is never rerequested, suspension is not reported as failure,
+and a stop signal racing with admission is remembered rather than lost.
 
 Filename allocation accounts for existing Markdown files, Unicode
 normalization, case and width equivalence, hidden/empty titles, reserved device

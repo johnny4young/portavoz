@@ -17,11 +17,12 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: documents,
             files: files)
 
-        let result = try await useCase.execute(ExportLibraryMarkdownBackupRequest(
-            directory: URL(fileURLWithPath: "/backup", isDirectory: true)
-        ) { event in
-            await recorder.append(event)
-        })
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true)
+            ) { event in
+                await recorder.append(event)
+            }))
 
         XCTAssertEqual(result.totalMeetings, 2)
         XCTAssertEqual(result.exportedFileNames, ["Road-map 3.md", "road-map 4.md"])
@@ -57,8 +58,9 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: documents,
             files: files)
 
-        let result = try await useCase.execute(ExportLibraryMarkdownBackupRequest(
-            directory: URL(fileURLWithPath: "/backup", isDirectory: true)))
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true))))
 
         XCTAssertEqual(result.totalMeetings, 4)
         XCTAssertEqual(result.exportedFileNames, ["Healthy.md"])
@@ -102,8 +104,9 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: BackupDocumentsFake(),
             files: BackupFilesFake())
 
-        let result = try await useCase.execute(ExportLibraryMarkdownBackupRequest(
-            directory: URL(fileURLWithPath: "/backup", isDirectory: true)))
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true))))
 
         XCTAssertEqual(result.totalMeetings, 0)
         XCTAssertEqual(result.exportedCount, 0)
@@ -122,8 +125,9 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: BackupDocumentsFake(),
             files: files)
 
-        let result = try await useCase.execute(ExportLibraryMarkdownBackupRequest(
-            directory: URL(fileURLWithPath: "/backup", isDirectory: true)))
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true))))
 
         XCTAssertEqual(result.exportedFileNames, [
             "meeting.md",
@@ -131,6 +135,35 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             "\(decomposedResume) 2.md",
         ])
         XCTAssertTrue(result.failures.isEmpty)
+    }
+
+    func testProtectedCaptureSuspendsBeforeReadingTheLibrary() async throws {
+        let store = BackupStoreProbe()
+        let documents = BackupDocumentsFake()
+        let files = BackupFilesFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: store,
+            documents: documents,
+            files: files,
+            maintenanceGate: DurableMaintenanceGate { descriptor, phase in
+                XCTAssertEqual(descriptor.workloadClass, .maintenance)
+                XCTAssertEqual(descriptor.kind, .mediaExport)
+                XCTAssertEqual(descriptor.operation, .execute)
+                XCTAssertEqual(phase, .admission)
+                return .pause
+            })
+
+        let execution = try await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true)))
+        let storeCalls = await store.calls
+        let renderedTitles = await documents.renderedTitles
+        let publishedNames = await files.publishedNames
+
+        XCTAssertEqual(execution, .suspended)
+        XCTAssertEqual(storeCalls, 0)
+        XCTAssertTrue(renderedTitles.isEmpty)
+        XCTAssertTrue(publishedNames.isEmpty)
     }
 }
 
@@ -145,6 +178,17 @@ private func backupContent(title: String) -> LibraryMarkdownBackupContent {
 
 private enum BackupFakeError: Error {
     case expected
+    case incomplete
+}
+
+private func completedResult(
+    from execution: LibraryMarkdownBackupExecution
+) throws -> LibraryMarkdownBackupResult {
+    guard case .completed(let result) = execution else {
+        XCTFail("Expected a completed backup")
+        throw BackupFakeError.incomplete
+    }
+    return result
 }
 
 private struct BackupStoreFake: LibraryMarkdownBackupStore {
@@ -168,6 +212,16 @@ private struct BackupStoreFake: LibraryMarkdownBackupStore {
         return LibraryMarkdownBackupSourceSnapshot(
             contents: contents,
             failures: failures)
+    }
+}
+
+private actor BackupStoreProbe: LibraryMarkdownBackupStore {
+    private(set) var calls = 0
+
+    func libraryMarkdownBackupSource() async throws
+        -> LibraryMarkdownBackupSourceSnapshot {
+        calls += 1
+        return LibraryMarkdownBackupSourceSnapshot(contents: [], failures: [])
     }
 }
 

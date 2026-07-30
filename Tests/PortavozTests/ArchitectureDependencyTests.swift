@@ -2654,10 +2654,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/LibraryMarkdownBackupModel.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/BackupSection.swift")
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let resourceAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
 
         XCTAssertTrue(useCase.contains("struct ExportLibraryMarkdownBackup"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupSourceSnapshot"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupFailureStage"))
+        XCTAssertTrue(useCase.contains("maintenanceGate.disposition"))
+        XCTAssertTrue(useCase.contains("workloadClass: .maintenance"))
+        XCTAssertTrue(useCase.contains("kind: .mediaExport"))
+        XCTAssertTrue(useCase.contains("shouldProceed(at: .admission)"))
         XCTAssertTrue(useCase.contains("existingMarkdownFileNames"))
         XCTAssertTrue(useCase.contains("case .nameCollision: continue"))
         XCTAssertTrue(storage.contains("database.read"))
@@ -2667,7 +2673,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
         XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
         XCTAssertTrue(model.contains("@Observable"))
+        XCTAssertTrue(model.contains("private var pendingDirectory: URL?"))
+        XCTAssertTrue(model.contains("func maintenanceMayResume()"))
         XCTAssertTrue(services.contains("let libraryMarkdownBackup: LibraryMarkdownBackupModel"))
+        XCTAssertTrue(resourceAdapter.contains(
+            "libraryMarkdownBackup.maintenanceMayResume()"))
         XCTAssertTrue(view.contains("services.libraryMarkdownBackup"))
         XCTAssertTrue(view.contains("NSOpenPanel"))
         XCTAssertFalse(view.contains("services.store"))

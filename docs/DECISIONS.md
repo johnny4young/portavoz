@@ -5737,3 +5737,41 @@ at a proven commit boundary while preserving the user's opt-in across crashes,
 relaunches, and account-scoped transport recovery. Promoting the generic gate
 to Core avoids an IntegrationsKit-to-ApplicationKit dependency, and using the
 two existing durable stores is simpler than introducing a third job ledger.
+
+## D180 — Defer whole-library backup before its coherent snapshot (Jul 2026)
+
+**Context:** D99 intentionally reads meeting identities and every strict
+meeting aggregate inside one `DatabaseQueue.read`, then renders and publishes
+the complete Markdown backup. Starting that work during protected capture can
+compete for SQLite, memory, CPU, and filesystem bandwidth. Pausing after the
+read is not a safe incremental fix: it would retain a content-heavy copy of the
+whole library during the call, while discarding it and rereading per meeting
+would combine different database moments. Child-row mutations also do not
+provide one aggregate-wide revision fence that could prove a split read is
+equivalent to D99.
+
+**Decision:** `ExportLibraryMarkdownBackup` is a maintenance/media-export
+workload and consumes the shared `DurableMaintenanceGate`. It checks admission
+before the source snapshot and returns a typed `suspended` execution outcome
+without reading storage, inspecting the destination, rendering Markdown, or
+publishing files. Successful work continues to use the unchanged D99 one-read
+snapshot and atomic filesystem adapter.
+
+`LibraryMarkdownBackupModel` owns one process-scoped pending destination. A
+suspended request remains in the preparing state, and AppServices notifies the
+model when capture returns inactive so it retries without reopening the folder
+picker. The actor serializes execution, and a scalar resume bit remembers a
+capture-stop signal that arrives while admission is still resolving. Completion
+or failure clears pending ownership.
+
+This decision does not checkpoint an export after admission and does not make
+backup execution relaunch-durable. If capture starts after the coherent source
+snapshot begins, that export finishes. Intra-export pause requires a separate
+bounded durable-staging design with destination recovery, collision
+reservation, cleanup, privacy, and restart semantics.
+
+**Rationale:** an admission checkpoint removes avoidable backup interference
+from calls without weakening D99 consistency, holding a complete library while
+waiting, or introducing a polling task and volatile retry queue. Retaining the
+chosen destination gives the user automatic recovery after Stop while keeping
+the limitation explicit for the next GOV-4 slice.

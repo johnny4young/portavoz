@@ -1,22 +1,27 @@
 import ApplicationKit
 import Foundation
 import IntegrationsKit
+import PortavozCore
 import StorageKit
 
 struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
     private let useCase: ExportLibraryMarkdownBackup
 
-    init(store: MeetingStore) {
+    init(
+        store: MeetingStore,
+        maintenanceGate: DurableMaintenanceGate
+    ) {
         useCase = ExportLibraryMarkdownBackup(
             store: store,
             documents: AppLibraryMarkdownBackupDocuments(),
-            files: AppLibraryMarkdownBackupFiles())
+            files: AppLibraryMarkdownBackupFiles(),
+            maintenanceGate: maintenanceGate)
     }
 
     func exportLibraryMarkdownBackup(
         to directory: URL,
         progress: @escaping LibraryMarkdownBackupProgressHandler
-    ) async throws -> LibraryMarkdownBackupResult {
+    ) async throws -> LibraryMarkdownBackupExecution {
         try await useCase.execute(ExportLibraryMarkdownBackupRequest(
             directory: directory,
             progress: progress))
@@ -89,4 +94,16 @@ struct AppLibraryMarkdownBackupFiles: LibraryMarkdownBackupFiles {
 
 private enum AppLibraryMarkdownBackupFileError: Error {
     case invalidFileName
+}
+
+extension AppServices {
+    static func makeLibraryMarkdownBackupModel(
+        store: MeetingStore,
+        captureState: AppResourceCaptureState
+    ) -> LibraryMarkdownBackupModel {
+        LibraryMarkdownBackupModel(client: AppLibraryMarkdownBackupClient(
+            store: store,
+            maintenanceGate: AppResourceGovernorMaintenanceGate.make(
+                captureState: captureState)))
+    }
 }

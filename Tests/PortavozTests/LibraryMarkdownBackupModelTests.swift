@@ -51,6 +51,48 @@ final class LibraryMarkdownBackupModelTests: XCTestCase {
         await unexpectedModel.export(to: URL(fileURLWithPath: "/unexpected"))
         XCTAssertEqual(unexpectedModel.phase, .failed(.unexpected))
     }
+
+    func testSuspendedExportResumesFromMaintenanceSignal() async {
+        let result = LibraryMarkdownBackupResult(
+            totalMeetings: 1,
+            exportedFileNames: ["Meeting.md"],
+            failures: [])
+        let client = LibraryMarkdownBackupModelClientFake(
+            executions: [.suspended, .completed(result)])
+        let model = LibraryMarkdownBackupModel(client: client)
+
+        await model.export(to: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        XCTAssertEqual(model.phase, .running(.preparing))
+        XCTAssertEqual(client.calls, 1)
+
+        model.maintenanceMayResume()
+        await waitUntil { model.phase == .completed(result) }
+
+        XCTAssertEqual(client.calls, 2)
+        XCTAssertEqual(client.directories.map(\.path), ["/backup", "/backup"])
+    }
+
+    func testCaptureStopWakeIsNotLostWhileAdmissionIsSuspending() async {
+        let result = LibraryMarkdownBackupResult(
+            totalMeetings: 1,
+            exportedFileNames: ["Meeting.md"],
+            failures: [])
+        let client = ControlledLibraryMarkdownBackupModelClient(result: result)
+        let model = LibraryMarkdownBackupModel(client: client)
+        let task = Task {
+            await model.export(
+                to: URL(fileURLWithPath: "/backup", isDirectory: true))
+        }
+        await waitUntil { client.firstCallStarted }
+
+        model.maintenanceMayResume()
+        client.releaseFirstCall()
+
+        await task.value
+        await waitUntil { model.phase == .completed(result) }
+        XCTAssertEqual(client.calls, 2)
+    }
 }
 
 private enum LibraryMarkdownBackupModelTestError: Error {
@@ -60,7 +102,7 @@ private enum LibraryMarkdownBackupModelTestError: Error {
 @MainActor
 private final class LibraryMarkdownBackupModelClientFake:
     LibraryMarkdownBackupModelClient {
-    let result: LibraryMarkdownBackupResult
+    private var executions: [LibraryMarkdownBackupExecution]
     let error: Error?
     var calls = 0
     var directories: [URL] = []
@@ -73,27 +115,79 @@ private final class LibraryMarkdownBackupModelClientFake:
             failures: []),
         error: Error? = nil
     ) {
-        self.result = result
+        executions = [.completed(result)]
         self.error = error
+    }
+
+    init(executions: [LibraryMarkdownBackupExecution]) {
+        self.executions = executions
+        error = nil
     }
 
     func exportLibraryMarkdownBackup(
         to directory: URL,
         progress: @escaping LibraryMarkdownBackupProgressHandler
-    ) async throws -> LibraryMarkdownBackupResult {
+    ) async throws -> LibraryMarkdownBackupExecution {
         calls += 1
         directories.append(directory)
         await progress(.preparing)
-        let event = LibraryMarkdownBackupProgressEvent.exporting(
-            LibraryMarkdownBackupProgress(
-                completedMeetings: result.totalMeetings,
-                totalMeetings: result.totalMeetings,
-                exportedMeetings: result.exportedCount,
-                failedMeetings: result.failures.count))
         observedProgress.append(.preparing)
-        observedProgress.append(event)
-        await progress(event)
         if let error { throw error }
-        return result
+        let execution = executions.removeFirst()
+        if case .completed(let result) = execution {
+            let event = LibraryMarkdownBackupProgressEvent.exporting(
+                LibraryMarkdownBackupProgress(
+                    completedMeetings: result.totalMeetings,
+                    totalMeetings: result.totalMeetings,
+                    exportedMeetings: result.exportedCount,
+                    failedMeetings: result.failures.count))
+            observedProgress.append(event)
+            await progress(event)
+        }
+        return execution
     }
+}
+
+@MainActor
+private final class ControlledLibraryMarkdownBackupModelClient:
+    LibraryMarkdownBackupModelClient {
+    let result: LibraryMarkdownBackupResult
+    private(set) var calls = 0
+    private(set) var firstCallStarted = false
+    private var firstCallContinuation: CheckedContinuation<Void, Never>?
+
+    init(result: LibraryMarkdownBackupResult) {
+        self.result = result
+    }
+
+    func exportLibraryMarkdownBackup(
+        to directory: URL,
+        progress: @escaping LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupExecution {
+        calls += 1
+        await progress(.preparing)
+        if calls == 1 {
+            firstCallStarted = true
+            await withCheckedContinuation { continuation in
+                firstCallContinuation = continuation
+            }
+            return .suspended
+        }
+        return .completed(result)
+    }
+
+    func releaseFirstCall() {
+        firstCallContinuation?.resume()
+        firstCallContinuation = nil
+    }
+}
+
+@MainActor
+private func waitUntil(
+    _ condition: @escaping @MainActor () -> Bool
+) async {
+    for _ in 0..<100 where !condition() {
+        await Task.yield()
+    }
+    XCTAssertTrue(condition())
 }
