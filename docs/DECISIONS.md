@@ -5508,3 +5508,29 @@ compact level seam and proves visible copy plus dismissal.
 unverified live audio processor. Captured time keeps the result stable across
 route-specific buffer sizes, while same-pass compact evidence preserves the
 audio-first boundary and makes future thresholds deterministic and testable.
+
+## D174 — Bound live caption derivations, not transcript evidence (Jul 2026)
+
+**Context:** `RecordingController` must retain the complete admitted caption
+history until Stop because durable snapshot persistence, explicit recovery,
+Refine, translation cursors, and generated-evidence provenance depend on it.
+The live carousel was already limited to 150 source rows, but only at one
+SwiftUI call site. The five-minute talk-balance cue still scanned every closed
+row in the meeting on each presentation update.
+
+**Decision:** the pure `LiveCaptionParagraphProjector` owns a 150-source-row
+tail before it groups visible paragraphs and translations. Callers pass the
+authoritative caption array without reimplementing that limit.
+`LiveTalkTimePolicy` independently owns a maximum of 1,024 closed candidate
+rows before applying its existing five-minute time filter. The newest growing
+row remains excluded. These limits affect only ephemeral presentation
+derivations; they do not truncate, reorder, or rewrite controller captions,
+final audio, Stop payloads, translation state, summary cursors, or Refine
+inputs.
+
+**Rationale:** presentation work now remains constant with meeting duration
+without weakening the audio-first durability contract. At the current
+approximately one-final-row-per-second cadence on each of two channels, 1,024
+closed candidates leave substantial headroom above the roughly 600 rows
+expected in five minutes. Owning both bounds inside pure tested policies
+prevents a future caller from accidentally restoring a whole-meeting scan.

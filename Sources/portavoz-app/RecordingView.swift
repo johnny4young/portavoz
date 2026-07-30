@@ -254,7 +254,7 @@ private struct LiveRecordingCaptionsView: View {
 
     var body: some View {
         let projection = LiveCaptionParagraphProjector.project(
-            captions: Array(controller.captions.suffix(150)),
+            captions: controller.captions,
             liveSpeakerLabels: controller.liveSpeakerLabels,
             translations: controller.translations)
         GeometryReader { geo in

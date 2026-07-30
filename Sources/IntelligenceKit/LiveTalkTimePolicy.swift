@@ -10,6 +10,11 @@ import PortavozCore
 public enum LiveTalkTimePolicy {
     /// The same five-minute horizon as catch-up: recent enough to act on.
     public static let window: TimeInterval = 300
+    /// Defensive presentation bound before the time-window filter. At the
+    /// current per-channel caption cadence this leaves ample headroom above
+    /// the expected rows in five minutes while keeping work independent of
+    /// total meeting duration.
+    public static let maximumCandidateRows = 1_024
     /// Below this much attributed speech in the window, no judgment — the
     /// first minute of a meeting is always lopsided.
     public static let minimumSpeech: TimeInterval = 60
@@ -31,7 +36,7 @@ public enum LiveTalkTimePolicy {
         _ captions: [TranscriptSegment],
         window: TimeInterval = window
     ) -> Balance? {
-        let closed = captions.dropLast()
+        let closed = captions.suffix(maximumCandidateRows + 1).dropLast()
         guard let newest = closed.last else { return nil }
         let cutoff = newest.endTime - window
         var me: TimeInterval = 0

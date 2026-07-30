@@ -1061,7 +1061,13 @@ rolling edges can reject a longer noisy microphone copy. Distinct overlapping
 speech remains. A separate view-only projector groups consecutive microphone
 rows or rows from the same stable live voice within bounded gap/size limits.
 It never groups generic `Them`, never mutates raw caption IDs, and projects
-translation text alongside the visible paragraph.
+translation text alongside the visible paragraph. The projector itself owns a
+150-source-row tail; the view does not duplicate this invariant. The
+five-minute talk-balance policy similarly evaluates no more than 1,024 closed
+candidate rows before its time filter. These are presentation-only bounds:
+`RecordingController` retains the complete admitted caption sequence through
+Stop and recovery, and translation, generated-evidence, rolling-summary, and
+Refine consumers keep their own durable identities and cursors.
 Live diarization may still project one closed source row into multiple
 speaker-labeled pieces. That transformation preserves the source ID on the
 first non-empty piece and assigns fresh IDs only to additional pieces, so
@@ -1671,13 +1677,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,296 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,360 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 401 Swift source files;
+- strict SwiftLint reports zero violations across 411 Swift source files;
 - 55 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

@@ -113,6 +113,8 @@ visible release blocker rather than being inferred from deterministic tests.
   summary admission removes attribution-shaped decision/task copies. The
   persisted writer pass now exposes sustained system-channel ceiling evidence
   through a dismissible live warning without changing the call or recording.
+  Live paragraph and talk-balance derivations now own fixed recent-work bounds
+  while the complete admitted transcript remains available to Stop/recovery.
   Field validation remains open for live WER/CER, card usefulness,
   business-quality decisions/tasks, whether the warning appears on the next
   genuinely clipped call, and the upstream source of that clipping.

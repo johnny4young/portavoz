@@ -1790,6 +1790,26 @@ final class ArchitectureDependencyTests: XCTestCase {
             "voiceProcessing: Bool = false"))
     }
 
+    func testLiveCaptionPresentationOwnsItsWorkBounds() throws {
+        let projector = try Self.contents(
+            of: "Sources/portavoz-app/LiveCaptionParagraphProjector.swift")
+        let recordingView = try Self.contents(
+            of: "Sources/portavoz-app/RecordingView.swift")
+        let talkBalance = try Self.contents(
+            of: "Sources/IntelligenceKit/LiveTalkTimePolicy.swift")
+
+        XCTAssertTrue(projector.contains("static let maximumSourceRows = 150"))
+        XCTAssertTrue(projector.contains(
+            "captions.suffix(Self.maximumSourceRows)"))
+        XCTAssertFalse(recordingView.contains(
+            "controller.captions.suffix(150)"),
+            "the pure projector, not one presentation caller, owns the bound")
+        XCTAssertTrue(talkBalance.contains(
+            "public static let maximumCandidateRows = 1_024"))
+        XCTAssertTrue(talkBalance.contains(
+            "captions.suffix(maximumCandidateRows + 1).dropLast()"))
+    }
+
     func testTurnEndpointStaysDeterministicPolicyDrivenAndCoalescerFree() throws {
         let policy = try Self.contents(
             of: "Sources/IntelligenceKit/TurnEndpointPolicy.swift")
