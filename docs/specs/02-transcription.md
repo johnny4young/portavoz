@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation).
 
 ## Roles and engines (D7)
 
@@ -287,12 +287,28 @@ The newest growing row can translate before another speaker closes it once it
 has enough language evidence. Its stable ID is paired with the exact translated
 source text, so another request is admitted after at least 18 characters of
 growth or a sentence boundary rather than leaving a stale partial translation.
-The scheduler checks ready work every 300 ms and publishes
-`TranslationSession.translate(batch:)` responses as they arrive. A labeled
-indigo language rail visually separates translated text from the spoken row.
-Routing and state transitions have deterministic mixed Spanish/English,
-same-target, unknown, unsupported-then-supported, consent, cancellation, and
-stale-result tests, including growing-row revisions.
+`TranslationSession.translate(batch:)` responses publish as they arrive. A
+labeled indigo language rail visually separates translated text from the
+spoken row. Routing and state transitions have deterministic mixed
+Spanish/English, same-target, unknown, unsupported-then-supported, consent,
+cancellation, and stale-result tests, including growing-row revisions.
+
+### Signal-driven live translation (D169)
+
+The active lane subscribes once to a recording-owned `LiveTranslationWakeHub`.
+New captions, live-speaker splits, target/source changes, pair consent, and
+unsupported-passthrough updates broadcast a content-free invalidation signal.
+Each subscriber buffers only the newest wake. Idle, download-gated, and
+unsupported lanes await that signal rather than polling every 300 ms; only
+actual Apple framework errors use timed retry backoff.
+
+Routing examines the newest 60 rows as an explicit live-context window and
+sends no more than eight chronological rows in one framework request.
+Successful batches drain immediately through another bounded request. Every
+iteration keeps the full source/target fence and source-revision idempotency.
+Rows that fall outside the live window before translation remain in their
+spoken language. Source captions, final transcript evidence, audio capture,
+and Refine are independent from this optional relay.
 
 ## Vocabulary — `VocabularyPrompt`
 

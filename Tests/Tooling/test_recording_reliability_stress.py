@@ -71,6 +71,8 @@ class RecordingReliabilityStressTests(unittest.TestCase):
         self.assertIn("--skip-build", invocations[2])
         self.assertIn("RecordingSummaryTests", invocations[0])
         self.assertIn("RecordingLevelRelayTests", invocations[0])
+        self.assertIn("LiveTranslationWakeHubTests", invocations[0])
+        self.assertIn("LiveTranslationWakeIntegrationTests", invocations[0])
         self.assertNotIn("AudioCaptureTests", invocations[0])
         self.assertEqual(set(logs), {"iteration-1.log", "iteration-2.log", "iteration-3.log"})
         self.assertIn("3/3 iterations", result.stdout)

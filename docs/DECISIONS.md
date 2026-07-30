@@ -5313,3 +5313,47 @@ from the presentation layer, while a generation-fenced latest-value relay
 bounds actor pressure regardless of call duration. Separating complete
 diagnostic ingestion from coalesced rendering preserves field warnings without
 pretending every intermediate meter frame has product value.
+
+## D169 — Wake live translation from state changes and bound every batch (Jul 2026)
+
+**Context:** the active Apple Translation lane woke the MainActor every 300 ms
+even when no caption, consent, or language state had changed. When work did
+exist, one framework request could include every eligible row in the 60-row
+live lookback. That permanent poll spent optional work throughout a recording,
+while a large catch-up request delayed its earliest visible result and reduced
+the number of cancellation boundaries available to a source/target change.
+Returning from an idle lane was not safe because SwiftUI does not restart a
+`translationTask` when a new caption produces the same source/target
+configuration.
+
+**Decision:** application composition owns one recording-scoped
+`LiveTranslationWakeHub`. It broadcasts caption, live-speaker, target, source,
+pair-consent, and unsupported-passthrough changes to current lane subscribers.
+Each `AsyncStream` subscriber uses `bufferingNewest(1)`: signals carry no
+content and mean only "recompute from current controller state." Idle,
+download-gated, and unsupported lanes suspend on that stream. Preparation and
+translation failures retain their two- and three-second retry backoffs,
+respectively; successful or idle work has no timer.
+
+`LiveTranslationRouting` retains its explicit recent-context policy of 60 rows
+and admits at most eight chronological rows to one framework batch. A
+successful response loop immediately requests the next bounded batch.
+Source/target equality remains checked before every request and publication,
+and task cancellation still fences an obsolete lane. Older untranslated rows
+that age out of the live window remain in their spoken language instead of
+forming an unbounded catch-up queue. The wake hub never carries transcript
+text, owns durable evidence, delays capture, or changes Refine.
+
+The recording stress and deterministic language gates include the wake relay,
+consent integration, bounded routing, pair fencing, unsupported progression,
+and mixed-language state tests. Architecture coverage rejects restoring the
+300 ms idle poll, removing the one-wake buffer or bounded batch, and dropping
+the relay from those release gates.
+
+**Rationale:** a latest-state signal is the correct abstraction because every
+wake invalidates the same derived routing snapshot; preserving a signal per
+caption would add queue pressure without preserving additional truth. Small
+batches improve first-result latency and cancellation responsiveness while the
+existing source revision map provides exact idempotency. Keeping the spoken
+transcript and durable audio outside this optional lane preserves Portavoz's
+audio-first and multilingual-source contracts.

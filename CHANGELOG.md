@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## July 30, 2026
+
+- **⚡ Live translation wakes only when needed** — New captions, language changes, and download approval now wake translation immediately; small batches surface the first translated lines sooner without a permanent background poll.
+
 ## July 29, 2026
 
 - **⚡ Recording meters stay light** — Portavoz now measures each saved audio chunk once and keeps only the newest visual level update, so long calls stay responsive without dropping audio or weakening microphone and system-audio warnings.

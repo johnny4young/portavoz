@@ -516,6 +516,68 @@ final class LiveTranslationRoutingTests: XCTestCase {
             pair: pair).isEmpty)
     }
 
+    func testTranslationWorkIsDrainedInSmallChronologicalBatches() throws {
+        let spanish = (0..<12).map { index in
+            segment(
+                text: "Intervención española número \(index) con evidencia suficiente.",
+                language: "es",
+                start: TimeInterval(index))
+        }
+        let open = segment(
+            text: "This target-language row stays open.",
+            language: "en",
+            start: 20)
+        let segments = spanish + [open]
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        let first = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            pair: pair)
+        let completed = Dictionary(uniqueKeysWithValues: first.map {
+            ($0.id, $0.text)
+        })
+        let second = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedSourceTexts: completed,
+            unsupportedIDs: [],
+            pair: pair)
+
+        XCTAssertEqual(first.count, LiveTranslationWorkPolicy.maximumBatchSize)
+        XCTAssertEqual(first.map(\.id), Array(spanish.prefix(8)).map(\.id))
+        XCTAssertEqual(second.map(\.id), Array(spanish.dropFirst(8)).map(\.id))
+    }
+
+    func testLiveLookbackHasAnExplicitRecentRowLimit() throws {
+        let spanish = (0..<70).map { index in
+            segment(
+                text: "Intervención reciente número \(index) en español.",
+                language: "es",
+                start: TimeInterval(index))
+        }
+        let open = segment(
+            text: "This target-language row stays open.",
+            language: "en",
+            start: 80)
+        let segments = spanish + [open]
+        let pair = try XCTUnwrap(LiveTranslationRouting.nextPair(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            target: "en"))
+        let pending = LiveTranslationRouting.pendingRows(
+            segments: segments,
+            translatedSourceTexts: [:],
+            unsupportedIDs: [],
+            pair: pair)
+
+        let firstEligibleIndex =
+            segments.count - LiveTranslationWorkPolicy.recentRowLimit
+        XCTAssertEqual(pair, LiveTranslationPair(source: "es", target: "en"))
+        XCTAssertEqual(pending.first?.id, segments[firstEligibleIndex].id)
+    }
+
     private func segment(
         text: String,
         language: String?,

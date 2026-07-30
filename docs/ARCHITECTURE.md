@@ -901,6 +901,24 @@ obsolete visual meter states. Durable audio, health events, live-transcription
 feeds, and final transcript evidence remain on their existing lossless or
 explicitly bounded paths and cannot be backpressured by the meter.
 
+Signal-driven bounded live translation is the second bounded live-pipeline
+boundary. One recording-scoped broadcast hub wakes the active Apple
+Translation lane only when caption, speaker-attribution, source/target, consent,
+or unsupported-passthrough state changes. Each subscriber buffers one wake at
+most: a burst means "recompute from the newest controller state," never one
+queued unit per caption. Idle and download-gated lanes suspend on that stream
+instead of polling the MainActor. Timed sleeps remain only as bounded retry
+backoff after a framework preparation or execution error.
+
+Routing still examines at most the newest 60 transcript rows, but each
+framework request now admits at most eight chronological rows. Successful
+requests drain another bounded batch immediately, so backlog cannot inflate one
+framework call and the first translated result can publish sooner. Target and
+source changes retain their full pair fence between calls. If translation is
+unavailable long enough for a row to leave the live window, that row remains
+honestly visible in its spoken language; source captions and durable recording
+evidence never enter or depend on the wake path.
+
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,
@@ -1041,9 +1059,12 @@ A target switch cancels and fences prior work and clears all translated and
 unsupported-passthrough state before new lanes are resolved. The newest
 still-growing row becomes eligible after enough local language evidence and is
 retranslated only after meaningful text growth or a sentence boundary. Each
-translation stores the exact source revision that produced it. Apple batch
-responses publish as their asynchronous sequence arrives, and the UI renders
-them in a labeled indigo rail rather than as another spoken transcript row.
+translation stores the exact source revision that produced it. A
+recording-scoped wake relay reacts to caption and lane-state changes without an
+idle poll; each Apple request admits no more than eight chronological rows from
+the existing 60-row live lookback. Batch responses publish as their
+asynchronous sequence arrives, and the UI renders them in a labeled indigo rail
+rather than as another spoken transcript row.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
 letter or digit is not speech. Whisper applies it while mapping model output;

@@ -663,6 +663,67 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Bounded recording-level relay (D168)"))
     }
 
+    func testLiveTranslationUsesSignalDrivenBoundedWork() throws {
+        let translation = try Self.contents(
+            of: "Sources/portavoz-app/LiveTranslation.swift")
+        let wakeHub = try Self.contents(
+            of: "Sources/portavoz-app/LiveTranslationWakeHub.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let translationAdapter = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+LiveTranslation.swift")
+        let stressGate = try Self.contents(
+            of: "scripts/run-recording-reliability-stress.sh")
+        let releaseGate = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+
+        for required in [
+            "static let recentRowLimit = 60",
+            "static let maximumBatchSize = 8",
+            "let subscription = wakeHub.subscribe()",
+            "guard await wakes.next() != nil else { return }",
+        ] {
+            XCTAssertTrue(
+                translation.contains(required),
+                "Bounded live translation is missing \(required)")
+        }
+        XCTAssertFalse(
+            translation.contains("sleep(milliseconds: 300)"),
+            "Idle live translation must wait for state changes, not poll")
+        XCTAssertTrue(wakeHub.contains(".bufferingNewest(1)"))
+        XCTAssertTrue(wakeHub.contains("continuation.yield()"))
+        XCTAssertTrue(controller.contains(
+            "let liveTranslationWakeHub = LiveTranslationWakeHub()"))
+        XCTAssertGreaterThanOrEqual(
+            controller.components(
+                separatedBy: "liveTranslationWakeHub.signal()").count - 1,
+            4,
+            "Caption, speaker, target, and consent changes must wake the lane")
+        XCTAssertGreaterThanOrEqual(
+            translationAdapter.components(
+                separatedBy: "liveTranslationWakeHub.signal()").count - 1,
+            2,
+            "Pair and unsupported-row changes must wake the lane")
+        for gate in [stressGate, releaseGate] {
+            XCTAssertTrue(gate.contains("LiveTranslationWakeHubTests"))
+            XCTAssertTrue(gate.contains("LiveTranslationWakeIntegrationTests"))
+        }
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let transcriptionSpec = try Self.contents(
+            of: "docs/specs/02-transcription.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Signal-driven bounded live translation"))
+        XCTAssertTrue(decisions.contains("## D169"))
+        XCTAssertTrue(transcriptionSpec.contains(
+            "### Signal-driven live translation (D169)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Bounded translation wake relay (D169)"))
+    }
+
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")

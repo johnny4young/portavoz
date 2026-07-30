@@ -65,6 +65,17 @@ struct LiveTranslationPair: Equatable, Sendable {
     let target: String
 }
 
+enum LiveTranslationWorkPolicy {
+    /// Live translation is intentionally a recent-context aid. If a lane is
+    /// unavailable long enough to fall behind, older rows stay visible in
+    /// their spoken language instead of creating an unbounded catch-up queue.
+    static let recentRowLimit = 60
+
+    /// Small batches publish the first translated row quickly and let a
+    /// source/target change cancel between bounded framework calls.
+    static let maximumBatchSize = 8
+}
+
 enum LiveTranslationRouting {
     typealias LanguageDetector = (String) -> String?
 
@@ -76,7 +87,8 @@ enum LiveTranslationRouting {
         detector: LanguageDetector = detectedLanguage
     ) -> LiveTranslationPair? {
         guard let normalizedTarget = LanguageCode(target)?.identifier else { return nil }
-        let recent = Array(segments.suffix(60))
+        let recent = Array(segments.suffix(
+            LiveTranslationWorkPolicy.recentRowLimit))
         let openID = recent.last?.id
         for segment in recent {
             guard needsTranslation(
@@ -99,9 +111,10 @@ enum LiveTranslationRouting {
         pair: LiveTranslationPair,
         detector: LanguageDetector = detectedLanguage
     ) -> [(id: UUID, text: String)] {
-        let recent = Array(segments.suffix(60))
+        let recent = Array(segments.suffix(
+            LiveTranslationWorkPolicy.recentRowLimit))
         let openID = recent.last?.id
-        return recent.compactMap { segment in
+        return Array(recent.compactMap { segment in
             guard needsTranslation(
                 segment,
                 openID: openID,
@@ -110,7 +123,7 @@ enum LiveTranslationRouting {
                 sourceLanguage(for: segment, detector: detector) == pair.source
             else { return nil }
             return (segment.id, segment.text)
-        }
+        }.prefix(LiveTranslationWorkPolicy.maximumBatchSize))
     }
 
     static func sourceLanguage(
@@ -212,6 +225,7 @@ struct LiveTranslationModifier: ViewModifier {
     func body(content: Content) -> some View {
         let controller = self.controller
         let pair = self.pair
+        let wakeHub = controller.liveTranslationWakeHub
         return content.translationTask(configuration(for: pair)) { session in
             guard let pair else { return }
             // The framework cancels this task when the configuration
@@ -219,7 +233,8 @@ struct LiveTranslationModifier: ViewModifier {
             await Self.translationLoop(
                 box: SessionBox(session: session),
                 controller: controller,
-                pair: pair)
+                pair: pair,
+                wakeHub: wakeHub)
         }
     }
 
@@ -228,30 +243,31 @@ struct LiveTranslationModifier: ViewModifier {
     nonisolated private static func translationLoop(
         box: SessionBox,
         controller: RecordingController,
-        pair: LiveTranslationPair
+        pair: LiveTranslationPair,
+        wakeHub: LiveTranslationWakeHub
     ) async {
+        let subscription = wakeHub.subscribe()
+        defer { subscription.cancel() }
         guard let status = await Self.openLane(controller: controller, pair: pair)
         else {
-            await Self.holdUnsupportedLane(controller: controller, pair: pair)
+            await Self.holdUnsupportedLane(
+                controller: controller,
+                pair: pair,
+                wakes: subscription.stream)
             return
         }
         var didPrepare = false
+        var wakes = subscription.stream.makeAsyncIterator()
 
         while !Task.isCancelled {
-            let snapshot = await MainActor.run {
-                (
-                    controller.translationTarget,
-                    controller.translationSource,
-                    controller.translationDownloadApproved
-                )
-            }
+            let snapshot = await Self.laneSnapshot(controller: controller)
             guard snapshot.0 == pair.target, snapshot.1 == pair.source else { return }
             let approved = snapshot.2
             if status == .supported, !approved {
                 await MainActor.run {
                     controller.updateLiveTranslationState(.needsDownload, for: pair)
                 }
-                guard await Self.sleep(milliseconds: 300) else { return }
+                guard await wakes.next() != nil else { return }
                 continue
             }
             if status == .supported, approved, !didPrepare {
@@ -275,7 +291,7 @@ struct LiveTranslationModifier: ViewModifier {
                 // top of the loop is what ends a lane the controller has
                 // moved on from.
                 await Self.publishIdleState(controller: controller, pair: pair)
-                guard await Self.sleep(milliseconds: 300) else { return }
+                guard await wakes.next() != nil else { return }
                 continue
             }
             await MainActor.run {
@@ -290,8 +306,21 @@ struct LiveTranslationModifier: ViewModifier {
                 controller.updateLiveTranslationState(
                     translated ? .active : .failed, for: pair)
             }
-            let retryDelay = await Self.translatedRetryDelay(controller: controller)
-            guard await Self.sleep(milliseconds: retryDelay) else { return }
+            if !translated {
+                guard await Self.sleep(milliseconds: 3_000) else { return }
+            }
+        }
+    }
+
+    nonisolated private static func laneSnapshot(
+        controller: RecordingController
+    ) async -> (String?, String?, Bool) {
+        await MainActor.run {
+            (
+                controller.translationTarget,
+                controller.translationSource,
+                controller.translationDownloadApproved
+            )
         }
     }
 
@@ -307,8 +336,10 @@ struct LiveTranslationModifier: ViewModifier {
     /// idle loop relies on.
     nonisolated private static func holdUnsupportedLane(
         controller: RecordingController,
-        pair: LiveTranslationPair
+        pair: LiveTranslationPair,
+        wakes: AsyncStream<Void>
     ) async {
+        var wakeIterator = wakes.makeAsyncIterator()
         while !Task.isCancelled {
             let snapshot = await MainActor.run {
                 (controller.translationTarget, controller.translationSource)
@@ -322,7 +353,7 @@ struct LiveTranslationModifier: ViewModifier {
                         for: pair)
                 }
             }
-            guard await Self.sleep(milliseconds: 300) else { return }
+            guard await wakeIterator.next() != nil else { return }
         }
     }
 
@@ -355,12 +386,6 @@ struct LiveTranslationModifier: ViewModifier {
             return nil
         }
         return status
-    }
-
-    nonisolated private static func translatedRetryDelay(
-        controller: RecordingController
-    ) async -> Int {
-        await MainActor.run { controller.translationState == .failed ? 3_000 : 300 }
     }
 
     nonisolated private static func sleep(milliseconds: Int) async -> Bool {

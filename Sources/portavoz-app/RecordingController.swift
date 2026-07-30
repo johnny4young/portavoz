@@ -47,6 +47,7 @@ final class RecordingController {
     private(set) var companionCards: [CompanionCard] = []
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
+    let liveTranslationWakeHub = LiveTranslationWakeHub()
     var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
         didSet {
             UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled")
@@ -75,6 +76,7 @@ final class RecordingController {
             translationDownloadApproved = false
             translationState = translationTarget == nil ? .off
                 : (liveTranscriptState == .available ? .ready : .waitingForTranscript)
+            liveTranslationWakeHub.signal()
         }
     }
     /// The selected translation pair isn't installed yet — set by the live
@@ -95,7 +97,12 @@ final class RecordingController {
     /// The user tapped "Download" on that banner: only then does the loop
     /// call `prepareTranslation()` (the deliberate, expected download sheet)
     /// so the assets are fetched without ever interrupting the meeting on its own.
-    var translationDownloadApproved = false
+    var translationDownloadApproved = false {
+        didSet {
+            guard translationDownloadApproved != oldValue else { return }
+            liveTranslationWakeHub.signal()
+        }
+    }
 
     /// Live mic input level (0…1, smoothed peak) for the on-screen meter, and
     /// a "your voice is coming in low/far" flag — once enough VOICED audio
@@ -318,6 +325,7 @@ final class RecordingController {
         seedLiveTranslationUIIfRequested()
         detectClosedRow()
         armTurnEndpointDeadline()
+        liveTranslationWakeHub.signal()
     }
 
     /// Visual-only XCUITest fixture. Routing and stale-lane semantics stay
@@ -485,6 +493,7 @@ final class RecordingController {
             captions: captions, turns: liveTurns, meetingID: meetingID)
         captions = result.captions
         liveSpeakerLabels = result.labels
+        liveTranslationWakeHub.signal()
     }
 
     // MARK: - Companion (D26)

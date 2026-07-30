@@ -9,6 +9,7 @@ extension RecordingController {
         guard translationSource != pair.source else { return }
         translationSource = pair.source
         translationDownloadApproved = false
+        liveTranslationWakeHub.signal()
     }
 
     /// LiveTranslation can publish only finite user-facing state, never
@@ -46,6 +47,7 @@ extension RecordingController {
         unsupportedTranslationRowIDs.formUnion(ids)
         hasUnsupportedTranslationRows = true
         translationState = .partiallyUnsupported
+        liveTranslationWakeHub.signal()
     }
 
     /// Prevents a canceled old-language task from repopulating rendered rows
