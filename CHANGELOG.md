@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 30, 2026
 
+- **📝 Live summaries do less and stay coherent** — Captions and notes now wake one bounded summary cycle instead of a permanent timer; long-call backlog is processed in small batches, and a failed or cancelled pass cannot leave half-applied summary state.
 - **🧭 Apuntador keeps long calls light** — Live question help now runs one answer at a time and retains only the newest waiting question; turning it off, stopping, or starting another recording cancels obsolete work before it can appear.
 - **⚡ Live translation wakes only when needed** — New captions, language changes, and download approval now wake translation immediately; small batches surface the first translated lines sooner without a permanent background poll.
 

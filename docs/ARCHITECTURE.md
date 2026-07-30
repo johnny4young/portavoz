@@ -930,6 +930,25 @@ unavailable long enough for a row to leave the live window, that row remains
 honestly visible in its spoken language; source captions and durable recording
 evidence never enter or depend on the wake path.
 
+Bounded signal-driven live summary is the third bounded live-pipeline
+boundary. Closed caption rows, late live-speaker splits, and user-note changes
+invalidate one recording-scoped coordinator. The coordinator retains one
+pending bit, waits for the established 40-second minimum cadence, and executes
+at most one complete map-reduce cycle at a time. Silence creates no permanent
+timer loop, and a burst never creates one task per caption.
+
+Each cycle admits the oldest unseen closed rows up to 32 rows and 6,000
+characters. One oversized oldest row is admitted alone so the cursor cannot
+stall. A successful cycle retains any remaining backlog for a later bounded
+pass; a provider failure leaves the cursor untouched and waits for the next
+caption or note signal instead of recreating an outage poll. Notes, processed
+row identities, and the visible summary publish together only after every
+provider step succeeds and the active recording identity, lifecycle state, and
+task cancellation fences still match. Reset, next-session, and Stop cancel the
+same worker.
+Durable captions, audio, final post-capture summaries, and Stop never depend on
+this optional live intelligence.
+
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,

@@ -68,7 +68,7 @@ final class RecordingObjectivesModel {
         let addressed = await ObjectiveCheckDetector.addressedIndexes(
             objectives: pendingTexts,
             window: window)
-        guard !addressed.isEmpty else { return }
+        guard !Task.isCancelled, !addressed.isEmpty else { return }
         let addressedTexts = Set(addressed.map { pendingTexts[$0] })
         for index in objectives.indices
         where objectives[index].checkedAt == nil

@@ -780,6 +780,86 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Recording-scoped Apuntador coordinator (D170)"))
     }
 
+    func testLiveSummaryWorkIsSignalDrivenBoundedAndLifecycleFenced() throws {
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/LiveSummaryWorkCoordinator.swift")
+        let windowPolicy = try Self.contents(
+            of: "Sources/portavoz-app/LiveSummaryWindowPolicy.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let detection = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
+        let objectives = try Self.contents(
+            of: "Sources/portavoz-app/RecordingObjectivesModel.swift")
+        let stressGate = try Self.contents(
+            of: "scripts/run-recording-reliability-stress.sh")
+        let releaseGate = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+
+        for required in [
+            "private var worker: Task<Void, Never>?",
+            "private var pending = false",
+            "try await sleep(interval)",
+            "pending = pending || hasBacklog",
+            "worker?.cancel()",
+        ] {
+            XCTAssertTrue(
+                coordinator.contains(required),
+                "Bounded live-summary work is missing \(required)")
+        }
+        XCTAssertFalse(
+            coordinator.contains("[LiveSummary"),
+            "Live summary must retain one invalidation bit, not a work queue")
+        XCTAssertTrue(windowPolicy.contains(
+            "static let maximumRowsPerCycle = 32"))
+        XCTAssertTrue(windowPolicy.contains(
+            "static let maximumCharactersPerCycle = 6_000"))
+        XCTAssertTrue(windowPolicy.contains("for segment in captions.dropLast()"))
+
+        XCTAssertFalse(
+            controller.contains("rollingTask"),
+            "Live summary must not restore the permanent timer loop")
+        XCTAssertTrue(controller.contains(
+            "liveSummaryCoordinator().request()"))
+        XCTAssertGreaterThanOrEqual(
+            controller.components(
+                separatedBy: "cancelLiveSummaryWork()").count - 1,
+            4,
+            "Reset, next-session, and Stop must cancel live-summary work")
+        XCTAssertTrue(detection.contains("requestLiveSummaryRefresh()"))
+        XCTAssertTrue(controller.contains("var candidateNotes = liveNotes + [note]"))
+        XCTAssertTrue(controller.contains(
+            "var candidateIDs = summarizedCaptionIDs"))
+        XCTAssertTrue(controller.contains(
+            "guard isCurrentLiveSummaryCycle(sourceMeetingID) else { return false }"))
+        XCTAssertTrue(controller.contains("liveNotes = candidateNotes"))
+        XCTAssertTrue(controller.contains("summarizedCaptionIDs = candidateIDs"))
+        XCTAssertTrue(controller.contains(
+            "A provider outage must not recreate a permanent poll"))
+        XCTAssertTrue(objectives.contains(
+            "guard !Task.isCancelled, !addressed.isEmpty else { return }"))
+
+        for gate in [stressGate, releaseGate] {
+            XCTAssertTrue(gate.contains("LiveSummaryWorkCoordinatorTests"))
+            XCTAssertTrue(gate.contains("LiveSummaryWindowPolicyTests"))
+        }
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Bounded signal-driven live summary"))
+        XCTAssertFalse(architecture.contains("D171"))
+        XCTAssertTrue(decisions.contains("## D171"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Bounded live-summary delivery (D171)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Recording-scoped live-summary coordinator (D171)"))
+    }
+
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")

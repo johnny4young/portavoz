@@ -5397,3 +5397,48 @@ pressure independently of meeting duration. Separating deterministic endpoint
 admission, ephemeral lifecycle coordination, and scheduler execution keeps
 each policy testable and prevents optional intelligence from delaying capture
 or Stop.
+
+## D171 — Wake live summary from evidence and bound each complete cycle (Jul 2026)
+
+**Context:** the optional Foundation Models live summary ran a permanent
+40-second MainActor loop for the whole recording. A successful tick selected
+every unseen closed row, so a long outage could turn the next request into an
+unbounded map step. The operation also appended its condensed note and advanced
+the processed-row cursor before note collapse and final summary reduction had
+succeeded. Cancellation or a later provider failure could therefore retain
+partial internal state even when no coherent summary was published.
+
+**Decision:** application composition owns one
+`LiveSummaryWorkCoordinator` per `RecordingController`. Closed caption rows,
+late live-speaker splits, and context-note changes set one pending invalidation
+bit. The coordinator permits one active complete cycle, collapses any burst
+into one later cycle, and enforces the established 40-second minimum cadence
+without an idle poll.
+
+`LiveSummaryWindowPolicy` admits the oldest unseen closed rows up to 32 rows
+and 6,000 characters per cycle. The oldest row is admitted alone when it
+exceeds the character budget, guaranteeing forward progress. A successful
+cycle reports retained backlog so another bounded pass is scheduled. A failed
+provider call leaves the cursor unchanged and waits for the next evidence
+signal rather than retrying forever during an outage.
+
+Condensed notes, processed row identities, and the visible summary are built as
+candidate state. They publish atomically only after map, optional note
+collapse, and reduce all succeed and the task still belongs to the same active
+recording. Cancellation is checked after every model suspension. Reset,
+next-session, and Stop clear pending work and cancel the worker. Automatic
+objective checks share the bounded cycle, remain Apuntador-gated, and reject
+late cancelled detector results before mutating presentation state.
+
+The recording stress and deterministic release gates include coordinator
+burst, overflow, backlog, cancellation, and window-policy tests. Architecture
+coverage rejects restoring the timer loop, removing row/character budgets,
+advancing candidate state before complete success, omitting lifecycle
+cancellation, or dropping these suites from the reliability gates.
+
+**Rationale:** summary invalidations describe newest observable state, not
+independent work that must queue. One pending bit and bounded oldest-first
+batches cap tasks and model input independently of meeting duration, while
+atomic publication prevents partial progress from stranding evidence. Keeping
+durable captions and final post-capture processing outside this optional path
+preserves the audio-first contract.

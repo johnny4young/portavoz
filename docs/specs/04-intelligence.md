@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -124,11 +124,15 @@ output.
 **Incremental APIs** (for the rolling summary): `condenseWindow(segments…)`
 (one map pass over ONLY new content), `condenseNotes(text…)` (collapses the
 stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app
-uses them as follows (spec 06): note per 40 s tick over closed row IDs not yet
-admitted → note stack → collapse at > 6000 chars → render;
-`LiveSummaryPolicy.shouldReplace` retains renders < 90% of the current one
-(visible monotonicity). The cursor is an identity set, not an array offset, so
-a late live-diarization split cannot skip its fresh child (D133).
+uses them through one signal-driven coordinator (spec 06): caption, speaker,
+and note changes invalidate current state; after the 40-second minimum cadence,
+one cycle admits at most 32 oldest unseen closed rows and 6,000 characters →
+note stack → collapse at > 6,000 characters → render. Successful backlog drains
+through later bounded cycles. Provider failure preserves the cursor and waits
+for the next evidence signal. `LiveSummaryPolicy.shouldReplace` retains renders
+< 90% of the current one (visible monotonicity). The cursor is an identity set,
+not an array offset, so a late live-diarization split cannot skip its fresh child
+(D133).
 
 ## Prompt-injection guard (Jul 2026, pure, tested)
 
@@ -450,6 +454,28 @@ cancellation cannot create a card. A candidate submitted for a new lifecycle
 waits for the cancelled operation to unwind instead of overlapping it. This
 bound applies only to ephemeral generation work: accepted visible cards remain
 unlimited history until the user dismisses them or the recording resets.
+
+### Bounded live-summary delivery (D171)
+
+The FM-only incremental summary is invalidated by closed caption rows, late
+live-speaker splits, and context-note changes. One app-owned coordinator
+collapses those signals into one pending bit, keeps the established 40-second
+minimum cadence, and permits one complete map/collapse/reduce cycle at a time.
+Silence creates no timer work, and input bursts cannot create a task queue.
+
+Each map step receives at most 32 oldest unseen closed rows and 6,000
+characters. An oversized oldest row proceeds alone. Successful cycles report
+whether unseen rows remain so backlog drains through later bounded passes. A
+provider failure leaves the identity cursor unchanged and waits for the next
+evidence signal rather than retrying forever. Condensed notes, row identities,
+and the visible summary are candidate state until every provider step succeeds
+and the task still belongs to the same active recording; only then do they
+publish together. Reset, next-session, and Stop cancel the coordinator.
+
+Automatic objective checking shares the same bounded cycle only when
+Apuntador is enabled. Its detector checks cancellation after inference before
+changing any objective. Neither live summary nor objectives gate capture,
+durable captions, Stop, or final post-capture summary generation.
 
 ### Apuntador transcript evidence (D91)
 
