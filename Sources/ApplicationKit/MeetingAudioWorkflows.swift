@@ -143,11 +143,22 @@ public struct PrepareMeetingPlaybackRequest: Sendable {
     public init(
         relativeAudioDirectory: String,
         segments: [TranscriptSegment],
-        waveformBucketCount: Int = 600
+        waveformBucketCount: Int = MeetingWaveformDeliveryPolicy.defaultBucketCount
     ) {
         self.relativeAudioDirectory = relativeAudioDirectory
         self.segments = segments
         self.waveformBucketCount = waveformBucketCount
+    }
+}
+
+/// Fixed presentation budget for a waveform snapshot. It limits derived UI
+/// state only; generation still reads the complete finalized channel files.
+public enum MeetingWaveformDeliveryPolicy {
+    public static let defaultBucketCount = 600
+    public static let maximumBucketCount = 2_000
+
+    public static func admittedBucketCount(for requestedCount: Int) -> Int {
+        min(maximumBucketCount, max(1, requestedCount))
     }
 }
 
@@ -204,19 +215,18 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
         }
 
         do {
-            let bucketCount = min(2_000, max(1, request.waveformBucketCount))
-            let capabilityBuckets = await telemetry.measure(
+            let bucketCount = MeetingWaveformDeliveryPolicy.admittedBucketCount(
+                for: request.waveformBucketCount)
+            let capabilityBuckets = try await telemetry.measure(
                 ResourceWorkloadDescriptor(
                     workloadClass: .userInitiated,
                     kind: .waveform,
                     operation: .execute)
             ) {
-                await Task.detached(priority: .userInitiated) {
-                    Waveform.generate(
-                        micFile: channels.microphone,
-                        systemFile: channels.system,
-                        buckets: bucketCount)
-                }.value
+                try await Waveform.generateCancellable(
+                    micFile: channels.microphone,
+                    systemFile: channels.system,
+                    buckets: bucketCount)
             }
             try Task.checkCancellation()
             let duration = await player.duration

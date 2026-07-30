@@ -59,6 +59,24 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         playback.session.invalidate()
     }
 
+    func testPreparationPublishesOneBoundedWaveformSnapshot() async throws {
+        let fixture = try MeetingAudioWorkflowFixture()
+        defer { fixture.remove() }
+
+        let prepared = try await PrepareMeetingPlayback(
+            resolver: fixture.resolver).execute(
+                PrepareMeetingPlaybackRequest(
+                    relativeAudioDirectory: "Audio/meeting",
+                    segments: [],
+                    waveformBucketCount: .max))
+
+        let playback = try XCTUnwrap(prepared)
+        XCTAssertEqual(
+            playback.waveform.count,
+            MeetingWaveformDeliveryPolicy.maximumBucketCount)
+        playback.session.invalidate()
+    }
+
     func testCompressionReportsSavingsAndPublishesBothCurrentChannels() async throws {
         // A one-second PCM fixture can be smaller than its AAC container on
         // some macOS encoders. Use enough material to assert real savings.

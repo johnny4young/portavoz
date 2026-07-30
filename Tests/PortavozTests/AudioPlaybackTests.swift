@@ -75,6 +75,61 @@ final class WaveformTests: XCTestCase {
         XCTAssertTrue(buckets.allSatisfy(\.micDominant))
     }
 
+    func testGenerationChecksCancellationBetweenBoundedReads() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wf-cancel-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let format = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: false)!
+        let frames = AVAudioFrameCount(160_000)
+        var writer: AVAudioFile? = try AVAudioFile(
+            forWriting: url,
+            settings: format.settings)
+        let buffer = AVAudioPCMBuffer(
+            pcmFormat: format,
+            frameCapacity: frames)!
+        buffer.frameLength = frames
+        buffer.floatChannelData![0].initialize(repeating: 0.25, count: Int(frames))
+        try writer!.write(from: buffer)
+        writer = nil
+
+        var checks = 0
+        XCTAssertThrowsError(try Waveform.generate(
+            micFile: url,
+            systemFile: nil,
+            buckets: 100
+        ) {
+            checks += 1
+            if checks == 4 { throw CancellationError() }
+        }) { error in
+            XCTAssertTrue(error is CancellationError)
+        }
+        XCTAssertEqual(
+            checks,
+            4,
+            "obsolete generation must stop at the next fixed-size file chunk")
+    }
+
+    func testCancellableGenerationRejectsAnAlreadyCancelledCaller() async {
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await Waveform.generateCancellable(
+                micFile: nil,
+                systemFile: nil,
+                buckets: 100)
+        }
+
+        do {
+            _ = try await task.value
+            XCTFail("an obsolete Meeting Detail task must not start waveform IO")
+        } catch {
+            XCTAssertTrue(error is CancellationError)
+        }
+    }
+
     /// A loud–silent–loud shape yields one silent range in the middle, and
     /// short dips below `minLength` are ignored.
     func testSilentRangesFindsSustainedGaps() {

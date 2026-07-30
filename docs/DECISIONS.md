@@ -5534,3 +5534,33 @@ approximately one-final-row-per-second cadence on each of two channels, 1,024
 closed candidates leave substantial headroom above the roughly 600 rows
 expected in five minutes. Owning both bounds inside pure tested policies
 prevents a future caller from accidentally restoring a whole-meeting scan.
+
+## D175 — Cancel obsolete waveform derivation by route (Jul 2026)
+
+**Context:** D84 made waveform generation stateless and fast, and Meeting
+Detail already requested 600 buckets with an inline 2,000-bucket clamp.
+However, preparation launched the complete file scan in an unstructured
+detached task. Cancelling the SwiftUI route rejected its result only after that
+task had finished. Leaving and quickly reopening a long meeting could therefore
+run overlapping obsolete reads over the same finalized channels even though
+neither result was durable evidence.
+
+**Decision:** `MeetingWaveformDeliveryPolicy` owns the presentation contract:
+600 buckets by default and at most 2,000 in one immutable published snapshot.
+`AudioPlaybackKit.Waveform.generateCancellable` checks the caller before
+starting, propagates later route cancellation into its off-main worker with a
+task cancellation handler, and checks again before and after every fixed-size
+read of at most 65,536 frames. Cancellation throws and publishes no partial
+waveform. ApplicationKit retains the existing content-free workload interval
+and installs the player, silence ranges, and waveform only after the complete
+derivation survives the route fence.
+
+The generator still reads the complete finalized system and microphone
+timelines. It does not cache, rewrite, attenuate, truncate, or delete either
+file, and it does not enter capture callbacks. D84's exact range-aligned
+Accelerate envelope and replacement-sensitive benchmark remain unchanged.
+
+**Rationale:** task lifetime was the remaining unbounded resource, not array
+size or audio fidelity. A route-scoped cancellation boundary prevents obsolete
+whole-file IO from accumulating during review navigation while preserving the
+stateless design and the finalized recording as the authoritative evidence.

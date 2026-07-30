@@ -123,7 +123,7 @@ self-contained over system frameworks and carries no module dependency.
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
-| `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
+| `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
@@ -239,6 +239,12 @@ waveform values.
 Playback preparation has an audio-directory-scoped task lifetime, independent
 from the multi-section review revision, so unrelated initial section updates
 cannot cancel and consume the only load attempt.
+ApplicationKit admits one immutable waveform snapshot with 600 buckets by
+default and a hard 2,000-bucket presentation ceiling. `AudioPlaybackKit`
+propagates route cancellation into its off-main worker and checks it between
+fixed-size file reads. An obsolete route therefore stops deriving and publishes
+no partial result; the complete finalized channel files remain unchanged and
+authoritative.
 The app composition resolves recording paths and supplies the concrete codec
 adapter. `AudioPlaybackKit` owns AVFoundation playback, waveform analysis, AAC
 encoding, and clip rendering. SwiftUI owns transport controls, drawing, and the
@@ -1220,8 +1226,11 @@ side-effect of typing, and treats cancellation or embedding failure as an empty
 augmentation.
 
 Waveform generation is stateless and uses Accelerate over range-aligned channel
-spans. Playback supports synchronized channels, silence skipping, local-voice
-filtering, clips, AAC compression, and a reversible clear mix. When both direct
+spans. The application publishes one bounded snapshot, while route cancellation
+stops obsolete whole-file derivation between fixed-size reads; no waveform
+cache, partial result, or media mutation is introduced. Playback supports
+synchronized channels, silence skipping, local-voice filtering, clips, AAC
+compression, and a reversible clear mix. When both direct
 system and microphone tracks exist, the direct system track remains unchanged
 while microphone audio is admitted only around transcript-confirmed local
 turns with short boundary ramps. Mic-only recordings never receive that mix,

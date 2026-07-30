@@ -1810,6 +1810,30 @@ final class ArchitectureDependencyTests: XCTestCase {
             "captions.suffix(maximumCandidateRows + 1).dropLast()"))
     }
 
+    func testMeetingWaveformDeliveryOwnsItsBoundAndCancellation() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingAudioWorkflows.swift")
+        let waveform = try Self.contents(
+            of: "Sources/AudioPlaybackKit/Waveform.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains(
+            "public static let defaultBucketCount = 600"))
+        XCTAssertTrue(workflow.contains(
+            "public static let maximumBucketCount = 2_000"))
+        XCTAssertTrue(workflow.contains(
+            "MeetingWaveformDeliveryPolicy.admittedBucketCount"))
+        XCTAssertTrue(workflow.contains(
+            "try await Waveform.generateCancellable("))
+        XCTAssertFalse(workflow.contains(
+            "await Task.detached(priority: .userInitiated)"))
+        XCTAssertTrue(waveform.contains("withTaskCancellationHandler"))
+        XCTAssertTrue(waveform.contains("worker.cancel()"))
+        XCTAssertTrue(waveform.contains("cancellationCheck:"))
+        XCTAssertTrue(decisions.contains(
+            "## D175 — Cancel obsolete waveform derivation by route"))
+    }
+
     func testTurnEndpointStaysDeterministicPolicyDrivenAndCoalescerFree() throws {
         let policy = try Self.contents(
             of: "Sources/IntelligenceKit/TurnEndpointPolicy.swift")
@@ -2400,7 +2424,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertTrue(adapter.contains("\(useCase)("), useCase)
         }
         XCTAssertTrue(workflow.contains("MeetingAudioChannelResolving"))
-        XCTAssertTrue(workflow.contains("Task.detached(priority: .userInitiated)"))
+        XCTAssertTrue(workflow.contains("Waveform.generateCancellable"))
+        XCTAssertFalse(workflow.contains("Task.detached(priority: .userInitiated)"))
         XCTAssertTrue(workflow.contains("PlaybackRanges.complement"))
         XCTAssertTrue(adapter.contains("RecordingsLocation.shared"))
         XCTAssertTrue(adapter.contains("MeetingAudioLayout.channelFile"))
