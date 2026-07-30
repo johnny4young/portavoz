@@ -9,18 +9,21 @@ import StorageKit
 public actor LocalLibrarySemanticSearch {
     private let store: MeetingStore
     private let runtime: any SemanticEmbeddingRuntimeClient
-    private let corpusIndexer: IndexSemanticCorpus
+    private let indexingCoordinator: SemanticCorpusIndexingCoordinator
 
     public init(
         store: MeetingStore,
         runtime: any SemanticEmbeddingRuntimeClient,
-        telemetry: ResourceWorkloadTelemetry = .disabled
+        telemetry: ResourceWorkloadTelemetry = .disabled,
+        indexingCoordinator: SemanticCorpusIndexingCoordinator? = nil
     ) {
         self.store = store
         self.runtime = runtime
-        corpusIndexer = IndexSemanticCorpus(
-            store: store,
-            telemetry: telemetry)
+        self.indexingCoordinator = indexingCoordinator
+            ?? SemanticCorpusIndexingCoordinator(
+                operation: IndexSemanticCorpus(
+                    store: store,
+                    telemetry: telemetry))
     }
 
     public func search(
@@ -35,8 +38,8 @@ public actor LocalLibrarySemanticSearch {
         try Task.checkCancellation()
         return try await runtime.withPreparedEmbedding(
             allowAssetDownload: false
-        ) { [corpusIndexer, store] embedder in
-            _ = try await corpusIndexer.nextBatch(
+        ) { [indexingCoordinator, store] embedder in
+            _ = try await indexingCoordinator.nextBatch(
                 using: embedder,
                 limit: 512)
             try Task.checkCancellation()

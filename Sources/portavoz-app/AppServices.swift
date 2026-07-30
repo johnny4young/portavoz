@@ -102,6 +102,10 @@ final class AppServices {
     /// Ask and Library share one governed Apple contextual-embedding runtime.
     @ObservationIgnored let semanticEmbeddingRuntime:
         AppSemanticEmbeddingRuntime
+    /// Library and Ask share one backfill owner in addition to one model.
+    /// It admits one semantic-index flight and coalesces redundant maintenance.
+    @ObservationIgnored let semanticIndexingCoordinator:
+        SemanticCorpusIndexingCoordinator
     /// One process-shared Library lane augments exact search without
     /// downloading assets as a side effect of typing.
     @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
@@ -238,12 +242,12 @@ final class AppServices {
             // worse than failing loudly at launch.
             fatalError("cannot open the Portavoz database: \(error)")
         }
-        let askUseCase = Self.makeAskUseCase(
+        let semanticSearch = Self.makeSemanticSearchComposition(
             store: store, usesTemporaryStore: usesTemporaryStore,
             semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry)
-        librarySemanticSearch = LocalLibrarySemanticSearch(
-            store: store, runtime: semanticEmbeddingRuntime,
-            telemetry: workloadTelemetry)
+        semanticIndexingCoordinator = semanticSearch.coordinator
+        librarySemanticSearch = semanticSearch.library
+        let askUseCase = semanticSearch.ask
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
             useCase: ResolveFirstRunExperience(
                 library: AppFirstRunLibraryReader(store: store))))

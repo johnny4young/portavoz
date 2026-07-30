@@ -9,20 +9,23 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let store: MeetingStore
     private let queryExpander: any AskQueryExpanding
     private let runtime: any SemanticEmbeddingRuntimeClient
-    private let corpusIndexer: IndexSemanticCorpus
+    private let indexingCoordinator: SemanticCorpusIndexingCoordinator
 
     public init(
         store: MeetingStore,
         queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
         runtime: any SemanticEmbeddingRuntimeClient,
-        telemetry: ResourceWorkloadTelemetry = .disabled
+        telemetry: ResourceWorkloadTelemetry = .disabled,
+        indexingCoordinator: SemanticCorpusIndexingCoordinator? = nil
     ) {
         self.store = store
         self.queryExpander = queryExpander
         self.runtime = runtime
-        corpusIndexer = IndexSemanticCorpus(
-            store: store,
-            telemetry: telemetry)
+        self.indexingCoordinator = indexingCoordinator
+            ?? SemanticCorpusIndexingCoordinator(
+                operation: IndexSemanticCorpus(
+                    store: store,
+                    telemetry: telemetry))
     }
 
     public func search(
@@ -39,11 +42,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     ) async throws -> [AskCitation] {
         try await runtime.withPreparedEmbedding(
             allowAssetDownload: true
-        ) { [corpusIndexer, queryExpander, store] embedder in
+        ) { [indexingCoordinator, queryExpander, store] embedder in
             // Index what's new, query lexically and semantically
             // (multi-query, cross-lingual when FM is around), then fuse by
             // reciprocal rank.
-            _ = try await corpusIndexer.all(
+            _ = try await indexingCoordinator.all(
                 using: embedder,
                 batchSize: 256)
 

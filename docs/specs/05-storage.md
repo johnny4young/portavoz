@@ -799,3 +799,6 @@ queries, and non-positive limits return no invalid hits. Comparable results:
 The 100k wall/CPU path is 72.3%/72.2% faster and passes both targets. D83
 retains exact schema-v7 Float32 BLOBs and rejects sqlite-vec, a new embedding
 table, approximation, and vector-cache invalidation at the measured scale.
+D176 changes no StorageKit contract: `NULL` embedding rows remain the durable
+retry ledger while ApplicationKit coalesces redundant Library/Ask backfill
+flights before they reach these exact read/write methods.

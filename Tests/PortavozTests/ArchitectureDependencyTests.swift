@@ -431,7 +431,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(protocolSource.contains(
             "func withPreparedEmbedding<Result: Sendable>("))
         XCTAssertTrue(services.contains(
-            "runtime: semanticEmbeddingRuntime"))
+            "semanticRuntime: semanticEmbeddingRuntime"))
 
         for transition in [
             "modelResidencyLedger.beginLoad(.semanticEmbedding)",
@@ -474,6 +474,56 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Governed semantic embedding runtime (D165)"))
         XCTAssertTrue(appSpec.contains(
             "### Semantic embedding residency adapter (D165)"))
+    }
+
+    func testAskAndLibraryShareOneBoundedSemanticIndexFlight() throws {
+        let coordinator = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticCorpusIndexingCoordinator.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let appAsk = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let ask = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let library = try Self.contents(
+            of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
+        let stressGate = try Self.contents(
+            of: "scripts/run-recording-reliability-stress.sh")
+        let releaseGate = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+
+        XCTAssertTrue(coordinator.contains(
+            "public actor SemanticCorpusIndexingCoordinator"))
+        XCTAssertTrue(coordinator.contains("private var active: Flight?"))
+        XCTAssertTrue(coordinator.contains("private var completeDemandCount = 0"))
+        XCTAssertTrue(coordinator.contains(
+            "guard active == nil, completeDemandCount == 0"))
+        XCTAssertTrue(coordinator.contains("flight.task.cancel()"))
+        XCTAssertFalse(coordinator.contains("[CheckedContinuation"))
+        XCTAssertTrue(services.contains(
+            "@ObservationIgnored let semanticIndexingCoordinator:"))
+        XCTAssertTrue(services.contains(
+            "semanticIndexingCoordinator = semanticSearch.coordinator"))
+        XCTAssertTrue(appAsk.contains(
+            "coordinator: SemanticCorpusIndexingCoordinator"))
+        XCTAssertTrue(appAsk.contains(
+            "indexingCoordinator: coordinator"))
+        XCTAssertTrue(ask.contains("indexingCoordinator.all("))
+        XCTAssertTrue(library.contains("indexingCoordinator.nextBatch("))
+        for gate in [stressGate, releaseGate] {
+            XCTAssertTrue(gate.contains(
+                "SemanticCorpusIndexingCoordinatorTests"))
+        }
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        XCTAssertTrue(architecture.contains(
+            "one process-shared semantic-indexing"))
+        XCTAssertTrue(decisions.contains("## D176"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Shared semantic-indexing flight (D176)"))
     }
 
     func testPressureDrivenReleaseUsesGovernorAndAllConcreteOwners() throws {
@@ -2597,8 +2647,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(indexer.contains("struct IndexSemanticCorpus"))
         XCTAssertTrue(indexer.contains("workloadClass: .maintenance"))
         XCTAssertTrue(indexer.contains("kind: .searchIndex"))
-        XCTAssertTrue(retrieval.contains("corpusIndexer.all("))
-        XCTAssertTrue(librarySearch.contains("corpusIndexer.nextBatch("))
+        XCTAssertTrue(retrieval.contains("indexingCoordinator.all("))
+        XCTAssertTrue(librarySearch.contains("indexingCoordinator.nextBatch("))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
             .appendingPathComponent("Sources/IntegrationsKit/AskPipeline.swift").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot

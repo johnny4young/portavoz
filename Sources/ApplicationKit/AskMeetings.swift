@@ -112,7 +112,8 @@ public struct AskMeetings: ApplicationUseCase {
     public static func local(
         store: MeetingStore,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
-        telemetry: ResourceWorkloadTelemetry = .disabled
+        telemetry: ResourceWorkloadTelemetry = .disabled,
+        indexingCoordinator: SemanticCorpusIndexingCoordinator? = nil
     ) -> Self {
         let intelligence = OnDeviceAskMeetingIntelligence()
         return Self(
@@ -120,7 +121,8 @@ public struct AskMeetings: ApplicationUseCase {
                 store: store,
                 queryExpander: intelligence,
                 runtime: semanticRuntime,
-                telemetry: telemetry),
+                telemetry: telemetry,
+                indexingCoordinator: indexingCoordinator),
             answering: intelligence)
     }
 

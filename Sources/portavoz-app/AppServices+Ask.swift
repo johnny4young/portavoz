@@ -31,21 +31,38 @@ extension AppServices {
         AskModel(client: askClient)
     }
 
-    static func makeAskUseCase(
+    static func makeSemanticSearchComposition(
         store: MeetingStore,
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry
-    ) -> AskMeetings {
-        guard usesTemporaryStore else {
-            return .local(
+    ) -> (
+        coordinator: SemanticCorpusIndexingCoordinator,
+        ask: AskMeetings,
+        library: LocalLibrarySemanticSearch
+    ) {
+        let coordinator = SemanticCorpusIndexingCoordinator(
+            operation: IndexSemanticCorpus(
+                store: store,
+                telemetry: telemetry))
+        let ask: AskMeetings
+        if usesTemporaryStore {
+            ask = AskMeetings(
+                retrieval: UITestAskMeetingRetrieval(store: store),
+                answering: UITestAskMeetingAnswering())
+        } else {
+            ask = .local(
                 store: store,
                 semanticRuntime: semanticRuntime,
-                telemetry: telemetry)
+                telemetry: telemetry,
+                indexingCoordinator: coordinator)
         }
-        return AskMeetings(
-            retrieval: UITestAskMeetingRetrieval(store: store),
-            answering: UITestAskMeetingAnswering())
+        let library = LocalLibrarySemanticSearch(
+            store: store,
+            runtime: semanticRuntime,
+            telemetry: telemetry,
+            indexingCoordinator: coordinator)
+        return (coordinator, ask, library)
     }
 }
 

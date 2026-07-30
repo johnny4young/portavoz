@@ -551,15 +551,23 @@ selected hit emits the same one-shot meeting/timestamp seek request used by Ask
 evidence before routing.
 
 Ask and Library delegate corpus backfill to one `IndexSemanticCorpus`
-ApplicationKit operation. Library requests one bounded batch; the released Ask
-path still drains all missing rows before hybrid retrieval. Both paths mark
-micro-segments with an empty vector, validate the embedder's result count
-before persistence, and emit one content-free maintenance/search-index
-interval. They also borrow one process-owned semantic runtime through an
-injected ApplicationKit contract. The exact residency lease covers corpus
-maintenance, query embedding, and semantic retrieval as one operation, so
-Library and Ask cannot release or replace the model midway through a query.
-Moving the drain off the Ask request path and adding governor admission remain
+ApplicationKit operation behind one process-shared semantic-indexing
+coordinator. Library requests one bounded batch; redundant Library requests
+coalesce while any flight is active. The released Ask path still drains all
+missing rows before hybrid retrieval: a complete demand joins an active bounded
+flight, then drains the durable remainder while new bounded requests coalesce.
+There is no pending-request array and never more than one embedding flight.
+Cancelling the final waiter cancels the worker before persistence; another
+borrower keeps shared work alive. Both paths mark micro-segments with an empty
+vector, validate the embedder's result count before persistence, and emit
+content-free maintenance/search-index intervals. Missing embeddings remain
+durable `NULL` rows, so coalescing loses no corpus evidence.
+
+Both paths also borrow one process-owned semantic runtime through an injected
+ApplicationKit contract. The exact residency lease covers corpus maintenance,
+query embedding, and semantic retrieval as one operation, so Library and Ask
+cannot release or replace the model midway through a query. Moving the drain
+off the Ask request path and adding governor checkpoint admission remain
 unimplemented.
 
 ## Durable recording lifecycle

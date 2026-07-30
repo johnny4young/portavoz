@@ -85,7 +85,8 @@ public enum SemanticCorpusIndexingError: Error, Equatable, LocalizedError {
 /// One application-owned semantic corpus maintenance operation.
 ///
 /// Ask currently drains all missing rows and Library search advances one
-/// bounded batch. Keeping both paths on this operation preserves released
+/// bounded batch. Process composition coordinates those calls through one
+/// shared flight owner. Keeping both paths on this operation preserves released
 /// behavior while giving background indexing one tested extraction seam.
 public struct IndexSemanticCorpus: Sendable {
     private static let minimumTextLength = 20

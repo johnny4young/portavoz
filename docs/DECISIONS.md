@@ -5564,3 +5564,37 @@ Accelerate envelope and replacement-sensitive benchmark remain unchanged.
 size or audio fidelity. A route-scoped cancellation boundary prevents obsolete
 whole-file IO from accumulating during review navigation while preserving the
 stateless design and the finalized recording as the authoritative evidence.
+
+## D176 — Share one bounded semantic-indexing flight (Jul 2026)
+
+**Context:** D152 extracted one semantic-corpus indexing operation and D165
+gave Library and Ask one process-owned embedding runtime. The two surfaces
+still constructed separate `IndexSemanticCorpus` values. Since actors are
+reentrant, overlapping Library typing and Ask retrieval could read the same
+durable missing rows, embed them twice, and contend to persist equivalent
+vectors. A general request queue would merely move that duplication into an
+unbounded maintenance backlog.
+
+**Decision:** app composition owns one
+`SemanticCorpusIndexingCoordinator` actor and injects it into Library and Ask.
+The coordinator admits one active backfill task. Library requests at most one
+bounded batch and coalesces when any flight or complete demand exists. Ask
+joins an active bounded flight, then drains all still-missing rows before its
+released hybrid retrieval; concurrent complete callers join the same drain.
+A scalar complete-demand count prevents new bounded work from cutting between
+those stages. The coordinator retains only the active task and waiter
+identities, never a pending-request array.
+
+Cancelling one waiter preserves work still borrowed elsewhere. Cancelling the
+last waiter cancels the worker, and `IndexSemanticCorpus` checks cancellation
+after embedding and before persistence. Coalesced Library requests lose no
+evidence because missing embeddings remain durable `NULL` rows and are
+rediscovered by a later pass. Exact FTS publishes independently and neither
+schema-v7 Float32 BLOB storage nor exact-cosine ranking changes.
+
+**Rationale:** one flight bounds duplicate CPU, memory, database, and model
+work without turning search into a lossy queue. Durable missing-row state is
+the retry ledger, so coalescing an opportunistic signal is safe while Ask's
+complete contract remains intact. Background indexing and resource-governor
+checkpoint admission remain separate slices rather than hidden policy inside
+the coordinator.
