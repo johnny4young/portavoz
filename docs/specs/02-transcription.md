@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence).
 
 ## Roles and engines (D7)
 
@@ -33,6 +33,14 @@ Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 p
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+
+Live transcript presentation also receives a content-free quality signal when
+the accepted system channel remains at the PCM ceiling. This warning is
+derived from the durable writer's compact level evidence, uses captured
+duration rather than callback count, and never changes Parakeet input,
+captions, or stored audio. It tells the user that the source may already be
+distorted; Refine remains the explicit quality pass and field WER/CER remains
+the acceptance measure.
 
 Standalone terminal transcription enters
 `ApplicationKit.TranscribeAudioFile`. The use case admits a readable file,

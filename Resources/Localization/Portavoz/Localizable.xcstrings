@@ -8430,6 +8430,16 @@
           }
         }
       }
+    },
+    "The other participants' audio is clipping — transcript accuracy may be lower.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio de los demás se está saturando — la transcripción puede ser menos precisa."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

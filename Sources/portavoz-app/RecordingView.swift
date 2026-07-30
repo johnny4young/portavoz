@@ -24,6 +24,9 @@ struct RecordingView: View {
     /// One-tap dismiss for the "no incoming audio" nudge (in-person meetings
     /// legitimately have a silent system channel).
     @State private var systemWarningDismissed = false
+    /// A hard-limited call may remain usable, so the quality warning is
+    /// dismissable without changing or attenuating captured audio.
+    @State private var clippingWarningDismissed = false
     /// One-tap dismiss for the "capturing app directly" note.
     @State private var appTapNoteDismissed = false
 
@@ -47,6 +50,9 @@ struct RecordingView: View {
                 }
                 if controller.systemAudioMissing && !systemWarningDismissed {
                     systemAudioBanner
+                }
+                if controller.systemAudioClipping && !clippingWarningDismissed {
+                    systemAudioClippingBanner
                 }
                 if controller.systemCaptureHealth != .healthy {
                     systemCaptureHealthBanner
@@ -502,6 +508,27 @@ extension RecordingView {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 20)
+    }
+
+    /// Repeated ceiling hits mean the call source is likely already distorted.
+    /// Portavoz reports the quality risk but never changes the call graph or
+    /// rewrites the evidence that Refine will later review.
+    var systemAudioClippingBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                "The other participants' audio is clipping — transcript accuracy may be lower.",
+                systemImage: "waveform.badge.exclamationmark")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Button("Dismiss") { clippingWarningDismissed = true }
+                .buttonStyle(.plain)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("recording-system-audio-clipping-dismiss")
+        }
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("recording-system-audio-clipping")
     }
 
     /// Shown when a Bluetooth output made Portavoz tap the meeting app's

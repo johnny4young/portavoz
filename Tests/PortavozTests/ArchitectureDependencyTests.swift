@@ -622,6 +622,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "let signal = PersistedChunkSignal.measure(chunk.samples)"))
         XCTAssertTrue(session.contains(
             "onLevel?(PersistedAudioLevel("))
+        XCTAssertTrue(session.contains(
+            "duration: chunk.duration"))
         XCTAssertTrue(application.contains(
             "public let level: StartRecordingLevelHandler"))
         XCTAssertTrue(adapter.contains(
@@ -633,6 +635,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "cadence: Duration = .milliseconds(50)",
             "snapshot.microphoneIsLow",
             "snapshot.systemAudioIsMissing",
+            "snapshot.systemAudioIsClipping",
+            "minimumObservedDuration",
             "generation &+= 1",
         ] {
             XCTAssertTrue(

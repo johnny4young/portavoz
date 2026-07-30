@@ -155,7 +155,8 @@ public actor RecordingSession {
                         channel: chunk.channel,
                         peak: signal.peak,
                         rms: signal.rms,
-                        timestamp: chunk.timestamp))
+                        timestamp: chunk.timestamp,
+                        duration: chunk.duration))
                 }
                 await self?.report(
                     peak: peak,

@@ -41,6 +41,63 @@ final class RecordingLevelBufferTests: XCTestCase {
         XCTAssertTrue(snapshot.systemAudioIsMissing)
     }
 
+    func testOneCeilingPeakDoesNotReportClipping() throws {
+        var buffer = RecordingLevelBuffer()
+        let generation = try XCTUnwrap(buffer.submit(
+            sample(channel: .system, peak: 1, rms: 0.4)))
+        for _ in 1...300 {
+            _ = buffer.submit(sample(channel: .system, peak: 0.8, rms: 0.4))
+        }
+
+        let snapshot = try XCTUnwrap(buffer.drain(generation: generation))
+        XCTAssertFalse(snapshot.systemAudioIsClipping)
+    }
+
+    func testSustainedCeilingReportsClippingAndCleanAudioRecovers() throws {
+        var buffer = RecordingLevelBuffer()
+        let generation = try XCTUnwrap(buffer.submit(
+            sample(channel: .system, peak: 1, rms: 0.4)))
+        for _ in 1..<200 {
+            _ = buffer.submit(sample(channel: .system, peak: 1, rms: 0.4))
+        }
+
+        var snapshot = try XCTUnwrap(buffer.drain(generation: generation))
+        XCTAssertTrue(snapshot.systemAudioIsClipping)
+
+        let recoveryGeneration = try XCTUnwrap(buffer.submit(
+            sample(channel: .system, peak: 0.8, rms: 0.4)))
+        for _ in 1...400 {
+            _ = buffer.submit(sample(channel: .system, peak: 0.8, rms: 0.4))
+        }
+        snapshot = try XCTUnwrap(buffer.drain(generation: recoveryGeneration))
+        XCTAssertFalse(snapshot.systemAudioIsClipping)
+    }
+
+    func testCeilingPolicyUsesCapturedTimeAcrossCallbackSizes() {
+        for duration in [0.005, 0.02, 0.2] {
+            var detector = SustainedCeilingDetector()
+            let count = Int(ceil(
+                SustainedCeilingDetector.minimumObservedDuration / duration))
+            for _ in 0..<count {
+                _ = detector.observe(peak: 1, duration: duration)
+            }
+            XCTAssertTrue(
+                detector.isClipping,
+                "callback duration \(duration) must not change the threshold")
+        }
+    }
+
+    func testInvalidDurationDoesNotAdvanceCeilingPolicy() {
+        var detector = SustainedCeilingDetector()
+        let invalidDurations: [TimeInterval] = [
+            0, -.infinity, .infinity, .nan,
+        ]
+        for duration in invalidDurations {
+            XCTAssertFalse(detector.observe(peak: 1, duration: duration))
+        }
+        XCTAssertFalse(detector.isClipping)
+    }
+
     func testCancelFencesScheduledAndFutureDelivery() throws {
         var buffer = RecordingLevelBuffer()
         let staleGeneration = try XCTUnwrap(buffer.submit(
@@ -57,13 +114,15 @@ final class RecordingLevelBufferTests: XCTestCase {
     private func sample(
         channel: AudioChannel,
         peak: Float = 0,
-        rms: Float = 0
+        rms: Float = 0,
+        duration: TimeInterval = 0.01
     ) -> PersistedAudioLevel {
         PersistedAudioLevel(
             channel: channel,
             peak: peak,
             rms: rms,
-            timestamp: 0)
+            timestamp: 0,
+            duration: duration)
     }
 }
 
@@ -80,7 +139,8 @@ final class RecordingLevelRelayTests: XCTestCase {
                 channel: .microphone,
                 peak: Float(index) / 100,
                 rms: 0,
-                timestamp: TimeInterval(index)))
+                timestamp: TimeInterval(index),
+                duration: 0.01))
         }
         try await Task.sleep(for: .milliseconds(40))
 
@@ -94,7 +154,8 @@ final class RecordingLevelRelayTests: XCTestCase {
             channel: .microphone,
             peak: 0.5,
             rms: 0,
-            timestamp: 100))
+            timestamp: 100,
+            duration: 0.01))
         try await Task.sleep(for: .milliseconds(40))
         XCTAssertEqual(probe.snapshots.count, 2)
     }

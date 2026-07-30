@@ -5479,3 +5479,32 @@ wording, lexical fallback must be narrow enough not to collapse repeated later
 questions, and deterministic task semantics remain testable across every local
 or BYOK provider. Presentation repair belongs after generation, never in the
 spoken record.
+
+## D173 — Treat live clipping as evidence, not gain control (Jul 2026)
+
+**Context:** a July 30 field recording completed successfully but its system
+channel reached 0 dBFS and the live transcript was visibly inaccurate. Final
+per-file peak evidence can diagnose the meeting only after Stop. Detecting this
+condition from callback counts would also be route-dependent because Core Audio
+buffer sizes can change across built-in devices and AirPods.
+
+**Decision:** the compact `PersistedAudioLevel` emitted by the durable writer
+pass includes the accepted chunk duration. One recording-scoped,
+constant-space detector accumulates sustained system-channel ceiling exposure
+with hysteresis and measures policy thresholds in captured seconds rather than
+callback count. The latest-value relay publishes the resulting transition with
+the existing 20 Hz presentation snapshot. A dismissible warning explains the
+live-transcript quality risk.
+
+The detector does not rescan PCM, delay durable append, apply gain, alter the
+call graph, rewrite audio, or suppress transcript rows. Invalid or zero
+durations do not advance the policy, and each observation is bounded before it
+changes exposure. Unit coverage proves that an isolated ceiling peak is
+ignored, sustained exposure enters the warning, clean audio exits it, and
+cancellation still fences delivery. Scoped bilingual XCUITest uses only the
+compact level seam and proves visible copy plus dismissal.
+
+**Rationale:** Portavoz can honestly surface damaged input without becoming an
+unverified live audio processor. Captured time keeps the result stable across
+route-specific buffer sizes, while same-pass compact evidence preserves the
+audio-first boundary and makes future thresholds deterministic and testable.

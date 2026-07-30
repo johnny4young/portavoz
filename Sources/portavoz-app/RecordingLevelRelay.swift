@@ -6,6 +6,61 @@ struct RecordingLevelSnapshot: Equatable, Sendable {
     var microphoneIsLow = false
     var hasSystemSamples = false
     var systemAudioIsMissing = false
+    var systemAudioIsClipping = false
+}
+
+/// Constant-space detector for a hard-limited incoming channel. It measures
+/// captured time rather than callback count so route-specific buffer sizes do
+/// not change the policy. One isolated full-scale peak is ordinary speech
+/// evidence, not a warning; sustained recent ceiling exposure indicates likely
+/// distortion.
+struct SustainedCeilingDetector {
+    static let ceiling: Float = 0.999
+    static let minimumObservedDuration: TimeInterval = 2
+    static let enterExposureDuration: TimeInterval = 1
+    static let exitExposureDuration: TimeInterval = 0.1
+    static let maximumObservationDuration: TimeInterval = 0.25
+    static let cleanDecayRate = 0.5
+    private static let durationTolerance: TimeInterval = 1e-9
+
+    private(set) var isClipping = false
+    private var observedDuration: TimeInterval = 0
+    private var ceilingExposureDuration: TimeInterval = 0
+
+    mutating func observe(peak: Float, duration: TimeInterval) -> Bool {
+        guard duration.isFinite, duration > 0 else {
+            return isClipping
+        }
+        let boundedDuration = min(duration, Self.maximumObservationDuration)
+        observedDuration = min(
+            Self.minimumObservedDuration,
+            observedDuration + boundedDuration)
+        if peak >= Self.ceiling {
+            ceilingExposureDuration = min(
+                Self.minimumObservedDuration,
+                ceilingExposureDuration + boundedDuration)
+        } else {
+            ceilingExposureDuration = max(
+                0,
+                ceilingExposureDuration
+                    - boundedDuration * Self.cleanDecayRate)
+        }
+
+        guard observedDuration
+            >= Self.minimumObservedDuration - Self.durationTolerance
+        else {
+            return false
+        }
+        if isClipping {
+            isClipping =
+                ceilingExposureDuration > Self.exitExposureDuration
+        } else {
+            isClipping =
+                ceilingExposureDuration
+                    >= Self.enterExposureDuration - Self.durationTolerance
+        }
+        return isClipping
+    }
 }
 
 /// Pure one-slot state machine behind the recording meter relay. Every raw
@@ -23,6 +78,7 @@ struct RecordingLevelBuffer {
     private var voicedMicrophoneChunks = 0
     private var smoothedSystemRMS: Float = 0
     private var systemChunks = 0
+    private var systemCeilingDetector = SustainedCeilingDetector()
 
     mutating func submit(_ sample: PersistedAudioLevel) -> UInt64? {
         guard acceptsSubmissions else { return nil }
@@ -47,6 +103,10 @@ struct RecordingLevelBuffer {
             snapshot.hasSystemSamples = true
             snapshot.systemAudioIsMissing =
                 systemChunks > 500 && smoothedSystemRMS < 0.003
+            snapshot.systemAudioIsClipping =
+                systemCeilingDetector.observe(
+                    peak: sample.peak,
+                    duration: sample.duration)
         case .room:
             return nil
         }
@@ -80,6 +140,7 @@ struct RecordingLevelBuffer {
         voicedMicrophoneChunks = 0
         smoothedSystemRMS = 0
         systemChunks = 0
+        systemCeilingDetector = SustainedCeilingDetector()
     }
 }
 

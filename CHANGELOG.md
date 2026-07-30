@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 30, 2026
 
+- **🎚️ Hear distortion before it harms the transcript** — Portavoz now warns when the other participants' incoming audio stays at the digital ceiling, so you can fix the call source before live captions lose more accuracy.
 - **🧭 One question, one Apuntador card** — A growing live question now updates its existing answer instead of leaving near-duplicate or contradictory cards, and generated questions use normal sentence case instead of headline-style capitalization.
 - **✅ Decisions are not tasks** — Speaker-prefixed decision restatements no longer reappear as action items; only concrete future commitments survive as work to do.
 - **📝 Live summaries do less and stay coherent** — Captions and notes now wake one bounded summary cycle instead of a permanent timer; long-call backlog is processed in small batches, and a failed or cancelled pass cannot leave half-applied summary state.

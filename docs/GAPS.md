@@ -104,15 +104,18 @@ visible release blocker rather than being inferred from deterministic tests.
 - **System callback recovery (D120, field 21 Jul 2026)**: one real recording's system channel stopped advancing after 33:20 while microphone capture continued for more than two hours. In another real call, reproduce a complete callback stall and prove that Portavoz shows the remote-audio warning within about eight seconds, keeps microphone capture active, rebuilds the same process tap, resumes the same system timeline, and clears the warning after frames return. Deterministic source/session coverage is complete, and scoped XCUITest proves the prolonged-outage Stop exits capture into the explicit typed no-audio Retry when the fixture publishes no file; real Core Audio recovery and durable-file publication are not yet claimed.
 - **Stop durability after rejected live payload (D127, field 22 Jul 2026)**: in the next real call, Stop must open the saved meeting without `recording.stop.snapshot.persistence.failed`. Export redacted diagnostics before Refine and prove both finalized channels, a non-recording lifecycle, and either the preserved live transcript or an explicit durable transcription job. The exhaustive transaction and launch-recovery regressions are complete; field closure is not yet claimed.
 - **Mixed-language field integrity (D130–D132/D142, field 24–27 Jul 2026)**: in the next Spanish/English call, verify that an overlapping exact two-word or rolling-edge speaker copy produces one direct-system live row rather than alternating `Me`/`Them` copies, sequential acknowledgements remain separate, stable same-voice rows read as one paragraph, and unresolved generic `Them` rows remain separate. Stop must open a non-recording meeting, automatic Refine must preserve each turn's spoken language, and generated action owners must be cast labels/confirmed names or unassigned. Reinstall `Portavoz Dev.app` before one repeat and confirm Settings still reports the verified Whisper variant as downloaded; a checksum-only pass must say it is checking local files, and a percentage labeled download must correspond to missing/corrupt artifacts.
-- **July 30 live-quality evidence (D172/T23)**: an 8:55 real call reached
+- **July 30 live-quality evidence (D172/D173/T23)**: an 8:55 real call reached
   `ready` with successful transcription, diarization, and summary jobs, but its
   redacted report showed a clipped 0 dBFS system channel, a weak −41.63 dBFS
   microphone RMS, only 2 microphone rows among 94 transcript rows, and three
   successful Apuntador generations within 29 seconds. Deterministic card
   admission now makes one source-turn lineage replace its earlier card and
-  summary admission removes attribution-shaped decision/task copies. Field
-  validation remains open for live WER/CER, card usefulness, business-quality
-  decisions/tasks, and the underlying clipped capture signal.
+  summary admission removes attribution-shaped decision/task copies. The
+  persisted writer pass now exposes sustained system-channel ceiling evidence
+  through a dismissible live warning without changing the call or recording.
+  Field validation remains open for live WER/CER, card usefulness,
+  business-quality decisions/tasks, whether the warning appears on the next
+  genuinely clipped call, and the upstream source of that clipping.
 - **Clear playback quality (D144)**: after a built-in-speaker call with both
   system and microphone channels, compare `Clear playback` on and off over
   remote-only speech, local-only speech, and one overlapping turn. The clear

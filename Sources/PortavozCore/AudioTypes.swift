@@ -42,16 +42,19 @@ public struct PersistedAudioLevel: Equatable, Sendable {
     public let peak: Float
     public let rms: Float
     public let timestamp: TimeInterval
+    public let duration: TimeInterval
 
     public init(
         channel: AudioChannel,
         peak: Float,
         rms: Float,
-        timestamp: TimeInterval
+        timestamp: TimeInterval,
+        duration: TimeInterval
     ) {
         self.channel = channel
         self.peak = peak
         self.rms = rms
         self.timestamp = timestamp
+        self.duration = duration
     }
 }

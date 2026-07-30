@@ -291,6 +291,7 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(level.peak, 1, accuracy: 0.0001)
         XCTAssertEqual(level.rms, 0.790_569, accuracy: 0.0001)
         XCTAssertEqual(level.timestamp, 4.25)
+        XCTAssertEqual(level.duration, 2.0 / 48_000, accuracy: 0.000_001)
     }
 
     func testPublisherNeverOverwritesAnExistingFinalFile() throws {

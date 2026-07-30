@@ -61,6 +61,7 @@ extension XCUIApplication {
         simulateSequoiaCapabilities: Bool = false,
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
+        simulateSystemAudioClipping: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
         simulateAppIntent: Bool = false,
@@ -102,6 +103,9 @@ extension XCUIApplication {
         }
         if simulateSystemCaptureStall {
             app.launchArguments.append("-simulate-system-capture-stall")
+        }
+        if simulateSystemAudioClipping {
+            app.launchArguments.append("-simulate-system-audio-clipping")
         }
         if simulateLiveTranscriptionAttach {
             app.launchArguments.append("-simulate-live-transcription-attach")

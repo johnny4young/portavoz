@@ -15,6 +15,8 @@ extension AppServices {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {
             runtime = UITestSystemCaptureStallRuntime()
+        } else if isSystemAudioClippingFixture {
+            runtime = UITestSystemAudioClippingRuntime()
         } else if isLiveTranscriptBrowsingFixture {
             runtime = UITestLiveTranscriptBrowsingRuntime()
         } else if isLiveTranscriptionAttachFixture {
@@ -42,6 +44,12 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
             && arguments.contains("-simulate-system-capture-stall")
+    }
+
+    private var isSystemAudioClippingFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-system-audio-clipping")
     }
 
     private var isLiveTranscriptionAttachFixture: Bool {
@@ -109,6 +117,36 @@ private actor UITestSystemCaptureStallSession: StartRecordingSession {
     func voiceprint() async -> Voiceprint? { nil }
     func cancelVoiceprintRead() async {}
     nonisolated func setMicrophoneMuted(_ value: Bool) {}
+}
+
+private struct UITestSystemAudioClippingRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        let observationCount = Int(
+            SustainedCeilingDetector.minimumObservedDuration / 0.01)
+        for index in 0..<observationCount {
+            request.callbacks.level(PersistedAudioLevel(
+                channel: .system,
+                peak: 1,
+                rms: 0.4,
+                timestamp: TimeInterval(index) / 100,
+                duration: 0.01))
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
 }
 
 private struct UITestLiveTranscriptionAttachRuntime: StartRecordingRuntime {

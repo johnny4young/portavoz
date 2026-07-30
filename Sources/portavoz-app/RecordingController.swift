@@ -131,6 +131,10 @@ final class RecordingController {
     /// incoming audio isn't reaching the tap (or an in-person meeting, which
     /// the dismissable banner lets you wave off).
     private(set) var systemAudioMissing = false
+    /// Repeated full-scale incoming chunks indicate a hard-limited signal that
+    /// can lower live-ASR accuracy. This is presentation evidence only: capture
+    /// stays raw and no sample is attenuated or rewritten.
+    private(set) var systemAudioClipping = false
     /// Non-empty when this recording taps meeting apps by process (Bluetooth
     /// output) instead of the global device output — the AirPods-HFP workaround.
     /// Names the apps being captured for the on-screen note.
@@ -313,6 +317,7 @@ final class RecordingController {
         micLevelLow = false
         hasSystemLevelSamples = false
         systemAudioMissing = false
+        systemAudioClipping = false
         systemCaptureHealth = .healthy
         systemRecoveryNoticeTask?.cancel()
         systemRecoveryNoticeTask = nil
@@ -729,6 +734,9 @@ private extension RecordingController {
         hasSystemLevelSamples = snapshot.hasSystemSamples
         if systemAudioMissing != snapshot.systemAudioIsMissing {
             systemAudioMissing = snapshot.systemAudioIsMissing
+        }
+        if systemAudioClipping != snapshot.systemAudioIsClipping {
+            systemAudioClipping = snapshot.systemAudioIsClipping
         }
         if liveTranscriptState == .available {
             startLiveDiarizationIfReady()

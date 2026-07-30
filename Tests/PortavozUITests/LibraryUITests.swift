@@ -136,6 +136,33 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testRecordingWarnsWhenIncomingAudioClips() {
+        let app = XCUIApplication.portavoz(simulateSystemAudioClipping: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
+        record.click()
+
+        let warning = app.control(withIdentifier: "recording-system-audio-clipping")
+        XCTAssertTrue(
+            warning.waitForExistence(timeout: 10),
+            "sustained incoming full-scale audio must expose its transcript-quality risk")
+        let expected = isSpanish
+            ? "El audio de los demás se está saturando — la transcripción puede ser menos precisa."
+            : "The other participants' audio is clipping — transcript accuracy may be lower."
+        XCTAssertTrue(app.staticTexts[expected].exists)
+        attachScreenshot(of: app, named: "recording-system-audio-clipping")
+
+        let dismiss = app.buttons["recording-system-audio-clipping-dismiss"]
+        XCTAssertTrue(dismiss.exists)
+        dismiss.click()
+        XCTAssertFalse(warning.exists)
+    }
+
+    @MainActor
     func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() {
         let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()

@@ -906,18 +906,23 @@ continue to write audio without model I/O or waits.
 Bounded persisted-level presentation is the first bounded live-pipeline
 boundary. After a writer accepts one PCM chunk, `RecordingSession` computes its
 peak and RMS in the same scan that accumulates final media-health evidence. It
-emits a compact `PersistedAudioLevel` after durable append; optional app
-presentation never scans that full sample array again.
+emits a compact `PersistedAudioLevel` with channel, timestamp, and accepted
+chunk duration after durable append; optional app presentation never scans that
+full sample array again.
 
 The recording controller submits those compact values synchronously to one
 lock-protected latest-value slot. Every value still updates the exact low-mic
-and missing-system-audio diagnostic state in O(1), but at most one MainActor
-delivery is scheduled per 50 ms display window. The delivery contains the
-newest complete snapshot; cancellation advances a generation and permanently
-fences late callbacks from the closed session. This coalescing can discard only
-obsolete visual meter states. Durable audio, health events, live-transcription
-feeds, and final transcript evidence remain on their existing lossless or
-explicitly bounded paths and cannot be backpressured by the meter.
+and missing-system-audio diagnostic state in O(1). A constant-space
+duration-based hysteresis policy also observes sustained system-channel
+ceiling exposure. It is stable across route-specific callback sizes and
+publishes only a transcript-quality warning; it never applies gain, changes the
+call graph, or rewrites captured evidence. At most one MainActor delivery is
+scheduled per 50 ms display window. The delivery contains the newest complete
+snapshot; cancellation advances a generation and permanently fences late
+callbacks from the closed session. This coalescing can discard only obsolete
+visual meter states. Durable audio, health events, live-transcription feeds,
+and final transcript evidence remain on their existing lossless or explicitly
+bounded paths and cannot be backpressured by the meter.
 
 Signal-driven bounded live translation is the second bounded live-pipeline
 boundary. One recording-scoped broadcast hub wakes the active Apple
