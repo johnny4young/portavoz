@@ -81,6 +81,8 @@ final class AppServices {
         AppModelResidencyLedger()
     /// Content-free workload spans are installed once at the composition root.
     @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
+    /// The narrow platform bridge for pressure-driven idle model release.
+    @ObservationIgnored var resourcePressureMonitor: AppResourcePressureMonitor?
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
     /// Shared async credential workflow for Settings and publishing surfaces.
     @ObservationIgnored let secrets: ManageSecrets

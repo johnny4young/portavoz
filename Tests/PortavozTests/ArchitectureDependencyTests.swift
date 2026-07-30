@@ -359,9 +359,10 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "portavoz-app/AppServices+DiarizationModels.swift",
                 "portavoz-app/AppServices+LiveSpeechModels.swift",
                 "portavoz-app/AppServices+MLXModels.swift",
+                "portavoz-app/AppServices+ResourceGovernor.swift",
                 "portavoz-app/AppServices+WhisperModels.swift",
             ],
-            "Only fully migrated runtime adapters may report residency")
+            "Only runtime adapters and the governor coordinator may report residency")
 
         XCTAssertEqual(
             try Self.sourceMatches(
@@ -473,6 +474,50 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Governed semantic embedding runtime (D165)"))
         XCTAssertTrue(appSpec.contains(
             "### Semantic embedding residency adapter (D165)"))
+    }
+
+    func testPressureDrivenReleaseUsesGovernorAndAllConcreteOwners() throws {
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
+        let monitor = try Self.contents(
+            of: "Sources/portavoz-app/AppResourcePressureMonitor.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
+        let ledger = try Self.contents(
+            of: "Sources/portavoz-app/AppModelResidencyLedger.swift")
+
+        XCTAssertTrue(adapter.contains(
+            "ResourceGovernorPolicy().evaluate("))
+        XCTAssertTrue(adapter.contains(
+            "residentModels: modelResidencyLedger.residentModels"))
+        for release in [
+            "releaseLiveSpeechRuntime()",
+            "releaseWhisper()",
+            "releaseDiarizationRuntime()",
+            "await releaseMLXRuntime()",
+            "await semanticEmbeddingRuntime.release()",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(release),
+                "Pressure release adapter is missing \(release)")
+        }
+        XCTAssertTrue(monitor.contains(
+            "DispatchSource.makeMemoryPressureSource("))
+        XCTAssertTrue(monitor.contains(
+            "ProcessInfo.thermalStateDidChangeNotification"))
+        XCTAssertTrue(app.contains(
+            "services.startResourcePressureMonitoring()"))
+        XCTAssertTrue(ledger.contains(
+            "observer?(lease.family)"))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Pressure-driven residency release"))
+        XCTAssertTrue(decisions.contains("## D166"))
+        XCTAssertTrue(appSpec.contains(
+            "### Pressure-driven residency release (D166)"))
     }
 
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {

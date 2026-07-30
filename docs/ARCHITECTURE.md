@@ -731,10 +731,12 @@ recovery; live-interactive work remains admitted with reduced concurrency.
 Battery defers maintenance until external power is available; Low Power Mode
 has a separate disablement condition so an already plugged-in Mac never waits
 for an impossible transition. The policy performs no I/O, model operation,
-task creation, scheduling, or eviction and is not yet installed in application
-workflows. Numeric memory and disk thresholds are intentionally absent until
-accepted multi-host evidence exists. No application adapter currently applies
-the decision to scheduling, residency, or concurrency.
+task creation, scheduling, or eviction. Numeric memory and disk thresholds are
+intentionally absent until accepted multi-host evidence exists. Application
+composition currently applies only the policy's idle-model eviction output
+when macOS reports memory or serious thermal pressure. Admission, deferral,
+checkpoint, scheduler, and concurrency decisions remain inactive until
+accepted multi-host evidence defines their adapters.
 
 Core additionally owns a pure model-residency lifecycle ledger. It records the
 closed heavyweight families as unloaded, loading, resident, or releasing;
@@ -828,6 +830,25 @@ the OS-managed assets. No speculative idle TTL is introduced: a governor
 adapter may request immediate release, and any delayed policy still
 requires accepted per-family evidence. The ledger interprets neither measured
 footprint bytes nor elapsed idle time.
+
+Pressure-driven residency release is the first narrow application adapter for
+the pure governor. One process-scoped macOS monitor maps
+`DispatchSourceMemoryPressure` and `ProcessInfo` thermal notifications to the
+closed Core pressure enums, then asks the existing policy for its stable list
+of idle families. The adapter carries no meeting, model, path, prompt, or audio
+payload. It is disabled for disposable UI stores and isolated resource
+benchmarks so their evidence remains deterministic.
+
+Each requested family still releases through its concrete capability owner:
+AppServices detaches Parakeet, Whisper, diarization weights, or the MLX
+container, while the semantic actor drops its prepared embedding state. Every
+owner keeps the existing two-step ledger transition, so a family with an
+active lease is never detached. If pressure arrives while a model is busy, the
+composition ledger publishes one last-use notification after releasing its
+lock; the MainActor adapter then re-evaluates the monitor's current state and
+releases the now-idle family if pressure persists. No pressure callback or
+ledger observer enters `AudioCaptureKit`, waits on capture, deletes verified
+assets, changes an idle TTL, or replaces either existing scheduler.
 
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,

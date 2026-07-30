@@ -5199,3 +5199,40 @@ one process runtime removes repeated Ask setup, exact leases prevent release
 during indexing or retrieval, and the composition-only lock preserves Core's
 deterministic architecture while allowing actors with different executors to
 report to one source of residency truth.
+
+## D166 — Host pressure releases only idle leased model families (Jul 2026)
+
+**Context:** the pure governor already returned a deterministic idle-family
+eviction list and all five heavyweight model families had exact process
+residency leases, but the app did not connect macOS pressure to those owners.
+Existing delayed release fences could leave hundreds of megabytes resident
+after the host reported memory or serious thermal pressure. A one-shot
+pressure event could also arrive while a model was active and be lost by the
+time its final borrower finished.
+
+**Decision:** application composition installs one content-free
+`AppResourcePressureMonitor` over macOS memory-pressure events and ProcessInfo
+thermal notifications. It maps only categorical state into
+`ResourceGovernorPolicy`, together with the real recording phase and residency
+projection. The adapter executes only the policy's stable
+`evictIdleModels` output. Admission, deferral, checkpoint, scheduler, and
+concurrency decisions remain inactive until accepted multi-host evidence
+defines them.
+
+Every requested family releases through its existing concrete capability
+owner and generation-fenced two-step transition. Active leases remain an
+absolute rejection. `AppModelResidencyLedger` therefore invokes one
+composition observer only when a valid final use makes a family idle, and only
+after unlocking; AppServices re-evaluates the monitor's current state instead
+of retaining a stale release request. Disposable UI-test stores and isolated
+resource benchmarks install no platform monitor.
+
+This adapter never enters AudioCaptureKit, waits for recording, deletes model
+assets, changes the existing 120/600-second fences, invents a memory threshold,
+or records meeting/model/path/error content.
+
+**Rationale:** immediate release responds to actual host pressure without
+turning the pure policy into a platform service or moving ownership out of
+capability modules. Re-evaluating after the last exact lease closes the
+busy-at-notification race, while narrow eviction-only adoption preserves live
+and batch scheduler semantics until resource evidence supports broader policy.

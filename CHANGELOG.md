@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 29, 2026
 
+- **🧹 Idle AI yields under pressure** — When macOS reports memory or serious thermal pressure, Portavoz immediately unloads only idle on-device model runtimes; active recordings, Refine, Ask, and summaries keep their exact leases until they finish.
 - **🧠 Ask stays warm between questions** — Library semantic search and Ask now share one on-device language model per Portavoz process, avoiding repeated setup while exact per-operation leases prevent release during indexing or retrieval.
 - **👥 Speaker memory stays meeting-scoped** — Live captions, Refine, imports, and voice suggestions now reuse verified Core ML weights without reusing a meeting's speaker database, preventing one conversation's clusters or enrolled identity snapshot from leaking into another.
 - **🧠 Stable Whisper handoffs** — Refine and Import now keep the exact selected quality model until their work finishes, so another operation or Settings change cannot swap the engine midway through a transcript.

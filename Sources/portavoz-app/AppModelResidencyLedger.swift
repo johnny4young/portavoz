@@ -7,8 +7,19 @@ import PortavozCore
 /// actor shared by Ask and Library. Keeping the lock in composition lets both
 /// use the same ledger without moving platform scheduling into Core.
 final class AppModelResidencyLedger: @unchecked Sendable {
+    typealias IdleObserver = @Sendable (ResourceModelFamily) -> Void
+
     private let lock = NSLock()
     private var ledger = ResourceModelResidencyLedger()
+    private var idleObserver: IdleObserver?
+
+    /// Installs the composition callback that re-evaluates persistent host
+    /// pressure after the last borrower leaves a resident family.
+    func installIdleObserver(_ observer: @escaping IdleObserver) {
+        lock.lock()
+        idleObserver = observer
+        lock.unlock()
+    }
 
     func beginLoad(
         _ family: ResourceModelFamily
@@ -55,7 +66,21 @@ final class AppModelResidencyLedger: @unchecked Sendable {
 
     @discardableResult
     func finishUse(_ lease: ResourceModelUseLease) -> Bool {
-        withLedger { $0.finishUse(lease) }
+        let observer: IdleObserver?
+        let finished: Bool
+        lock.lock()
+        finished = ledger.finishUse(lease)
+        if finished,
+           ledger.record(for: lease.family).activeUseCount == 0 {
+            observer = idleObserver
+        } else {
+            observer = nil
+        }
+        lock.unlock()
+        // A composition callback may read the ledger again. Never invoke it
+        // while holding the mutation lock.
+        observer?(lease.family)
+        return finished
     }
 
     func beginRelease(

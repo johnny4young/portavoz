@@ -45,6 +45,7 @@ struct PortavozApp: App {
         if runsIsolatedResourceBenchmark {
             return
         }
+        services.startResourcePressureMonitoring()
         // Recovery belongs to process launch, not a window: interrupted audio
         // and expired leases are reconciled even when only the menu bar opens.
         let appServices = services
