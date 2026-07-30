@@ -6311,6 +6311,16 @@
         }
       }
     },
+    "Finish the recording before starting another large on-device AI task.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finaliza la grabación antes de iniciar otra tarea grande de IA en el dispositivo."
+          }
+        }
+      }
+    },
     "No reliable speech was found. Run Refine to review the saved audio again.": {
       "localizations": {
         "es": {

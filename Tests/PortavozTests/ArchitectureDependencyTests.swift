@@ -520,6 +520,84 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Pressure-driven residency release (D166)"))
     }
 
+    func testCaptureHeavyModelExclusionRechecksEveryPublicationBoundary() throws {
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let recording = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let whisper = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
+        let mlx = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MLXModels.swift")
+
+        for required in [
+            "final class AppResourceCaptureState",
+            "func recordingPhaseDidChange(",
+            "func admitModelRuntimeLoad(",
+            "func beginAdmittedModelRuntimeLoad(",
+            "reservesLoad: true",
+            "memoryTier: .unknown",
+            "await releaseIdleModels(decision.evictIdleModels)",
+            "AppResourceGovernorAdmissionError"
+        ] {
+            XCTAssertTrue(
+                adapter.contains(required),
+                "Capture-heavy admission adapter is missing \(required)")
+        }
+        XCTAssertTrue(services.contains(
+            "let resourceCaptureState = AppResourceCaptureState()"))
+        XCTAssertTrue(recording.contains(
+            "services?.recordingPhaseDidChange(phase)"))
+        XCTAssertEqual(
+            whisper.components(
+                separatedBy: "admitModelRuntimeLoad(.qualitySpeech)"
+            ).count - 1,
+            2,
+            "Whisper must check before preparation and publication")
+        XCTAssertEqual(
+            whisper.components(
+                separatedBy: "beginAdmittedModelRuntimeLoad("
+            ).count - 1,
+            1,
+            "Whisper load admission and ticket reservation must be atomic")
+        XCTAssertEqual(
+            mlx.components(
+                separatedBy: "admitModelRuntimeLoad(.languageIntelligence)"
+            ).count - 1,
+            2,
+            "MLX must check before preparation and publication")
+        XCTAssertEqual(
+            mlx.components(
+                separatedBy: "beginAdmittedModelRuntimeLoad("
+            ).count - 1,
+            1,
+            "MLX load admission and ticket reservation must be atomic")
+
+        let forbiddenModelOperation =
+            #"\b(?:VerifiedModelLifecycle|ModelStore|WhisperEngine|"#
+            + #"MLXSummaryRuntime|releaseWhisper|releaseMLXRuntime)\b"#
+        let audioCallbackModelOperations = try Self.sourceMatches(
+            under: "Sources/AudioCaptureKit",
+            pattern: forbiddenModelOperation)
+        let callbackMessage =
+            "Model operations must stay outside AudioCaptureKit: "
+            + "\(audioCallbackModelOperations)"
+        XCTAssertTrue(
+            audioCallbackModelOperations.isEmpty,
+            callbackMessage)
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Capture-exclusive heavy-model admission"))
+        XCTAssertTrue(decisions.contains("## D167"))
+        XCTAssertTrue(appSpec.contains(
+            "### Capture-exclusive heavy-model admission (D167)"))
+    }
+
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")
@@ -666,13 +744,14 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testWhisperRuntimePinsOneCompleteResidencyLifecycle() throws {
         let whisper = try Self.contents(
             of: "Sources/portavoz-app/AppServices+WhisperModels.swift")
+        let governor = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let refine = try Self.contents(
             of: "Sources/portavoz-app/AppServices+RefineMeeting.swift")
         let importAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ImportMeeting.swift")
 
         for transition in [
-            "modelResidencyLedger.beginLoad(.qualitySpeech)",
             "modelResidencyLedger.finishLoad(",
             "modelResidencyLedger.failLoad(",
             "modelResidencyLedger.beginUse(.qualitySpeech)",
@@ -687,6 +766,10 @@ final class ArchitectureDependencyTests: XCTestCase {
                 whisper.contains(transition),
                 "Whisper residency adapter is missing \(transition)")
         }
+        XCTAssertTrue(whisper.contains(
+            "beginAdmittedModelRuntimeLoad("))
+        XCTAssertTrue(governor.contains(
+            "modelResidencyLedger.beginLoad(family)"))
 
         for adapter in [refine, importAdapter] {
             XCTAssertTrue(adapter.contains("private var whisperRuntime:"))
@@ -714,6 +797,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testMLXRuntimePinsOneCompleteResidencyLifecycle() throws {
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let governor = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let mlx = try Self.contents(
             of: "Sources/IntelligenceKit/MLXSummaryProvider.swift")
         let adapter = try Self.contents(
@@ -734,7 +819,6 @@ final class ArchitectureDependencyTests: XCTestCase {
             "@ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()"))
 
         for transition in [
-            "modelResidencyLedger.beginLoad(.languageIntelligence)",
             "modelResidencyLedger.finishLoad(",
             "modelResidencyLedger.failLoad(",
             "modelResidencyLedger.beginUse(",
@@ -750,6 +834,10 @@ final class ArchitectureDependencyTests: XCTestCase {
                 adapter.contains(transition),
                 "MLX residency adapter is missing \(transition)")
         }
+        XCTAssertTrue(adapter.contains(
+            "beginAdmittedModelRuntimeLoad("))
+        XCTAssertTrue(governor.contains(
+            "modelResidencyLedger.beginLoad(family)"))
 
         XCTAssertEqual(
             try Self.sourceMatches(

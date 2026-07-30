@@ -83,6 +83,9 @@ final class AppServices {
     @ObservationIgnored let workloadTelemetry: ResourceWorkloadTelemetry
     /// The narrow platform bridge for pressure-driven idle model release.
     @ObservationIgnored var resourcePressureMonitor: AppResourcePressureMonitor?
+    /// Content-free recording phase readable from non-MainActor residency
+    /// callbacks without reaching into the observable controller.
+    @ObservationIgnored let resourceCaptureState = AppResourceCaptureState()
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
     /// Shared async credential workflow for Settings and publishing surfaces.
     @ObservationIgnored let secrets: ManageSecrets

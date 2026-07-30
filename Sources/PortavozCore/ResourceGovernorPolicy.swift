@@ -207,7 +207,8 @@ public struct ResourceGovernorPolicy: Sendable {
             : descriptor.modelFamily
         let evictions = idleModelEvictions(
             snapshot: snapshot,
-            preserving: targetModel)
+            preserving: targetModel,
+            operation: descriptor.operation)
 
         if descriptor.workloadClass == .recordingCritical {
             return evaluateRecordingCritical(
@@ -301,6 +302,17 @@ public struct ResourceGovernorPolicy: Sendable {
     ) -> ResourceGovernorDecision {
         let descriptor = request.descriptor
 
+        if descriptor.operation == .load,
+           snapshot.memoryTier.protectsCaptureHeavyPair,
+           let peer = descriptor.modelFamily?.captureHeavyPeer,
+           snapshot.residentModels.contains(where: {
+               $0.family == peer && !$0.isIdle
+           }) {
+            return ResourceGovernorDecision(
+                disposition: .defer(until: .captureStops),
+                evictIdleModels: evictions)
+        }
+
         let isDurableOptionalWork =
             descriptor.workloadClass == .maintenance
                 || descriptor.workloadClass == .postCapture
@@ -380,15 +392,37 @@ public struct ResourceGovernorPolicy: Sendable {
 
     private func idleModelEvictions(
         snapshot: ResourceGovernorSnapshot,
-        preserving target: ResourceModelFamily?
+        preserving target: ResourceModelFamily?,
+        operation: ResourceWorkloadOperation
     ) -> [ResourceModelFamily] {
-        guard snapshot.hasModeratePressure else { return [] }
         let idleFamilies = Set(
             snapshot.residentModels.lazy
                 .filter(\.isIdle)
                 .map(\.family))
+        var requested: Set<ResourceModelFamily> = []
+        if snapshot.hasModeratePressure {
+            requested.formUnion(idleFamilies)
+        }
+
+        if snapshot.capture.state.protectsLiveCapture,
+           snapshot.memoryTier.protectsCaptureHeavyPair {
+            let residentFamilies = Set(snapshot.residentModels.map(\.family))
+            if operation == .load,
+               let peer = target?.captureHeavyPeer,
+               residentFamilies.contains(peer),
+               idleFamilies.contains(peer) {
+                requested.insert(peer)
+            } else if operation == .release,
+                      ResourceModelFamily.captureHeavyPair.isSubset(
+                          of: residentFamilies) {
+                requested.formUnion(
+                    idleFamilies.intersection(
+                        ResourceModelFamily.captureHeavyPair))
+            }
+        }
+
         return ResourceModelFamily.allCases.filter {
-            idleFamilies.contains($0) && $0 != target
+            requested.contains($0) && $0 != target
         }
     }
 }
@@ -412,6 +446,30 @@ private extension ResourceGovernorSnapshot {
 
     var hasSeverePressure: Bool {
         memoryPressure == .critical || thermalState == .critical
+    }
+}
+
+private extension ResourceMemoryTier {
+    var protectsCaptureHeavyPair: Bool {
+        self == .unknown || self == .constrained
+    }
+}
+
+private extension ResourceModelFamily {
+    static let captureHeavyPair: Set<ResourceModelFamily> = [
+        .qualitySpeech,
+        .languageIntelligence
+    ]
+
+    var captureHeavyPeer: ResourceModelFamily? {
+        switch self {
+        case .qualitySpeech:
+            .languageIntelligence
+        case .languageIntelligence:
+            .qualitySpeech
+        case .liveSpeech, .speakerDiarization, .semanticEmbedding:
+            nil
+        }
     }
 }
 

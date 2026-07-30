@@ -65,6 +65,7 @@ extension AppServices {
         if let runtime = try residentWhisperRuntime(descriptorID: descriptor.id) {
             return runtime
         }
+        try await admitModelRuntimeLoad(.qualitySpeech)
 
         let prepared = try await preparedWhisperModel(
             descriptor,
@@ -85,7 +86,9 @@ extension AppServices {
             throw WhisperRuntimeError.variantInUse
         }
 
-        guard let ticket = modelResidencyLedger.beginLoad(.qualitySpeech) else {
+        guard let ticket = try await beginAdmittedModelRuntimeLoad(
+            .qualitySpeech
+        ) else {
             throw WhisperRuntimeError.inconsistentResidency
         }
         let telemetry = workloadTelemetry
@@ -234,6 +237,15 @@ extension AppServices {
     ) async throws -> WhisperRuntimeLease {
         do {
             let engine = try await load.task.value
+            guard whisperRuntimeLoad?.generation == load.generation else {
+                guard let runtime = try residentWhisperRuntime(
+                    descriptorID: load.descriptorID)
+                else {
+                    throw CancellationError()
+                }
+                return runtime
+            }
+            try await admitModelRuntimeLoad(.qualitySpeech)
             guard whisperRuntimeLoad?.generation == load.generation else {
                 guard let runtime = try residentWhisperRuntime(
                     descriptorID: load.descriptorID)

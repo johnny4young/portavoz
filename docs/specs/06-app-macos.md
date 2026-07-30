@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D145 (exact-first Library semantic augmentation), D157–D166 (pure resource policy, generation-fenced residency, one composition owner, pinned Whisper/MLX/live-speech/diarization/semantic runtime leases, and pressure-driven idle release).
+Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (durable Stop), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D145 (exact-first Library semantic augmentation), D157–D167 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, and capture-exclusive Whisper/MLX admission).
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -398,6 +398,46 @@ persistent pressure without executing async work under the lock.
 The adapter changes no idle TTL, scheduler, admission/deferral behavior, model
 download lifecycle, or AudioCaptureKit callback. It does not wait on capture
 and carries no meeting IDs, text, paths, model names, or raw errors.
+
+### Capture-exclusive heavy-model admission (D167)
+
+RecordingController publishes every phase transition to AppServices, which
+maps it to the closed `ResourceCaptureState` enum and stores it in one
+lock-protected, content-free mirror. The mirror lets the residency ledger's
+non-MainActor final-use observer decide whether reconciliation is relevant
+without reading observable UI state. Starting, active, and stopping phases
+request a governor pass even under nominal host pressure; inactive phases do
+not.
+
+The app submits only `.load` requests for the quality-speech and
+language-intelligence families. Its memory tier remains `.unknown` until
+accepted hardware evidence supports classification. On an unknown host during
+protected capture, the pure policy requests release of an idle peer and defers
+a second pair-member load if that peer is loading or still has an active lease.
+The adapter projects a loading ledger record as non-idle governor occupancy,
+without making it releasable, so concurrent cross-family acquisitions cannot
+both pass. Two tasks already active before Start are never interrupted; their
+final-use callbacks make each newly idle member eligible for reconciliation.
+The existing constrained policy remains stricter; standard and large tiers are
+unchanged. The adapter executes only the pair's release/defer contract and does
+not activate broader policy dispositions.
+
+Whisper checks before verified preparation, atomically rechecks and reserves
+its load ticket immediately before engine loading, and checks before publishing
+the loaded engine. MLX uses the same atomic admission-and-reservation step
+after any prior-runtime release and immediately before loading, then checks
+before publishing residency. The repeated checks are required because either
+capture or the peer runtime can start while asynchronous work is suspended.
+Every rejection rolls back the exact load ticket; MLX additionally releases
+the prepared container. The user receives one localized instruction to finish
+the recording before starting the competing large on-device AI task.
+
+Architecture coverage proves preparation and publication checks plus one
+atomic load-admission reservation in each adapter, phase-mirror publication,
+pure-policy dispatch, concrete-owner release, and the absence of model
+lifecycle, model stores, Whisper, MLX, or their release methods from
+`AudioCaptureKit`. Verified files stay installed; capture callbacks perform no
+model download, checksum sweep, or release wait.
 
 Recording Start is also the single authorization boundary for meeting capture.
 Its explicit user action asks `MicrophonePermissionClient` to resolve an

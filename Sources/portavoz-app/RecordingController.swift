@@ -23,7 +23,11 @@ enum RecordingMeterPublicationPolicy {
 @MainActor
 @Observable
 final class RecordingController {
-    private(set) var phase: RecordingPhase = .idle
+    private(set) var phase: RecordingPhase = .idle {
+        didSet {
+            services?.recordingPhaseDidChange(phase)
+        }
+    }
     private(set) var failureContext: RecordingFailureContext?
     private(set) var captions: [TranscriptSegment] = []
     private(set) var startedAt = Date()

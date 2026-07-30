@@ -5236,3 +5236,48 @@ turning the pure policy into a platform service or moving ownership out of
 capability modules. Re-evaluating after the last exact lease closes the
 busy-at-notification race, while narrow eviction-only adoption preserves live
 and batch scheduler semantics until resource evidence supports broader policy.
+
+## D167 — Protected capture blocks a second Whisper/MLX load on unknown hosts (Jul 2026)
+
+**Context:** Portavoz had exact residency leases and pressure-driven release,
+but a Refine/Import Whisper load and a built-in MLX summary load could still
+overlap while recording. Production intentionally had no numeric memory-tier
+classifier because the 8 GB, 16 GB, and reference-host evidence matrix was not
+yet accepted. Checking only before an asynchronous load was insufficient:
+capture or the peer model could start while verification or preparation was
+suspended. The roadmap also required proof that model download, verification,
+and release waits never entered a live audio callback.
+
+**Decision:** application composition mirrors recording phase as one
+lock-protected, content-free `ResourceCaptureState`. During starting, active,
+or stopping capture, the pure governor treats `.unknown` like a conservative
+tier only for the quality-speech/language-intelligence pair. Loading a second
+member requests concrete-owner release of an idle peer; a loading peer or a
+peer with an active lease defers the load until capture stops. Loading ledger
+records count as non-idle governor occupancy but remain non-releasable. Tasks
+already active before Start are not interrupted and become releasable only
+after their final exact lease closes. The existing constrained-tier policy
+remains stricter, and standard/large tiers are unchanged.
+
+Whisper checks this gate before verified preparation, atomically rechecks and
+reserves its loading generation immediately before engine loading, and checks
+again before residency publication. MLX uses the same atomic
+admission-and-reservation step after any prior-runtime release and immediately
+before loading, then checks at the publication boundary. The adapter
+re-evaluates after executing requested releases, fails if the peer remains,
+and rolls back the exact loading generation on rejection. Recording phase
+transitions and final-use notifications also reconcile an already-resident
+idle pair. The adapter activates no other admission, scheduler, checkpoint,
+disk, power, or concurrency decision and defines no RAM or TTL threshold.
+
+Architecture ratchets prohibit verified model lifecycle, model stores,
+Whisper, MLX, and their release owners in `AudioCaptureKit`. Verified assets
+remain independent from loaded weights and are never deleted by capture
+admission.
+
+**Rationale:** a categorical pairwise gate protects audio-first recording now
+without claiming unsupported hardware precision. Counting in-flight loads and
+atomically joining load admission with its ledger reservation closes concurrent
+acquisition races; the preparation and publication checks close suspension
+races. Exact-owner release preserves residency invariants, and callback
+ratchets keep model I/O entirely outside the real-time capture path.

@@ -80,6 +80,7 @@ extension AppServices {
         if let runtime = try residentMLXRuntime(directoryKey: directoryKey) {
             return runtime
         }
+        try await admitModelRuntimeLoad(.languageIntelligence)
 
         if let active = mlxRuntimeLoad {
             guard active.directoryKey == directoryKey else {
@@ -92,7 +93,9 @@ extension AppServices {
             throw MLXRuntimeError.modelInUse
         }
 
-        guard let ticket = modelResidencyLedger.beginLoad(.languageIntelligence) else {
+        guard let ticket = try await beginAdmittedModelRuntimeLoad(
+            .languageIntelligence
+        ) else {
             throw MLXRuntimeError.inconsistentResidency
         }
         let telemetry = workloadTelemetry
@@ -162,6 +165,13 @@ extension AppServices {
     ) async throws -> MLXRuntimeLease {
         do {
             try await load.task.value
+            guard mlxRuntimeLoad?.generation == load.generation else {
+                guard let runtime = try residentMLXRuntime(
+                    directoryKey: load.directoryKey)
+                else { throw CancellationError() }
+                return runtime
+            }
+            try await admitModelRuntimeLoad(.languageIntelligence)
             guard mlxRuntimeLoad?.generation == load.generation else {
                 guard let runtime = try residentMLXRuntime(
                     directoryKey: load.directoryKey)

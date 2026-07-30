@@ -850,6 +850,41 @@ releases the now-idle family if pressure persists. No pressure callback or
 ledger observer enters `AudioCaptureKit`, waits on capture, deletes verified
 assets, changes an idle TTL, or replaces either existing scheduler.
 
+Capture-exclusive heavy-model admission is the second narrow application
+adapter. Recording state is mirrored as one lock-protected, content-free Core
+enum so model-residency callbacks can observe capture protection without
+reading the observable controller or carrying meeting identity. Entering
+starting, active, or stopping capture asks the pure policy to release an idle
+Whisper/MLX pair even when macOS has not reported pressure. A final-use
+notification repeats that reconciliation if one member was still busy.
+
+The production adapter intentionally supplies `.unknown` memory tier until the
+accepted multi-host baseline defines stable hardware classification. During
+protected capture, that unknown tier fails closed only for the
+quality-speech/language-intelligence pair: loading a second member evicts the
+idle peer or defers until capture stops if the peer is loading or has an active
+lease. Loading ledger records are projected as non-idle governor occupancy, so
+two concurrent cross-family acquisitions cannot both pass before either
+runtime becomes resident. If both already had active leases before Start,
+capture remains audio-first and releases a member only after its final borrower
+finishes. The existing constrained-tier rule remains stricter, while standard
+and large tiers retain the pure policy's existing behavior. This categorical
+protection invents no RAM threshold and does not activate broader scheduler,
+checkpoint, power, or storage admission.
+
+Whisper checks admission before verified preparation, so a blocked Refine or
+Import does not start a model download or checksum sweep. After preparation,
+Whisper atomically rechecks admission and reserves its loading generation in
+one MainActor turn; MLX does the same after any prior-runtime release and
+immediately before its load task starts. Both adapters check once more before
+generation-fenced residency publication. These three boundaries close
+suspension and concurrent acquisition races. A failed publication gate rolls
+the loading generation back through the existing owner, and MLX also drops the
+prepared container.
+Architecture ratchets keep `VerifiedModelLifecycle`, model stores, Whisper,
+MLX, and their release owners outside `AudioCaptureKit`; capture callbacks
+continue to write audio without model I/O or waits.
+
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,

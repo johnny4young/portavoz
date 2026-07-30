@@ -46,6 +46,95 @@ final class AppResourceGovernorReleaseTests: XCTestCase {
             [])
     }
 
+    func testProtectedCaptureReleasesIdleWhisperAndMLXWithoutHostPressure() {
+        XCTAssertEqual(
+            AppResourceGovernorReleasePlan.families(
+                pressure: .nominal,
+                captureState: .active,
+                residentModels: [
+                    resident(.qualitySpeech),
+                    resident(.languageIntelligence)
+                ]),
+            [.qualitySpeech, .languageIntelligence])
+    }
+
+    func testMLXAdmissionEvictsIdleWhisperDuringProtectedCapture() {
+        let decision = AppResourceGovernorModelLoadPlan.decision(
+            target: .languageIntelligence,
+            captureState: .active,
+            residencyRecords: [record(.qualitySpeech)])
+
+        XCTAssertEqual(
+            decision,
+            ResourceGovernorDecision(
+                disposition: .admitWithReducedConcurrency,
+                evictIdleModels: [.qualitySpeech]))
+        XCTAssertTrue(
+            AppResourceGovernorModelLoadPlan.blocks(
+                decision: decision,
+                target: .languageIntelligence))
+    }
+
+    func testWhisperAdmissionDefersWhenMLXIsBusyDuringProtectedCapture() {
+        let decision = AppResourceGovernorModelLoadPlan.decision(
+            target: .qualitySpeech,
+            captureState: .stopping,
+            residencyRecords: [
+                record(.languageIntelligence, activeUseCount: 1)
+            ])
+
+        XCTAssertEqual(
+            decision.disposition,
+            .defer(until: .captureStops))
+        XCTAssertTrue(
+            AppResourceGovernorModelLoadPlan.blocks(
+                decision: decision,
+                target: .qualitySpeech))
+    }
+
+    func testHeavyPairAdmissionClearsAfterPeerRelease() {
+        let decision = AppResourceGovernorModelLoadPlan.decision(
+            target: .languageIntelligence,
+            captureState: .active,
+            residencyRecords: [])
+
+        XCTAssertFalse(
+            AppResourceGovernorModelLoadPlan.blocks(
+                decision: decision,
+                target: .languageIntelligence))
+    }
+
+    func testLoadingWhisperDefersMLXDuringProtectedCapture() {
+        let decision = AppResourceGovernorModelLoadPlan.decision(
+            target: .languageIntelligence,
+            captureState: .active,
+            residencyRecords: [
+                record(.qualitySpeech, status: .loading)
+            ])
+
+        XCTAssertEqual(
+            decision.disposition,
+            .defer(until: .captureStops))
+        XCTAssertTrue(
+            AppResourceGovernorModelLoadPlan.blocks(
+                decision: decision,
+                target: .languageIntelligence))
+    }
+
+    func testCaptureStateMirrorIsContentFreeAndSynchronous() {
+        let state = AppResourceCaptureState()
+
+        XCTAssertEqual(state.current, .inactive)
+        state.update(.starting)
+        XCTAssertEqual(state.current, .starting)
+        state.update(.active)
+        XCTAssertEqual(state.current, .active)
+        state.update(.stopping)
+        XCTAssertEqual(state.current, .stopping)
+        state.update(.inactive)
+        XCTAssertEqual(state.current, .inactive)
+    }
+
     func testPlatformPressureMappingIsClosedAndDeterministic() {
         XCTAssertFalse(
             AppResourcePressureSnapshot(
@@ -120,6 +209,18 @@ final class AppResourceGovernorReleaseTests: XCTestCase {
             family: family,
             measuredFootprintBytes: nil,
             isIdle: isIdle)
+    }
+
+    private func record(
+        _ family: ResourceModelFamily,
+        status: ResourceModelResidencyStatus = .resident,
+        activeUseCount: Int = 0
+    ) -> ResourceModelResidencyRecord {
+        ResourceModelResidencyRecord(
+            family: family,
+            status: status,
+            activeUseCount: activeUseCount,
+            measuredFootprintBytes: nil)
     }
 }
 

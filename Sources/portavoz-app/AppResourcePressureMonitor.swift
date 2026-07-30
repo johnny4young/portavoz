@@ -7,6 +7,10 @@ struct AppResourcePressureSnapshot: Equatable, Sendable {
     let memory: ResourceMemoryPressure
     let thermal: ResourceThermalState
 
+    static let nominal = AppResourcePressureSnapshot(
+        memory: .nominal,
+        thermal: .nominal)
+
     var requestsIdleModelRelease: Bool {
         memory != .nominal || thermal == .serious || thermal == .critical
     }
