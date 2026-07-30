@@ -85,7 +85,7 @@ enum PostCaptureProcessingCoordinator {
     static func resumeAfterRecovery(services: AppServices) async {
         do {
             if try await seedFixtureIfRequested(services: services) {
-                services.requestSpotlightReindex()
+                services.requestSearchReconciliation()
             }
         } catch {
             logger.error("Could not prepare processing fixture: \(error.localizedDescription)")
@@ -182,7 +182,7 @@ private final class PostCaptureProcessingTelemetry {
                     "outcome=\(outcome.rawValue, privacy: .public)")
                 self.interval = nil
             }
-            if changed { services?.requestSpotlightReindex() }
+            if changed { services?.requestSearchReconciliation() }
         }
     }
 }

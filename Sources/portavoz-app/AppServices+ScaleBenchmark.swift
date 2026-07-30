@@ -51,7 +51,7 @@ extension AppServices {
             return
         }
 
-        requestSpotlightReindex()
+        requestSearchReconciliation()
         pendingRoute = .meeting(meeting.id)
         if arguments.contains("-scale-auto-summary-update") {
             scheduleScaleSummaryUpdate(meetingID: meeting.id)

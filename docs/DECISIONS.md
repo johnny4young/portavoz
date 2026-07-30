@@ -5639,3 +5639,40 @@ narrow gate makes the policy executable without coupling ApplicationKit to app
 state and is reusable for later sync, graph, and export checkpoints. Moving the
 complete drain off Ask, wake-on-capture-stop scheduling, durable leases and
 heartbeats, and non-capture host adapters remain separate GOV-4 slices.
+
+## D178 — Resume semantic maintenance from process signals (Jul 2026)
+
+**Context:** D177 made semantic backfill yield safely during protected capture,
+but remaining `NULL` rows resumed only when a later Library search or Ask
+request happened to request indexing. That left corpus maintenance coupled to
+foreground user latency. A periodic worker would waste wakeups, duplicate the
+database's durable state, and risk rebuilding model pressure during a call.
+
+**Decision:** the macOS composition root owns one
+`SemanticCorpusIndexingSupervisor`. App launch, searchable mutations, and the
+capture mirror returning inactive call its idempotent wake method. One drain may
+run at a time. Any number of signals received while it runs collapse into one
+subsequent drain, represented by a scalar bit rather than a request queue. The
+supervisor has no timer, sleep, polling loop, or retry schedule.
+
+The production background adapter first checks cancellation and protected
+capture, then queries at most one missing embedding row. It borrows the shared
+semantic runtime only when work exists and Apple's Latin contextual embedding
+assets are already installed. Background work always passes
+`allowAssetDownload: false`. Temporary stores and isolated benchmark
+composition disable the owner. The existing D177 gate remains authoritative
+inside each indexed batch and can pause a drain that was admitted before
+capture changed.
+
+Ordinary failure is logged without meeting content and leaves missing rows
+untouched. The next explicit signal or process launch retries from those
+durable rows; no volatile retry ledger is needed. Ask keeps its released
+synchronous complete-drain behavior for compatibility so a request sees the same
+semantic completeness as before. Moving that drain entirely behind the
+background owner requires separate measured parity evidence.
+
+**Rationale:** explicit lifecycle and mutation signals make semantic recall
+self-maintaining without permanent process activity. One process owner, one
+shared coordinator, and one SQLite cursor keep concurrency and recovery
+bounded while capture remains the highest-priority workload and background
+maintenance cannot surprise the user with an asset download.

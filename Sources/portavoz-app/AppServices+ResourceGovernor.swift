@@ -107,7 +107,10 @@ extension AppServices {
     func recordingPhaseDidChange(_ phase: RecordingPhase) {
         let next = phase.resourceCaptureState
         resourceCaptureState.update(next)
-        guard next != .inactive else { return }
+        guard next != .inactive else {
+            semanticIndexingSupervisor.kick()
+            return
+        }
         let pressure = resourcePressureMonitor?.current ?? .nominal
         Task { @MainActor [weak self] in
             await self?.reconcileModelPressure(pressure)

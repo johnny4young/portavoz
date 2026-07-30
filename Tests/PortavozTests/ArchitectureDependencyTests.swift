@@ -526,6 +526,64 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Shared semantic-indexing flight (D176)"))
     }
 
+    func testSemanticBackgroundOwnerUsesSignalsAndDurableCursor() throws {
+        let supervisor = try Self.contents(
+            of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
+        let resourceAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
+        let appAsk = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let stressGate = try Self.contents(
+            of: "scripts/run-recording-reliability-stress.sh")
+        let releaseGate = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+
+        XCTAssertTrue(supervisor.contains(
+            "final class SemanticCorpusIndexingSupervisor"))
+        XCTAssertTrue(supervisor.contains("private var drainTask:"))
+        XCTAssertTrue(supervisor.contains("private var rerunRequested = false"))
+        XCTAssertTrue(supervisor.contains(
+            "struct AppSemanticCorpusBackgroundIndexer"))
+        XCTAssertTrue(supervisor.contains(
+            "allowAssetDownload: false"))
+        XCTAssertTrue(supervisor.contains(
+            "segmentsNeedingEmbeddings(limit: 1)"))
+        XCTAssertFalse(supervisor.contains("Task.sleep"))
+        XCTAssertTrue(services.contains(
+            "@ObservationIgnored let semanticIndexingSupervisor:"))
+        XCTAssertTrue(services.contains(
+            "func requestSearchReconciliation()"))
+        XCTAssertTrue(app.contains(
+            "services.requestSearchReconciliation()"))
+        XCTAssertTrue(resourceAdapter.contains(
+            "semanticIndexingSupervisor.kick()"))
+        XCTAssertTrue(appAsk.contains(
+            "isEnabled: !usesTemporaryStore"))
+        for gate in [stressGate, releaseGate] {
+            XCTAssertTrue(gate.contains(
+                "SemanticCorpusIndexingSupervisorTests"))
+        }
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "one signal-driven semantic-maintenance supervisor"))
+        XCTAssertTrue(decisions.contains(
+            "## D178 — Resume semantic maintenance"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Signal-driven background semantic owner (D178)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Signal-driven semantic maintenance (D178)"))
+    }
+
     func testPressureDrivenReleaseUsesGovernorAndAllConcreteOwners() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
@@ -2525,7 +2583,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(view.contains("model.send(.observeLibrary)"))
         XCTAssertTrue(view.contains("model.send(.observeSearch)"))
         XCTAssertTrue(content.contains("@State private var libraryModel: LibraryModel"))
-        XCTAssertTrue(adapter.contains("defer { requestSpotlightReindex() }"))
+        XCTAssertTrue(adapter.contains("defer { requestSearchReconciliation() }"))
         XCTAssertTrue(adapter.contains("makeApplicationLibraryStream("))
         XCTAssertTrue(readModels.contains("public enum LibraryUpdate"))
         XCTAssertTrue(observation.contains("func observeLibraryMeetings()"))
@@ -3829,7 +3887,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(spotlightIndexer.contains("retryDelays"))
         XCTAssertFalse(spotlightIndexer.contains("outboxEvent"))
         XCTAssertTrue(services.contains("@ObservationIgnored let spotlightIndexer"))
-        XCTAssertTrue(services.contains("func requestSpotlightReindex()"))
+        XCTAssertTrue(services.contains("func requestSearchReconciliation()"))
         XCTAssertFalse(services.contains("libraryVersion"))
         XCTAssertFalse(content.contains("libraryVersion"))
 

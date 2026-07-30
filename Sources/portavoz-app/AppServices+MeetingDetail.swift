@@ -81,7 +81,7 @@ extension AppServices: MeetingDetailModelClient {
     }
 
     func requestMeetingDetailSearchReindex() {
-        requestSpotlightReindex()
+        requestSearchReconciliation()
     }
 
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws {

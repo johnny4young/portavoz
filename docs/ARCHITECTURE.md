@@ -1249,6 +1249,21 @@ adapter, skips semantic work during capture, refuses asset downloads as a
 side-effect of typing, and treats cancellation or embedding failure as an empty
 augmentation.
 
+App composition owns one signal-driven semantic-maintenance supervisor over
+the shared corpus-indexing coordinator. App launch, searchable mutations, and
+capture returning inactive are wake signals. Bursts collapse to at most one
+rerun behind the active drain; no timer, polling loop, or in-memory work queue
+exists. Before borrowing the semantic runtime, the background adapter checks
+capture state and one durable missing row. It uses only already-installed Apple
+embedding assets and never downloads assets in the background. Temporary and
+isolated benchmark stores disable the supervisor.
+
+The `NULL` embedding rows remain the durable cursor across suspension, failure,
+and process termination. A later signal or relaunch therefore resumes work
+without a separate jobs table. Ask still performs its released synchronous
+complete drain before hybrid retrieval; moving that latency out of the request
+path is a separate parity-preserving migration.
+
 Waveform generation is stateless and uses Accelerate over range-aligned channel
 spans. The application publishes one bounded snapshot, while route cancellation
 stops obsolete whole-file derivation between fixed-size reads; no waveform

@@ -106,6 +106,10 @@ final class AppServices {
     /// It admits one semantic-index flight and coalesces redundant maintenance.
     @ObservationIgnored let semanticIndexingCoordinator:
         SemanticCorpusIndexingCoordinator
+    /// Signal-driven process owner resumes durable semantic backfill without
+    /// polling SQLite or making a SwiftUI view responsible for maintenance.
+    @ObservationIgnored let semanticIndexingSupervisor:
+        SemanticCorpusIndexingSupervisor
     /// One process-shared Library lane augments exact search without
     /// downloading assets as a side effect of typing.
     @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
@@ -246,6 +250,7 @@ final class AppServices {
             store: store, usesTemporaryStore: usesTemporaryStore,
             semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry, captureState: resourceCaptureState)
         semanticIndexingCoordinator = semanticSearch.coordinator
+        semanticIndexingSupervisor = semanticSearch.background
         librarySemanticSearch = semanticSearch.library
         let askUseCase = semanticSearch.ask
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
@@ -276,7 +281,6 @@ final class AppServices {
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
             telemetry: workloadTelemetry)
-        requestSpotlightReindex()
         Task { @MainActor [weak self] in
             await self?.refreshMLXReadiness()
         }
@@ -325,11 +329,14 @@ final class AppServices {
         return try MeetingStore(databaseURL: url)
     }
 
-    /// Searchable mutations request eventual reconciliation. The actor owns
-    /// burst coalescing, retries, and crash-resumable client state.
-    func requestSpotlightReindex() {
+    /// Searchable mutations wake both protected indexes. Each process owner
+    /// coalesces bursts; semantic maintenance remains storage-resumable and
+    /// does not poll while no signal is pending.
+    func requestSearchReconciliation() {
         let indexer = spotlightIndexer
         Task { await indexer.requestReindex() }
+        guard resourceCaptureState.current == .inactive else { return }
+        semanticIndexingSupervisor.kick()
     }
 
     /// Explicit readiness for workflows that truly need both models.

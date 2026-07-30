@@ -26,6 +26,13 @@ final class AppAskModelClient: AskModelClient {
     }
 }
 
+struct AppSemanticSearchComposition {
+    let coordinator: SemanticCorpusIndexingCoordinator
+    let ask: AskMeetings
+    let library: LocalLibrarySemanticSearch
+    let background: SemanticCorpusIndexingSupervisor
+}
+
 extension AppServices {
     func makeAskModel() -> AskModel {
         AskModel(client: askClient)
@@ -37,11 +44,7 @@ extension AppServices {
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry,
         captureState: AppResourceCaptureState
-    ) -> (
-        coordinator: SemanticCorpusIndexingCoordinator,
-        ask: AskMeetings,
-        library: LocalLibrarySemanticSearch
-    ) {
+    ) -> AppSemanticSearchComposition {
         let maintenanceGate = AppResourceGovernorMaintenanceGate.make(
             captureState: captureState)
         let coordinator = SemanticCorpusIndexingCoordinator(
@@ -66,7 +69,19 @@ extension AppServices {
             runtime: semanticRuntime,
             telemetry: telemetry,
             indexingCoordinator: coordinator)
-        return (coordinator, ask, library)
+        let backgroundIndexer = AppSemanticCorpusBackgroundIndexer(
+            store: store,
+            runtime: semanticRuntime,
+            coordinator: coordinator,
+            captureState: captureState)
+        let background = SemanticCorpusIndexingSupervisor(
+            isEnabled: !usesTemporaryStore,
+            drain: backgroundIndexer.drain)
+        return AppSemanticSearchComposition(
+            coordinator: coordinator,
+            ask: ask,
+            library: library,
+            background: background)
     }
 }
 

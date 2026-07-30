@@ -21,7 +21,7 @@ extension AppServices {
             await progress(message)
         }
         let meetingID = try await importMeetingUseCase(request)
-        requestSpotlightReindex()
+        requestSearchReconciliation()
         return meetingID
     }
 

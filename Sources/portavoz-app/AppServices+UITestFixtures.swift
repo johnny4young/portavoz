@@ -67,7 +67,7 @@ extension AppServices {
         await seedProcessingFailureIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
-        requestSpotlightReindex()
+        requestSearchReconciliation()
     }
 
     private var seedDemoMeetingTitle: String {
